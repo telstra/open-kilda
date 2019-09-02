@@ -24,9 +24,6 @@ import java.io.Serializable;
 @Configuration
 @Key("orientdb")
 public interface OrientDbConfig extends Serializable {
-    @Key("path")
-    String getDbPath();
-
     @Key("name")
     String getDbName();
 
@@ -35,8 +32,8 @@ public interface OrientDbConfig extends Serializable {
     String getDbType();
 
     @Key("user")
-    String getUser();
+    String getDbUser();
 
     @Key("password")
-    String getPassword();
+    String getDbPassword();
 }

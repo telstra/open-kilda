@@ -23,12 +23,13 @@ import org.openkilda.persistence.ferma.model.Flow;
 import org.openkilda.persistence.ferma.model.FlowPath;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
 import com.syncleus.ferma.VertexFrame;
-import com.syncleus.ferma.annotations.GraphElement;
-import com.syncleus.ferma.annotations.Property;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
+import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -40,8 +41,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@GraphElement
-public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
+public class FlowFrame extends AbstractVertexFrame implements Flow {
     public static final String FRAME_LABEL = "flow";
 
     public static final String SOURCE_EDGE = "source";
@@ -55,13 +55,41 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
     public static final String PERIODIC_PINGS_PROPERTY = "periodic_pings";
     public static final String STATUS_PROPERTY = "status";
 
-    @Property(FLOW_ID_PROPERTY)
-    @Override
-    public abstract String getFlowId();
+    private Vertex cachedElement;
 
-    @Property(FLOW_ID_PROPERTY)
     @Override
-    public abstract void setFlowId(String flowId);
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
+
+    @Override
+    public String getFlowId() {
+        return getProperty(FLOW_ID_PROPERTY);
+    }
+
+    @Override
+    public void setFlowId(String flowId) {
+        setProperty(FLOW_ID_PROPERTY, flowId);
+    }
 
     @Override
     public int getSrcPort() {
@@ -123,13 +151,15 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
         setProperty("reverse_path_id", reversePathId == null ? null : reversePathId.getId());
     }
 
-    @Property("allocate_protected_path")
     @Override
-    public abstract boolean isAllocateProtectedPath();
+    public boolean isAllocateProtectedPath() {
+        return Optional.ofNullable((Boolean) getProperty("allocate_protected_path")).orElse(false);
+    }
 
-    @Property("allocate_protected_path")
     @Override
-    public abstract void setAllocateProtectedPath(boolean allocateProtectedPath);
+    public void setAllocateProtectedPath(boolean allocateProtectedPath) {
+        setProperty("allocate_protected_path", allocateProtectedPath);
+    }
 
     @Override
     public PathId getProtectedForwardPathId() {
@@ -155,45 +185,55 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
                 protectedReversePathId == null ? null : protectedReversePathId.getId());
     }
 
-    @Property(GROUP_ID_PROPERTY)
     @Override
-    public abstract String getGroupId();
+    public String getGroupId() {
+        return getProperty(GROUP_ID_PROPERTY);
+    }
 
-    @Property(GROUP_ID_PROPERTY)
     @Override
-    public abstract void setGroupId(String groupId);
+    public void setGroupId(String groupId) {
+        setProperty(GROUP_ID_PROPERTY, groupId);
+    }
 
-    @Property("bandwidth")
     @Override
-    public abstract long getBandwidth();
+    public long getBandwidth() {
+        return (Long) getProperty("bandwidth");
+    }
 
-    @Property("bandwidth")
     @Override
-    public abstract void setBandwidth(long bandwidth);
+    public void setBandwidth(long bandwidth) {
+        setProperty("bandwidth", bandwidth);
+    }
 
-    @Property("ignore_bandwidth")
     @Override
-    public abstract boolean isIgnoreBandwidth();
+    public boolean isIgnoreBandwidth() {
+        return Optional.ofNullable((Boolean) getProperty("ignore_bandwidth")).orElse(false);
+    }
 
-    @Property("ignore_bandwidth")
     @Override
-    public abstract void setIgnoreBandwidth(boolean ignoreBandwidth);
+    public void setIgnoreBandwidth(boolean ignoreBandwidth) {
+        setProperty("ignore_bandwidth", ignoreBandwidth);
+    }
 
-    @Property("description")
     @Override
-    public abstract String getDescription();
+    public String getDescription() {
+        return getProperty("description");
+    }
 
-    @Property("description")
     @Override
-    public abstract void setDescription(String description);
+    public void setDescription(String description) {
+        setProperty("description", description);
+    }
 
-    @Property(PERIODIC_PINGS_PROPERTY)
     @Override
-    public abstract boolean isPeriodicPings();
+    public boolean isPeriodicPings() {
+        return Optional.ofNullable((Boolean) getProperty(PERIODIC_PINGS_PROPERTY)).orElse(false);
+    }
 
-    @Property(PERIODIC_PINGS_PROPERTY)
     @Override
-    public abstract void setPeriodicPings(boolean periodicPings);
+    public void setPeriodicPings(boolean periodicPings) {
+        setProperty(PERIODIC_PINGS_PROPERTY, periodicPings);
+    }
 
     @Override
     public FlowEncapsulationType getEncapsulationType() {
@@ -267,13 +307,15 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
         setProperty("time_modify", timeModify == null ? null : timeModify.toString());
     }
 
-    @Property("pinned")
     @Override
-    public abstract boolean isPinned();
+    public boolean isPinned() {
+        return Optional.ofNullable((Boolean) getProperty("pinned")).orElse(false);
+    }
 
-    @Property("pinned")
     @Override
-    public abstract void setPinned(boolean pinned);
+    public void setPinned(boolean pinned) {
+        setProperty("pinned", pinned);
+    }
 
     @Override
     public Switch getSrcSwitch() {
@@ -288,8 +330,8 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
 
     @Override
     public void setSrcSwitch(Switch srcSwitch) {
-        traverse(v -> v.out(SOURCE_EDGE).hasLabel(SwitchFrame.FRAME_LABEL)).toListExplicit(SwitchFrame.class)
-                .forEach(sw -> unlinkOut(sw, SOURCE_EDGE));
+        getElement().edges(Direction.OUT, SOURCE_EDGE).forEachRemaining(edge -> edge.remove());
+
         if (srcSwitch instanceof VertexFrame) {
             linkOut((VertexFrame) srcSwitch, SOURCE_EDGE);
         } else {
@@ -314,8 +356,8 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
 
     @Override
     public void setDestSwitch(Switch destSwitch) {
-        traverse(v -> v.out(DESTINATION_EDGE).hasLabel(SwitchFrame.FRAME_LABEL)).toListExplicit(SwitchFrame.class)
-                .forEach(sw -> unlinkOut(sw, DESTINATION_EDGE));
+        getElement().edges(Direction.OUT, DESTINATION_EDGE).forEachRemaining(edge -> edge.remove());
+
         if (destSwitch instanceof VertexFrame) {
             linkOut((VertexFrame) destSwitch, DESTINATION_EDGE);
         } else {
@@ -330,24 +372,52 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
 
     @Override
     public Set<FlowPath> getPaths() {
-        return Collections.unmodifiableSet(traverse(v -> v.out(OWNS_PATHS_EDGE).hasLabel(FlowPathFrame.FRAME_LABEL))
-                .toSetExplicit(FlowPathFrame.class));
+        if (getElement().edges(Direction.OUT, OWNS_PATHS_EDGE).hasNext()) {
+            return Collections.unmodifiableSet(traverse(v -> v.out(OWNS_PATHS_EDGE).hasLabel(FlowPathFrame.FRAME_LABEL))
+                    .toSetExplicit(FlowPathFrame.class));
+        } else {
+            return Collections.emptySet();
+        }
+    }
+
+    @Override
+    public Set<PathId> getPathIds() {
+        return Collections.unmodifiableSet(traverse(v -> v.out(OWNS_PATHS_EDGE).hasLabel(FlowPathFrame.FRAME_LABEL)
+                .values(FlowPathFrame.PATH_ID_PROPERTY))
+                .toSetExplicit(PathId.class));
+    }
+
+    @Override
+    public Optional<FlowPath> getPath(PathId pathId) {
+        return Optional.ofNullable(
+                traverse(v -> v.out(OWNS_PATHS_EDGE).hasLabel(FlowPathFrame.FRAME_LABEL)
+                        .has(FlowPathFrame.PATH_ID_PROPERTY, pathId))
+                        .nextOrDefaultExplicit(FlowPathFrame.class, null));
+    }
+
+    @Override
+    public PathId getOppositePathId(PathId pathId) {
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public void setPaths(Set<FlowPath> paths) {
-        Set<PathId> actualPathIds = paths.stream().map(FlowPath::getPathId).collect(Collectors.toSet());
+        boolean isNonEmpty = getElement().edges(Direction.OUT, OWNS_PATHS_EDGE).hasNext();
 
         addPaths(paths.toArray(new FlowPath[paths.size()]));
 
-        traverse(v -> v.out(OWNS_PATHS_EDGE).hasLabel(FlowPathFrame.FRAME_LABEL))
-                .toListExplicit(FlowPathFrame.class)
-                .forEach(pathFrame -> {
-                    if (!actualPathIds.contains(pathFrame.getPathId())) {
-                        unlinkOut(pathFrame, OWNS_PATHS_EDGE);
-                        pathFrame.delete();
-                    }
-                });
+        if (isNonEmpty) {
+            Set<PathId> actualPathIds = paths.stream().map(FlowPath::getPathId).collect(Collectors.toSet());
+
+            traverse(v -> v.out(OWNS_PATHS_EDGE).hasLabel(FlowPathFrame.FRAME_LABEL))
+                    .toListExplicit(FlowPathFrame.class)
+                    .forEach(pathFrame -> {
+                        if (!actualPathIds.contains(pathFrame.getPathId())) {
+                            unlinkOut(pathFrame, OWNS_PATHS_EDGE);
+                            pathFrame.delete();
+                        }
+                    });
+        }
     }
 
     @Override
@@ -415,7 +485,7 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
 
     public static FlowFrame addNew(FramedGraph graph, Flow newFlow) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         FlowFrame frame = graph.frameElementExplicit(element, FlowFrame.class);
         frame.setFlowId(newFlow.getFlowId());
         frame.setTimeCreate(newFlow.getTimeCreate());

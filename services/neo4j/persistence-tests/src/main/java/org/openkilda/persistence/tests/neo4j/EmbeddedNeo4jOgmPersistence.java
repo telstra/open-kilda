@@ -40,23 +40,28 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Slf4j
-public class EmbeddedNeo4jPersistence implements AutoCloseable {
+public class EmbeddedNeo4jOgmPersistence implements Neo4jOgmPersistence, AutoCloseable {
     public final TestServer testServer;
 
-    public EmbeddedNeo4jPersistence() {
+    public EmbeddedNeo4jOgmPersistence(boolean loadTestData) {
         Logger.getLogger("").setLevel(Level.SEVERE);
 
         testServer = new TestServer(true, true, 5);
 
-        loadTestData();
+        runQueriesInFile("/org/openkilda/persistence/tests/neo4j/schema");
 
-        try (PersistenceManager persistenceManager = createPersistenceManager()) {
-            if (!persistenceManager.getRepositoryFactory().createSwitchRepository().exists(new SwitchId(2))) {
-                throw new IllegalStateException("Failed to load to Neo4j");
+        if (loadTestData) {
+            loadTestData();
+
+            try (PersistenceManager persistenceManager = createPersistenceManager()) {
+                if (!persistenceManager.getRepositoryFactory().createSwitchRepository().exists(new SwitchId(2))) {
+                    throw new IllegalStateException("Failed to load to Neo4j");
+                }
             }
         }
     }
 
+    @Override
     public PersistenceManager createPersistenceManager() {
         return new Neo4jPersistenceManager(new Neo4jConfig() {
             @Override
@@ -92,7 +97,6 @@ public class EmbeddedNeo4jPersistence implements AutoCloseable {
     }
 
     private void loadTestData() {
-        runQueriesInFile("/org/openkilda/persistence/tests/neo4j/schema");
         runCypherFiles(IntStream.range(0, 22)
                 .mapToObj(i -> format("/org/openkilda/persistence/tests/neo4j/data-%02d", i)));
     }

@@ -19,22 +19,50 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
-import com.syncleus.ferma.annotations.GraphElement;
 import com.syncleus.ferma.annotations.Property;
 import lombok.NonNull;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.time.Instant;
+import java.util.Optional;
 
-@GraphElement
-public abstract class SwitchFrame extends AbstractVertexFrame implements Switch {
+public class SwitchFrame extends AbstractVertexFrame implements Switch {
     public static final String FRAME_LABEL = "switch";
 
     public static final String SWITCH_ID_PROPERTY = "name";
+    public static final String STATUS_PROPERTY = "state";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Override
     public SwitchId getSwitchId() {
@@ -49,7 +77,7 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
 
     @Override
     public SwitchStatus getStatus() {
-        String value = getProperty("state");
+        String value = getProperty(STATUS_PROPERTY);
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
@@ -58,96 +86,119 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
 
     @Override
     public void setStatus(SwitchStatus status) {
-        setProperty("state", status == null ? null : status.name().toLowerCase());
+        setProperty(STATUS_PROPERTY, status == null ? null : status.name().toLowerCase());
     }
 
-    @Property("address")
     @Override
-    public abstract String getAddress();
+    public String getAddress() {
+        return getProperty("address");
+    }
 
-    @Property("address")
     @Override
-    public abstract void setAddress(String address);
+    public void setAddress(String address) {
+        setProperty("address", address);
+    }
 
-    @Property("hostname")
     @Override
-    public abstract String getHostname();
+    public String getHostname() {
+        return getProperty("hostname");
+    }
 
-    @Property("hostname")
     @Override
-    public abstract void setHostname(String hostname);
+    public void setHostname(String hostname) {
+        setProperty("hostname", hostname);
+    }
 
-    @Property("controller")
     @Override
-    public abstract String getController();
+    public String getController() {
+        return getProperty("controller");
+    }
 
-    @Property("controller")
     @Override
-    public abstract void setController(String controller);
+    public void setController(String controller) {
+        setProperty("controller", controller);
+    }
 
-    @Property("description")
     @Override
-    public abstract String getDescription();
+    public String getDescription() {
+        return getProperty("description");
+    }
 
-    @Property("description")
     @Override
-    public abstract void setDescription(String description);
+    public void setDescription(String description) {
+        setProperty("description", description);
+    }
 
     @Property("of_version")
     @Override
-    public abstract String getOfVersion();
+    public String getOfVersion() {
+        return getProperty("of_version");
+    }
 
-    @Property("of_version")
     @Override
-    public abstract void setOfVersion(String ofVersion);
+    public void setOfVersion(String ofVersion) {
+        setProperty("of_version", ofVersion);
+    }
 
-    @Property("of_description_manufacturer")
     @Override
-    public abstract String getOfDescriptionManufacturer();
+    public String getOfDescriptionManufacturer() {
+        return getProperty("of_description_manufacturer");
+    }
 
-    @Property("of_description_manufacturer")
     @Override
-    public abstract void setOfDescriptionManufacturer(String ofDescriptionManufacturer);
+    public void setOfDescriptionManufacturer(String ofDescriptionManufacturer) {
+        setProperty("of_description_manufacturer", ofDescriptionManufacturer);
+    }
 
-    @Property("of_description_hardware")
     @Override
-    public abstract String getOfDescriptionHardware();
+    public String getOfDescriptionHardware() {
+        return getProperty("of_description_hardware");
+    }
 
-    @Property("of_description_hardware")
     @Override
-    public abstract void setOfDescriptionHardware(String ofDescriptionHardware);
+    public void setOfDescriptionHardware(String ofDescriptionHardware) {
+        setProperty("of_description_hardware", ofDescriptionHardware);
+    }
 
-    @Property("of_description_software")
     @Override
-    public abstract String getOfDescriptionSoftware();
+    public String getOfDescriptionSoftware() {
+        return getProperty("of_description_software");
+    }
 
-    @Property("of_description_software")
     @Override
-    public abstract void setOfDescriptionSoftware(String ofDescriptionSoftware);
+    public void setOfDescriptionSoftware(String ofDescriptionSoftware) {
+        setProperty("of_description_software", ofDescriptionSoftware);
+    }
 
-    @Property("of_description_serial_number")
     @Override
-    public abstract String getOfDescriptionSerialNumber();
+    public String getOfDescriptionSerialNumber() {
+        return getProperty("of_description_serial_number");
+    }
 
-    @Property("of_description_serial_number")
     @Override
-    public abstract void setOfDescriptionSerialNumber(String ofDescriptionSerialNumber);
+    public void setOfDescriptionSerialNumber(String ofDescriptionSerialNumber) {
+        setProperty("of_description_serial_number", ofDescriptionSerialNumber);
+    }
 
-    @Property("of_description_datapath")
     @Override
-    public abstract String getOfDescriptionDatapath();
+    public String getOfDescriptionDatapath() {
+        return getProperty("of_description_datapath");
+    }
 
-    @Property("of_description_datapath")
     @Override
-    public abstract void setOfDescriptionDatapath(String ofDescriptionDatapath);
+    public void setOfDescriptionDatapath(String ofDescriptionDatapath) {
+        setProperty("of_description_datapath", ofDescriptionDatapath);
+    }
 
-    @Property("under_maintenance")
     @Override
-    public abstract boolean isUnderMaintenance();
+    public boolean isUnderMaintenance() {
+        return Optional.ofNullable((Boolean) getProperty("under_maintenance")).orElse(false);
+    }
 
-    @Property("under_maintenance")
     @Override
-    public abstract void setUnderMaintenance(boolean underMaintenance);
+    public void setUnderMaintenance(boolean underMaintenance) {
+        setProperty("under_maintenance", underMaintenance);
+    }
 
     @Override
     public Instant getTimeCreate() {
@@ -193,7 +244,7 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
 
     public static SwitchFrame addNew(FramedGraph graph, Switch newSwitch) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         SwitchFrame frame = graph.frameElementExplicit(element, SwitchFrame.class);
         frame.setSwitchId(newSwitch.getSwitchId());
         frame.setTimeCreate(newSwitch.getTimeCreate());

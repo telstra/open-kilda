@@ -15,14 +15,19 @@
 
 package org.openkilda.persistence.tests.neo4j;
 
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
-import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.ferma.Neo4jWithFermaPersistenceManager;
+import org.openkilda.persistence.ferma.model.Flow;
+import org.openkilda.persistence.ferma.model.FlowImpl;
+import org.openkilda.persistence.ferma.model.FlowPath;
+import org.openkilda.persistence.ferma.model.FlowPathImpl;
+import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
+import org.openkilda.persistence.ferma.repositories.FlowRepository;
+import org.openkilda.persistence.ferma.repositories.frames.FlowFrame;
+import org.openkilda.persistence.ferma.repositories.frames.FlowPathFrame;
 
+import net.jodah.failsafe.RetryPolicy;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -45,20 +50,23 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class Neo4jPersistenceBenchmark {
-
+public class Neo4jWithFermaPersistenceBenchmark {
     @State(Scope.Benchmark)
-    public static class SharedNeo4jPersistence {
-        EmbeddedNeo4jPersistence persistence;
+    public static class SharedNeo4jWithFermaPersistence {
+        RemoteNeo4jWithFermaPersistence persistence;
 
         @Setup
         public void setUp() {
-            persistence = new EmbeddedNeo4jPersistence();
+            persistence = new RemoteNeo4jWithFermaPersistence(
+                    System.getProperty("uri", "bolt://localhost"),
+                    System.getProperty("login", "neo4j"),
+                    System.getProperty("password", "root"), true);
         }
 
         @TearDown
@@ -68,15 +76,15 @@ public class Neo4jPersistenceBenchmark {
     }
 
     @State(Scope.Thread)
-    public static class Neo4jPersistenceResources {
-        PersistenceManager persistenceManager;
+    public static class Neo4jWithFermaPersistenceResources {
+        Neo4jWithFermaPersistenceManager persistenceManager;
         TransactionManager transactionManager;
-        RepositoryFactory repositoryFactory;
+        FermaRepositoryFactory repositoryFactory;
         List<String> flowIds;
 
         @Setup(Level.Iteration)
-        public void setUp(SharedNeo4jPersistence sharedNeo4jPersistence) {
-            persistenceManager = sharedNeo4jPersistence.persistence.createPersistenceManager();
+        public void setUp(SharedNeo4jWithFermaPersistence sharedNeo4jWithFermaPersistence) {
+            persistenceManager = sharedNeo4jWithFermaPersistence.persistence.createPersistenceManager();
             transactionManager = persistenceManager.getTransactionManager();
             repositoryFactory = persistenceManager.getRepositoryFactory();
 
@@ -108,7 +116,7 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 3)
-    public void linearReadBenchmark(Neo4jPersistenceResources persistence, Blackhole blackhole) {
+    public void linearReadBenchmark(Neo4jWithFermaPersistenceResources persistence, Blackhole blackhole) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             IntStream.range(0, 9).mapToObj(i -> persistence.flowIds.get(i))
@@ -127,7 +135,7 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 3)
-    public void linearReadWithRelatedBenchmark(Neo4jPersistenceResources persistence, Blackhole blackhole) {
+    public void linearReadWithRelatedBenchmark(Neo4jWithFermaPersistenceResources persistence, Blackhole blackhole) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             IntStream.range(0, 9).mapToObj(i -> persistence.flowIds.get(i))
@@ -146,16 +154,16 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void createBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void createBenchmark(Neo4jWithFermaPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         int benchmarkIndex = threadIndex.benchmarkIndex.getAndIncrement();
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(0))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-            Flow cloned = flow.toBuilder().flowId(flow.getFlowId() + "_clone_" + benchmarkIndex).build();
-            flow.getPaths().forEach(path -> cloned.addPaths(path.toBuilder().flow(cloned)
+            Flow cloned = FlowImpl.clone(flow).flowId(flow.getFlowId() + "_clone_" + benchmarkIndex).build();
+            flow.getPaths().forEach(path -> cloned.addPaths(FlowPathImpl.clone(path).flow(cloned)
                     .pathId(new PathId(path.getPathId().toString() + "_clone_" + benchmarkIndex)).build()));
-            flowRepository.createOrUpdate(cloned);
+            flowRepository.create(cloned);
         });
     }
 
@@ -165,22 +173,26 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void replaceRelatedBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void replaceRelatedBenchmark(Neo4jWithFermaPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         int benchmarkIndex = threadIndex.benchmarkIndex.getAndIncrement();
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(0))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-            FlowPath[] cloned = flow.getPaths().stream()
-                    .map(path -> path.toBuilder().flow(flow)
-                            .pathId(new PathId(path.getPathId().toString() + "_clone_" + benchmarkIndex)).build())
-                    .toArray(FlowPath[]::new);
-            flow.setForwardPath((FlowPath) null);
-            flow.setReversePath((FlowPath) null);
-            flow.setProtectedForwardPath((FlowPath) null);
-            flow.setProtectedReversePath((FlowPath) null);
-            flow.addPaths(cloned);
-            flowRepository.createOrUpdate(flow);
+
+            ((FlowFrame) flow).setProperty("tx_lock", Instant.now().toString());
+
+            Set<FlowPath> cloned = flow.getPaths().stream()
+                    .peek(path -> ((FlowPathFrame) path).setProperty("tx_lock", Instant.now().toString()))
+                    .map(path -> FlowPathImpl.clone(path)
+                            .flow(flow).pathId(new PathId(path.getPathId().toString() + "_clone_" + benchmarkIndex)).build())
+                    .collect(Collectors.toSet());
+
+            flow.setForwardPath(null);
+            flow.setReversePath(null);
+            flow.setProtectedForwardPath(null);
+            flow.setProtectedReversePath(null);
+            flow.setPaths(cloned);
         });
     }
 
@@ -190,13 +202,15 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void singleUpdateBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void singleUpdateBenchmark(Neo4jWithFermaPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(threadIndex.iterationIndex.getAndIncrement()))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
+
+            ((FlowFrame) flow).setProperty("tx_lock", Instant.now().toString());
+
             flow.setTimeModify(Instant.now());
-            flowRepository.createOrUpdate(flow);
         });
     }
 
@@ -206,15 +220,17 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void linearUpdateBenchmark(Neo4jPersistenceResources persistence) {
+    public void linearUpdateBenchmark(Neo4jWithFermaPersistenceResources persistence) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             IntStream.range(0, 9).mapToObj(i -> persistence.flowIds.get(i))
                     .forEach(flowId -> {
                         Flow flow = flowRepository.findById(flowId)
                                 .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
+
+                        ((FlowFrame) flow).setProperty("tx_lock", Instant.now().toString());
+
                         flow.setTimeModify(Instant.now());
-                        flowRepository.createOrUpdate(flow);
                     });
         });
     }
@@ -225,18 +241,20 @@ public class Neo4jPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 3)
-    public void updateMultiplePropertiesBenchmark(Neo4jPersistenceResources persistence) {
+    public void updateMultiplePropertiesBenchmark(Neo4jWithFermaPersistenceResources persistence) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(0))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
+
+            ((FlowFrame) flow).setProperty("tx_lock", Instant.now().toString());
+
             flow.setBandwidth(flow.getBandwidth() + 1);
             flow.setDescription("another_" + flow.getDescription());
             flow.setPriority(Optional.ofNullable(flow.getPriority()).orElse(0) + 1);
             flow.setMaxLatency(Optional.ofNullable(flow.getMaxLatency()).orElse(0) + 1);
             flow.setGroupId("next_" + flow.getGroupId());
             flow.setTimeModify(Instant.now());
-            flowRepository.createOrUpdate(flow);
         });
     }
 
@@ -247,22 +265,27 @@ public class Neo4jPersistenceBenchmark {
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
     @Threads(10)
-    public void concurrentUpdateBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void concurrentUpdateBenchmark(Neo4jWithFermaPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         int iterationIndex = threadIndex.iterationIndex.getAndIncrement() * 5;
-        FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
-        List<Flow> flows = IntStream.range(iterationIndex, iterationIndex + 9)
-                .mapToObj(i -> flowRepository.findById(persistence.flowIds.get(i))
-                        .orElseThrow(() -> new IllegalStateException("Unable to find a flow")))
-                .collect(Collectors.toList());
-        for (Flow flow : flows) {
-            flow.setTimeModify(Instant.now());
-            flowRepository.createOrUpdate(flow);
-        }
+        RetryPolicy retry = new RetryPolicy()
+                .retryOn(Exception.class)
+                .withMaxRetries(5);
+        persistence.transactionManager.doInTransaction(retry, () -> {
+            FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
+            List<Flow> flows = IntStream.range(iterationIndex, iterationIndex + 9)
+                    .mapToObj(i -> flowRepository.findById(persistence.flowIds.get(i))
+                            .orElseThrow(() -> new IllegalStateException("Unable to find a flow")))
+                    .collect(Collectors.toList());
+            for (Flow flow : flows) {
+                ((FlowFrame) flow).setProperty("tx_lock", Instant.now().toString());
+                flow.setTimeModify(Instant.now());
+            }
+        });
     }
 
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(Neo4jPersistenceBenchmark.class.getSimpleName())
+                .include(Neo4jWithFermaPersistenceBenchmark.class.getSimpleName())
                 .build();
         new Runner(opt).run();
     }

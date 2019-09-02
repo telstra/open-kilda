@@ -26,63 +26,47 @@ import com.orientechnologies.orient.core.db.OrientDB;
 import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.graph.graphml.OGraphMLReader;
-import com.orientechnologies.orient.server.OServer;
-import com.orientechnologies.orient.server.OServerMain;
-import com.orientechnologies.orient.server.config.OServerConfiguration;
-import com.orientechnologies.orient.server.config.OServerNetworkConfiguration;
-import com.orientechnologies.orient.server.config.OServerUserConfiguration;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Instant;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Slf4j
-public class EmbeddedOrientDbPersistence implements OrientDbPersistence, AutoCloseable {
-    static final String ORIENT_DB_PATH = "memory:./databases/";
-    private final String serverUser = "root";
-    private final String serverPassword = "root";
+public class RemoteOrientDbPersistence implements OrientDbPersistence, AutoCloseable {
+    private final String url;
+    private final String serverUser;
+    private final String serverPassword;
     private final String dbName;
     private final String dbUser = "admin";
     private final String dbPassword = "admin";
 
-    public final OServer server;
     public final OrientDB orientDb;
 
-    public EmbeddedOrientDbPersistence(boolean loadTestData) throws Exception {
+    public RemoteOrientDbPersistence(String host, String serverUser, String serverPassword, String database, boolean loadTestData) {
         Logger.getLogger("").setLevel(Level.SEVERE);
 
-        OServerConfiguration cfg = new OServerConfiguration();
-        cfg.network = new OServerNetworkConfiguration(cfg);
-        cfg.users = new OServerUserConfiguration[]{
-                new OServerUserConfiguration(serverUser, serverPassword, "*")};
+        this.url = "remote:" + host;
+        this.serverUser = serverUser;
+        this.serverPassword = serverPassword;
+        this.dbName = database;
 
-        server = OServerMain.create();
-        server.startup(cfg).activate();
+        orientDb = new OrientDB(url, serverUser, serverPassword, OrientDBConfig.defaultConfig());
 
-        this.dbName = "TEST_" + Instant.now().toEpochMilli();
+        initSchema();
 
-        orientDb = new OrientDB(ORIENT_DB_PATH, null, null,
-                OrientDBConfig.defaultConfig());
-        if (orientDb.createIfNotExists(dbName, ODatabaseType.MEMORY)) {
-            initSchema();
-
-            if (loadTestData) {
-                loadTestData();
-            }
-        }
+        truncateData();
 
         if (loadTestData) {
+            loadTestData();
+
             try (OrientDbPersistenceManager persistenceManager = createPersistenceManager()) {
                 if (!persistenceManager.getRepositoryFactory().createSwitchRepository().exists(new SwitchId(2))) {
                     throw new IllegalStateException("Failed to load to OrientDB");
                 }
             }
-        } else {
-            truncateData();
         }
     }
 
@@ -96,26 +80,25 @@ public class EmbeddedOrientDbPersistence implements OrientDbPersistence, AutoClo
 
             @Override
             public String getDbType() {
-                return ODatabaseType.MEMORY.name();
+                return ODatabaseType.PLOCAL.name();
             }
 
             @Override
             public String getDbUser() {
-                return dbUser;
+                return serverUser;
             }
 
             @Override
             public String getDbPassword() {
-                return dbPassword;
+                return serverPassword;
             }
         }, orientDb);
     }
 
     @Override
     public void close() {
-        orientDb.drop(dbName);
+        truncateData();
         orientDb.close();
-        server.shutdown();
     }
 
     @Override

@@ -20,17 +20,19 @@ import org.openkilda.persistence.ferma.model.FlowPath;
 import org.openkilda.persistence.ferma.model.PathSegment;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
 import com.syncleus.ferma.VertexFrame;
-import com.syncleus.ferma.annotations.GraphElement;
-import com.syncleus.ferma.annotations.Property;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
+import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
-@GraphElement
-public abstract class PathSegmentFrame extends AbstractVertexFrame implements PathSegment {
+import java.util.Optional;
+
+public class PathSegmentFrame extends AbstractVertexFrame implements PathSegment {
     public static final String FRAME_LABEL = "path_segment";
 
     static final String SOURCE_EDGE = "source";
@@ -38,6 +40,32 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
 
     static final String SRC_PORT_PROPERTY = "src_port";
     static final String DST_PORT_PROPERTY = "dst_port";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Override
     public int getSrcPort() {
@@ -69,21 +97,25 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
         setProperty("seq_id", (long) seqId);
     }
 
-    @Property("latency")
     @Override
-    public abstract Long getLatency();
+    public Long getLatency() {
+        return (Long) getProperty("latency");
+    }
 
-    @Property("latency")
     @Override
-    public abstract void setLatency(Long latency);
+    public void setLatency(Long latency) {
+        setProperty("latency", latency);
+    }
 
-    @Property("failed")
     @Override
-    public abstract boolean isFailed();
+    public boolean isFailed() {
+        return Optional.ofNullable((Boolean) getProperty("failed")).orElse(false);
+    }
 
-    @Property("failed")
     @Override
-    public abstract void setFailed(boolean failed);
+    public void setFailed(boolean failed) {
+        setProperty("failed", failed);
+    }
 
     @Override
     public Switch getSrcSwitch() {
@@ -98,8 +130,8 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
 
     @Override
     public void setSrcSwitch(Switch srcSwitch) {
-        traverse(v -> v.out(SOURCE_EDGE).hasLabel(SwitchFrame.FRAME_LABEL)).toListExplicit(SwitchFrame.class)
-                .forEach(sw -> unlinkOut(sw, SOURCE_EDGE));
+        getElement().edges(Direction.OUT, SOURCE_EDGE).forEachRemaining(edge -> edge.remove());
+
         if (srcSwitch instanceof VertexFrame) {
             linkOut((VertexFrame) srcSwitch, SOURCE_EDGE);
         } else {
@@ -124,8 +156,8 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
 
     @Override
     public void setDestSwitch(Switch destSwitch) {
-        traverse(v -> v.out(DESTINATION_EDGE).hasLabel(SwitchFrame.FRAME_LABEL)).toListExplicit(SwitchFrame.class)
-                .forEach(sw -> unlinkOut(sw, DESTINATION_EDGE));
+        getElement().edges(Direction.OUT, DESTINATION_EDGE).forEachRemaining(edge -> edge.remove());
+
         if (destSwitch instanceof VertexFrame) {
             linkOut((VertexFrame) destSwitch, DESTINATION_EDGE);
         } else {
@@ -160,7 +192,7 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
 
     public static PathSegmentFrame addNew(FramedGraph graph, PathSegment newSegment) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         PathSegmentFrame frame = graph.frameElementExplicit(element, PathSegmentFrame.class);
         frame.updateWith(newSegment);
         return frame;

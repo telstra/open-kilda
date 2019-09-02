@@ -10,13 +10,21 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javac.target>1.8</javac.target>
 
-        <neo4j-ogm.version>3.1.3</neo4j-ogm.version>
-        <neo4j-java-driver.version>1.5.1</neo4j-java-driver.version>
+        <tinkerpop-gremlin.version>3.3.0</tinkerpop-gremlin.version>
+        <!--tinkergraph-gremlin.version>3.3.3</tinkergraph-gremlin.version-->
+
+        <neo4j-ogm.version>3.1.6</neo4j-ogm.version>
+        <neo4j-java-driver.version>1.7.5</neo4j-java-driver.version>
         <neo4j-procedure-apoc.version>3.3.0.4</neo4j-procedure-apoc.version>
+        <neo4j-graph-algorithms-algo.version>3.4.8.0</neo4j-graph-algorithms-algo.version>
+        <neo4j-gremlin-bolt.version>0.3.1</neo4j-gremlin-bolt.version>
+
+        <neo4j-gremlin.version>3.3.0</neo4j-gremlin.version>
+        <neo4j-kernel.version>3.4.11</neo4j-kernel.version>
 
         <ferma.version>3.3.0</ferma.version>
         <ferma-orientdb.version>3.0.1</ferma-orientdb.version>
-        <orientdb.version>3.0.1</orientdb.version>
+        <orientdb.version>3.0.23</orientdb.version>
 
         <jmh.version>1.21</jmh.version>
         <junit.version>4.12</junit.version>
@@ -36,6 +44,12 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
+            <groupId>org.openkilda</groupId>
+            <artifactId>kilda-pce</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-ogm-test</artifactId>
             <version>${neo4j-ogm.version}</version>
@@ -50,6 +64,22 @@
             <groupId>org.neo4j.procedure</groupId>
             <artifactId>apoc</artifactId>
             <version>${neo4j-procedure-apoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>graph-algorithms-algo</artifactId>
+            <version>${neo4j-graph-algorithms-algo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.steelbridgelabs.oss</groupId>
+            <artifactId>neo4j-gremlin-bolt</artifactId>
+            <version>${neo4j-gremlin-bolt.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.tinkerpop</groupId>
+                    <artifactId>gremlin-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -91,6 +121,38 @@
             <groupId>com.orientechnologies</groupId>
             <artifactId>orientdb-tools</artifactId>
             <version>${orientdb.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.tinkerpop</groupId>
+            <artifactId>gremlin-core</artifactId>
+            <version>${tinkerpop-gremlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tinkerpop</groupId>
+            <artifactId>gremlin-driver</artifactId>
+            <version>${tinkerpop-gremlin.version}</version>
+        </dependency>
+        <!--dependency>
+            <groupId>org.apache.tinkerpop</groupId>
+            <artifactId>tinkergraph-gremlin</artifactId>
+            <version>${tinkergraph-gremlin.version}</version>
+        </dependency-->
+
+        <dependency>
+            <groupId>org.apache.tinkerpop</groupId>
+            <artifactId>neo4j-gremlin</artifactId>
+            <version>${neo4j-gremlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-kernel</artifactId>
+            <version>${neo4j-kernel.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-tinkerpop-api-impl</artifactId>
+            <version>0.9-3.4.0</version>
         </dependency>
 
         <dependency>

@@ -23,19 +23,20 @@ import org.openkilda.persistence.ferma.model.Switch;
 
 import com.syncleus.ferma.AbstractEdgeFrame;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.annotations.GraphElement;
-import com.syncleus.ferma.annotations.Property;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import java.time.Instant;
+import java.util.Optional;
 
-@GraphElement
-public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
+public class IslFrame extends AbstractEdgeFrame implements Isl {
     public static final String FRAME_LABEL = "isl";
 
     static final String SRC_PORT_PROPERTY = "src_port";
     static final String DST_PORT_PROPERTY = "dst_port";
+
+    public static final String STATUS_PROPERTY = "status";
+    public static final String COST_PROPERTY = "cost";
 
     @Override
     public int getSrcPort() {
@@ -57,59 +58,69 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
         setProperty(DST_PORT_PROPERTY, (long) destPort);
     }
 
-    @Property("latency")
     @Override
-    public abstract long getLatency();
+    public long getLatency() {
+        return (Long) getProperty("latency");
+    }
 
-    @Property("latency")
     @Override
-    public abstract void setLatency(long latency);
+    public void setLatency(long latency) {
+        setProperty("latency", latency);
+    }
 
-    @Property("speed")
     @Override
-    public abstract long getSpeed();
+    public long getSpeed() {
+        return (Long) getProperty("speed");
+    }
 
-    @Property("speed")
     @Override
-    public abstract void setSpeed(long speed);
+    public void setSpeed(long speed) {
+        setProperty("speed", speed);
+    }
 
     @Override
     public int getCost() {
-        return ((Long) getProperty("cost")).intValue();
+        return ((Long) getProperty(COST_PROPERTY)).intValue();
     }
 
     @Override
     public void setCost(int cost) {
-        setProperty("cost", (long) cost);
+        setProperty(COST_PROPERTY, (long) cost);
     }
 
-    @Property("max_bandwidth")
     @Override
-    public abstract long getMaxBandwidth();
+    public long getMaxBandwidth() {
+        return (Long) getProperty("max_bandwidth");
+    }
 
-    @Property("max_bandwidth")
     @Override
-    public abstract void setMaxBandwidth(long maxBandwidth);
+    public void setMaxBandwidth(long maxBandwidth) {
+        setProperty("max_bandwidth", maxBandwidth);
+    }
 
-    @Property("default_max_bandwidth")
     @Override
-    public abstract long getDefaultMaxBandwidth();
+    public long getDefaultMaxBandwidth() {
+        return (Long) getProperty("default_max_bandwidth");
+    }
 
-    @Property("default_max_bandwidth")
     @Override
-    public abstract void setDefaultMaxBandwidth(long defaultMaxBandwidth);
+    public void setDefaultMaxBandwidth(long defaultMaxBandwidth) {
+        setProperty("default_max_bandwidth", defaultMaxBandwidth);
+    }
 
-    @Property("available_bandwidth")
     @Override
-    public abstract long getAvailableBandwidth();
+    public long getAvailableBandwidth() {
+        return (Long) getProperty("available_bandwidth");
+    }
 
-    @Property("available_bandwidth")
     @Override
-    public abstract void setAvailableBandwidth(long availableBandwidth);
+    public void setAvailableBandwidth(long availableBandwidth) {
+        setProperty("available_bandwidth", availableBandwidth);
+    }
 
     @Override
     public IslStatus getStatus() {
-        String value = getProperty("status");
+        String value = getProperty(STATUS_PROPERTY);
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
@@ -118,7 +129,7 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
 
     @Override
     public void setStatus(IslStatus status) {
-        setProperty("status", status == null ? null : status.name().toLowerCase());
+        setProperty(STATUS_PROPERTY, status == null ? null : status.name().toLowerCase());
     }
 
     @Override
@@ -171,29 +182,35 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
         setProperty("time_modify", timeModify == null ? null : timeModify.toString());
     }
 
-    @Property("under_maintenance")
     @Override
-    public abstract boolean isUnderMaintenance();
+    public boolean isUnderMaintenance() {
+        return Optional.ofNullable((Boolean) getProperty("under_maintenance")).orElse(false);
+    }
 
-    @Property("under_maintenance")
     @Override
-    public abstract void setUnderMaintenance(boolean underMaintenance);
+    public void setUnderMaintenance(boolean underMaintenance) {
+        setProperty("under_maintenance", underMaintenance);
+    }
 
-    @Property("enable_bfd")
     @Override
-    public abstract boolean isEnableBfd();
+    public boolean isEnableBfd() {
+        return Optional.ofNullable((Boolean) getProperty("enable_bfd")).orElse(false);
+    }
 
-    @Property("enable_bfd")
     @Override
-    public abstract void setEnableBfd(boolean enableBfd);
+    public void setEnableBfd(boolean enableBfd) {
+        setProperty("enable_bfd", enableBfd);
+    }
 
-    @Property("bfd_session")
     @Override
-    public abstract String getBfdSessionStatus();
+    public String getBfdSessionStatus() {
+        return getProperty("bfd_session");
+    }
 
-    @Property("bfd_session")
     @Override
-    public abstract void setBfdSessionStatus(String bfdSessionStatus);
+    public void setBfdSessionStatus(String bfdSessionStatus) {
+        setProperty("bfd_session", bfdSessionStatus);
+    }
 
     @Override
     public Switch getSrcSwitch() {

@@ -13,25 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.tests;
+package org.openkilda.persistence.tests.neo4j;
 
 import static org.junit.Assert.assertFalse;
-
-import org.openkilda.persistence.tests.orientdb.OrientDbPersistenceBenchmark;
 
 import org.junit.Test;
 import org.openjdk.jmh.results.RunResult;
 import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.Collection;
 
-public class OrientDbPersistenceBenchmarkTest {
+public class Neo4jOgmPersistenceBenchmarkTest {
     @Test
-    public void runBenchmark() throws Exception {
+    public void runBenchmark() throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(OrientDbPersistenceBenchmark.class.getSimpleName())
+                .include(Neo4jOgmPersistenceBenchmark.class.getSimpleName())
                 .build();
         Collection<RunResult> runResults = new Runner(opt).run();
         assertFalse(runResults.isEmpty());

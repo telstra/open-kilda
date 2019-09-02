@@ -24,13 +24,14 @@ import org.openkilda.persistence.ferma.model.FlowPath;
 import org.openkilda.persistence.ferma.model.PathSegment;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
 import com.syncleus.ferma.VertexFrame;
-import com.syncleus.ferma.annotations.GraphElement;
-import com.syncleus.ferma.annotations.Property;
 import lombok.NonNull;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
+import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -40,8 +41,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@GraphElement
-public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowPath {
+public class FlowPathFrame extends AbstractVertexFrame implements FlowPath {
     public static final String FRAME_LABEL = "flow_path";
 
     static final String SOURCE_EDGE = "source";
@@ -49,6 +49,32 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
     static final String OWNS_SEGMENTS_EDGE = "owns";
 
     public static final String PATH_ID_PROPERTY = "path_id";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Override
     public PathId getPathId() {
@@ -80,29 +106,35 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
         setProperty("meter_id", meterId == null ? null : meterId.getValue());
     }
 
-    @Property("latency")
     @Override
-    public abstract long getLatency();
+    public long getLatency() {
+        return (Long) getProperty("latency");
+    }
 
-    @Property("latency")
     @Override
-    public abstract void setLatency(long latency);
+    public void setLatency(long latency) {
+        setProperty("latency", latency);
+    }
 
-    @Property("bandwidth")
     @Override
-    public abstract long getBandwidth();
+    public long getBandwidth() {
+        return (Long) getProperty("bandwidth");
+    }
 
-    @Property("bandwidth")
     @Override
-    public abstract void setBandwidth(long bandwidth);
+    public void setBandwidth(long bandwidth) {
+        setProperty("bandwidth", bandwidth);
+    }
 
-    @Property("ignore_bandwidth")
     @Override
-    public abstract boolean isIgnoreBandwidth();
+    public boolean isIgnoreBandwidth() {
+        return Optional.ofNullable((Boolean) getProperty("ignore_bandwidth")).orElse(false);
+    }
 
-    @Property("ignore_bandwidth")
     @Override
-    public abstract void setIgnoreBandwidth(boolean ignoreBandwidth);
+    public void setIgnoreBandwidth(boolean ignoreBandwidth) {
+        setProperty("ignore_bandwidth", ignoreBandwidth);
+    }
 
     @Override
     public Instant getTimeCreate() {
@@ -153,8 +185,8 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
 
     @Override
     public void setSrcSwitch(Switch srcSwitch) {
-        traverse(v -> v.out(SOURCE_EDGE).hasLabel(SwitchFrame.FRAME_LABEL)).toListExplicit(SwitchFrame.class)
-                .forEach(sw -> unlinkOut(sw, SOURCE_EDGE));
+        getElement().edges(Direction.OUT, SOURCE_EDGE).forEachRemaining(edge -> edge.remove());
+
         if (srcSwitch instanceof VertexFrame) {
             linkOut((VertexFrame) srcSwitch, SOURCE_EDGE);
         } else {
@@ -179,8 +211,8 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
 
     @Override
     public void setDestSwitch(Switch destSwitch) {
-        traverse(v -> v.out(DESTINATION_EDGE).hasLabel(SwitchFrame.FRAME_LABEL)).toListExplicit(SwitchFrame.class)
-                .forEach(sw -> unlinkOut(sw, DESTINATION_EDGE));
+        getElement().edges(Direction.OUT, DESTINATION_EDGE).forEachRemaining(edge -> edge.remove());
+
         if (destSwitch instanceof VertexFrame) {
             linkOut((VertexFrame) destSwitch, DESTINATION_EDGE);
         } else {
@@ -204,12 +236,10 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
 
     @Override
     public void setPathSegments(List<PathSegment> segments) {
-        traverse(v -> v.out(OWNS_SEGMENTS_EDGE).hasLabel(PathSegmentFrame.FRAME_LABEL))
-                .toListExplicit(PathSegmentFrame.class)
-                .forEach(segmentFrame -> {
-                    unlinkOut(segmentFrame, OWNS_SEGMENTS_EDGE);
-                    segmentFrame.delete();
-                });
+        getElement().edges(Direction.OUT, OWNS_SEGMENTS_EDGE).forEachRemaining(edge -> {
+            edge.inVertex().remove();
+            edge.remove();
+        });
 
         for (int idx = 0; idx < segments.size(); idx++) {
             PathSegment segment = segments.get(idx);
@@ -252,7 +282,7 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
 
     public static FlowPathFrame addNew(FramedGraph graph, FlowPath newPath) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         FlowPathFrame frame = graph.frameElementExplicit(element, FlowPathFrame.class);
         frame.setPathId(newPath.getPathId());
         frame.setTimeCreate(newPath.getTimeCreate());

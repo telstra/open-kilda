@@ -13,16 +13,10 @@
  *   limitations under the License.
  */
 
-package org.neo4j.harness;
+package org.openkilda.persistence.tests.neo4j;
 
-import org.neo4j.harness.internal.InProcessServerBuilder;
+import org.openkilda.persistence.PersistenceManager;
 
-/**
- * This is for {@code org.neo4j.ogm.testutil.TestServer#newInProcessBuilder} to pass
- * additional configuration parameters and register needed procedures.
- */
-public class EnterpriseInProcessServerBuilder extends InProcessServerBuilder {
-    public EnterpriseInProcessServerBuilder() {
-        withConfig("apoc.import.file.enabled", "true");
-    }
+public interface Neo4jOgmPersistence extends AutoCloseable {
+    PersistenceManager createPersistenceManager();
 }
