@@ -1,0 +1,28 @@
+@startuml
+title Detect Connected Devices via LLDP
+
+participant "Switch A\ntable 0 " as SWAT0
+participant "Switch A\ntable 1 " as SWAT1
+participant "Transit/egress  \nSwitch B" as SWB
+collections "Floodlights " as FL
+control "kilda.floodlight.\nconnected.devices.priv  " as TP
+participant "ConnectedDevicesTopology    " as CDT
+database DB
+
+activate SWAT0
+SWAT0 -> SWB : Customer's packet
+SWAT0 -> SWAT1 : Same packet
+deactivate SWAT0
+activate SWAT1
+SWAT1 -x SWB : not LLDP packet
+SWAT1 -> FL : LLDP packet
+deactivate SWAT1
+activate FL
+FL -> TP : LldpInfoData
+deactivate FL
+TP -> CDT : LldpInfoData
+activate CDT
+CDT -> DB : Save/update\nConnected Device
+deactivate CDT
+
+@enduml
