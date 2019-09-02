@@ -215,4 +215,12 @@ public interface KafkaTopicsConfig {
     @Key("topo.isl.latency.region")
     @Default("kilda.topo.isl.latency")
     String getTopoIslLatencyRegionTopic();
+
+    @Key("topo.router.connected.devices.storm")
+    @Default("kilda.connected.devices.priv.storm")
+    String getTopoConnectedDevicesTopic();
+
+    @Key("topo.floodlight.connected.devices.region")
+    @Default("kilda.floodlight.connected.devices.priv")
+    String getTopoConnectedDevicesRegionTopic();
 }
