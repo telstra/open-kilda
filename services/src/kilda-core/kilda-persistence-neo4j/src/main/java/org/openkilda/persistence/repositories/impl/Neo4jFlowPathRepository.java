@@ -157,6 +157,11 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<FlowPath> findBySrcSwitchIncludeProtected(SwitchId switchId) {
+        return loadAll(createSrcSwitchFilter(switchId));
+    }
+
+    @Override
     public Collection<FlowPath> findByEndpointSwitch(SwitchId switchId) {
         Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
         Filter dstSwitchFilter = createDstSwitchFilter(switchId);
@@ -169,6 +174,16 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     private Stream<FlowPath> filterSrcProtectedPathEndpoint(Stream<FlowPath> pathStream, SwitchId switchId) {
         return pathStream.filter(
                 path -> !(path.isProtected() && switchId.equals(path.getSrcSwitch().getSwitchId())));
+    }
+
+    @Override
+    public Collection<FlowPath> findByEndpointSwitchIncludeProtected(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+
+        Collection<FlowPath> result = loadAll(srcSwitchFilter);
+        result.addAll(loadAll(dstSwitchFilter));
+        return result;
     }
 
     @Override

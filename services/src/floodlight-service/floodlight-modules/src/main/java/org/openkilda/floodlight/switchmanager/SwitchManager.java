@@ -770,7 +770,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
                     sw.getSwitchDescription().getSoftwareDescription());
 
-            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
+            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterKbpsFlags())
                     .map(OFMeterFlags::valueOf)
                     .collect(Collectors.toSet());
             installMeter(sw, flags, bandwidth, burstSize, meterId);
@@ -793,7 +793,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
                     sw.getSwitchDescription().getSoftwareDescription());
 
-            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
+            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterKbpsFlags())
                     .map(OFMeterFlags::valueOf)
                     .collect(Collectors.toSet());
 

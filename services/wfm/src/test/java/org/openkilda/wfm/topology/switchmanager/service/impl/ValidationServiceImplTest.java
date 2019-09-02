@@ -31,9 +31,12 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.LldpResources;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -62,6 +65,15 @@ public class ValidationServiceImplTest {
     private static final SwitchId SWITCH_ID_E = new SwitchId("00:30");
     private static final SwitchId SWITCH_ID_C = new SwitchId("00:40");
     private static final long FLOW_E_BANDWIDTH = 10000L;
+    private static final Switch switchA = Switch.builder()
+            .switchId(SWITCH_ID_A)
+            .description("Nicira, Inc. OF_13 2.5.5")
+            .build();
+    private static final Switch switchB = Switch.builder()
+            .switchId(SWITCH_ID_B)
+            .description("Nicira, Inc. OF_13 2.5.5")
+            .build();
+    private static DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(true, false, true, false);
     private static SwitchManagerTopologyConfig topologyConfig;
 
     @BeforeClass
@@ -78,6 +90,42 @@ public class ValidationServiceImplTest {
         assertTrue(response.getMissingRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
         assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    @Test
+    public void mustHaveLldpRuleWithConnectedDevices() {
+        Flow flow = createFlowForConnectedDevices(true, true);
+
+        ValidationServiceImpl validationService =
+                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(1).build(), topologyConfig);
+
+        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getForwardPath()));
+        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getReversePath()));
+        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedForwardPath()));
+        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedReversePath()));
+
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getReversePath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedReversePath()));
+    }
+
+    @Test
+    public void mustHaveLldpRuleWithOutConnectedDevices() {
+        Flow flow = createFlowForConnectedDevices(false, false);
+
+        ValidationServiceImpl validationService =
+                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(1).build(), topologyConfig);
+
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getReversePath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedReversePath()));
+
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getReversePath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedReversePath()));
     }
 
     @Test
@@ -102,6 +150,36 @@ public class ValidationServiceImplTest {
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
+        assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    @Test
+    public void validateRulesSegmentAndIngressLldpCookiesProper() {
+        PersistenceManager persistenceManager = persistenceManager()
+                .withIngressCookies(1L)
+                .withDetectConnectedDevices(detectConnectedDevices)
+                .withLldpResources(new LldpResources(new MeterId(2), new Cookie(2)))
+                .build();
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
+        List<FlowEntry> flowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
+        assertTrue(response.getMissingRules().isEmpty());
+        assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
+        assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    @Test
+    public void validateRulesSegmentAndIngressLldpCookiesMissing() {
+        PersistenceManager persistenceManager = persistenceManager()
+                .withIngressCookies(1L)
+                .withDetectConnectedDevices(new DetectConnectedDevices(true, false, true, false))
+                .withLldpResources(new LldpResources(new MeterId(2), new Cookie(2)))
+                .build();
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
+        assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getMissingRules()));
+        assertTrue(response.getProperRules().isEmpty());
         assertTrue(response.getExcessRules().isEmpty());
     }
 
@@ -249,6 +327,46 @@ public class ValidationServiceImplTest {
         assertEquals(expectedFlags, meterInfoEntry.getFlags());
     }
 
+    private Flow createFlowForConnectedDevices(boolean detectSrcLldp,
+                                               boolean detectDstLldp) {
+        Flow flow = Flow.builder()
+                .flowId("flow")
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .detectConnectedDevices(new DetectConnectedDevices(
+                        detectSrcLldp, false, detectDstLldp, false))
+                .build();
+
+        FlowPath forwardPath = buildFlowPath(flow, switchA, switchB, "1", 1, detectSrcLldp ? 5L : null);
+        FlowPath reversePath = buildFlowPath(flow, switchB, switchA, "2", 2, detectDstLldp ? 6L : null);
+        FlowPath protectedForwardPath = buildFlowPath(flow, switchA, switchB, "3", 3, detectSrcLldp ? 7L : null);
+        FlowPath protectedReversePath = buildFlowPath(flow, switchB, switchA, "4", 4, detectDstLldp ? 8L : null);
+
+
+        flow.setForwardPath(forwardPath);
+        flow.setReversePath(reversePath);
+        flow.setProtectedForwardPath(protectedForwardPath);
+        flow.setProtectedReversePath(protectedReversePath);
+
+        return flow;
+    }
+
+    private static FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, String pathId, long cookie,
+                                          Long lldpCookie) {
+        LldpResources lldpResources = null;
+        if (lldpCookie != null) {
+            lldpResources = new LldpResources(new MeterId(100), new Cookie(lldpCookie));
+        }
+        return FlowPath.builder()
+                .flow(flow)
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .pathId(new PathId(pathId))
+                .cookie(new Cookie(cookie))
+                .lldpResources(lldpResources)
+                .build();
+    }
+
     private PersistenceManagerBuilder persistenceManager() {
         return new PersistenceManagerBuilder();
     }
@@ -258,6 +376,8 @@ public class ValidationServiceImplTest {
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
+        private LldpResources[] lldpResources = new LldpResources[0];
+        private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(false, false, false, false);
 
         private PersistenceManagerBuilder withSegmentsCookies(long... cookies) {
             segmentsCookies = cookies;
@@ -269,6 +389,16 @@ public class ValidationServiceImplTest {
             return this;
         }
 
+        private PersistenceManagerBuilder withLldpResources(LldpResources... resources) {
+            lldpResources = resources;
+            return this;
+        }
+
+        private PersistenceManagerBuilder withDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
+            this.detectConnectedDevices = detectConnectedDevices;
+            return this;
+        }
+
         private PersistenceManager build() {
             List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
             for (long cookie : segmentsCookies) {
@@ -277,31 +407,31 @@ public class ValidationServiceImplTest {
                 pathsBySegment.add(flowPath);
             }
             List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
-            for (long cookie : ingressCookies) {
-                FlowPath flowPath = mock(FlowPath.class);
-                when(flowPath.getCookie()).thenReturn(new Cookie(cookie));
+            for (int i = 0; i < ingressCookies.length; i++) {
+                long cookie = ingressCookies[i];
+                Flow flow = buildFlow(cookie, "flow_");
+                FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie, null);
+                if (i < lldpResources.length) {
+                    flowPath.setLldpResources(lldpResources[i]);
+                }
                 flowPaths.add(flowPath);
             }
             when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
-            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
+            when(flowPathRepository.findByEndpointSwitchIncludeProtected(any())).thenReturn(flowPaths);
 
-            Switch switchA = Switch.builder()
-                    .switchId(SWITCH_ID_A)
-                    .description("Nicira, Inc. OF_13 2.5.5")
-                    .build();
-            Switch switchB = Switch.builder()
-                    .switchId(SWITCH_ID_B)
-                    .description("Nicira, Inc. OF_13 2.5.5")
-                    .build();
             FlowPath flowPathA = mock(FlowPath.class);
             when(flowPathA.getSrcSwitch()).thenReturn(switchB);
             when(flowPathA.getDestSwitch()).thenReturn(switchA);
             when(flowPathA.getBandwidth()).thenReturn(10000L);
-            when(flowPathA.getCookie()).thenReturn(new Cookie(1));
+            when(flowPathA.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
             when(flowPathA.getMeterId()).thenReturn(new MeterId(32L));
+            when(flowPathA.getLldpResources()).thenReturn(new LldpResources(new MeterId(33L), new Cookie(2)));
 
             Flow flowA = mock(Flow.class);
             when(flowA.getFlowId()).thenReturn("test_flow");
+            when(flowA.getSrcSwitch()).thenReturn(switchB);
+            when(flowA.getDestSwitch()).thenReturn(switchA);
+            when(flowA.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
             when(flowPathA.getFlow()).thenReturn(flowA);
 
             Switch switchE = Switch.builder()
@@ -313,15 +443,21 @@ public class ValidationServiceImplTest {
             when(flowPathB.getSrcSwitch()).thenReturn(switchE);
             when(flowPathB.getDestSwitch()).thenReturn(switchA);
             when(flowPathB.getBandwidth()).thenReturn(FLOW_E_BANDWIDTH);
-            when(flowPathB.getCookie()).thenReturn(new Cookie(1));
+            when(flowPathB.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
             when(flowPathB.getMeterId()).thenReturn(new MeterId(32L));
+            when(flowPathB.getLldpResources()).thenReturn(new LldpResources(new MeterId(33L), new Cookie(2)));
 
             Flow flowB = mock(Flow.class);
             when(flowB.getFlowId()).thenReturn("test_flow_b");
+            when(flowB.getSrcSwitch()).thenReturn(switchE);
+            when(flowB.getDestSwitch()).thenReturn(switchA);
+            when(flowB.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
             when(flowPathB.getFlow()).thenReturn(flowB);
 
-            when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_B))).thenReturn(singletonList(flowPathA));
-            when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_E))).thenReturn(singletonList(flowPathB));
+            when(flowPathRepository.findBySrcSwitchIncludeProtected(eq(SWITCH_ID_B)))
+                    .thenReturn(singletonList(flowPathA));
+            when(flowPathRepository.findBySrcSwitchIncludeProtected(eq(SWITCH_ID_E)))
+                    .thenReturn(singletonList(flowPathB));
 
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
             when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
@@ -329,6 +465,15 @@ public class ValidationServiceImplTest {
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
             return persistenceManager;
+        }
+
+        private Flow buildFlow(long cookie, String flowIdPrefix) {
+            return Flow.builder()
+                    .srcSwitch(switchA)
+                    .destSwitch(switchB)
+                    .detectConnectedDevices(detectConnectedDevices)
+                    .flowId(flowIdPrefix + cookie)
+                    .build();
         }
     }
 }

@@ -143,4 +143,11 @@ public class Switch implements Serializable {
     public boolean isActive() {
         return status == SwitchStatus.ACTIVE;
     }
+
+    /**
+     * Checks switch feature support.
+     */
+    public boolean supports(SwitchFeature feature) {
+        return features.contains(feature);
+    }
 }

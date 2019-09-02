@@ -28,7 +28,8 @@ public final class Meter implements Serializable {
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
     public static final int MIN_RATE_IN_KBPS = 64;
 
-    private static final String[] METER_FLAGS = {"KBPS", "BURST", "STATS"};
+    private static final String[] METER_KBPS_FLAGS = {"KBPS", "BURST", "STATS"};
+    private static final String[] METER_PKTPS_FLAGS = {"PKTPS", "BURST", "STATS"};
 
     private SwitchId switchId;
 
@@ -80,9 +81,13 @@ public final class Meter implements Serializable {
     }
 
     /**
-     * Get meter flags as string array.
+     * Get meter kbps flags as string array.
      */
-    public static String[] getMeterFlags() {
-        return METER_FLAGS;
+    public static String[] getMeterKbpsFlags() {
+        return METER_KBPS_FLAGS;
+    }
+
+    public static String[] getMeterPktpsFlags() {
+        return METER_PKTPS_FLAGS;
     }
 }
