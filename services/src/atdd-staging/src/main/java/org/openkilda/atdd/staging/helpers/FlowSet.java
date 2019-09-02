@@ -18,6 +18,7 @@ package org.openkilda.atdd.staging.helpers;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableSet;
 
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -235,8 +236,10 @@ public class FlowSet {
         }
 
         private FlowPayload buildFlowPayload(int srcPort, int srcVlan, int destPort, int destVlan) {
-            FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPort, srcVlan);
-            FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan);
+            FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPort, srcVlan,
+                    new DetectConnectedDevicesPayload(false, false));
+            FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan,
+                    new DetectConnectedDevicesPayload(false, false));
 
             return FlowPayload.builder()
                     .id(flowId)

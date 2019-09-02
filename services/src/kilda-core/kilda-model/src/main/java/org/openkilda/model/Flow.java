@@ -19,6 +19,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
+import org.openkilda.converters.DetectConnectedDevicesConverter;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -163,13 +165,16 @@ public class Flow implements Serializable {
     @Property(name = "pinned")
     private boolean pinned;
 
+    @Convert(DetectConnectedDevicesConverter.class)
+    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(false, false, false, false);
+
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int destPort, int destVlan,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
                 boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
-                Integer maxLatency, Integer priority,
-                Instant timeCreate, Instant timeModify, boolean pinned) {
+                Integer maxLatency, Integer priority, Instant timeCreate, Instant timeModify, boolean pinned,
+                DetectConnectedDevices detectConnectedDevices) {
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -190,6 +195,7 @@ public class Flow implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.pinned = pinned;
+        setDetectConnectedDevices(detectConnectedDevices);
     }
 
     /**
@@ -491,6 +497,17 @@ public class Flow implements Serializable {
                 .map(FlowPath::getStatus)
                 .max(FlowPathStatus::compareTo)
                 .orElse(null);
+    }
+
+    /**
+     * Return detect connected devices flags.
+     */
+    public void setDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
+        if (detectConnectedDevices == null) {
+            this.detectConnectedDevices = new DetectConnectedDevices(false, false, false, false);
+        } else {
+            this.detectConnectedDevices = detectConnectedDevices;
+        }
     }
 
     /**

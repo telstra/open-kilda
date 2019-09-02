@@ -44,6 +44,7 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -77,8 +78,10 @@ public class TestMessageMock implements MessagingChannel {
     static final String ERROR_FLOW_ID = "error-flow";
     static final String TEST_SWITCH_ID = "ff:01";
     static final long TEST_SWITCH_RULE_COOKIE = 1L;
-    static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1);
-    static final FlowEndpointPayload secondFlowEndpoint = new FlowEndpointPayload(SECOND_SWITCH_ID, 2, 2);
+    static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1,
+            new DetectConnectedDevicesPayload(false, false));
+    static final FlowEndpointPayload secondFlowEndpoint = new FlowEndpointPayload(SECOND_SWITCH_ID, 2, 2,
+            new DetectConnectedDevicesPayload(false, false));
     static final FlowEndpointV2 flowPayloadEndpoint = new FlowEndpointV2(SWITCH_ID, 1, 1);
     static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2);
     public static final FlowPayload flow = FlowPayload.builder()

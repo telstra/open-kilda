@@ -48,6 +48,12 @@ public class FlowEndpointPayload extends NetworkEndpoint {
     private Integer vlanId;
 
     /**
+     * Collect info about devices connected to endpoint.
+     */
+    @JsonProperty("detect-connected-devices")
+    private DetectConnectedDevicesPayload detectConnectedDevices = new DetectConnectedDevicesPayload(false, false);
+
+    /**
      * Instance constructor.
      *
      * @param switchId switch id
@@ -57,9 +63,12 @@ public class FlowEndpointPayload extends NetworkEndpoint {
     @JsonCreator
     public FlowEndpointPayload(@JsonProperty("switch-id") SwitchId switchId,
                                @JsonProperty("port-id") Integer portId,
-                               @JsonProperty("vlan-id") Integer vlanId) {
+                               @JsonProperty("vlan-id") Integer vlanId,
+                               @JsonProperty("detect-connected-devices")
+                                           DetectConnectedDevicesPayload detectConnectedDevices) {
         super(switchId, portId);
         setVlanId(vlanId);
+        setDetectConnectedDevices(detectConnectedDevices);
     }
 
     /**
@@ -86,6 +95,21 @@ public class FlowEndpointPayload extends NetworkEndpoint {
         }
     }
 
+    public DetectConnectedDevicesPayload getDetectConnectedDevices() {
+        return detectConnectedDevices;
+    }
+
+    /**
+     * Set detect connected devices flags.
+     */
+    public void setDetectConnectedDevices(DetectConnectedDevicesPayload detectConnectedDevices) {
+        if (detectConnectedDevices == null) {
+            this.detectConnectedDevices = new DetectConnectedDevicesPayload(false, false);
+        } else {
+            this.detectConnectedDevices = detectConnectedDevices;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -101,6 +125,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
         return new EqualsBuilder()
                 .appendSuper(super.equals(obj))
                 .append(vlanId, that.vlanId)
+                .append(detectConnectedDevices, that.detectConnectedDevices)
                 .isEquals();
     }
 
@@ -109,7 +134,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getSwitchDpId(), getPortId(), vlanId);
+        return Objects.hash(getSwitchDpId(), getPortId(), vlanId, detectConnectedDevices);
     }
 
     /**
@@ -121,6 +146,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
                 .add("switch-id", getSwitchDpId())
                 .add("port-id", getPortId())
                 .add("vlan-id", vlanId)
+                .add("detect-connected-devices", detectConnectedDevices)
                 .toString();
     }
 }
