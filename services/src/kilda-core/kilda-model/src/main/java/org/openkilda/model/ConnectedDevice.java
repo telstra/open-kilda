@@ -67,6 +67,12 @@ public class ConnectedDevice implements Serializable {
     @Property("mac_address")
     private String macAddress;
 
+    @NonNull
+    @Index
+    @Property(name = "type")
+    @Convert(graphPropertyType = String.class)
+    private ConnectedDeviceType type;
+
     @Property("chassis_id")
     private String chassisId;
 
@@ -108,12 +114,14 @@ public class ConnectedDevice implements Serializable {
 
     @Builder(toBuilder = true)
     public ConnectedDevice(@NonNull String flowId, boolean source, @NonNull String macAddress,
+                           @NonNull ConnectedDeviceType type,
                            String chassisId, String portId, Integer ttl, String portDescription, String systemName,
                            String systemDescription, String systemCapabilities, String managementAddress,
                            Instant timeFirstSeen, Instant timeLastSeen) {
         this.flowId = flowId;
         this.source = source;
         this.macAddress = macAddress;
+        this.type = type;
         this.chassisId = chassisId;
         this.portId = portId;
         this.ttl = ttl;
@@ -151,7 +159,12 @@ public class ConnectedDevice implements Serializable {
         calculateUniqueIndex();
     }
 
+    public void setType(@NonNull ConnectedDeviceType type) {
+        this.type = type;
+        calculateUniqueIndex();
+    }
+
     private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%s_%s", flowId, source ? "source" : "destination", macAddress);
+        uniqueIndex = format("%s_%s_%s_%s", flowId, source ? "source" : "destination", macAddress, type);
     }
 }

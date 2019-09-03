@@ -42,6 +42,9 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
 
+    public static final long TYPE_MASK = 0x1FF0000000000000L; // 9 bits for cookie type
+    public static final long LLDP_COOKIE_TYPE_MASK = 0x0010000000000000L;
+
     private final long value;
 
     @JsonCreator
@@ -55,6 +58,17 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     public static Cookie buildReverseCookie(long unmaskedCookie) {
         return new Cookie(unmaskedCookie | Cookie.REVERSE_FLOW_COOKIE_MASK);
+    }
+
+    /**
+     * Creates masked cookie for LLDP rule.
+     */
+    public static Cookie buildLldpCookie(Long unmaskedCookie, boolean forward) {
+        if (unmaskedCookie == null) {
+            return null;
+        }
+        long directionMask = forward ? FORWARD_FLOW_COOKIE_MASK : REVERSE_FLOW_COOKIE_MASK;
+        return new Cookie(unmaskedCookie | Cookie.LLDP_COOKIE_TYPE_MASK | directionMask);
     }
 
     public long getUnmaskedValue() {

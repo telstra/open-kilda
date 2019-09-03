@@ -13,19 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.persistence.converters;
 
-import org.openkilda.model.ConnectedDevice;
 import org.openkilda.model.ConnectedDeviceType;
 
-import java.util.Collection;
-import java.util.Optional;
+import org.neo4j.ogm.typeconversion.AttributeConverter;
 
-public interface ConnectedDeviceRepository extends Repository<ConnectedDevice> {
-    Collection<ConnectedDevice> findByFlowId(String flowId);
+public class ConnectedDeviceTypeConverter implements AttributeConverter<ConnectedDeviceType, String> {
 
-    Optional<ConnectedDevice> findByFlowIdSourceMacAndType(String flowId, boolean source, String macAddress,
-                                                           ConnectedDeviceType type);
+    @Override
+    public String toGraphProperty(ConnectedDeviceType value) {
+        if (value == null) {
+            return null;
+        }
+        return value.name().toLowerCase();
+    }
 
-    boolean exists(String flowId, String macAddress, boolean source);
+    @Override
+    public ConnectedDeviceType toEntityAttribute(String value) {
+        if (value == null) {
+            return null;
+        }
+        return ConnectedDeviceType.valueOf(value.toUpperCase());
+    }
 }
