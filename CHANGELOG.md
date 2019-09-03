@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.34.0 (02/09/2019)
+
+### Features:
+-  [#2679](https://github.com/telstra/open-kilda/pull/2679) Expose switch features over rest api [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2730](https://github.com/telstra/open-kilda/pull/2730) Fix tag extension for cases when no IterationTags annotation present [**tests**]
+-  [#2712](https://github.com/telstra/open-kilda/pull/2712) Fix switch rules synchronization. (Issues: [#2706](https://github.com/telstra/open-kilda/issues/2706) [#2707](https://github.com/telstra/open-kilda/issues/2707)) [**storm-topologies**]
+-  [#2727](https://github.com/telstra/open-kilda/pull/2727) Split consumer groups for different regions [**floodlight**]
+
+### Improvements:
+-  [#2690](https://github.com/telstra/open-kilda/pull/2690) Switch Validation Refactoring (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**storm-topologies**]
+-  [#2732](https://github.com/telstra/open-kilda/pull/2732) adjust flowCrud to work with not empty env [**tests**]
+-  [#2733](https://github.com/telstra/open-kilda/pull/2733) Increase stats waiting timeout for better stability of test [**tests**]
+-  [#2671](https://github.com/telstra/open-kilda/pull/2671) Produce LLDP packets by traffexam (Issue: [#2661](https://github.com/telstra/open-kilda/issues/2661))
+-  [#2741](https://github.com/telstra/open-kilda/pull/2741) small improvements for tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.33.0...v1.34.0).
+
+### Affected Components:
+nbworker, neo4j, fl, swmanager, nb
+
+### Upgrade notes:
+
+Related to [#2679](https://github.com/telstra/open-kilda/pull/2679)
+
+Also please consider using following migration scripts to update db:
+- [1.0 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.34.0/services/neo4j/migrations/1.10-switch-properties/1-rename-switch-features-changelog.xml)
+
+In case of issues these rollback scripts should be executed:
+- [1.10 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.34.0/services/neo4j/migrations/1.10-switch-properties/rollback.cql)
+
 ## v1.33.0 (27/08/2019)
 
 ### Features:
