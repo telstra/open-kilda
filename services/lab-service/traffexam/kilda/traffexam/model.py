@@ -335,6 +335,15 @@ class PortQueue(collections.Iterator):
         self.released.add(item)
 
 
+class LLDPPush(Abstract):
+    time_to_live = Default(120)
+
+    def __init__(self, mac_address, port_number, **fields):
+        super().__init__(**fields)
+        self.mac_address = mac_address
+        self.port_number = port_number
+
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Abstract):

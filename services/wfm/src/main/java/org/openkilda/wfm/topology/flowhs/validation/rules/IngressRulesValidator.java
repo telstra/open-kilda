@@ -17,18 +17,20 @@ package org.openkilda.wfm.topology.flowhs.validation.rules;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
-import org.openkilda.model.SwitchFeatures;
+import org.openkilda.model.SwitchFeature;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 public class IngressRulesValidator extends RulesValidator {
 
-    private final SwitchFeatures switchFeatures;
+    private final Set<SwitchFeature> switchFeatures;
 
-    public IngressRulesValidator(InstallIngressRule expected, FlowRuleResponse actual, SwitchFeatures switchFeatures) {
+    public IngressRulesValidator(InstallIngressRule expected, FlowRuleResponse actual,
+                                 Set<SwitchFeature> switchFeatures) {
         super(expected, actual);
 
         this.switchFeatures = switchFeatures;
@@ -45,7 +47,8 @@ public class IngressRulesValidator extends RulesValidator {
             valid = false;
         }
 
-        if (switchFeatures.isSupportMeters() && !Objects.equals(expectedIngress.getMeterId(), actual.getMeterId())) {
+        if (switchFeatures.contains(SwitchFeature.METERS) && !Objects.equals(expectedIngress.getMeterId(),
+                actual.getMeterId())) {
             log.warn("Meter mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expectedIngress.getMeterId(), actual.getMeterId());
             valid = false;

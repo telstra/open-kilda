@@ -13,19 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
 import java.util.List;
 
-public interface ValidationService {
-    ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                      List<FlowEntry> expectedDefaultRules);
+@Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class SwitchPropertiesDto {
+    @JsonProperty("supported_transit_encapsulation")
+    private List<String> supportedTransitEncapsulation;
 
-    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters);
+    @JsonProperty("multi_table")
+    private boolean multiTable;
 }

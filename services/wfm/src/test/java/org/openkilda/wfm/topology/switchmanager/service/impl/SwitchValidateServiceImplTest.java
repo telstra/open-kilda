@@ -20,8 +20,6 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,6 +27,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -45,6 +44,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -57,6 +57,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.Properties;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SwitchValidateServiceImplTest {
@@ -81,6 +83,11 @@ public class SwitchValidateServiceImplTest {
 
     @Before
     public void setUp() {
+        PropertiesBasedConfigurationProvider configurationProvider =
+                new PropertiesBasedConfigurationProvider(new Properties());
+        SwitchManagerTopologyConfig topologyConfig =
+                configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
+        when(carrier.getTopologyConfig()).thenReturn(topologyConfig);
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
 
@@ -97,7 +104,7 @@ public class SwitchValidateServiceImplTest {
         when(validationService.validateRules(any(), any(), any()))
                 .thenReturn(new ValidateRulesResult(singletonList(flowEntry.getCookie()), emptyList(), emptyList(),
                         emptyList()));
-        when(validationService.validateMeters(any(), any(), anyLong(), anyDouble()))
+        when(validationService.validateMeters(any(), any()))
                 .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }
 
@@ -145,9 +152,6 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void validationSuccess() {
-        when(carrier.getFlowMeterMinBurstSizeInKbits()).thenReturn(1024L);
-        when(carrier.getFlowMeterBurstCoefficient()).thenReturn(1D);
-
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
 
@@ -163,6 +167,7 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void validationWithoutMetersSuccess() {
+        verify(carrier, times(1)).getTopologyConfig();
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
@@ -212,7 +217,7 @@ public class SwitchValidateServiceImplTest {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
-        when(validationService.validateMeters(any(), any(), anyLong(), anyDouble()))
+        when(validationService.validateMeters(any(), any()))
                 .thenThrow(new IllegalArgumentException(errorMessage));
         handleDataReceiveAndValidate();
 
@@ -227,6 +232,7 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void doNothingWhenFsmNotFound() {
+        verify(carrier, times(1)).getTopologyConfig();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
 
         verifyZeroInteractions(carrier);
@@ -247,6 +253,7 @@ public class SwitchValidateServiceImplTest {
 
 
     private void handleRequestAndInitDataReceive() {
+        verify(carrier, times(1)).getTopologyConfig();
         service.handleSwitchValidateRequest(KEY, request);
 
         verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
@@ -259,11 +266,8 @@ public class SwitchValidateServiceImplTest {
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         service.handleMeterEntriesResponse(KEY, new SwitchMeterEntries(SWITCH_ID, singletonList(meterEntry)));
 
-        verify(carrier).getFlowMeterBurstCoefficient();
-        verify(carrier).getFlowMeterMinBurstSizeInKbits();
-
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-        verify(validationService).validateMeters(eq(SWITCH_ID), any(), anyLong(), anyDouble());
+        verify(validationService).validateMeters(eq(SWITCH_ID), any());
     }
 
     private ErrorMessage getErrorMessage() {

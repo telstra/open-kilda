@@ -12,7 +12,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
@@ -45,18 +44,18 @@ class MflStatSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         when: "Generate traffic on the given flow"
+        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in openTSDB is created"
-        Date startTime = use(TimeCategory) { new Date() - 20.minutes }
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.id]
         // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-        // the statsrouter.request.interval is increased here to 100
-        def statsRouterInterval = 100
+        // the statsrouter.request.interval is increased here to 120
+        def statsRouterInterval = 120
         def waitInterval = 10
         def initStat
         Wrappers.wait(statsRouterInterval, waitInterval) {
@@ -64,7 +63,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert initStat.size() >= 1
         }
 
-        when: "Set management controller only on the src switch"
+        when: "Set only management controller on the src switch"
         lockKeeper.setController(srcSwitch, managementControllers[0])
 
         and: "Generate traffic on the given flow"
@@ -79,7 +78,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
         }
 
-        when: "Set statistic controller only on the src switch"
+        when: "Set only statistic controller on the src switch"
         lockKeeper.setController(srcSwitch, statControllers[0])
 
         and: "Generate traffic on the given flow"
@@ -138,6 +137,7 @@ class MflStatSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Generate traffic on the given flow"
+        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth)
@@ -145,12 +145,11 @@ class MflStatSpec extends HealthCheckSpecification {
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in openTSDB is created"
-        Date startTime = use(TimeCategory) { new Date() - 20.minutes }
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.flowId]
         // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-        // the statsrouter.request.interval is increased here to 100
-        def statsRouterInterval = 100
+        // the statsrouter.request.interval is increased here to 120
+        def statsRouterInterval = 120
         def waitInterval = 10
         def initStat
         Wrappers.wait(statsRouterInterval, waitInterval) {
@@ -158,7 +157,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert initStat.size() >= 1
         }
 
-        when: "Set management controller only on the src switch"
+        when: "Set only management controller on the src switch"
         lockKeeper.setController(srcSwitch, managementControllers[0])
 
         and: "Generate traffic on the given flow"
@@ -173,7 +172,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
         }
 
-        when: "Set statistic controller only on the src switch"
+        when: "Set only statistic controller on the src switch"
         lockKeeper.setController(srcSwitch, statControllers[0])
 
         and: "Generate traffic on the given flow"

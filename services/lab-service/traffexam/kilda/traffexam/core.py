@@ -19,6 +19,7 @@ import sys
 
 import click
 
+from kilda.traffexam import action
 from kilda.traffexam import common
 from kilda.traffexam import const
 from kilda.traffexam import context as context_module
@@ -63,6 +64,7 @@ def main(iface, bind, **args):
                 setup_environment(context)
 
                 context.set_service_adapter(service.Adapter(context))
+                context.set_action_adapter(action.Adapter(context))
                 SigCHLD(context.children)
 
                 rest.init(bind, context)

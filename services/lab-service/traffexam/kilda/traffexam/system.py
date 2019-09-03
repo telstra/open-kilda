@@ -15,6 +15,8 @@
 
 import collections
 import errno
+import pathlib
+import os
 
 import pyroute2
 
@@ -239,26 +241,57 @@ class BridgeToTarget(RootIPDBMixin, _IfaceManager, Abstract):
 
     def configure(self):
         name = self.context.make_bridge_name()
+        klass = type(self)
+        try:
+            self._make_bridge_ifadd(name)
+            self._make_bridge_setup(name)
+        except OSError as e:
+            raise exc.SystemResourceError(klass, name) from e
+        except KeyError:
+            raise exc.SystemResourceDamagedError(
+                    klass, name, 'interface not found')
+
+    def _make_bridge_ifadd(self, name):
         veth = self.context.shared_registry.fetch(VEthPair)
 
         need_ports = {
             self.context.iface.index,
             self.iface_get_info(veth.root).index}
 
-        klass = type(self)
+        with self.get_ipdb().interfaces[name] as iface:
+            iface.up()
+            ports = set(iface.ports)
+            for port in ports - need_ports:
+                iface.del_port(port)
+            for port in need_ports - ports:
+                iface.add_port(port)
+
+    def _make_bridge_setup(self, name):
         try:
-            with self.get_ipdb().interfaces[name] as iface:
-                iface.up()
-                ports = set(iface.ports)
-                for port in ports - need_ports:
-                    iface.del_port(port)
-                for port in need_ports - ports:
-                    iface.add_port(port)
+            self._make_group_fwd_mask_setup(name)
         except OSError as e:
-            raise exc.SystemResourceError(klass, name) from e
-        except KeyError:
-            raise exc.SystemResourceDamagedError(
-                    klass, name, 'interface not found')
+            raise exc.SystemCompatibilityError(
+                type(self), name, 'filed to alter {} file: {}'.format(
+                    e.filename, e.strerror))
+
+    def _make_group_fwd_mask_setup(self, name):
+        p = pathlib.Path('/sys/class/net')
+        p /= name
+        p /= 'bridge/group_fwd_mask'
+        with p.open('w+') as stream:
+            raw = stream.readline()
+            bitmask = raw.strip()
+            try:
+                bitmask = int(bitmask, 0)
+            except ValueError as e:
+                raise exc.SystemCompatibilityError(
+                    type(self), name,
+                    '{!r} read from group_fwd_mask is not a number'.format(raw))
+
+            bitmask |= 0x4000  # allow LLDP forwarding (ie 01:80:c2:00:00:0e)
+
+            stream.seek(0, os.SEEK_SET)
+            stream.write('0x{:x}\n'.format(bitmask))
 
 
 class _ConfigureMixin(Abstract):

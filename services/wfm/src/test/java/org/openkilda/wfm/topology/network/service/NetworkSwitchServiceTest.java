@@ -33,14 +33,14 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -92,7 +92,7 @@ public class NetworkSwitchServiceTest {
     private SwitchRepository switchRepository;
 
     @Mock
-    private SwitchFeaturesRepository switchFeaturesRepository;
+    private SwitchPropertiesRepository switchPropertiesRepository;
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
             .manufacturer("OF vendor A")
@@ -146,11 +146,11 @@ public class NetworkSwitchServiceTest {
         }).when(transactionManager)
                 .doInTransaction(Mockito.any(RetryPolicy.class), Mockito.any(TransactionCallbackWithoutResult.class));
 
-        reset(switchRepository, switchFeaturesRepository);
+        reset(switchRepository, switchPropertiesRepository);
 
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(switchFeaturesRepository);
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
     }
 
     @Test
@@ -196,8 +196,8 @@ public class NetworkSwitchServiceTest {
 
         verify(switchRepository).createOrUpdate(argThat(sw ->
                 sw.getStatus() == SwitchStatus.ACTIVE && sw.getSwitchId() == alphaDatapath));
-        verify(switchFeaturesRepository).createOrUpdate(argThat(sf ->
-                sf.getSupportedTransitEncapsulation().equals(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
+        verify(switchPropertiesRepository).createOrUpdate(argThat(sf ->
+                sf.getSupportedTransitEncapsulation().equals(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
     }
 
     @Test

@@ -26,6 +26,7 @@ import org.junit.BeforeClass;
 import org.neo4j.ogm.testutil.TestServer;
 
 import java.time.Instant;
+import java.util.Collections;
 
 public abstract class Neo4jBasedTest {
     protected static TestServer testServer;
@@ -103,6 +104,7 @@ public abstract class Neo4jBasedTest {
                 .status(SwitchStatus.ACTIVE)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
+                .features(Collections.emptySet())
                 .build();
     }
 }

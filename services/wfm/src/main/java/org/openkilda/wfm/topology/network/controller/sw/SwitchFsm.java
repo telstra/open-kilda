@@ -21,12 +21,12 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
@@ -65,7 +65,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final TransactionManager transactionManager;
     private final RetryPolicy transactionRetryPolicy;
     private final SwitchRepository switchRepository;
-    private final SwitchFeaturesRepository switchFeaturesRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
 
     private final SwitchId switchId;
     private final Integer bfdLogicalPortOffset;
@@ -85,7 +85,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         this.switchId = switchId;
         this.bfdLogicalPortOffset = options.getBfdLogicalPortOffset();
-        this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
+        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
     }
 
     // -- FSM actions --
@@ -285,19 +285,19 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         sw.setFeatures(speakerData.getFeatures());
 
-        persistSwitchFeatures(sw);
+        persistSwitchProperties(sw);
         switchRepository.createOrUpdate(sw);
     }
 
-    private void persistSwitchFeatures(Switch sw) {
-        Optional<SwitchFeatures> switchFeaturesResult = switchFeaturesRepository.findBySwitchId(sw.getSwitchId());
-        SwitchFeatures switchFeatures = switchFeaturesResult.orElseGet(() ->
-                SwitchFeatures.builder()
+    private void persistSwitchProperties(Switch sw) {
+        Optional<SwitchProperties> switchPropertiesResult = switchPropertiesRepository.findBySwitchId(sw.getSwitchId());
+        SwitchProperties switchProperties = switchPropertiesResult.orElseGet(() ->
+                SwitchProperties.builder()
                         .switchObj(sw)
-                        .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                        .supportMeters(features.contains(SwitchFeature.METERS))
+                        .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                        .multiTable(false)
                         .build());
-        switchFeaturesRepository.createOrUpdate(switchFeatures);
+        switchPropertiesRepository.createOrUpdate(switchProperties);
     }
 
     private void updatePersistentStatus(SwitchStatus status) {

@@ -181,7 +181,7 @@ def lockkeeper_proxy(lab_id, to_path):
         return Response(str(ex), status=500)
 
 
-@app.route('/api/<int:lab_id>/traffgen/<tg_name>/<path:to_path>', methods=['GET', 'HEAD', 'POST', 'DELETE'])
+@app.route('/api/<int:lab_id>/traffgen/<tg_name>/<path:to_path>', methods=['GET', 'HEAD', 'POST', 'PUT', 'DELETE'])
 def traffgen_proxy(lab_id, tg_name, to_path):
     try:
         if lab_id not in labs:

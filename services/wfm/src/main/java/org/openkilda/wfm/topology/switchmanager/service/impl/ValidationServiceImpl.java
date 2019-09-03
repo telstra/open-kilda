@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
@@ -27,6 +29,8 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -39,7 +43,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -49,9 +55,13 @@ public class ValidationServiceImpl implements ValidationService {
     private static final double E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01;
 
     private FlowPathRepository flowPathRepository;
+    private final long flowMeterMinBurstSizeInKbits;
+    private final double flowMeterBurstCoefficient;
 
-    public ValidationServiceImpl(PersistenceManager persistenceManager) {
+    public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
+        this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
     }
 
     @Override
@@ -130,7 +140,7 @@ public class ValidationServiceImpl implements ValidationService {
                 }
 
                 if (defaultRule.size() > 1) {
-                    excessRules.add(expectedDefaultRule.getCookie());
+                    misconfiguredRules.add(expectedDefaultRule.getCookie());
                 }
             }
         });
@@ -151,82 +161,109 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                               long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters) {
         log.debug("Validating meters on switch {}", switchId);
 
         presentMeters.removeIf(meterEntry -> MeterId.isMeterIdOfDefaultRule(meterEntry.getMeterId()));
 
-        List<Long> presentMeterIds = presentMeters.stream()
-                .map(MeterEntry::getMeterId)
-                .collect(Collectors.toList());
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId);
+
+        if (paths.isEmpty()) {
+            // we do not expect any flow meter on this switch
+            List<MeterInfoEntry> excessMeters = getExcessMeters(presentMeters, newArrayList());
+            return new ValidateMetersResult(newArrayList(), newArrayList(), newArrayList(), excessMeters);
+        }
+
+        Switch sw = paths.iterator().next().getSrcSwitch();
+        boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+
+        List<SimpleMeterEntry> expectedMeters = getExpectedFlowMeters(paths);
+
+        return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+    }
+
+    private ValidateMetersResult comparePresentedAndExpectedMeters(
+            boolean isESwitch, List<MeterEntry> presentMeters, List<SimpleMeterEntry> expectedMeters) {
+        Map<Long, MeterEntry> presentMeterMap = presentMeters.stream()
+                .collect(Collectors.toMap(MeterEntry::getMeterId, Function.identity()));
 
         List<MeterInfoEntry> missingMeters = new ArrayList<>();
         List<MeterInfoEntry> misconfiguredMeters = new ArrayList<>();
         List<MeterInfoEntry> properMeters = new ArrayList<>();
-        List<MeterInfoEntry> excessMeters = new ArrayList<>();
 
-        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId).stream()
-                .filter(path -> path.getMeterId() != null)
-                .collect(Collectors.toList());
+        for (SimpleMeterEntry expectedMeter : expectedMeters) {
+            MeterEntry presentedMeter = presentMeterMap.get(expectedMeter.getMeterId());
 
-        for (FlowPath path : paths) {
-            Switch sw = path.getSrcSwitch();
-            boolean isESwitch =
-                    Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
-
-            long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
-                    flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
-
-            if (!presentMeterIds.contains(path.getMeterId().getValue())) {
-                missingMeters.add(makeMissingMeterEntry(path, calculatedBurstSize));
+            if (presentedMeter == null) {
+                missingMeters.add(makeMissingMeterEntry(expectedMeter));
+                continue;
             }
 
-            for (MeterEntry meter : presentMeters) {
-                if (meter.getMeterId() == path.getMeterId().getValue()) {
-                    if (equalsRate(meter.getRate(), path.getBandwidth(), isESwitch)
-                            && equalsBurstSize(meter.getBurstSize(), calculatedBurstSize, isESwitch)
-                            && Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
+            if (equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
+                    && equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
+                    && Arrays.equals(presentedMeter.getFlags(), expectedMeter.getFlags())) {
 
-                        properMeters.add(makeProperMeterEntry(path, meter));
-                    } else {
-                        misconfiguredMeters.add(
-                                makeMisconfiguredMeterEntry(path, meter, calculatedBurstSize, isESwitch));
-                    }
-                }
+                properMeters.add(makeProperMeterEntry(
+                        expectedMeter.getFlowId(), expectedMeter.getCookie(), presentedMeter));
+            } else {
+                misconfiguredMeters.add(makeMisconfiguredMeterEntry(presentedMeter, expectedMeter, isESwitch));
             }
         }
 
-        List<Long> expectedMeterIds = paths.stream()
-                .map(FlowPath::getMeterId)
-                .map(MeterId::getValue)
-                .collect(Collectors.toList());
+        List<MeterInfoEntry> excessMeters = getExcessMeters(presentMeters, expectedMeters);
+        return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
+    }
 
-        for (MeterEntry meterEntry : presentMeters) {
+    private List<MeterInfoEntry> getExcessMeters(List<MeterEntry> presented, List<SimpleMeterEntry> expected) {
+        List<MeterInfoEntry> excessMeters = new ArrayList<>();
+
+        Set<Long> expectedMeterIds = expected.stream()
+                .map(SimpleMeterEntry::getMeterId)
+                .collect(Collectors.toSet());
+
+        for (MeterEntry meterEntry : presented) {
             if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
                 excessMeters.add(makeExcessMeterEntry(meterEntry));
             }
         }
-
-        return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
+        return excessMeters;
     }
 
-    private MeterInfoEntry makeMissingMeterEntry(FlowPath path, Long burstSize) {
+    private List<SimpleMeterEntry> getExpectedFlowMeters(Collection<FlowPath> unfilteredPaths) {
+        List<SimpleMeterEntry> expectedMeters = new ArrayList<>();
+
+        Collection<FlowPath> paths = unfilteredPaths.stream()
+                .filter(path -> path.getMeterId() != null)
+                .collect(Collectors.toList());
+
+        for (FlowPath path : paths) {
+            long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                    flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
+
+            SimpleMeterEntry expectedMeter = new SimpleMeterEntry(path.getFlow().getFlowId(),
+                    path.getMeterId().getValue(), path.getCookie().getValue(), path.getBandwidth(), calculatedBurstSize,
+                    Meter.getMeterFlags());
+            expectedMeters.add(expectedMeter);
+        }
+        return expectedMeters;
+    }
+
+    private MeterInfoEntry makeMissingMeterEntry(SimpleMeterEntry meter) {
         return MeterInfoEntry.builder()
-                .meterId(path.getMeterId().getValue())
-                .cookie(path.getCookie().getValue())
-                .flowId(path.getFlow().getFlowId())
-                .rate(path.getBandwidth())
-                .burstSize(burstSize)
-                .flags(Meter.getMeterFlags())
+                .meterId(meter.getMeterId())
+                .cookie(meter.getCookie())
+                .flowId(meter.getFlowId())
+                .rate(meter.getRate())
+                .burstSize(meter.getBurstSize())
+                .flags(meter.getFlags())
                 .build();
     }
 
-    private MeterInfoEntry makeProperMeterEntry(FlowPath path, MeterEntry meter) {
+    private MeterInfoEntry makeProperMeterEntry(String flowId, Long cookie, MeterEntry meter) {
         return MeterInfoEntry.builder()
                 .meterId(meter.getMeterId())
-                .cookie(path.getCookie().getValue())
-                .flowId(path.getFlow().getFlowId())
+                .cookie(cookie)
+                .flowId(flowId)
                 .rate(meter.getRate())
                 .burstSize(meter.getBurstSize())
                 .flags(meter.getFlags())
@@ -242,31 +279,31 @@ public class ValidationServiceImpl implements ValidationService {
                 .build();
     }
 
-    private MeterInfoEntry makeMisconfiguredMeterEntry(FlowPath path, MeterEntry meter, long burstSize,
+    private MeterInfoEntry makeMisconfiguredMeterEntry(MeterEntry actualMeter, SimpleMeterEntry expectedMeter,
                                                        boolean isESwitch) {
         MeterMisconfiguredInfoEntry actual = new MeterMisconfiguredInfoEntry();
         MeterMisconfiguredInfoEntry expected = new MeterMisconfiguredInfoEntry();
 
-        if (!equalsRate(meter.getRate(), path.getBandwidth(), isESwitch)) {
-            actual.setRate(meter.getRate());
-            expected.setRate(path.getBandwidth());
+        if (!equalsRate(actualMeter.getRate(), expectedMeter.getRate(), isESwitch)) {
+            actual.setRate(actualMeter.getRate());
+            expected.setRate(expectedMeter.getRate());
         }
-        if (!equalsBurstSize(meter.getBurstSize(), burstSize, isESwitch)) {
-            actual.setBurstSize(meter.getBurstSize());
-            expected.setBurstSize(burstSize);
+        if (!equalsBurstSize(actualMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)) {
+            actual.setBurstSize(actualMeter.getBurstSize());
+            expected.setBurstSize(expectedMeter.getBurstSize());
         }
-        if (!Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
-            actual.setFlags(meter.getFlags());
-            expected.setFlags(Meter.getMeterFlags());
+        if (!Arrays.equals(actualMeter.getFlags(), expectedMeter.getFlags())) {
+            actual.setFlags(actualMeter.getFlags());
+            expected.setFlags(expectedMeter.getFlags());
         }
 
         return MeterInfoEntry.builder()
-                .meterId(meter.getMeterId())
-                .cookie(path.getCookie().getValue())
-                .flowId(path.getFlow().getFlowId())
-                .rate(meter.getRate())
-                .burstSize(meter.getBurstSize())
-                .flags(meter.getFlags())
+                .meterId(actualMeter.getMeterId())
+                .cookie(expectedMeter.getCookie())
+                .flowId(expectedMeter.getFlowId())
+                .rate(actualMeter.getRate())
+                .burstSize(actualMeter.getBurstSize())
+                .flags(actualMeter.getFlags())
                 .actual(actual)
                 .expected(expected)
                 .build();

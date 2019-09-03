@@ -13,19 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.persistence.repositories;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import org.openkilda.model.SwitchProperties;
 
-import java.util.List;
+import java.util.Optional;
 
-public interface ValidationService {
-    ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                      List<FlowEntry> expectedDefaultRules);
+public interface SwitchPropertiesRepository extends Repository<SwitchProperties> {
+    Optional<SwitchProperties> findBySwitchId(SwitchId switchId);
 
-    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters);
 }

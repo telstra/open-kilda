@@ -73,13 +73,8 @@ def address_create():
 
 @app.route('/address/<idnr>', method='GET')
 def address_read(idnr):
-    context = get_context()
     idnr = unpack_idnr(idnr)
-    try:
-        address = context.service.address.lookup(idnr)
-    except exc.ServiceLookupError:
-        return bottle.HTTPError(404, 'Address does not exist.')
-    return address_response(address)
+    return address_response(_address_lookup(idnr))
 
 
 @app.route('/address/<idnr>', method='DELETE')
@@ -95,6 +90,41 @@ def address_delete(idnr):
 
 def address_response(payload):
     return format_response(payload, 'address', 'addresses')
+
+
+@app.route('/address/<idnr>/lldp', method='PUT')
+def address_emmit_lldp_packet(idnr):
+    address = _address_lookup(unpack_idnr(idnr))
+    payload = bottle.request.json
+    if payload is None:
+        payload = {}
+
+    chassis_id, port_id = extract_payload_fields(
+        payload,
+        'mac_address', 'port_number')
+    extra = {}
+    try:
+        extra['time_to_live'] = payload['time_to_live']
+    except KeyError:
+        pass
+
+    try:
+        push_entry = model.LLDPPush(chassis_id, port_id, **extra)
+        get_context().action.lldp_push(address.iface, push_entry)
+    except ValueError as e:
+        return bottle.HTTPError(400, 'Invalid LLDP payload - {}'.format(e))
+
+    return {
+        'lldp_push': {
+            'sent_packets': 1}}
+
+
+def _address_lookup(idnr):
+    try:
+        address = get_context().service.address.lookup(idnr)
+    except exc.ServiceLookupError:
+        raise bottle.HTTPError(404, 'Address does not exist.')
+    return address
 
 
 @app.route('/endpoint', method='GET')

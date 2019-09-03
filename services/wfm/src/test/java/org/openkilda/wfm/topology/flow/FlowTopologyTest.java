@@ -57,15 +57,15 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.wfm.AbstractStormTest;
@@ -761,13 +761,14 @@ public class FlowTopologyTest extends AbstractStormTest {
                     .build();
             switchRepository.createOrUpdate(sw);
 
-            SwitchFeaturesRepository switchFeaturesRepository = persistenceManager.getRepositoryFactory()
-                    .createSwitchFeaturesRepository();
-            Optional<SwitchFeatures> switchFeaturesResult = switchFeaturesRepository.findBySwitchId(sw.getSwitchId());
-            if (!switchFeaturesResult.isPresent()) {
-                SwitchFeatures switchFeatures = SwitchFeatures.builder().switchObj(sw)
-                        .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
-                switchFeaturesRepository.createOrUpdate(switchFeatures);
+            SwitchPropertiesRepository switchPropertiesRepository = persistenceManager.getRepositoryFactory()
+                    .createSwitchPropertiesRepository();
+            Optional<SwitchProperties> switchPropertiesResult = switchPropertiesRepository.findBySwitchId(
+                    sw.getSwitchId());
+            if (!switchPropertiesResult.isPresent()) {
+                SwitchProperties switchProperties = SwitchProperties.builder().switchObj(sw)
+                        .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+                switchPropertiesRepository.createOrUpdate(switchProperties);
             }
 
         }
