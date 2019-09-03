@@ -26,6 +26,7 @@ import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
@@ -357,5 +358,21 @@ public class FlowController extends BaseController {
                 () -> Instant.ofEpochSecond(timeTo).minus(1, ChronoUnit.DAYS).getEpochSecond()
         );
         return flowService.listFlowEvents(flowId, timeFrom, timeTo);
+    }
+
+    /**
+     * Gets flow connected devices.
+     */
+    @ApiOperation(value = "Gets flow connected devices")
+    @GetMapping(path = "/{flow_id}/devices")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowConnectedDevicesResponse> getHistory(
+            @PathVariable("flow_id") String flowId,
+            @ApiParam(value = "Device will be included in response if it's `time_last_seen` >= `since`. "
+                    + "Example of `since` value: `2019-09-30T16:14:12.538Z`",
+                    required = false)
+            @RequestParam(value = "since", required = false) Optional<String> since) {
+
+        return flowService.getFlowConnectedDevices(flowId, since.orElse(""));
     }
 }

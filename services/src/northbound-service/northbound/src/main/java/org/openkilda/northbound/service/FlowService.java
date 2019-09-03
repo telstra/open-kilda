@@ -25,6 +25,7 @@ import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
@@ -205,4 +206,13 @@ public interface FlowService {
      * @return the list of updated flows.
      */
     CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input);
+
+    /**
+     * Get Flow connected devices.
+     *
+     * @param flowId flow ID
+     * @param since since
+     * @return the list devices connected to flow.
+     */
+    CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, String since);
 }

@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static java.lang.String.format;
+import static org.openkilda.model.ConnectedDeviceType.LLDP;
+
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -23,12 +26,17 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
+import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
+import org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
+import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
+import org.openkilda.model.ConnectedDevice;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -40,6 +48,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.mappers.ConnectedDeviceMapper;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
@@ -49,6 +58,9 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -85,6 +97,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             result = processGetFlowPathRequest((GetFlowPathRequest) request);
         } else if (request instanceof FlowPatchRequest) {
             result = processFlowPatchRequest((FlowPatchRequest) request);
+        } else if (request instanceof FlowConnectedDeviceRequest) {
+            result = processFlowConnectedDeviceRequest((FlowConnectedDeviceRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -184,6 +198,53 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
         } catch (FlowNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Flow was not found.");
+        }
+    }
+
+    private List<FlowConnectedDevicesResponse> processFlowConnectedDeviceRequest(FlowConnectedDeviceRequest request) {
+        Instant since = getSinceInstant(request);
+
+        Collection<ConnectedDevice> devices;
+        try {
+            devices = flowOperationsService.getFlowConnectedDevice(request.getFlowId()).stream()
+                    .filter(device -> since.isBefore(device.getTimeLastSeen())
+                            || since.equals(device.getTimeLastSeen()))
+                    .collect(Collectors.toList());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
+                    "Could not get connected devices for non existent flow");
+        }
+
+        FlowConnectedDevicesResponse response = new FlowConnectedDevicesResponse(
+                new TypedConnectedDevicesDto(new ArrayList<>()), new TypedConnectedDevicesDto(new ArrayList<>()));
+
+        for (ConnectedDevice device : devices) {
+            ConnectedDeviceDto deviceDto = ConnectedDeviceMapper.INSTANCE.map(device);
+            if (device.isSource()) {
+                if (device.getType() == LLDP) {
+                    response.getSource().getLldp().add(deviceDto);
+                }
+            } else {
+                if (device.getType() == LLDP) {
+                    response.getDestination().getLldp().add(deviceDto);
+                }
+            }
+        }
+        return Collections.singletonList(response);
+    }
+
+    private Instant getSinceInstant(FlowConnectedDeviceRequest request) {
+        if (request.getSince() == null || request.getSince().isEmpty()) {
+            return Instant.MIN;
+        }
+
+        try {
+            return Instant.parse(request.getSince());
+        } catch (DateTimeParseException e) {
+            String message = format("Invalid 'since' value '%s'. Correct example of 'since' value is "
+                    + "'2019-09-30T16:14:12.538Z'", request.getSince());
+            log.error("Couldn't get connected devices for flow '{}': {}", request.getFlowId(), message);
+            throw new MessageException(ErrorType.DATA_INVALID, message, "Invalid 'since' value");
         }
     }
 
