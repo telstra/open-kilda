@@ -218,7 +218,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
    this.timezone = dataObj.timezone;
    this.jsonResponse = undefined;
 
-   let processedResponse = this.constructGraphData(
+   let processedResponse = this.dygraphService.constructGraphData(
     dataObj.data,
     this.jsonResponse,
     dataObj.startDate,
