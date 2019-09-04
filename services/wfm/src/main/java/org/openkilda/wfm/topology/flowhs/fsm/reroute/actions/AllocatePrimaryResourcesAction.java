@@ -72,7 +72,7 @@ public class AllocatePrimaryResourcesAction extends BaseResourceAllocationAction
             log.debug("Allocating resources for a new primary path of flow {}", flowId);
             FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
             log.debug("Resources have been allocated: {}", flowResources);
-            stateMachine.addNewResources(flowResources);
+            stateMachine.setNewPrimaryResources(flowResources);
 
             FlowPathPair paths = createFlowPathPair(flow, potentialPath, flowResources);
             log.debug("New primary path has been created: {}", paths);
@@ -87,5 +87,12 @@ public class AllocatePrimaryResourcesAction extends BaseResourceAllocationAction
         } else {
             log.debug("Found the same primary path for flow {}. Skip creating of it.", flowId);
         }
+    }
+
+    @Override
+    protected void onFailure(FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        stateMachine.setNewPrimaryResources(null);
+        stateMachine.setNewPrimaryForwardPath(null);
+        stateMachine.setNewPrimaryReversePath(null);
     }
 }

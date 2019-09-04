@@ -152,6 +152,11 @@ abstract class BaseResourceAllocationAction extends
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException;
 
     /**
+     * Called in a case of allocation failure.
+     */
+    protected abstract void onFailure(FlowRerouteContext context, FlowRerouteFsm stateMachine);
+
+    /**
      * Perform resource allocation in transactions, returns the allocated resources.
      */
     @SneakyThrows
@@ -165,8 +170,14 @@ abstract class BaseResourceAllocationAction extends
 
         try {
             transactionManager.doInTransaction(retryPolicy, () -> allocate(context, stateMachine));
-        } catch (FailsafeException e) {
-            throw e.getCause();
+        } catch (Exception e) {
+            onFailure(context, stateMachine);
+
+            if (e instanceof FailsafeException) {
+                throw e.getCause();
+            } else {
+                throw e;
+            }
         }
     }
 

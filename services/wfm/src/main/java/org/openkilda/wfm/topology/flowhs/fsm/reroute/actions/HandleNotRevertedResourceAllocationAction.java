@@ -22,8 +22,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.util.Collection;
-
 @Slf4j
 public class HandleNotRevertedResourceAllocationAction
         extends AnonymousAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
@@ -31,9 +29,14 @@ public class HandleNotRevertedResourceAllocationAction
     @Override
     public void execute(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
                         FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Collection<FlowResources> newResources = stateMachine.getNewResources();
-        if (newResources != null) {
-            newResources.forEach(flowResources -> log.warn("Failed to revert resource allocation: {}", flowResources));
+        FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
+        if (newPrimaryResources != null) {
+            log.warn("Failed to revert resource allocation: {}", newPrimaryResources);
+        }
+
+        FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
+        if (newProtectedResources != null) {
+            log.warn("Failed to revert resource allocation: {}", newProtectedResources);
         }
     }
 }
