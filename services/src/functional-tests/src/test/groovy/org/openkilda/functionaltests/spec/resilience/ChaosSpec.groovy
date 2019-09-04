@@ -27,6 +27,8 @@ class ChaosSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
+    def random = new Random()
+
     /**
      * This test simulates a busy network with a lot of flows. Random ISLs across the topology begin to blink,
      * causing some of the flows to reroute. Verify that system remains stable.
@@ -37,20 +39,21 @@ class ChaosSpec extends HealthCheckSpecification {
         List<FlowPayload> flows = []
         flowsAmount.times {
             def flow = flowHelper.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
+            //occasionally add protected path to a flow
+            flow.allocateProtectedPath = random.nextBoolean()
             northbound.addFlow(flow)
             flows << flow
         }
 
         when: "Random ISLs 'blink' for some time"
         def islsAmountToBlink = topology.islsForActiveSwitches.size() * 5
-        def r = new Random()
         islsAmountToBlink.times {
             //have certain instabilities with blinking centec ports, thus exclude them here
             def isls = topology.islsForActiveSwitches.findAll { !it.srcSwitch.centec }
-            def randomIsl = isls[r.nextInt(isls.size())]
+            def randomIsl = isls[random.nextInt(isls.size())]
             blinkPort(randomIsl.srcSwitch.dpId, randomIsl.srcPort)
             //1 of 4 times we will add a minor sleep after blink in order not to fail all ISLs at once
-            r.nextInt(4) == 3 && sleep((long) (discoveryInterval / 2) * 1000)
+            random.nextInt(4) == 3 && sleep((long) (discoveryInterval / 2) * 1000)
         }
 
         then: "All flows remain up and valid"
