@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -163,6 +164,23 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         verify(flowResourcesManager, times(4)).allocateFlowResources(any());
         verify(carrier, never()).sendSpeakerRequest(any());
         verify(carrier, times(1)).sendNorthboundResponse(any());
+    }
+
+    @Test
+    public void shouldFailRerouteFlowOnResourcesAllocationConstraint()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow();
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        buildFlowResources();
+        doThrow(new RuntimeException("Must fail")).when(flowPathRepository).lockInvolvedSwitches(any(), any());
+
+        FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
+                pathComputer, flowResourcesManager);
+
+        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
+
+        verify(flowResourcesManager, times(0)).deallocatePathResources(any());
+        verify(flowResourcesManager, times(0)).deallocatePathResources(any(), anyLong(), any());
     }
 
     @Test

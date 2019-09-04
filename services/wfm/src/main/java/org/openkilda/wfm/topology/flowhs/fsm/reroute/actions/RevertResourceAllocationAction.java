@@ -36,7 +36,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -58,16 +57,18 @@ public class RevertResourceAllocationAction extends BaseFlowPathRemovalAction {
         transactionManager.doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
-            Collection<FlowResources> newResources = stateMachine.getNewResources();
-            log.debug("Reverting resource allocation {}.", newResources);
-            if (newResources != null) {
-                newResources.forEach(flowResources -> {
-                    resourcesManager.deallocatePathResources(flowResources);
+            FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
+            if (newPrimaryResources != null) {
+                resourcesManager.deallocatePathResources(newPrimaryResources);
+                log.debug("Resources has been de-allocated: {}", newPrimaryResources);
+                saveHistory(stateMachine, flow, newPrimaryResources);
+            }
 
-                    log.debug("Resources has been de-allocated: {}", flowResources);
-
-                    saveHistory(stateMachine, flow, flowResources);
-                });
+            FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
+            if (newProtectedResources != null) {
+                resourcesManager.deallocatePathResources(newProtectedResources);
+                log.debug("Resources has been de-allocated: {}", newProtectedResources);
+                saveHistory(stateMachine, flow, newProtectedResources);
             }
 
             FlowPath newPrimaryForward = null;
