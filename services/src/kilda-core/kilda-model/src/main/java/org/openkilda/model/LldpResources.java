@@ -15,20 +15,8 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.io.Serializable;
 
@@ -36,36 +24,9 @@ import java.io.Serializable;
  * Represents flow LLDP resources.
  */
 @Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
-@NodeEntity(label = "lldp_resources")
+@AllArgsConstructor
 public class LldpResources implements Serializable {
-    private static final long serialVersionUID = 6475278196979413383L;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
-
-    @NonNull
-    @Index(unique = true)
-    @Property(name = "flow_id")
-    private String flowId;
-
-    @Property(name = "src_meter_id")
-    @Convert(graphPropertyType = Long.class)
-    private MeterId srcMeterId;
-
-    @Property(name = "dst_meter_id")
-    @Convert(graphPropertyType = Long.class)
-    private MeterId dstMeterId;
-
-    @Builder(toBuilder = true)
-    public LldpResources(@NonNull String flowId, MeterId srcMeterId, MeterId dstMeterId) {
-        this.flowId = flowId;
-        this.srcMeterId = srcMeterId;
-        this.dstMeterId = dstMeterId;
-    }
+    private MeterId meterId;
+    private Cookie cookie;
 }

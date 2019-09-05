@@ -20,12 +20,20 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface FlowMeterRepository extends Repository<FlowMeter> {
     Optional<FlowMeter> findLldpMeterByMeterIdSwitchIdAndFlowId(MeterId meterId, SwitchId switchId, String flowId);
 
-    Optional<FlowMeter> findByPathId(PathId pathId);
+    /**
+     * Find meters by Path Id.
+     * Two types on meters can be assigned to one path: ingress meter and LLDP meter.
+     *
+     * @param pathId path ID
+     * @return a collection of {@link FlowMeter}
+     */
+    Collection<FlowMeter> findByPathId(PathId pathId);
 
     /**
      * Find a meter id which is not assigned to any flow.
