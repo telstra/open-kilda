@@ -125,21 +125,23 @@ public class Neo4jConnectedDeviceRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void findByFlowIdSourceMacAndTypeTest() {
+    public void findByUniqueFields() {
         repository.createOrUpdate(connectedDeviceA);
         repository.createOrUpdate(connectedDeviceB);
         repository.createOrUpdate(connectedDeviceC);
 
-        runFindByFlowIdSourceMacAndType(connectedDeviceA);
-        runFindByFlowIdSourceMacAndType(connectedDeviceB);
-        runFindByFlowIdSourceMacAndType(connectedDeviceC);
+        runFindByUniqueFields(connectedDeviceA);
+        runFindByUniqueFields(connectedDeviceB);
+        runFindByUniqueFields(connectedDeviceC);
 
-        assertFalse(repository.findByFlowIdSourceMacAndType("fake", false, "fake", LLDP).isPresent());
+        assertFalse(repository.findByUniqueFieldCombination(
+                "fake", false, "fake", LLDP, CHASSIS_ID, PORT_ID).isPresent());
     }
 
-    private void runFindByFlowIdSourceMacAndType(ConnectedDevice device) {
-        Optional<ConnectedDevice> foundDevice = repository.findByFlowIdSourceMacAndType(
-                device.getFlowId(), device.isSource(), device.getMacAddress(), device.getType());
+    private void runFindByUniqueFields(ConnectedDevice device) {
+        Optional<ConnectedDevice> foundDevice = repository.findByUniqueFieldCombination(
+                device.getFlowId(), device.isSource(), device.getMacAddress(), device.getType(),
+                device.getChassisId(), device.getPortId());
 
         assertTrue(foundDevice.isPresent());
         assertEquals(device, foundDevice.get());
@@ -159,12 +161,19 @@ public class Neo4jConnectedDeviceRepositoryTest extends Neo4jBasedTest {
         ConnectedDevice updatedSource = validateIndexAndUpdate(updatedMacDevice);
 
         updatedSource.setType(ARP);
-        validateIndexAndUpdate(updatedSource);
+        ConnectedDevice updatedType = validateIndexAndUpdate(updatedSource);
+
+        updatedType.setChassisId("chas_id_2");
+        ConnectedDevice updatedChassis = validateIndexAndUpdate(updatedType);
+
+        updatedChassis.setPortId("new_port");
+        validateIndexAndUpdate(updatedChassis);
     }
 
     private ConnectedDevice validateIndexAndUpdate(ConnectedDevice device) {
-        String expectedIndex = format("%s_%s_%s_%s", device.getFlowId(), device.isSource() ? "source" : "destination",
-                device.getMacAddress(), device.getType());
+        String expectedIndex = format("%s_%s_%s_%s_%s_%s", device.getFlowId(),
+                device.isSource() ? "source" : "destination", device.getMacAddress(), device.getType(),
+                device.getChassisId(), device.getPortId());
 
         // chack that index was updated after call of set***() method or after constructing
         assertEquals(expectedIndex, device.getUniqueIndex());

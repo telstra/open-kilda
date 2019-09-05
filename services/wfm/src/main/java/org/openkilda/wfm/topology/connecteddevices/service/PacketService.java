@@ -59,17 +59,18 @@ public class PacketService {
             boolean isForward = cookie.isMaskedAsForward();
 
             ConnectedDevice device = connectedDeviceRepository
-                    .findByFlowIdSourceMacAndType(flowId, isForward, data.getMacAddress(), LLDP)
+                    .findByUniqueFieldCombination(
+                            flowId, isForward, data.getMacAddress(), LLDP, data.getChassisId(), data.getPortId())
                     .orElse(ConnectedDevice.builder()
                             .flowId(flowId)
                             .source(isForward)
                             .macAddress(data.getMacAddress())
                             .timeFirstSeen(Instant.now())
                             .type(LLDP)
+                            .chassisId(data.getChassisId())
+                            .portId(data.getPortId())
                             .build());
 
-            device.setChassisId(data.getChassisId());
-            device.setPortId(data.getPortId());
             device.setTtl(data.getTtl());
             device.setPortDescription(data.getPortDescription());
             device.setSystemName(data.getSystemName());

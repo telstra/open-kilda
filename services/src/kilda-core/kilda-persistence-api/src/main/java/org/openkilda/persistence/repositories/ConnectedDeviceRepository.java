@@ -24,8 +24,8 @@ import java.util.Optional;
 public interface ConnectedDeviceRepository extends Repository<ConnectedDevice> {
     Collection<ConnectedDevice> findByFlowId(String flowId);
 
-    Optional<ConnectedDevice> findByFlowIdSourceMacAndType(String flowId, boolean source, String macAddress,
-                                                           ConnectedDeviceType type);
+    Optional<ConnectedDevice> findByUniqueFieldCombination(String flowId, boolean source, String macAddress,
+                                                           ConnectedDeviceType type, String chassisId, String portId);
 
     boolean exists(String flowId, String macAddress, boolean source);
 }
