@@ -25,7 +25,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) without rerouting"() {
-        given: "An intermediate-switch flow with one deleted rule on each switch"
+        given: "An intermediate-switch flow with deleted rules on src switch"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         def flow = flowHelper.randomFlow(switchPair)
@@ -33,17 +33,13 @@ class FlowSyncSpec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
-        def ruleToDelete = getFlowRules(involvedSwitches.first()).first().cookie
-        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, ruleToDelete) }
-        involvedSwitches.each { sw ->
-            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw).size() == flowRulesCount - 1 }
+        List<Long> rulesToDelete = getFlowRules(switchPair.src)*.cookie
+        rulesToDelete.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert getFlowRules(switchPair.src).size() == flowRulesCount - rulesToDelete.size()
         }
 
         when: "Synchronize the flow"
-        Map<SwitchId, Long> rulesDurationMap = involvedSwitches.collectEntries {
-            [(it.dpId): getFlowRules(it).first().durationSeconds]
-        }
-
         def syncTime = new Date()
         def rerouteResponse = northbound.synchronizeFlow(flow.id)
 
@@ -63,18 +59,20 @@ class FlowSyncSpec extends HealthCheckSpecification {
                 def flowRules = getFlowRules(sw)
                 assert flowRules.size() == flowRulesCount
                 flowRules.each {
-                    assert it.durationSeconds < rulesDurationMap[sw.dpId] +
-                            TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0
+                    assert it.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0
                 }
             }
         }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
     }
 
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) with rerouting"() {
-        given: "An intermediate-switch flow with two possible paths at least and one deleted rule on each switch"
+        given: "An intermediate-switch flow with two possible paths at least and deleted rules on src switch"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found to build an intermediate-switch flow " +
                         "with two possible paths at least.", false)
@@ -84,20 +82,16 @@ class FlowSyncSpec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
-        def ruleToDelete = getFlowRules(involvedSwitches.first()).first().cookie
-        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, ruleToDelete) }
-        involvedSwitches.each { sw ->
-            Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw).size() == flowRulesCount - 1 }
+        List<Long> rulesToDelete = getFlowRules(switchPair.src)*.cookie
+        rulesToDelete.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert getFlowRules(switchPair.src).size() == flowRulesCount - rulesToDelete.size()
         }
 
         and: "Make one of the alternative flow paths more preferable than the current one"
         switchPair.paths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Synchronize the flow"
-        Map<SwitchId, Long> rulesDurationMap = involvedSwitches.collectEntries {
-            [(it.dpId): getFlowRules(it).first().durationSeconds]
-        }
-
         def syncTime = new Date()
         def rerouteResponse = northbound.synchronizeFlow(flow.id)
 
@@ -119,8 +113,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
                 def flowRules = getFlowRules(sw)
                 assert flowRules.size() == flowRulesCount
                 flowRules.each {
-                    assert it.durationSeconds < rulesDurationMap[sw.dpId] +
-                            TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0
+                    assert it.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0
                 }
             }
         }
@@ -134,6 +127,9 @@ class FlowSyncSpec extends HealthCheckSpecification {
         involvedSwitches.findAll { !(it in involvedSwitchesAfterSync) }.each { sw ->
             Wrappers.wait(RULES_DELETION_TIME) { assert getFlowRules(sw).empty }
         } || true  // switches after sync may include all switches involved in the flow before sync
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "Delete the flow and link props, reset link costs"
         flowHelper.deleteFlow(flow.id)
