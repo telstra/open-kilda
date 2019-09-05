@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -46,14 +47,18 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
+@Mapper(componentModel = "spring",
+        imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class})
 public interface FlowMapper {
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
+                    + "new DetectConnectedDevicesPayload(f.getDetectConnectedDevices().isSrcLldp(), "
+                    + "f.getDetectConnectedDevices().isSrcArp())))")
     @Mapping(target = "destination",
             expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+                    + "f.getDestinationVlan(), new DetectConnectedDevicesPayload("
+                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
     @Mapping(target = "status", source = "state")
@@ -75,10 +80,13 @@ public interface FlowMapper {
 
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
+                    + "new DetectConnectedDevicesPayload(f.getDetectConnectedDevices().isSrcLldp(), "
+                    + "f.getDetectConnectedDevices().isSrcArp())))")
     @Mapping(target = "destination",
             expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+                    + "f.getDestinationVlan(), new DetectConnectedDevicesPayload("
+                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
     @Mapping(target = "status", source = "state")

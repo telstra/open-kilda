@@ -121,6 +121,10 @@ public class FlowDto implements Serializable {
     @JsonProperty("dst_vlan")
     private int destinationVlan;
 
+    @JsonProperty("detect_connected_devices")
+    private DetectConnectedDevicesDto detectConnectedDevices
+            = new DetectConnectedDevicesDto(false, false, false, false);
+
     /**
      * Flow source meter id.
      */
@@ -182,6 +186,7 @@ public class FlowDto implements Serializable {
      * @param priority          flow priority
      * @param pinned            pinned flag
      * @param encapsulationType flow encapsulation type
+     * @param detectConnectedDevices detectConnectedDevices flags
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -207,7 +212,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("max_latency") Integer maxLatency,
                    @JsonProperty("priority") Integer priority,
                    @JsonProperty("pinned") boolean pinned,
-                   @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType) {
+                   @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
+                   @JsonProperty("detect_connected_devices") DetectConnectedDevicesDto detectConnectedDevices) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -231,6 +237,7 @@ public class FlowDto implements Serializable {
         this.priority = priority;
         this.pinned = pinned;
         this.encapsulationType = encapsulationType;
+        setDetectConnectedDevices(detectConnectedDevices);
     }
 
     /**
@@ -247,13 +254,15 @@ public class FlowDto implements Serializable {
      * @param destinationPort   destination port
      * @param destinationVlan   destination vlan id
      * @param pinned            pinned flag
+     * @param detectConnectedDevices detect connected devices flags
      */
     public FlowDto(String flowId,
                    long bandwidth,
                    boolean ignoreBandwidth,
                    String description,
                    SwitchId sourceSwitch, int sourcePort, int sourceVlan,
-                   SwitchId destinationSwitch, int destinationPort, int destinationVlan, boolean pinned) {
+                   SwitchId destinationSwitch, int destinationPort, int destinationVlan, boolean pinned,
+                   DetectConnectedDevicesDto detectConnectedDevices) {
         this(flowId,
                 bandwidth,
                 ignoreBandwidth,
@@ -268,7 +277,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, pinned, null);
+                null, 0, null, null, null, null, pinned, null, detectConnectedDevices);
     }
 
     public FlowDto(FlowPayload input) {
@@ -291,7 +300,12 @@ public class FlowDto implements Serializable {
                 input.getPriority(),
                 input.isPinned(),
                 input.getEncapsulationType() != null ? FlowEncapsulationType.valueOf(
-                        input.getEncapsulationType().toUpperCase()) : null);
+                        input.getEncapsulationType().toUpperCase()) : null,
+                new DetectConnectedDevicesDto(
+                        input.getSource().getDetectConnectedDevices().isLldp(),
+                        input.getSource().getDetectConnectedDevices().isArp(),
+                        input.getDestination().getDetectConnectedDevices().isLldp(),
+                        input.getDestination().getDetectConnectedDevices().isArp()));
     }
 
     @JsonIgnore
@@ -357,6 +371,17 @@ public class FlowDto implements Serializable {
     }
 
     /**
+     * Set connected devices flags.
+     */
+    public void setDetectConnectedDevices(DetectConnectedDevicesDto detectConnectedDevices) {
+        if (detectConnectedDevices == null) {
+            this.detectConnectedDevices = new DetectConnectedDevicesDto(false, false, false, false);
+        } else {
+            this.detectConnectedDevices = detectConnectedDevices;
+        }
+    }
+
+    /**
      * FlowDto to FlowDto comparison.
      *
      * <p>Ignore fields:
@@ -389,12 +414,13 @@ public class FlowDto implements Serializable {
                 && Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch())
                 && getDestinationPort() == flow.getDestinationPort()
                 && getDestinationVlan() == flow.getDestinationVlan()
-                && Objects.equals(getEncapsulationType(), flow.getEncapsulationType());
+                && Objects.equals(getEncapsulationType(), flow.getEncapsulationType())
+                && Objects.equals(getDetectConnectedDevices(), flow.getDetectConnectedDevices());
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(flowId, bandwidth, description, state, sourceSwitch, sourcePort, sourceVlan,
-                destinationSwitch, destinationPort, destinationVlan, encapsulationType);
+                destinationSwitch, destinationPort, destinationVlan, encapsulationType, detectConnectedDevices);
     }
 }

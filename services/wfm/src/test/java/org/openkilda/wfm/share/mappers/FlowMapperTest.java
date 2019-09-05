@@ -21,10 +21,12 @@ import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
@@ -67,6 +69,7 @@ public class FlowMapperTest {
         forwardFlow.setIgnoreBandwidth(true);
         forwardFlow.setPeriodicPings(true);
         forwardFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+        forwardFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(false, true, true, false));
 
         PathInfoData reversePathInfoData = new PathInfoData();
         reversePathInfoData.setLatency(1L);
@@ -92,10 +95,20 @@ public class FlowMapperTest {
         reverseFlow.setIgnoreBandwidth(true);
         reverseFlow.setPeriodicPings(true);
         reverseFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+        reverseFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(true, false, false, true));
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
         FlowPair p = FlowMapper.INSTANCE.map(pair);
         assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
+        assertDetectConnectedDevices(forwardFlow.getDetectConnectedDevices(), p.forward.getDetectConnectedDevices());
+        assertDetectConnectedDevices(reverseFlow.getDetectConnectedDevices(), p.reverse.getDetectConnectedDevices());
+    }
+
+    private void assertDetectConnectedDevices(DetectConnectedDevicesDto expected, DetectConnectedDevices actual) {
+        assertEquals(expected.isSrcLldp(), actual.isSrcLldp());
+        assertEquals(expected.isSrcArp(), actual.isSrcArp());
+        assertEquals(expected.isDstLldp(), actual.isDstLldp());
+        assertEquals(expected.isDstArp(), actual.isDstArp());
     }
 
     @Test
@@ -160,5 +173,7 @@ public class FlowMapperTest {
         assertNotNull(flowDto.getFlowStatusDetails());
         assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
         assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
+        assertDetectConnectedDevices(flowDto.getDetectConnectedDevices(),
+                unidirectionalFlow.getDetectConnectedDevices());
     }
 }

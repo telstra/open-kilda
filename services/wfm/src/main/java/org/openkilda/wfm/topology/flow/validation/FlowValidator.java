@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flow.validation;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -27,6 +26,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -235,18 +235,18 @@ public class FlowValidator {
      * @param secondFlow a second flow.
      */
     void checkForEqualsEndpoints(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
-        List<FlowEndpointPayload> endpoints = new ArrayList<>();
-        endpoints.add(new FlowEndpointPayload(firstFlow.getSrcSwitch().getSwitchId(),
+        List<Endpoint> endpoints = new ArrayList<>();
+        endpoints.add(new Endpoint(firstFlow.getSrcSwitch().getSwitchId(),
                 firstFlow.getSrcPort(), firstFlow.getSrcVlan()));
-        endpoints.add(new FlowEndpointPayload(firstFlow.getDestSwitch().getSwitchId(),
+        endpoints.add(new Endpoint(firstFlow.getDestSwitch().getSwitchId(),
                 firstFlow.getDestPort(), firstFlow.getDestVlan()));
-        endpoints.add(new FlowEndpointPayload(secondFlow.getSrcSwitch().getSwitchId(),
+        endpoints.add(new Endpoint(secondFlow.getSrcSwitch().getSwitchId(),
                 secondFlow.getSrcPort(), secondFlow.getSrcVlan()));
-        endpoints.add(new FlowEndpointPayload(secondFlow.getDestSwitch().getSwitchId(),
+        endpoints.add(new Endpoint(secondFlow.getDestSwitch().getSwitchId(),
                 secondFlow.getDestPort(), secondFlow.getDestVlan()));
 
-        Set<FlowEndpointPayload> checkSet = new HashSet<>();
-        for (FlowEndpointPayload endpoint : endpoints) {
+        Set<Endpoint> checkSet = new HashSet<>();
+        for (Endpoint endpoint : endpoints) {
             if (!checkSet.contains(endpoint)) {
                 checkSet.add(endpoint);
             } else {
@@ -311,5 +311,12 @@ public class FlowValidator {
             throw new SwitchValidationException(
                     "It is not allowed to create one-switch flow for the same ports and vlans");
         }
+    }
+
+    @Value
+    private class Endpoint {
+        private SwitchId switchId;
+        private Integer portNumber;
+        private Integer vlanId;
     }
 }
