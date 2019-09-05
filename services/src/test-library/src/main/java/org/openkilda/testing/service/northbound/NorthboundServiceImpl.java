@@ -42,6 +42,7 @@ import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -626,6 +627,22 @@ public class NorthboundServiceImpl implements NorthboundService {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/properties", HttpMethod.PUT,
                 new HttpEntity<>(switchFeatures, buildHeadersWithCorrelationId()), SwitchPropertiesDto.class,
                 switchId).getBody();
+    }
+
+    @Override
+    public FlowConnectedDevicesResponse getFlowConnectedDevices(String flowId, String since) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/devices");
+        if (since != null) {
+            uriBuilder.queryParam("since", since);
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()),
+                FlowConnectedDevicesResponse.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowConnectedDevicesResponse getFlowConnectedDevices(String flowId) {
+        return getFlowConnectedDevices(flowId, null);
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

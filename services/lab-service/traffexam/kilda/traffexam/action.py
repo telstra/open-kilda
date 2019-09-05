@@ -45,12 +45,19 @@ class LLDPPush(Abstract):
         entries = (
             lldp.LLDPDUChassisID(
                 subtype=lldp.LLDPDUChassisID.SUBTYPE_MAC_ADDRESS,
-                id=entry.mac_address),
+                id=entry.chassis_id),
             lldp.LLDPDUPortID(
                 subtype=lldp.LLDPDUPortID.SUBTYPE_LOCALLY_ASSIGNED,
                 id=entry.port_number),
-            lldp.LLDPDUTimeToLive(ttl=entry.time_to_live),
-            lldp.LLDPDUEndOfLLDPDU())
+            lldp.LLDPDUTimeToLive(ttl=entry.time_to_live))
+        if entry.port_description:
+            entries = entries + (lldp.LLDPDUPortDescription(description=entry.port_description),)
+        if entry.system_name:
+            entries = entries + (lldp.LLDPDUSystemName(system_name=entry.system_name),)
+        if entry.system_description:
+            entries = entries + (lldp.LLDPDUSystemDescription(description=entry.system_description),)
+
+        entries = entries + (lldp.LLDPDUEndOfLLDPDU(),)
         payload = functools.reduce(operator.truediv, entries)
 
         return Ether(src=entry.mac_address, dst=self.lldp_bcast_mac) / payload

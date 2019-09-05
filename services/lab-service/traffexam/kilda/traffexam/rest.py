@@ -93,20 +93,23 @@ def address_emmit_lldp_packet(idnr):
     if payload is None:
         payload = {}
 
-    chassis_id, port_id = extract_payload_fields(
+    mac_address, port_id, chassis_id, ttl = extract_payload_fields(
         payload,
-        'mac_address', 'port_number')
+        'mac_address', 'port_number', "chassis_id", "time_to_live")
     extra = {}
-    try:
-        extra['time_to_live'] = payload['time_to_live']
-    except KeyError:
-        pass
+    for f in ('port_description', 'system_name', 'system_description'):
+        try:
+            extra[f] = payload[f]
+        except KeyError:
+            pass
 
     try:
-        push_entry = model.LLDPPush(chassis_id, port_id, **extra)
+        push_entry = model.LLDPPush(mac_address, port_id, chassis_id, ttl, **extra)
         get_context().action.lldp_push(address.iface, push_entry)
     except ValueError as e:
         return bottle.HTTPError(400, 'Invalid LLDP payload - {}'.format(e))
+    except Exception as e:
+        return bottle.HTTPError(500, 'Unexpected error - {}'.format(e))
 
     return {
         'lldp_push': {
