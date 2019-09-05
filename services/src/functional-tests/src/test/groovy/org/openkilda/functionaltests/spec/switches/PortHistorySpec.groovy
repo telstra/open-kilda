@@ -30,7 +30,7 @@ class PortHistorySpec extends HealthCheckSpecification {
     def "Port history are created for the port down/up actions when link is #islDescription"() {
         given: "A link"
         assumeTrue("Unable to find $islDescription ISL for this test", isl as boolean)
-        def timestampBefore = System.currentTimeSeconds()
+        def timestampBefore = System.currentTimeMillis()
 
         when: "Execute port DOWN on the src switch"
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -39,7 +39,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history is created on the src switch"
-        Long timestampAfterDown = System.currentTimeSeconds()
+        def timestampAfterDown = System.currentTimeMillis()
         with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
             it.size() == 1
             checkPortHistory(it[0], isl.srcSwitch.dpId, isl.srcPort, "PORT_DOWN")
@@ -52,10 +52,10 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history is updated on the src switch"
-        Long timestampAfterUp = System.currentTimeSeconds()
+        def timestampAfterUp = System.currentTimeMillis()
         with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterUp)) {
             it.size() == 2
-            checkPortHistory(it[0], isl.srcSwitch.dpId, isl.srcPort, "PORT_UP")
+            checkPortHistory(it[1], isl.srcSwitch.dpId, isl.srcPort, "PORT_UP")
         }
 
         and: "Port history on the dst switch is not empty when link is direct"
@@ -76,7 +76,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
     def "Port history should not be returned in case timeline is incorrect (timeBefore > timeAfter)"() {
         given: "A direct link with port history"
-        def timestampBefore = System.currentTimeSeconds()
+        def timestampBefore = System.currentTimeMillis()
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
 
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -89,7 +89,7 @@ class PortHistorySpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
 
-        Long timestampAfter = System.currentTimeSeconds()
+        def timestampAfter = System.currentTimeMillis()
         def portHistory = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter)
         assert portHistory.size() == 2
 
@@ -111,7 +111,7 @@ class PortHistorySpec extends HealthCheckSpecification {
     @Tags(VIRTUAL)
     def "Port history is available when switch is DEACTIVATED"() {
         given: "A direct link"
-        def timestampBefore = System.currentTimeSeconds()
+        def timestampBefore = System.currentTimeMillis()
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
 
         when: "Execute port DOWN/UP on the src switch"
@@ -124,7 +124,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
-        Long timestampAfter = System.currentTimeSeconds()
+        def timestampAfter = System.currentTimeMillis()
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 2
 
         and: "Deactivate the src switch"
@@ -150,7 +150,7 @@ class PortHistorySpec extends HealthCheckSpecification {
             switchId == switchId
             portNumber == port
             it.event == event.toUpperCase() // PORT_UP, PORT_DOWN
-            time != null
+            date != null
         }
     }
 }
