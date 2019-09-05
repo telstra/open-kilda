@@ -103,7 +103,7 @@ public class FlowTrafficExamBuilder {
     /**
      * Build Exam in one direction.
      */
-    public Exam buildExam(FlowPayload flow, int bandwidth) throws FlowNotApplicableException {
+    public Exam buildExam(FlowPayload flow, int bandwidth, Long duration) throws FlowNotApplicableException {
         Optional<TraffGen> source = Optional.ofNullable(
                 endpointToTraffGen.get(makeComparableEndpoint(flow.getSource())));
         Optional<TraffGen> dest = Optional.ofNullable(
@@ -133,7 +133,13 @@ public class FlowTrafficExamBuilder {
                 .destVlan(new Vlan(flow.getDestination().getVlanId()))
                 .bandwidthLimit(new Bandwidth(bandwidth))
                 .burstPkt(100)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
                 .build();
+    }
+
+    public Exam buildExam(FlowPayload flow, int bandwidth)
+            throws FlowNotApplicableException {
+        return buildExam(flow, bandwidth, null);
     }
 
     private void checkIsFlowApplicable(FlowPayload flow, boolean sourceApplicable, boolean destApplicable)

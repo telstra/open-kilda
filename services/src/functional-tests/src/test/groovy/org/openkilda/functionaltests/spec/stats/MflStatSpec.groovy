@@ -56,7 +56,7 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -147,7 +147,7 @@ class MflStatSpec extends HealthCheckSpecification {
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth)
+                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -245,11 +245,11 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stats is not empty for main path cookies"
+        then: "Stats collects stat for main path cookies"
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
         def waitInterval = 10
@@ -267,7 +267,7 @@ class MflStatSpec extends HealthCheckSpecification {
             stats.values().each { assert it != 0 }
         }
 
-        and: "Stats is empty for protected path egress cookie"
+        and: "System collects stats for egress cookie of protected path with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
         def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         protectedReverseCookieStat.values().each { assert it == 0 }
@@ -285,7 +285,7 @@ class MflStatSpec extends HealthCheckSpecification {
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stats is not empty for previous protected egress cookie"
+        then: "System collects stats for previous egress cookie of protected path with non zero value"
         Wrappers.wait(statsRouterInterval, waitInterval) {
             def protectedPathStat = otsdb.query(startTime, metric, tags).dps
             assert protectedPathStat.size() > mainPathStat.size()
@@ -293,19 +293,20 @@ class MflStatSpec extends HealthCheckSpecification {
             assert !newProtectedReverseCookieStat.values().findAll { it != 0 }.empty
         }
 
-        and: "Stats is not changed for previous main path cookies"
-        def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        newMainForwardCookieStat.size() == mainForwardCookieStat.size()
-        //sometimes newMainReverseCookieStat.size() = mainReverseCookieStat.size() + 1
-        (newMainReverseCookieStat.size() - mainReverseCookieStat.size()) <= 1
+        and: "Stats is still being collected for previous egress cookie of main path"
+        Wrappers.wait(statsRouterInterval, waitInterval) {
+            otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps.size() > mainReverseCookieStat.size()
+        }
+
+        and: "System doesn't collect stats anymore for previous ingress cookie of main path"
+        otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps.size() == mainForwardCookieStat.size()
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2762")
-    def "System is able to collect stats when a protected flow was intentionally rerouted"() {
+    def "System collects stats when a protected flow was intentionally rerouted"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -326,7 +327,7 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -394,7 +395,7 @@ class MflStatSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
-    def "System is able to collect stats when a protected flow was automatically rerouted"() {
+    def "System collects stats when a protected flow was automatically rerouted"() {
         given: "Two active not neighboring switches with three not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -415,11 +416,11 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stats is not empty for main path cookies"
+        then: "System collects stats for main path cookies"
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
         def waitInterval = 10
@@ -437,7 +438,7 @@ class MflStatSpec extends HealthCheckSpecification {
             stats.values().each { assert it != 0 }
         }
 
-        and: "Stats is empty for protected path egress cookie"
+        and: "System collects stats for egress cookie of protected path with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
         def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         protectedReverseCookieStat.values().each { assert it == 0 }
@@ -454,7 +455,7 @@ class MflStatSpec extends HealthCheckSpecification {
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stats is not empty for previous protected egress cookie"
+        then: "System collects stats for previous egress cookie of protected path with non zero value"
         Wrappers.wait(statsRouterInterval, waitInterval) {
             def protectedPathStat = otsdb.query(startTime, metric, tags).dps
             assert protectedPathStat.size() > mainPathStat.size()
@@ -462,7 +463,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert !newProtectedReverseCookieStat.values().findAll { it != 0 }.empty
         }
 
-        and: "Stats is not changed for previous main path cookies"
+        and: "System doesn't collect stats for previous main path cookies due to main path is broken"
         def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
         def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         newMainForwardCookieStat.size() == mainForwardCookieStat.size()
@@ -512,11 +513,11 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stats is not empty for main path cookies"
+        then: "System collects stats for main path cookies"
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
         def waitInterval = 10
@@ -533,7 +534,7 @@ class MflStatSpec extends HealthCheckSpecification {
             stats.values().each { assert it != 0 }
         }
 
-        and: "Stats is empty for protected path egress cookie"
+        and: "System collects stats for protected path egress cookie with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
         def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         protectedReverseCookieStat.values().each { assert it == 0 }
@@ -554,7 +555,7 @@ class MflStatSpec extends HealthCheckSpecification {
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stats is increased for main path cookies"
+        then: "Stats is still being collected for main path cookies"
         def newFlowInfo = database.getFlow(flow.id)
         def newMainForwardCookie = newFlowInfo.forwardPath.cookie.value
         def newMainReverseCookie = newFlowInfo.reversePath.cookie.value
@@ -568,7 +569,7 @@ class MflStatSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Stats is not increased for protected path egress cookie due to protected path is broken"
+        and: "System doesn't collect stats for protected path egress cookie due to protected path is broken"
         def newProtectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         newProtectedReverseCookieStat.size() == protectedReverseCookieStat.size()
 
