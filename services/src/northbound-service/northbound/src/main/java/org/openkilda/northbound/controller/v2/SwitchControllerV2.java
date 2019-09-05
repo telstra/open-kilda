@@ -67,7 +67,7 @@ public class SwitchControllerV2 extends BaseController {
             @ApiParam(value = "default: now.")
             @RequestParam(value = "timeTo", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
                     Optional<Date> optionalTo) {
-        Instant timeTo = optionalTo.map(Date::toInstant).orElseGet(() -> Instant.now());
+        Instant timeTo = optionalTo.map(Date::toInstant).orElseGet(Instant::now);
         Instant timeFrom = optionalFrom.map(Date::toInstant).orElseGet(() ->
                 timeTo.minus(1, ChronoUnit.DAYS));
 

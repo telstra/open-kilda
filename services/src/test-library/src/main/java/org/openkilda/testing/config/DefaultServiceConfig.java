@@ -18,18 +18,26 @@ package org.openkilda.testing.config;
 import org.openkilda.testing.tools.ExtendedErrorHandler;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
+import org.springframework.http.client.support.HttpRequestWrapper;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 @Configuration
@@ -42,7 +50,9 @@ public class DefaultServiceConfig {
             @Value("${northbound.endpoint}") String endpoint,
             @Value("${northbound.username}") String username,
             @Value("${northbound.password}") String password) {
-        return buildRestTemplateWithAuth(endpoint, username, password);
+        RestTemplate restTemplate = buildRestTemplateWithAuth(endpoint, username, password);
+        restTemplate.getInterceptors().add(plusEncoderInterceptor());
+        return restTemplate;
     }
 
     @Bean(name = "floodlightRestTemplate")
@@ -108,5 +118,24 @@ public class DefaultServiceConfig {
         RestTemplate restTemplate = buildLoggingRestTemplate(endpoint);
         restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
         return restTemplate;
+    }
+
+    private ClientHttpRequestInterceptor plusEncoderInterceptor() {
+        return new ClientHttpRequestInterceptor() {
+            @Override
+            public ClientHttpResponse intercept(HttpRequest request, byte[] body,
+                                                ClientHttpRequestExecution execution) throws IOException {
+                return execution.execute(new HttpRequestWrapper(request) {
+                    @Override
+                    public URI getURI() {
+                        URI uri = super.getURI();
+                        String escapedQuery = StringUtils.replace(uri.getRawQuery(), "+", "%2B");
+                        return UriComponentsBuilder.fromUri(uri)
+                                .replaceQuery(escapedQuery)
+                                .build(true).toUri();
+                    }
+                }, body);
+            }
+        };
     }
 }
