@@ -246,9 +246,6 @@ services:
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
       - "6653:6653"
-      - "8180:8080"
-      - "6655:6655"
-      - "6642:6642"
       - "8081:8080"
     depends_on:
       kafka:
@@ -273,9 +270,6 @@ services:
     command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
       - "6654:6653"
-      - "8181:8080"
-      - "6656:6655"
-      - "6643:6642"
       - "8082:8080"
     depends_on:
       kafka:
