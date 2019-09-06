@@ -59,7 +59,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         and: "System is able to successfully create a valid flow"
         def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
         northbound.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET * 2) { //it takes longer than usual in these conditions. why?
+        Wrappers.wait(WAIT_OFFSET * 3) { //it takes longer than usual in these conditions. why?
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             northbound.validateFlow(flow.id).each { assert it.asExpected }
         }
