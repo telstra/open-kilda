@@ -77,7 +77,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the vlan flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(vlanFlow, bandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(vlanFlow, bandwidth, 5)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)

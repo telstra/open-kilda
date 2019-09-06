@@ -800,7 +800,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "System allows traffic on the vlan flow"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                toFlowPayload(vlanFlow), bandwidth
+                toFlowPayload(vlanFlow), bandwidth, 5
         )
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
@@ -812,7 +812,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "System allows traffic on the default flow"
         def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                toFlowPayload(defaultFlow), 1000
+                toFlowPayload(defaultFlow), 1000, 5
         )
         withPool {
             [exam2.forward, exam2.reverse].eachParallel { direction ->
