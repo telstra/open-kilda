@@ -399,4 +399,47 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
         database.resetCosts()
     }
+
+    def "System collects stats when flow is pinned and unmetered"() {
+        given: "Two active not neighboring switches"
+        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
+                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "An unmetered flow"
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = 0
+        flow.ignoreBandwidth = true
+        flow.pinned = true
+        flow.periodicPings = true
+        flowHelper.addFlow(flow)
+
+        when: "Generate traffic on the given flow"
+        Date startTime = new Date()
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
+        exam.setResources(traffExam.startExam(exam, true))
+        assert traffExam.waitExam(exam).hasTraffic()
+
+        then: "System collects stats for egress/ingress cookies"
+        def metric = metricPrefix + "flow.raw.bytes"
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
+        def waitInterval = 10
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
+            assert otsdb.query(startTime, metric, tags).dps.size() >= 1
+        }
+        def flowInfo = database.getFlow(flow.id)
+        def mainForwardCookie = flowInfo.forwardPath.cookie.value
+        def mainReverseCookie = flowInfo.reversePath.cookie.value
+        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
+            stats.values().each { assert it != 0 }
+        }
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
 }
