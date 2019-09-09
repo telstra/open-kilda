@@ -1,18 +1,13 @@
 package org.openkilda.performancetests.helpers
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.performancetests.model.CustomTopology
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.labservice.model.LabInstance
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -25,10 +20,6 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     NorthboundService northbound
     @Autowired
     LabService labService
-    @Autowired
-    IslUtils islUtils
-    @Value('${discovery.timeout}')
-    int discoveryTimeout
 
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
@@ -40,23 +31,24 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     List<String> statControllers
 
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
+        if (islsAmount < (switchesAmount -1)) {
+            throw new RuntimeException("Not enough ISLs were requested. islsAmount should be >= (switchesAmount - 1)")
+        }
         def topo = new CustomTopology()
         switchesAmount.times { i ->
             def region = i % regions.size()
             topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}")
         }
-        islsAmount.times {
+        //create links between neighbor switches
+        def allSwitches = topo.getSwitches()
+        for (def i = 0; i < allSwitches.size() - 1; i++) {
+            topo.addIsl(allSwitches[i], allSwitches[i+1])
+        }
+        //create links between random switches
+        (islsAmount-topo.getIsls().size()).times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
-        }
-
-        def allSwitches = topo.getSwitches()
-        def allLinks = topo.getIsls()
-        for (def i = 0; i < allSwitches.size() - 1; i++) {
-            if (!allLinks.find { it.srcSwitch == allSwitches[i] && it.dstSwitch == allSwitches[i + 1] }) {
-                topo.addIsl(allSwitches[i], allSwitches[i + 1])
-            }
         }
 
         topo.setControllers(managementControllers)
