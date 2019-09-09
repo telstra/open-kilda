@@ -240,9 +240,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         boolean missingRulesCheck = missingRulesCheck(rules);
         boolean misconfiguredRulesCheck = misconfiguredRulesCheck(rules);
         boolean excessRulesCheck = excessRulesCheck(rules);
+
+        boolean missingMetersCheck = true;
+        boolean excessMetersCheck = true;
         MetersSyncEntry meters = syncResponse.getMeters();
-        boolean missingMetersCheck = missingMetersCheck(meters);
-        boolean excessMetersCheck = excessMetersCheck(meters);
+        if (meters != null) {
+            missingMetersCheck = missingMetersCheck(meters);
+            excessMetersCheck = excessMetersCheck(meters);
+        }
 
         return missingRulesCheck && misconfiguredRulesCheck && excessRulesCheck
                 && missingMetersCheck && excessMetersCheck;

@@ -827,6 +827,39 @@ public class NetworkSwitchServiceTest {
         verifyNoMoreInteractions(carrier);
     }
 
+    @Test
+    public void newSwitchWithNullMetersInSynchronizationResponse() {
+
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+        service.switchEvent(switchAddEvent);
+
+        // for a randomly generated key in SwitchFsm
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+
+        RulesSyncEntry rulesSyncEntry =
+                new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, null);
+        service.switchManagerResponse(response, captor.getValue());
+
+        verifyNewSwitchAfterSwitchSync(ports);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
     private void verifySwitchSync(NetworkSwitchService service) {
         // for a randomly generated key in SwitchFsm
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
