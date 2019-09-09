@@ -249,6 +249,11 @@ class FlowHelperV2 {
 
     private String generateDescription() {
         //The health of autotest flows is always questionable
-        "autotest flow with ${faker.medical().symptoms().uncapitalize()}"
+        def descpription = [faker.shakespeare().asYouLikeItQuote(),
+                            faker.shakespeare().kingRichardIIIQuote(),
+                            faker.shakespeare().romeoAndJulietQuote(),
+                            faker.shakespeare().hamletQuote()]
+        def r = new Random()
+        "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
     }
 }
