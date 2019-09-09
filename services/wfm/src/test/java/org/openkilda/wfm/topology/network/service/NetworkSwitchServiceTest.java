@@ -15,21 +15,31 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.MetersSyncEntry;
+import org.openkilda.messaging.info.switches.RulesSyncEntry;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchPortView.State;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -54,8 +64,8 @@ import net.jodah.failsafe.RetryPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.net.Inet4Address;
@@ -70,10 +80,12 @@ import java.util.Set;
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkSwitchServiceTest {
     private static final int BFD_LOGICAL_PORT_OFFSET = 200;
+    private static final int SYNC_ATTEMPTS = 2;
 
     private NetworkOptions options = NetworkOptions.builder()
             .bfdLogicalPortOffset(BFD_LOGICAL_PORT_OFFSET)
             .dbRepeatMaxDurationSeconds(30)
+            .countSynchronizationAttempts(SYNC_ATTEMPTS)
             .build();
 
     @Mock
@@ -144,7 +156,7 @@ public class NetworkSwitchServiceTest {
                     .run(tr::doInTransaction);
             return null;
         }).when(transactionManager)
-                .doInTransaction(Mockito.any(RetryPolicy.class), Mockito.any(TransactionCallbackWithoutResult.class));
+                .doInTransaction(any(RetryPolicy.class), any(TransactionCallbackWithoutResult.class));
 
         reset(switchRepository, switchPropertiesRepository);
 
@@ -171,33 +183,12 @@ public class NetworkSwitchServiceTest {
 
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
 
-        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), null);
-        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), 1);
-        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), null);
-        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), 2);
-
-        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), true);
-        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
-        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), true);
-        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
-
-        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
-                                        LinkStatus.of(ports.get(2).getState()));
-        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()),
-                                           LinkStatus.of(ports.get(3).getState()));
-        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()),
-                                        LinkStatus.of(ports.get(0).getState()));
-        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
-                                           LinkStatus.of(ports.get(0).getState()));
-
-        verify(switchRepository).createOrUpdate(argThat(sw ->
-                sw.getStatus() == SwitchStatus.ACTIVE && sw.getSwitchId() == alphaDatapath));
-        verify(switchPropertiesRepository).createOrUpdate(argThat(sf ->
-                sf.getSupportedTransitEncapsulation().equals(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
+        verifyNewSwitchAfterSwitchSync(ports);
     }
 
     @Test
@@ -219,6 +210,7 @@ public class NetworkSwitchServiceTest {
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         resetMocks();
 
@@ -337,6 +329,7 @@ public class NetworkSwitchServiceTest {
         resetMocks();
 
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 3));
 
@@ -364,7 +357,7 @@ public class NetworkSwitchServiceTest {
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         service.switchEvent(switchAddEvent);
-
+        verifySwitchSync(service);
 
         SwitchInfoData deactivatedSwitch = switchAddEvent.toBuilder().state(SwitchChangeType.DEACTIVATED).build();
 
@@ -386,6 +379,7 @@ public class NetworkSwitchServiceTest {
         resetMocks();
 
         service.switchEvent(switchAddEvent2);
+        verifySwitchSync(service);
 
         // System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
@@ -433,6 +427,7 @@ public class NetworkSwitchServiceTest {
 
         // initial switch ADD
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         resetMocks();
 
@@ -515,6 +510,7 @@ public class NetworkSwitchServiceTest {
                 getSpeakerSwitchView());
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
         resetMocks();
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.ADD));
@@ -549,6 +545,7 @@ public class NetworkSwitchServiceTest {
 
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
         resetMocks();
         //System.out.println(mockingDetails(carrier).printInvocations());
 
@@ -580,7 +577,7 @@ public class NetworkSwitchServiceTest {
 
         // prepare
         SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
-                .ports(Collections.emptyList())
+                .ports(emptyList())
                 .build();
 
         SwitchInfoData switchAddEvent = new SwitchInfoData(
@@ -591,6 +588,7 @@ public class NetworkSwitchServiceTest {
                 speakerSwitchView);
 
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         // process
         Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
@@ -626,6 +624,7 @@ public class NetworkSwitchServiceTest {
 
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
         resetMocks();
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.DELETE));
@@ -655,6 +654,7 @@ public class NetworkSwitchServiceTest {
 
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         // System.out.println(mockingDetails(carrier).printInvocations());
         // System.out.println(mockingDetails(switchRepository).printInvocations());
@@ -679,6 +679,193 @@ public class NetworkSwitchServiceTest {
                                         LinkStatus.of(ports.get(0).getState()));
     }
 
+    @Test
+    public void newSwitchWithWrongSynchronizationResponse() {
+
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+        service.switchEvent(switchAddEvent);
+
+        RulesSyncEntry rulesSyncEntry =
+                new RulesSyncEntry(singletonList(Cookie.FORWARD_FLOW_COOKIE_MASK | 1), emptyList(), emptyList(),
+                        emptyList(), emptyList(), emptyList());
+        MetersSyncEntry metersSyncEntry =
+                new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry);
+
+        // for a randomly generated key in SwitchFsm
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+
+        verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        service.switchManagerResponse(response, captor.getValue());
+
+        verify(carrier, times(SYNC_ATTEMPTS)).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        service.switchManagerResponse(response, captor.getValue());
+
+        verifyNewSwitchAfterSwitchSync(ports);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void newSwitchWithSynchronizationErrorResponse() {
+
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+        service.switchEvent(switchAddEvent);
+
+        // for a randomly generated key in SwitchFsm
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+
+        verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        SwitchSyncErrorData errorData = new SwitchSyncErrorData(alphaDatapath, null, null, null);
+        service.switchManagerErrorResponse(errorData, captor.getValue());
+
+        verify(carrier, times(SYNC_ATTEMPTS)).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        service.switchManagerErrorResponse(errorData, captor.getValue());
+
+        verifyNewSwitchAfterSwitchSync(ports);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void newSwitchWithSynchronizationTimeout() {
+
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+        service.switchEvent(switchAddEvent);
+
+        // for a randomly generated key in SwitchFsm
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+
+        verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        service.switchManagerTimeout(alphaDatapath, captor.getValue());
+
+        verify(carrier, times(SYNC_ATTEMPTS)).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        service.switchManagerTimeout(alphaDatapath, captor.getValue());
+
+        verifyNewSwitchAfterSwitchSync(ports);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void newSwitchWithSynchronizationSuccessAfterError() {
+
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
+        service.switchEvent(switchAddEvent);
+
+        // for a randomly generated key in SwitchFsm
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+
+        verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        SwitchSyncErrorData errorData = new SwitchSyncErrorData(alphaDatapath, null, null, null);
+        service.switchManagerErrorResponse(errorData, captor.getValue());
+
+        RulesSyncEntry rulesSyncEntry =
+                new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        MetersSyncEntry metersSyncEntry =
+                new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry);
+
+
+        verify(carrier, times(SYNC_ATTEMPTS)).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+        service.switchManagerResponse(response, captor.getValue());
+
+        verifyNewSwitchAfterSwitchSync(ports);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    private void verifySwitchSync(NetworkSwitchService service) {
+        // for a randomly generated key in SwitchFsm
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(carrier).sendSwitchSynchronizeRequest(captor.capture(), eq(alphaDatapath));
+
+        RulesSyncEntry rulesSyncEntry =
+                new RulesSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        MetersSyncEntry metersSyncEntry =
+                new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchSyncResponse response = new SwitchSyncResponse(alphaDatapath, rulesSyncEntry, metersSyncEntry);
+        service.switchManagerResponse(response, captor.getValue());
+    }
+
+    private void verifyNewSwitchAfterSwitchSync(List<SpeakerSwitchPortView> ports) {
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), null);
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), 1);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), null);
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), 2);
+
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), true);
+        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), true);
+        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
+
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
+                LinkStatus.of(ports.get(2).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()),
+                LinkStatus.of(ports.get(3).getState()));
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()),
+                LinkStatus.of(ports.get(0).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
+                LinkStatus.of(ports.get(0).getState()));
+
+        verify(switchRepository).createOrUpdate(argThat(sw ->
+                sw.getStatus() == SwitchStatus.ACTIVE && sw.getSwitchId() == alphaDatapath));
+        verify(switchPropertiesRepository).createOrUpdate(argThat(sf ->
+                sf.getSupportedTransitEncapsulation().equals(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
+    }
+
     private List<SpeakerSwitchPortView> doSpeakerOnline(NetworkSwitchService service, Set<SwitchFeature> features) {
         List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
         SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
@@ -694,6 +881,7 @@ public class NetworkSwitchServiceTest {
                 speakerSwitchView);
 
         service.switchEvent(switchAddEvent);
+        verifySwitchSync(service);
 
         return ports;
     }
