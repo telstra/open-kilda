@@ -99,7 +99,8 @@ public final class FlowRerouteFsm
     private FlowEncapsulationType originalEncapsulationType;
 
     private FlowEncapsulationType newEncapsulationType;
-    private Collection<FlowResources> newResources;
+    private FlowResources newPrimaryResources;
+    private FlowResources newProtectedResources;
     private PathId newPrimaryForwardPath;
     private PathId newPrimaryReversePath;
     private PathId newProtectedForwardPath;
@@ -370,13 +371,6 @@ public final class FlowRerouteFsm
                                              PathComputer pathComputer, FlowResourcesManager resourcesManager) {
         return builder(persistenceManager, pathComputer, resourcesManager)
                 .newStateMachine(state, commandContext, carrier);
-    }
-
-    public void addNewResources(FlowResources flowResources) {
-        if (newResources == null) {
-            newResources = new ArrayList<>();
-        }
-        newResources.add(flowResources);
     }
 
     public void addOldResources(FlowResources flowResources) {
