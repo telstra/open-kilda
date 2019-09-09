@@ -26,6 +26,7 @@ import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.SwitchFeature;
@@ -69,7 +70,7 @@ abstract class BfdCommand extends Command {
             IOFSwitch sw = switchManager.lookupSwitch(target);
 
             validate(sw);
-            try (Session session = sessionService.open(sw)) {
+            try (Session session = sessionService.open(new MessageContext(getContext().getCorrelationId()), sw)) {
                 handle(session);
             }
         } catch (SwitchOperationException e) {
