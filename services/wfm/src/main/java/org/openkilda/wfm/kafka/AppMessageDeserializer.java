@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.wfm.kafka;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.applications.AppMessage;
+import org.openkilda.messaging.Utils;
 
-@Data
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public abstract class AppMessage extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 6240948199752767444L;
+import lombok.extern.slf4j.Slf4j;
 
-    @JsonProperty("timestamp")
-    private long timestamp;
+import java.io.IOException;
 
-    @JsonProperty("correlation_id")
-    private String correlationId;
+@Slf4j
+public class AppMessageDeserializer extends Deserializer<AppMessage> {
+
+    @Override
+    protected AppMessage jsonDecode(byte[] data) throws IOException {
+        return Utils.MAPPER.readValue(data, AppMessage.class);
+    }
 }
-

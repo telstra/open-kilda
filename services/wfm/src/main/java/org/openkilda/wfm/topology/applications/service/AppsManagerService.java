@@ -17,6 +17,10 @@ package org.openkilda.wfm.topology.applications.service;
 
 import static java.lang.String.format;
 
+import org.openkilda.applications.command.apps.CreateExclusion;
+import org.openkilda.applications.command.apps.RemoveExclusion;
+import org.openkilda.applications.info.apps.CreateExclusionResult;
+import org.openkilda.applications.info.apps.RemoveExclusionResult;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
 import org.openkilda.messaging.info.apps.FlowAppsResponse;
@@ -86,5 +90,31 @@ public class AppsManagerService {
         throw new IllegalArgumentException(
                 format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
                         switchId, port, vlan));
+    }
+
+    /**
+     * Create exclusion for the flow.
+     */
+    public CreateExclusionResult processCreateExclusion(CreateExclusion payload) throws FlowNotFoundException {
+        return CreateExclusionResult.builder()
+                .flowId(payload.getFlowId())
+                .endpoint(payload.getEndpoint())
+                .application(payload.getApplication())
+                .exclusion(payload.getExclusion())
+                .success(false)
+                .build();
+    }
+
+    /**
+     * Remove exclusion for the flow.
+     */
+    public RemoveExclusionResult processRemoveExclusion(RemoveExclusion payload) throws FlowNotFoundException {
+        return RemoveExclusionResult.builder()
+                .flowId(payload.getFlowId())
+                .endpoint(payload.getEndpoint())
+                .application(payload.getApplication())
+                .exclusion(payload.getExclusion())
+                .success(false)
+                .build();
     }
 }

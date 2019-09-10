@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.wfm.topology.applications;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.applications.info.InfoAppData;
+import org.openkilda.messaging.MessageData;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.error.ErrorType;
 
-@Data
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public abstract class AppMessage extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 6240948199752767444L;
+public interface AppsManagerCarrier {
 
-    @JsonProperty("timestamp")
-    private long timestamp;
+    void emitNorthboundErrorMessage(ErrorType errorType, String errorMessage);
 
-    @JsonProperty("correlation_id")
-    private String correlationId;
+    void emitNorthboundResponse(MessageData payload);
+
+    void emitSpeakerCommand(CommandData payload);
+
+    void emitNotification(InfoAppData payload);
 }
-

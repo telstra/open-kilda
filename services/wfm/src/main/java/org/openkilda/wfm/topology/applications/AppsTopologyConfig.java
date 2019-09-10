@@ -19,11 +19,23 @@ import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 public interface AppsTopologyConfig extends AbstractTopologyConfig {
 
+    default String getKafkaApplicationsTopic() {
+        return getKafkaTopics().getAppsTopic();
+    }
+
+    default String getKafkaAppsNotificationTopic() {
+        return getKafkaTopics().getAppsNotificationTopic();
+    }
+
     default String getKafkaApplicationsNbTopic() {
         return getKafkaTopics().getTopoAppsNbTopic();
     }
 
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
+    }
+
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 }

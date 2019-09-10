@@ -17,6 +17,14 @@ package org.openkilda.wfm.topology.applications.bolt;
 
 import static java.lang.String.format;
 
+import org.openkilda.applications.AppData;
+import org.openkilda.applications.AppMessage;
+import org.openkilda.applications.command.CommandAppData;
+import org.openkilda.applications.command.CommandAppMessage;
+import org.openkilda.applications.command.apps.CreateExclusion;
+import org.openkilda.applications.command.apps.RemoveExclusion;
+import org.openkilda.applications.info.ExclusionInfoData;
+import org.openkilda.applications.info.InfoAppData;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
@@ -31,6 +39,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.topology.applications.AppsManagerCarrier;
 import org.openkilda.wfm.topology.applications.AppsTopology.ComponentId;
 import org.openkilda.wfm.topology.applications.service.AppsManagerService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -51,6 +60,7 @@ public class AppsManager extends AbstractBolt {
     private final PersistenceManager persistenceManager;
 
     private transient AppsManagerService service;
+    private transient AppsManagerCarrierImpl carrier;
 
     public AppsManager(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -59,37 +69,61 @@ public class AppsManager extends AbstractBolt {
     @Override
     protected void init() {
         service = new AppsManagerService(persistenceManager);
+        carrier = new AppsManagerCarrierImpl();
     }
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
-        if (ComponentId.APPS_SPOUT.toString().equals(source)) {
+        if (ComponentId.APPS_NB_SPOUT.toString().equals(source)) {
+            processNbInput(input);
+        } else if (ComponentId.APPS_SPOUT.toString().equals(source)) {
             processInput(input);
         } else {
             unhandledInput(input);
         }
     }
 
-    private void processInput(Tuple input) throws PipelineException {
+    private void processNbInput(Tuple input) throws PipelineException {
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
         try {
             processMessage(message);
         } catch (FlowNotFoundException e) {
             log.error("Flow not found", e);
-            emitErrorMessage(ErrorType.NOT_FOUND, e.getMessage());
+            carrier.emitNorthboundErrorMessage(ErrorType.NOT_FOUND, e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("Invalid request parameters", e);
-            emitErrorMessage(ErrorType.PARAMETERS_INVALID, e.getMessage());
+            carrier.emitNorthboundErrorMessage(ErrorType.PARAMETERS_INVALID, e.getMessage());
         } catch (Exception e) {
             log.error("Unhandled exception", e);
-            emitErrorMessage(ErrorType.INTERNAL_ERROR, e.getMessage());
+            carrier.emitNorthboundErrorMessage(ErrorType.INTERNAL_ERROR, e.getMessage());
+        }
+    }
+
+    private void processInput(Tuple input) throws PipelineException {
+        AppMessage message = pullValue(input, FIELD_ID_PAYLOAD, AppMessage.class);
+        try {
+            processAppMessage(message);
+        } catch (FlowNotFoundException e) {
+            log.error("Flow not found", e);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid request parameters", e);
+        } catch (Exception e) {
+            log.error("Unhandled exception", e);
         }
     }
 
     private void processMessage(Message message) throws FlowNotFoundException {
         if (message instanceof CommandMessage) {
             processCommandData(((CommandMessage) message).getData());
+        } else {
+            throw new UnsupportedOperationException(format("Unexpected message type \"%s\"", message.getClass()));
+        }
+    }
+
+    private void processAppMessage(AppMessage message) throws FlowNotFoundException {
+        if (message instanceof CommandAppMessage) {
+            processCommandAppData(((CommandAppMessage) message).getPayload());
         } else {
             throw new UnsupportedOperationException(format("Unexpected message type \"%s\"", message.getClass()));
         }
@@ -107,25 +141,62 @@ public class AppsManager extends AbstractBolt {
             throw new UnsupportedOperationException(format("Unexpected message payload \"%s\"", payload.getClass()));
         }
 
-        emitNorthboundResponse(response);
+        carrier.emitNorthboundResponse(response);
     }
 
-    private void emitErrorMessage(ErrorType errorType, String errorMessage) {
-        ErrorData errorData = new ErrorData(errorType, errorMessage, "Error in the Apps Manager");
-        emitNorthboundResponse(errorData);
-    }
+    private void processCommandAppData(CommandAppData payload) throws FlowNotFoundException {
+        ExclusionInfoData response;
+        if (payload instanceof CreateExclusion) {
+            response = service.processCreateExclusion((CreateExclusion) payload);
+        } else if (payload instanceof RemoveExclusion) {
+            response = service.processRemoveExclusion((RemoveExclusion) payload);
+        } else {
+            throw new UnsupportedOperationException(format("Unexpected app message payload \"%s\"",
+                    payload.getClass()));
+        }
 
-    private void emitNorthboundResponse(MessageData payload) {
-        String key = getCommandContext().getCorrelationId();
-        emit(getCurrentTuple(), makeNorthboundTuple(key, payload));
-    }
-
-    private Values makeNorthboundTuple(String key, MessageData payload) {
-        return new Values(key, payload, getCommandContext());
+        carrier.emitNotification(response);
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
-        streamManager.declare(STREAM_FIELDS);
+        streamManager.declareStream(NorthboundEncoder.INPUT_STREAM_ID, STREAM_FIELDS);
+        streamManager.declareStream(SpeakerEncoder.INPUT_STREAM_ID, STREAM_FIELDS);
+        streamManager.declareStream(NotificationsEncoder.INPUT_STREAM_ID, STREAM_FIELDS);
+    }
+
+    private class AppsManagerCarrierImpl implements AppsManagerCarrier {
+
+        @Override
+        public void emitNorthboundErrorMessage(ErrorType errorType, String errorMessage) {
+            ErrorData errorData = new ErrorData(errorType, errorMessage, "Error in the Apps Manager");
+            emitNorthboundResponse(errorData);
+        }
+
+        @Override
+        public void emitNorthboundResponse(MessageData payload) {
+            String key = getCommandContext().getCorrelationId();
+            emit(NorthboundEncoder.INPUT_STREAM_ID, getCurrentTuple(), makeTuple(key, payload));
+        }
+
+        @Override
+        public void emitSpeakerCommand(CommandData payload) {
+            String key = getCommandContext().getCorrelationId();
+            emit(SpeakerEncoder.INPUT_STREAM_ID, getCurrentTuple(), makeTuple(key, payload));
+        }
+
+        @Override
+        public void emitNotification(InfoAppData payload) {
+            String key = getCommandContext().getCorrelationId();
+            emit(NotificationsEncoder.INPUT_STREAM_ID, getCurrentTuple(), makeAppTuple(key, payload));
+        }
+
+        private Values makeTuple(String key, MessageData payload) {
+            return new Values(key, payload, getCommandContext());
+        }
+
+        private Values makeAppTuple(String key, AppData payload) {
+            return new Values(key, payload, getCommandContext());
+        }
     }
 }

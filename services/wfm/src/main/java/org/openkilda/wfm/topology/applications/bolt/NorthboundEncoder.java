@@ -20,4 +20,5 @@ import org.openkilda.wfm.topology.applications.AppsTopology.ComponentId;
 
 public class NorthboundEncoder extends KafkaEncoder {
     public static final String BOLT_ID = ComponentId.NORTHBOUND_ENCODER.toString();
+    public static final String INPUT_STREAM_ID = "nb.stream";
 }

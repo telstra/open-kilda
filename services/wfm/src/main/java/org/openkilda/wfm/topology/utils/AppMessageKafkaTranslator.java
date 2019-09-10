@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.wfm.topology.utils;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.applications.AppMessage;
+import org.openkilda.wfm.CommandContext;
 
-@Data
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-public abstract class AppMessage extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 6240948199752767444L;
+import lombok.extern.slf4j.Slf4j;
 
-    @JsonProperty("timestamp")
-    private long timestamp;
+@Slf4j
+public class AppMessageKafkaTranslator extends GenericKafkaRecordTranslator<AppMessage, AppMessage> {
+    @Override
+    protected AppMessage decodePayload(AppMessage payload) {
+        return payload;
+    }
 
-    @JsonProperty("correlation_id")
-    private String correlationId;
+    @Override
+    protected CommandContext makeContext(AppMessage payload) {
+        return new CommandContext(payload);
+    }
 }
-

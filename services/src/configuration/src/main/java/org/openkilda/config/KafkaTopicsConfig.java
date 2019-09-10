@@ -227,4 +227,12 @@ public interface KafkaTopicsConfig {
     @Key("topo.apps.nb")
     @Default("kilda.nb.apps_request.priv")
     String getTopoAppsNbTopic();
+
+    @Key("apps")
+    @Default("kilda.apps.pub")
+    String getAppsTopic();
+
+    @Key("apps.notification")
+    @Default("kilda.apps.notification.pub")
+    String getAppsNotificationTopic();
 }
