@@ -23,6 +23,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -959,8 +960,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         FlowPayload.builder()
                 .id(flow.flowId)
-                .source(new FlowEndpointPayload(source.switchId, source.portNumber, source.vlanId))
-                .destination(new FlowEndpointPayload(destination.switchId, destination.portNumber, destination.vlanId))
+                .source(new FlowEndpointPayload(source.switchId, source.portNumber, source.vlanId,
+                        new DetectConnectedDevicesPayload(false, false)))
+                .destination(new FlowEndpointPayload(destination.switchId, destination.portNumber, destination.vlanId,
+                        new DetectConnectedDevicesPayload(false, false)))
                 .maximumBandwidth(flow.maximumBandwidth)
                 .ignoreBandwidth(flow.ignoreBandwidth)
                 .build()

@@ -26,7 +26,8 @@ import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.openkilda.floodlight.command.MessageWriter;
-import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.command.SessionProxy;
+import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.meter.InstallMeterCommand;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
@@ -100,9 +101,9 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
-        List<MessageWriter> commands = new ArrayList<>(2);
+        List<SessionProxy> commands = new ArrayList<>(2);
         FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
 
         getMeterCommand(sw, moduleContext)
@@ -218,7 +219,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         return meterInstruction;
     }
 
-    private Optional<MessageWriter> getMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    private Optional<SessionProxy> getMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         if (meterId == null) {
             getLogger().debug("Skip meter installation. No meter required for flow {}", flowId);
@@ -226,7 +227,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         }
 
         try {
-            OfCommand meterCommand = new InstallMeterCommand(messageContext, switchId, meterId, bandwidth);
+            SpeakerCommand meterCommand = new InstallMeterCommand(messageContext, switchId, meterId, bandwidth);
             return meterCommand.getCommands(sw, moduleContext).stream().findFirst();
         } catch (UnsupportedSwitchOperationException e) {
             getLogger().info("Skip meter {} installation for flow {} on switch {}: {}",

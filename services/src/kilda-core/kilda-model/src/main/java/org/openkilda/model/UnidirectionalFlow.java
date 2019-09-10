@@ -115,6 +115,22 @@ public class UnidirectionalFlow implements Serializable {
     }
 
     /**
+     * Get detect connected devices flags.
+     */
+    public DetectConnectedDevices getDetectConnectedDevices() {
+        if (forward) {
+            return getFlow().getDetectConnectedDevices();
+        } else {
+            // reverse flags
+            return new DetectConnectedDevices(
+                    getFlow().getDetectConnectedDevices().isDstLldp(),
+                    getFlow().getDetectConnectedDevices().isDstArp(),
+                    getFlow().getDetectConnectedDevices().isSrcLldp(),
+                    getFlow().getDetectConnectedDevices().isSrcArp());
+        }
+    }
+
+    /**
      * Set the status (propagate to wrapped flow and flowPath).
      */
     public void setStatus(FlowStatus status) {

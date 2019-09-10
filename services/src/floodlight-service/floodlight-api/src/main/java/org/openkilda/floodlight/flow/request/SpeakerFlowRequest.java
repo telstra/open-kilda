@@ -67,5 +67,4 @@ public abstract class SpeakerFlowRequest extends AbstractMessage {
         this.switchId = switchId;
         this.multiTable = multiTable;
     }
-
 }

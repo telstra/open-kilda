@@ -37,6 +37,7 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.LldpResources;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -764,12 +765,14 @@ public class FlowService extends BaseFlowService {
     /**
      * Deallocates resources of the flow path.
      *
-     * @param pathId            the flow path to be used to identify resources.
-     * @param unmaskedCookie    the flow cookie to be released.
-     * @param encapsulationType determine the encapsulation type used for resource allocation.
+     * @param pathId             the flow path to be used to identify resources.
+     * @param unmaskedCookie     the flow cookie to be released.
+     * @param unmaskedLldpCookie the flow LLDP cookie to be released.
+     * @param encapsulationType  determine the encapsulation type used for resource allocation.
      */
-    public void deallocateResources(PathId pathId, long unmaskedCookie, FlowEncapsulationType encapsulationType) {
-        flowResourcesManager.deallocatePathResources(pathId, unmaskedCookie, encapsulationType);
+    public void deallocateResources(PathId pathId, long unmaskedCookie, Long unmaskedLldpCookie,
+                                    FlowEncapsulationType encapsulationType) {
+        flowResourcesManager.deallocatePathResources(pathId, unmaskedCookie, unmaskedLldpCookie, encapsulationType);
     }
 
     /**
@@ -1279,6 +1282,8 @@ public class FlowService extends BaseFlowService {
                 .map(flowPath ->
                         new DeallocateFlowResourcesRequest(flowId,
                                 flowPath.getFlowPath().getCookie().getUnmaskedValue(),
+                                Optional.ofNullable(flowPath.getFlowPath().getLldpResources())
+                                        .map(LldpResources::getCookie).map(Cookie::getUnmaskedValue).orElse(null),
                                 flowPath.getFlowPath().getPathId(),
                                 flowPath.getFlowPath().getFlow().getEncapsulationType()))
                 .collect(Collectors.toList());

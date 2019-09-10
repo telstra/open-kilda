@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.service.session;
 
+import org.openkilda.messaging.MessageContext;
+
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 
@@ -24,8 +26,8 @@ import java.util.Map;
 class SwitchSessions {
     private final Map<Long, Session> sessionsByXid = new HashMap<>();
 
-    Session open(IOFSwitch sw) {
-        return new Session(this, sw);
+    Session open(IOFSwitch sw, MessageContext context) {
+        return new Session(this, sw, context);
     }
 
     void handleResponse(OFMessage message) {

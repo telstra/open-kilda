@@ -105,7 +105,7 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
                 log.debug("Allocating resources for a new protected path of flow {}", flowId);
                 FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
                 log.debug("Resources have been allocated: {}", flowResources);
-                stateMachine.addNewResources(flowResources);
+                stateMachine.setNewProtectedResources(flowResources);
 
                 FlowPathPair paths = createFlowPathPair(flow, potentialPath, flowResources);
                 log.debug("New protected path has been created: {}", paths);
@@ -121,5 +121,12 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
                 log.debug("Found the same protected path for flow {}. Skip creating of it.", flowId);
             }
         }
+    }
+
+    @Override
+    protected void onFailure(FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        stateMachine.setNewProtectedResources(null);
+        stateMachine.setNewProtectedForwardPath(null);
+        stateMachine.setNewProtectedReversePath(null);
     }
 }

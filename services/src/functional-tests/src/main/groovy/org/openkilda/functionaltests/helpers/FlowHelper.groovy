@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
@@ -285,7 +286,8 @@ class FlowHelper {
                 port = connectedTraffgens.find { allowedPorts.contains(it.switchPort) }?.switchPort ?: port
             }
         }
-        return new FlowEndpointPayload(sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())])
+        return new FlowEndpointPayload(sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())],
+                new DetectConnectedDevicesPayload(false, false))
     }
 
     /**
@@ -298,7 +300,12 @@ class FlowHelper {
 
     private String generateDescription() {
         //The health of autotest flows is always questionable
-        "autotest flow with ${faker.medical().symptoms().uncapitalize()}"
+        def descpription = [faker.shakespeare().asYouLikeItQuote(),
+                            faker.shakespeare().kingRichardIIIQuote(),
+                            faker.shakespeare().romeoAndJulietQuote(),
+                            faker.shakespeare().hamletQuote()]
+        def r = new Random()
+        "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
     }
 
     /**

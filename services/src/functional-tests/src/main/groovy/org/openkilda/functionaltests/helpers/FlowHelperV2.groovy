@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -207,7 +208,7 @@ class FlowHelperV2 {
     }
 
     static FlowEndpointPayload toV1(FlowEndpointV2 ep) {
-        new FlowEndpointPayload(ep.switchId, ep.portNumber, ep.vlanId)
+        new FlowEndpointPayload(ep.switchId, ep.portNumber, ep.vlanId, new DetectConnectedDevicesPayload(false, false))
     }
 
     /**
@@ -248,6 +249,11 @@ class FlowHelperV2 {
 
     private String generateDescription() {
         //The health of autotest flows is always questionable
-        "autotest flow with ${faker.medical().symptoms().uncapitalize()}"
+        def descpription = [faker.shakespeare().asYouLikeItQuote(),
+                            faker.shakespeare().kingRichardIIIQuote(),
+                            faker.shakespeare().romeoAndJulietQuote(),
+                            faker.shakespeare().hamletQuote()]
+        def r = new Random()
+        "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
     }
 }

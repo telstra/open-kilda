@@ -19,7 +19,8 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdTo
 
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.MessageWriter;
-import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.command.SessionProxy;
+import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.meter.RemoveMeterCommand;
 import org.openkilda.floodlight.error.OfDeleteException;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -84,8 +85,10 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw,
                                                                    FloodlightModuleContext moduleContext) {
+        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
+
         CompletableFuture<List<OFFlowStatsEntry>> entriesBeforeDeletion = dumpFlowTable(sw);
         CompletableFuture<List<OFFlowStatsEntry>> entriesAfterDeletion = entriesBeforeDeletion
                 .thenCompose(ignored -> removeRules(sw, sessionService, moduleContext))
@@ -96,9 +99,9 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
-        List<MessageWriter> commands = new ArrayList<>();
+        List<SessionProxy> commands = new ArrayList<>();
 
         getDeleteMeterCommand(sw, moduleContext)
                 .ifPresent(commands::add);
@@ -122,7 +125,7 @@ public class FlowRemoveCommand extends FlowCommand {
     private CompletableFuture<Optional<OFMessage>> removeRules(IOFSwitch sw, SessionService sessionService,
                                                                FloodlightModuleContext moduleContext) {
         try {
-            return super.writeCommands(sw, sessionService, moduleContext);
+            return super.writeCommands(sw, moduleContext);
         } catch (SwitchOperationException e) {
             throw new CompletionException(e);
         }
@@ -161,14 +164,14 @@ public class FlowRemoveCommand extends FlowCommand {
         return builder.build();
     }
 
-    private Optional<MessageWriter> getDeleteMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    private Optional<SessionProxy> getDeleteMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         if (meterId == null) {
             return Optional.empty();
         }
 
         try {
-            OfCommand meterCommand = new RemoveMeterCommand(messageContext, switchId, meterId);
+            SpeakerCommand meterCommand = new RemoveMeterCommand(messageContext, switchId, meterId);
             return meterCommand.getCommands(sw, moduleContext).stream().findFirst();
         } catch (UnsupportedSwitchOperationException e) {
             getLogger().debug("Skip meter {} deletion for flow {} on switch {}: {}",

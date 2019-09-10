@@ -19,6 +19,8 @@ import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
+import org.openkilda.converters.LldpResourcesConverter;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -85,6 +87,9 @@ public class FlowPath implements Serializable {
     @Convert(graphPropertyType = Long.class)
     private Cookie cookie;
 
+    @Convert(LldpResourcesConverter.class)
+    private LldpResources lldpResources;
+
     @Property(name = "meter_id")
     @Convert(graphPropertyType = Long.class)
     private MeterId meterId;
@@ -117,7 +122,7 @@ public class FlowPath implements Serializable {
 
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                    @NonNull Flow flow, Cookie cookie, MeterId meterId,
+                    @NonNull Flow flow, Cookie cookie, MeterId meterId, LldpResources lldpResources,
                     long latency, long bandwidth, boolean ignoreBandwidth,
                     Instant timeCreate, Instant timeModify,
                     FlowPathStatus status, List<PathSegment> segments) {
@@ -126,6 +131,7 @@ public class FlowPath implements Serializable {
         this.destSwitch = destSwitch;
         this.flow = flow;
         this.cookie = cookie;
+        this.lldpResources = lldpResources;
         this.meterId = meterId;
         this.latency = latency;
         this.bandwidth = bandwidth;

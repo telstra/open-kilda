@@ -65,14 +65,15 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
     }
 
     @Override
-    public Optional<FlowMeter> findByPathId(PathId pathId) {
+    public Collection<FlowMeter> findByPathId(PathId pathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
 
         Collection<FlowMeter> meters = loadAll(pathIdFilter);
-        if (meters.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Meter entity by path (%s)", pathId));
+        if (meters.size() > 2) {
+            throw new PersistenceException(format("Found more that 2 Meter entity by path (%s). "
+                    + " One path must have up to 2 meters: ingress meter and LLDP meter.", pathId));
         }
-        return meters.isEmpty() ? Optional.empty() : Optional.of(meters.iterator().next());
+        return meters;
     }
 
     @Override

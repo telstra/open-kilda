@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.topology.network.storm.bolt;
 
-import org.openkilda.model.LldpResources;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.network.storm.ComponentId;
 
-import java.util.Collection;
-import java.util.Optional;
-
-public interface LldpResourcesRepository extends Repository<LldpResources> {
-    Optional<LldpResources> findByFlowId(String flowId);
-
-    Collection<LldpResources> findByFlowIds(Collection<String> flowIds);
+public class SwitchManagerEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.SWMANAGER_ENCODER.toString();
 }

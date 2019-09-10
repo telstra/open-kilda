@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command.meter;
 
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.MessageWriter;
+import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
@@ -51,7 +52,7 @@ public class RemoveMeterCommand extends MeterCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws UnsupportedSwitchOperationException {
         FeatureDetectorService featureDetector = moduleContext.getServiceImpl(FeatureDetectorService.class);
         checkSwitchSupportCommand(sw, featureDetector);

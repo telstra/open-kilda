@@ -20,6 +20,8 @@ import org.openkilda.floodlight.error.SessionConnectionLostException;
 import org.openkilda.floodlight.error.SessionErrorResponseException;
 import org.openkilda.floodlight.error.SessionRevertException;
 import org.openkilda.floodlight.error.SwitchWriteException;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.messaging.MessageContext;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -55,6 +57,7 @@ public class Session implements AutoCloseable {
 
     private final SwitchSessions group;
     private final IOFSwitch sw;
+    private final MessageContext context;
 
     private CompletableFuture<Optional<OFMessage>> closingBarrier;
     private boolean error = false;
@@ -62,9 +65,10 @@ public class Session implements AutoCloseable {
 
     private final Map<Long, CompletableFuture<Optional<OFMessage>>> requestsByXid = new ConcurrentHashMap<>();
 
-    Session(SwitchSessions group, IOFSwitch sw) {
+    Session(SwitchSessions group, IOFSwitch sw, MessageContext context) {
         this.group = group;
         this.sw = sw;
+        this.context = context;
     }
 
     /**
@@ -125,9 +129,13 @@ public class Session implements AutoCloseable {
         }
         completed = true;
 
-        SessionConnectionLostException e = new SessionConnectionLostException(sw.getId());
-        incompleteRequestsStream()
-                .forEach(entry -> entry.completeExceptionally(e));
+        // Setup correlationId (because this method called asynchronously by FL core).
+        try (CorrelationContext.CorrelationContextClosable closable = CorrelationContext.create(
+                context.getCorrelationId())) {
+            SessionConnectionLostException e = new SessionConnectionLostException(sw.getId());
+            incompleteRequestsStream()
+                    .forEach(entry -> entry.completeExceptionally(e));
+        }
     }
 
     /**
@@ -149,19 +157,23 @@ public class Session implements AutoCloseable {
             return false;
         }
 
-        if (OFType.ERROR == message.getType()) {
-            future.completeExceptionally(new SessionErrorResponseException(sw.getId(), (OFErrorMsg) message));
-        } else {
-            future.complete(Optional.of(message));
-        }
+        // Setup correlationId (because this method called asynchronously by FL core).
+        try (CorrelationContext.CorrelationContextClosable closable = CorrelationContext.create(
+                context.getCorrelationId())) {
+            if (OFType.ERROR == message.getType()) {
+                future.completeExceptionally(new SessionErrorResponseException(sw.getId(), (OFErrorMsg) message));
+            } else {
+                future.complete(Optional.of(message));
+            }
 
-        // check session completion (we have received all responses, if we got response for closing barrier request)
-        if (closingBarrier.isDone()) {
-            incompleteRequestsStream()
-                    .forEach(entry -> entry.complete(Optional.empty()));
-            return true;
+            // check session completion (we have received all responses, if we got response for closing barrier request)
+            if (closingBarrier.isDone()) {
+                incompleteRequestsStream()
+                        .forEach(entry -> entry.complete(Optional.empty()));
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 
     Set<Long> getAllXids() {

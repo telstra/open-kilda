@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command;
 import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
+import org.openkilda.messaging.MessageContext;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -31,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
 @AllArgsConstructor
 @Getter
 @Slf4j
-public class MessageWriter {
+public class MessageWriter implements SessionProxy {
 
     final OFMessage ofMessage;
 
@@ -42,9 +43,10 @@ public class MessageWriter {
      * @return response.
      * @throws SwitchWriteException if error occurred.
      */
-    public CompletableFuture<Optional<OFMessage>> writeTo(IOFSwitch sw, SessionService sessionService)
+    public CompletableFuture<Optional<OFMessage>> writeTo(
+            IOFSwitch sw, SessionService sessionService, MessageContext context)
             throws SwitchWriteException {
-        try (Session session = sessionService.open(sw)) {
+        try (Session session = sessionService.open(context, sw)) {
             return session.write(ofMessage)
                     .whenComplete((result, error) -> {
                         if (error == null) {

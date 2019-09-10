@@ -28,10 +28,12 @@ import org.openkilda.wfm.topology.switchmanager.bolt.SpeakerWorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import com.google.common.collect.Lists;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopologyConfig> {
@@ -66,7 +68,9 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .workerComponent(SpeakerWorkerBolt.ID)
                 .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
                 .build();
-        builder.setSpout(HUB_SPOUT, buildKafkaSpout(topologyConfig.getKafkaSwitchManagerNbTopic(), HUB_SPOUT));
+        List<String> inputTopics = Lists.newArrayList(topologyConfig.getKafkaSwitchManagerNbTopic(),
+                topologyConfig.getKafkaSwitchManagerNetworkTopic());
+        builder.setSpout(HUB_SPOUT, buildKafkaSpout(inputTopics, HUB_SPOUT));
         builder.setBolt(SwitchManagerHub.ID, new SwitchManagerHub(hubConfig, persistenceManager,
                 topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 topologyConfig.getNewParallelism())

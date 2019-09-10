@@ -46,7 +46,7 @@ import java.util.UUID;
 /**
  * Convert {@link UnidirectionalFlow} to {@link FlowDto} and back.
  */
-@Mapper(uses = {FlowPathMapper.class}, imports = {FlowStatusDetails.class})
+@Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class}, imports = {FlowStatusDetails.class})
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
@@ -290,6 +290,7 @@ public abstract class FlowMapper {
                 .timeCreate(map(flow.getCreatedTime()))
                 .timeModify(map(flow.getLastUpdated()))
                 .pinned(flow.isPinned())
+                .detectConnectedDevices(DetectConnectedDevicesMapper.INSTANCE.map(flow.getDetectConnectedDevices()))
                 .build();
     }
 

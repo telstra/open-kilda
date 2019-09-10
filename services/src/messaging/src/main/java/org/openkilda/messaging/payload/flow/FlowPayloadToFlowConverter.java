@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.payload.flow;
 
+import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 
 /**
@@ -39,7 +40,12 @@ public final class FlowPayloadToFlowConverter {
                 flowPayload.getDestination().getSwitchDpId(),
                 flowPayload.getDestination().getPortId(),
                 flowPayload.getDestination().getVlanId(),
-                flowPayload.isPinned());
+                flowPayload.isPinned(),
+                new DetectConnectedDevicesDto(
+                        flowPayload.getSource().getDetectConnectedDevices().isLldp(),
+                        flowPayload.getSource().getDetectConnectedDevices().isArp(),
+                        flowPayload.getDestination().getDetectConnectedDevices().isLldp(),
+                        flowPayload.getDestination().getDetectConnectedDevices().isArp()));
     }
 
     private FlowPayloadToFlowConverter() {
