@@ -15,11 +15,20 @@
 -  [#2771](https://github.com/telstra/open-kilda/pull/2771) Minor improvements in FlowSyncSpec [**tests**]
 -  [#2773](https://github.com/telstra/open-kilda/pull/2773) Minor timeout increase for better test stability [**tests**]
 -  [#2652](https://github.com/telstra/open-kilda/pull/2652) Propagate correlation id into completable future callbacks [**floodlight**]
+-  [#2777](https://github.com/telstra/open-kilda/pull/2777) Fixed processing an activated switch if the meterEntry is null in the synchronization response. [**storm-topologies**]
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.34.0...v1.35.0).
 
 ### Affected Components:
 nb, fl, network, flow, swmanager, flow-hs
+
+### Upgrade notes:
+If you have an older version of Kilda installed, then you must migrate the data stored in Neo4j
+before you deploy and start this version. You should execute migration scripts before starting of deployment:
+ - [1.11 update-constraints-changelog.xml](https://github.com/telstra/open-kilda/blob/v1.35.0/services/neo4j/migrations/1.11-lldp-resources/1-update-constraints-changelog.xml)
+
+In case of any issues you are able to rollback 1.8 changes using:
+ - [1.11 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.35.0/services/neo4j/migrations/1.11-lldp-resources/rollback.cql)
 
 ---
 
