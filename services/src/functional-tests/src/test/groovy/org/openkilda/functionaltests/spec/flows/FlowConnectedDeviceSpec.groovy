@@ -37,7 +37,7 @@ import javax.inject.Provider
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
 Verify allocated Connected Devices resources and installed rules.""")
-@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp/lldp-catching.puml")
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 class FlowConnectedDeviceSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -78,14 +78,13 @@ srcLldp=#srcEnabled and dstLldp=#dstEnabled"() {
         }
 
         then: "Getting connecting devices shows corresponding devices on each endpoint"
-        Wrappers.retry(3, 0.5) { //need some time for devices to appear
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             with(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (srcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (dstEnabled ? 1 : 0)
                 srcEnabled ? verifyEquals(it.source.lldp.first(), srcData) : true
                 dstEnabled ? verifyEquals(it.destination.lldp.first(), dstData) : true
             }
-            true
         }
 
         and: "Delete the flow"
@@ -142,14 +141,13 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         }
 
         then: "Getting connecting devices shows corresponding devices on each endpoint according to updated status"
-        Wrappers.retry(3, 0.5) { //need some time for devices to appear
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             with(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (newSrcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (newDstEnabled ? 1 : 0)
                 newSrcEnabled ? verifyEquals(it.source.lldp.first(), srcData) : true
                 newDstEnabled ? verifyEquals(it.destination.lldp.first(), dstData) : true
             }
-            true
         }
 
         and: "Cleanup: delete the flow"
@@ -187,13 +185,12 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         }
 
         then: "Connected device is recognized and saved"
-        Wrappers.retry(3, 0.5) { //need some time for devices to appear
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == 1
                 it.destination.lldp.empty
                 verifyEquals(it.source.lldp[0], lldpData)
             }
-            true
         }
 
         when: "Remove the flow"
@@ -242,14 +239,13 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         }
 
         then: "Getting connecting devices shows corresponding devices on each endpoint"
-        Wrappers.retry(3, 0.5) { //need some time for devices to appear
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             with(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (srcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (dstEnabled ? 1 : 0)
                 srcEnabled ? verifyEquals(it.source.lldp.first(), srcData) : true
                 dstEnabled ? verifyEquals(it.destination.lldp.first(), dstData) : true
             }
-            true
         }
 
         and: "Cleanup: delete the flow"
@@ -287,12 +283,11 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         device.sendLldp(lldpData)
 
         then: "timeLastSeen is updated, timeFirstSeen remains the same"
-        Wrappers.retry(3, 0.5) {
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             def devices = northbound.getFlowConnectedDevices(flow.id).source.lldp
             assert devices.size() == 1
             assert devices[0].timeFirstSeen == devices1[0].timeFirstSeen
             assert devices[0].timeLastSeen > devices1[0].timeLastSeen //yes, groovy can compare it properly
-            devices
         }
 
         cleanup: "Disconnect the device and remove the flow"
@@ -316,10 +311,8 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         device.sendLldp(lldpData2)
 
         then: "2 devices are registered for the flow"
-        Wrappers.retry(3, 0.5) {
-            def devices = northbound.getFlowConnectedDevices(flow.id).destination.lldp
-            assert devices.size() == 2
-            devices
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
+            assert northbound.getFlowConnectedDevices(flow.id).destination.lldp.size() == 2
         }
 
         when: "Same device (same mac address) sends lldp packet with updated port number"
