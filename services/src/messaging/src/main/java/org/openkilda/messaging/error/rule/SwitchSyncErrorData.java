@@ -20,25 +20,24 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Defines the payload of a Message representing an error of sync switch rules.
  */
 @Value
-@JsonSerialize
+@EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchSyncErrorData extends ErrorData {
 
-    @JsonIgnore
+    @JsonProperty("switch-id")
     private SwitchId switchId;
 
     @JsonCreator
-    public SwitchSyncErrorData(SwitchId switchId,
+    public SwitchSyncErrorData(@JsonProperty("switch-id") SwitchId switchId,
                                @JsonProperty("error-type") ErrorType errorType,
                                @JsonProperty("error-message") String errorMessage,
                                @JsonProperty("error-description") String errorDescription) {
