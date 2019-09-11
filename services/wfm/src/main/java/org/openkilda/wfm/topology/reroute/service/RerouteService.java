@@ -72,32 +72,42 @@ public class RerouteService {
         }
         Map<Flow, Set<PathId>> flowsForRerouting = groupFlowsForRerouting(affectedFlowPaths);
         for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
+            Flow flow = entry.getKey();
+
+            updateFlowPathsStateForFlow(switchId, port, flow);
+            flow.setStatus(flow.computeFlowStatus());
+            flowRepository.createOrUpdate(flow);
+
             sender.emitRerouteCommand(correlationId, entry.getKey(), entry.getValue(),
                     command.getReason());
         }
         Set<Flow> affectedPinnedFlows = groupAffectedPinnedFlows(affectedFlowPaths);
         for (Flow flow : affectedPinnedFlows) {
-            for (FlowPath fp : flow.getPaths()) {
-                boolean failedFlowPath = false;
-                for (PathSegment pathSegment : fp.getSegments()) {
-                    if (pathSegment.getSrcPort() == port
-                            && switchId.equals(pathSegment.getSrcSwitch().getSwitchId())
-                            || (pathSegment.getDestPort() == port
-                            && switchId.equals(pathSegment.getDestSwitch().getSwitchId()))) {
-                        pathSegment.setFailed(true);
-                        failedFlowPath = true;
-                        break;
-                    }
-                }
-                if (failedFlowPath) {
-                    fp.setStatus(FlowPathStatus.INACTIVE);
-                }
-            }
+            updateFlowPathsStateForFlow(switchId, port, flow);
             if (flow.getStatus() != FlowStatus.DOWN) {
                 flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.DOWN);
                 flow.setStatus(FlowStatus.DOWN);
             }
             flowRepository.createOrUpdate(flow);
+        }
+    }
+
+    private void updateFlowPathsStateForFlow(SwitchId switchId, int port, Flow flow) {
+        for (FlowPath fp : flow.getPaths()) {
+            boolean failedFlowPath = false;
+            for (PathSegment pathSegment : fp.getSegments()) {
+                if (pathSegment.getSrcPort() == port
+                        && switchId.equals(pathSegment.getSrcSwitch().getSwitchId())
+                        || (pathSegment.getDestPort() == port
+                        && switchId.equals(pathSegment.getDestSwitch().getSwitchId()))) {
+                    pathSegment.setFailed(true);
+                    failedFlowPath = true;
+                    break;
+                }
+            }
+            if (failedFlowPath) {
+                fp.setStatus(FlowPathStatus.INACTIVE);
+            }
         }
     }
 
@@ -115,35 +125,27 @@ public class RerouteService {
 
         for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
             Flow flow = entry.getKey();
-            if (flow.isPinned()) {
-                int failedFlowPathsCount = 0;
-                for (FlowPath flowPath : flow.getPaths()) {
-                    int failedSegmentsCount = 0;
-                    for (PathSegment pathSegment : flowPath.getSegments()) {
-                        if (pathSegment.isFailed()) {
-                            if (pathSegment.containsNode(switchId, port)) {
-                                pathSegment.setFailed(false);
-                            } else {
-                                failedSegmentsCount++;
-                            }
-                        }
-                    }
-                    if (flowPath.getStatus().equals(FlowPathStatus.INACTIVE)) {
-                        if (failedSegmentsCount == 0) {
-                            flowPath.setStatus(FlowPathStatus.ACTIVE);
+            for (FlowPath flowPath : flow.getPaths()) {
+                int failedSegmentsCount = 0;
+                for (PathSegment pathSegment : flowPath.getSegments()) {
+                    if (pathSegment.isFailed()) {
+                        if (pathSegment.containsNode(switchId, port)) {
+                            pathSegment.setFailed(false);
                         } else {
-                            failedFlowPathsCount++;
+                            failedSegmentsCount++;
                         }
                     }
-
                 }
-                if (failedFlowPathsCount == 0) {
-                    if (flow.getStatus() != FlowStatus.UP) {
-                        flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.UP);
-                        flow.setStatus(FlowStatus.UP);
+                if (flowPath.getStatus().equals(FlowPathStatus.INACTIVE)) {
+                    if (failedSegmentsCount == 0) {
+                        flowPath.setStatus(FlowPathStatus.ACTIVE);
                     }
                 }
-                flowRepository.createOrUpdate(flow);
+
+            }
+            flow.setStatus(flow.computeFlowStatus());
+            flowRepository.createOrUpdate(flow);
+            if (flow.isPinned()) {
                 log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
             } else {
                 sender.emitRerouteCommand(correlationId, entry.getKey(), entry.getValue(),
