@@ -52,6 +52,16 @@ public class AvailableNetwork {
      * Creates switches (if they are not created yet) and ISL between them.
      */
     public void addLink(Isl isl) {
+        addLink(isl, false);
+    }
+
+    /**
+     * Creates switches (if they are not created yet) and ISL between them.
+     * @param isl new isl
+     * @param errorOnDuplicates how to handle duplicate links, if true will throw exception on duplicate
+     * @throws IllegalArgumentException in case of duplicate isl
+     */
+    public void addLink(Isl isl, boolean errorOnDuplicates) {
         Node srcSwitch = getOrInitSwitch(isl.getSrcSwitch());
         Node dstSwitch = getOrInitSwitch(isl.getDestSwitch());
 
@@ -61,8 +71,9 @@ public class AvailableNetwork {
                 .build();
         boolean srcAdded = srcSwitch.getOutgoingLinks().add(edge);
         boolean dstAdded = dstSwitch.getIncomingLinks().add(edge);
-        if (!(srcAdded && dstAdded)) {
-            log.warn("Duplicate ISL has been passed to AvailableNetwork: {}", isl);
+        if (errorOnDuplicates && !(srcAdded && dstAdded)) {
+            String message = String.format("Duplicate ISL has been passed to AvailableNetwork: {}", isl);
+            throw new IllegalArgumentException(message);
         }
     }
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.35.1 (11/09/2019)
+
+### Features:
+-  [#2753](https://github.com/telstra/open-kilda/pull/2753) Design for LLDP Connected devices feature (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**docs**]
+
+### Bug Fixes:
+-  [#2784](https://github.com/telstra/open-kilda/pull/2784) Fixed JSON deserialization when switch sync error. (Issue: [#2783](https://github.com/telstra/open-kilda/issues/2783)) [**northbound**][**storm-topologies**]
+
+### Improvements:
+-  [#2778](https://github.com/telstra/open-kilda/pull/2778) Change logic of verification duplicate isl in PCE
+-  [#2775](https://github.com/telstra/open-kilda/pull/2775) add monitoring section in readme file for performance test [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.35.0...v1.35.1).
+
+### Affected Components:
+network, swmanager, nb
+
+---
+
 ## v1.35.0 (09/09/2019)
 
 ### Features:
