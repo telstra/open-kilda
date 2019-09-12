@@ -115,8 +115,10 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
                     def flow1 = getFlowHelper().randomFlow(switchPair, false)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
-                    flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src], [flow1.source.portNumber])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow2.destination.portNumber])
+                    flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src],
+                            [flow1.source.portNumber, flow2.source.portNumber])
+                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst],
+                            [flow2.destination.portNumber, flow1.source.portNumber])
                     flow2.source.vlanId = flow1.source.vlanId
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.id,
