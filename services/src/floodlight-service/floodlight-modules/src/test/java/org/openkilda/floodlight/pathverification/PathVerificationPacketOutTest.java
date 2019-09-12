@@ -40,7 +40,7 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 
 public class PathVerificationPacketOutTest extends FloodlightTestCase {
-    private static final String VERIFICATION_BCAST_PACKET_DST = "01:80:C2:00:00:00";
+    private static final String VERIFICATION_BCAST_PACKET_DST = "00:26:E1:FF:FF:FF";
     private PathVerificationService pvs;
     private InetSocketAddress srcIpTarget;
     private InetSocketAddress dstIpTarget;
