@@ -472,10 +472,118 @@ public class BestCostAndShortestPathFinderTest {
         return network;
     }
 
+    @Test
+    public void shouldFindNPath() throws  UnroutableFlowException {
+        AvailableNetwork network = buildTestNetworkForTestYensAlgorithm();
+        BestCostAndShortestPathFinder finder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        List<List<SwitchId>> expectedPaths = new ArrayList<>();
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_F));
+        List<List<Edge>> paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 1);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 2);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 3);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_E, SWITCH_ID_C, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 4);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_B, SWITCH_ID_C, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 5);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 6);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_C, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 7);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_D, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 8);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths
+                .add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 9);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths
+                .add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_D, SWITCH_ID_E, SWITCH_ID_C, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 10);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths
+                .add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_B, SWITCH_ID_C, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 11);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_C, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 12);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        expectedPaths
+                .add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_B, SWITCH_ID_C, SWITCH_ID_D, SWITCH_ID_E, SWITCH_ID_F));
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 13);
+        assertEquals(expectedPaths, convertPaths(paths));
+
+        paths = finder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 500);
+        assertEquals(expectedPaths, convertPaths(paths));
+    }
+
+    private AvailableNetwork buildTestNetworkForTestYensAlgorithm() {
+        /*
+         *   Topology:
+         *
+         *   A--B--C
+         *    \ | /|\
+         *     \|/ | \
+         *      D--E--F
+         */
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SWITCH_ID_A, SWITCH_ID_B, 1, 1, 3, 0, null, false);
+        addLink(network, SWITCH_ID_A, SWITCH_ID_D, 2, 1, 2, 0, null, false);
+        addLink(network, SWITCH_ID_B, SWITCH_ID_C, 2, 1, 4, 0, null, false);
+        addLink(network, SWITCH_ID_B, SWITCH_ID_D, 3, 2, 1, 0, null, false);
+        addLink(network, SWITCH_ID_C, SWITCH_ID_D, 2, 3, 2, 0, null, false);
+        addLink(network, SWITCH_ID_C, SWITCH_ID_E, 3, 1, 2, 0, null, false);
+        addLink(network, SWITCH_ID_C, SWITCH_ID_F, 4, 1, 1, 0, null, false);
+        addLink(network, SWITCH_ID_D, SWITCH_ID_E, 4, 2, 3, 0, null, false);
+        addLink(network, SWITCH_ID_E, SWITCH_ID_F, 3, 2, 2, 0, null, false);
+
+        network.reduceByWeight(WEIGHT_FUNCTION);
+        return network;
+    }
+
+    private List<List<SwitchId>> convertPaths(List<List<Edge>> paths) {
+        List<List<SwitchId>> convertedPaths = new ArrayList<>();
+        for (List<Edge> path : paths) {
+            List<SwitchId> convertedPath = new ArrayList<>();
+            for (Edge edge : path) {
+                convertedPath.add(edge.getSrcSwitch().getSwitchId());
+            }
+            convertedPath.add(path.get(path.size() - 1).getDestSwitch().getSwitchId());
+            convertedPaths.add(convertedPath);
+        }
+        return convertedPaths;
+    }
+
     private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
                          int cost, int latency, Instant timeUnstable, boolean isUnderMaintenance) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
+        IslConfig islConfig = IslConfig.builder()
+                .underMaintenanceCostRaise(1000)
+                .unstableCostRaise(1000)
+                .unstableIslTimeout(Duration.ofSeconds(120))
+                .build();
 
         Isl isl = Isl.builder()
                 .srcSwitch(srcSwitch)
@@ -487,12 +595,17 @@ public class BestCostAndShortestPathFinderTest {
                 .timeUnstable(timeUnstable)
                 .underMaintenance(isUnderMaintenance)
                 .build();
-        isl.setIslConfig(IslConfig.builder()
-                .underMaintenanceCostRaise(1000)
-                .unstableCostRaise(1000)
-                .unstableIslTimeout(Duration.ofSeconds(120))
-                .build());
+        isl.setIslConfig(islConfig);
         network.addLink(isl);
+
+        Isl reverseIsl = isl.toBuilder()
+                .srcSwitch(dstSwitch)
+                .srcPort(dstPort)
+                .destSwitch(srcSwitch)
+                .destPort(srcPort)
+                .build();
+        reverseIsl.setIslConfig(islConfig);
+        network.addLink(reverseIsl);
     }
 
 }

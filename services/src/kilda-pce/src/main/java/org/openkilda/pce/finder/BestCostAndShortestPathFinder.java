@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -121,49 +122,87 @@ public class BestCostAndShortestPathFinder implements PathFinder {
                     start == null ? startSwitchId : endSwitchId));
         }
 
+        // Determine the shortest path from the start to the end.
         List<List<Edge>> bestPaths = new ArrayList<>();
+        bestPaths.add(getPath(start, end));
 
-        List<Edge> lastBestPath = getPath(start, end);
-        bestPaths.add(lastBestPath);
+        // Initialize the set to store the potential kth shortest path.
+        Set<List<Edge>> potentialKthShortestPaths = new HashSet<>();
 
-        for (int i = 0; i < count - 1; i++) {
-            List<Edge> bestPath = null;
-            Edge removedEdge = null;
-            long bestAvailableBandwidth = Long.MIN_VALUE;
-            long bestCost = Long.MAX_VALUE;
+        for (int k = 1; k < count; k++) {
+            List<Edge> bestPath = bestPaths.get(k - 1);
+            for (int i = 0; i < bestPath.size(); i++) {
+                // Spur node is retrieved from the previous k-shortest path.
+                Node spurNode = bestPath.get(i).getSrcSwitch();
+                // The sequence of edges from the start to the spur node (without spur node).
+                List<Edge> rootPath = new ArrayList<>(bestPath.subList(0, i));
 
-            for (Edge edge : lastBestPath) {
-                removeEdge(edge);
-
-                List<Edge> path = getPath(start, end);
-                if (path.isEmpty()) {
-                    continue;
+                Set<Edge> removedEdges = new HashSet<>();
+                // Remove the links that are part of the previous shortest paths which share the same root path.
+                for (List<Edge> path : bestPaths) {
+                    if (path.size() > i && rootPath.equals(path.subList(0, i))
+                            && spurNode.equals(path.get(i).getSrcSwitch())) {
+                        removedEdges.add(path.get(i));
+                        removeEdge(path.get(i));
+                    }
                 }
 
-                long currentAvailableBandwidth = getMinAvailableBandwidth(path);
-                long currentCost = getTotalCost(path);
-
-                if (currentAvailableBandwidth > bestAvailableBandwidth
-                        || (currentAvailableBandwidth == bestAvailableBandwidth && currentCost < bestCost)) {
-                    bestAvailableBandwidth = currentAvailableBandwidth;
-                    bestCost = currentCost;
-                    bestPath = path;
-                    removedEdge = edge;
+                for (Edge edge : rootPath) {
+                    edge.getSrcSwitch().remove();
                 }
 
-                restoreEdge(edge);
+                // Calculate the spur path from the spur node to the end.
+                List<Edge> pathFromSpurNode = getPath(spurNode, end);
+                if (!pathFromSpurNode.isEmpty()) {
+                    List<Edge> totalPath = new ArrayList<>(rootPath);
+                    // Entire path is made up of the root path and spur path.
+                    totalPath.addAll(pathFromSpurNode);
+                    // Add the potential k-shortest path to the heap.
+                    potentialKthShortestPaths.add(totalPath);
+                }
+
+                // Add back the edges and nodes that were removed from the graph.
+                for (Edge edge : removedEdges) {
+                    restoreEdge(edge);
+                }
+                for (Edge edge : rootPath) {
+                    edge.getSrcSwitch().restore();
+                }
             }
 
-            if (bestPath == null || bestPath.isEmpty()) {
+            if (potentialKthShortestPaths.isEmpty()) {
                 break;
             }
-            bestPaths.add(bestPath);
-            lastBestPath = bestPath;
-            removeEdge(removedEdge);
+
+            // Add the lowest cost path becomes the k-shortest path.
+            List<Edge> newBestPath = getBestPotentialKthShortestPath(potentialKthShortestPaths, bestPaths);
+            bestPaths.add(newBestPath);
         }
 
-
         return bestPaths;
+    }
+
+    private List<Edge> getBestPotentialKthShortestPath(Set<List<Edge>> potentialKthShortestPaths,
+                                                       List<List<Edge>> bestPaths) {
+        List<Edge> bestKthShortestPath = new ArrayList<>();
+
+        long bestAvailableBandwidth = Long.MIN_VALUE;
+        long bestCost = Long.MAX_VALUE;
+
+        for (List<Edge> path : potentialKthShortestPaths) {
+            long currentAvailableBandwidth = getMinAvailableBandwidth(path);
+            long currentCost = getTotalCost(path);
+            if (!bestPaths.contains(path) && (currentAvailableBandwidth > bestAvailableBandwidth
+                    || (currentAvailableBandwidth == bestAvailableBandwidth && currentCost < bestCost))) {
+                bestAvailableBandwidth = currentAvailableBandwidth;
+                bestCost = currentCost;
+                bestKthShortestPath = path;
+            }
+        }
+
+        potentialKthShortestPaths.remove(bestKthShortestPath);
+
+        return bestKthShortestPath;
     }
 
     private long getMinAvailableBandwidth(List<Edge> path) {

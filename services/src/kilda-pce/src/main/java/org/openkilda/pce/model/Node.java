@@ -41,7 +41,7 @@ import java.util.function.Function;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "switchId")
-@ToString(exclude = {"incomingLinks", "outgoingLinks"})
+@ToString(exclude = {"incomingLinks", "outgoingLinks", "backupIncomingLinks", "backupOutgoingLinks"})
 public class Node {
     @NonNull
     private final SwitchId switchId;
@@ -50,6 +50,9 @@ public class Node {
     private Set<Edge> incomingLinks;
     @NonNull
     private Set<Edge> outgoingLinks;
+
+    private Set<Edge> backupIncomingLinks;
+    private Set<Edge> backupOutgoingLinks;
 
     @Setter
     private int diversityWeight;
@@ -113,5 +116,27 @@ public class Node {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(toSet());
+    }
+
+    /**
+     * Remove node.
+     */
+    public void remove() {
+        backupIncomingLinks = incomingLinks;
+        backupOutgoingLinks = outgoingLinks;
+
+        incomingLinks = new HashSet<>();
+        outgoingLinks = new HashSet<>();
+    }
+
+    /**
+     * Restore node.
+     */
+    public void restore() {
+        if ((backupIncomingLinks != null || !backupIncomingLinks.isEmpty())
+                && (backupOutgoingLinks != null || !backupOutgoingLinks.isEmpty())) {
+            incomingLinks = backupIncomingLinks;
+            outgoingLinks = backupOutgoingLinks;
+        }
     }
 }
