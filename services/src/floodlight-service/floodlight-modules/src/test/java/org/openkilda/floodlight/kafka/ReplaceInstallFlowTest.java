@@ -110,7 +110,7 @@ public class ReplaceInstallFlowTest {
 
         final SwitchManager switchManager = new SwitchManager();
         PathVerificationServiceConfig config = EasyMock.createMock(PathVerificationServiceConfig.class);
-        expect(config.getVerificationBcastPacketDst()).andReturn("01:80:C2:00:00:00").anyTimes();
+        expect(config.getVerificationBcastPacketDst()).andReturn("00:26:E1:FF:FF:FF").anyTimes();
         replay(config);
         PathVerificationService pathVerificationService = EasyMock.createMock(PathVerificationService.class);
         expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
