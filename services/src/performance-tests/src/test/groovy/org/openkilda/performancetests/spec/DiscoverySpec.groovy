@@ -1,5 +1,6 @@
 package org.openkilda.performancetests.spec
 
+import static org.hamcrest.CoreMatchers.equalTo
 import static org.openkilda.testing.service.lockkeeper.LockKeeperVirtualImpl.DUMMY_CONTROLLER
 
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -10,17 +11,18 @@ import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.performancetests.model.CustomTopology
 
 import groovy.util.logging.Slf4j
+import org.junit.Assume
 
 @Slf4j
 class DiscoverySpec extends BaseSpecification {
 
     def "System is able to discover a huge topology at once"() {
-        def switchesAmount = 60
-        def islsAmount = switchesAmount * 2
+        Assume.assumeThat(preset.debug, equalTo(debug))
+        def islsAmount = preset.switchesAmount * 2
 
         setup: "Prepare potential topology"
         def topo = new CustomTopology()
-        switchesAmount.times { topo.addCasualSwitch("${managementControllers[0]} ${statControllers[0]}") }
+        preset.switchesAmount.times { topo.addCasualSwitch("${managementControllers[0]} ${statControllers[0]}") }
         islsAmount.times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
@@ -32,23 +34,37 @@ class DiscoverySpec extends BaseSpecification {
         def lab = labService.createLab(topo)
 
         then: "Topology is discovered in reasonable time"
-        Wrappers.wait(switchesAmount * 3, 5) {
+        Wrappers.wait(preset.switchesAmount * 3, 5) {
             topoHelper.verifyTopology(topo)
         }
 
         cleanup: "purge topology"
         topoHelper.purgeTopology(topo, lab)
+
+        where:
+        preset << [
+                //around 55 switches for local 32GB setup and ~110 switches for stage
+                [
+                        debug         : true,
+                        switchesAmount: 30
+                ],
+                [
+                        debug         : false,
+                        switchesAmount: 60
+                ]
+        ]
     }
 
     /**
      * Push the system to its limits until it fails to discover new isls or switches. Measure system's capabilities
      */
-    //around 55 switches for local 32GB setup and ~110 switches for stage
     def "System is able to continuously discover new switches and ISLs"() {
-        def switchesAmount = 200 //unattainable amount that system won't be able to handle for sure
+        Assume.assumeThat(preset.debug, equalTo(debug))
+
+        //unattainable amount that system won't be able to handle for sure
+        def switchesAmount = preset.minimumSwitchesRequirement * 1.5
         def islsAmount = switchesAmount * 3
         def allowedDiscoveryTime = 60 //seconds
-        def minimumSwitchesRequirement = 50
 
         setup: "Create topology not connected to controller"
         def topo = new CustomTopology()
@@ -84,9 +100,24 @@ class DiscoverySpec extends BaseSpecification {
         then: "Amount of discovered switches within allowed time is acceptable"
         def waitFailure = thrown(WaitTimeoutException)
         log.info("Performance report: Kilda was able to discover $switchesCreated switches.\nFailed with $waitFailure")
-        switchesCreated > minimumSwitchesRequirement
+        switchesCreated > preset.minimumSwitchesRequirement
 
         cleanup: "purge topology"
         topoHelper.purgeTopology(topo, lab)
+
+        where:
+        preset << [
+                //around 55 switches for local 32GB setup and ~110 switches for stage
+                [
+                        debug                     : true,
+                        minimumSwitchesRequirement: 50,
+                        allowedDiscoveryTime      : 60
+                ],
+                [
+                        debug                     : false,
+                        minimumSwitchesRequirement: 100,
+                        allowedDiscoveryTime      : 60
+                ]
+        ]
     }
 }

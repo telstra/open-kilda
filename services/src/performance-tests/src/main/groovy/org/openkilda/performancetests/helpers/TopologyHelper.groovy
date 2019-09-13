@@ -1,5 +1,7 @@
 package org.openkilda.performancetests.helpers
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -8,10 +10,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.labservice.model.LabInstance
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
+import org.springframework.web.client.HttpClientErrorException
 
 @Component("performance")
 class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelper {
@@ -20,6 +25,12 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     NorthboundService northbound
     @Autowired
     LabService labService
+
+    @Autowired
+    IslUtils islUtils
+
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
 
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
@@ -31,7 +42,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     List<String> statControllers
 
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
-        if (islsAmount < (switchesAmount -1)) {
+        if (islsAmount < (switchesAmount - 1)) {
             throw new RuntimeException("Not enough ISLs were requested. islsAmount should be >= (switchesAmount - 1)")
         }
         def topo = new CustomTopology()
@@ -42,10 +53,10 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         //create links between neighbor switches
         def allSwitches = topo.getSwitches()
         for (def i = 0; i < allSwitches.size() - 1; i++) {
-            topo.addIsl(allSwitches[i], allSwitches[i+1])
+            topo.addIsl(allSwitches[i], allSwitches[i + 1])
         }
         //create links between random switches
-        (islsAmount-topo.getIsls().size()).times {
+        (islsAmount - topo.getIsls().size()).times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
@@ -93,14 +104,28 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         if (lab) {
             labService.deleteLab(lab)
         } else {
-            def currentLab = labService.getLab()
-            if(currentLab) {
-                labService.deleteLab(currentLab)
+            labService.flushLabs()
+        }
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def isls = northbound.getAllLinks()
+            topo.isls.forEach {
+                assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.FAILED
+            }
+        }
+        topo.isls.each {
+            try {
+                northbound.deleteLink(islUtils.toLinkParameters(it))
+            } catch (HttpClientErrorException e) {
+                if (e.statusCode == HttpStatus.NOT_FOUND) {
+                    //fine, it's not present, do nothing
+                } else {
+                    throw e
+                }
             }
         }
         def topoSwitches = northbound.getAllSwitches().findAll { it.switchId in topo.switches*.dpId }
         topoSwitches.each {
-            northbound.deleteSwitch(it.switchId, true)
+            northbound.deleteSwitch(it.switchId, false)
         }
     }
 

@@ -59,7 +59,7 @@ class FlowHelper {
     }
 
     FlowCreatePayload randomFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
-                                 List<FlowCreatePayload> existingFlows = []) {
+                                 List<FlowPayload> existingFlows = []) {
         randomFlow(switchPair.src, switchPair.dst, useTraffgenPorts, existingFlows)
     }
 

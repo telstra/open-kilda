@@ -7,6 +7,7 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
+import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 
 import groovyx.gpars.group.DefaultPGroup
@@ -50,7 +51,7 @@ class ContentionSpec extends BaseSpecification {
         def flowsAmount = 15
         def group = new DefaultPGroup(flowsAmount)
         List<FlowCreatePayload> flows = []
-        flowsAmount.times { flows << flowHelper.randomFlow(topologyHelper.notNeighboringSwitchPair, false , flows) }
+        flowsAmount.times { flows << flowHelper.randomFlow(topologyHelper.notNeighboringSwitchPair, false, flows) }
         def createTasks = flows.collect { flow ->
             group.task { flowHelper.addFlow(flow) }
         }
@@ -101,7 +102,7 @@ class ContentionSpec extends BaseSpecification {
             def rerouteTask = { northbound.rerouteFlow(flow.id) }
             rerouteTask.callAsync()
             sleep(100) //experimentally find out that this ensures better overlapping of DB operations
-            relatedSwitches.eachParallel { northbound.synchronizeSwitchRules(it.dpId) } //#2563 to fire at this line
+            relatedSwitches.eachParallel { northbound.synchronizeSwitch(it.dpId, true) } //#2563 to fire at this line
         }
 
         then: "Flow is Up and path has changed"
@@ -124,5 +125,6 @@ class ContentionSpec extends BaseSpecification {
 
         and: "Cleanup: remove flow and reset costs"
         flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 }

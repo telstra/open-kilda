@@ -45,8 +45,8 @@ class HealthCheckSpecification extends BaseSpecification {
             }
 
             topology.activeSwitches.findAll {
-                !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
-                    it.key > MAX_SYSTEM_RULE_METER_ID
+                !it.virtual && it.ofVersion != "OF_12" && !northbound.getAllMeters(it.dpId).meterEntries.findAll {
+                    it.meterId > MAX_SYSTEM_RULE_METER_ID
                 }.isEmpty()
             }.empty
         }
