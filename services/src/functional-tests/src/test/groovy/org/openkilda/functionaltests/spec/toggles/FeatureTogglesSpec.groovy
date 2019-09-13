@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.toggles
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -20,6 +21,9 @@ switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
 @Tags(SMOKE)
 class FeatureTogglesSpec extends HealthCheckSpecification {
+    @Tags(VIRTUAL)
+    //TODO (andriidovhan) remove VIRTUAL tag and add new message when Issue 2797 is fixed
+    // new error message in APIv2 "Could not create flow: Flow create feature is disabled"
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
