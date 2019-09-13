@@ -1,0 +1,55 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "Disable discovery API"
+paths:
+  /switches/{switch_id}/port/{port_no}/properties:
+    get:
+      summary: "Get port properties"
+      parameters:
+        - name: "switch_id"
+          in: "path"
+          description: "switch id"
+          required: true
+          type: "string"
+        - name: "port_no"
+          in: "path"
+          description: "port number"
+          required: true
+          type: "integer"
+      responses:
+        200:
+          description: "Ok"
+          schema:
+            $ref: '#/definitions/PortPropertiesDto'
+    put:
+      summary: "Update port properties"
+      parameters:
+        - name: "switch_id"
+          in: "path"
+          description: "switch id"
+          required: true
+          type: "string"
+        - name: "port_no"
+          in: "path"
+          description: "port number"
+          required: true
+          type: "integer"
+        - in: "body"
+          name: "body"
+          description: "port properties"
+          required: true
+          schema:
+            $ref: "#/definitions/PortPropertiesDto"
+      responses:
+        200:
+          description: "Ok"
+          schema:
+            $ref: '#/definitions/PortPropertiesDto'
+definitions:
+  PortPropertiesDto:
+    type: object
+    properties:
+      discoveryEnabled:
+        type: boolean
+    title: PortPropertiesDto

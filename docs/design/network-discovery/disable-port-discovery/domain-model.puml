@@ -1,0 +1,23 @@
+@startuml
+
+title Kilda Domain Model
+
+class Switch {
+   id : SwitchId
+
+   ...
+   __
+   unique constraint on switch_id
+}
+
+class PortProperties {
+   switch : Switch
+   port_no
+   discovery_enabled
+   __
+   unique constraint on switch_id+port_no
+}
+
+Switch --> PortProperties
+
+@enduml
