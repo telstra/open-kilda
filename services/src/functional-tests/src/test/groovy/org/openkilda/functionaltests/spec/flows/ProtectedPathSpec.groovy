@@ -253,9 +253,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
-        given: "Two active neighboring switches with two diverse paths at least"
+        // 'and ignores protected path' means that the main path won't changed to protected
+        given: "Two active neighboring switches with four diverse paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 4
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "A flow with protected path"
@@ -288,6 +289,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
         newCurrentPath != currentPath
         newCurrentPath != currentProtectedPath
+        //protected path is rerouted too, because more preferable path is exist
         def newCurrentProtectedPath = pathHelper.convert(flowPathInfoAfterRerouting.protectedPath)
         newCurrentProtectedPath != currentPath
         newCurrentProtectedPath != currentProtectedPath
@@ -306,7 +308,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Unroll
     def "System is able to switch #flowDescription flow to protected path and ignores more preferable path when reroute\
  is automatical"() {
-        given: "Two active not neighboring switches with two diverse paths at least"
+        given: "Two active not neighboring switches with three diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue("No suiting switches found", false)
@@ -1103,6 +1105,60 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2762")
+    def "System reuses current protected path when can't find new non overlapping protected path while intentional\
+ rerouting"() {
+        given: "Two active neighboring switches with three diverse paths"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() == 3
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow with protected path"
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        assert flowPathInfo.protectedPath
+
+        def currentPath = pathHelper.convert(flowPathInfo)
+        def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
+        assert currentPath != currentProtectedPath
+
+        when: "Make the current and protected path less preferable than alternatives"
+        def alternativePaths = switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
+
+        and: "Init intentional reroute"
+        def rerouteResponse = northbound.rerouteFlow(flow.id)
+
+        then: "Flow should be rerouted"
+        rerouteResponse.rerouted
+
+        and: "Flow main path should be rerouted to a new path and ignore protected path"
+        def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.id)
+        def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
+        newCurrentPath != currentPath
+        newCurrentPath != currentProtectedPath
+
+        and: "Flow protected path shouldn't be rerouted due to lack of non overlapping path"
+        pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) == currentProtectedPath
+
+        and: "Flow and both its paths are UP"
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northbound.getFlow(flow.id)) {
+                status == "Up"
+                flowStatusDetails.mainFlowPathStatus == "Up"
+                flowStatusDetails.protectedFlowPathStatus == "Up"
+            }
+        }
+
+        and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
