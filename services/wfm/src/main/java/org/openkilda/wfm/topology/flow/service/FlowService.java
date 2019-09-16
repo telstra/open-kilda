@@ -72,7 +72,6 @@ import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flow.model.FlowPathWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation.FlowPathsWithEncapsulationBuilder;
-import org.openkilda.wfm.topology.flow.model.FlowWithFlowPaths;
 import org.openkilda.wfm.topology.flow.model.ReroutedFlowPaths;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPathsWithEncapsulation;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
@@ -94,7 +93,6 @@ import org.neo4j.driver.v1.exceptions.TransientException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -313,30 +311,24 @@ public class FlowService extends BaseFlowService {
                 .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT);
 
-        FlowWithFlowPaths result;
+        FlowPathsWithEncapsulation result;
         try {
             result = transactionManager.doInTransaction(retryPolicy, () -> {
-                Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+                FlowPathsWithEncapsulation flowPathsWithEncapsulation = getFlowPathPairWithEncapsulation(flowId)
+                        .orElseThrow(() -> new FlowNotFoundException(flowId));
+
+                Flow flow = flowPathsWithEncapsulation.getFlow();
 
                 log.info("Deleting the flow: {}", flow);
 
-                Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flowId);
-
-                flowPathRepository.lockInvolvedSwitches(flowPaths.toArray(new FlowPath[0]));
-
-                List<FlowPathWithEncapsulation> flowPathWithEncapsulations = flowPaths.stream()
-                        .map(path -> getFlowPathWithEncapsulation(flow, path))
-                        .collect(Collectors.toList());
+                flowPathRepository.lockInvolvedSwitches(flow.getPaths().toArray(new FlowPath[0]));
 
                 // Remove flow and all associated paths
                 flowRepository.delete(flow);
 
-                flowPathWithEncapsulations.forEach(flowPath -> updateIslsForFlowPath(flowPath.getFlowPath()));
+                flow.getPaths().forEach(this::updateIslsForFlowPath);
 
-                return FlowWithFlowPaths.builder()
-                        .flow(flow)
-                        .flowPaths(flowPathWithEncapsulations)
-                        .build();
+                return flowPathsWithEncapsulation;
             });
         } catch (FailsafeException e) {
             if (e.getCause() instanceof FlowNotFoundException) {
@@ -352,14 +344,11 @@ public class FlowService extends BaseFlowService {
         // We can assemble all paths into a single command batch as regardless of each execution result,
         // the TransactionBolt will try to perform all of them.
         // This is because FailureReaction.IGNORE used in createRemoveXXX methods.
-        if (!result.getFlowPaths().isEmpty()) {
-            result.getFlowPaths().forEach(flowPathToRemove -> commandGroups.addAll(
-                    createRemoveRulesGroups(flowPathToRemove, !flowPathToRemove.getFlowPath().isProtected())));
-            commandGroups.addAll(createDeallocateResourcesGroups(flowId, result.getFlowPaths()));
+        commandGroups.addAll(createRemoveRulesGroups(result));
+        commandGroups.addAll(createDeallocateResourcesGroups(result));
 
-            // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-            sender.sendFlowCommands(flowId, commandGroups, emptyList(), emptyList());
-        }
+        // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
+        sender.sendFlowCommands(flowId, commandGroups, emptyList(), emptyList());
 
         return FlowMapper.INSTANCE.map(result.getFlow());
     }
@@ -917,12 +906,20 @@ public class FlowService extends BaseFlowService {
         if (flowResources.getForward().getMeterId() != null) {
             forwardPath.setMeterId(flowResources.getForward().getMeterId());
         }
+        if (flowResources.getForward().getLldpMeterId() != null) {
+            forwardPath.setLldpResources(new LldpResources(flowResources.getForward().getLldpMeterId(),
+                    Cookie.buildLldpCookie(flowResources.getUnmaskedLldpCookie(), true)));
+        }
 
         FlowPath reversePath = pathPair.getReverse();
         reversePath.setPathId(flowResources.getReverse().getPathId());
         reversePath.setCookie(Cookie.buildReverseCookie(flowResources.getUnmaskedCookie()));
         if (flowResources.getReverse().getMeterId() != null) {
             reversePath.setMeterId(flowResources.getReverse().getMeterId());
+        }
+        if (flowResources.getReverse().getLldpMeterId() != null) {
+            reversePath.setLldpResources(new LldpResources(flowResources.getReverse().getLldpMeterId(),
+                    Cookie.buildLldpCookie(flowResources.getUnmaskedLldpCookie(), false)));
         }
     }
 

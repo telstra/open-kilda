@@ -22,17 +22,24 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openkilda.model.Cookie.buildLldpCookie;
 
+import org.openkilda.model.Cookie;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
+import org.openkilda.model.LldpResources;
+import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -42,6 +49,8 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.repositories.FlowCookieRepository;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -50,6 +59,7 @@ import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
+import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
@@ -59,15 +69,27 @@ import org.openkilda.wfm.topology.flow.model.ReroutedFlowPaths;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
+import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.util.Optional;
 
+@RunWith(JUnitParamsRunner.class)
 public class FlowServiceTest extends Neo4jBasedTest {
+    public static final Object[][] SHOW_SRC_DEVICES_SHOW_DST_DEVICES_MATRIX = new Object[][] {
+            // showSrcConnectedDevices, showDstConnectedDevices
+            {true, true},
+            {true, false},
+            {false, true},
+            {false, false}
+    };
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
@@ -100,6 +122,15 @@ public class FlowServiceTest extends Neo4jBasedTest {
                     Path.Segment.builder().srcSwitchId(SWITCH_ID_2).srcPort(11).latency(1L)
                             .destSwitchId(SWITCH_ID_1).destPort(11).build()))
                     .build()).build();
+    private static final PathId FORWARD_PATH_ID = new PathId("forward");
+    private static final PathId REVERSE_PATH_ID = new PathId("reverse");
+    private static final MeterId METER_32 = new MeterId(32);
+    private static final MeterId METER_33 = new MeterId(33);
+    private static final MeterId METER_34 = new MeterId(34);
+    private static final MeterId METER_35 = new MeterId(35);
+
+    private static final int FORWARD_COOKIE = 123;
+    private static final int REVERSE_COOKIE = 321;
 
     private static String FLOW_ID = "test-flow";
 
@@ -109,6 +140,8 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private IslRepository islRepository;
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
+    private FlowMeterRepository flowMeterRepository;
+    private FlowCookieRepository flowCookieRepository;
 
     private FlowService flowService;
     private PathComputer pathComputer;
@@ -120,6 +153,8 @@ public class FlowServiceTest extends Neo4jBasedTest {
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        flowMeterRepository = persistenceManager.getRepositoryFactory().createFlowMeterRepository();
+        flowCookieRepository = persistenceManager.getRepositoryFactory().createFlowCookieRepository();
 
         pathComputer = mock(PathComputer.class);
         PathComputerFactory pathComputerFactory = mock(PathComputerFactory.class);
@@ -231,6 +266,37 @@ public class FlowServiceTest extends Neo4jBasedTest {
         assertEquals(flow.getFlowId(), foundFlow.get().getFlowId());
     }
 
+    private static Object[][] getShowSrcConnectedDevicesDstConnectedDevicesParameters() {
+        // showSrcDevices, showDstDevices
+        return SHOW_SRC_DEVICES_SHOW_DST_DEVICES_MATRIX;
+    }
+
+    @Test
+    @Parameters(method = "getShowSrcConnectedDevicesDstConnectedDevicesParameters")
+    public void createFlowAllocateLldpResources(boolean showSrcDevices, boolean showDstDevices) throws Exception {
+        Flow flow = getFlowWithConnectedDevices(showSrcDevices, showDstDevices);
+
+        when(pathComputer.getPath(any())).thenReturn(PATH_1_TO_3_VIA_2, PATH_DIRECT_1_TO_3);
+
+        FlowCommandSender flowCommandSender = mock(FlowCommandSender.class);
+        flowService.createFlow(flow, null, flowCommandSender);
+
+        checkFlowResources(flow);
+    }
+
+    @Test
+    @Parameters(method = "getShowSrcConnectedDevicesDstConnectedDevicesParameters")
+    public void saveFlowAllocateLldpResources(boolean showSrcDevices, boolean showDstDevices) throws Exception {
+        Flow flow = getFlowWithConnectedDevices(showSrcDevices, showDstDevices);
+        flow.setAllocateProtectedPath(false);
+        FlowPair flowPair = createFlowPair(flow, PATH_DIRECT_1_TO_3);
+
+        FlowCommandSender flowCommandSender = mock(FlowCommandSender.class);
+        flowService.saveFlow(flowPair, flowCommandSender);
+
+        checkFlowResources(flow);
+    }
+
     @Test
     public void shouldRerouteFlow() throws RecoverableException, UnroutableFlowException,
             FlowNotFoundException, FlowAlreadyExistException, FlowValidationException,
@@ -308,6 +374,87 @@ public class FlowServiceTest extends Neo4jBasedTest {
                         .build())
                 .toArray(Path.Segment[]::new);
         assertThat(path.getSegments(), containsInAnyOrder(flowPathSegments));
+    }
+
+    private void checkFlowResources(Flow flow) {
+        Flow createdFlow = flowRepository.findById(flow.getFlowId()).get();
+
+        assertEquals(getExpectedMeterCount(flow), flowMeterRepository.findAll().size());
+        assertEquals(getExpectedCookieCount(flow), flowCookieRepository.findAll().size());
+
+        assertEquals(METER_32, createdFlow.getForwardPath().getMeterId());
+        assertEquals(METER_32, createdFlow.getReversePath().getMeterId());
+
+        assertFlowLldpResources(createdFlow);
+    }
+
+    private void assertFlowLldpResources(Flow flow) {
+        assertLldpResources(flow.getDetectConnectedDevices().isSrcLldp(), flow.getForwardPath().getLldpResources(),
+                METER_33, buildLldpCookie(1L, true));
+        assertLldpResources(flow.getDetectConnectedDevices().isDstLldp(), flow.getReversePath().getLldpResources(),
+                METER_33, buildLldpCookie(1L, false));
+
+        if (flow.isAllocateProtectedPath()) {
+            assertLldpResources(flow.getDetectConnectedDevices().isSrcLldp(),
+                    flow.getProtectedForwardPath().getLldpResources(), METER_35, buildLldpCookie(3L, true));
+            assertLldpResources(flow.getDetectConnectedDevices().isDstLldp(),
+                    flow.getProtectedReversePath().getLldpResources(), METER_35, buildLldpCookie(3L, false));
+        }
+    }
+
+    private void assertLldpResources(boolean mustAllocate, LldpResources lldpResources,
+                                     MeterId expectedMeterId, Cookie expectedCookie) {
+        if (mustAllocate) {
+            assertEquals(new LldpResources(expectedMeterId, expectedCookie), lldpResources);
+        } else {
+            assertNull(lldpResources);
+        }
+    }
+
+    private int getExpectedMeterCount(Flow flow) {
+        int count = 0;
+
+        count += flow.getBandwidth() > 0 ? 2 : 0;
+        count += flow.getDetectConnectedDevices().isSrcLldp() ? 1 : 0;
+        count += flow.getDetectConnectedDevices().isDstLldp() ? 1 : 0;
+        count *= flow.isAllocateProtectedPath() ? 2 : 1;
+        return count;
+    }
+
+    private int getExpectedCookieCount(Flow flow) {
+        int count = 1;
+        count += allocateLldpResources(flow) ? 1 : 0;
+        count *= flow.isAllocateProtectedPath() ? 2 : 1;
+        return count;
+    }
+
+    private boolean allocateLldpResources(Flow flow) {
+        return flow.getDetectConnectedDevices().isSrcLldp() || flow.getDetectConnectedDevices().isDstLldp();
+    }
+
+    private FlowPair createFlowPair(Flow flow, PathPair pathPair) {
+        FlowPathBuilder flowPathBuilder = new FlowPathBuilder(switchRepository);
+
+        PathResources forwardPathResources = PathResources.builder().pathId(FORWARD_PATH_ID).build();
+        PathResources reversePathResources = PathResources.builder().pathId(REVERSE_PATH_ID).build();
+
+        FlowPath forward = flowPathBuilder.buildFlowPath(
+                flow, forwardPathResources, pathPair.forward, new Cookie(FORWARD_COOKIE));
+        FlowPath reverse = flowPathBuilder.buildFlowPath(
+                flow, reversePathResources, pathPair.reverse, new Cookie(REVERSE_COOKIE));
+
+        flow.setForwardPath(forward);
+        flow.setReversePath(reverse);
+
+        return new FlowPair(flow, null, null);
+    }
+
+    private Flow getFlowWithConnectedDevices(boolean detectSrcLldpDevices, boolean detectDstLldpDevices) {
+        return getFlowBuilder()
+                .detectConnectedDevices(
+                        new DetectConnectedDevices(detectSrcLldpDevices, false, detectDstLldpDevices, false))
+                .allocateProtectedPath(true)
+                .build();
     }
 
     private Flow.FlowBuilder getFlowBuilder() {
