@@ -23,7 +23,6 @@ import org.openkilda.applications.command.CommandAppData;
 import org.openkilda.applications.command.CommandAppMessage;
 import org.openkilda.applications.command.apps.CreateExclusion;
 import org.openkilda.applications.command.apps.RemoveExclusion;
-import org.openkilda.applications.info.ExclusionInfoData;
 import org.openkilda.applications.info.InfoAppData;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
@@ -34,11 +33,11 @@ import org.openkilda.messaging.command.apps.FlowAppsReadRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.apps.FlowAppsResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.applications.AppsManagerCarrier;
 import org.openkilda.wfm.topology.applications.AppsTopology.ComponentId;
 import org.openkilda.wfm.topology.applications.service.AppsManagerService;
@@ -58,18 +57,20 @@ public class AppsManager extends AbstractBolt {
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
+    private final FlowResourcesConfig flowResourcesConfig;
 
     private transient AppsManagerService service;
-    private transient AppsManagerCarrierImpl carrier;
+    private transient AppsManagerCarrier carrier;
 
-    public AppsManager(PersistenceManager persistenceManager) {
+    public AppsManager(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
         this.persistenceManager = persistenceManager;
+        this.flowResourcesConfig = flowResourcesConfig;
     }
 
     @Override
     protected void init() {
-        service = new AppsManagerService(persistenceManager);
         carrier = new AppsManagerCarrierImpl();
+        service = new AppsManagerService(carrier, persistenceManager, flowResourcesConfig);
     }
 
     @Override
@@ -130,32 +131,26 @@ public class AppsManager extends AbstractBolt {
     }
 
     private void processCommandData(CommandData payload) throws FlowNotFoundException {
-        FlowAppsResponse response;
         if (payload instanceof FlowAppsReadRequest) {
-            response = service.getEnabledFlowApplications(((FlowAppsReadRequest) payload).getFlowId());
+            service.getEnabledFlowApplications(((FlowAppsReadRequest) payload).getFlowId());
         } else if (payload instanceof FlowAddAppRequest) {
-            response = service.addFlowApplication((FlowAddAppRequest) payload);
+            service.addFlowApplication((FlowAddAppRequest) payload);
         } else if (payload instanceof FlowRemoveAppRequest) {
-            response = service.removeFlowApplication((FlowRemoveAppRequest) payload);
+            service.removeFlowApplication((FlowRemoveAppRequest) payload);
         } else {
             throw new UnsupportedOperationException(format("Unexpected message payload \"%s\"", payload.getClass()));
         }
-
-        carrier.emitNorthboundResponse(response);
     }
 
     private void processCommandAppData(CommandAppData payload) throws FlowNotFoundException {
-        ExclusionInfoData response;
         if (payload instanceof CreateExclusion) {
-            response = service.processCreateExclusion((CreateExclusion) payload);
+            service.processCreateExclusion((CreateExclusion) payload);
         } else if (payload instanceof RemoveExclusion) {
-            response = service.processRemoveExclusion((RemoveExclusion) payload);
+            service.processRemoveExclusion((RemoveExclusion) payload);
         } else {
             throw new UnsupportedOperationException(format("Unexpected app message payload \"%s\"",
                     payload.getClass()));
         }
-
-        carrier.emitNotification(response);
     }
 
     @Override

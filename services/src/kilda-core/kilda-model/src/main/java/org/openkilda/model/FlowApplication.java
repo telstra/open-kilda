@@ -13,20 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.flows;
+package org.openkilda.model;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-
-@Data
-@Builder
-@AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowAppsDto {
-    private String flowId;
-    private AppsDto srcApps;
-    private AppsDto dstApps;
+/**
+ * Represents flow applications.
+ */
+public enum FlowApplication {
+    TELESCOPE
 }
+

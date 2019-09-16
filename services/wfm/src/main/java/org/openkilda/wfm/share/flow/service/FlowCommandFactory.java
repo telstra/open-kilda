@@ -345,7 +345,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inPort,
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, egressSwitchId, false, enableLldp);
+                flow.getBandwidth(), meterId, egressSwitchId, false, enableLldp, flowPath.getApplications());
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo) {

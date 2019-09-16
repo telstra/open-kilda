@@ -25,8 +25,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,6 +33,6 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowAppsResponse extends InfoData {
     private String flowId;
-    private List<AppsEntry> srcApps;
-    private List<AppsEntry> dstApps;
+    private AppsEntry srcApps;
+    private AppsEntry dstApps;
 }

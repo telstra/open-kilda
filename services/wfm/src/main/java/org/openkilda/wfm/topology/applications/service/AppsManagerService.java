@@ -20,101 +20,251 @@ import static java.lang.String.format;
 import org.openkilda.applications.command.apps.CreateExclusion;
 import org.openkilda.applications.command.apps.RemoveExclusion;
 import org.openkilda.applications.info.apps.CreateExclusionResult;
+import org.openkilda.applications.info.apps.FlowApplicationCreated;
+import org.openkilda.applications.info.apps.FlowApplicationRemoved;
 import org.openkilda.applications.info.apps.RemoveExclusionResult;
+import org.openkilda.applications.model.Endpoint;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
+import org.openkilda.messaging.command.flow.UpdateIngressFlow;
+import org.openkilda.messaging.info.apps.AppsEntry;
 import org.openkilda.messaging.info.apps.FlowAppsResponse;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowApplication;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.applications.AppsManagerCarrier;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 public class AppsManagerService {
+    private final AppsManagerCarrier carrier;
+    private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
+    private final FlowCommandFactory flowCommandFactory = new FlowCommandFactory();
+    private final FlowResourcesManager flowResourcesManager;
 
-    private FlowRepository flowRepository;
-
-    public AppsManagerService(PersistenceManager persistenceManager) {
+    public AppsManagerService(AppsManagerCarrier carrier,
+                              PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
+        this.carrier = carrier;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
     }
 
     /**
-     * Get applications for flow.
+     * Process getting applications for flow.
      */
-    public FlowAppsResponse getEnabledFlowApplications(String flowId) throws FlowNotFoundException {
+    public void getEnabledFlowApplications(String flowId) throws FlowNotFoundException {
         Flow flow = getFlow(flowId);
-        throw new UnsupportedOperationException("Not implemented, yet");
+        sendNbResponse(flow);
     }
 
     /**
-     * Add application for flow endpoint or endpoints.
+     * Process adding application for flow endpoint or endpoints.
      */
-    public FlowAppsResponse addFlowApplication(FlowAddAppRequest payload) throws FlowNotFoundException {
+    public void addFlowApplication(FlowAddAppRequest payload) throws FlowNotFoundException {
+        SwitchId switchId = payload.getSwitchId();
+        Integer port = payload.getPortNumber();
+        Integer vlan = payload.getVlanId();
+        FlowApplication application = convertApplicationFromString(payload.getApplication());
         Flow flow = getFlow(payload.getFlowId());
-        validateEndpoint(flow, payload.getSwitchId(), payload.getPortNumber(), payload.getVlanId());
-        throw new UnsupportedOperationException("Not implemented, yet");
+
+        if (processBothEndpoints(switchId, port, vlan)) {
+            addAppForFlowPath(flow, flow.getForwardPath(), application);
+            addAppForFlowPath(flow, flow.getReversePath(), application);
+        } else if (endpointForForwardPath(flow, switchId, port, vlan)) {
+            addAppForFlowPath(flow, flow.getForwardPath(), application);
+        } else if (endpointForReversePath(flow, switchId, port, vlan)) {
+            addAppForFlowPath(flow, flow.getReversePath(), application);
+        } else {
+            throw new IllegalArgumentException(
+                    format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
+                            switchId, port, vlan));
+        }
+
+        if (processBothEndpoints(switchId, port, vlan)) {
+            sendFlowCreateNotification(flow.getFlowId(), payload.getApplication(), flow.getSrcSwitch().getSwitchId(),
+                    flow.getSrcPort(), flow.getSrcVlan());
+            sendFlowCreateNotification(flow.getFlowId(), payload.getApplication(), flow.getDestSwitch().getSwitchId(),
+                    flow.getDestPort(), flow.getDestVlan());
+        } else {
+            sendFlowCreateNotification(flow.getFlowId(), payload.getApplication(), switchId, port, vlan);
+        }
+
+        sendNbResponse(flow);
+    }
+
+    private void addAppForFlowPath(Flow flow, FlowPath flowPath, FlowApplication application) {
+        persistApplication(flowPath, application);
+        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flowPath));
+    }
+
+    private void persistApplication(FlowPath flowPath, FlowApplication application) {
+        Set<FlowApplication> applications = Optional.ofNullable(flowPath.getApplications()).orElse(new HashSet<>());
+        applications.add(application);
+        flowPath.setApplications(applications);
+        flowPathRepository.createOrUpdate(flowPath);
+    }
+
+    private void sendFlowCreateNotification(String flowId, String app, SwitchId switchId, Integer port, Integer vlan) {
+        carrier.emitNotification(FlowApplicationCreated.builder()
+                .flowId(flowId)
+                .application(app)
+                .endpoint(Endpoint.builder()
+                        .switchId(switchId.toString())
+                        .portNumber(port)
+                        .vlanId(vlan)
+                        .build())
+                .build());
     }
 
     /**
-     * Remove application for flow endpoint or endpoints.
+     * Process removing application for flow endpoint or endpoints.
      */
-    public FlowAppsResponse removeFlowApplication(FlowRemoveAppRequest payload) throws FlowNotFoundException {
+    public void removeFlowApplication(FlowRemoveAppRequest payload) throws FlowNotFoundException {
+        SwitchId switchId = payload.getSwitchId();
+        Integer port = payload.getPortNumber();
+        Integer vlan = payload.getVlanId();
+        FlowApplication application = convertApplicationFromString(payload.getApplication());
         Flow flow = getFlow(payload.getFlowId());
-        validateEndpoint(flow, payload.getSwitchId(), payload.getPortNumber(), payload.getVlanId());
-        throw new UnsupportedOperationException("Not implemented, yet");
+
+        if (processBothEndpoints(switchId, port, vlan)) {
+            removeAppForFlowPath(flow, flow.getForwardPath(), application);
+            removeAppForFlowPath(flow, flow.getReversePath(), application);
+        } else if (endpointForForwardPath(flow, switchId, port, vlan)) {
+            removeAppForFlowPath(flow, flow.getForwardPath(), application);
+        } else if (endpointForReversePath(flow, switchId, port, vlan)) {
+            removeAppForFlowPath(flow, flow.getReversePath(), application);
+        } else {
+            throw new IllegalArgumentException(
+                    format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
+                            switchId, port, vlan));
+        }
+
+        if (processBothEndpoints(switchId, port, vlan)) {
+            sendFlowRemoveNotification(flow.getFlowId(), payload.getApplication(), flow.getSrcSwitch().getSwitchId(),
+                    flow.getSrcPort(), flow.getSrcVlan());
+            sendFlowRemoveNotification(flow.getFlowId(), payload.getApplication(), flow.getDestSwitch().getSwitchId(),
+                    flow.getDestPort(), flow.getDestVlan());
+        } else {
+            sendFlowRemoveNotification(flow.getFlowId(), payload.getApplication(), switchId, port, vlan);
+        }
+
+        sendNbResponse(flow);
+    }
+
+    private void removeAppForFlowPath(Flow flow, FlowPath flowPath, FlowApplication application) {
+        removeFromDatabase(flowPath, application);
+        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flowPath));
+    }
+
+    private void removeFromDatabase(FlowPath flowPath, FlowApplication application) {
+        Set<FlowApplication> applications = Optional.ofNullable(flowPath.getApplications()).orElse(new HashSet<>());
+        applications.remove(application);
+        flowPath.setApplications(applications);
+        flowPathRepository.createOrUpdate(flowPath);
+    }
+
+    private void sendFlowRemoveNotification(String flowId, String app, SwitchId switchId, Integer port, Integer vlan) {
+        carrier.emitNotification(FlowApplicationRemoved.builder()
+                .flowId(flowId)
+                .application(app)
+                .endpoint(Endpoint.builder()
+                        .switchId(switchId.toString())
+                        .portNumber(port)
+                        .vlanId(vlan)
+                        .build())
+                .build());
+    }
+
+    private void sendNbResponse(Flow flow) {
+        carrier.emitNorthboundResponse(FlowAppsResponse.builder()
+                .flowId(flow.getFlowId())
+                .srcApps(AppsEntry.builder()
+                        .endpointSwitch(flow.getForwardPath().getSrcSwitch().getSwitchId())
+                        .applications(Optional
+                                .ofNullable(flow.getForwardPath().getApplications()).orElse(new HashSet<>()))
+                        .build())
+                .dstApps(AppsEntry.builder()
+                        .endpointSwitch(flow.getReversePath().getSrcSwitch().getSwitchId())
+                        .applications(Optional
+                                .ofNullable(flow.getReversePath().getApplications()).orElse(new HashSet<>()))
+                        .build())
+                .build());
     }
 
     private Flow getFlow(String flowId) throws FlowNotFoundException {
         return flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
     }
 
-    private void validateEndpoint(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
-        if (switchId == null && port == null && vlan == null) {
-            return;
-        }
+    private boolean processBothEndpoints(SwitchId switchId, Integer port, Integer vlan) {
+        return switchId == null && port == null && vlan == null;
+    }
 
-        if (flow.getSrcSwitch().getSwitchId().equals(switchId)
+    private boolean endpointForForwardPath(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
+        return flow.getSrcSwitch().getSwitchId().equals(switchId)
                 && Objects.equals(flow.getSrcPort(), port)
-                && Objects.equals(flow.getSrcVlan(), vlan)) {
-            return;
-        }
+                && Objects.equals(flow.getSrcVlan(), vlan);
+    }
 
-        if (flow.getDestSwitch().getSwitchId().equals(switchId)
+    private boolean endpointForReversePath(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
+        return flow.getDestSwitch().getSwitchId().equals(switchId)
                 && Objects.equals(flow.getDestPort(), port)
-                && Objects.equals(flow.getDestVlan(), vlan)) {
-            return;
-        }
+                && Objects.equals(flow.getDestVlan(), vlan);
+    }
 
-        throw new IllegalArgumentException(
-                format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
-                        switchId, port, vlan));
+    private FlowApplication convertApplicationFromString(String application) {
+        return FlowApplication.valueOf(application.toUpperCase());
+    }
+
+    private UpdateIngressFlow buildUpdateIngressRuleCommand(Flow flow, FlowPath flowPath) {
+        boolean isForward = flow.isForward(flowPath);
+        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
+        EncapsulationResources encapsulationResources =
+                flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
+                        flow.getOppositePathId(flowPath.getPathId()),
+                        flow.getEncapsulationType())
+                        .orElseThrow(() -> new IllegalStateException(
+                                format("Encapsulation resources are not found for path %s", flowPath)));
+        return new UpdateIngressFlow(
+                flowCommandFactory.buildInstallIngressFlow(flow, flowPath, inPort, encapsulationResources));
     }
 
     /**
      * Create exclusion for the flow.
      */
-    public CreateExclusionResult processCreateExclusion(CreateExclusion payload) throws FlowNotFoundException {
-        return CreateExclusionResult.builder()
+    public void processCreateExclusion(CreateExclusion payload) {
+        carrier.emitNotification(CreateExclusionResult.builder()
                 .flowId(payload.getFlowId())
                 .endpoint(payload.getEndpoint())
                 .application(payload.getApplication())
                 .exclusion(payload.getExclusion())
                 .success(false)
-                .build();
+                .build());
     }
 
     /**
      * Remove exclusion for the flow.
      */
-    public RemoveExclusionResult processRemoveExclusion(RemoveExclusion payload) throws FlowNotFoundException {
-        return RemoveExclusionResult.builder()
+    public void processRemoveExclusion(RemoveExclusion payload) {
+        carrier.emitNotification(RemoveExclusionResult.builder()
                 .flowId(payload.getFlowId())
                 .endpoint(payload.getEndpoint())
                 .application(payload.getApplication())
                 .exclusion(payload.getExclusion())
                 .success(false)
-                .build();
+                .build());
     }
 }

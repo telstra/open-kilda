@@ -70,6 +70,7 @@ import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.UpdateIngressFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -136,6 +137,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
@@ -186,6 +188,8 @@ class RecordHandler implements Runnable {
             doDiscoverIslCommand(message);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
+        } else if (data instanceof UpdateIngressFlow) {
+            doProcessUpdateIngressFlow(message);
         } else if (data instanceof InstallIngressFlow) {
             doProcessIngressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallLldpFlow) {
@@ -332,7 +336,39 @@ class RecordHandler implements Runnable {
                 meterId,
                 command.getTransitEncapsulationType(),
                 command.isEnableLldp(),
-                command.isMultiTable());
+                command.isMultiTable(),
+                command.getApplications());
+    }
+
+    private void doProcessUpdateIngressFlow(CommandMessage message) {
+        InstallIngressFlow command = (InstallIngressFlow) message.getData();
+        logger.info("Updating ingress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
+
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
+                .cookie(command.getCookie())
+                .encapsulationId(command.getTransitEncapsulationId())
+                .encapsulationType(command.getTransitEncapsulationType())
+                .egressSwitchId(command.getEgressSwitchId())
+                .inPort(command.getInputPort())
+                .outPort(command.getOutputPort())
+                .build();
+        RemoveFlow removeCommand = RemoveFlow.builder()
+                .transactionId(UUID.randomUUID())
+                .flowId("UPDATE_INGRESS")
+                .cookie(command.getCookie())
+                .criteria(criteria)
+                .multiTable(command.isMultiTable())
+                .switchId(command.getSwitchId())
+                .meterId(command.getMeterId())
+                .build();
+
+        try {
+            processDeleteFlow(removeCommand, dpid);
+            installIngressFlow(command);
+        } catch (SwitchOperationException e) {
+            logger.error("Updating ingress rule (cookie = {}) was unsuccessful", command.getCookie(), e);
+        }
     }
 
     private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,

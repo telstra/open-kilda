@@ -23,7 +23,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -31,5 +31,5 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class AppsDto {
     private SwitchId endpointSwitch;
-    private List<String> applications;
+    private Set<String> applications;
 }

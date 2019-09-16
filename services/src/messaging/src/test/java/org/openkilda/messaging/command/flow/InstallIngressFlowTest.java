@@ -32,12 +32,13 @@ import static org.openkilda.messaging.command.Constants.transitEncapsulationType
 
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.UUID;
 
 public class InstallIngressFlowTest {
     private InstallIngressFlow flow = new InstallIngressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
             outputPort, inputVlanId, transitEncapsulationId, transitEncapsulationType,
-            outputVlanType, bandwidth, meterId, egressSwitchId, false, false);
+            outputVlanType, bandwidth, meterId, egressSwitchId, false, false, new HashSet<>());
 
     @Test
     public void toStringTest() throws Exception {

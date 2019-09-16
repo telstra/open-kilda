@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.northbound.dto.v1.flows.AppsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowAppsDto;
@@ -165,6 +166,17 @@ public interface FlowMapper {
     FlowAppsDto toFlowAppsDto(FlowAppsResponse response);
 
     AppsDto toAppsDto(AppsEntry entry);
+
+    /**
+     * Convert {@link FlowApplication} to {@link String}.
+     */
+    default String encodeFlowApplication(FlowApplication application) {
+        if (application == null) {
+            return null;
+        }
+
+        return application.toString().toLowerCase();
+    }
 
     /**
      * Convert {@link FlowState} to {@link String}.

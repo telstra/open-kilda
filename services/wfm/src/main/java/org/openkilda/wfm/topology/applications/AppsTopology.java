@@ -20,6 +20,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.applications.bolt.AppsManager;
 import org.openkilda.wfm.topology.applications.bolt.NorthboundEncoder;
@@ -53,7 +54,8 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
 
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
-        appsManager(topologyBuilder, persistenceManager);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        appsManager(topologyBuilder, persistenceManager, flowResourcesConfig);
 
         outputNorthbound(topologyBuilder);
         outputSpeaker(topologyBuilder);
@@ -74,8 +76,9 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
         topologyBuilder.setSpout(ComponentId.APPS_SPOUT.toString(), spout, parallelism);
     }
 
-    private void appsManager(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        AppsManager bolt = new AppsManager(persistenceManager);
+    private void appsManager(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager,
+                             FlowResourcesConfig flowResourcesConfig) {
+        AppsManager bolt = new AppsManager(persistenceManager, flowResourcesConfig);
         topologyBuilder.setBolt(AppsManager.BOLT_ID, bolt, parallelism)
                 .shuffleGrouping(ComponentId.APPS_SPOUT.toString())
                 .shuffleGrouping(ComponentId.APPS_NB_SPOUT.toString());

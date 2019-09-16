@@ -16,6 +16,7 @@
 package org.openkilda.messaging.info.apps;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -26,7 +27,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -36,5 +37,5 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class AppsEntry extends InfoData {
     private SwitchId endpointSwitch;
-    private List<String> applications;
+    private Set<FlowApplication> applications;
 }
