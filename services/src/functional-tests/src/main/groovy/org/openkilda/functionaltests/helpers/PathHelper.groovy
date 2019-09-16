@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component
 @Component
 @Slf4j
 class PathHelper {
-    static final String NOT_PREFERABLE_COST = "99999999"
+    static final Integer NOT_PREFERABLE_COST = 10000
 
     @Autowired
     TopologyDefinition topology
@@ -38,9 +38,8 @@ class PathHelper {
     void makePathNotPreferable(List<PathNode> path) {
         def notPreferableIsls = getInvolvedIsls(path)
         log.debug "ISLs to avoid: $notPreferableIsls"
-        northbound.updateLinkProps(notPreferableIsls.collectMany {
-            [islUtils.toLinkProps(it, ["cost": NOT_PREFERABLE_COST]),
-             islUtils.toLinkProps(it.reversed, ["cost": NOT_PREFERABLE_COST])]
+        northbound.updateLinkProps(notPreferableIsls.collectMany { isl ->
+            [islUtils.toLinkProps(isl, ["cost": (NOT_PREFERABLE_COST ** 2).toString()])]
         })
     }
 
@@ -53,23 +52,34 @@ class PathHelper {
 
     /**
      * Selects ISL that is present only in less preferable path and is not present in more preferable one. Then
-     * sets very big cost on that ISL, so that the path indeed becomes less preferable.
+     * compares total cost of less/more preferable paths, if totalCostOfLessPrefPath <= totalCostOfMorePrefPath
+     * we sets new cost(totalCostOfMorePrefPath + NOT_PREFERABLE_COST), so that the path indeed becomes less preferable.
      *
      * @param morePreferablePath path that should become more preferable over the 'lessPreferablePath'
      * @param lessPreferablePath path that should become less preferable compared to 'morePreferablePath'
-     * @return The changed ISL (one-way ISL, but actually changed in both directions)
+     * @return The changed ISL (one-way ISL, but actually changed in both directions) or null
      */
     Isl makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def islToAvoid = getInvolvedIsls(lessPreferablePath).find {
-            !morePreferableIsls.contains(it) && !morePreferableIsls.contains(it.reversed)
+        def totalCostOfMorePrefPath = morePreferableIsls.collect {
+            northbound.getLink(it)
+        }.cost.sum()
+        def islToAvoid
+        def totalCostOfLessPrefPath = getInvolvedIsls(lessPreferablePath).collect {
+            northbound.getLink(it)
+        }.cost.sum()
+        if(totalCostOfLessPrefPath <= totalCostOfMorePrefPath) {
+            islToAvoid = getInvolvedIsls(lessPreferablePath).find {
+                !morePreferableIsls.contains(it) && !morePreferableIsls.contains(it.reversed)
+            }
+            if (!islToAvoid) {
+                throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
+            }
+            log.debug "ISL to avoid: $islToAvoid"
+
+            northbound.updateLinkProps([islUtils.toLinkProps(islToAvoid,
+                    ["cost": (totalCostOfMorePrefPath + NOT_PREFERABLE_COST).toString()])])
         }
-        if (!islToAvoid) {
-            throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
-        }
-        log.debug "ISL to avoid: $islToAvoid"
-        northbound.updateLinkProps([islUtils.toLinkProps(islToAvoid, ["cost": NOT_PREFERABLE_COST]),
-                                    islUtils.toLinkProps(islToAvoid.reversed, ["cost": NOT_PREFERABLE_COST])])
         return islToAvoid
     }
 
