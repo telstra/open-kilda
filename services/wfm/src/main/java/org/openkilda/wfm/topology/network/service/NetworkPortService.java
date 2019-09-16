@@ -53,7 +53,7 @@ public class NetworkPortService {
         controllerFactory = PortFsm.factory();
         controllerExecutor = controllerFactory.produceExecutor();
 
-        reportFactory = PortReportFsm.factory(dashboardLoggerBuilder);
+        reportFactory = PortReportFsm.factory(dashboardLoggerBuilder, carrier);
     }
 
     /**

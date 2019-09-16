@@ -53,16 +53,16 @@ class StormLcmSpec extends HealthCheckSpecification {
         }
 
         and: "Database dump"
-        def nodesDump = database.dumpAllNodes()
         def relationsDump = database.dumpAllRelations()
+        def switchesDump = database.dumpAllSwitches()
 
         when: "Storm topologies are restarted"
         wfmManipulator.restartWfm()
 
         then: "Database nodes and relations are unchanged"
-        def newNodes = database.dumpAllNodes()
         def newRelation = database.dumpAllRelations()
-        expect newNodes, sameBeanAs(nodesDump)
+        def newSwitches = database.dumpAllSwitches()
+        expect newSwitches, sameBeanAs(switchesDump)
         expect newRelation, sameBeanAs(relationsDump).ignoring("time_modify").ignoring("latency")
 
         and: "Flows remain valid in terms of installed rules and meters"

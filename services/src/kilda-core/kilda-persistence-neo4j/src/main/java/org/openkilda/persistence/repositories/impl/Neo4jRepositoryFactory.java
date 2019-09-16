@@ -38,6 +38,7 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
 import org.openkilda.persistence.repositories.history.HistoryLogRepository;
+import org.openkilda.persistence.repositories.history.PortHistoryRepository;
 import org.openkilda.persistence.repositories.history.StateLogRepository;
 
 import java.time.Duration;
@@ -160,5 +161,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public ConnectedDeviceRepository createConnectedDeviceRepository() {
         return new Neo4jConnectedDevicesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public PortHistoryRepository createPortHistoryRepository() {
+        return new Neo4jPortHistoryRepository(sessionFactory, transactionManager);
     }
 }

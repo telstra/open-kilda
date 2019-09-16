@@ -19,6 +19,7 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
 import org.openkilda.persistence.repositories.history.HistoryLogRepository;
+import org.openkilda.persistence.repositories.history.PortHistoryRepository;
 import org.openkilda.persistence.repositories.history.StateLogRepository;
 
 /**
@@ -64,4 +65,6 @@ public interface RepositoryFactory {
     SwitchPropertiesRepository createSwitchPropertiesRepository();
 
     ConnectedDeviceRepository createConnectedDeviceRepository();
+
+    PortHistoryRepository createPortHistoryRepository();
 }

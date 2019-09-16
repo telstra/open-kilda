@@ -13,20 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.kafka;
+package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.utils.SerializationUtils;
-
-import lombok.extern.slf4j.Slf4j;
-
-import java.io.IOException;
-
-@Slf4j
-public class InfoDataDeserializer extends Deserializer<InfoData> {
-
-    @Override
-    protected InfoData jsonDecode(byte[] data) throws IOException {
-        return SerializationUtils.MAPPER.readValue(data, InfoData.class);
-    }
+public class HistoryRequest extends BaseRequest {
 }

@@ -17,7 +17,10 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
+
+import java.time.Instant;
 
 public interface IPortCarrier {
     void setupUniIslHandler(Endpoint endpoint, Isl history);
@@ -31,6 +34,8 @@ public interface IPortCarrier {
     void notifyPortDiscoveryFailed(Endpoint endpoint);
 
     void notifyPortPhysicalDown(Endpoint endpoint);
+
+    void sendPortStateChangedHistory(Endpoint endpoint, PortHistoryEvent event, Instant time);
 
     void removeUniIslHandler(Endpoint endpoint);
 }

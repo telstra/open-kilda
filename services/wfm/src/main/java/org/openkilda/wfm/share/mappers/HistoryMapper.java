@@ -20,16 +20,19 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
+import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
+import org.openkilda.model.history.PortHistory;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.PortHistoryData;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.mapstruct.AfterMapping;
@@ -125,6 +128,12 @@ public abstract class HistoryMapper {
     @Mapping(source = "eventData.event.description", target = "action")
     @Mapping(source = "time", target = "timestamp")
     public abstract FlowEvent map(FlowEventData eventData);
+
+    @Mapping(target = "switchId", expression = "java(data.getEndpoint().getDatapath())")
+    @Mapping(target = "portNumber", expression = "java(data.getEndpoint().getPortNumber())")
+    public abstract PortHistory map(PortHistoryData data);
+
+    public abstract PortHistoryPayload map(PortHistory portHistory);
 
     /**
      * Adds string representation of flow path into {@link FlowDumpData}.

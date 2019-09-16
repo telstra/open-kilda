@@ -13,20 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.kafka;
+package org.openkilda.persistence.repositories.history;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.utils.SerializationUtils;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.history.PortHistory;
+import org.openkilda.persistence.repositories.Repository;
 
-import lombok.extern.slf4j.Slf4j;
+import java.time.Instant;
+import java.util.Collection;
 
-import java.io.IOException;
-
-@Slf4j
-public class InfoDataDeserializer extends Deserializer<InfoData> {
-
-    @Override
-    protected InfoData jsonDecode(byte[] data) throws IOException {
-        return SerializationUtils.MAPPER.readValue(data, InfoData.class);
-    }
+public interface PortHistoryRepository extends Repository<PortHistory> {
+    Collection<PortHistory> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber, Instant start, Instant end);
 }

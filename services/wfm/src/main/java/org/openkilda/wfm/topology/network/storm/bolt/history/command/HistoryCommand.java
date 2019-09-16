@@ -13,20 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.kafka;
+package org.openkilda.wfm.topology.network.storm.bolt.history.command;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.utils.SerializationUtils;
+import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.network.storm.ICommand;
+import org.openkilda.wfm.topology.network.storm.bolt.history.HistoryHandler;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.Getter;
 
-import java.io.IOException;
+public abstract class HistoryCommand implements ICommand<HistoryHandler> {
+    @Getter
+    private final SwitchId switchId;
 
-@Slf4j
-public class InfoDataDeserializer extends Deserializer<InfoData> {
-
-    @Override
-    protected InfoData jsonDecode(byte[] data) throws IOException {
-        return SerializationUtils.MAPPER.readValue(data, InfoData.class);
+    public HistoryCommand(SwitchId switchId) {
+        this.switchId = switchId;
     }
 }

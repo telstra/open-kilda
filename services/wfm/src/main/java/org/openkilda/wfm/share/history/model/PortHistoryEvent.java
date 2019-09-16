@@ -13,20 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.kafka;
+package org.openkilda.wfm.share.history.model;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.utils.SerializationUtils;
+public enum PortHistoryEvent {
+    PORT_UP,
+    PORT_DOWN,
 
-import lombok.extern.slf4j.Slf4j;
-
-import java.io.IOException;
-
-@Slf4j
-public class InfoDataDeserializer extends Deserializer<InfoData> {
-
-    @Override
-    protected InfoData jsonDecode(byte[] data) throws IOException {
-        return SerializationUtils.MAPPER.readValue(data, InfoData.class);
-    }
+    ANTI_FLAP_ACTIVATED,
+    ANTI_FLAP_DEACTIVATED
 }
