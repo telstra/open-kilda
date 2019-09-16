@@ -23,8 +23,8 @@ import static org.apache.commons.collections4.ListUtils.union;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandGroup;
 import org.openkilda.messaging.command.CommandGroup.FailureReaction;
+import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeallocateFlowResourcesRequest;
-import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.error.ErrorType;
@@ -51,6 +51,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -113,6 +114,7 @@ public class FlowService extends BaseFlowService {
     private final IslRepository islRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private final FeatureTogglesRepository featureTogglesRepository;
+    private final ConnectedDeviceRepository connectedDeviceRepository;
     private final PathComputerFactory pathComputerFactory;
     private final FlowValidator flowValidator;
     private final FlowCommandFactory flowCommandFactory;
@@ -127,6 +129,7 @@ public class FlowService extends BaseFlowService {
         islRepository = repositoryFactory.createIslRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        connectedDeviceRepository = repositoryFactory.createConnectedDeviceRepository();
         this.pathComputerFactory = pathComputerFactory;
         this.flowValidator = flowValidator;
         this.flowCommandFactory = flowCommandFactory;
@@ -322,6 +325,8 @@ public class FlowService extends BaseFlowService {
                 log.info("Deleting the flow: {}", flow);
 
                 flowPathRepository.lockInvolvedSwitches(flow.getPaths().toArray(new FlowPath[0]));
+
+                connectedDeviceRepository.findByFlowId(flowId).forEach(connectedDeviceRepository::delete);
 
                 // Remove flow and all associated paths
                 flowRepository.delete(flow);
@@ -1156,20 +1161,20 @@ public class FlowService extends BaseFlowService {
         EncapsulationResources reverseEncapsulationResources = pathsToInstall.getReverseEncapsulation();
 
         if (pathsToInstall.getForwardPath() != null) {
-            createInstallTransitAndEgressRules(pathsToInstall.getForwardPath(),
+            createInstallLldpTransitAndEgressRules(pathsToInstall.getForwardPath(),
                     forwardEncapsulationResources).ifPresent(commandGroups::add);
         }
         if (pathsToInstall.getReversePath() != null) {
-            createInstallTransitAndEgressRules(pathsToInstall.getReversePath(),
+            createInstallLldpTransitAndEgressRules(pathsToInstall.getReversePath(),
                     reverseEncapsulationResources).ifPresent(commandGroups::add);
         }
 
         if (pathsToInstall.getProtectedForwardPath() != null) {
-            createInstallTransitAndEgressRules(pathsToInstall.getProtectedForwardPath(),
+            createInstallLldpTransitAndEgressRules(pathsToInstall.getProtectedForwardPath(),
                     pathsToInstall.getProtectedForwardEncapsulation()).ifPresent(commandGroups::add);
         }
         if (pathsToInstall.getProtectedReversePath() != null) {
-            createInstallTransitAndEgressRules(pathsToInstall.getProtectedReversePath(),
+            createInstallLldpTransitAndEgressRules(pathsToInstall.getProtectedReversePath(),
                     pathsToInstall.getProtectedReverseEncapsulation()).ifPresent(commandGroups::add);
         }
 
@@ -1186,9 +1191,9 @@ public class FlowService extends BaseFlowService {
         return commandGroups;
     }
 
-    private Optional<CommandGroup> createInstallTransitAndEgressRules(FlowPath flowPath,
-                                                                      EncapsulationResources encapsulationResources) {
-        List<InstallTransitFlow> rules = flowCommandFactory.createInstallTransitAndEgressRulesForFlow(flowPath,
+    private Optional<CommandGroup> createInstallLldpTransitAndEgressRules(
+            FlowPath flowPath, EncapsulationResources encapsulationResources) {
+        List<BaseInstallFlow> rules = flowCommandFactory.createInstallLldpTransitAndEgressRulesForFlow(flowPath,
                 encapsulationResources);
         return !rules.isEmpty() ? Optional.of(new CommandGroup(rules, FailureReaction.ABORT_BATCH))
                 : Optional.empty();
@@ -1234,7 +1239,7 @@ public class FlowService extends BaseFlowService {
         if (isPrimary) {
             commandGroups.add(createRemoveIngressRules(flowPath));
         }
-        createRemoveTransitAndEgressRules(flowPath, encapsulationResources)
+        createRemoveLldpTransitAndEgressRules(flowPath, encapsulationResources)
                 .ifPresent(commandGroups::add);
 
         return commandGroups;
@@ -1245,10 +1250,10 @@ public class FlowService extends BaseFlowService {
                 flowCommandFactory.createRemoveIngressRulesForFlow(flowPath)), FailureReaction.IGNORE);
     }
 
-    private Optional<CommandGroup> createRemoveTransitAndEgressRules(FlowPath flowPath,
-                                                                     EncapsulationResources encapsulationResources) {
+    private Optional<CommandGroup> createRemoveLldpTransitAndEgressRules(
+            FlowPath flowPath, EncapsulationResources encapsulationResources) {
         List<RemoveFlow> rules =
-                flowCommandFactory.createRemoveTransitAndEgressRulesForFlow(flowPath, encapsulationResources);
+                flowCommandFactory.createRemoveLldpTransitAndEgressRulesForFlow(flowPath, encapsulationResources);
         return !rules.isEmpty() ? Optional.of(new CommandGroup(rules, FailureReaction.IGNORE))
                 : Optional.empty();
     }

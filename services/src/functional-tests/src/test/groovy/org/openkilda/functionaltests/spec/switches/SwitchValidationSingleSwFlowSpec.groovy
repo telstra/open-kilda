@@ -390,7 +390,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
                         FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId, sw.dpId,false)).toJson()))
+                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId, sw.dpId, false, false)).toJson()))
 
         then: "System detects created rules as excess rules"
         //excess egress/ingress/transit rules are not added yet

@@ -102,7 +102,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
-                        sw.dpId, false)).toJson()))
+                        sw.dpId, false, false)).toJson()))
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {

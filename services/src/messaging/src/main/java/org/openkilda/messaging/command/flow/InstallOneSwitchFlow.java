@@ -89,6 +89,12 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     private Integer outputVlanId;
 
     /**
+     * LLDP flag. Packets will be send to LLDP rule if True.
+     */
+    @JsonProperty("enable_lldp")
+    private boolean enableLldp;
+
+    /**
      * Instance constructor.
      *
      * @param transactionId transaction id
@@ -117,13 +123,15 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                 @JsonProperty("bandwidth") final Long bandwidth,
                                 @JsonProperty("meter_id") final Long meterId,
-                                @JsonProperty("multi_table") final boolean multiTable) {
+                                @JsonProperty("multi_table") final boolean multiTable,
+                                @JsonProperty("enable_lldp") final boolean enableLldp) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
         setMeterId(meterId);
+        setEnableLldp(enableLldp);
     }
 
     /**
@@ -243,6 +251,20 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     }
 
     /**
+     * Get enable LLDP flag.
+     */
+    public boolean isEnableLldp() {
+        return enableLldp;
+    }
+
+    /**
+     * Set enable LLDP flag.
+     */
+    public void setEnableLldp(boolean enableLldp) {
+        this.enableLldp = enableLldp;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -260,6 +282,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
                 .add("multi_table", multiTable)
+                .add("enable_lldp", enableLldp)
                 .toString();
     }
 
@@ -287,7 +310,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
                 && Objects.equals(getMeterId(), that.getMeterId())
-                && Objects.equals(isMultiTable(), that.isMultiTable());
+                && Objects.equals(isMultiTable(), that.isMultiTable())
+                && Objects.equals(isEnableLldp(), that.isEnableLldp());
     }
 
     /**
@@ -296,6 +320,6 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, multiTable);
+                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, multiTable, enableLldp);
     }
 }

@@ -17,6 +17,7 @@ package org.openkilda.messaging.command.flow;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.openkilda.messaging.Utils.FLOW_ID;
+import static org.openkilda.messaging.Utils.OF_CONTROLLER_PORT;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.model.SwitchId;
@@ -130,7 +131,7 @@ public class BaseInstallFlow extends BaseFlow {
     public void setOutputPort(final Integer outputPort) {
         if (outputPort == null) {
             throw new IllegalArgumentException("need to set output_port");
-        } else if (outputPort < 0L) {
+        } else if (outputPort < 0L && outputPort != OF_CONTROLLER_PORT) {
             throw new IllegalArgumentException("need to set positive value for output_port");
         }
         this.outputPort = outputPort;
