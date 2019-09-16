@@ -178,13 +178,6 @@ In order to debug a topology, for example, ```OfEventWfmTopology```, we should n
 Please refer to the [Testing](https://github.com/telstra/open-kilda/wiki/Testing)
 section on our Wiki.
 
-### How to run floodlight-modules locally
-
-From the base directory run these commands:
-
-1. ```make build-floodlight```
-2. ```make run-floodlight```
-
 ### How to build / test locally without containers
 
 Start with the following
