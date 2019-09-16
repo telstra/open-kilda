@@ -144,7 +144,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     public void cancelTimeoutCallback(String key) {
-        cancelCallback(key, getCurrentTuple());
+        cancelCallback(key);
     }
 
     @Override

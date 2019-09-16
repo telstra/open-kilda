@@ -61,14 +61,12 @@ public class SwitchManagerWorker extends WorkerBolt {
     }
 
     @Override
-    protected void onAsyncResponse(Tuple input) throws PipelineException {
-        handleCommand(input, SwitchManagerRouter.FIELD_ID_COMMAND);
+    protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
+        handleCommand(response, SwitchManagerRouter.FIELD_ID_COMMAND);
     }
 
     @Override
-    public void onTimeout(String key, Tuple tuple) {
-        Tuple request = pendingTasks.get(key);
-
+    protected void onRequestTimeout(Tuple request) throws PipelineException {
         try {
             handleTimeout(request, SwitchHandler.FIELD_ID_COMMAND);
         } catch (PipelineException e) {
