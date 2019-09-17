@@ -816,7 +816,6 @@ misconfigured"
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2779")
     def "Able to validate and sync a missing 'connected device' LLDP rule"() {
         given: "A flow with enabled connected devices"
         def flow = flowHelper.randomFlow(topologyHelper.switchPairs.first())
@@ -862,7 +861,6 @@ misconfigured"
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2779")
     def "Able to validate and sync a missing 'connected device' LLDP rule + meter"() {
         given: "A flow with enabled connected devices"
         def flow = flowHelper.randomFlow(topologyHelper.switchPairs.first())

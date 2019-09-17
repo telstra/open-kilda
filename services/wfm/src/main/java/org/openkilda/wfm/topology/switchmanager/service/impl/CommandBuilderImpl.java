@@ -84,12 +84,10 @@ public class CommandBuilderImpl implements CommandBuilder {
                     }
                 });
 
-        flowPathRepository.findByEndpointSwitch(switchId)
+        flowPathRepository.findByEndpointSwitchIncludeProtected(switchId)
                 .forEach(flowPath -> {
-                    if (switchRules.contains(flowPath.getCookie().getValue())) {
-                        Flow flow = flowRepository.findById(flowPath.getFlow().getFlowId())
-                                .orElseThrow(() ->
-                                        new IllegalStateException(format("Abandon FlowPath found: %s", flowPath)));
+                    if (!flowPath.isProtected() && switchRules.contains(flowPath.getCookie().getValue())) {
+                        Flow flow = getFlow(flowPath);
                         if (flowPath.isOneSwitchFlow()) {
                             log.info("One-switch flow {} is to be (re)installed on switch {}",
                                     flowPath.getCookie(), switchId);
@@ -101,20 +99,41 @@ public class CommandBuilderImpl implements CommandBuilder {
                                 log.warn("Output port was not found for ingress flow rule");
                             } else {
                                 PathSegment foundIngressSegment = flowPath.getSegments().get(0);
-                                EncapsulationResources encapsulationResources =
-                                        flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                                                flow.getOppositePathId(flowPath.getPathId()),
-                                                flow.getEncapsulationType())
-                                                .orElseThrow(() -> new IllegalStateException(
-                                        format("Encapsulation resources are not found for path %s", flowPath)));
+                                EncapsulationResources encapsulationResources = getEncapsulationResources(
+                                        flowPath, flow);
                                 commands.add(flowCommandFactory.buildInstallIngressFlow(flow, flowPath,
                                         foundIngressSegment.getSrcPort(), encapsulationResources));
+                            }
+                        }
+                    } else {
+                        if (flowPath.getLldpResources() != null
+                                && switchRules.contains(flowPath.getLldpResources().getCookie().getValue())) {
+                            Flow flow = getFlow(flowPath);
+                            if (flow.isOneSwitchFlow()) {
+                                commands.add(flowCommandFactory.createInstallLldpRuleForFlow(flowPath, null));
+                            } else {
+                                commands.add(flowCommandFactory.createInstallLldpRuleForFlow(
+                                        flowPath, getEncapsulationResources(flowPath, flow)));
                             }
                         }
                     }
                 });
 
         return commands;
+    }
+
+    private Flow getFlow(FlowPath flowPath) {
+        return flowRepository.findById(flowPath.getFlow().getFlowId())
+                .orElseThrow(() ->
+                        new IllegalStateException(format("Abandon FlowPath found: %s", flowPath)));
+    }
+
+    private EncapsulationResources getEncapsulationResources(FlowPath flowPath, Flow flow) {
+        return flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
+                flow.getOppositePathId(flowPath.getPathId()),
+                flow.getEncapsulationType())
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Encapsulation resources are not found for path %s", flowPath)));
     }
 
     private List<BaseInstallFlow> buildInstallDefaultRuleCommands(SwitchId switchId, List<Long> switchRules) {
@@ -194,11 +213,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         }
         Flow flow = foundFlow.get();
 
-        EncapsulationResources encapsulationResources =
-                flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                        flow.getOppositePathId(flowPath.getPathId()), flow.getEncapsulationType())
-                        .orElseThrow(() -> new IllegalStateException(
-                                        format("Encapsulation resources are not found for path %s", flowPath)));
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flowPath, flow);
 
         if (segment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
             return Collections.singletonList(
