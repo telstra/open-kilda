@@ -20,10 +20,12 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.time.Instant;
+
 @Value
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowConnectedDeviceRequest extends FlowsBaseRequest {
     private String flowId;
-    private String since;
+    private Instant since;
 }

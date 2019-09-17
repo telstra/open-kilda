@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -58,8 +57,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -202,13 +199,12 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<FlowConnectedDevicesResponse> processFlowConnectedDeviceRequest(FlowConnectedDeviceRequest request) {
-        Instant since = getSinceInstant(request);
 
         Collection<ConnectedDevice> devices;
         try {
             devices = flowOperationsService.getFlowConnectedDevice(request.getFlowId()).stream()
-                    .filter(device -> since.isBefore(device.getTimeLastSeen())
-                            || since.equals(device.getTimeLastSeen()))
+                    .filter(device -> request.getSince().isBefore(device.getTimeLastSeen())
+                            || request.getSince().equals(device.getTimeLastSeen()))
                     .collect(Collectors.toList());
         } catch (FlowNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
@@ -231,21 +227,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             }
         }
         return Collections.singletonList(response);
-    }
-
-    private Instant getSinceInstant(FlowConnectedDeviceRequest request) {
-        if (request.getSince() == null || request.getSince().isEmpty()) {
-            return Instant.MIN;
-        }
-
-        try {
-            return Instant.parse(request.getSince());
-        } catch (DateTimeParseException e) {
-            String message = format("Invalid 'since' value '%s'. Correct example of 'since' value is "
-                    + "'2019-09-30T16:14:12.538Z'", request.getSince());
-            log.error("Couldn't get connected devices for flow '{}': {}", request.getFlowId(), message);
-            throw new MessageException(ErrorType.DATA_INVALID, message, "Invalid 'since' value");
-        }
     }
 
     @Override

@@ -26,15 +26,8 @@ public interface ConnectedDeviceMapper {
 
     ConnectedDeviceDto map(org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto deviceDto);
 
-    org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto map(ConnectedDeviceDto deviceDto);
-
     TypedConnectedDevicesDto map(org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto devicesDto);
-
-    org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto map(TypedConnectedDevicesDto devicesDto);
 
     FlowConnectedDevicesResponse toResponse(
             org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse response);
-
-    org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse toMessaging(
-            FlowConnectedDevicesResponse response);
 }

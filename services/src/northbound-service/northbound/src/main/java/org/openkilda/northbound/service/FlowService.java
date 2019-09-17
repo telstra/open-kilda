@@ -35,6 +35,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -211,8 +212,8 @@ public interface FlowService {
      * Get Flow connected devices.
      *
      * @param flowId flow ID
-     * @param since since
+     * @param since timestamp. Device will be included in response if device `time_last_seen` >= `since`
      * @return the list devices connected to flow.
      */
-    CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, String since);
+    CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, Instant since);
 }

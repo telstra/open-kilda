@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.controller.v1;
 
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
@@ -38,6 +40,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +58,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -372,7 +376,19 @@ public class FlowController extends BaseController {
                     + "Example of `since` value: `2019-09-30T16:14:12.538Z`",
                     required = false)
             @RequestParam(value = "since", required = false) Optional<String> since) {
+        Instant sinceInstant;
 
-        return flowService.getFlowConnectedDevices(flowId, since.orElse(""));
+        if (!since.isPresent() || StringUtils.isEmpty(since.get())) {
+            sinceInstant = Instant.MIN;
+        } else {
+            try {
+                sinceInstant = Instant.parse(since.get());
+            } catch (DateTimeParseException e) {
+                String message = String.format("Invalid 'since' value '%s'. Correct example of 'since' value is "
+                        + "'2019-09-30T16:14:12.538Z'", since.get());
+                throw new MessageException(ErrorType.DATA_INVALID, message, "Invalid 'since' value");
+            }
+        }
+        return flowService.getFlowConnectedDevices(flowId, sinceInstant);
     }
 }

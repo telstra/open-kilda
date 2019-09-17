@@ -115,6 +115,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.InvalidPathException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1151,7 +1152,7 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, String since) {
+    public CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, Instant since) {
         logger.info("Get connected devices for flow {} since {}", flowId, since);
 
         FlowConnectedDeviceRequest request = new FlowConnectedDeviceRequest(flowId, since);
