@@ -60,7 +60,7 @@ public class SpeakerWorker extends WorkerBolt {
 
     @Override
     protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
-        handleCommand(request, SpeakerRouter.FIELD_ID_INPUT);
+        handleCommand(response, SpeakerRouter.FIELD_ID_INPUT);
     }
 
     @Override
