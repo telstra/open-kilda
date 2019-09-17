@@ -87,7 +87,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         if (request != null) {
             onAsyncResponse(request, input);
         } else {
-            log.error("Receive response for {}, but there is no pending request by this key", key);
+            unhandledInput(input);
         }
     }
 
