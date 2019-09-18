@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
+import org.openkilda.messaging.payload.history.FlowEventPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -43,7 +44,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         Long timestampAfterCreate = System.currentTimeSeconds()
         def flowHistory = northbound.getFlowHistory(flow.id, timestampBefore, timestampAfterCreate)
         assert flowHistory.size() == 1
-        checkHistoryAction(flowHistory[0], flow.id, "createV1")
+        checkHistoryCreateV1Action(flowHistory[0], flow.id)
 
         when: "Update the created flow"
         flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
@@ -52,7 +53,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         Long timestampAfterUpdate = System.currentTimeSeconds()
         def flowHistory1 = northbound.getFlowHistory(flow.id, timestampBefore, timestampAfterUpdate)
         assert flowHistory1.size() == 2
-        checkHistoryAction(flowHistory1[1], flow.id, "update")
+        checkHistoryUpdateAction(flowHistory1[1], flow.id)
 
         when: "Delete the updated flow"
         flowHelper.deleteFlow(flow.id)
@@ -74,7 +75,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         Long timestampAfterCreate = System.currentTimeSeconds()
         verifyAll(northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterCreate)) { flowH ->
             flowH.size() == 1
-            checkHistoryAction(flowH[0], flow.flowId, "createV2")
+            checkHistoryCreateV2Action(flowH[0], flow.flowId)
         }
 
         when: "Update the created flow"
@@ -85,7 +86,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         Long timestampAfterUpdate = System.currentTimeSeconds()
         verifyAll(northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterUpdate)){ flowH ->
             flowH.size() == 2
-            checkHistoryAction(flowH[1], flow.flowId, "update")
+            checkHistoryUpdateAction(flowH[1], flow.flowId)
         }
 
         when: "Delete the updated flow"
@@ -104,7 +105,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         then: "History record is created"
         def flowHistory = northbound.getFlowHistory(flow.id)
         assert flowHistory.size() == 1
-        checkHistoryAction(flowHistory[0], flow.id, "createV1")
+        checkHistoryCreateV1Action(flowHistory[0], flow.id)
 
         when: "Update the created flow"
         flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
@@ -112,7 +113,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         then: "History record is created after updating the flow"
         def flowHistory1 = northbound.getFlowHistory(flow.id)
         assert flowHistory1.size() == 2
-        checkHistoryAction(flowHistory1[1], flow.id, "update")
+        checkHistoryUpdateAction(flowHistory1[1], flow.id)
 
         when: "Delete the updated flow"
         flowHelper.deleteFlow(flow.id)
@@ -133,7 +134,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         Long timestampAfterCreate = System.currentTimeSeconds()
         def flowHistory = northbound.getFlowHistory(flow.id, timestampBefore, timestampAfterCreate)
         assert flowHistory.size() == 1
-        checkHistoryAction(flowHistory[0], flow.id, "createV1")
+        checkHistoryCreateV1Action(flowHistory[0], flow.id)
 
         when: "Try to get history for incorrect timeline"
         def flowH = northbound.getFlowHistory(flow.id, timestampAfterCreate, timestampBefore)
@@ -153,30 +154,33 @@ class FlowHistorySpec extends HealthCheckSpecification {
         flowHistory.isEmpty()
     }
 
-    void checkHistoryAction(flowHistory, flowId, action) {
-        String actionMessage
-        String historyMessage
-        if (action == "createV1"){
-            actionMessage = createAction
-            historyMessage = createHistoryActionV1
-        } else if( action == "createV2") {
-            actionMessage = createAction
-            historyMessage = createHistoryActionV2
-        } else if ( action == "update") {
-            actionMessage = updateAction
-            historyMessage = updateHistoryAction
-        }
+    void checkHistoryCreateV1Action(FlowEventPayload flowHistory, String flowId) {
+        assert flowHistory.action == createAction
+        assert flowHistory.histories.action[-1] == createHistoryActionV1
+        checkHistoryCommonStuff(flowHistory, flowId)
+    }
 
+    void checkHistoryCreateV2Action(FlowEventPayload flowHistory, String flowId) {
+        assert flowHistory.action == createAction
+        assert flowHistory.histories.action[-1] == createHistoryActionV2
+        checkHistoryCommonStuff(flowHistory, flowId)
+    }
+
+    void checkHistoryUpdateAction(FlowEventPayload flowHistory, String flowId) {
+        assert flowHistory.action == updateAction
+        assert flowHistory.histories.action[-1] == updateHistoryAction
+        checkHistoryCommonStuff(flowHistory, flowId)
+    }
+
+    void checkHistoryCommonStuff(FlowEventPayload flowHistory, String flowId) {
         assert flowHistory.flowId == flowId
-        assert flowHistory.action == actionMessage
         assert flowHistory.taskId
-        assert flowHistory.histories.action[-1] == historyMessage
     }
 
     /** We pass latest timestamp when changes were done.
      * Just for getting all records from history */
-    void checkHistoryDeleteAction(flowHistory, flowId) {
-        checkHistoryAction(flowHistory[0], flowId, "createV1")
-        checkHistoryAction(flowHistory[1], flowId, "update")
+    void checkHistoryDeleteAction(List<FlowEventPayload> flowHistory, String flowId) {
+        checkHistoryCreateV1Action(flowHistory[0], flowId)
+        checkHistoryUpdateAction(flowHistory[1], flowId)
     }
 }
