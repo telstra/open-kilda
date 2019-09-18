@@ -34,6 +34,8 @@ public enum ComponentId {
     UNI_ISL_HANDLER("uni-isl-handler"),
     ISL_HANDLER("isl-handler"),
 
+    HISTORY_HANDLER("history-handler"),
+
     SPEAKER_ENCODER("speaker.encoder"),
     SPEAKER_OUTPUT("speaker.output"),
 

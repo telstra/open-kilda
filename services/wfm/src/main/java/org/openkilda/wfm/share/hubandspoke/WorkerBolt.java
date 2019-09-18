@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.hubandspoke;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
@@ -49,7 +50,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
 
     private final Config workerConfig;
 
-    protected Map<String, Tuple> pendingTasks = new HashMap<>();
+    private transient Map<String, Tuple> pendingTasks;
 
     public WorkerBolt(Config config) {
         super(config.isAutoAck(), config.getDefaultTimeout());
@@ -61,48 +62,97 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws Exception {
-        String key = input.getStringByField(MessageKafkaTranslator.KEY_FIELD);
+    protected void dispatch(Tuple input) throws Exception {
         String sourceComponent = input.getSourceComponent();
+        if (workerConfig.getHubComponent().equals(sourceComponent)) {
+            dispatchHub(input);
+        } else if (workerConfig.getWorkerSpoutComponent().equals(sourceComponent)) {
+            dispatchResponse(input);
+        } else {
+            super.dispatch(input);
+        }
+    }
 
-        if (sourceComponent.equals(workerConfig.getHubComponent())) {
-            pendingTasks.put(key, input);
-            registerCallback(key, input);
+    private void dispatchHub(Tuple input) throws Exception {
+        String key = pullKey(input);
+        pendingTasks.put(key, input);
+        registerCallback(key);
 
-            onHubRequest(input);
-        } else if (pendingTasks.containsKey(key)) {
-            if (workerConfig.getWorkerSpoutComponent().equals(sourceComponent)) {
-                // TODO(surabujin): it whould be great to get initial request together with response i.e.
-                // onAsyncResponse(input, pendingTasks.get(key)onAsyncResponse(input);
-                onAsyncResponse(input);
-            } else if (sourceComponent.equals(CoordinatorBolt.ID)) {
-                log.warn("Timeout occurred while waiting for a response for {}", key);
-                onTimeout(key, input);
-            }
+        onHubRequest(input);
+    }
+
+    private void dispatchResponse(Tuple input) throws Exception {
+        String key = pullKey();
+        Tuple request = pendingTasks.get(key);
+        if (request != null) {
+            onAsyncResponse(request, input);
         } else {
             unhandledInput(input);
         }
     }
 
+    @Override
+    protected void handleInput(Tuple input) throws Exception {
+        // all possible branching was done into `dispatch` nothing should hit here
+        unhandledInput(input);
+    }
+
     /**
      * Send response to the hub bolt. Note: the operation's key is required.
-     * @param input received tuple.
+     * @param input request or response tuple (use key to lookup original request).
      * @param values response to be sent to the hub.
      */
     protected void emitResponseToHub(Tuple input, Values values) {
-        String key = input.getStringByField(MessageKafkaTranslator.KEY_FIELD);
-        cancelCallback(key, input);
+        String key;
+        try {
+            key = pullKey(input);
+        } catch (PipelineException e) {
+            throw new IllegalStateException(String.format("Can't extract request key from %s: %s", input, e), e);
+        }
+        cancelCallback(key);
 
         Tuple processingRequest = pendingTasks.remove(key);
         if (processingRequest == null) {
             throw new IllegalStateException(format("Attempt to send response for non pending task with id %s", key));
         }
-        getOutput().emitDirect(processingRequest.getSourceTask(), workerConfig.getStreamToHub(), values);
+        getOutput().emitDirect(processingRequest.getSourceTask(), workerConfig.getStreamToHub(), getCurrentTuple(),
+                               values);
     }
 
     protected abstract void onHubRequest(Tuple input) throws Exception;
 
-    protected abstract void onAsyncResponse(Tuple input) throws Exception;
+    protected abstract void onAsyncResponse(Tuple request, Tuple response) throws Exception;
+
+    @Override
+    protected final void onTimeout(String key, Tuple tuple) throws PipelineException {
+        Tuple request = pendingTasks.get(key);
+        if (request != null) {
+            log.warn("Timeout occurred while waiting for a response for {}", key);
+            onRequestTimeout(request);
+
+            // Do not remove request from pendingTask until now, because emitResponseToHub(most likely called by
+            // onRequestTimeout) can query pendingTasks
+            pendingTasks.remove(key);
+        } else {
+            log.debug("Receive timeout notification for {}, but there is no pending request by this key", key);
+        }
+    }
+
+    protected abstract void onRequestTimeout(Tuple request) throws PipelineException;
+
+    protected String pullKey() throws PipelineException {
+        return this.pullKey(getCurrentTuple());
+    }
+
+    protected String pullKey(Tuple tuple) throws PipelineException {
+        return pullValue(tuple, MessageKafkaTranslator.FIELD_ID_KEY, String.class);
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        pendingTasks = new HashMap<>();
+    }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

@@ -103,7 +103,7 @@
         <app-port-graph *ngIf="openedTab == 'graph'"></app-port-graph>
       </div>
       <div class="tab-pane" [ngClass]="{'active': openedTab == 'flow'}">
-          <app-flows [data]="portflows" *ngIf="openedTab == 'flow' && hasStoreSetting"></app-flows>
+          <app-flows [switchid]="retrievedSwitchObject.switch_id" [portnumber]="portDataObject.port_number" *ngIf="openedTab == 'flow' && hasStoreSetting"></app-flows>
       </div>
       <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
         <div class="table-responsive">

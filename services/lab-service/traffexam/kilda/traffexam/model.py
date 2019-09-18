@@ -134,9 +134,8 @@ class Abstract(object):
 
     def __init__(self, **fields):
         cls = type(self)
-        extra = set()
+        extra = set(fields)
         for name in fields:
-            extra.add(name)
             try:
                 attr = getattr(cls, name)
             except AttributeError:
@@ -204,9 +203,12 @@ class NetworkIface(Abstract):
 
 class VLAN(Abstract):
     iface = Default(None)
+    parent = Default(None)
 
     def __init__(self, tag, **fields):
         super().__init__(**fields)
+        if isinstance(tag, collections.Sequence) and len(tag) == 1:
+            tag = tag[0]
         self.tag = tag
 
     def set_iface(self, iface):

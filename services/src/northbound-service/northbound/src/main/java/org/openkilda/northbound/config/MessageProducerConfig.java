@@ -19,6 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageProducer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,12 +52,9 @@ public class MessageProducerConfig {
      *
      * @return kafka properties bean
      */
-    @Bean
-    public Map<String, Object> producerConfigs() {
+    private Map<String, Object> producerConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
@@ -74,8 +72,9 @@ public class MessageProducerConfig {
      * @return kafka producer factory
      */
     @Bean
-    public ProducerFactory<String, Message> producerFactory() {
-        return new DefaultKafkaProducerFactory<>(producerConfigs());
+    public ProducerFactory<String, Message> producerFactory(ObjectMapper objectMapper) {
+        return new DefaultKafkaProducerFactory<>(producerConfigs(), new StringSerializer(),
+                new JsonSerializer<>(objectMapper));
     }
 
     /**
@@ -85,8 +84,8 @@ public class MessageProducerConfig {
      * @return kafka template
      */
     @Bean
-    public KafkaTemplate<String, Message> kafkaTemplate() {
-        return new KafkaTemplate<>(producerFactory());
+    public KafkaTemplate<String, Message> kafkaTemplate(ProducerFactory<String, Message> producerFactory) {
+        return new KafkaTemplate<>(producerFactory);
     }
 
     /**

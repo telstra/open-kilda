@@ -16,11 +16,16 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.ConnectedDevice;
+import org.openkilda.model.ConnectedDeviceType;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface ConnectedDeviceRepository extends Repository<ConnectedDevice> {
     Collection<ConnectedDevice> findByFlowId(String flowId);
+
+    Optional<ConnectedDevice> findByFlowIdSourceMacAndType(String flowId, boolean source, String macAddress,
+                                                           ConnectedDeviceType type);
 
     boolean exists(String flowId, String macAddress, boolean source);
 }

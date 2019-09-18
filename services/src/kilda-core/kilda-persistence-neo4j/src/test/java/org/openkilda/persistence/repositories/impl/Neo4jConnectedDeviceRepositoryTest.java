@@ -19,6 +19,8 @@ import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.model.ConnectedDeviceType.ARP;
+import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.model.ConnectedDevice;
 import org.openkilda.persistence.Neo4jBasedTest;
@@ -31,6 +33,7 @@ import org.junit.Test;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Optional;
 
 public class Neo4jConnectedDeviceRepositoryTest extends Neo4jBasedTest {
     private static final String FIRST_FLOW_ID = "first_flow";
@@ -60,18 +63,18 @@ public class Neo4jConnectedDeviceRepositoryTest extends Neo4jBasedTest {
     }
 
     @Before
-    public void createSwitches() {
+    public void createDevices() {
         connectedDeviceA = new ConnectedDevice(
-                FIRST_FLOW_ID, true, MAC_ADDRESS_1, CHASSIS_ID, PORT_ID, TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION,
-                CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN, TIME_LAST_SEEN);
+                FIRST_FLOW_ID, true, MAC_ADDRESS_1, LLDP, CHASSIS_ID, PORT_ID, TTL, PORT, SYSTEM_NAME,
+                SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN, TIME_LAST_SEEN);
 
         connectedDeviceB = new ConnectedDevice(
-                SECOND_FLOW_ID, false, MAC_ADDRESS_1, CHASSIS_ID, PORT_ID, TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION,
-                CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN, TIME_LAST_SEEN);
+                SECOND_FLOW_ID, false, MAC_ADDRESS_1, LLDP, CHASSIS_ID, PORT_ID, TTL, PORT, SYSTEM_NAME,
+                SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN, TIME_LAST_SEEN);
 
         connectedDeviceC = new ConnectedDevice(
-                SECOND_FLOW_ID, true, MAC_ADDRESS_1, CHASSIS_ID, PORT_ID, TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION,
-                CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN, TIME_LAST_SEEN);
+                SECOND_FLOW_ID, true, MAC_ADDRESS_2, ARP, CHASSIS_ID, PORT_ID, TTL, PORT, SYSTEM_NAME,
+                SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN, TIME_LAST_SEEN);
     }
 
     @Test
@@ -122,6 +125,27 @@ public class Neo4jConnectedDeviceRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void findByFlowIdSourceMacAndTypeTest() {
+        repository.createOrUpdate(connectedDeviceA);
+        repository.createOrUpdate(connectedDeviceB);
+        repository.createOrUpdate(connectedDeviceC);
+
+        runFindByFlowIdSourceMacAndType(connectedDeviceA);
+        runFindByFlowIdSourceMacAndType(connectedDeviceB);
+        runFindByFlowIdSourceMacAndType(connectedDeviceC);
+
+        assertFalse(repository.findByFlowIdSourceMacAndType("fake", false, "fake", LLDP).isPresent());
+    }
+
+    private void runFindByFlowIdSourceMacAndType(ConnectedDevice device) {
+        Optional<ConnectedDevice> foundDevice = repository.findByFlowIdSourceMacAndType(
+                device.getFlowId(), device.isSource(), device.getMacAddress(), device.getType());
+
+        assertTrue(foundDevice.isPresent());
+        assertEquals(device, foundDevice.get());
+    }
+
+    @Test
     public void uniqueIndexTest() {
         ConnectedDevice createdDevice = validateIndexAndUpdate(connectedDeviceA);
 
@@ -132,12 +156,15 @@ public class Neo4jConnectedDeviceRepositoryTest extends Neo4jBasedTest {
         ConnectedDevice updatedMacDevice = validateIndexAndUpdate(updatedFlowDevice);
 
         updatedMacDevice.setSource(false);
-        validateIndexAndUpdate(updatedMacDevice);
+        ConnectedDevice updatedSource = validateIndexAndUpdate(updatedMacDevice);
+
+        updatedSource.setType(ARP);
+        validateIndexAndUpdate(updatedSource);
     }
 
     private ConnectedDevice validateIndexAndUpdate(ConnectedDevice device) {
-        String expectedIndex = format(
-                "%s_%s_%s", device.getFlowId(), device.isSource() ? "source" : "destination", device.getMacAddress());
+        String expectedIndex = format("%s_%s_%s_%s", device.getFlowId(), device.isSource() ? "source" : "destination",
+                device.getMacAddress(), device.getType());
 
         // chack that index was updated after call of set***() method or after constructing
         assertEquals(expectedIndex, device.getUniqueIndex());

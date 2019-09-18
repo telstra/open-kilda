@@ -66,7 +66,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 public interface OutputCommands {
-    String VERIFICATION_BCAST_PACKET_DST = "01:80:C2:00:00:00";
+    String VERIFICATION_BCAST_PACKET_DST = "00:26:E1:FF:FF:FF";
 
     OFFactory ofFactory = new OFFactoryMock();
 

@@ -13,18 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.hubandspoke;
+package org.openkilda.wfm.share.history.model;
 
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.model.Endpoint;
 
-import org.apache.storm.tuple.Tuple;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Value;
 
-public interface TimeoutCallback {
+import java.time.Instant;
 
-    /**
-     * Handler for timeout for pending request and define the way how such case will be processed.
-     * @param key request id.
-     * @param tuple anchor tuple.
-     */
-    void onTimeout(String key, Tuple tuple) throws PipelineException;
+@Value
+@AllArgsConstructor
+@Builder
+public class PortHistoryData {
+    Endpoint endpoint;
+    PortHistoryEvent event;
+    Instant time;
+    int upEventsCount;
+    int downEventsCount;
 }
+

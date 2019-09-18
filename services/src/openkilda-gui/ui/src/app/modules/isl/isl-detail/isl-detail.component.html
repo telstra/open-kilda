@@ -190,7 +190,7 @@
         <li [ngClass]="{'active': openedTab == 'graph'}">
           <a href="javascript:void(0);" (click)="openTab('graph');">Graph</a>
         </li>
-        <li [ngClass]="{'active': openedTab == 'flow'}" >
+        <li *ngIf="commonService.hasPermission('menu_flows')" [ngClass]="{'active': openedTab == 'flow'}" >
           <a href="javascript:void(0);" (click)="openTab('flow');">Flows</a>
         </li>
       </ul>
@@ -269,6 +269,7 @@
                         <label class="col-xs-4 col-md-4 text-label">Graph:</label>
                         <div class="col-xs-8 col-md-8">
                           <select formControlName="graph" class="form-control" (change)="graphChanged()">
+                          <option value="rtt">Round Trip Latency</option>
                           <option value="latency">Latency</option>
                           <option value="source">Source</option>
                           <option value="target">Destination</option>

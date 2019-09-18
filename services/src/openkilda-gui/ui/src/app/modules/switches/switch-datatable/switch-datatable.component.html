@@ -92,8 +92,8 @@
                 </ng-template>
               </context-menu>
             </td>
-            <td class="divTableCell" title="{{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}" [contextMenu]="copySwitchName">
-              {{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}
+            <td class="divTableCell" title="{{ (row['controller-switch'] == true && row['state'] == 'ACTIVATED') ? row['name'] : row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}" [contextMenu]="copySwitchName">
+              {{ (row['controller-switch'] == true && row['state'] == 'ACTIVATED') ? checkValue(row['name']) : (row['common-name']) ? checkValue(row['common-name']) : checkValue(row['name']) }}
               <context-menu #copySwitchName>
                 <ng-template contextMenuItem (execute)="copyToClip($event,'name',i);">
                   Copy to Clipboard

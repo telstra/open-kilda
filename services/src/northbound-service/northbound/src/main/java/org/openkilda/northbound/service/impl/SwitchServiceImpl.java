@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service.impl;
 
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -51,11 +52,13 @@ import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -71,6 +74,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -82,6 +86,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -350,6 +355,18 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGet(floodlightTopic, commandMessage)
                 .thenApply(PortDescription.class::cast);
+    }
+
+    @Override
+    public CompletableFuture<List<PortHistoryResponse>> getPortHistory(SwitchId switchId, int port,
+                                                                       Instant from, Instant to) {
+        PortHistoryRequest request = new PortHistoryRequest(switchId, port, from, to);
+        Message message = new CommandMessage(request, System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(responses -> responses.stream()
+                        .map(PortHistoryPayload.class::cast)
+                        .map(switchMapper::map)
+                        .collect(Collectors.toList()));
     }
 
     /**

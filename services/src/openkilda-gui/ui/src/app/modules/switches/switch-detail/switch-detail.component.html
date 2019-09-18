@@ -8,9 +8,12 @@
           <label class="col-sm-2 ">Name:</label>
           <div class="col-sm-9" *ngIf="!isSwitchNameEdit">
               <div class="row">
-                  <p  class=" col-sm-3 copy_to_clipBoard switchdetails_div_name"  [contextMenu]="copySrcSwitchName">{{ switchDetail['common-name'] ? switchDetail['common-name'] : switchDetail['name'] }}</p>
+                  <p  class=" col-sm-3 copy_to_clipBoard switchdetails_div_name"  [contextMenu]="copySrcSwitchName">{{ (switchDetail['controller-switch'] == true && switchDetail['state'] == 'ACTIVATED') ? switchDetail['name'] : (switchDetail['common-name']) ? switchDetail['common-name'] : switchDetail['name'] }}
+                      <i title="Controller : {{switchDetail['name']}}, Inventory : {{switchDetail['common-name']}}" *ngIf="hasStoreSetting && (switchDetail['name'] !='undefined' && switchDetail['common-name'] !='undefined' && switchDetail['name'] != switchDetail['common-name'] )" class="fa fa-exclamation-triangle text-orange"></i>
+                  </p>
                   <button *ngIf="!isSwitchNameEdit && isStorageDBType && commonService.hasPermission('sw_switch_update_name')" type="button" class="btn pull-left kilda_btn" style="padding: 0px 20px!important; margin: 0px 0px 8px 15px;" (click)="editSwitchName()">Edit</button> &nbsp;
                 </div>
+               
              </div>
           <div class="col-sm-9" *ngIf="isSwitchNameEdit">
             <div class="row">

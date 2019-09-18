@@ -16,9 +16,9 @@
 package org.openkilda.wfm.kafka;
 
 import static java.lang.String.format;
-import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
@@ -39,7 +39,7 @@ public class AbstractMessageSerializer implements Serializer<AbstractMessage> {
         try {
             byte[] result = null;
             if (message != null) {
-                result = MAPPER.writeValueAsBytes(message);
+                result = SerializationUtils.MAPPER.writeValueAsBytes(message);
             }
             return result;
         } catch (IOException e) {

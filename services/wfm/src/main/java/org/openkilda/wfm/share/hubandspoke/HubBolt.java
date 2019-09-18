@@ -60,7 +60,7 @@ public abstract class HubBolt extends CoordinatedBolt {
     @Override
     protected void handleInput(Tuple input) throws Exception {
         if (hubConfig.getRequestSenderComponent().equals(input.getSourceComponent())) {
-            registerCallback(input.getStringByField(MessageKafkaTranslator.KEY_FIELD), input);
+            registerCallback(pullValue(input, MessageKafkaTranslator.FIELD_ID_KEY, String.class));
             onRequest(input);
         } else if (hubConfig.getWorkerComponent().equals(input.getSourceComponent())) {
             onWorkerResponse(input);

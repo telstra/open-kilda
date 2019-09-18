@@ -127,6 +127,6 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     public void cancelTimeoutCallback(String key) {
-        cancelCallback(key, getCurrentTuple());
+        cancelCallback(key);
     }
 }

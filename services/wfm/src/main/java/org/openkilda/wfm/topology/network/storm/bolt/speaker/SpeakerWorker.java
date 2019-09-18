@@ -59,14 +59,12 @@ public class SpeakerWorker extends WorkerBolt {
     }
 
     @Override
-    protected void onAsyncResponse(Tuple input) throws PipelineException {
-        handleCommand(input, SpeakerRouter.FIELD_ID_INPUT);
+    protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
+        handleCommand(response, SpeakerRouter.FIELD_ID_INPUT);
     }
 
     @Override
-    public void onTimeout(String key, Tuple tuple) {
-        Tuple request = pendingTasks.get(key);
-
+    protected void onRequestTimeout(Tuple request) {
         try {
             handleTimeout(request, BfdPortHandler.FIELD_ID_COMMAND);
         } catch (PipelineException e) {
@@ -109,8 +107,8 @@ public class SpeakerWorker extends WorkerBolt {
         command.apply(this);
     }
 
-    private void handleTimeout(Tuple input, String field) throws PipelineException {
-        SpeakerWorkerCommand command = pullValue(input, field, SpeakerWorkerCommand.class);
+    private void handleTimeout(Tuple request, String field) throws PipelineException {
+        SpeakerWorkerCommand command = pullValue(request, field, SpeakerWorkerCommand.class);
         command.timeout(this);
     }
 

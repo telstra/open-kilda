@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, OnDestroy, AfterViewInit, Input, OnChange
 import { Subject } from 'rxjs';
 import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
+import { SwitchService } from 'src/app/common/services/switch.service';
 declare var jQuery: any;
 
 @Component({
@@ -12,8 +13,9 @@ declare var jQuery: any;
 export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewInit {
   @ViewChild(DataTableDirective)
   datatableElement: DataTableDirective;
-  @Input() data=[];
-
+  @Input() switchid;
+  @Input() portnumber;
+  data = [];
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
@@ -22,11 +24,12 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
   flowid : boolean = false;
   bandwidth : boolean = false;
 
-  constructor(private renderer:Renderer2,private loaderService : LoaderService) { }
+  constructor(private renderer:Renderer2,private loaderService : LoaderService,private switchService:SwitchService) { }
 
   ngOnInit() {
     this.loaderService.show('Fetching flows');
     let ref= this;
+    this.loadPortFlows();
     this.dtOptions = {
       paging: true,
       retrieve: true,
@@ -40,10 +43,7 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
         { sWidth: '15%' },
       ],
       initComplete:function( settings, json ){
-        setTimeout(function(){
-          ref.loaderService.hide();
-          ref.wrapperHide = true;
-        },this.data.length/2);
+        
       },
       language: {
         searchPlaceholder: "Search"
@@ -56,6 +56,34 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
       //dom: 'lBrtip',
       
     }
+  }
+
+  loadPortFlows(){
+    var ref = this;
+    let switchId = this.switchid;
+    let portNumber = this.portnumber
+    this.switchService.getSwitchPortFlows(switchId,portNumber).subscribe((flows:any)=>{
+      let flowList =  flows || [];
+      let newFlowList = [];
+      flowList.forEach(customer => {
+          if(customer.flows){
+            customer.flows.forEach(flow => {
+              newFlowList.push({
+                "flow-id":flow['flow-id'],
+                "customer-uuid":customer['customer-uuid'] || '-',
+                "company-name":customer['company-name'] || '-',
+                "bandwidth":flow['bandwidth']
+              })
+            });
+          }
+      });
+      this.data = newFlowList;
+      this.loaderService.hide();
+     
+      setTimeout(function(){
+        ref.wrapperHide = true;
+      },this.data.length/2);
+    });
   }
 
   ngAfterViewInit(): void {

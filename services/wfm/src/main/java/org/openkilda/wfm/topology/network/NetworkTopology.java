@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.StatusEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.SwitchManagerEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.DecisionMakerHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.history.HistoryHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
@@ -98,6 +99,8 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         outputSwitchManager(topology, scaleFactor);
         outputReroute(topology, scaleFactor);
         outputStatus(topology, scaleFactor);
+
+        historyBolt(topology, scaleFactor);
 
         return topology.createTopology();
     }
@@ -290,6 +293,12 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaNetworkIslStatusTopic());
         topology.setBolt(ComponentId.STATUS_OUTPUT.toString(), output, scaleFactor)
                 .shuffleGrouping(StatusEncoder.BOLT_ID);
+    }
+
+    private void historyBolt(TopologyBuilder topology, int scaleFactor) {
+        HistoryHandler bolt = new HistoryHandler(persistenceManager);
+        topology.setBolt(ComponentId.HISTORY_HANDLER.toString(), bolt, scaleFactor)
+                .shuffleGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_HISTORY_ID);
     }
 
     /**

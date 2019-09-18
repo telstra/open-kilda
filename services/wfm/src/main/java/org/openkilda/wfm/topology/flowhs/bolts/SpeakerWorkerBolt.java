@@ -36,42 +36,31 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public static final String ID = "speaker.worker.bolt";
     private transient SpeakerWorkerService service;
 
-    private Tuple currentTuple;
-
     public SpeakerWorkerBolt(Config config) {
         super(config);
     }
 
     @Override
     protected void init() {
+        super.init();
         service = new SpeakerWorkerService(this);
     }
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
-        this.currentTuple = input;
-
-        String key = input.getStringByField(FIELD_ID_KEY);
-        SpeakerFlowRequest command = (SpeakerFlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
-
-        service.sendCommand(key, command);
+        SpeakerFlowRequest command = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowRequest.class);
+        service.sendCommand(pullKey(), command);
     }
 
     @Override
-    protected void onAsyncResponse(Tuple input) throws PipelineException {
-        this.currentTuple = input;
-
-        String key = input.getStringByField(FIELD_ID_KEY);
-        FlowResponse message = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
-
-        service.handleResponse(key, message);
+    protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
+        FlowResponse message = pullValue(response, FIELD_ID_PAYLOAD, FlowResponse.class);
+        service.handleResponse(pullKey(response), message);
     }
 
     @Override
-    public void onTimeout(String key, Tuple tuple) throws PipelineException {
-        this.currentTuple = tuple;
-
-        service.handleTimeout(key);
+    protected void onRequestTimeout(Tuple tuple) throws PipelineException {
+        service.handleTimeout(pullKey(tuple));
     }
 
     @Override
@@ -91,12 +80,12 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     @Override
     public void sendCommand(String key, SpeakerFlowRequest command) {
-        emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), currentTuple, new Values(key, command));
+        emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), getCurrentTuple(), new Values(key, command));
     }
 
     @Override
     public void sendResponse(String key, FlowResponse response) {
         Values values = new Values(key, response, getCommandContext());
-        emitResponseToHub(currentTuple, values);
+        emitResponseToHub(getCurrentTuple(), values);
     }
 }

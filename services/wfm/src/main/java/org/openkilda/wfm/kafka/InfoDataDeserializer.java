@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.kafka;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +27,6 @@ public class InfoDataDeserializer extends Deserializer<InfoData> {
 
     @Override
     protected InfoData jsonDecode(byte[] data) throws IOException {
-        return Utils.MAPPER.readValue(data, InfoData.class);
+        return SerializationUtils.MAPPER.readValue(data, InfoData.class);
     }
 }

@@ -20,6 +20,7 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
 import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -76,12 +77,9 @@ public class MessageConsumerConfig {
      *
      * @return kafka properties
      */
-    @Bean
-    public Map<String, Object> consumerConfigs() {
+    private Map<String, Object> consumerConfigs() {
         return ImmutableMap.<String, Object>builder()
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
-                .put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
-                .put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class)
                 .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
@@ -97,9 +95,9 @@ public class MessageConsumerConfig {
      * @return kafka consumer factory
      */
     @Bean
-    public ConsumerFactory<String, Message> consumerFactory() {
+    public ConsumerFactory<String, Message> consumerFactory(ObjectMapper objectMapper) {
         return new DefaultKafkaConsumerFactory<>(consumerConfigs(),
-                new StringDeserializer(), new JsonDeserializer<>(Message.class));
+                new StringDeserializer(), new JsonDeserializer<>(Message.class, objectMapper));
     }
 
     /**
@@ -110,10 +108,11 @@ public class MessageConsumerConfig {
      * @return kafka listener container factory
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Message> kafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, Message> kafkaListenerContainerFactory(
+            ConsumerFactory<String, Message> consumerFactory) {
         ConcurrentKafkaListenerContainerFactory<String, Message> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
+        factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setPollTimeout(POLL_TIMEOUT);
         factory.setConcurrency(kafkaListeners);
         return factory;

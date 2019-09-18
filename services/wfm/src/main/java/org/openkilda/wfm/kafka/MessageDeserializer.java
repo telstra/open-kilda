@@ -16,7 +16,7 @@
 package org.openkilda.wfm.kafka;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.Utils;
+import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +27,6 @@ public class MessageDeserializer extends Deserializer<Message> {
 
     @Override
     protected Message jsonDecode(byte[] data) throws IOException {
-        return Utils.MAPPER.readValue(data, Message.class);
+        return SerializationUtils.MAPPER.readValue(data, Message.class);
     }
 }

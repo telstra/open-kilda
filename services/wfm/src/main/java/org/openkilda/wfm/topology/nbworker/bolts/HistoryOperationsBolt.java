@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
@@ -49,6 +50,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         if (request instanceof GetFlowHistoryRequest) {
             return getFlowHistory((GetFlowHistoryRequest) request);
+        } else if (request instanceof PortHistoryRequest) {
+            return getPortHistory((PortHistoryRequest) request);
         } else {
             unhandledInput(tuple);
             return null;
@@ -61,6 +64,14 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
                 Instant.ofEpochSecond(request.getTimestampFrom()),
                 Instant.ofEpochSecond(request.getTimestampTo()));
         return Collections.singletonList(new FlowHistoryData(flowEvents));
+    }
+
+    private List<InfoData> getPortHistory(PortHistoryRequest request) {
+        return historyService.listPortHistory(request.getSwitchId(), request.getPortNumber(),
+               request.getStart(), request.getEnd())
+                .stream()
+                .map(HistoryMapper.INSTANCE::map)
+                .collect(Collectors.toList());
     }
 
     private List<FlowEventPayload> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo) {
