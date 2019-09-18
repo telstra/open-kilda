@@ -7,6 +7,8 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -16,6 +18,8 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
@@ -88,7 +92,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
-                .meterEntries*.meterId).first()
+                                                                  .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1,
@@ -124,6 +128,41 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         then: "Excess meters/rules were synced during switch activation"
         verifyAll(northbound.validateSwitch(sw.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess", "proper"])
+        }
+    }
+
+    @Tags([Tag.VIRTUAL])
+    def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
+        /*antiflapCooldown should be rather big in order for test to understand that there is no 'antiflap' during
+        isl discovery*/
+        assumeTrue(antiflapCooldown >= discoveryInterval + WAIT_OFFSET / 2)
+
+        setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
+        def sw = topology.activeSwitches.first()
+        def isls = topology.getRelatedIsls(sw)
+        lockKeeper.knockoutSwitch(sw)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
+        }
+        isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        northbound.deleteSwitch(sw.dpId, false)
+
+        when: "New switch connects"
+        lockKeeper.reviveSwitch(sw)
+
+        then: "Switch is activated"
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+        }
+
+        and: "Related ISLs are discovered without antiflap"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET / 2) {
+            def allIsls = northbound.getAllLinks()
+            isls.each {
+                assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
+            }
         }
     }
 
