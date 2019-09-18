@@ -53,6 +53,13 @@ export class DygraphService {
         }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/latency`
       );
     }
+    if (graph === "rtt") {
+      return this.httpClient.get<any[]>(
+        `${
+          environment.apiEndPoint
+        }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/rtt`
+      );
+    }
 
     if (graph === "source") {
       return this.httpClient.get<any[]>(
@@ -96,11 +103,21 @@ export class DygraphService {
     from,
     to
   ): Observable<any[]> {
-    return this.httpClient.get<any[]>(
-      `${
-        environment.apiEndPoint
-      }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/latency`
-    );
+    if (graph === "rtt") {
+      return this.httpClient.get<any[]>(
+        `${
+          environment.apiEndPoint
+        }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/rtt`
+      );
+    }
+    if(graph =='latency'){
+      return this.httpClient.get<any[]>(
+        `${
+          environment.apiEndPoint
+        }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/latency`
+      );
+    }
+    
   }
 
   changeFlowPathGraphData(pathGraphData) {
@@ -114,7 +131,7 @@ export class DygraphService {
   changeFlowGraphData(graphData) {
     this.flowGraphSource.next(graphData);
   }
-
+ 
   getFlowMetricData() {
     let metricArray = this.metrices;
     let tempArray = [];

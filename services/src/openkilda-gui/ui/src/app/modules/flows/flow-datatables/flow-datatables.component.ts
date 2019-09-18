@@ -77,8 +77,10 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         { sWidth: '15%' },
         { sWidth:  '13%',"sType": "name","bSortable": true },
         { sWidth: '8%' },
+        { sWidth: '8%' },
         { sWidth: '9%' },
         { sWidth: '13%',"sType": "name","bSortable": true },
+        { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '9%' },
         { sWidth: '10%' },
@@ -89,7 +91,17 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
        
        ],
        columnDefs:[
-        { targets: [10], visible: false},
+        {
+          "targets": [ 2 ],
+          "visible": false,
+          "searchable": true
+      },
+      {
+          "targets": [ 6 ],
+          "visible": false,
+          "searchable": true
+      },
+      { "targets": [12], "visible": false},
       ],
       initComplete:function( settings, json ){
         setTimeout(function(){
@@ -147,7 +159,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         const that = this;
         $('input', this.header()).on('keyup change', function () {
           if (that.search() !== this['value']) {
-            that
+              that
               .search(this['value'])
               .draw();
           }
@@ -224,7 +236,6 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   toggleType(type){
     this.typeFilter = type;
     let searchString = type =='all' ? '' : type+":true";
-    console.log('searchString',searchString);
     this.renderer.selectRootElement('#search-input').value="";
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.search(searchString).draw();

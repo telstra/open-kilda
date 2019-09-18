@@ -76,8 +76,8 @@ export class FlowEditComponent implements OnInit {
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
       return { label: (k).toString(), value: (k).toString() };
     });
-
-    this.getSwitchList();
+    let flowId: string = this.route.snapshot.paramMap.get("id");
+    this.getFlowDetail(flowId);
   }
 
   ngAfterViewInit() {}
@@ -106,6 +106,7 @@ export class FlowEditComponent implements OnInit {
         this.flowId = flow.flowid;
         this.flowEditForm.setValue(this.flowDetail);
 
+        this.getSwitchList();
         this.getPorts("source_switch" , true);
         this.getPorts("target_switch", true);
       },
@@ -130,8 +131,7 @@ export class FlowEditComponent implements OnInit {
         ref.targetSwitches = ref.switches;
         ref.sourceSwitches = ref.switches;
 
-        let flowId: string = this.route.snapshot.paramMap.get("id");
-        this.getFlowDetail(flowId);
+        
       },
       error => {
         var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'Unable to fetch switch list';
@@ -154,7 +154,10 @@ export class FlowEditComponent implements OnInit {
       
       this.switchService.getSwitchPortsStats(switchId).subscribe(
         ports => {
-          let sortedPorts = ports.sort(function(a, b) {
+          var filteredPorts = ports.filter(function(d){
+            return d.assignmenttype !='ISL';
+          })
+          let sortedPorts = filteredPorts.sort(function(a, b) {
             return a.port_number - b.port_number;
           });
           sortedPorts = sortedPorts.map(portInfo => {
