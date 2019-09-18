@@ -23,7 +23,9 @@ import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.CreateOrUpdatePortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -31,7 +33,9 @@ import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
+import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -39,6 +43,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
@@ -90,6 +95,11 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             result = Collections.singletonList(getSwitchProperties((GetSwitchPropertiesRequest) request));
         } else if (request instanceof UpdateSwitchPropertiesRequest) {
             result = Collections.singletonList(updateSwitchProperties((UpdateSwitchPropertiesRequest) request));
+        } else if (request instanceof GetPortPropertiesRequest) {
+            result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
+        } else if (request instanceof CreateOrUpdatePortPropertiesRequest) {
+            result = Collections.singletonList(createOrUpdatePortProperties(
+                    (CreateOrUpdatePortPropertiesRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -195,6 +205,30 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
         }
         return new SwitchPropertiesResponse(updated);
+    }
+
+    private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {
+        PortProperties portProperties = switchOperationsService.getPortProperties(request.getSwitchId(),
+                request.getPort());
+        if (portProperties == null) {
+            String message = String.format("Port properties not found for switch '%s' and port '%d'",
+                    request.getSwitchId(), request.getPort());
+            log.error(message);
+            throw new MessageException(ErrorType.NOT_FOUND, message, "PortProperties are not found.");
+        }
+        return PortMapper.INSTANCE.map(portProperties);
+    }
+
+    private PortPropertiesPayload createOrUpdatePortProperties(CreateOrUpdatePortPropertiesRequest request) {
+        PortProperties portProperties = switchOperationsService.createOrUpdatePortProperties(request.getSwitchId(),
+                request.getPort(), request.isDiscoveryEnabled());
+        if (portProperties == null) {
+            String message = String.format("Failed to create or update port properties for switch '%s' and port '%d'",
+                    request.getSwitchId(), request.getPort());
+            log.error(message);
+            throw new MessageException(ErrorType.NOT_FOUND, message, "Failed to update PortProperties.");
+        }
+        return PortMapper.INSTANCE.map(portProperties);
     }
 
     @Override

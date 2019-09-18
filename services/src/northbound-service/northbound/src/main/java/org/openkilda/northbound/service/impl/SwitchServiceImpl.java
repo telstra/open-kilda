@@ -47,8 +47,10 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.nbtopology.request.CreateOrUpdatePortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -60,9 +62,11 @@ import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
+import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
+import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
@@ -75,6 +79,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -101,6 +107,9 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Autowired
     private SwitchMapper switchMapper;
+
+    @Autowired
+    private PortPropertiesMapper portPropertiesMapper;
 
     @Autowired
     private FlowMapper flowMapper;
@@ -454,6 +463,31 @@ public class SwitchServiceImpl implements SwitchService {
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.REQUEST_INVALID, "Unable to parse request payload", e.getMessage());
         }
+    }
+
+    @Override
+    public CompletableFuture<PortPropertiesResponse> getPortProperties(SwitchId switchId, int port) {
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get port properties for the switch {} and port {}", switchId, port);
+        GetPortPropertiesRequest data = new GetPortPropertiesRequest(switchId, port);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(PortPropertiesPayload.class::cast)
+                .thenApply(portPropertiesMapper::map);
+    }
+
+    @Override
+    public CompletableFuture<PortPropertiesResponse> updatePortProperties(SwitchId switchId, int port,
+                                                                          PortPropertiesDto portPropertiesDto) {
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update port properties for the switch {} and port {}", switchId, port);
+        CreateOrUpdatePortPropertiesRequest data = new CreateOrUpdatePortPropertiesRequest(switchId, port,
+                portPropertiesDto.isDiscoveryEnabled());
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(PortPropertiesPayload.class::cast)
+                .thenApply(portPropertiesMapper::map);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

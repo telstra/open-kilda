@@ -17,7 +17,9 @@ package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.Port;
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.PortStatus;
 
 import org.mapstruct.Mapper;
@@ -58,4 +60,8 @@ public abstract class PortMapper {
                 return PortStatus.DOWN;
         }
     }
+
+    @Mapping(source = "switchObj.switchId", target = "switchId")
+    @Mapping(source = "port", target = "portNumber")
+    public abstract PortPropertiesPayload map(PortProperties portInfoData);
 }
