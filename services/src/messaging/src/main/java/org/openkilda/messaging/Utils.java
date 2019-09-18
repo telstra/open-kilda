@@ -88,6 +88,10 @@ public final class Utils {
      */
     public static final int ETH_TYPE = 0x8100;
     /**
+     * OpenFlow controller port number.
+     */
+    public static final int OF_CONTROLLER_PORT = 0xFFFFFFFD;
+    /**
      * Minimum allowable VLAN ID value.
      */
     private static final int MIN_VLAN_ID = 0;

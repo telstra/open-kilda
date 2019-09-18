@@ -37,7 +37,7 @@ import java.util.UUID;
 public class InstallIngressFlowTest {
     private InstallIngressFlow flow = new InstallIngressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
             outputPort, inputVlanId, transitEncapsulationId, transitEncapsulationType,
-            outputVlanType, bandwidth, meterId, ingresSwitchId, false);
+            outputVlanType, bandwidth, meterId, ingresSwitchId, false, false);
 
     @Test
     public void toStringTest() throws Exception {
