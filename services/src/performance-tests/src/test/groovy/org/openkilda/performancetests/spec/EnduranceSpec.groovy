@@ -20,6 +20,7 @@ import org.openkilda.testing.tools.SoftAssertions
 import groovy.util.logging.Slf4j
 import org.junit.Assume
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -49,8 +50,8 @@ class EnduranceSpec extends BaseSpecification {
      * will fail the test at the end
      */
     @Unroll
-    def "Simulate live environment with random events happening(#preset.name)"() {
-        Assume.assumeThat(preset.name, equalTo("local"))
+    def "Simulate live environment with random events happening#debugText"() {
+        Assume.assumeThat(preset.debug, equalTo(debug))
 
         setup: "Create a topology and a 'dice' with random events"
         def topo = topoHelper.createRandomTopology(preset.switchesAmount, preset.islsAmount)
@@ -118,7 +119,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         where:
         preset << [
                 [
-                        name              : "local",
+                        debug             : true,
                         switchesAmount    : 30,
                         islsAmount        : 70,
                         eventsAmount      : 40,
@@ -126,7 +127,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
                         pauseBetweenEvents: 1, //seconds
                 ],
                 [
-                        name              : "stage",
+                        debug             : false,
                         switchesAmount    : 60,
                         islsAmount        : 150,
                         eventsAmount      : 100,
@@ -134,8 +135,10 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
                         pauseBetweenEvents: 1, //seconds
                 ]
         ]
+        debugText = preset.debug ? " (debug mode)" : ""
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2585")
     def "Create 4094 flows"() {
         // system allows to create 4094 simple flows or 2047 protected flows
         def switchesAmount = 7
@@ -166,6 +169,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         topoHelper.purgeTopology(topo)
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2585")
     def "Create 2047 protected flows"() {
         def switchesAmount = 7
         int islsAmount = switchesAmount * 2.5
@@ -244,7 +248,8 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         Collections.shuffle(flows)
         task {
             withPool {
-                flows[0..flows.size() / 4].eachParallel { flow -> Wrappers.silent { northbound.rerouteFlow(flow.id) } }
+                flows[0..flows.size() / 4].eachParallel { flow -> Wrappers.silent { northbound.rerouteFlow(flow.id) }
+                }
             }
         }
     }

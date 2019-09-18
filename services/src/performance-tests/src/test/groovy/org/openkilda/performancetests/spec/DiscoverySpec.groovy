@@ -12,11 +12,13 @@ import org.openkilda.performancetests.model.CustomTopology
 
 import groovy.util.logging.Slf4j
 import org.junit.Assume
+import spock.lang.Unroll
 
 @Slf4j
 class DiscoverySpec extends BaseSpecification {
 
-    def "System is able to discover a huge topology at once"() {
+    @Unroll
+    def "System is able to discover a huge topology at once#debugText"() {
         Assume.assumeThat(preset.debug, equalTo(debug))
         def islsAmount = preset.switchesAmount * 2
 
@@ -39,7 +41,7 @@ class DiscoverySpec extends BaseSpecification {
         }
 
         cleanup: "purge topology"
-        topoHelper.purgeTopology(topo, lab)
+        topo && topoHelper.purgeTopology(topo, lab)
 
         where:
         preset << [
@@ -53,12 +55,14 @@ class DiscoverySpec extends BaseSpecification {
                         switchesAmount: 60
                 ]
         ]
+        debugText = preset.debug ? " (debug mode)" : ""
     }
 
     /**
      * Push the system to its limits until it fails to discover new isls or switches. Measure system's capabilities
      */
-    def "System is able to continuously discover new switches and ISLs"() {
+    @Unroll
+    def "System is able to continuously discover new switches and ISLs#debugText"() {
         Assume.assumeThat(preset.debug, equalTo(debug))
 
         //unattainable amount that system won't be able to handle for sure
@@ -103,7 +107,7 @@ class DiscoverySpec extends BaseSpecification {
         switchesCreated > preset.minimumSwitchesRequirement
 
         cleanup: "purge topology"
-        topoHelper.purgeTopology(topo, lab)
+        topo && topoHelper.purgeTopology(topo, lab)
 
         where:
         preset << [
@@ -119,5 +123,6 @@ class DiscoverySpec extends BaseSpecification {
                         allowedDiscoveryTime      : 60
                 ]
         ]
+        debugText = preset.debug ? " (debug mode)" : ""
     }
 }

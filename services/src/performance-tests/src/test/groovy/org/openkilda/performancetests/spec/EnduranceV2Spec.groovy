@@ -22,7 +22,6 @@ import org.openkilda.testing.tools.SoftAssertions
 import groovy.util.logging.Slf4j
 import org.junit.Assume
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -57,7 +56,7 @@ class EnduranceV2Spec extends BaseSpecification {
      * Most of the test configuration is located at the bottom of the test in the 'where' block
      */
     @Unroll
-    def "Simulate live environment with random events happening(#preset.name)"() {
+    def "Simulate live environment with random events happening#debugText"() {
         Assume.assumeThat(preset.debug, equalTo(debug))
 
         setup: "Create topology according to passed params"
@@ -162,6 +161,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
                 new Face(name: "manual reroute 25% of flows", chance: 12, event: { massReroute() }),
                 new Face(name: "break isl", chance: 28, event: { breakIsl() })
         ])
+        debugText = preset.debug ? " (debug mode)" : ""
     }
 
     //TODO(rtretiak): test that continuously add/remove different switches. Ensure no memory leak over time

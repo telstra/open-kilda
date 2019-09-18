@@ -18,6 +18,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 
+import java.util.concurrent.TimeUnit
+
 @Component("performance")
 class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelper {
 
@@ -47,7 +49,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         }
         def topo = new CustomTopology()
         switchesAmount.times { i ->
-            def region = i % regions.size()
+            def region = i % regions.take(2).size() //TODO(rtretiak): to remove 'take' when stage env deals with '3' region
             topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}")
         }
         //create links between neighbor switches
@@ -106,13 +108,8 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         } else {
             labService.flushLabs()
         }
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            def isls = northbound.getAllLinks()
-            topo.isls.forEach {
-                assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.FAILED
-            }
-        }
-        topo.isls.each {
+        TimeUnit.SECONDS.sleep(discoveryTimeout + 3)
+        northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.each {
             try {
                 northbound.deleteLink(islUtils.toLinkParameters(it))
             } catch (HttpClientErrorException e) {
@@ -123,7 +120,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
                 }
             }
         }
-        def topoSwitches = northbound.getAllSwitches().findAll { it.switchId in topo.switches*.dpId }
+        def topoSwitches = northbound.getAllSwitches().findAll { it.state == SwitchChangeType.DEACTIVATED }
         topoSwitches.each {
             northbound.deleteSwitch(it.switchId, false)
         }

@@ -10,6 +10,7 @@ import org.spockframework.runtime.extension.IMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
 import org.spockframework.runtime.model.MethodKind
 import org.spockframework.runtime.model.SpecInfo
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory
 
 /**
  * Due to JUnit + Spring nature, it is impossible to use Autowired fields in setupSpec (or BeforeClass).
@@ -21,12 +22,14 @@ import org.spockframework.runtime.model.SpecInfo
 @Slf4j
 class SetupOnceExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo specInfo) {
-        def setupOnceInterceptor = new SetupOnceInterceptor()
-        //if there is a 'setup' method, run 'setupOnce' before 'setup'
-        specInfo.fixtureMethods.find { it.kind == MethodKind.SETUP }?.addInterceptor(setupOnceInterceptor)
-
-        //if there is no 'setup', run 'setupOnce' right before the first feature
-        specInfo.allFeaturesInExecutionOrder.findAll { !isFeatureSpecial(it) }*.addInterceptor(setupOnceInterceptor)
+        def features = specInfo.features.findAll { !isFeatureSpecial(it) }
+        if(features) {
+            def setupOnceInterceptor = new SetupOnceInterceptor()
+            //if there is a 'setup' method, run 'setupOnce' before 'setup'
+            specInfo.fixtureMethods.find { it.kind == MethodKind.SETUP }?.addInterceptor(setupOnceInterceptor)
+            //if there is no 'setup', run 'setupOnce' right before the first feature
+            features.findAll { !isFeatureSpecial(it) }*.addInterceptor(setupOnceInterceptor)
+        }
     }
 
     class SetupOnceInterceptor implements IMethodInterceptor {
@@ -40,6 +43,8 @@ class SetupOnceExtension extends AbstractGlobalExtension {
             }
             if (!setupRan && SpringContextExtension.context) {
                 def spec = invocation.sharedInstance
+                SpringContextExtension.context.getAutowireCapableBeanFactory().autowireBeanProperties(
+                        spec, AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
                 if (spec instanceof SetupOnce) {
                     log.debug "Running fixture: setupOnce"
                     setupRan = true
