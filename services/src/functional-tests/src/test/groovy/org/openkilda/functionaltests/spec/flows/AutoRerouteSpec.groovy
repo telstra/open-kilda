@@ -420,6 +420,69 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    def "System doesn't reroute flow to a path with not enough bandwidth available"() {
+        given: "A flow with alt path available"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+
+        def flow = flowHelper.randomFlow(switchPair)
+        flowHelper.addFlow(flow)
+
+        and: "Bring all ports down on the source switch that are not involved in the current and alternative paths"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def altPath = switchPair.paths.find { it != currentPath }
+        List<PathNode> broughtDownPorts = []
+        switchPair.paths.findAll { it != currentPath }
+                .unique { it.first() }
+                .each { path ->
+                    def src = path.first()
+                    broughtDownPorts.add(src)
+                    antiflap.portDown(src.switchId, src.portNo)
+                }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        when: "Make alt path ISLs to have not enough bandwidth to handle the flow"
+        def altIsls = pathHelper.getInvolvedIsls(altPath)
+        altIsls.each {
+            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
+            database.updateIslAvailableBandwidth(it.reversed, flow.maximumBandwidth - 1)
+        }
+
+        and: "Break isl on the main path(bring port down on the source switch) to init auto reroute"
+        def islToBreak = pathHelper.getInvolvedIsls(currentPath).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(antiflapMin + 2) {
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
+        }
+
+        then: "Flow state is changed to DOWN"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
+        }
+
+        and: "Flow is not rerouted"
+        Wrappers.timedLoop(rerouteDelay) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
+        }
+
+        and: "Cleanup: Restore topology, delete flow and reset costs/bandwidth"
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        altIsls.each {
+            database.resetIslBandwidth(it)
+            database.resetIslBandwidth(it.reversed)
+        }
+        database.resetCosts()
+    }
+
     def singleSwitchFlow() {
         flowHelper.singleSwitchFlow(topology.getActiveSwitches().first())
     }
