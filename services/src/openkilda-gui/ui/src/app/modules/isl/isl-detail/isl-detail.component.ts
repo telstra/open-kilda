@@ -72,7 +72,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     islForm: FormGroup;
     showCostEditing: boolean = false;
     showBandwidthEditing : boolean = false;
-    currentGraphName : string = "ISL Latency Graph";
+    currentGraphName : string = "Round Trip Latency Graph (In Seconds)";
     dateMessage:string;
      clipBoardItems = {
         sourceSwitchName:"",
@@ -132,7 +132,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       fromDate: [dateRange.from],
       toDate: [dateRange.to],
       download_sample: ["30s"],
-      graph: ["latency"],
+      graph: ["rtt"],
       metric: ["bits"],
       auto_reload: [""],
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
@@ -200,7 +200,8 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
             "/isl"
           ]);  
         }     
-        this.setForwardLatency();  
+       // this.setForwardLatency();
+        this.loadGraphData();  
       },error =>{
         this.loaderService.hide();
           this.toastr.error("No ISL Found",'Error');
@@ -419,6 +420,9 @@ get f() {
     if(this.filterForm.controls.graph.value == "latency"){
       this.currentGraphName = "ISL Latency Graph";
     } 
+    if(this.filterForm.controls.graph.value == "rtt"){
+      this.currentGraphName = "Round Trip Latency Graph (In Seconds)";
+    } 
     this.loadGraphData();
   }
 
@@ -454,7 +458,7 @@ get f() {
 
 
   loadGraphData(){
-     if(this.filterForm.value.graph === 'latency'){
+     if(this.filterForm.value.graph === 'latency' || this.filterForm.value.graph === 'rtt'){
               this.callGraphAPI();
           }  
         else{
@@ -462,6 +466,7 @@ get f() {
         }
   }
 
+  
   callGraphAPI(){
     
     let formdata = this.filterForm.value;
@@ -518,10 +523,16 @@ get f() {
               this.responseGraph = [];
               if(dataForward[0] !== undefined){
               dataForward[0].tags.direction = "F";
-              this.responseGraph.push(dataForward[0]) ;
+              if(graph == 'rtt'){
+                var responseData = this.commonService.convertDpsToSecond(dataForward[0]);
+                this.responseGraph.push(responseData);
+              }else{
+                this.responseGraph.push(dataForward[0]) ;
+              }
+              
           }
         
-          this.dygraphService.getBackwardGraphData( this.src_switch_kilda,
+          this.dygraphService.getBackwardGraphData(this.src_switch_kilda,
                                                     this.src_port,
                                                     this.dst_switch_kilda,
                                                     this.dst_port,
@@ -531,7 +542,12 @@ get f() {
                                                     convertedEndDate).subscribe((dataBackward : any) =>{
           if(dataBackward[0] !== undefined){
             dataBackward[0].tags.direction = "R";
-            this.responseGraph.push(dataBackward[0]);
+            if(graph == 'rtt'){
+              var responseData = this.commonService.convertDpsToSecond(dataBackward[0]);
+              this.responseGraph.push(responseData);
+            }else{
+              this.responseGraph.push(dataBackward[0]) ;
+            }
           }
           this.currentGraphData.data = this.responseGraph;
           this.currentGraphData.timezone = timezone;
@@ -553,51 +569,51 @@ get f() {
                               
   }
 
-  setForwardLatency(){
-    let formdata = this.filterForm.value;
-    let downsampling = formdata.download_sample;
-    let metric = 'latency';
-    let graph = formdata.graph;
-    let convertedStartDate = moment(new Date()).add(-300, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
-    let convertedEndDate = moment(new Date()).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
-    let startDate = moment(new Date()).add(-300,'seconds');
-    let endDate = moment(new Date());
-    if (formdata.timezone == "UTC") {
-        convertedStartDate = moment(new Date()).add(-300, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-        convertedEndDate = moment(new Date()).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-    }
-    this.islDetailService.getIslLatencyfromGraph(this.src_switch_kilda,
-      this.src_port,
-      this.dst_switch_kilda,
-      this.dst_port,
-      convertedStartDate,
-      convertedEndDate,downsampling).subscribe((dataLatency : any) =>{        
-      this.responseGraph = [];
-      if(dataLatency[0] !== undefined){
-         var data =dataLatency[0].dps;
-          var latencyTotal = 0;
-          var dpslength = 1;
-          var startDateTime = new Date(startDate).getTime()   ;
-          var endDateTime = new Date(endDate).getTime();
-          if(dpslength)
-          Object.keys(data).map(function(d,i){
-            var dpsTime = new Date(Number(parseInt(d) * 1000)).getTime();
-            if( dpsTime > startDateTime  && dpsTime < endDateTime){
-              dpslength = dpslength + 1;
-              latencyTotal = latencyTotal + parseInt(data[d]);
-            }
+  // setForwardLatency(){
+  //   let formdata = this.filterForm.value;
+  //   let downsampling = formdata.download_sample;
+  //   let metric = 'latency';
+  //   let graph = formdata.graph;
+  //   let convertedStartDate = moment(new Date()).add(-300, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+  //   let convertedEndDate = moment(new Date()).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+  //   let startDate = moment(new Date()).add(-300,'seconds');
+  //   let endDate = moment(new Date());
+  //   if (formdata.timezone == "UTC") {
+  //       convertedStartDate = moment(new Date()).add(-300, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+  //       convertedEndDate = moment(new Date()).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+  //   }
+  //   this.islDetailService.getIslLatencyfromGraph(this.src_switch_kilda,
+  //     this.src_port,
+  //     this.dst_switch_kilda,
+  //     this.dst_port,
+  //     convertedStartDate,
+  //     convertedEndDate,downsampling).subscribe((dataLatency : any) =>{        
+  //     this.responseGraph = [];
+  //     if(dataLatency[0] !== undefined){
+  //        var data =dataLatency[0].dps;
+  //         var latencyTotal = 0;
+  //         var dpslength = 1;
+  //         var startDateTime = new Date(startDate).getTime()   ;
+  //         var endDateTime = new Date(endDate).getTime();
+  //         if(dpslength)
+  //         Object.keys(data).map(function(d,i){
+  //           var dpsTime = new Date(Number(parseInt(d) * 1000)).getTime();
+  //           if( dpsTime > startDateTime  && dpsTime < endDateTime){
+  //             dpslength = dpslength + 1;
+  //             latencyTotal = latencyTotal + parseInt(data[d]);
+  //           }
             
-          });
-          var avgLatency = latencyTotal / dpslength;
-          this.latency = avgLatency.toFixed(0).toString();
-        } 
-      },error=>{
-       console.log('Error in getting latency');
-      });
+  //         });
+  //         var avgLatency = latencyTotal / dpslength;
+  //         this.latency = avgLatency.toFixed(0).toString();
+  //       } 
+  //     },error=>{
+  //      console.log('Error in getting latency');
+  //     });
     
 
 
-  }
+  // }
 
 
   callSourceGraphAPI(){

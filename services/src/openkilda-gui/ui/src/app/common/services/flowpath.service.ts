@@ -14,7 +14,7 @@ export class FlowpathService {
   forwardpathLoadedChange: Subject<boolean> = new Subject<boolean>();
   reversepathLoadedChange: Subject<boolean> = new Subject<boolean>();
   diverseGroupCommonSwitch:any = [];
-  diverseGroupCommonSwitchReverse:any = []
+  diverseGroupCommonSwitchReverse:any = [];
   graphOptions = {
     radius: 35,
     text_center: false,
@@ -50,8 +50,7 @@ export class FlowpathService {
       return this.diverseGroupCommonSwitchReverse;
     }
   }
-  loadIslDetail(src_switch,src_port,dst_switch,dst_port){
-  
+  loadIslDetail(src_switch,src_port,dst_switch,dst_port){  
     this.router.navigate(["/isl/switch/isl/"+src_switch+"/"+src_port+"/"+dst_switch+"/"+dst_port]);
    }
   
@@ -104,7 +103,7 @@ export class FlowpathService {
       var processedlinks = this.processLinks(nodes,links);
       var  zoomLevel = 0.45;     
       svgElement.html(""); 
-      var width = window.innerWidth;
+      var width = $("#"+graphWrapper)[0].clientWidth || window.innerWidth;
       var height = svgElement.attr('height');
       svgElement.style('cursor','move');
       svgElement.attr("width",width);
@@ -192,12 +191,11 @@ export class FlowpathService {
       midY = (bounds.y + height) / 2;
     if (width == 0 || height == 0) return;
     var scale = zoomLevel / Math.max(width / fullWidth, height / fullHeight);
-    if(nodes.length >= 50){
-      var translate = [(fullWidth  - scale * midX), fullHeight  - scale * midY];
+    if(nodes.length >= 70){
+      var translate = [(fullWidth/2  - scale * midX)/scale, (fullHeight/2  - scale * midY)/scale];
     }else{
-      var translate = [(fullWidth   - scale * midX) / 2, fullHeight  - scale * midY];
+      var translate = [(fullWidth / 2   - scale * midX) , (fullHeight/2  - scale * midY) ];
     }
-    
     let newtranformation = d3.zoomIdentity
       .scale(scale)
      .translate(translate[0], translate[1]); 
@@ -207,30 +205,7 @@ export class FlowpathService {
       }else{
         this.reverseLoaderChange();
       }
-    // if(nodes.length >=50){
-    //   let newtranformation = d3.zoomIdentity
-    //   .scale(scale)
-    //  .translate(translate[0], translate[1]); 
-    //   svgElement.transition().duration(300).call(zoom.transform, newtranformation);
-    //   if(type=='forwardDiverse' || type=='forward'){
-    //     this.forwardLoaderChange();
-    //   }else{
-    //     this.reverseLoaderChange();
-    //   }
-    // }else{
-    //   let newtranformation = d3.zoomIdentity
-    //   .scale(scale)
-    //  .translate(translate[0], translate[1]); 
-    //   svgElement.transition().duration(300).call(zoom.transform, newtranformation);
-    //   if(type=='forwardDiverse' || type=='forward'){
-    //     this.forwardLoaderChange();
-    //   }else{
-    //     this.reverseLoaderChange();
-    //   }
-    // }
-    
-  }
-
+    }
 
   zoomFn(direction,svgElement,type){
     
@@ -371,40 +346,49 @@ export class FlowpathService {
               return d.colourCode;
       }).attr("cursor","pointer")
       .on('mouseover',function(d,index){
-        var element = document.getElementById(type+"_link" + index);
-        var classes = element.getAttribute("class");
-        classes = classes + " overlay";
-        element.setAttribute('class',classes);
-         var rec: any = element.getBoundingClientRect();
-         $('#'+hideValueID).css('display','none');
-          $("#"+hoverTextID).css("display", "block");
-          $('#'+showValueID).html(d.flow);
-          $('#'+showValueID).css('display','block');
+        if(type == 'forwardDiverse' || type =='reverseDiverse' ){
+          var element = document.getElementById(type+"_link" + index);
+          var classes = element.getAttribute("class");
+          classes = classes + " overlay";
+          element.setAttribute('class',classes);
+           var rec: any = element.getBoundingClientRect();
+           $('#'+hideValueID).css('display','none');
+            $("#"+hoverTextID).css("display", "block");
+            $('#'+showValueID).html(d.flow);
+            $('#'+showValueID).css('display','block');
+          
+  
+             $(element).on("mousemove", function(e) {
+              $("#"+hoverTextID).css("top", (e.pageY-50) + "px");
+              $("#"+hoverTextID).css("left", (e.pageX-60) + "px");
+              var bound = ref.horizontallyBound(
+                document.getElementById(graphWrapper),
+                document.getElementById(hoverTextID)
+              );
+  
+              if (bound) {
+                $("#"+hoverTextID).removeClass("left");
+              } else {
+                var left = e.pageX; // subtract width of tooltip box + circle radius
+                $("#"+hoverTextID).css("left", left + "px");
+                $("#"+hoverTextID).addClass("left");
+              }
+            });
+        }
         
-
-           $(element).on("mousemove", function(e) {
-            $("#"+hoverTextID).css("top", (e.pageY-50) + "px");
-            $("#"+hoverTextID).css("left", (e.pageX-60) + "px");
-            var bound = ref.horizontallyBound(
-              document.getElementById(graphWrapper),
-              document.getElementById(hoverTextID)
-            );
-
-            if (bound) {
-              $("#"+hoverTextID).removeClass("left");
-            } else {
-              var left = e.pageX; // subtract width of tooltip box + circle radius
-              $("#"+hoverTextID).css("left", left + "px");
-              $("#"+hoverTextID).addClass("left");
-            }
-          });
       }).on('mouseout',function(d,index){
         var element = document.getElementById("link" + index);
         $('#'+type+'_link' + index).removeClass('overlay');
         $("#"+hoverTextID).css("display", "none");
       }).on('click',function(d){
-        console.log(d);
-       // this.loadIslDetail();
+        if(d.type == 'isl'){
+          var src_switch = d.source_detail.id,
+          src_port = d.source_detail.out_port,
+          dst_switch = d.target_detail.id,
+          dst_port = d.target_detail.in_port;
+          ref.loadIslDetail(src_switch,src_port,dst_switch,dst_port);
+        }
+        
       });
       graphLinksData.exit().remove();
      return  graphNewLink.merge(graphLinksData);
@@ -587,7 +571,6 @@ export class FlowpathService {
 
   tick(graphLink,graphNode,linksSourceArr,mLinkNum){
     var ref = this;
-    var lookup = {};
     graphLink.attr("d", d => {
       var islCount = 0;
       var matchedIndex = 1;
@@ -600,6 +583,7 @@ export class FlowpathService {
       ) {
         islCount = linksSourceArr[processKey].length;
       }
+      
       if (islCount > 1) {
         linksSourceArr[processKey].map(function(o, i) {
           if (ref.isObjEquivalent(o, d)) {
@@ -608,20 +592,13 @@ export class FlowpathService {
           }
         });
       }
-    
       var x1 = d.source.x,
         y1 = d.source.y,
         x2 = d.target.x,
         y2 = d.target.y,
         dx = x2 - x1,
         dy = y2 - y1,
-        dr = Math.sqrt(dx * dx + dy * dy),
-        // Defaults for normal edge.
-        drx = dr,
-        dry = dr,
-        xRotation = 0, // degrees
-        largeArc = 0, // 1 or 0
-        sweep = 1; // 1 or 0
+        dr = Math.sqrt(dx * dx + dy * dy);
       var lTotalLinkNum =
         mLinkNum[d.source.index + "," + d.target.index] ||
         mLinkNum[d.target.index + "," + d.source.index];
@@ -630,10 +607,6 @@ export class FlowpathService {
         dr = dr / (1 + (1 / lTotalLinkNum) * (d.linkindex - 1));
       }
 
-      // generate svg path
-
-      lookup[d.key] = d.flow_count;
-      if (lookup[d.Key] == undefined) {
         if (islCount == 1) {
           return (
             "M" +
@@ -680,7 +653,7 @@ export class FlowpathService {
               "," +
               d.source.y
             );
-          } else {  
+          } else {   
             return (
               "M" +
               d.source.x +
@@ -690,7 +663,7 @@ export class FlowpathService {
               dr +
               "," +
               dr +
-              " 0 0 0," +
+              " 0 0 1," +
               d.target.x +
               "," +
               d.target.y +
@@ -698,86 +671,17 @@ export class FlowpathService {
               dr +
               "," +
               dr +
-              " 0 0 1," +
+              " 0 0 0," +
               d.source.x +
               "," +
               d.source.y
             );
           }
         }
-      } else {
-        if (d.source_switch == d.target_switch) {
-          // Self edge.
-          if (x1 === x2 && y1 === y2) {
-            // Fiddle with this angle to get loop oriented.
-            xRotation = -45;
-
-            // Needs to be 1.
-            largeArc = 1;
-
-            // Change sweep to change orientation of loop.
-            //sweep = 0;
-
-            // Make drx and dry different to get an ellipse
-            // instead of a circle.
-            drx = 50;
-            dry = 20;
-
-            // For whatever reason the arc collapses to a point if the beginning
-            // and ending points of the arc are the same, so kludge it.
-            x2 = x2 + 1;
-            y2 = y2 + 1;
-          }
-
-          return (
-            "M" +
-            x1 +
-            "," +
-            y1 +
-            "A" +
-            drx +
-            "," +
-            dry +
-            " " +
-            xRotation +
-            "," +
-            largeArc +
-            "," +
-            sweep +
-            " " +
-            x2 +
-            "," +
-            y2
-          );
-        } else {
-          return (
-            "M" +
-            d.source.x +
-            "," +
-            d.source.y +
-            "L" +
-            d.target.x +
-            "," +
-            d.target.y
-          );
-        }
-      }
        
-
-          // return (
-          //   "M" +
-          //   d.source.x +
-          //   "," +
-          //   d.source.y +
-          //   "L" +
-          //   d.target.x +
-          //   "," +
-          //   d.target.y
-          // );
-         
     });
      graphNode.attr("transform", function(d) {
-        if (d.x && d.y) {
+      if (typeof(d.x) !='undefined' && typeof(d.y)!='undefined') {
           return "translate(" + d.x + "," + d.y + ")";
         }
       });

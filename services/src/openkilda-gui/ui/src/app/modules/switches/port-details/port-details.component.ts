@@ -31,8 +31,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   openedTab : string = 'graph';
   portForm: FormGroup;
 
-  portflows = [];
-
   hasStoreSetting = false;
   
   
@@ -102,7 +100,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
         }
    
       });
-    this.loadPortFlows();
   }
 
   maskSwitchId(switchType, e) {
@@ -177,28 +174,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     });
   }
 
-  loadPortFlows(){
-    let switchId = this.retrievedSwitchObject.switch_id;
-    let portNumber = this.portDataObject.port_number
-    this.switchService.getSwitchPortFlows(switchId,portNumber).subscribe((flows:any)=>{
-      let flowList =  flows || [];
-      let newFlowList = [];
-      flowList.forEach(customer => {
-          if(customer.flows){
-            customer.flows.forEach(flow => {
-              newFlowList.push({
-                "flow-id":flow['flow-id'],
-                "customer-uuid":customer['customer-uuid'] || '-',
-                "company-name":customer['company-name'] || '-',
-                "bandwidth":flow['bandwidth']
-              })
-            });
-          }
-      });
-      this.portflows = newFlowList;
-
-    });
-  }
+  
 
 
   cancelConfigurePort(){

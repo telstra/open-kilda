@@ -126,7 +126,10 @@ export class FlowAddComponent implements OnInit {
       this.loaderService.show("Loading Ports");
       this.switchService.getSwitchPortsStats(switchId).subscribe(
         ports => {
-          let sortedPorts = ports.sort(function(a, b) {
+          var filteredPorts = ports.filter(function(d){
+            return d.assignmenttype !='ISL';
+          })
+          let sortedPorts = filteredPorts.sort(function(a, b) {
             return a.port_number - b.port_number;
           });
           sortedPorts = sortedPorts.map(portInfo => {

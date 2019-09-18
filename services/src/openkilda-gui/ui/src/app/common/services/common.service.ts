@@ -32,6 +32,34 @@ export class CommonService {
 		    return groups[group]; 
 		  })
   }
+ getCommonColorCode(i,arr){
+   var colourArr = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000'];
+   if(i < colourArr.length){
+    return colourArr[i];
+   }else{
+    return this.getColorCode(i,arr);
+   } 
+   
+  }
+  getColorCode(j, arr) {
+    var chars = "0123456789ABCDE".split("");
+    var hex = "#";
+    for (var i = 0; i < 6; i++) {
+      hex += chars[Math.floor(Math.random() * 14)];
+    }
+    var colorCode = hex;
+    if (arr.indexOf(colorCode) < 0) {
+      return colorCode;
+    } else {
+      this.getColorCode(j, arr);
+    }
+  }
+
+  pluck(array,key){
+   return array.map(function(d){
+      return d[key];
+    })
+  }
 
   getPercentage(val,baseVal){
     var percentage = (val/baseVal) * 100;
@@ -94,6 +122,33 @@ export class CommonService {
     var returnDatajson = data.replace(/([\[:])?(\d+)([,\}\]])/g, "$1\"$2\"$3").replace(/-"/g,'\"-');
    returnDatajson = JSON.parse(returnDatajson);
    return returnDatajson;
+  }
+  convertDpsToSecond(data){
+    var dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps: [];
+    var dpsData = {};
+    Object.keys(dps).forEach(function(i,v){
+       dpsData[i] = Number(dps[i] / 1000000000).toFixed(4);
+    })
+    data.dps = dpsData;
+    return data;
+  }
+  convertDpsToMicroSecond(data){
+    var dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps: [];
+    var dpsData = {};
+    Object.keys(dps).forEach(function(i,v){
+       dpsData[i] = Number(dps[i] / 1000).toFixed(4);
+    })
+    data.dps = dpsData;
+    return data;
+  }
+  convertDpsToMilliSecond(data){
+    var dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps: [];
+    var dpsData = {};
+    Object.keys(dps).forEach(function(i,v){
+       dpsData[i] = Number(dps[i] / 1000000).toFixed(4);
+    })
+    data.dps = dpsData;
+    return data;
   }
 
   saveSessionTimeoutSetting(timeout){
