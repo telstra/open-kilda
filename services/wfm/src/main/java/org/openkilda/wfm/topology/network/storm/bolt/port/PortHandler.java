@@ -17,12 +17,18 @@ package org.openkilda.wfm.topology.network.storm.bolt.port;
 
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PortProperties;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
+import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -37,6 +43,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.history.command.AntiFlapPor
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.PortHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslDiscoveryCommand;
@@ -72,18 +79,23 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     public static final String STREAM_HISTORY_ID = "history";
     private static final Fields STREAM_HISTORY_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_NB_RESPONSE_ID = "northbound";
+    private static final Fields STREAM_NB_RESPONSE_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+
     private transient NetworkPortService portService;
     private transient NetworkAntiFlapService antiFlapService;
 
     private Config antiFlapConfig;
+    private PersistenceManager persistenceManager;
 
-    public PortHandler(NetworkOptions options) {
+    public PortHandler(NetworkOptions options, PersistenceManager persistenceManager) {
         this.antiFlapConfig = Config.builder()
                 .delayCoolingDown(options.getDelayCoolingDown())
                 .delayWarmUp(options.getDelayWarmUp())
                 .delayMin(options.getDelayMin())
                 .antiFlapStatsDumpingInterval(options.getAntiFlapStatsDumpingInterval())
                 .build();
+        this.persistenceManager = persistenceManager;
     }
 
     @Override
@@ -95,6 +107,8 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
             handleTimer();
         } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
+        } else if (SpeakerRouter.BOLT_ID.equals(source)) {
+            handlePortCommand(input);
         } else {
             unhandledInput(input);
         }
@@ -108,6 +122,16 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         handleCommand(input, SwitchHandler.FIELD_ID_COMMAND);
     }
 
+    private void handlePortCommand(Tuple input) throws PipelineException {
+        try {
+            handleCommand(input, SpeakerRouter.FIELD_ID_COMMAND);
+        } catch (MessageException e) {
+            log.error("Handle port command exception", e);
+            ErrorData data = new ErrorData(e.getErrorType(), e.getMessage(), e.getErrorDescription());
+            emit(STREAM_NB_RESPONSE_ID, getCurrentTuple(), new Values(data, getCommandContext()));
+        }
+    }
+
     private void handleCommand(Tuple input, String field) throws PipelineException {
         PortCommand command = pullValue(input, field, PortCommand.class);
         command.apply(this);
@@ -119,7 +143,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     @Override
     protected void init() {
-        portService = new NetworkPortService(this);
+        portService = new NetworkPortService(this, persistenceManager);
         antiFlapService = new NetworkAntiFlapService(this, antiFlapConfig);
     }
 
@@ -128,6 +152,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
         streamManager.declareStream(STREAM_HISTORY_ID, STREAM_HISTORY_FIELDS);
+        streamManager.declareStream(STREAM_NB_RESPONSE_ID, STREAM_NB_RESPONSE_FIELDS);
     }
 
     // IPortCarrier
@@ -171,6 +196,12 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     @Override
     public void removeUniIslHandler(Endpoint endpoint) {
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslRemoveCommand(endpoint)));
+    }
+
+    @Override
+    public void notifyPortPropertiesChanged(PortProperties portProperties) {
+        PortPropertiesPayload payload = PortMapper.INSTANCE.map(portProperties);
+        emit(STREAM_NB_RESPONSE_ID, getCurrentTuple(), makePortPropertiesTuple(payload));
     }
 
     // IAntiFlapCarrier
@@ -219,6 +250,10 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         portService.fail(endpoint);
     }
 
+    public void updatePortProperties(Endpoint endpoint, boolean discoveryEnabled) {
+        portService.updatePortProperties(endpoint, discoveryEnabled);
+    }
+
     // Private
 
     private Values makeDefaultTuple(UniIslCommand command) {
@@ -233,5 +268,9 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     private Values makeHistoryTuple(HistoryCommand command) {
         return new Values(command, getCommandContext());
+    }
+
+    private Values makePortPropertiesTuple(PortPropertiesPayload payload) {
+        return new Values(payload, getCommandContext());
     }
 }

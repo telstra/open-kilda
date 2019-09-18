@@ -21,6 +21,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -29,6 +30,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -51,6 +53,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
     private SwitchRepository switchRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
+    private PortPropertiesRepository portPropertiesRepository;
     private TransactionManager transactionManager;
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
@@ -67,6 +70,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.portPropertiesRepository = repositoryFactory.createPortPropertiesRepository();
     }
 
     /**
@@ -147,6 +151,9 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         Switch sw = switchRepository.findById(switchId)
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
 
+        if (sw.getPortProperties() != null) {
+            sw.getPortProperties().forEach(portPropertiesRepository::delete);
+        }
         if (force) {
             // forceDelete() removes switch along with all relationships.
             switchRepository.forceDelete(sw.getSwitchId());
@@ -269,5 +276,15 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
             return SwitchPropertiesMapper.INSTANCE.map(sf);
         });
+    }
+
+    /**
+     * Get port properties.
+     *
+     * @param switchId target switch id
+     * @param port port number
+     */
+    public PortProperties getPortProperties(SwitchId switchId, int port) {
+        return portPropertiesRepository.getBySwitchIdAndPort(switchId, port);
     }
 }

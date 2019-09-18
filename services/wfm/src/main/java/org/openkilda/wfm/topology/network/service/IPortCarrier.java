@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PortProperties;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 
@@ -38,4 +39,6 @@ public interface IPortCarrier {
     void sendPortStateChangedHistory(Endpoint endpoint, PortHistoryEvent event, Instant time);
 
     void removeUniIslHandler(Endpoint endpoint);
+
+    void notifyPortPropertiesChanged(PortProperties portProperties);
 }

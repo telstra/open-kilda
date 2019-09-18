@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -25,7 +26,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.PortPropertiesRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -35,6 +40,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.internal.verification.Times;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
 
@@ -48,6 +54,15 @@ public class NetworkPortServiceTest {
     @Mock
     private NetworkTopologyDashboardLogger dashboardLogger;
 
+    @Mock
+    private PersistenceManager persistenceManager;
+
+    @Mock
+    private RepositoryFactory repositoryFactory;
+
+    @Mock
+    private PortPropertiesRepository portPropertiesRepository;
+
     private final SwitchId alphaDatapath = new SwitchId(1);
 
     @Before
@@ -58,6 +73,16 @@ public class NetworkPortServiceTest {
     private void resetMocks() {
         reset(carrier);
         reset(dashboardLogger);
+
+        reset(persistenceManager);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+
+        reset(portPropertiesRepository);
+        when(portPropertiesRepository.getBySwitchIdAndPort(any(SwitchId.class), anyInt()))
+                .thenReturn(PortProperties.builder().discoveryEnabled(true).build());
+
+        reset(repositoryFactory);
+        when(repositoryFactory.createPortPropertiesRepository()).thenReturn(portPropertiesRepository);
     }
 
     @Test
@@ -172,11 +197,32 @@ public class NetworkPortServiceTest {
         // System.out.println(mockingDetails(carrier).printInvocations());
     }
 
+    @Test
+    public void updatePortProperties() {
+        NetworkPortService service = makeService();
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+
+        service.setup(endpoint, null);
+        service.updateOnlineMode(endpoint, true);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+        service.updatePortProperties(endpoint, false);
+
+        service.remove(endpoint);
+
+        verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 1), null);
+        verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_UP), any(Instant.class));
+        verify(carrier).enableDiscoveryPoll(endpoint);
+        verify(carrier, new Times(2)).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
+        verify(carrier).notifyPortDiscoveryFailed(Endpoint.of(alphaDatapath, 1));
+        verify(carrier).notifyPortPropertiesChanged(any(PortProperties.class));
+        verify(carrier).removeUniIslHandler(Endpoint.of(alphaDatapath, 1));
+    }
+
     private NetworkPortService makeService() {
         NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder = mock(
                 NetworkTopologyDashboardLogger.Builder.class);
         when(dashboardLoggerBuilder.build(any(Logger.class))).thenReturn(dashboardLogger);
 
-        return new NetworkPortService(carrier, dashboardLoggerBuilder);
+        return new NetworkPortService(carrier, persistenceManager, dashboardLoggerBuilder);
     }
 }

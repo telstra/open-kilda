@@ -25,6 +25,7 @@ import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
+import org.openkilda.wfm.topology.network.storm.bolt.NbEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.RerouteEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.StatusEncoder;
@@ -99,6 +100,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         outputSwitchManager(topology, scaleFactor);
         outputReroute(topology, scaleFactor);
         outputStatus(topology, scaleFactor);
+        outputNb(topology, scaleFactor);
 
         historyBolt(topology, scaleFactor);
 
@@ -216,14 +218,15 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     }
 
     private void portHandler(TopologyBuilder topology, int scaleFactor) {
-        PortHandler bolt = new PortHandler(options);
+        PortHandler bolt = new PortHandler(options, persistenceManager);
         Fields endpointGrouping = new Fields(SwitchHandler.FIELD_ID_DATAPATH, SwitchHandler.FIELD_ID_PORT_NUMBER);
         Fields decisionMakerGrouping = new Fields(DecisionMakerHandler.FIELD_ID_DATAPATH,
                                                   DecisionMakerHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(PortHandler.BOLT_ID, bolt, scaleFactor)
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping)
-                .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping);
+                .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping)
+                .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_PORT_ID, endpointGrouping);
     }
 
     private void bfdPortHandler(TopologyBuilder topology, int scaleFactor) {
@@ -293,6 +296,16 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaNetworkIslStatusTopic());
         topology.setBolt(ComponentId.STATUS_OUTPUT.toString(), output, scaleFactor)
                 .shuffleGrouping(StatusEncoder.BOLT_ID);
+    }
+
+    private void outputNb(TopologyBuilder topology, int scaleFactor) {
+        NbEncoder bolt = new NbEncoder();
+        topology.setBolt(NbEncoder.BOLT_ID, bolt, scaleFactor)
+                .shuffleGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_NB_RESPONSE_ID);
+
+        KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
+        topology.setBolt(ComponentId.NB_OUTPUT.toString(), kafkaNbBolt, scaleFactor)
+                .shuffleGrouping(NbEncoder.BOLT_ID);
     }
 
     private void historyBolt(TopologyBuilder topology, int scaleFactor) {
