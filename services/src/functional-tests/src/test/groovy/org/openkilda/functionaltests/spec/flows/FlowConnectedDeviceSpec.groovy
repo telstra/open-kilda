@@ -33,8 +33,11 @@ detectSrcLldpConnectedDevices=#srcEnabled and detectDstLldpConnectedDevices=#dst
         when: "Create a flow with connected devices"
         flowHelper.addFlow(flow)
 
-        then: "LLDP meters must be installed"
+        then: "Validate flow and switched"
         def createdFlow = database.getFlow(flow.id)
+        validateFlowAndSwitches(createdFlow)
+
+        and: "LLDP meters must be installed"
         validateLldpMeters(createdFlow, true)
         validateLldpMeters(createdFlow, false)
 
@@ -78,8 +81,11 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(newDstEnabled, false)
         flowHelper.updateFlow(flow.id, flow)
 
-        then: "LLDP meters must be installed"
+        then: "Validate flow and switched"
         def updatedFlow = database.getFlow(flow.id)
+        validateFlowAndSwitches(updatedFlow)
+
+        and: "LLDP meters must be installed"
         validateLldpMeters(updatedFlow, true)
         validateLldpMeters(updatedFlow, false)
 
@@ -123,8 +129,11 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         then: "Wait paths will be swapped"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
-        and: "LLDP meters must be installed"
+        and: "Validate flow and switched"
         def swappedFlow = database.getFlow(flow.id)
+        validateFlowAndSwitches(swappedFlow)
+
+        and: "LLDP meters must be installed"
         validateLldpMeters(swappedFlow, true)
         validateLldpMeters(swappedFlow, false)
 
@@ -155,6 +164,18 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(dstEnabled, false)
         flow.allocateProtectedPath = protectedFlow
         return flow
+    }
+
+    private void validateFlowAndSwitches(Flow flow) {
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        northbound.validateSwitch(flow.srcSwitch.switchId)
+        northbound.validateSwitch(flow.destSwitch.switchId)
+    }
+
+    private void validateSwitch(SwitchId switchId) {
+        def validation = northbound.validateSwitch(switchId)
+        switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
     }
 
     private void validateLldpMeters(Flow flow, boolean source) {

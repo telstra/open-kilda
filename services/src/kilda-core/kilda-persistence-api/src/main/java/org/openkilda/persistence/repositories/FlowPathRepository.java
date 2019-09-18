@@ -49,6 +49,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
      */
     Collection<FlowPath> findBySrcSwitch(SwitchId switchId);
 
+    Collection<FlowPath> findBySrcSwitchIncludeProtected(SwitchId switchId);
+
     /**
      * Finds paths that have passed {@param switchId} switch in endpoints.
      * NB. This method does not return protected paths with src {@param switchId} switch.
@@ -57,6 +59,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
      * @return collection of paths
      */
     Collection<FlowPath> findByEndpointSwitch(SwitchId switchId);
+
+    Collection<FlowPath> findByEndpointSwitchIncludeProtected(SwitchId switchId);
 
     Collection<FlowPath> findBySegmentSwitch(SwitchId switchId);
 

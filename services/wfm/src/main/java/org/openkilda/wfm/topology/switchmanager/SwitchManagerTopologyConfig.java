@@ -69,4 +69,18 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
     @Default("20")
     @Description("The timeout for performing validate and synchronize operations")
     int getProcessTimeout();
+
+    @Key("lldp-rate-limit")
+    @Default("1")
+    int getLldpRateLimit(); // rate in packets per second
+
+    @Key("lldp-packet-size")
+    @Default("300")
+    int getLldpPacketSize(); // rate in bytes
+
+    @Key("lldp-meter-burst-size-in-packets")
+    @Default("4096")
+    @Min(0)
+    @Description("This is burst size for LLDP rule meters in packets.")
+    long getLldpMeterBurstSizeInPackets();
 }
