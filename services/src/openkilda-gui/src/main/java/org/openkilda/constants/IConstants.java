@@ -340,7 +340,9 @@ public abstract class IConstants {
 
         FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        ISL_LATENCY("Isl_latency", "isl.rtt"),
+        ISL_RTT("Isl_rtt", "isl.rtt"),
+        
+        ISL_LATENCY("Isl_latency", "isl.latency"),
 
         SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),    
 
@@ -477,6 +479,8 @@ public abstract class IConstants {
             List<String> list = new ArrayList<String>();
 
             if (tag.equalsIgnoreCase("latency")) {
+                tag = "Isl_" + tag;
+            } else if (tag.equalsIgnoreCase("rtt")) {
                 tag = "Isl_" + tag;
             } else {
                 tag = "Switch_" + tag;
