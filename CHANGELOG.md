@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.36.1 (19/09/2019)
+
+### Bug Fixes:
+-  [#2813](https://github.com/telstra/open-kilda/pull/2813) Hotfix/isl round trip graph issue. [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.36.0...v1.36.1).
+
+### Affected Components:
+GUI
+
+## v1.36.0 (18/09/2019)
+
+### Features:
+-  [#2760](https://github.com/telstra/open-kilda/pull/2760) Feature to enable search functionality to drop-downs (Issues: [#2648](https://github.com/telstra/open-kilda/issues/2648) [#2737](https://github.com/telstra/open-kilda/issues/2737)) [**gui**]
+-  [#2698](https://github.com/telstra/open-kilda/pull/2698) Allocate LLDP resources for flows (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**storm-topologies**]
+-  [#2726](https://github.com/telstra/open-kilda/pull/2726) Port history feature [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2752](https://github.com/telstra/open-kilda/pull/2752) Add protected paths to flow cache in stats topology. Fix #2749 [**storm-topologies**]
+-  [#2790](https://github.com/telstra/open-kilda/pull/2790) Fix the search for N network paths. (Issue: [#2789](https://github.com/telstra/open-kilda/issues/2789)) [**storm-topologies**]
+-  [#2546](https://github.com/telstra/open-kilda/pull/2546) Force `WorkerBolt` to be more strict with stored data [**storm-topologies**]
+-  [#2804](https://github.com/telstra/open-kilda/pull/2804) Fix for handling bfd response from speaker in network topology [**storm-topologies**]
+
+### Improvements:
+-  [#2696](https://github.com/telstra/open-kilda/pull/2696) Enable nested VLAN support into OVS into lab-service [**tests**]
+-  [#2764](https://github.com/telstra/open-kilda/pull/2764) add test  system is able to reuse current protected path when can't find new protected path while intentional reroute (Issue: [#2762](https://github.com/telstra/open-kilda/issues/2762)) [**tests**]
+-  [#2725](https://github.com/telstra/open-kilda/pull/2725) improve procedure of making path more preferable (Issue: [#2426](https://github.com/telstra/open-kilda/issues/2426)) [**tests**]
+-  [#2792](https://github.com/telstra/open-kilda/pull/2792) minor fix in swapEndpointSpec [**tests**]
+-  [#2793](https://github.com/telstra/open-kilda/pull/2793) Changed default broadcast address for kilda discovery [**floodlight**]
+-  [#2802](https://github.com/telstra/open-kilda/pull/2802) Revert unhandledInput behaviour in worker bolts [**storm-topologies**]
+
+### Other changes:
+-  [#2757](https://github.com/telstra/open-kilda/pull/2757) Remove obsolete section [**docs**]
+-  [#2586](https://github.com/telstra/open-kilda/pull/2586) Add QinQ support into traffexam [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.35.1...v1.36.0).
+
+### Affected Components:
+fl, neo4j, flow-hs, nb, flow, network, nbworker, stats
+
 ## v1.35.1 (11/09/2019)
 
 ### Features:
