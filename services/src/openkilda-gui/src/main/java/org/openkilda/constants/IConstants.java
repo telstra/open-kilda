@@ -478,6 +478,8 @@ public abstract class IConstants {
 
             if (tag.equalsIgnoreCase("latency")) {
                 tag = "Isl_" + tag;
+            } else if (tag.equalsIgnoreCase("rtt")) {
+                tag = "Isl_" + tag;
             } else {
                 tag = "Switch_" + tag;
             }
