@@ -140,6 +140,13 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         return isMatch;
     }
 
+    /**
+     * Checks whether the cookie corresponds to the LLDP flow.
+     */
+    public static boolean isMaskedAsLldp(long value) {
+        return (LLDP_COOKIE_TYPE_MASK & value) != 0;
+    }
+
     @Override
     public int compareTo(Cookie compareWith) {
         return Long.compare(value, compareWith.value);

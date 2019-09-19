@@ -40,6 +40,7 @@ public final class Stream {
     public static final String KILDA_PING = "KILDA_PING";
     public static final String KILDA_STATS = "KILDA_STATS";
     public static final String KILDA_ISL_LATENCY = "KILDA_ISL_LATENCY";
+    public static final String KILDA_CONNECTED_DEVICES = "KILDA_CONNECTED_DEVICES";
     public static final String KILDA_SWITCH_MANAGER = "KILDA_SWITCH_MANAGER";
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";

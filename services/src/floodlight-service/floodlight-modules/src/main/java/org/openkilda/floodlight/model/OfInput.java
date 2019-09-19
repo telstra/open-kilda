@@ -19,10 +19,12 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 
@@ -100,6 +102,10 @@ public class OfInput {
 
     public Ethernet getPacketInPayload() {
         return packetInPayload;
+    }
+
+    public OFPort getPort() {
+        return OFMessageUtils.getInPort((OFPacketIn) message);
     }
 
     @Override
