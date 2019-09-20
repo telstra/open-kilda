@@ -14,6 +14,7 @@
         <query><![CDATA[
             CREATE INDEX ON :connected_device (chassis_id);
         ]]></query>
+    </changeset>
     <changeset id="1.14-add-connected-device-port" author="Sergey Nikitin">
         <precondition if-not-met="CONTINUE">
             <query><![CDATA[
