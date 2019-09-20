@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -144,83 +145,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
                  getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
                 ]
         ]
-    }
-
-    @Tags(SMOKE)
-    def "Able to validate switch rules in case flow is created with protected path"() {
-        given: "A switch and a flow with protected path"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
-        // protected path creates the 'egress' rule only on src and dst switches
-        // and creates 2 rules(input/output) on transit switches
-        // so, if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
-        // in case (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4
-        def amountOfRules = { SwitchId switchId ->
-            (switchId == srcSwitch.dpId || switchId == dstSwitch.dpId) ? 3 : 4
-        }
-        def flowInfo = northbound.getFlowPath(flow.id)
-        assert flowInfo.protectedPath
-
-        when: "Validate rules on the switches"
-        def mainFlowPath = flowInfo.forwardPath
-        def protectedFlowPath = flowInfo.protectedPath.forwardPath
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
-
-        then: "Rules are stored in the 'proper' section"
-        commonNodeIds.each { switchId ->
-            def rules = northbound.validateSwitchRules(switchId)
-            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
-            assert rules.missingRules.empty
-            assert rules.excessRules.empty
-        }
-
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
-            !commonNodeIds.contains(it.switchId)
-        }
-        uniqueNodes.each { sw ->
-            def rules = northbound.validateSwitchRules(sw.switchId)
-            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
-            assert rules.missingRules.empty
-            assert rules.excessRules.empty
-        } || true
-
-        when: "Delete rule of protected path on the srcSwitch"
-        def protectedPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
-        def srcSwitchRules = northbound.getSwitchRules(commonNodeIds[0]).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
-        }
-
-        def ruleToDelete = srcSwitchRules.find {
-            it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
-                    it.match.inPort == protectedPath[0].outputPort.toString()
-        }.cookie
-
-        northbound.deleteSwitchRules(commonNodeIds[0], ruleToDelete)
-
-        then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
-        def srcSwitchValidateRules = northbound.validateSwitchRules(commonNodeIds[0])
-        srcSwitchValidateRules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
-        srcSwitchValidateRules.missingRules.size() == 1
-        srcSwitchValidateRules.missingRules == [ruleToDelete]
-        srcSwitchValidateRules.excessRules.empty
-
-        and: "Rest switches are not affected by deleting the rule on the srcSwitch"
-        commonNodeIds[1..-1].each { switchId ->
-            def rules = northbound.validateSwitchRules(switchId)
-            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
-            assert rules.missingRules.empty
-            assert rules.excessRules.empty
-        }
-        uniqueNodes.each { sw ->
-            def rules = northbound.validateSwitchRules(sw.switchId)
-            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
-            assert rules.missingRules.empty
-            assert rules.excessRules.empty
-        } || true
-
-        and: "Cleanup: delete the flow"
-        flowHelper.deleteFlow(flow.id)
     }
 
     @Unroll("Able to delete switch rules by #data.description")
@@ -407,8 +331,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
-    def "Able to synchronize rules for #description on different switches (install missing rules)"() {
+    @Tags([TOPOLOGY_DEPENDENT])
+    def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with the longest available path"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
             pair.paths.max { it.size() }.size()
@@ -484,6 +408,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         "validate"    | "validateSwitchRules"
     }
 
+    @Tags([LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with protected path"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
@@ -609,7 +534,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->

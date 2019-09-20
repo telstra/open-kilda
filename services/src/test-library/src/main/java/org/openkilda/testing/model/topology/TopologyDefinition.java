@@ -387,6 +387,16 @@ public class TopologyDefinition {
                 .collect(toList());
     }
 
+    /**
+     * Get switch for certain traffgen.
+     */
+    @JsonIgnore
+    public TraffGen getTraffGen(SwitchId swId) {
+        return traffGens.stream()
+                .filter(traffGen -> traffGen.getSwitchConnected().getDpId().equals(swId))
+                .findFirst().orElseThrow(() -> new RuntimeException("Switch has no traffgen"));
+    }
+
     @Value
     @NonFinal
     @JsonNaming(SnakeCaseStrategy.class)

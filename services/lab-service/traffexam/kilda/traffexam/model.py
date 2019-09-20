@@ -140,12 +140,10 @@ class Abstract(object):
                 attr = getattr(cls, name)
             except AttributeError:
                 continue
-            if not isinstance(attr, Default):
-                continue
 
             extra.remove(name)
 
-            if attr.override_none and fields[name] is None:
+            if isinstance(attr, Default) and attr.override_none and fields[name] is None:
                 continue
             setattr(self, name, fields[name])
 
@@ -338,12 +336,16 @@ class PortQueue(collections.Iterator):
 
 
 class LLDPPush(Abstract):
-    time_to_live = Default(120)
+    port_description = None
+    system_name = None
+    system_description = None
 
-    def __init__(self, mac_address, port_number, **fields):
+    def __init__(self, mac_address, port_number, chassis_id, ttl, **fields):
         super().__init__(**fields)
         self.mac_address = mac_address
         self.port_number = port_number
+        self.chassis_id = chassis_id
+        self.time_to_live = ttl
 
 
 class JSONEncoder(json.JSONEncoder):

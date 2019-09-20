@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -152,6 +153,10 @@ public interface NorthboundService {
     SwitchPropertiesDto getSwitchProperties(SwitchId switchId);
 
     SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchProperties);
+
+    FlowConnectedDevicesResponse getFlowConnectedDevices(String flowId, String since);
+
+    FlowConnectedDevicesResponse getFlowConnectedDevices(String flowId);
 
     //links
 
