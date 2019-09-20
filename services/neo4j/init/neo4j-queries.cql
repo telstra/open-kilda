@@ -39,3 +39,5 @@ CREATE INDEX ON :`connected_device` (`source`);
 CREATE INDEX ON :`connected_device` (`mac_address`);
 CREATE CONSTRAINT ON (`port_history`:`port_history`) ASSERT `port_history`.`entityId` IS UNIQUE;
 CREATE INDEX ON :`connected_device` (`type`);
+CREATE INDEX ON :`connected_device` (`chassis_id`);
+CREATE INDEX ON :`connected_device` (`port_id`);

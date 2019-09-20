@@ -13,19 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.share.mappers;
 
+import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
 import org.openkilda.model.ConnectedDevice;
-import org.openkilda.model.ConnectedDeviceType;
 
-import java.util.Collection;
-import java.util.Optional;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
-public interface ConnectedDeviceRepository extends Repository<ConnectedDevice> {
-    Collection<ConnectedDevice> findByFlowId(String flowId);
+@Mapper
+public abstract class ConnectedDeviceMapper {
 
-    Optional<ConnectedDevice> findByUniqueFieldCombination(String flowId, boolean source, String macAddress,
-                                                           ConnectedDeviceType type, String chassisId, String portId);
+    public static final ConnectedDeviceMapper INSTANCE = Mappers.getMapper(ConnectedDeviceMapper.class);
 
-    boolean exists(String flowId, String macAddress, boolean source);
+    public abstract ConnectedDeviceDto map(ConnectedDevice device);
+
+    public abstract ConnectedDevice map(ConnectedDeviceDto device);
 }

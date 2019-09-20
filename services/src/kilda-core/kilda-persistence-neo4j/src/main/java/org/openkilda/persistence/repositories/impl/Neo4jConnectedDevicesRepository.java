@@ -35,6 +35,8 @@ public class Neo4jConnectedDevicesRepository
     private static final String FLOW_ID_PROPERTY_NAME = "flow_id";
     private static final String SOURCE_PROPERTY_NAME = "source";
     private static final String MAC_ADDRESS_PROPERTY_NAME = "mac_address";
+    private static final String CHASSIS_ID_PROPERTY_NAME = "chassis_id";
+    private static final String PORT_ID_PROPERTY_NAME = "port_id";
 
     Neo4jConnectedDevicesRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -47,12 +49,16 @@ public class Neo4jConnectedDevicesRepository
     }
 
     @Override
-    public Optional<ConnectedDevice> findByFlowIdSourceMacAndType(String flowId, boolean source, String macAddress,
-                                                                  ConnectedDeviceType type) {
+    public Optional<ConnectedDevice> findByUniqueFieldCombination(
+            String flowId, boolean source, String macAddress, ConnectedDeviceType type, String chassisId,
+            String portId) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
         Filter forwardFilter = new Filter(SOURCE_PROPERTY_NAME, ComparisonOperator.EQUALS, source);
         Filter macAddressFilter = new Filter(MAC_ADDRESS_PROPERTY_NAME, ComparisonOperator.EQUALS, macAddress);
-        Collection<ConnectedDevice> devices = loadAll(flowIdFilter.and(forwardFilter).and(macAddressFilter));
+        Filter chassisIdFilter = new Filter(CHASSIS_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, chassisId);
+        Filter portIdFilter = new Filter(PORT_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, portId);
+        Collection<ConnectedDevice> devices = loadAll(
+                flowIdFilter.and(forwardFilter).and(macAddressFilter).and(chassisIdFilter).and(portIdFilter));
 
         if (devices.size() > 1) {
             throw new PersistenceException(format("Found more that 1 Connected Device by flowId '%s', source '%s', "

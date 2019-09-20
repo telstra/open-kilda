@@ -53,6 +53,7 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
@@ -78,9 +79,11 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
@@ -112,6 +115,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.InvalidPathException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -161,6 +165,9 @@ public class FlowServiceImpl implements FlowService {
     @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
     private String flowHsTopic;
 
+    /**
+     * The kafka topic for `nbWorker` topology.
+     */
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
@@ -169,12 +176,6 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
-
-    /**
-     * The kafka topic for `nbWorker` topology.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbWorkerTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -190,6 +191,9 @@ public class FlowServiceImpl implements FlowService {
 
     @Autowired
     private PathMapper pathMapper;
+
+    @Autowired
+    private ConnectedDeviceMapper connectedDeviceMapper;
 
     /**
      * Used to get switch rules.
@@ -1071,7 +1075,7 @@ public class FlowServiceImpl implements FlowService {
                 .timestampTo(timestampTo)
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
-        return messagingChannel.sendAndGet(nbWorkerTopic, command)
+        return messagingChannel.sendAndGet(nbworkerTopic, command)
                 .thenApply(FlowHistoryData.class::cast)
                 .thenApply(FlowHistoryData::getPayload);
     }
@@ -1147,4 +1151,17 @@ public class FlowServiceImpl implements FlowService {
                         flowMapper.toSwapOutput(response.getSecondFlow().getPayload())));
     }
 
+    @Override
+    public CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, Instant since) {
+        logger.info("Get connected devices for flow {} since {}", flowId, since);
+
+        FlowConnectedDeviceRequest request = new FlowConnectedDeviceRequest(flowId, since);
+
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse.class::cast)
+                .thenApply(connectedDeviceMapper::toResponse);
+    }
 }
