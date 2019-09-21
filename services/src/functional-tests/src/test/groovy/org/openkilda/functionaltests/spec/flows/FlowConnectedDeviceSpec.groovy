@@ -5,6 +5,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.meter.MeterEntry
@@ -14,6 +15,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.Flow
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.LldpResources
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchId
@@ -44,12 +46,15 @@ class FlowConnectedDeviceSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Unroll
-    @IterationTag(tags=[Tag.SMOKE], iterationNameRegex = /srcLldp=true and dstLldp=true/)
-    def "Able to create flow with protected=#protectedFlow oneSwitch=#oneSwitch \
-srcLldp=#srcEnabled and dstLldp=#dstEnabled"() {
+    @IterationTags([
+            @IterationTag(tags = [Tag.SMOKE], iterationNameRegex = /srcLldp=true and dstLldp=true/),
+            @IterationTag(tags = [Tag.HARDWARE], iterationNameRegex = /VXLAN/)
+    ])
+    def "Able to create a #flowDescr flow with srcLldp=#srcEnabled and dstLldp=#dstEnabled"() {
         given: "A flow with enabled or disabled connected devices"
         def tgService = traffExamProvider.get()
         def flow = getFlowWithConnectedDevices(protectedFlow, oneSwitch, srcEnabled, dstEnabled)
+        flow.encapsulationType = encapsulation.toString()
 
         when: "Create a flow with connected devices"
         flowHelper.addFlow(flow)
@@ -77,7 +82,7 @@ srcLldp=#srcEnabled and dstLldp=#dstEnabled"() {
             }
         }
 
-        then: "Getting connecting devices shows corresponding devices on each endpoint"
+        then: "Getting connecting devices shows corresponding devices on each endpoint if enabled"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             with(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (srcEnabled ? 1 : 0)
@@ -95,13 +100,17 @@ srcLldp=#srcEnabled and dstLldp=#dstEnabled"() {
         validateSwitchHasNoFlowRulesAndMeters(flow.destination.datapath)
 
         where:
-        [protectedFlow, oneSwitch, srcEnabled, dstEnabled] << [
-                [false, false, false, true],
-                [false, false, true, true],
-                [false, true, true, true],
-                [true, false, true, false],
-                [true, false, true, true]
+        [protectedFlow, oneSwitch, srcEnabled, dstEnabled, encapsulation] << [
+                [false, false, false, true, FlowEncapsulationType.TRANSIT_VLAN],
+                [false, false, true, true, FlowEncapsulationType.TRANSIT_VLAN],
+                [false, true, true, true, FlowEncapsulationType.TRANSIT_VLAN],
+                [true, false, true, false, FlowEncapsulationType.TRANSIT_VLAN],
+                [true, false, true, true, FlowEncapsulationType.TRANSIT_VLAN],
+                [true, false, true, true, FlowEncapsulationType.VXLAN],
+                [false, false, false, true, FlowEncapsulationType.VXLAN],
+                [false, true, true, false, FlowEncapsulationType.VXLAN]
         ]
+        flowDescr = sprintf("%s%s%s", encapsulation, protectedFlow ? " protected" : "", oneSwitch ? " oneSwitch" : "")
     }
 
     @Unroll
@@ -363,19 +372,24 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
 
     private void validateFlowAndSwitches(Flow flow) {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        [flow.srcSwitch.switchId, flow.destSwitch.switchId].each {
-            def validation = northbound.validateSwitch(it)
+        [flow.srcSwitch, flow.destSwitch].each {
+            def validation = northbound.validateSwitch(it.switchId)
             switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
-            switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+            if (it.ofVersion != "OF_12") {
+                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+            }
         }
     }
 
     private void validateLldpMeters(Flow flow, boolean source) {
-        def switchId = source ? flow.srcSwitch.switchId : flow.destSwitch.switchId
+        def sw = source ? flow.srcSwitch : flow.destSwitch
+        if(sw.ofVersion == "OF_12") {
+            return //meters are not supported
+        }
         def lldpEnabled = source ? flow.detectConnectedDevices.srcLldp : flow.detectConnectedDevices.dstLldp
         def path = source ? flow.forwardPath : flow.reversePath
 
-        def nonDefaultMeters = northbound.getAllMeters(switchId).meterEntries.findAll {
+        def nonDefaultMeters = northbound.getAllMeters(sw.switchId).meterEntries.findAll {
             !MeterId.isMeterIdOfDefaultRule(it.meterId)
         }
         assert getExpectedNonDefaultMeterCount(flow, source) == nonDefaultMeters.size()
@@ -476,6 +490,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         assert device.chassisId == "Mac Addr: $lldp.chassisId" //for now TG sends it as hardcoded 'mac address' subtype
         assert device.portId == "Locally Assigned: $lldp.portNumber" //subtype also hardcoded for now on traffgen side
         assert device.ttl == lldp.timeToLive
+        //other non-mandatory lldp fields are out of scope for now. Most likely they are not properly parsed
         return true
     }
 }
