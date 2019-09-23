@@ -474,7 +474,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         int flowPriority = getFlowPriority(tunnelId);
 
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
-                .setInstructions(ImmutableList.of(meter, actions))
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setTableId(TableId.of(TABLE_1))
                 .setMatch(match);
 
