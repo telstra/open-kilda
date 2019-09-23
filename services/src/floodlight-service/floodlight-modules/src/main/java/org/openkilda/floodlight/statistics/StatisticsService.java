@@ -38,6 +38,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.DefaultSwitchRoleService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -115,6 +116,14 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
      * @param context module context
      */
     public void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches) {
+        Map<String, String> configParams = context.getConfigParams(DefaultSwitchRoleService.class);
+        String defaultRole = configParams.get("defaultRole");
+        if ("ROLE_SLAVE".equals(defaultRole)) {
+            logger.debug("Received stats request for statistics floodlight with excludeSwitches: {}", excludeSwitches);
+        } else {
+            logger.debug("Received stats request for management floodlight with excludeSwitches: {}", excludeSwitches);
+        }
+
         statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getStatsTopic();
         region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
 
