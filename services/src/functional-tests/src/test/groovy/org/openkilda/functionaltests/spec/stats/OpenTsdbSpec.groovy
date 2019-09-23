@@ -27,8 +27,8 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Basic stats are being logged"(metric, tags) {
-        expect: "At least 1 result in the past 2 minutes"
-        otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
+        expect: "At least 1 result in the past 5 minutes"
+        otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0
 
         where:
         [metric, tags] << (
