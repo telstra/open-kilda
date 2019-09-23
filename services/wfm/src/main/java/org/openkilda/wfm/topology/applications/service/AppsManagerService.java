@@ -27,11 +27,14 @@ import org.openkilda.applications.model.Endpoint;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
 import org.openkilda.messaging.command.flow.UpdateIngressFlow;
+import org.openkilda.messaging.command.switches.InstallExclusionRequest;
+import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.info.apps.AppsEntry;
 import org.openkilda.messaging.info.apps.FlowAppsResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -43,11 +46,15 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.applications.AppsManagerCarrier;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 public class AppsManagerService {
     private final AppsManagerCarrier carrier;
     private final FlowRepository flowRepository;
@@ -230,28 +237,57 @@ public class AppsManagerService {
     }
 
     private UpdateIngressFlow buildUpdateIngressRuleCommand(Flow flow, FlowPath flowPath) {
-        boolean isForward = flow.isForward(flowPath);
-        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
-        EncapsulationResources encapsulationResources =
-                flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                        flow.getOppositePathId(flowPath.getPathId()),
-                        flow.getEncapsulationType())
-                        .orElseThrow(() -> new IllegalStateException(
-                                format("Encapsulation resources are not found for path %s", flowPath)));
-        return new UpdateIngressFlow(
-                flowCommandFactory.buildInstallIngressFlow(flow, flowPath, inPort, encapsulationResources));
+        List<PathSegment> segments = flowPath.getSegments();
+        if (segments.isEmpty()) {
+            throw new IllegalArgumentException("Neither one switch flow nor path segments provided");
+        }
+
+        PathSegment ingressSegment = segments.get(0);
+        if (!ingressSegment.getSrcSwitch().getSwitchId().equals(flowPath.getSrcSwitch().getSwitchId())) {
+            throw new IllegalStateException(
+                    format("FlowSegment was not found for ingress flow rule, flowId: %s", flow.getFlowId()));
+        }
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
+        return new UpdateIngressFlow(flowCommandFactory.buildInstallIngressFlow(flow, flowPath,
+                ingressSegment.getSrcPort(), encapsulationResources));
+    }
+
+    private EncapsulationResources getEncapsulationResources(Flow flow, FlowPath flowPath) {
+        return flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
+                flow.getOppositePathId(flowPath.getPathId()),
+                flow.getEncapsulationType())
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Encapsulation resources are not found for path %s", flowPath)));
     }
 
     /**
      * Create exclusion for the flow.
      */
     public void processCreateExclusion(CreateExclusion payload) {
+        Flow flow = null;
+        try {
+            flow = getFlow(payload.getFlowId());
+        } catch (FlowNotFoundException e) {
+            log.error("Flow {} not found", payload.getFlowId(), e);
+            return;
+        }
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
+        carrier.emitSpeakerCommand(InstallExclusionRequest.builder()
+                .switchId(new SwitchId(payload.getEndpoint().getSwitchId()))
+                .tunnelId(encapsulationResources.getTransitEncapsulationId())
+                .srcIp(payload.getExclusion().getSrcIp())
+                .srcPort(payload.getExclusion().getSrcPort())
+                .dstIp(payload.getExclusion().getDstIp())
+                .dstPort(payload.getExclusion().getDstPort())
+                .proto(payload.getExclusion().getProto())
+                .ethType(payload.getExclusion().getEthType())
+                .build());
         carrier.emitNotification(CreateExclusionResult.builder()
                 .flowId(payload.getFlowId())
                 .endpoint(payload.getEndpoint())
                 .application(payload.getApplication())
                 .exclusion(payload.getExclusion())
-                .success(false)
+                .success(true)
                 .build());
     }
 
@@ -259,12 +295,30 @@ public class AppsManagerService {
      * Remove exclusion for the flow.
      */
     public void processRemoveExclusion(RemoveExclusion payload) {
+        Flow flow = null;
+        try {
+            flow = getFlow(payload.getFlowId());
+        } catch (FlowNotFoundException e) {
+            log.error("Flow {} not found", payload.getFlowId(), e);
+            return;
+        }
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
+        carrier.emitSpeakerCommand(RemoveExclusionRequest.builder()
+                .switchId(new SwitchId(payload.getEndpoint().getSwitchId()))
+                .tunnelId(encapsulationResources.getTransitEncapsulationId())
+                .srcIp(payload.getExclusion().getSrcIp())
+                .srcPort(payload.getExclusion().getSrcPort())
+                .dstIp(payload.getExclusion().getDstIp())
+                .dstPort(payload.getExclusion().getDstPort())
+                .proto(payload.getExclusion().getProto())
+                .ethType(payload.getExclusion().getEthType())
+                .build());
         carrier.emitNotification(RemoveExclusionResult.builder()
                 .flowId(payload.getFlowId())
                 .endpoint(payload.getEndpoint())
                 .application(payload.getApplication())
                 .exclusion(payload.getExclusion())
-                .success(false)
+                .success(true)
                 .build());
     }
 }

@@ -1494,7 +1494,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(isCentecSwitch ? "Centec" : "");
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
+        expect(iofSwitch.write(capture(capture))).andReturn(true);
         expectLastCall();
 
         replay(ofSwitchService);

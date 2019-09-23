@@ -41,7 +41,9 @@ import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
+import org.openkilda.messaging.command.switches.InstallExclusionRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
+import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.floodlight.request.PingRequest;
@@ -127,6 +129,10 @@ public final class RouterUtils {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {
                 return ((RemoveBfdSession) commandData).getBfdSession().getTarget().getDatapath();
+            } else if (commandData instanceof InstallExclusionRequest) {
+                return ((InstallExclusionRequest) commandData).getSwitchId();
+            } else if (commandData instanceof RemoveExclusionRequest) {
+                return ((RemoveExclusionRequest) commandData).getSwitchId();
             }
         }
         return null;

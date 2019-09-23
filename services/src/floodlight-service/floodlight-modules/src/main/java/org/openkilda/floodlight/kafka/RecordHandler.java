@@ -83,8 +83,10 @@ import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
+import org.openkilda.messaging.command.switches.InstallExclusionRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
+import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -126,6 +128,9 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -244,8 +249,72 @@ class RecordHandler implements Runnable {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
             doAliveRequest(message);
+        } else if (data instanceof InstallExclusionRequest) {
+            doInstallExclusion(message);
+        } else if (data instanceof RemoveExclusionRequest) {
+            doRemoveExclusion(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
+        }
+    }
+
+    private void doInstallExclusion(CommandMessage message) {
+        InstallExclusionRequest command = (InstallExclusionRequest) message.getData();
+        logger.info("Install exclusion on switch {}", command.getSwitchId());
+
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        int tunnelId = command.getTunnelId();
+        IPv4Address srcIp = IPv4Address.of(command.getSrcIp());
+        int srcPort = command.getSrcPort();
+        IPv4Address dstIp = IPv4Address.of(command.getDstIp());
+        int dstPort = command.getDstPort();
+        IpProtocol proto = convertStringToIpProtocol(command.getProto());
+        EthType ethType = convertStringToEthType(command.getEthType());
+
+        try {
+            context.getSwitchManager().installExclusion(dpid, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
+        } catch (SwitchOperationException e) {
+            logger.error("Installation exclusion on switch {} was unsuccessful", command.getSwitchId(), e);
+        }
+    }
+
+    private void doRemoveExclusion(CommandMessage message) {
+        RemoveExclusionRequest command = (RemoveExclusionRequest) message.getData();
+        logger.info("Remove exclusion from switch {}", command.getSwitchId());
+
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        int tunnelId = command.getTunnelId();
+        IPv4Address srcIp = IPv4Address.of(command.getSrcIp());
+        int srcPort = command.getSrcPort();
+        IPv4Address dstIp = IPv4Address.of(command.getDstIp());
+        int dstPort = command.getDstPort();
+        IpProtocol proto = convertStringToIpProtocol(command.getProto());
+        EthType ethType = convertStringToEthType(command.getEthType());
+
+        try {
+            context.getSwitchManager().removeExclusion(dpid, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
+        } catch (SwitchOperationException e) {
+            logger.error("Removing exclusion from switch {} was unsuccessful", command.getSwitchId(), e);
+        }
+    }
+
+    private IpProtocol convertStringToIpProtocol(String proto) {
+        if ("TCP".equals(proto)) {
+            return IpProtocol.TCP;
+        } else if ("UDP".equals(proto)) {
+            return IpProtocol.UDP;
+        } else {
+            logger.error("Unexpected ip protocol {}", proto);
+            return IpProtocol.NONE;
+        }
+    }
+
+    private EthType convertStringToEthType(String ethType) {
+        if ("IPv4".equals(ethType)) {
+            return EthType.IPv4;
+        } else {
+            logger.error("Unexpected ethernet type {}", ethType);
+            return EthType.NONE;
         }
     }
 

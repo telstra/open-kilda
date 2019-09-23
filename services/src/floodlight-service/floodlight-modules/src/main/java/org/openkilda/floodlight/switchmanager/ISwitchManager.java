@@ -30,6 +30,9 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.net.InetAddress;
@@ -456,4 +459,40 @@ public interface ISwitchManager extends IFloodlightService {
      * @return true if tracking is enabled.
      */
     boolean isTrackingEnabled();
+
+    /**
+     * Install exclusion.
+     *
+     * @param dpid              switch id.
+     * @param srcIp             source IP address.
+     * @param srcPort           source port.
+     * @param dstIp             destination IP address.
+     * @param dstPort           destination port.
+     * @param proto             IP protocol.
+     * @param ethType           Ethernet type.
+     * @param transitTunnelId   transit tunnel id. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    long installExclusion(DatapathId dpid, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+                          IpProtocol proto, EthType ethType, int transitTunnelId)
+            throws SwitchOperationException;
+
+    /**
+     * Remove exclusion.
+     *
+     * @param dpid              switch id.
+     * @param srcIp             source IP address.
+     * @param srcPort           source port.
+     * @param dstIp             destination IP address.
+     * @param dstPort           destination port.
+     * @param proto             IP protocol.
+     * @param ethType           Ethernet type.
+     * @param transitTunnelId   transit tunnel id. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    long removeExclusion(DatapathId dpid, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+                         IpProtocol proto, EthType ethType, int transitTunnelId)
+            throws SwitchOperationException;
 }

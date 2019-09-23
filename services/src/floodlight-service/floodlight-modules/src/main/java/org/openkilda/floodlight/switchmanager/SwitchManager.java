@@ -444,8 +444,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
-
-        pushFlow(sw, "--InstallIngressFlowDrop--", buildDropFlowForMetadataTable(sw, 1, transitTunnelId));
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
     }
 
@@ -1334,18 +1332,55 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
     }
 
-    private OFFlowMod buildDropFlowForMetadataTable(IOFSwitch sw, int tableId, int tunnelId) {
+    private OFFlowMod buildExclusionDropFlow(IOFSwitch sw, int tableId, IPv4Address srcIp, int srcPort,
+                                             IPv4Address dstIp, int dstPort, IpProtocol proto, EthType ethType,
+                                             int tunnelId) {
         OFFactory ofFactory = sw.getOFFactory();
-
-        if (ofFactory.getVersion() == OF_12) {
+        if (sw.getOFFactory().getVersion() == OF_12) {
             return null;
         }
-        Match match = sw.getOFFactory().buildMatch().setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId),
-                OFMetadata.ofRaw(4095)).build();
+
         return prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 2, tableId)
                 .setTableId(TableId.of(tableId))
-                .setMatch(match)
+                .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
                 .build();
+    }
+
+    private OFFlowDelete buildExclusionDeleteCommand(IOFSwitch sw, int tableId, IPv4Address srcIp, int srcPort,
+                                                     IPv4Address dstIp, int dstPort, IpProtocol proto, EthType ethType,
+                                                     int tunnelId) {
+        if (sw.getOFFactory().getVersion() == OF_12) {
+            return null;
+        }
+
+        return sw.getOFFactory().buildFlowDelete()
+                .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
+                .setTableId(TableId.of(tableId))
+                .build();
+    }
+
+    private Match buildExclusionMatch(IOFSwitch sw, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+                                      IpProtocol proto, EthType ethType, int tunnelId) {
+        Match.Builder match = sw.getOFFactory().buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId), OFMetadata.ofRaw(4095))
+                .setExact(MatchField.IPV4_SRC, srcIp)
+                .setExact(MatchField.IPV4_DST, dstIp)
+                .setExact(MatchField.IP_PROTO, proto)
+                .setExact(MatchField.ETH_TYPE, ethType);
+        setMatchPorts(match, proto, srcPort, dstPort);
+        return match.build();
+    }
+
+    private void setMatchPorts(Match.Builder match, IpProtocol proto, int srcPort, int dstPort) {
+        if (IpProtocol.TCP.equals(proto)) {
+            match.setExact(MatchField.TCP_SRC, TransportPort.of(srcPort));
+            match.setExact(MatchField.TCP_DST, TransportPort.of(dstPort));
+        } else if (IpProtocol.UDP.equals(proto)) {
+            match.setExact(MatchField.UDP_SRC, TransportPort.of(srcPort));
+            match.setExact(MatchField.UDP_DST, TransportPort.of(dstPort));
+        } else {
+            logger.debug("Unexpected IP protocol {}", proto);
+        }
     }
 
     @Override
@@ -2519,6 +2554,26 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public boolean isTrackingEnabled() {
         return config.isTrackingEnabled();
+    }
+
+    @Override
+    public long installExclusion(DatapathId dpid, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+                                 IpProtocol proto, EthType ethType, int transitTunnelId)
+            throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+
+        return pushFlow(sw, "--InstallExclusion--", buildExclusionDropFlow(sw, TABLE_1, srcIp, srcPort,
+                dstIp, dstPort, proto, ethType, transitTunnelId));
+    }
+
+    @Override
+    public long removeExclusion(DatapathId dpid, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+                                IpProtocol proto, EthType ethType, int transitTunnelId)
+            throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+
+        return pushFlow(sw, "--DeleteExclusion--", buildExclusionDeleteCommand(sw, TABLE_1, srcIp, srcPort,
+                dstIp, dstPort, proto, ethType, transitTunnelId));
     }
 
     private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {
