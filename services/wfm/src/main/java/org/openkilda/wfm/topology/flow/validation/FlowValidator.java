@@ -16,9 +16,11 @@
 package org.openkilda.wfm.topology.flow.validation;
 
 import static java.lang.String.format;
+import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -64,6 +66,7 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
+        checkSwitchesSupportLldpIfNeeded(flow);
     }
 
     /**
@@ -296,6 +299,49 @@ public class FlowValidator {
         } else if (!destination) {
             throw new SwitchValidationException(
                     String.format("Destination switch %s is not connected to the controller", destinationId));
+        }
+    }
+
+    /**
+     * Ensure switches are exists.
+     *
+     * @param requestedFlow a flow to be validated.
+     * @throws SwitchValidationException if LLDP is enabled for switch but switch doesn't support it.
+     */
+    @VisibleForTesting
+    void checkSwitchesSupportLldpIfNeeded(Flow requestedFlow) throws SwitchValidationException {
+        SwitchId sourceId = requestedFlow.getSrcSwitch().getSwitchId();
+        SwitchId destinationId = requestedFlow.getDestSwitch().getSwitchId();
+
+        List<String> errorMessages = new ArrayList<>();
+
+        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()) {
+            Optional<Switch> srcSwitch = switchRepository.findById(sourceId);
+            if (!srcSwitch.isPresent()) {
+                errorMessages.add(String.format("Source switch %s is not connected to the controller.", sourceId));
+            } else {
+                if (!srcSwitch.get().supports(MULTI_TABLE)) {
+                    errorMessages.add(String.format("Source switch %s does not support catching of LLDP packets. "
+                            + "It must have at least 2 OF tables.", sourceId));
+                }
+            }
+        }
+
+        if (requestedFlow.getDetectConnectedDevices().isDstLldp()) {
+            Optional<Switch> dstSwitch = switchRepository.findById(destinationId);
+            if (!dstSwitch.isPresent()) {
+                errorMessages.add(String.format(
+                        "Destination switch %s is not connected to the controller.", destinationId));
+            } else {
+                if (!dstSwitch.get().supports(MULTI_TABLE)) {
+                    errorMessages.add(String.format("Destination switch %s does not support catching of LLDP packets. "
+                            + "It must have at least 2 OF tables.", destinationId));
+                }
+            }
+        }
+
+        if (!errorMessages.isEmpty()) {
+            throw new SwitchValidationException(String.join(" ", errorMessages));
         }
     }
 
