@@ -1,7 +1,7 @@
 # 'make' will build the latest and try to run it.
 default: build-latest run-dev
 
-build-base:
+build-base: update-props
 	base/hacks/storm.requirements.download.sh
 	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest services/zookeeper
@@ -13,7 +13,7 @@ build-base:
 	docker build -t kilda/logstash:latest services/logstash
 	docker build -t kilda/base-lab-service:latest base/kilda-base-lab-service/
 
-build-latest: update-props build-base compile
+build-latest: build-base compile
 	docker-compose build
 
 run-dev:
@@ -55,7 +55,7 @@ update-msg:
 
 update: update-parent update-core update-msg update-pce
 
-compile:
+compile: update-props
 	$(MAKE) -C services/src
 	$(MAKE) -C services/wfm all-in-one
 	$(MAKE) -C services/lab-service/lab test
