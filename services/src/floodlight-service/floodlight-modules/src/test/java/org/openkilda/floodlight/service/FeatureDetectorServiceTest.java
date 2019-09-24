@@ -21,6 +21,7 @@ import static org.openkilda.model.SwitchFeature.BFD_REVIEW;
 import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
+import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
@@ -81,20 +82,21 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     public void bfdCommon() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
-                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT));
+                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
     public void bfdReview() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_14),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, BFD_REVIEW, METERS, RESET_COUNTS_FLAG,
-                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT));
+                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
     public void copyFieldOnESwitches() {
         discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT));
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
+                        MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
@@ -113,14 +115,15 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void eswitch500Software() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "WB5164-E", OFVersion.OF_13),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT));
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
+                        MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
     public void pktpsFlagCommon() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
-                        NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT));
+                        NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
@@ -132,7 +135,8 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void pktpsFlagESwitch() {
         discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT));
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
+                        MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     private void discoveryCheck(IOFSwitch sw, Set<SwitchFeature> expectedFeatures) {

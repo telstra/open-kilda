@@ -18,6 +18,7 @@ package org.openkilda.model;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Set;
 
 @Data
 public final class Meter implements Serializable {
@@ -64,6 +65,20 @@ public final class Meter implements Serializable {
         }
 
         return Math.round(bandwidth * burstCoefficient);
+    }
+
+    /**
+     * Calculate burst size considering hardware limitations.
+     * Noviflow switches round burst size if burst size > rate * 1.005.
+     */
+    public static long calculateBurstSizeConsideringHardwareLimitations(
+            long bandwidth, long requestedBurstSize, Set<SwitchFeature> features) {
+
+        if (features.contains(SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION)) {
+            return Math.min(requestedBurstSize, Math.round(bandwidth * MAX_NOVIFLOW_BURST_COEFFICIENT));
+        }
+
+        return requestedBurstSize;
     }
 
     /**

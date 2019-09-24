@@ -15,9 +15,13 @@
 
 package org.openkilda.model;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
+import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
 
 import org.junit.Test;
+
+import java.util.Set;
 
 public class MeterTest {
 
@@ -41,5 +45,14 @@ public class MeterTest {
     public void convertBurstSizeToKiloBitsTest() {
         assertEquals(800, Meter.convertBurstSizeToKiloBits(100, 1024));
         assertEquals(1, Meter.convertBurstSizeToKiloBits(8, 16));
+    }
+
+    @Test
+    public void convertCalculateBurstSizeConsideringHardwareLimitations() {
+        Set<SwitchFeature> limitationFeature = newHashSet(MAX_BURST_COEFFICIENT_LIMITATION);
+        assertEquals(4096, Meter.calculateBurstSizeConsideringHardwareLimitations(1, 4096, newHashSet()));
+        assertEquals(1, Meter.calculateBurstSizeConsideringHardwareLimitations(1, 4096, limitationFeature));
+        assertEquals(100, Meter.calculateBurstSizeConsideringHardwareLimitations(100, 100, limitationFeature));
+        assertEquals(10, Meter.calculateBurstSizeConsideringHardwareLimitations(100, 10, limitationFeature));
     }
 }

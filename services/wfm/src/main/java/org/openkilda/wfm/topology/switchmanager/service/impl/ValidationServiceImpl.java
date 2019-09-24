@@ -303,6 +303,9 @@ public class ValidationServiceImpl implements ValidationService {
                     expectedFlags = Meter.getMeterKbpsFlags();
                 }
 
+                expectedBurstSize = Meter.calculateBurstSizeConsideringHardwareLimitations(
+                        expectedRate, expectedBurstSize, path.getSrcSwitch().getFeatures());
+
                 SimpleMeterEntry expectedMeter = new SimpleMeterEntry(path.getFlow().getFlowId(),
                         path.getLldpResources().getMeterId().getValue(), path.getLldpResources().getCookie().getValue(),
                         expectedRate, expectedBurstSize, expectedFlags);
