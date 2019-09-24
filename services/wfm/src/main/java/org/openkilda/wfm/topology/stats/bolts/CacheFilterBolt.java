@@ -30,6 +30,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.InstallLldpFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.Cookie;
@@ -151,6 +152,10 @@ public class CacheFilterBolt extends BaseRichBolt {
                 logMatchedRecord(command);
                 emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
                 emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
+            } else if (data instanceof InstallLldpFlow) {
+                InstallLldpFlow command = (InstallLldpFlow) data;
+                logMatchedRecord(command);
+                emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
             } else if (data instanceof RemoveFlow) {
                 RemoveFlow command = (RemoveFlow) data;
                 logMatchedRecord(command);

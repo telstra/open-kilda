@@ -20,6 +20,7 @@ import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIEL
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
@@ -71,11 +72,12 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             Map<String, String> flowTags = makeFlowTags(entry, flowEntry.getFlowId());
 
             boolean isMatch = false;
-            if (switchId.toOtsdFormat().equals(flowEntry.getIngressSwitch())) {
+            if (isFlowMainCookie(entry.getCookie())
+                    && switchId.toOtsdFormat().equals(flowEntry.getIngressSwitch())) {
                 emitIngressMetrics(entry, timestamp, flowTags);
                 isMatch = true;
             }
-            if (switchId.toOtsdFormat().equals(flowEntry.getEgressSwitch())) {
+            if (isFlowMainCookie(entry.getCookie()) && switchId.toOtsdFormat().equals(flowEntry.getEgressSwitch())) {
                 emitEgressMetrics(entry, timestamp, flowTags);
                 isMatch = true;
             }
@@ -86,6 +88,17 @@ public class FlowMetricGenBolt extends MetricGenBolt {
                         flowEntry.getIngressSwitch(), flowEntry.getEgressSwitch());
             }
         }
+    }
+
+    /**
+     * Checks if cookie is main flow cookie.
+     * Flow can have several cookies (currently its main and LLDP cookies).
+     * This method helps to understand is specified cookie main or not.
+     */
+    private boolean isFlowMainCookie(long cookie) {
+        // TODO: Currently there are only 2 cookie types: main and LLDP. Maybe it will be extended in future.
+        // We need to find more reliable way to understand is it main cookie or not
+        return !Cookie.isMaskedAsLldp(cookie);
     }
 
     private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, SwitchId switchId, String flowId)

@@ -26,6 +26,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.flow.InstallLldpFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.Datapoint;
@@ -43,6 +44,7 @@ import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.messaging.info.stats.TableStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
@@ -90,6 +92,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final int POLL_TIMEOUT = 1000;
     private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
     private static final String METRIC_PREFIX = "kilda.";
+    private static final int ENCAPSULATION_ID = 123;
 
     private final SwitchId switchId = new SwitchId(1L);
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
@@ -296,6 +299,40 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    public void lldpMeterStatsTest() throws IOException {
+        UnidirectionalFlow flow = createFlow(switchId, flowId);
+        long lldpCookie = Cookie.buildLldpCookie(5L, true).getValue();
+        long lldpMeterId = MeterId.MIN_FLOW_METER_ID;
+        sendInstallLldpFlowCommand(flow, lldpCookie, lldpMeterId);
+
+        MeterStatsEntry meterStats = new MeterStatsEntry(lldpMeterId, 400L, 500L);
+
+        sendStatsMessage(new MeterStatsData(switchId, Collections.singletonList(meterStats)));
+
+        List<Datapoint> datapoints = pollDatapoints(3);
+
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
+
+        assertEquals(meterStats.getPacketsInCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.meter.packets").getValue().longValue());
+        assertEquals(meterStats.getByteInCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.meter.bytes").getValue().longValue());
+        assertEquals(meterStats.getByteInCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.meter.bits").getValue().longValue());
+
+
+        datapoints.forEach(datapoint -> {
+            assertEquals(5, datapoint.getTags().size());
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals(String.valueOf(lldpMeterId), datapoint.getTags().get("meterid"));
+            assertEquals("forward", datapoint.getTags().get("direction"));
+            assertEquals(flowId, datapoint.getTags().get("flowid"));
+            assertEquals(String.valueOf(lldpCookie), datapoint.getTags().get("cookie"));
+            assertEquals(timestamp, datapoint.getTime().longValue());
+        });
+    }
+
+    @Test
     public void flowStatsTest() throws Exception {
         UnidirectionalFlow flow = createFlow(switchId, flowId);
         sendInstallOneSwitchFlowCommand(flow);
@@ -356,6 +393,40 @@ public class StatsTopologyTest extends AbstractStormTest {
                 default:
                     throw new AssertionError(String.format("Unknown metric: %s", datapoint.getMetric()));
             }
+        });
+    }
+
+    @Test
+    public void flowLldpStatsTest() throws Exception {
+        UnidirectionalFlow flow = createFlow(switchId, flowId);
+        long lldpCookie = Cookie.buildLldpCookie(5L, false).getValue();
+        long lldpMeterId = MeterId.MIN_FLOW_METER_ID;
+        sendInstallLldpFlowCommand(flow, lldpCookie, lldpMeterId);
+
+        FlowStatsEntry stats = new FlowStatsEntry((short) 1, lldpCookie, 450, 550L, 10, 10);
+
+        sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(stats)));
+
+        List<Datapoint> datapoints = pollDatapoints(3);
+
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
+
+        assertEquals(stats.getPacketCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.raw.packets").getValue().longValue());
+        assertEquals(stats.getByteCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.raw.bytes").getValue().longValue());
+        assertEquals(stats.getByteCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.raw.bits").getValue().longValue());
+
+        datapoints.forEach(datapoint -> {
+            assertEquals(7, datapoint.getTags().size());
+            assertEquals(flowId, datapoint.getTags().get("flowid"));
+            assertEquals("reverse", datapoint.getTags().get("direction"));
+            assertEquals(String.valueOf(stats.getTableId()), datapoint.getTags().get("tableid"));
+            assertEquals(String.valueOf(lldpCookie), datapoint.getTags().get("cookie"));
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals("10", datapoint.getTags().get("outPort"));
+            assertEquals("10", datapoint.getTags().get("inPort"));
         });
     }
 
@@ -436,6 +507,8 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .destVlan(5)
                 .unmaskedCookie(1)
                 .meterId(456)
+                .transitEncapsulationId(ENCAPSULATION_ID)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .buildUnidirectionalFlow();
 
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
@@ -474,6 +547,21 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendFlowCommand(installOneSwitchFlow);
     }
 
+    private void sendInstallLldpFlowCommand(
+            UnidirectionalFlow flow, long lldpCookie, long lldpMeterId) throws IOException {
+        InstallLldpFlow installLldpFlow = new InstallLldpFlow(
+                TRANSACTION_ID,
+                flow.getFlowId(),
+                lldpCookie,
+                flow.getSrcSwitch().getSwitchId(),
+                flow.getSrcPort(),
+                flow.getEncapsulationId().getEncapsulationId(),
+                flow.getEncapsulationType(),
+                lldpMeterId,
+                false);
+        sendFlowCommand(installLldpFlow);
+    }
+
     private void sendFlowCommand(BaseFlow flowCommand) throws IOException {
         CommandMessage commandMessage = new CommandMessage(flowCommand, timestamp, UUID.randomUUID().toString());
         sendMessage(commandMessage, statsTopologyConfig.getKafkaSpeakerFlowTopic());
@@ -503,6 +591,16 @@ public class StatsTopologyTest extends AbstractStormTest {
             } catch (IOException e) {
                 throw new AssertionError(String.format("Could not parse datapoint object: '%s'", record.value()));
             }
+        }
+        try {
+            // ensure that we received exact expected count of records
+            ConsumerRecord<String, String> record = otsdbConsumer.pollMessage(POLL_TIMEOUT);
+            if (record != null) {
+                throw new AssertionError(String.format(
+                        "Got more then %d records. Extra record '%s'", expectedDatapointCount, record));
+            }
+        } catch (InterruptedException e) {
+            return datapoints;
         }
         return datapoints;
     }

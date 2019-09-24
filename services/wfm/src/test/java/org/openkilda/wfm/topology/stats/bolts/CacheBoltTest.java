@@ -20,9 +20,13 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.messaging.info.stats.MeterStatsData;
+import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.LldpResources;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -30,6 +34,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
+import org.openkilda.wfm.topology.stats.MeterCacheKey;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,6 +53,22 @@ public class CacheBoltTest {
     private static final Long PROTECTED_FORWARD_PATH_COOKIE = 2L;
     private static final Long REVERSE_PATH_COOKIE = 3L;
     private static final Long PROTECTED_REVERSE_PATH_COOKIE = 4L;
+    private static final Long FORWARD_LLDP_COOKIE = Cookie.buildLldpCookie(5L, true).getValue();
+    private static final Long PROTECTED_FORWARD_LLDP_COOKIE = Cookie.buildLldpCookie(6L, true).getValue();
+    private static final Long REVERSE_LLDP_COOKIE = Cookie.buildLldpCookie(5L, false).getValue();
+    private static final Long PROTECTED_REVERSE_LLDP_COOKIE = Cookie.buildLldpCookie(6L, false).getValue();
+
+    private static final Long FORWARD_METER_ID = MeterId.MIN_FLOW_METER_ID + 1L;
+    private static final Long PROTECTED_FORWARD_METER_ID = MeterId.MIN_FLOW_METER_ID + 2L;
+    private static final Long REVERSE_METER_ID = MeterId.MIN_FLOW_METER_ID + 3L;
+    private static final Long PROTECTED_REVERSE_METER_ID = MeterId.MIN_FLOW_METER_ID + 4L;
+    private static final Long FORWARD_LLDP_METER_ID = MeterId.MIN_FLOW_METER_ID + 5L;
+    private static final Long PROTECTED_FORWARD_LLDP_METER_ID = MeterId.MIN_FLOW_METER_ID + 6L;
+    private static final Long REVERSE_LLDP_METER_ID = MeterId.MIN_FLOW_METER_ID + 7L;
+    private static final Long PROTECTED_REVERSE_LLDP_METER_ID = MeterId.MIN_FLOW_METER_ID + 8L;
+
+    private static final SwitchId SRC_SWITCH_ID = new SwitchId(1L);
+    private static final SwitchId DST_SWITCH_ID = new SwitchId(2L);
 
     @Mock
     private PersistenceManager persistenceManager;
@@ -57,7 +78,7 @@ public class CacheBoltTest {
     private FlowRepository flowRepository;
 
     @Test
-    public void cacheBoltInitTest() {
+    public void cacheBoltInitCookieTest() {
         Flow flow = getFlow();
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
@@ -66,48 +87,96 @@ public class CacheBoltTest {
         CacheBolt cacheBolt = new CacheBolt(persistenceManager);
         cacheBolt.init();
 
-        Map<Long, CacheFlowEntry> cookieToFlowCache = cacheBolt.createCookieToFlowCache(getFlowStatsData());
+        Map<Long, CacheFlowEntry> srcCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataSrcSwitch());
 
-        Assert.assertEquals(4, cookieToFlowCache.size());
-        CacheFlowEntry forwardCacheFlowEntry = cookieToFlowCache.get(FORWARD_PATH_COOKIE);
-        Assert.assertEquals(flow.getFlowId(), forwardCacheFlowEntry.getFlowId());
-        Assert.assertEquals(FORWARD_PATH_COOKIE, forwardCacheFlowEntry.getCookie());
+        Assert.assertEquals(4, srcCache.size());
+        assertCookieCache(flow, srcCache, FORWARD_PATH_COOKIE);
+        assertCookieCache(flow, srcCache, PROTECTED_FORWARD_PATH_COOKIE);
+        assertCookieCache(flow, srcCache, FORWARD_LLDP_COOKIE);
+        assertCookieCache(flow, srcCache, PROTECTED_FORWARD_LLDP_COOKIE);
 
-        CacheFlowEntry protectedForwardCacheFlowEntry = cookieToFlowCache.get(PROTECTED_FORWARD_PATH_COOKIE);
-        Assert.assertEquals(flow.getFlowId(), protectedForwardCacheFlowEntry.getFlowId());
-        Assert.assertEquals(PROTECTED_FORWARD_PATH_COOKIE, protectedForwardCacheFlowEntry.getCookie());
+        Map<Long, CacheFlowEntry> dstCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataDstSwitch());
 
-        CacheFlowEntry reverseCacheFlowEntry = cookieToFlowCache.get(REVERSE_PATH_COOKIE);
-        Assert.assertEquals(flow.getFlowId(), reverseCacheFlowEntry.getFlowId());
-        Assert.assertEquals(REVERSE_PATH_COOKIE, reverseCacheFlowEntry.getCookie());
+        Assert.assertEquals(4, dstCache.size());
+        assertCookieCache(flow, dstCache, REVERSE_PATH_COOKIE);
+        assertCookieCache(flow, dstCache, PROTECTED_REVERSE_PATH_COOKIE);
+        assertCookieCache(flow, dstCache, REVERSE_LLDP_COOKIE);
+        assertCookieCache(flow, dstCache, PROTECTED_REVERSE_LLDP_COOKIE);
+    }
 
-        CacheFlowEntry protectedReverseCacheFlowEntry = cookieToFlowCache.get(PROTECTED_REVERSE_PATH_COOKIE);
-        Assert.assertEquals(flow.getFlowId(), protectedReverseCacheFlowEntry.getFlowId());
-        Assert.assertEquals(PROTECTED_REVERSE_PATH_COOKIE, protectedReverseCacheFlowEntry.getCookie());
+    @Test
+    public void cacheBoltInitMeterTest() {
+        Flow flow = getFlow();
+        when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
+        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+
+        CacheBolt cacheBolt = new CacheBolt(persistenceManager);
+        cacheBolt.init();
+
+        Map<MeterCacheKey, CacheFlowEntry> srcCache = cacheBolt.createSwitchAndMeterToFlowCache(
+                getMeterStatsDataSrcSwitch());
+
+        Assert.assertEquals(4, srcCache.size());
+        assertMeterCache(flow, SRC_SWITCH_ID, srcCache, FORWARD_METER_ID, FORWARD_PATH_COOKIE);
+        assertMeterCache(flow, SRC_SWITCH_ID, srcCache, PROTECTED_FORWARD_METER_ID, PROTECTED_FORWARD_PATH_COOKIE);
+        assertMeterCache(flow, SRC_SWITCH_ID, srcCache, FORWARD_LLDP_METER_ID, FORWARD_LLDP_COOKIE);
+        assertMeterCache(flow, SRC_SWITCH_ID, srcCache, PROTECTED_FORWARD_LLDP_METER_ID, PROTECTED_FORWARD_LLDP_COOKIE);
+
+        Map<MeterCacheKey, CacheFlowEntry> dstCache = cacheBolt.createSwitchAndMeterToFlowCache(
+                getMeterStatsDataDstSwitch());
+        Assert.assertEquals(4, dstCache.size());
+
+        assertMeterCache(flow, DST_SWITCH_ID, dstCache, REVERSE_METER_ID, REVERSE_PATH_COOKIE);
+        assertMeterCache(flow, DST_SWITCH_ID, dstCache, PROTECTED_REVERSE_METER_ID, PROTECTED_REVERSE_PATH_COOKIE);
+        assertMeterCache(flow, DST_SWITCH_ID, dstCache, REVERSE_LLDP_METER_ID, REVERSE_LLDP_COOKIE);
+        assertMeterCache(flow, DST_SWITCH_ID, dstCache, PROTECTED_REVERSE_LLDP_METER_ID, PROTECTED_REVERSE_LLDP_COOKIE);
+    }
+
+    private void assertCookieCache(Flow flow, Map<Long, CacheFlowEntry> cookieToFlowCache, Long cookie) {
+        CacheFlowEntry entry = cookieToFlowCache.get(cookie);
+        Assert.assertEquals(flow.getFlowId(), entry.getFlowId());
+        Assert.assertEquals(cookie, entry.getCookie());
+    }
+
+    private void assertMeterCache(Flow flow, SwitchId switchId, Map<MeterCacheKey, CacheFlowEntry> cache,
+                                  Long meterId, Long cookie) {
+        CacheFlowEntry entry = cache.get(new MeterCacheKey(switchId, meterId));
+        Assert.assertEquals(flow.getFlowId(), entry.getFlowId());
+        Assert.assertEquals(cookie, entry.getCookie());
     }
 
     private Flow getFlow() {
-        Switch srcSwitch = Switch.builder().switchId(new SwitchId(1L)).build();
-        Switch destSwitch = Switch.builder().switchId(new SwitchId(2L)).build();
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch destSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
         Flow flow = Flow.builder()
                 .flowId(uuid())
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .build();
-        flow.setForwardPath(getPath(flow, srcSwitch, destSwitch, FORWARD_PATH_COOKIE));
-        flow.setProtectedForwardPath(getPath(flow, srcSwitch, destSwitch, PROTECTED_FORWARD_PATH_COOKIE));
-        flow.setReversePath(getPath(flow, destSwitch, srcSwitch, REVERSE_PATH_COOKIE));
-        flow.setProtectedReversePath(getPath(flow, destSwitch, srcSwitch, PROTECTED_REVERSE_PATH_COOKIE));
+        flow.setForwardPath(getPath(flow, srcSwitch, destSwitch, FORWARD_PATH_COOKIE, FORWARD_METER_ID,
+                FORWARD_LLDP_COOKIE, FORWARD_LLDP_METER_ID));
+        flow.setProtectedForwardPath(getPath(
+                flow, srcSwitch, destSwitch, PROTECTED_FORWARD_PATH_COOKIE, PROTECTED_FORWARD_METER_ID,
+                PROTECTED_FORWARD_LLDP_COOKIE, PROTECTED_FORWARD_LLDP_METER_ID));
+        flow.setReversePath(getPath(flow, destSwitch, srcSwitch, REVERSE_PATH_COOKIE, REVERSE_METER_ID,
+                REVERSE_LLDP_COOKIE, REVERSE_LLDP_METER_ID));
+        flow.setProtectedReversePath(getPath(
+                flow, destSwitch, srcSwitch, PROTECTED_REVERSE_PATH_COOKIE, PROTECTED_REVERSE_METER_ID,
+                PROTECTED_REVERSE_LLDP_COOKIE, PROTECTED_REVERSE_LLDP_METER_ID));
         return flow;
     }
 
-    private FlowPath getPath(Flow flow, Switch src, Switch dest, long cookie) {
+    private FlowPath getPath(Flow flow, Switch src, Switch dest, long cookie, long meterId,
+                             long lldpCookie, long lldpMeterId) {
         return FlowPath.builder()
                 .pathId(new PathId(uuid()))
                 .flow(flow)
                 .srcSwitch(src)
                 .destSwitch(dest)
                 .cookie(new Cookie(cookie))
+                .lldpResources(new LldpResources(new MeterId(lldpMeterId), new Cookie(lldpCookie)))
+                .meterId(new MeterId(meterId))
                 .build();
     }
 
@@ -115,10 +184,35 @@ public class CacheBoltTest {
         return UUID.randomUUID().toString();
     }
 
-    private FlowStatsData getFlowStatsData() {
-        return new FlowStatsData(new SwitchId(3L), asList(new FlowStatsEntry(0, FORWARD_PATH_COOKIE, 0, 0, 0, 0),
+    private FlowStatsData getFlowStatsDataSrcSwitch() {
+        return new FlowStatsData(SRC_SWITCH_ID, asList(
+                new FlowStatsEntry(0, FORWARD_PATH_COOKIE, 0, 0, 0, 0),
                 new FlowStatsEntry(0, PROTECTED_FORWARD_PATH_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, FORWARD_LLDP_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, PROTECTED_FORWARD_LLDP_COOKIE, 0, 0, 0, 0)));
+    }
+    
+    private FlowStatsData getFlowStatsDataDstSwitch() {
+        return new FlowStatsData(DST_SWITCH_ID, asList(
                 new FlowStatsEntry(0, REVERSE_PATH_COOKIE, 0, 0, 0, 0),
-                new FlowStatsEntry(0, PROTECTED_REVERSE_PATH_COOKIE, 0, 0, 0, 0)));
+                new FlowStatsEntry(0, PROTECTED_REVERSE_PATH_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, REVERSE_LLDP_COOKIE, 0, 0, 0, 0),
+                new FlowStatsEntry(0, PROTECTED_REVERSE_LLDP_COOKIE, 0, 0, 0, 0)));
+    }
+
+    private MeterStatsData getMeterStatsDataSrcSwitch() {
+        return new MeterStatsData(SRC_SWITCH_ID, asList(
+                new MeterStatsEntry(FORWARD_METER_ID, 0, 0),
+                new MeterStatsEntry(PROTECTED_FORWARD_METER_ID, 0, 0),
+                new MeterStatsEntry(FORWARD_LLDP_METER_ID, 0, 0),
+                new MeterStatsEntry(PROTECTED_FORWARD_LLDP_METER_ID, 0, 0)));
+    }
+
+    private MeterStatsData getMeterStatsDataDstSwitch() {
+        return new MeterStatsData(DST_SWITCH_ID, asList(
+                new MeterStatsEntry(REVERSE_METER_ID, 0, 0),
+                new MeterStatsEntry(PROTECTED_REVERSE_METER_ID, 0, 0),
+                new MeterStatsEntry(REVERSE_LLDP_METER_ID, 0, 0),
+                new MeterStatsEntry(PROTECTED_REVERSE_LLDP_METER_ID, 0, 0)));
     }
 }

@@ -46,6 +46,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,11 +88,7 @@ public class CacheBolt extends AbstractBolt {
             flowRepository.findAll().stream()
                     .flatMap(this::extractAllFlowPaths)
                     .forEach(path -> {
-                        CacheFlowEntry entry = new CacheFlowEntry(
-                                path.getFlow().getFlowId(),
-                                path.getSrcSwitch().getSwitchId().toOtsdFormat(),
-                                path.getDestSwitch().getSwitchId().toOtsdFormat(),
-                                path.getCookie().getValue());
+                        CacheFlowEntry entry = createCacheFlowEntry(path, path.getCookie().getValue());
 
                         cookieToFlow.put(path.getCookie().getValue(), entry);
                         if (path.getMeterId() != null) {
@@ -101,12 +98,41 @@ public class CacheBolt extends AbstractBolt {
                         } else {
                             log.warn("Flow {} has no meter ID", path.getFlow().getFlowId());
                         }
+
+                        putLldpDataInCache(path);
                     });
             logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
             logger.info("Stats Cache: Initialized");
         } catch (Exception ex) {
             logger.error("Error on initFlowCache", ex);
         }
+    }
+
+    private void putLldpDataInCache(FlowPath path) {
+        if (path.getLldpResources() != null) {
+            // if LldpResources is not null then LLDP meter and LLDP cookie must be not null
+            if (path.getLldpResources().getCookie() != null) {
+                CacheFlowEntry lldpEntry = createCacheFlowEntry(path, path.getLldpResources().getCookie().getValue());
+                cookieToFlow.put(path.getLldpResources().getCookie().getValue(), lldpEntry);
+                if (path.getLldpResources().getMeterId() != null) {
+                    switchAndMeterToFlow.put(new MeterCacheKey(
+                                    path.getSrcSwitch().getSwitchId(),
+                                    path.getLldpResources().getMeterId().getValue()), lldpEntry);
+                } else {
+                    log.warn("Flow {} has no LLDP meter ID but it must", path.getFlow().getFlowId());
+                }
+            } else {
+                log.warn("Flow {} has no LLDP cookie but it must", path.getFlow().getFlowId());
+            }
+        }
+    }
+
+    @NotNull
+    private CacheFlowEntry createCacheFlowEntry(FlowPath path, long cookie) {
+        return new CacheFlowEntry(path.getFlow().getFlowId(),
+                                  path.getSrcSwitch().getSwitchId().toOtsdFormat(),
+                                  path.getDestSwitch().getSwitchId().toOtsdFormat(),
+                                  cookie);
     }
 
     private Stream<FlowPath> extractAllFlowPaths(Flow flow) {
@@ -207,7 +233,8 @@ public class CacheBolt extends AbstractBolt {
         return cache;
     }
 
-    private Map<MeterCacheKey, CacheFlowEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
+    @VisibleForTesting
+    Map<MeterCacheKey, CacheFlowEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
         Map<MeterCacheKey, CacheFlowEntry> cache = new HashMap<>();
 
         for (MeterStatsEntry entry : data.getStats()) {
