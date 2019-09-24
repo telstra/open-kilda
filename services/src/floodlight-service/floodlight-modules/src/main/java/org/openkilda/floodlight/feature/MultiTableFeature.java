@@ -13,18 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.floodlight.feature;
 
-public enum SwitchFeature {
-    METERS,
-    BFD,
-    BFD_REVIEW,
-    GROUP_PACKET_OUT_CONTROLLER,
-    RESET_COUNTS_FLAG,
-    LIMITED_BURST_SIZE,
-    NOVIFLOW_COPY_FIELD,
-    PKTPS_FLAG,
-    MATCH_UDP_PORT,
-    MAX_BURST_COEFFICIENT_LIMITATION,
-    MULTI_TABLE
+import org.openkilda.model.SwitchFeature;
+
+import net.floodlightcontroller.core.IOFSwitch;
+
+import java.util.Optional;
+
+public class MultiTableFeature extends AbstractFeature {
+
+    @Override
+    public Optional<SwitchFeature> discover(IOFSwitch sw) {
+        if (sw.getNumTables() > 1) {
+            return Optional.of(SwitchFeature.MULTI_TABLE);
+        } else {
+            return Optional.empty();
+        }
+    }
 }

@@ -23,6 +23,7 @@ import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
 import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
@@ -61,82 +62,82 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
 
     @Test
     public void metersCommon() {
-        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_13, 2),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, METERS, RESET_COUNTS_FLAG, PKTPS_FLAG,
-                               MATCH_UDP_PORT));
+                               MATCH_UDP_PORT, MULTI_TABLE));
     }
 
     @Test
     public void metersOf12() {
-        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_12),
+        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_12, 1),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void metersNicira() {
-        discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", "Hard123", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", "Hard123", OFVersion.OF_13, 1),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void bfdCommon() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13, 1),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
                                NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
     public void bfdReview() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_14),
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_14, 1),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, BFD_REVIEW, METERS, RESET_COUNTS_FLAG,
                                NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
     public void copyFieldOnESwitches() {
-        discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13, 2),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
-                        MAX_BURST_COEFFICIENT_LIMITATION));
+                        MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE));
     }
 
     @Test
     public void roundTripCentec() {
-        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13),
-                       ImmutableSet.of(METERS, LIMITED_BURST_SIZE));
+        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 2),
+                       ImmutableSet.of(METERS, LIMITED_BURST_SIZE, MULTI_TABLE));
     }
 
     @Test
     public void roundTripActon() {
         discoveryCheck(makeSwitchMock("Sonus Networks Inc, 4 Technology Park Dr, Westford, MA 01886, USA",
-                "8.1.0.14", "VX3048", OFVersion.OF_12),
-                ImmutableSet.of(RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
+                "8.1.0.14", "VX3048", OFVersion.OF_12, 2),
+                ImmutableSet.of(RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT, MULTI_TABLE));
     }
 
     @Test
     public void eswitch500Software() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "WB5164-E", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "WB5164-E", OFVersion.OF_13, 2),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
-                        MAX_BURST_COEFFICIENT_LIMITATION));
+                        MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE));
     }
 
     @Test
     public void pktpsFlagCommon() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13, 1),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
                         NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
     }
 
     @Test
     public void pktpsFlagCentec() {
-        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13),
-                ImmutableSet.of(METERS, LIMITED_BURST_SIZE));
+        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 3),
+                ImmutableSet.of(METERS, LIMITED_BURST_SIZE, MULTI_TABLE));
     }
 
     @Test
     public void pktpsFlagESwitch() {
-        discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13),
+        discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13, 2),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
-                        MAX_BURST_COEFFICIENT_LIMITATION));
+                        MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE));
     }
 
     private void discoveryCheck(IOFSwitch sw, Set<SwitchFeature> expectedFeatures) {
@@ -147,7 +148,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     }
 
     private IOFSwitch makeSwitchMock(String manufacturer, String softwareDescription, String hardwareDescription,
-                                     OFVersion version) {
+                                     OFVersion version, int numTables) {
         SwitchDescription description = createMock(SwitchDescription.class);
         expect(description.getManufacturerDescription()).andReturn(manufacturer).anyTimes();
         expect(description.getSoftwareDescription()).andReturn(softwareDescription).anyTimes();
@@ -159,6 +160,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         IOFSwitch sw = createMock(IOFSwitch.class);
         expect(sw.getSwitchDescription()).andReturn(description).anyTimes();
         expect(sw.getOFFactory()).andReturn(ofFactory).anyTimes();
+        expect(sw.getNumTables()).andReturn((short) numTables).anyTimes();
 
         return sw;
     }

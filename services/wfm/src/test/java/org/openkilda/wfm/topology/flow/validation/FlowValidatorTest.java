@@ -15,11 +15,14 @@
 
 package org.openkilda.wfm.topology.flow.validation;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.singletonList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
@@ -31,6 +34,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
+import com.google.common.collect.Sets;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -101,6 +105,106 @@ public class FlowValidatorTest {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         target = new FlowValidator(repositoryFactory);
+    }
+
+    private void setUpWithLldp(boolean srcLldpSupport, boolean dstLldpSupport) {
+        Switch srcSwitch = Switch.builder()
+                .switchId(SRC_SWITCH_ID)
+                .features(srcLldpSupport ? newHashSet(MULTI_TABLE) : Sets.newHashSet())
+                .build();
+        Switch dstSwitch = Switch.builder()
+                .switchId(DST_SWITCH_ID)
+                .features(dstLldpSupport ? newHashSet(MULTI_TABLE) : Sets.newHashSet())
+                .build();
+
+        SwitchRepository switchRepository = mock(SwitchRepository.class);
+        when(switchRepository.findById(eq(FlowValidatorTest.SRC_SWITCH_ID))).thenReturn(Optional.of(srcSwitch));
+        when(switchRepository.findById(eq(FlowValidatorTest.DST_SWITCH_ID))).thenReturn(Optional.of(dstSwitch));
+        when(switchRepository.findById(eq(FlowValidatorTest.FAIL_SRC_SWITCH_ID))).thenReturn(Optional.empty());
+        when(switchRepository.findById(eq(FlowValidatorTest.FAIL_DST_SWITCH_ID))).thenReturn(Optional.empty());
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        target = new FlowValidator(repositoryFactory);
+    }
+
+    @Test(expected = SwitchValidationException.class)
+    public void shouldFailLldpIfSourceSwitchDoesntNotExist() throws SwitchValidationException {
+        setUpWithLldp(true, true);
+        runFailLldpIfSwitchDoesntNotExist(FAIL_SRC_SWITCH_ID, DST_SWITCH_ID);
+    }
+
+    @Test(expected = SwitchValidationException.class)
+    public void shouldFailLldpIfDestinationSwitchDoesntNotExist() throws SwitchValidationException {
+        setUpWithLldp(true, true);
+        runFailLldpIfSwitchDoesntNotExist(SRC_SWITCH_ID, FAIL_DST_SWITCH_ID);
+    }
+
+    @Test(expected = SwitchValidationException.class)
+    public void shouldFailLldpIfSourceAndDestinationSwitchDoesntNotExist() throws SwitchValidationException {
+        setUpWithLldp(true, true);
+        runFailLldpIfSwitchDoesntNotExist(FAIL_SRC_SWITCH_ID, FAIL_DST_SWITCH_ID);
+    }
+
+    private void runFailLldpIfSwitchDoesntNotExist(SwitchId srcSwitchId, SwitchId dstSwitchId)
+            throws SwitchValidationException {
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
+                .destSwitch(Switch.builder().switchId(dstSwitchId).build())
+                .detectConnectedDevices(new DetectConnectedDevices(true, false, true, false))
+                .buildUnidirectionalFlow();
+
+        target.checkSwitchesSupportLldpIfNeeded(flow.getFlow());
+    }
+
+    @Test(expected = SwitchValidationException.class)
+    public void shouldFailIfSSrcSwitchDoesntSupportLldpAndSrcLldpRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(false, true, true, false);
+    }
+
+    @Test(expected = SwitchValidationException.class)
+    public void shouldFailIfDstSwitchDoesntSupportLldpAndDstLldpRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(false, false, false, true);
+    }
+
+    @Test
+    public void shouldNotFailIfSrcSwitchDoesNotSupportLldpButSrtLldpNotRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(false, false, false, false);
+    }
+
+    @Test
+    public void shouldNotFailIfDstSwitchDoesNotSupportLldpButDstLldpNotRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(true, false, false, false);
+    }
+
+    @Test
+    public void shouldNotFailIfSrcSwitchSupportsLldpAndSrcLldpRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(true, true, true, false);
+    }
+
+    @Test
+    public void shouldNotFailIfDstSwitchSupportsLldpAndDstLldpRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(false, true, false, false);
+    }
+
+    @Test
+    public void shouldNotFailIfSrcAndSwitchSupportLldpAndSrcAndDstLldpRequested() throws SwitchValidationException {
+        runCheckSwitchesSupportLldpIfNeededTest(true, true, true, true);
+    }
+
+    private void runCheckSwitchesSupportLldpIfNeededTest(boolean srcSwitchSupportsLldp, boolean dstSwitchSupportsLldp,
+                                                         boolean srcLldpRequested, boolean dstLldpRequested)
+            throws SwitchValidationException {
+        setUpWithLldp(srcSwitchSupportsLldp, dstSwitchSupportsLldp);
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+                .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+                .detectConnectedDevices(new DetectConnectedDevices(srcLldpRequested, false, dstLldpRequested, false))
+                .buildUnidirectionalFlow();
+
+        target.checkSwitchesSupportLldpIfNeeded(flow.getFlow());
     }
 
     @Test(expected = FlowValidationException.class)
