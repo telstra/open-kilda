@@ -61,14 +61,12 @@ class PathHelper {
      */
     Isl makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
-        def totalCostOfMorePrefPath = morePreferableIsls.collect {
-            northbound.getLink(it)
-        }.cost.sum()
+        // under specific condition cost of isl can be 0, but at the same time for the system 0 == 700
+        def totalCostOfMorePrefPath = morePreferableIsls.sum { northbound.getLink(it).cost ?: 700 }
+        def totalCostOfLessPrefPath = getInvolvedIsls(lessPreferablePath).sum { northbound.getLink(it).cost ?: 700 }
         def islToAvoid
-        def totalCostOfLessPrefPath = getInvolvedIsls(lessPreferablePath).collect {
-            northbound.getLink(it)
-        }.cost.sum()
-        if(totalCostOfLessPrefPath <= totalCostOfMorePrefPath) {
+
+        if (totalCostOfLessPrefPath <= totalCostOfMorePrefPath) {
             islToAvoid = getInvolvedIsls(lessPreferablePath).find {
                 !morePreferableIsls.contains(it) && !morePreferableIsls.contains(it.reversed)
             }
