@@ -79,7 +79,7 @@ discovery.db.write.repeats.time.frame = 30
 #flow.ping.fail.reset = 1800
 
 local = no
-local.execution.time = 300
+local.execution.time = 3000
 
 pce.strategy = COST
 pce.network.strategy = SYMMETRIC_COST
