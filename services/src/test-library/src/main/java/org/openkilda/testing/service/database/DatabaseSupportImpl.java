@@ -25,9 +25,9 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.IslStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
@@ -179,24 +179,6 @@ public class DatabaseSupportImpl implements Database {
     }
 
     /**
-     * Remove all inactive ISLs.
-     *
-     * @return true if at least 1 ISL was deleted
-     */
-    @Override
-    public boolean removeInactiveIsls() {
-        return transactionManager.doInTransaction(() -> {
-            //TODO(siakovenko): non optimal and a dedicated method for fetching inactive entities must be introduced.
-            Collection<org.openkilda.model.Isl> inactiveIsls = islRepository.findAll().stream()
-                    .filter(isl -> isl.getStatus() != IslStatus.ACTIVE)
-                    .collect(toList());
-
-            inactiveIsls.forEach(islRepository::delete);
-            return !inactiveIsls.isEmpty();
-        });
-    }
-
-    /**
      * Remove all inactive switches.
      *
      * @return true if at least 1 switch was deleted
@@ -205,13 +187,18 @@ public class DatabaseSupportImpl implements Database {
     public boolean removeInactiveSwitches() {
         return transactionManager.doInTransaction(() -> {
             //TODO(siakovenko): non optimal and a dedicated method for fetching inactive entities must be introduced.
-            Collection<org.openkilda.model.Switch> inactiveSwitches = switchRepository.findAll().stream()
+            Collection<Switch> inactiveSwitches = switchRepository.findAll().stream()
                     .filter(isl -> isl.getStatus() != SwitchStatus.ACTIVE)
                     .collect(toList());
 
             inactiveSwitches.forEach(switchRepository::delete);
             return !inactiveSwitches.isEmpty();
         });
+    }
+
+    @Override
+    public Switch getSwitch(SwitchId switchId) {
+        return switchRepository.findById(switchId).get();
     }
 
     /**
@@ -325,7 +312,7 @@ public class DatabaseSupportImpl implements Database {
      * Update flow bandwidth.
      *
      * @param flowId flow ID
-     * @param newBw  new bandwidth to be set
+     * @param newBw new bandwidth to be set
      */
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {
