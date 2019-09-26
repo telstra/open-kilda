@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
+import static org.openkilda.model.Cookie.isMaskedAsFlowCookie;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIELD;
 
@@ -62,7 +63,13 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         if (flowEntry != null) {
             flowId = flowEntry.getFlowId();
         } else {
-            log.warn("Missed cache for switch {} cookie {}", switchId, entry.getCookie());
+            if (isMaskedAsFlowCookie(entry.getCookie())) {
+                log.warn("Missed cache for switch {} cookie {}", switchId, entry.getCookie());
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("Missed cache for non flow cookie {} on switch {}", entry.getCookie(), switchId);
+                }
+            }
         }
 
         emitAnySwitchMetrics(entry, timestamp, switchId, flowId);
@@ -71,11 +78,13 @@ public class FlowMetricGenBolt extends MetricGenBolt {
             Map<String, String> flowTags = makeFlowTags(entry, flowEntry.getFlowId());
 
             boolean isMatch = false;
-            if (switchId.toOtsdFormat().equals(flowEntry.getIngressSwitch())) {
+            if (isMaskedAsFlowCookie(entry.getCookie())
+                    && switchId.toOtsdFormat().equals(flowEntry.getIngressSwitch())) {
                 emitIngressMetrics(entry, timestamp, flowTags);
                 isMatch = true;
             }
-            if (switchId.toOtsdFormat().equals(flowEntry.getEgressSwitch())) {
+            if (isMaskedAsFlowCookie(entry.getCookie())
+                    && switchId.toOtsdFormat().equals(flowEntry.getEgressSwitch())) {
                 emitEgressMetrics(entry, timestamp, flowTags);
                 isMatch = true;
             }

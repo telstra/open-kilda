@@ -207,7 +207,8 @@ public class CacheBolt extends AbstractBolt {
         return cache;
     }
 
-    private Map<MeterCacheKey, CacheFlowEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
+    @VisibleForTesting
+    Map<MeterCacheKey, CacheFlowEntry> createSwitchAndMeterToFlowCache(MeterStatsData data) {
         Map<MeterCacheKey, CacheFlowEntry> cache = new HashMap<>();
 
         for (MeterStatsEntry entry : data.getStats()) {
