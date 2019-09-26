@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.switches.InstallExclusionRequest;
 import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.info.apps.AppsEntry;
 import org.openkilda.messaging.info.apps.FlowAppsResponse;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
@@ -273,9 +274,13 @@ public class AppsManagerService {
         FlowPath flowPath = getFlowPathByEndpoint(flow, switchId, port, vlan);
         checkFlowAppInstallation(flowPath, payload.getApplication());
 
+        boolean flowPathIsForward = flow.isForward(flowPath);
+        Cookie cookie = Cookie.buildExclusionCookie(flowPath.getCookie().getUnmaskedValue(), flowPathIsForward);
+
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
         carrier.emitSpeakerCommand(InstallExclusionRequest.builder()
                 .switchId(switchId)
+                .cookie(cookie.getValue())
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
                 .srcIp(payload.getExclusion().getSrcIp())
                 .srcPort(payload.getExclusion().getSrcPort())
@@ -306,9 +311,13 @@ public class AppsManagerService {
         FlowPath flowPath = getFlowPathByEndpoint(flow, switchId, port, vlan);
         checkFlowAppInstallation(flowPath, payload.getApplication());
 
+        boolean flowPathIsForward = flow.isForward(flowPath);
+        Cookie cookie = Cookie.buildExclusionCookie(flowPath.getCookie().getUnmaskedValue(), flowPathIsForward);
+
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
         carrier.emitSpeakerCommand(RemoveExclusionRequest.builder()
                 .switchId(switchId)
+                .cookie(cookie.getValue())
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
                 .srcIp(payload.getExclusion().getSrcIp())
                 .srcPort(payload.getExclusion().getSrcPort())

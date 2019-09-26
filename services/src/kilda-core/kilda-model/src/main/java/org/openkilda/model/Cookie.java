@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
  * 3 - Multi-table ISL rule for vxlan encapsulation for egress table
  * 4 - Multi-table ISL rule for vxlan encapsulation for transit table
  * 5 - Multi-table customer flow rule for ingress table pass-through
+ * 6 - Exclude rule
  * </p>
  */
 @Value
@@ -80,6 +81,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long MULTITABLE_ISL_VXLAN_EGRESS_RULES_TYPE  = 0x0030_0000_0000_0000L;
     public static final long MULTITABLE_ISL_VXLAN_TRANSIT_RULES_TYPE = 0x0040_0000_0000_0000L;
     public static final long MULTITABLE_INGRESS_RULES_TYPE           = 0x0050_0000_0000_0000L;
+    public static final long EXCLUSION_COOKIE_TYPE                   = 0x0060_0000_0000_0000L;
 
     private final long value;
 
@@ -125,11 +127,22 @@ public class Cookie implements Comparable<Cookie>, Serializable {
      * Creates masked cookie for LLDP rule.
      */
     public static Cookie buildLldpCookie(Long unmaskedCookie, boolean forward) {
+        return buildTypedCookie(Cookie.LLDP_COOKIE_TYPE, unmaskedCookie, forward);
+    }
+
+    /**
+     * Creates masked cookie for exclusion rule.
+     */
+    public static Cookie buildExclusionCookie(Long unmaskedCookie, boolean forward) {
+        return buildTypedCookie(Cookie.EXCLUSION_COOKIE_TYPE, unmaskedCookie, forward);
+    }
+
+    private static Cookie buildTypedCookie(Long typeMask, Long unmaskedCookie, boolean forward) {
         if (unmaskedCookie == null) {
             return null;
         }
         long directionMask = forward ? FLOW_PATH_FORWARD_FLAG : FLOW_PATH_REVERSE_FLAG;
-        return new Cookie(unmaskedCookie | Cookie.LLDP_COOKIE_TYPE | directionMask);
+        return new Cookie(unmaskedCookie | typeMask | directionMask);
     }
 
     /**

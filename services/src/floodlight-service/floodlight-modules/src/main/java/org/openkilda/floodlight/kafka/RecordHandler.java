@@ -263,6 +263,7 @@ class RecordHandler implements Runnable {
         logger.info("Install exclusion on switch {}", command.getSwitchId());
 
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        Long cookie = command.getCookie();
         int tunnelId = command.getTunnelId();
         IPv4Address srcIp = IPv4Address.of(command.getSrcIp());
         int srcPort = command.getSrcPort();
@@ -272,7 +273,8 @@ class RecordHandler implements Runnable {
         EthType ethType = convertStringToEthType(command.getEthType());
 
         try {
-            context.getSwitchManager().installExclusion(dpid, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
+            context.getSwitchManager()
+                    .installExclusion(dpid, cookie, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
         } catch (SwitchOperationException e) {
             logger.error("Installation exclusion on switch {} was unsuccessful", command.getSwitchId(), e);
         }
@@ -283,6 +285,7 @@ class RecordHandler implements Runnable {
         logger.info("Remove exclusion from switch {}", command.getSwitchId());
 
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        Long cookie = command.getCookie();
         int tunnelId = command.getTunnelId();
         IPv4Address srcIp = IPv4Address.of(command.getSrcIp());
         int srcPort = command.getSrcPort();
@@ -292,7 +295,8 @@ class RecordHandler implements Runnable {
         EthType ethType = convertStringToEthType(command.getEthType());
 
         try {
-            context.getSwitchManager().removeExclusion(dpid, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
+            context.getSwitchManager()
+                    .removeExclusion(dpid, cookie, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
         } catch (SwitchOperationException e) {
             logger.error("Removing exclusion from switch {} was unsuccessful", command.getSwitchId(), e);
         }

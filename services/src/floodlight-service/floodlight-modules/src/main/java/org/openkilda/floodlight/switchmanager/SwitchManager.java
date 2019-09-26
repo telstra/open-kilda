@@ -1332,7 +1332,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
     }
 
-    private OFFlowMod buildExclusionDropFlow(IOFSwitch sw, int tableId, IPv4Address srcIp, int srcPort,
+    private OFFlowMod buildExclusionDropFlow(IOFSwitch sw, int tableId, Long cookie, IPv4Address srcIp, int srcPort,
                                              IPv4Address dstIp, int dstPort, IpProtocol proto, EthType ethType,
                                              int tunnelId) {
         OFFactory ofFactory = sw.getOFFactory();
@@ -1340,20 +1340,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return null;
         }
 
-        return prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 2, tableId)
+        return prepareFlowModBuilder(ofFactory, cookie, 2, tableId)
                 .setTableId(TableId.of(tableId))
                 .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
                 .build();
     }
 
-    private OFFlowDelete buildExclusionDeleteCommand(IOFSwitch sw, int tableId, IPv4Address srcIp, int srcPort,
-                                                     IPv4Address dstIp, int dstPort, IpProtocol proto, EthType ethType,
-                                                     int tunnelId) {
+    private OFFlowDelete buildExclusionDeleteCommand(IOFSwitch sw, int tableId, Long cookie, IPv4Address srcIp,
+                                                     int srcPort, IPv4Address dstIp, int dstPort, IpProtocol proto,
+                                                     EthType ethType, int tunnelId) {
         if (sw.getOFFactory().getVersion() == OF_12) {
             return null;
         }
 
         return sw.getOFFactory().buildFlowDelete()
+                .setCookie(U64.of(cookie))
                 .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
                 .setTableId(TableId.of(tableId))
                 .build();
@@ -2557,22 +2558,24 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public long installExclusion(DatapathId dpid, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+    public long installExclusion(DatapathId dpid, Long cookie,
+                                 IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
                                  IpProtocol proto, EthType ethType, int transitTunnelId)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
-        return pushFlow(sw, "--InstallExclusion--", buildExclusionDropFlow(sw, TABLE_1, srcIp, srcPort,
+        return pushFlow(sw, "--InstallExclusion--", buildExclusionDropFlow(sw, TABLE_1, cookie, srcIp, srcPort,
                 dstIp, dstPort, proto, ethType, transitTunnelId));
     }
 
     @Override
-    public long removeExclusion(DatapathId dpid, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+    public long removeExclusion(DatapathId dpid, Long cookie,
+                                IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
                                 IpProtocol proto, EthType ethType, int transitTunnelId)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
-        return pushFlow(sw, "--DeleteExclusion--", buildExclusionDeleteCommand(sw, TABLE_1, srcIp, srcPort,
+        return pushFlow(sw, "--DeleteExclusion--", buildExclusionDeleteCommand(sw, TABLE_1, cookie, srcIp, srcPort,
                 dstIp, dstPort, proto, ethType, transitTunnelId));
     }
 

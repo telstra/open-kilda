@@ -30,6 +30,7 @@ public class RemoveExclusionRequest extends ExclusionRequest {
     @Builder
     @JsonCreator
     public RemoveExclusionRequest(@JsonProperty("switch_id") SwitchId switchId,
+                                  @JsonProperty("cookie") Long cookie,
                                   @JsonProperty("tunnel_id") int tunnelId,
                                   @JsonProperty("src_ip") String srcIp,
                                   @JsonProperty("src_port") int srcPort,
@@ -37,6 +38,6 @@ public class RemoveExclusionRequest extends ExclusionRequest {
                                   @JsonProperty("dst_port") int dstPort,
                                   @JsonProperty("proto") String proto,
                                   @JsonProperty("eth_type") String ethType) {
-        super(switchId, tunnelId, srcIp, srcPort, dstIp, dstPort, proto, ethType);
+        super(switchId, cookie, tunnelId, srcIp, srcPort, dstIp, dstPort, proto, ethType);
     }
 }

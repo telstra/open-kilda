@@ -31,6 +31,9 @@ public class ExclusionRequest extends CommandData {
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
+    @JsonProperty("cookie")
+    private Long cookie;
+
     @JsonProperty("tunnel_id")
     private int tunnelId;
 
