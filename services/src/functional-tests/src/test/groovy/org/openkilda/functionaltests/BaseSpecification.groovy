@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 import org.openkilda.functionaltests.helpers.FlowHelper
+import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -16,6 +17,7 @@ import org.openkilda.testing.service.floodlight.FloodlightService
 import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
 import org.openkilda.testing.tools.IslUtils
 
@@ -51,6 +53,10 @@ class BaseSpecification extends Specification implements SetupOnce {
     SwitchHelper switchHelper
     @Autowired
     PortAntiflapHelper antiflap
+    @Autowired
+    NorthboundServiceV2 northboundV2
+    @Autowired
+    FlowHelperV2 flowHelperV2
 
     @Value('${spring.profiles.active}')
     String profile

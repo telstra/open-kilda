@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.Cookie.buildLldpCookie;
+import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
@@ -71,6 +72,7 @@ import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
+import com.google.common.collect.Sets;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 import org.junit.Assert;
@@ -481,7 +483,10 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
     private Switch getOrCreateSwitch(SwitchId switchId) {
         return switchRepository.findById(switchId).orElseGet(() -> {
-            Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
+            Switch sw = Switch.builder()
+                    .switchId(switchId)
+                    .status(SwitchStatus.ACTIVE)
+                    .features(Sets.newHashSet(MULTI_TABLE)).build();
             switchRepository.createOrUpdate(sw);
             return sw;
         });

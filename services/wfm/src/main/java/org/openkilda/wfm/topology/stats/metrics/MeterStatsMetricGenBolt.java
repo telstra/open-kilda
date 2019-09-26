@@ -38,6 +38,8 @@ import javax.annotation.Nullable;
 @Slf4j
 public class MeterStatsMetricGenBolt extends MetricGenBolt {
 
+    public static final String UNKNOWN = "unknown";
+
     public MeterStatsMetricGenBolt(String metricPrefix) {
         super(metricPrefix);
     }
@@ -86,18 +88,25 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
 
     private void emitFlowMeterStats(MeterStatsEntry meterStats, Long timestamp, SwitchId switchId,
                                     @Nullable CacheFlowEntry cacheEntry) throws FlowCookieException {
+        String direction = UNKNOWN;
+        String flowId = UNKNOWN;
+        String cookie = UNKNOWN;
+
         if (cacheEntry == null) {
-            log.warn("Missed cache for switch '{}' meterId '{}'", switchId, meterStats.getMeterId());
-            return;
+            if (log.isDebugEnabled()) {
+                log.debug("Missed cache for switch '{}' meterId '{}'", switchId, meterStats.getMeterId());
+            }
+        } else {
+            direction = FlowDirectionHelper.findDirection(cacheEntry.getCookie()).name().toLowerCase();
+            flowId = cacheEntry.getFlowId();
+            cookie = cacheEntry.getCookie().toString();
         }
 
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());
 
-        String direction = FlowDirectionHelper.findDirection(cacheEntry.getCookie()).name().toLowerCase();
-
         tags.put("direction", direction);
-        tags.put("flowid", cacheEntry.getFlowId());
-        tags.put("cookie", cacheEntry.getCookie().toString());
+        tags.put("flowid", flowId);
+        tags.put("cookie", cookie);
 
         emitMetric("flow.meter.packets", timestamp, meterStats.getPacketsInCount(), tags);
         emitMetric("flow.meter.bytes", timestamp, meterStats.getByteInCount(), tags);

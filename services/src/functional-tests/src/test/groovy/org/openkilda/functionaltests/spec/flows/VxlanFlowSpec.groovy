@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -107,7 +108,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        }
 
         and: "The flow allows traffic"
         withPool {
@@ -359,10 +362,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. " +
-                "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
-                " doesn't have links with enough bandwidth"
     }
 
     @Tags(HARDWARE)
@@ -423,10 +422,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : Failed to find path with " +
-                "requested bandwidth=$flow.maximumBandwidth: " +
-                "Switch $switchPair.dst.dpId doesn't have links with enough bandwidth"
     }
 
     @Unroll
@@ -473,7 +468,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        }
 
         and: "Flow is pingable"
         def responsePing2 = northbound.pingFlow(flow.id, new PingInput())
@@ -518,9 +515,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not update flow: \
-Not enough bandwidth found or path not found. Failed to find path with requested bandwidth=$flow.maximumBandwidth: \
-Switch $switchPair.src.dpId doesn't have links with enough bandwidth"
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
