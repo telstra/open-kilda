@@ -15,7 +15,7 @@
 
 package org.openkilda.applications.info;
 
-import org.openkilda.applications.AppData;
+import org.openkilda.applications.ExclusionData;
 import org.openkilda.applications.model.Endpoint;
 
 import lombok.Data;
@@ -23,7 +23,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public abstract class InfoAppData extends AppData {
+public abstract class InfoAppData extends ExclusionData {
     private static final long serialVersionUID = 5383347738680547023L;
 
     public InfoAppData(String flowId, Endpoint endpoint, String application) {

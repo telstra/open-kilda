@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.applications.error;
 
+import org.openkilda.applications.AppMessage;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
-@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public abstract class AppMessage extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 6240948199752767444L;
+public class ErrorAppMessage extends AppMessage {
+    private static final long serialVersionUID = 4345642239895241100L;
 
-    @JsonProperty("timestamp")
-    private long timestamp;
-
-    @JsonProperty("correlation_id")
-    private String correlationId;
-
-    @JsonProperty("payload")
-    private AppData payload;
+    @Builder
+    @JsonCreator
+    public ErrorAppMessage(@JsonProperty("timestamp") long timestamp,
+                           @JsonProperty("correlation_id") String correlationId,
+                           @JsonProperty("payload") ErrorAppData payload) {
+        super(timestamp, correlationId, payload);
+    }
 }
-

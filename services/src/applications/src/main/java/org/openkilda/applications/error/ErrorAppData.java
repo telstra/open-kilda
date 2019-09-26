@@ -13,9 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications.command;
+package org.openkilda.applications.error;
 
-import org.openkilda.applications.AppMessage;
+import org.openkilda.applications.AppData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,14 +25,25 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class CommandAppMessage extends AppMessage {
-    private static final long serialVersionUID = 3833877332478450670L;
+public class ErrorAppData extends AppData {
+    private static final long serialVersionUID = 5383347738680547023L;
+
+    @JsonProperty("error_type")
+    protected ErrorAppType errorType;
+
+    @JsonProperty("error_message")
+    protected String errorMessage;
+
+    @JsonProperty("error_description")
+    protected String errorDescription;
 
     @Builder
     @JsonCreator
-    public CommandAppMessage(@JsonProperty("timestamp") long timestamp,
-                             @JsonProperty("correlation_id") String correlationId,
-                             @JsonProperty("payload") CommandAppData payload) {
-        super(timestamp, correlationId, payload);
+    public ErrorAppData(@JsonProperty("error_type") ErrorAppType errorType,
+                        @JsonProperty("error_message") String errorMessage,
+                        @JsonProperty("error_description") String errorDescription) {
+        this.errorType = errorType;
+        this.errorMessage = errorMessage;
+        this.errorDescription = errorDescription;
     }
 }

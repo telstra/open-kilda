@@ -15,11 +15,25 @@
 
 package org.openkilda.applications;
 
+import org.openkilda.applications.model.Endpoint;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-public abstract class AppData extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 4330509836408089959L;
+public abstract class ExclusionData extends AppData {
+    private static final long serialVersionUID = 9091738864215003053L;
+
+    @JsonProperty("flow_id")
+    private String flowId;
+
+    @JsonProperty("endpoint")
+    private Endpoint endpoint;
+
+    @JsonProperty("application")
+    private String application;
 }

@@ -263,17 +263,19 @@ public class AppsManagerService {
     /**
      * Create exclusion for the flow.
      */
-    public void processCreateExclusion(CreateExclusion payload) {
-        Flow flow = null;
-        try {
-            flow = getFlow(payload.getFlowId());
-        } catch (FlowNotFoundException e) {
-            log.error("Flow {} not found", payload.getFlowId(), e);
-            return;
-        }
-        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
+    public void processCreateExclusion(CreateExclusion payload) throws FlowNotFoundException {
+        Flow flow = getFlow(payload.getFlowId());
+
+        SwitchId switchId = new SwitchId(payload.getEndpoint().getSwitchId());
+        int port = payload.getEndpoint().getPortNumber();
+        int vlan = payload.getEndpoint().getVlanId();
+
+        FlowPath flowPath = getFlowPathByEndpoint(flow, switchId, port, vlan);
+        checkFlowAppInstallation(flowPath, payload.getApplication());
+
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
         carrier.emitSpeakerCommand(InstallExclusionRequest.builder()
-                .switchId(new SwitchId(payload.getEndpoint().getSwitchId()))
+                .switchId(switchId)
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
                 .srcIp(payload.getExclusion().getSrcIp())
                 .srcPort(payload.getExclusion().getSrcPort())
@@ -294,17 +296,19 @@ public class AppsManagerService {
     /**
      * Remove exclusion for the flow.
      */
-    public void processRemoveExclusion(RemoveExclusion payload) {
-        Flow flow = null;
-        try {
-            flow = getFlow(payload.getFlowId());
-        } catch (FlowNotFoundException e) {
-            log.error("Flow {} not found", payload.getFlowId(), e);
-            return;
-        }
-        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
+    public void processRemoveExclusion(RemoveExclusion payload) throws FlowNotFoundException {
+        Flow flow = getFlow(payload.getFlowId());
+
+        SwitchId switchId = new SwitchId(payload.getEndpoint().getSwitchId());
+        int port = payload.getEndpoint().getPortNumber();
+        int vlan = payload.getEndpoint().getVlanId();
+
+        FlowPath flowPath = getFlowPathByEndpoint(flow, switchId, port, vlan);
+        checkFlowAppInstallation(flowPath, payload.getApplication());
+
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
         carrier.emitSpeakerCommand(RemoveExclusionRequest.builder()
-                .switchId(new SwitchId(payload.getEndpoint().getSwitchId()))
+                .switchId(switchId)
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
                 .srcIp(payload.getExclusion().getSrcIp())
                 .srcPort(payload.getExclusion().getSrcPort())
@@ -320,5 +324,25 @@ public class AppsManagerService {
                 .exclusion(payload.getExclusion())
                 .success(true)
                 .build());
+    }
+
+    private FlowPath getFlowPathByEndpoint(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
+        if (endpointForForwardPath(flow, switchId, port, vlan)) {
+            return flow.getForwardPath();
+        } else if (endpointForReversePath(flow, switchId, port, vlan)) {
+            return flow.getReversePath();
+        }
+
+        throw new IllegalArgumentException(
+                format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
+                switchId, port, vlan));
+    }
+
+    private void checkFlowAppInstallation(FlowPath flowPath, String application) {
+        FlowApplication flowApplication = convertApplicationFromString(application);
+        if (flowPath.getApplications() == null || !flowPath.getApplications().contains(flowApplication)) {
+            throw new IllegalArgumentException(format("Flow application \"%s\" is not installed for the flow %s",
+                    application, flowPath.getFlow().getFlowId()));
+        }
     }
 }

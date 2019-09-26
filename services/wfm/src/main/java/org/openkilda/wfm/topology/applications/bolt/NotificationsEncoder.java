@@ -19,6 +19,8 @@ import org.openkilda.applications.AppData;
 import org.openkilda.applications.AppMessage;
 import org.openkilda.applications.command.CommandAppData;
 import org.openkilda.applications.command.CommandAppMessage;
+import org.openkilda.applications.error.ErrorAppData;
+import org.openkilda.applications.error.ErrorAppMessage;
 import org.openkilda.applications.info.InfoAppData;
 import org.openkilda.applications.info.InfoAppMessage;
 import org.openkilda.wfm.CommandContext;
@@ -55,6 +57,8 @@ public class NotificationsEncoder extends KafkaEncoder {
             message = wrapCommand(commandContext, (CommandAppData) payload);
         } else if (payload instanceof InfoAppData) {
             message = wrapInfo(commandContext, (InfoAppData) payload);
+        } else if (payload instanceof ErrorAppData) {
+            message = wrapError(commandContext, (ErrorAppData) payload);
         } else {
             throw new IllegalArgumentException(String.format("There is not rule to build envelope for: %s", payload));
         }
@@ -68,5 +72,9 @@ public class NotificationsEncoder extends KafkaEncoder {
 
     private InfoAppMessage wrapInfo(CommandContext commandContext, InfoAppData payload) {
         return new InfoAppMessage(System.currentTimeMillis(), commandContext.getCorrelationId(), payload);
+    }
+
+    private ErrorAppMessage wrapError(CommandContext commandContext, ErrorAppData payload) {
+        return new ErrorAppMessage(System.currentTimeMillis(), commandContext.getCorrelationId(), payload);
     }
 }

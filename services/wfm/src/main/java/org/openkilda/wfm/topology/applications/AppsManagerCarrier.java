@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.applications;
 
-import org.openkilda.applications.info.InfoAppData;
+import org.openkilda.applications.AppData;
+import org.openkilda.applications.error.ErrorAppType;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.error.ErrorType;
@@ -28,5 +29,7 @@ public interface AppsManagerCarrier {
 
     void emitSpeakerCommand(CommandData payload);
 
-    void emitNotification(InfoAppData payload);
+    void emitAppError(ErrorAppType errorType, String errorMessage);
+
+    void emitNotification(AppData payload);
 }

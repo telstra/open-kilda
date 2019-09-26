@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 package org.openkilda.applications.command;
 
-import org.openkilda.applications.AppData;
+import org.openkilda.applications.ExclusionData;
 import org.openkilda.applications.model.Endpoint;
 
 import lombok.Data;
@@ -23,7 +23,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public abstract class CommandAppData extends AppData {
+public abstract class CommandAppData extends ExclusionData {
     private static final long serialVersionUID = 7523908311187018314L;
 
     public CommandAppData(String flowId, Endpoint endpoint, String application) {

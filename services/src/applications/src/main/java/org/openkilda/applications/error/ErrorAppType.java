@@ -13,13 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.applications.error;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import com.fasterxml.jackson.annotation.JsonValue;
+import lombok.AllArgsConstructor;
 
-@Data
-@EqualsAndHashCode(callSuper = false)
-public abstract class AppData extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 4330509836408089959L;
+@AllArgsConstructor
+public enum ErrorAppType {
+    INTERNAL_ERROR("Internal service error"),
+
+    CREATION_FAILURE("Flow creation error"),
+
+    UPDATE_FAILURE("Flow update error"),
+
+    DELETION_FAILURE("Flow deletion error"),
+
+    NOT_IMPLEMENTED("Feature not implemented"),
+
+    NOT_FOUND("Object was not found"),
+
+    PARAMETERS_INVALID("Invalid request parameters"),
+
+    REQUEST_INVALID("Invalid request");
+
+    @JsonValue
+    private final String value;
 }

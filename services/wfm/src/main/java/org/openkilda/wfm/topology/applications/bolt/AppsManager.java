@@ -19,11 +19,11 @@ import static java.lang.String.format;
 
 import org.openkilda.applications.AppData;
 import org.openkilda.applications.AppMessage;
-import org.openkilda.applications.command.CommandAppData;
 import org.openkilda.applications.command.CommandAppMessage;
 import org.openkilda.applications.command.apps.CreateExclusion;
 import org.openkilda.applications.command.apps.RemoveExclusion;
-import org.openkilda.applications.info.InfoAppData;
+import org.openkilda.applications.error.ErrorAppData;
+import org.openkilda.applications.error.ErrorAppType;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
@@ -107,10 +107,13 @@ public class AppsManager extends AbstractBolt {
             processAppMessage(message);
         } catch (FlowNotFoundException e) {
             log.error("Flow not found", e);
+            carrier.emitAppError(ErrorAppType.NOT_FOUND, e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("Invalid request parameters", e);
+            carrier.emitAppError(ErrorAppType.PARAMETERS_INVALID, e.getMessage());
         } catch (Exception e) {
             log.error("Unhandled exception", e);
+            carrier.emitAppError(ErrorAppType.INTERNAL_ERROR, e.getMessage());
         }
     }
 
@@ -124,7 +127,7 @@ public class AppsManager extends AbstractBolt {
 
     private void processAppMessage(AppMessage message) throws FlowNotFoundException {
         if (message instanceof CommandAppMessage) {
-            processCommandAppData(((CommandAppMessage) message).getPayload());
+            processCommandAppData(message.getPayload());
         } else {
             throw new UnsupportedOperationException(format("Unexpected message type \"%s\"", message.getClass()));
         }
@@ -142,7 +145,7 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processCommandAppData(CommandAppData payload) throws FlowNotFoundException {
+    private void processCommandAppData(AppData payload) throws FlowNotFoundException {
         if (payload instanceof CreateExclusion) {
             service.processCreateExclusion((CreateExclusion) payload);
         } else if (payload instanceof RemoveExclusion) {
@@ -181,7 +184,13 @@ public class AppsManager extends AbstractBolt {
         }
 
         @Override
-        public void emitNotification(InfoAppData payload) {
+        public void emitAppError(ErrorAppType errorType, String errorMessage) {
+            ErrorAppData errorData = new ErrorAppData(errorType, errorMessage, "Error in the Apps Manager");
+            emitNotification(errorData);
+        }
+
+        @Override
+        public void emitNotification(AppData payload) {
             String key = getCommandContext().getCorrelationId();
             emit(NotificationsEncoder.INPUT_STREAM_ID, getCurrentTuple(), makeAppTuple(key, payload));
         }

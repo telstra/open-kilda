@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,15 +28,11 @@ import lombok.EqualsAndHashCode;
 public class InfoAppMessage extends AppMessage {
     private static final long serialVersionUID = 2246740754710222690L;
 
-    @JsonProperty("payload")
-    private InfoAppData payload;
-
     @Builder
     @JsonCreator
     public InfoAppMessage(@JsonProperty("timestamp") long timestamp,
                           @JsonProperty("correlation_id") String correlationId,
                           @JsonProperty("payload") InfoAppData payload) {
-        super(timestamp, correlationId);
-        this.payload = payload;
+        super(timestamp, correlationId, payload);
     }
 }
