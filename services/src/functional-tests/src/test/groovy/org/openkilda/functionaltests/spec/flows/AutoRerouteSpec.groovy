@@ -2,11 +2,13 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -96,7 +98,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, LOW_PRIORITY])
+    //the actual reroute is caused by the ISL down event which follows the initial sw disconnect
     def "Flow is rerouted when an intermediate switch is disconnected"() {
         given: "An intermediate-switch flow with one alternative path at least"
         def flow = intermediateSwitchFlow(1)
@@ -133,6 +136,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Unroll
     @Tags(VIRTUAL)
+    @IterationTag(tags=[LOW_PRIORITY], iterationNameRegex = /(\(intermediate|destination)/)
     def "Flow goes to 'Down' status when #switchType switch is disconnected (#flowType)"() {
         given: "#flowType.capitalize()"
         //TODO(ylobankov): Remove this code once the issue #1464 is resolved.
@@ -172,7 +176,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, LOW_PRIORITY])
+    //the actual reroute is caused by the ISL down event which follows the initial sw disconnect
     def "Flow goes to 'Down' status when an intermediate switch is disconnected and there is no ability to reroute"() {
         given: "An intermediate-switch flow without alternative paths"
         def (flow, allFlowPaths) = intermediateSwitchFlow(0, true)
@@ -258,63 +263,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         and: "Bring port involved in the original path up and delete the flow"
         antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
-        flowHelper.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
-    }
-
-    @Tags([VIRTUAL, SMOKE])
-    def "Flow in 'Down' status is rerouted when connecting a new switch"() {
-        given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
-        flowHelper.addFlow(flow)
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
-
-        when: "Disconnect all intermediate switches that are involved in the current and alternative paths"
-        List<PathNode> disconnectedSwitches = []
-        allFlowPaths.flatten().unique { it.switchId }.findAll {
-            !(it.switchId in [flowPath.first(), flowPath.last()]*.switchId)
-        }.each { sw ->
-            disconnectedSwitches.add(sw)
-            lockKeeper.knockoutSwitch(findSw(sw.switchId))
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            def actualSwitches = northbound.activeSwitches*.switchId
-            assert !actualSwitches.any { it in disconnectedSwitches*.switchId }
-        }
-
-        then: "The flow goes to 'Down' status"
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
-        }
-
-        when: "Connect switches that are involved in the alternative paths"
-        disconnectedSwitches.findAll { !(it.switchId in flowPath*.switchId) }.each {
-            lockKeeper.reviveSwitch(findSw(it.switchId))
-            disconnectedSwitches.remove(it)
-        }
-        def connectedSwitches = topology.activeSwitches*.dpId.findAll { !disconnectedSwitches*.switchId.contains(it) }
-        Wrappers.wait(WAIT_OFFSET) {
-            def actualSwitches = northbound.activeSwitches*.switchId
-            assert actualSwitches.containsAll(connectedSwitches)
-        }
-
-        then: "The flow goes to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-        }
-
-        and: "The flow was rerouted"
-        PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
-
-        and: "Connect switches back involved in the original path and delete the flow"
-        disconnectedSwitches.each { lockKeeper.reviveSwitch(findSw(it.switchId)) }
-        Wrappers.wait(WAIT_OFFSET) {
-            def activeSwitches = northbound.getActiveSwitches()*.switchId
-            disconnectedSwitches.each { assert it.switchId in activeSwitches }
-        }
-        disconnectedSwitches.each { northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
