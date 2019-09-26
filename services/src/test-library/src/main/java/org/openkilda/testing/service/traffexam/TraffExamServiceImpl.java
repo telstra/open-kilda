@@ -31,8 +31,10 @@ import org.openkilda.testing.service.traffexam.model.ExamReport;
 import org.openkilda.testing.service.traffexam.model.ExamResources;
 import org.openkilda.testing.service.traffexam.model.Host;
 import org.openkilda.testing.service.traffexam.model.HostResource;
+import org.openkilda.testing.service.traffexam.model.LldpData;
 import org.openkilda.testing.service.traffexam.model.ProducerEndpoint;
 import org.openkilda.testing.service.traffexam.model.ReportResponse;
+import org.openkilda.testing.service.traffexam.model.Vlan;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
@@ -338,6 +340,17 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         stopAll();
     }
 
+    @Override
+    public Address allocateFreeAddress(Host host, int vlan) throws OperationalException, Inet4ValueException {
+        Inet4Network subnet;
+        try {
+            subnet = addressPool.allocate();
+        } catch (Inet4ValueException e) {
+            throw new OperationalException("Unable to allocate subnet for exam. There is no more addresses available.");
+        }
+        return assignAddress(host, new Address(subnet.address(1), subnet.getPrefix(), new Vlan(vlan)));
+    }
+
     private Address assignAddress(Host host, Address payload) {
         AddressResponse response = restTemplate.postForObject(
                 makeHostUri(host).path("address").build(), payload,
@@ -350,7 +363,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         return address;
     }
 
-    private void releaseAddress(Address subject) {
+    @Override
+    public void releaseAddress(Address subject) {
         restTemplate.delete(
                 makeHostUri(subject.getHost())
                         .path("address/")
@@ -358,6 +372,13 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
         suppliedAddresses.remove(subject.getId());
         subject.setHost(null);
+    }
+
+    @Override
+    public void sendLldp(Address address, LldpData lldpData) {
+        restTemplate.put(
+                makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/lldp").build(),
+                lldpData);
     }
 
     private <T extends Endpoint> T assignEndpoint(Host host, T payload) {

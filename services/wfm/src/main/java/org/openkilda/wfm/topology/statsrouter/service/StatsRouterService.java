@@ -71,7 +71,9 @@ public final class StatsRouterService {
         CommandMessage mgmtRequest = new CommandMessage(new StatsRequest(excluded), statsRequest.getTimestamp(),
                 statsRequest.getCorrelationId());
         messageSender.sendToMgmt(mgmtRequest);
+        log.debug("Stats request has been sent to management floodlight: {}", mgmtRequest);
         messageSender.sendToStats(statsRequest);
+        log.debug("Stats request has been sent to statistics floodlight: {}", statsRequest);
     }
 
     /**
@@ -82,6 +84,7 @@ public final class StatsRouterService {
     public void handleListSwitchesResponse(InfoMessage listSwitches) {
         InfoData data = listSwitches.getData();
         if (data instanceof ListSwitchResponse) {
+            log.debug("Process response with list of switches connected to statistics floodlight: {}", data);
             ListSwitchResponse response = (ListSwitchResponse) data;
             ConnectedInfo connectedInfo = new ConnectedInfo(
                     response.getSwitchIds(),
@@ -108,6 +111,8 @@ public final class StatsRouterService {
         Message requestConnected =
                 new CommandMessage(new ListSwitchRequest(), System.currentTimeMillis(), UUID.randomUUID().toString());
         messageSender.sendToStats(requestConnected);
+        log.debug("Request for getting a list of switches connected to statistics floodlight has been sent: {}",
+                requestConnected);
     }
 
     private final class ConnectedInfo {

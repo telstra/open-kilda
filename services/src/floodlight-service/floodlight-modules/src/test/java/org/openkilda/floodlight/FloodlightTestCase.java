@@ -131,6 +131,7 @@ public class FloodlightTestCase {
         expect(sw.isActive()).andReturn(true).anyTimes();
         expect(sw.getLatency()).andReturn(U64.of(10L)).anyTimes();
         expect(sw.getInetAddress()).andReturn(inetAddr).anyTimes();
+        expect(sw.getNumTables()).andReturn((short) 8).anyTimes();
         return sw;
     }
 }

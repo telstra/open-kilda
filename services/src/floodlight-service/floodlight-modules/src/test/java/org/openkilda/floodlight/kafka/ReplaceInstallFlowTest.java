@@ -342,6 +342,7 @@ public class ReplaceInstallFlowTest {
         IOFSwitch iofSwitch = createMock(IOFSwitch.class);
 
         expect(iofSwitch.getId()).andReturn(SWITCH_ID);
+        expect(iofSwitch.getNumTables()).andReturn((short) 8);
         expect(ofSwitchService.getActiveSwitch(anyObject(DatapathId.class))).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);

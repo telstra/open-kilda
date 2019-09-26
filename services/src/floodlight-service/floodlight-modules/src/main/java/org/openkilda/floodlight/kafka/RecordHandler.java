@@ -63,6 +63,7 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.InstallLldpFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
@@ -187,6 +188,8 @@ class RecordHandler implements Runnable {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
             doProcessIngressFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof InstallLldpFlow) {
+            doProcessInstallLldpFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallEgressFlow) {
             doProcessEgressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallTransitFlow) {
@@ -326,7 +329,34 @@ class RecordHandler implements Runnable {
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
                 meterId,
-                command.getTransitEncapsulationType());
+                command.getTransitEncapsulationType(),
+                command.isEnableLldp());
+    }
+
+    private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,
+                                          Destination replyDestination) throws FlowCommandException {
+        InstallLldpFlow command = (InstallLldpFlow) message.getData();
+        logger.info("Installing LLDP flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
+
+        try {
+            installLldpFlow(command);
+            message.setDestination(replyDestination);
+            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.CREATION_FAILURE, e);
+        }
+    }
+
+    private void installLldpFlow(InstallLldpFlow command) throws SwitchOperationException {
+        logger.debug("Installing LLDP flow: {}", command);
+        context.getSwitchManager().installLldpIngressFlow(
+                DatapathId.of(command.getSwitchId().toLong()),
+                command.getCookie(),
+                command.getInputPort(),
+                command.getEncapsulationId(),
+                command.getMeterId(),
+                command.getEncapsulationType());
     }
 
     /**
@@ -455,7 +485,8 @@ class RecordHandler implements Runnable {
                 command.getInputVlanId(),
                 command.getOutputVlanId(),
                 directOutputVlanType,
-                meterId);
+                meterId,
+                command.isEnableLldp());
     }
 
     /**
@@ -924,6 +955,8 @@ class RecordHandler implements Runnable {
             processInstallDefaultFlowByCookie(command.getSwitchId(), command.getCookie());
         } else if (command instanceof InstallIngressFlow) {
             installIngressFlow((InstallIngressFlow) command);
+        } else if (command instanceof InstallLldpFlow) {
+            installLldpFlow((InstallLldpFlow) command);
         } else if (command instanceof InstallEgressFlow) {
             installEgressFlow((InstallEgressFlow) command);
         } else if (command instanceof InstallTransitFlow) {

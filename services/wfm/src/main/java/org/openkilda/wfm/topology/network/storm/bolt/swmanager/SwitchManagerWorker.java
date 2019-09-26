@@ -74,6 +74,14 @@ public class SwitchManagerWorker extends WorkerBolt {
         }
     }
 
+    @Override
+    protected void unhandledInput(Tuple input) {
+        if (log.isDebugEnabled()) {
+            log.trace("Received a response from {} for non-pending task {}: {}", input.getSourceComponent(),
+                    input.getStringByField(FIELD_ID_KEY), input.getValueByField(FIELD_ID_PAYLOAD));
+        }
+    }
+
     // -- commands processing --
 
     public void processSynchronizeSwitchRequest(String key, SwitchId switchId) {

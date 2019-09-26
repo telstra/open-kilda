@@ -223,24 +223,40 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldNotFindProtectedIngressByEndpointSwitch() {
         Flow flow = buildTestFlowPathPair();
-        FlowPath protect = FlowPath.builder()
-                .pathId(new PathId(flow.getFlowId() + "_protectedpath"))
-                .flow(flow)
-                .cookie(new Cookie(10))
-                .meterId(new MeterId(10))
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.emptyList())
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
+        FlowPath protect = buildFlowPath(flow, "_protectedpath", 10, 10, switchA, switchB);
         flow.setProtectedForwardPath(protect);
 
         flowRepository.createOrUpdate(flow);
 
         Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchA.getSwitchId());
         assertThat(paths, containsInAnyOrder(flow.getForwardPath(), flow.getReversePath()));
+    }
+
+    @Test
+    public void shouldFindProtectedPathsByEndpointSwitchIncludeProtected() {
+        Flow flow = buildTestFlowPathPair();
+        flow.setProtectedForwardPath(buildFlowPath(flow, "_forward_protected", 10, 10, switchA, switchB));
+        flow.setProtectedReversePath(buildFlowPath(flow, "_reverse_protected", 11, 11, switchB, switchA));
+
+        flowRepository.createOrUpdate(flow);
+
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitchIncludeProtected(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(flow.getForwardPath(), flow.getReversePath(),
+                flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
+    }
+
+    @Test
+    public void shouldFindProtectedPathsBySrcSwitchIncludeProtected() {
+        Flow flow = buildTestFlowPathPair();
+        flow.setProtectedForwardPath(buildFlowPath(flow, "_forward_protected", 10, 10, switchA, switchB));
+        flow.setProtectedReversePath(buildFlowPath(flow, "_reverse_protected", 11, 11, switchB, switchA));
+
+        flowRepository.createOrUpdate(flow);
+
+        assertThat(flowPathRepository.findBySrcSwitchIncludeProtected(switchA.getSwitchId()),
+                containsInAnyOrder(flow.getForwardPath(), flow.getProtectedForwardPath()));
+        assertThat(flowPathRepository.findBySrcSwitchIncludeProtected(switchB.getSwitchId()),
+                containsInAnyOrder(flow.getReversePath(), flow.getProtectedReversePath()));
     }
 
     @Test
@@ -357,18 +373,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     private FlowPath buildTestFlowPath() {
-        FlowPath flowPath = FlowPath.builder()
-                .pathId(new PathId(flow.getFlowId() + "_path"))
-                .flow(flow)
-                .cookie(new Cookie(1))
-                .meterId(new MeterId(1))
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.emptyList())
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
+        FlowPath flowPath = buildFlowPath(flow, "_path", 1, 1, switchA, switchB);
 
         flow.setForwardPath(flowPath);
 
@@ -376,35 +381,29 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     private Flow buildTestFlowPathPair() {
-        FlowPath forwardPath = FlowPath.builder()
-                .pathId(new PathId(flow.getFlowId() + "_forward"))
-                .flow(flow)
-                .cookie(new Cookie(1))
-                .meterId(new MeterId(1))
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.emptyList())
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
+        FlowPath forwardPath = buildFlowPath(flow, "_forward", 1, 1, switchA, switchB);
         flow.setForwardPath(forwardPath);
 
-        FlowPath reversePath = FlowPath.builder()
-                .pathId(new PathId(flow.getFlowId() + "_reverse"))
-                .flow(flow)
-                .cookie(new Cookie(2))
-                .meterId(new MeterId(2))
-                .srcSwitch(switchB)
-                .destSwitch(switchA)
-                .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.emptyList())
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
+        FlowPath reversePath = buildFlowPath(flow, "_reverse", 2, 2, switchB, switchA);
         flow.setReversePath(reversePath);
 
         return flow;
+    }
+
+    private FlowPath buildFlowPath(
+            Flow flow, String suffixName, long cookie, long meterId, Switch srcSwitch, Switch dstSwitch) {
+        return FlowPath.builder()
+                .pathId(new PathId(flow.getFlowId() + suffixName))
+                .flow(flow)
+                .cookie(new Cookie(cookie))
+                .meterId(new MeterId(meterId))
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
     }
 
     private FlowPath buildTestFlowPathWithIntermediate(Switch intSwitch, int intPort) {

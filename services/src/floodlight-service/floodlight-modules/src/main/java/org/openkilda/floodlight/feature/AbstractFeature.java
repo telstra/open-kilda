@@ -27,6 +27,8 @@ public abstract class AbstractFeature {
     protected static final String E_SWITCH_MANUFACTURER_DESCRIPTION = "E";
     protected static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = Pattern.compile("^WB5\\d{3}-E$");
     protected static final String CENTEC_MANUFACTURED = "Centec";
+    protected static final Pattern NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX =
+            Pattern.compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
 
     public abstract Optional<SwitchFeature> discover(IOFSwitch sw);
 }

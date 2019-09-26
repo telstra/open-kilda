@@ -141,12 +141,27 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId       input vlan to match on, 0 means not to match on vlan
      * @param transitTunnelId   vlan or vni to add before outputing on outputPort
      * @param encapsulationType flow encapsulation type
+     * @param enableLldp        if True LLDP packets will be send to LLDP rule
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installIngressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort, int inputVlanId,
                             int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                            FlowEncapsulationType encapsulationType)
+                            FlowEncapsulationType encapsulationType, boolean enableLldp)
+            throws SwitchOperationException;
+
+    /**
+     * Installs a flow to catch LLDP packets.
+     *
+     * @param dpid              datapathId of the switch
+     * @param inputPort         port to expect the packet on
+     * @param tunnelId          vlan or vni to match packet
+     * @param encapsulationType flow encapsulation type
+     * @return transaction id
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpIngressFlow(DatapathId dpid, Long cookie, int inputPort, int tunnelId, long meterId,
+                                FlowEncapsulationType encapsulationType)
             throws SwitchOperationException;
 
     /**
@@ -197,13 +212,15 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId    vlan to match on inputPort
      * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
+     * @param enableLldp     if True LLDP packets will be send to LLDP rule
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installOneSwitchFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                       final int inputPort, final int outputPort, int inputVlanId,
                                                       int outputVlanId, final OutputVlanType outputVlanType,
-                                                      final long meterId) throws SwitchOperationException;
+                                                      final long meterId, boolean enableLldp)
+            throws SwitchOperationException;
 
     /**
      * Returns list of default flows that must be installed on a switch.

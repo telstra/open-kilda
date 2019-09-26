@@ -390,7 +390,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
                         FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId, sw.dpId,false)).toJson()))
+                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId, sw.dpId, false, false)).toJson()))
 
         then: "System detects created rules as excess rules"
         //excess egress/ingress/transit rules are not added yet
@@ -454,6 +454,49 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         response.rules.missing.empty
         response.rules.excess.empty
         !response.meters
+    }
+
+    @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
+    def "Able to validate and sync a #switchType switch having missing rules of single-port single-switch flow"() {
+        assumeTrue("Unable to find $switchType switch in topology", sw as boolean)
+        given: "A single-port single-switch flow"
+        def flow = flowHelper.addFlow(flowHelper.singleSwitchSinglePortFlow(sw))
+
+        when: "Remove flow rules from the switch, so that they become missing"
+        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+
+        then: "Switch validation shows missing rules"
+        northbound.validateSwitch(sw.dpId).rules.missing.size() == 2
+
+        when: "Synchronize switch"
+        with(northbound.synchronizeSwitch(sw.dpId, false)) {
+            it.rules.installed.size() == 2
+        }
+
+        then: "Switch validation shows no discrepancies"
+        with(northbound.validateSwitch(sw.dpId)) {
+            switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
+            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.meters.proper.size() == 2
+        }
+
+        when: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        then: "Switch validation returns empty sections"
+        with(northbound.validateSwitch(sw.dpId)) {
+            switchHelper.verifyRuleSectionsAreEmpty(it)
+            switchHelper.verifyMeterSectionsAreEmpty(it)
+        }
+
+        where:
+        switchType         | sw
+        "Centec"           | getCentecSwitches()[0]
+        "Noviflow"         | getNoviflowSwitches()[0]
+        "Noviflow(Wb5164)" | getNoviflowWb5164()[0]
+        "OVS"              | getVirtualSwitches()[0]
+
     }
 
     @Memoized

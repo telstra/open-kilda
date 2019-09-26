@@ -2,9 +2,11 @@ package org.openkilda.functionaltests.helpers
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import groovy.transform.Memoized
@@ -28,6 +30,7 @@ import java.math.RoundingMode
 @Component
 class SwitchHelper {
     static NorthboundService northbound
+    static Database database
 
     //below values are manufacturer-specific and override default Kilda values on firmware level
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
@@ -38,8 +41,9 @@ class SwitchHelper {
     double burstCoefficient
     
     @Autowired
-    SwitchHelper(NorthboundService northbound) {
+    SwitchHelper(NorthboundService northbound, Database database) {
         this.northbound = northbound
+        this.database = database
     }
 
     @Memoized
@@ -50,6 +54,11 @@ class SwitchHelper {
     @Memoized
     static String getDescription(Switch sw) {
         northbound.getSwitch(sw.dpId).description
+    }
+
+    @Memoized
+    static Set<SwitchFeature> getFeatures(Switch sw) {
+        database.getSwitch(sw.dpId).features
     }
 
     static List<Long> getDefaultCookies(Switch sw) {

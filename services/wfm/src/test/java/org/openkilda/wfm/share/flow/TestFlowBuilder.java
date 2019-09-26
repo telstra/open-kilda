@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.flow;
 
 import org.openkilda.model.Cookie;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -58,6 +59,7 @@ public class TestFlowBuilder {
     private FlowStatus status = FlowStatus.UP;
     private Integer maxLatency = null;
     private Integer priority = null;
+    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(false, false, false, false);
     private FlowEncapsulationType encapsulationType;
 
     public TestFlowBuilder() {
@@ -84,6 +86,7 @@ public class TestFlowBuilder {
                 .encapsulationType(encapsulationType)
                 .maxLatency(maxLatency)
                 .priority(priority)
+                .detectConnectedDevices(detectConnectedDevices)
                 .build();
         flow.setStatus(status);
 

@@ -16,11 +16,13 @@
 package org.openkilda.wfm.share.flow.service;
 
 import static java.lang.String.format;
+import static org.openkilda.messaging.Utils.OF_CONTROLLER_PORT;
 
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.InstallLldpFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -38,7 +40,6 @@ import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,22 +48,26 @@ public class FlowCommandFactory {
     private final NoArgGenerator transactionIdGenerator = Generators.timeBasedGenerator();
 
     /**
-     * Generates install transit and egress rules commands for a flow.
+     * Generates install LLDP, transit and egress rules commands for a flow.
      *
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(
+    public List<BaseInstallFlow> createInstallLldpTransitAndEgressRulesForFlow(
             FlowPath flowPath, EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
 
+        List<BaseInstallFlow> commands = new ArrayList<>();
+
+        if (needToInstallOrRemoveLldpFlow(flowPath)) {
+            commands.add(createInstallLldpRuleForFlow(flowPath, encapsulationResources));
+        }
+
         if (flow.isOneSwitchFlow()) {
-            return Collections.emptyList();
+            return commands;
         }
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
-
-        List<InstallTransitFlow> commands = new ArrayList<>();
 
         for (int i = 1; i < segments.size(); i++) {
             PathSegment src = segments.get(i - 1);
@@ -79,6 +84,23 @@ public class FlowCommandFactory {
         }
         commands.add(buildInstallEgressFlow(flowPath, egressSegment.getDestPort(), encapsulationResources));
         return commands;
+    }
+
+    /**
+     * Generates install transit and egress rules commands for a flow.
+     *
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @return list of commands
+     */
+    public BaseInstallFlow createInstallLldpRuleForFlow(
+            FlowPath flowPath, EncapsulationResources encapsulationResources) {
+        if (flowPath.getFlow().isOneSwitchFlow()) {
+            boolean isForward = flowPath.getFlow().isForward(flowPath);
+            int outVlan = isForward ? flowPath.getFlow().getDestVlan() : flowPath.getFlow().getSrcVlan();
+            return buildInstallLldpFlow(flowPath, outVlan, FlowEncapsulationType.TRANSIT_VLAN);
+        }
+        return buildInstallLldpFlow(flowPath, encapsulationResources.getTransitEncapsulationId(),
+                encapsulationResources.getEncapsulationType());
     }
 
     /**
@@ -107,23 +129,26 @@ public class FlowCommandFactory {
     }
 
     /**
-     * Generates remove transit and egress rules commands for a flow.
+     * Generates remove LLDP, transit and egress rules commands for a flow.
      *
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(FlowPath flowPath,
-                                                                     EncapsulationResources encapsulationResources) {
+    public List<RemoveFlow> createRemoveLldpTransitAndEgressRulesForFlow(
+            FlowPath flowPath, EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
+        List<RemoveFlow> commands = new ArrayList<>();
+
+        if (needToInstallOrRemoveLldpFlow(flowPath)) {
+            commands.add(createRemoveLldpRulesForFlow(flowPath, encapsulationResources));
+        }
 
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
-            return Collections.emptyList();
+            return commands;
         }
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
-
-        List<RemoveFlow> commands = new ArrayList<>();
 
         for (int i = 1; i < segments.size(); i++) {
             PathSegment src = segments.get(i - 1);
@@ -140,6 +165,16 @@ public class FlowCommandFactory {
         }
         commands.add(buildRemoveEgressFlow(flow, flowPath, egressSegment.getDestPort(), encapsulationResources));
         return commands;
+    }
+
+    private RemoveFlow createRemoveLldpRulesForFlow(FlowPath flowPath, EncapsulationResources encapsulationResources) {
+        if (flowPath.getFlow().isOneSwitchFlow()) {
+            boolean isForward = flowPath.getFlow().isForward(flowPath);
+            int outVlan = isForward ? flowPath.getFlow().getDestVlan() : flowPath.getFlow().getSrcVlan();
+            return buildRemoveLldpFlow(flowPath, outVlan, FlowEncapsulationType.TRANSIT_VLAN);
+        }
+        return buildRemoveLldpFlow(flowPath, encapsulationResources.getTransitEncapsulationId(),
+                encapsulationResources.getEncapsulationType());
     }
 
     /**
@@ -255,6 +290,38 @@ public class FlowCommandFactory {
     }
 
     /**
+     * Generate install LLDP flow command.
+     *
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param encapsulationId the encapsulation id (vlan or vni).
+     * @param encapsulationType the encapsulation type (transit_vlan or vxlan).
+     * @return install LLDP flow command
+     */
+    public InstallLldpFlow buildInstallLldpFlow(FlowPath flowPath, Integer encapsulationId,
+                                                FlowEncapsulationType encapsulationType) {
+        Flow flow = flowPath.getFlow();
+        boolean isForward = flowPath.getFlow().isForward(flowPath);
+        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
+
+        return new InstallLldpFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
+                flowPath.getLldpResources().getCookie().getValue(), flowPath.getSrcSwitch().getSwitchId(), inPort,
+                encapsulationId, encapsulationType, flowPath.getLldpResources().getMeterId().getValue(), false);
+    }
+
+    private RemoveFlow buildRemoveLldpFlow(FlowPath flowPath,  Integer encapsulationId,
+                                           FlowEncapsulationType encapsulationType) {
+        Flow flow = flowPath.getFlow();
+        boolean isForward = flowPath.getFlow().isForward(flowPath);
+        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
+        long cookie = flowPath.getLldpResources().getCookie().getValue();
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie, inPort, encapsulationId, 0, OF_CONTROLLER_PORT,
+                encapsulationType, null);
+        return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(), cookie,
+                flowPath.getSrcSwitch().getSwitchId(), flowPath.getLldpResources().getMeterId().getValue(), criteria,
+                false);
+    }
+
+    /**
      * Generate install ingress flow command.
      *
      * @param flow the flow.
@@ -269,6 +336,7 @@ public class FlowCommandFactory {
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
         int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
+        boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
 
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
 
@@ -276,7 +344,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inPort,
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, flowPath.getSrcSwitch().getSwitchId(), false);
+                flow.getBandwidth(), meterId, flowPath.getSrcSwitch().getSwitchId(), false, enableLldp);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo) {
@@ -293,6 +361,13 @@ public class FlowCommandFactory {
                 cookie, switchId, meterId, ingressCriteria, false);
     }
 
+    private boolean needToInstallOrRemoveLldpFlow(FlowPath path) {
+        Flow flow = path.getFlow();
+        boolean isForward = flow.isForward(path);
+        return  (isForward && flow.getDetectConnectedDevices().isSrcLldp())
+                || (!isForward && flow.getDetectConnectedDevices().isDstLldp());
+    }
+
     /**
      * Generate install one swithc flow command.
      *
@@ -307,12 +382,13 @@ public class FlowCommandFactory {
         int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
         int outPort = isForward ? flow.getDestPort() : flow.getSrcPort();
         int outVlan = isForward ? flow.getDestVlan() : flow.getSrcVlan();
+        boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
 
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
                 flow.getFlowId(), flowPath.getCookie().getValue(), switchId, inPort,
                 outPort, inVlan, outVlan,
-                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, false);
+                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, false, enableLldp);
     }
 
     private OutputVlanType getOutputVlanType(Flow flow, FlowPath flowPath) {

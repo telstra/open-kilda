@@ -36,9 +36,17 @@ public interface SwitchManagerConfig {
     @Default("200")
     int getUnicastRateLimit();
 
+    @Key("lldp-rate-limit")
+    @Default("1")
+    int getLldpRateLimit(); // rate in packets per second
+
     @Key("disco-packet-size")
     @Default("250")
     int getDiscoPacketSize();
+
+    @Key("lldp-packet-size")
+    @Default("300")
+    int getLldpPacketSize(); // rate in bytes
 
     @Key("flow-meter-burst-coefficient")
     @Default("1.05")
@@ -60,6 +68,12 @@ public interface SwitchManagerConfig {
     @Min(0)
     @Description("This is burst size for default rule meters in packets.")
     long getSystemMeterBurstSizeInPackets();
+
+    @Key("lldp-meter-burst-size-in-packets")
+    @Default("4096")
+    @Min(0)
+    @Description("This is burst size for LLDP rule meters in packets.")
+    long getLldpMeterBurstSizeInPackets();
 
     @Key("ovs-meters-enabled")
     @Default("false")

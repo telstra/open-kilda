@@ -16,13 +16,16 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.LldpResources;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -35,6 +38,7 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -57,11 +62,17 @@ public class ValidationServiceImpl implements ValidationService {
     private FlowPathRepository flowPathRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
+    private final int lldpRateLimit;
+    private final int lldpPacketSize;
+    private final long lldpMeterBurstSizeInPackets;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
+        this.lldpRateLimit = topologyConfig.getLldpRateLimit();
+        this.lldpPacketSize = topologyConfig.getLldpPacketSize();
+        this.lldpMeterBurstSizeInPackets = topologyConfig.getLldpMeterBurstSizeInPackets();
     }
 
     @Override
@@ -74,12 +85,39 @@ public class ValidationServiceImpl implements ValidationService {
                 .map(Cookie::getValue)
                 .collect(Collectors.toSet());
 
-        flowPathRepository.findByEndpointSwitch(switchId).stream()
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitchIncludeProtected(switchId);
+
+        paths.stream()
+                .filter(filterOutProtectedPathWithSrcEndpoint(switchId))
                 .map(FlowPath::getCookie)
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
-        return makeRulesResponse(expectedCookies, presentRules, expectedDefaultRules, switchId);
+        paths.stream().filter(path -> mustHaveLldpRule(switchId, path))
+                .map(FlowPath::getLldpResources)
+                .map(LldpResources::getCookie)
+                .map(Cookie::getValue)
+                .forEach(expectedCookies::add);
+
+        return makeRulesResponse(
+                expectedCookies, presentRules, expectedDefaultRules, switchId);
+    }
+
+    @VisibleForTesting
+    boolean mustHaveLldpRule(SwitchId switchId, FlowPath path) {
+        Flow flow = path.getFlow();
+
+        if (flow.getDetectConnectedDevices().isSrcLldp() && flow.getSrcSwitch().getSwitchId().equals(switchId)
+                && flow.isForward(path)) {
+            return true;
+        }
+
+        if (flow.getDetectConnectedDevices().isDstLldp() && flow.getDestSwitch().getSwitchId().equals(switchId)
+                && flow.isReverse(path)) {
+            return true;
+        }
+
+        return false;
     }
 
     private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,
@@ -166,7 +204,7 @@ public class ValidationServiceImpl implements ValidationService {
 
         presentMeters.removeIf(meterEntry -> MeterId.isMeterIdOfDefaultRule(meterEntry.getMeterId()));
 
-        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId);
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitchIncludeProtected(switchId);
 
         if (paths.isEmpty()) {
             // we do not expect any flow meter on this switch
@@ -177,7 +215,8 @@ public class ValidationServiceImpl implements ValidationService {
         Switch sw = paths.iterator().next().getSrcSwitch();
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
 
-        List<SimpleMeterEntry> expectedMeters = getExpectedFlowMeters(paths);
+        List<SimpleMeterEntry> expectedMeters = getExpectedFlowMeters(switchId, paths);
+        expectedMeters.addAll(getExpectedLldpMeters(switchId, paths));
 
         return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
     }
@@ -229,10 +268,11 @@ public class ValidationServiceImpl implements ValidationService {
         return excessMeters;
     }
 
-    private List<SimpleMeterEntry> getExpectedFlowMeters(Collection<FlowPath> unfilteredPaths) {
+    private List<SimpleMeterEntry> getExpectedFlowMeters(SwitchId switchId, Collection<FlowPath> unfilteredPaths) {
         List<SimpleMeterEntry> expectedMeters = new ArrayList<>();
 
         Collection<FlowPath> paths = unfilteredPaths.stream()
+                .filter(filterOutProtectedPathWithSrcEndpoint(switchId))
                 .filter(path -> path.getMeterId() != null)
                 .collect(Collectors.toList());
 
@@ -242,8 +282,35 @@ public class ValidationServiceImpl implements ValidationService {
 
             SimpleMeterEntry expectedMeter = new SimpleMeterEntry(path.getFlow().getFlowId(),
                     path.getMeterId().getValue(), path.getCookie().getValue(), path.getBandwidth(), calculatedBurstSize,
-                    Meter.getMeterFlags());
+                    Meter.getMeterKbpsFlags());
             expectedMeters.add(expectedMeter);
+        }
+        return expectedMeters;
+    }
+
+    private List<SimpleMeterEntry> getExpectedLldpMeters(SwitchId switchId, Collection<FlowPath> paths) {
+        List<SimpleMeterEntry> expectedMeters = new ArrayList<>();
+
+        for (FlowPath path : paths) {
+            if (mustHaveLldpRule(switchId, path)) {
+                long expectedRate = lldpRateLimit;
+                long expectedBurstSize = lldpMeterBurstSizeInPackets;
+                String[] expectedFlags = Meter.getMeterPktpsFlags();
+
+                if (!path.getSrcSwitch().supports(PKTPS_FLAG)) {
+                    expectedRate = Meter.convertRateToKiloBits(expectedRate, lldpPacketSize);
+                    expectedBurstSize = Meter.convertBurstSizeToKiloBits(expectedBurstSize, lldpPacketSize);
+                    expectedFlags = Meter.getMeterKbpsFlags();
+                }
+
+                expectedBurstSize = Meter.calculateBurstSizeConsideringHardwareLimitations(
+                        expectedRate, expectedBurstSize, path.getSrcSwitch().getFeatures());
+
+                SimpleMeterEntry expectedMeter = new SimpleMeterEntry(path.getFlow().getFlowId(),
+                        path.getLldpResources().getMeterId().getValue(), path.getLldpResources().getCookie().getValue(),
+                        expectedRate, expectedBurstSize, expectedFlags);
+                expectedMeters.add(expectedMeter);
+            }
         }
         return expectedMeters;
     }
@@ -307,6 +374,10 @@ public class ValidationServiceImpl implements ValidationService {
                 .actual(actual)
                 .expected(expected)
                 .build();
+    }
+
+    private Predicate<FlowPath> filterOutProtectedPathWithSrcEndpoint(SwitchId switchId) {
+        return path -> !(path.isProtected() && path.getSrcSwitch().getSwitchId().equals(switchId));
     }
 
     private boolean equalsRate(long actual, long expected, boolean isESwitch) {

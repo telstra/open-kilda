@@ -115,6 +115,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -131,6 +132,7 @@ import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
@@ -183,6 +185,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int STUB_VXLAN_UDP_SRC = 4500;
     public static final int INTERNAL_ETH_DEST_OFFSET = 400;
     public static final int MAC_ADDRESS_SIZE_IN_BITS = 48;
+    public static final String LLDP_MAC = "01:80:c2:00:00:0e";
+    public static final int TABLE_1 = 1;
 
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -382,7 +386,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public long installIngressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                                    int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                                   FlowEncapsulationType encapsulationType)
+                                   FlowEncapsulationType encapsulationType, boolean enableLldp)
             throws SwitchOperationException {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
@@ -407,9 +411,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         int flowPriority = getFlowPriority(inputVlanId);
 
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, enableLldp);
+
         // build FLOW_MOD command with meter
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
-                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setInstructions(instructions)
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
@@ -417,6 +423,65 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
+    }
+
+    private List<OFInstruction> createIngressFlowInstructions(
+            OFFactory ofFactory, OFInstructionMeter meter, OFInstructionApplyActions actions, boolean enableLldp) {
+        List<OFInstruction> instructions = new ArrayList<>();
+
+        if (meter != null) {
+            instructions.add(meter);
+        }
+
+        instructions.add(actions);
+
+        if (enableLldp) {
+            instructions.add(ofFactory.instructions().gotoTable(TableId.of(TABLE_1)));
+        }
+
+        return instructions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long installLldpIngressFlow(DatapathId dpid, Long cookie, int inputPort, int tunnelId,
+                                       long meterId, FlowEncapsulationType encapsulationType)
+            throws SwitchNotFoundException, OfInstallException {
+
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        IOFSwitch sw = lookupSwitch(dpid);
+
+        OFFactory ofFactory = sw.getOFFactory();
+
+        if (tunnelId != 0) { // in case of one switch flow tunnel id can be 0 (full port)
+            if (encapsulationType == FlowEncapsulationType.TRANSIT_VLAN) {
+                actionList.add(actionPopVlan(ofFactory));
+            } else if (encapsulationType == FlowEncapsulationType.VXLAN) {
+                actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+            }
+        }
+
+        actionList.add(actionSendToController(sw));
+
+        Match match = getLldpMatch(ofFactory, inputPort, tunnelId, encapsulationType);
+
+        OFInstructionMeter meter = installMeterForLldpRule(sw, meterId, actionList);
+
+        OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
+
+        int flowPriority = getFlowPriority(tunnelId);
+
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setTableId(TableId.of(TABLE_1))
+                .setMatch(match);
+
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
+        return pushFlow(sw, "--InstallLldpIngressFlow--", builder.build());
     }
 
     /**
@@ -484,7 +549,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public long installOneSwitchFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                                     int inputVlanId, int outputVlanId, OutputVlanType outputVlanType, long meterId)
+                                     int inputVlanId, int outputVlanId, OutputVlanType outputVlanType, long meterId,
+                                     boolean enableLldp)
             throws SwitchOperationException {
         // TODO: As per other locations, how different is this to IngressFlow? Why separate code path?
         //          As with any set of tests, the more we test the same code path, the better.
@@ -512,10 +578,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 null);
 
         int flowPriority = getFlowPriority(inputVlanId);
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, enableLldp);
 
         // build FLOW_MOD command with meter
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
-                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setInstructions(instructions)
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
@@ -703,7 +770,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
                     sw.getSwitchDescription().getSoftwareDescription());
 
-            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
+            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterKbpsFlags())
                     .map(OFMeterFlags::valueOf)
                     .collect(Collectors.toSet());
             installMeter(sw, flags, bandwidth, burstSize, meterId);
@@ -726,7 +793,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
                     sw.getSwitchDescription().getSoftwareDescription());
 
-            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
+            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterKbpsFlags())
                     .map(OFMeterFlags::valueOf)
                     .collect(Collectors.toSet());
 
@@ -777,6 +844,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 OFFlowDelete flowDelete = ofFactory.buildFlowDelete()
                         .setCookie(U64.of(flowCookie))
                         .setCookieMask(U64.NO_MASK)
+                        .setTableId(TableId.ALL)
                         .build();
                 pushFlow(sw, "--DeleteFlow--", flowDelete);
 
@@ -1424,7 +1492,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             builder.setOutPort(OFPort.of(criteria.getOutPort()));
         }
 
-        return builder.build();
+        return builder.setTableId(TableId.ALL).build();
     }
 
     private OFBarrierReply sendBarrierRequest(IOFSwitch sw) {
@@ -1464,16 +1532,31 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private Match matchFlow(OFFactory ofFactory, int inputPort, int tunnelId, FlowEncapsulationType encapsulationType,
                             DatapathId ingressSwitchDpId) {
         Match.Builder mb = ofFactory.buildMatch();
-        mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
+        addMatchFlowToBuilder(mb, ofFactory, inputPort, tunnelId, encapsulationType, ingressSwitchDpId);
+        return mb.build();
+    }
+
+    private Match getLldpMatch(OFFactory ofFactory, int inputPort, int transitTunnelId,
+                               FlowEncapsulationType encapsulationType) {
+        Builder mb = ofFactory.buildMatch();
+        addMatchFlowToBuilder(mb, ofFactory, inputPort, transitTunnelId, encapsulationType, null);
+        mb.setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC));
+        mb.setExact(MatchField.ETH_TYPE, EthType.LLDP);
+        return mb.build();
+    }
+
+    private void addMatchFlowToBuilder(Builder builder, OFFactory ofFactory, int inputPort, int tunnelId,
+                                       FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId) {
+        builder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
         // NOTE: vlan of 0 means match on port on not VLAN.
         if (tunnelId > 0) {
             switch (encapsulationType) {
                 case TRANSIT_VLAN:
-                    matchVlan(ofFactory, mb, tunnelId);
+                    matchVlan(ofFactory, builder, tunnelId);
 
                     break;
                 case VXLAN:
-                    matchVxlan(ofFactory, mb, tunnelId, ingressSwitchDpId == null ? null :
+                    matchVxlan(ofFactory, builder, tunnelId, ingressSwitchDpId == null ? null :
                             dpIdToMac(ingressSwitchDpId));
                     break;
                 default:
@@ -1481,7 +1564,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                             String.format("Unknown encapsulation type: %s", encapsulationType));
             }
         }
-        return mb.build();
     }
 
     private void matchVlan(final OFFactory ofFactory, final Match.Builder matchBuilder, final int vlanId) {
@@ -1872,6 +1954,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return ports.stream()
                 .filter(entry -> !OfPortDescConverter.INSTANCE.isReservedPort(entry.getPortNo()))
                 .collect(Collectors.toList());
+    }
+
+    private OFInstructionMeter installMeterForLldpRule(IOFSwitch sw, long meterId, List<OFAction> actionList) {
+        return installOrReinstallMeter(sw, meterId, config.getLldpRateLimit(), config.getLldpPacketSize(),
+                config.getLldpMeterBurstSizeInPackets(), actionList);
     }
 
     @VisibleForTesting

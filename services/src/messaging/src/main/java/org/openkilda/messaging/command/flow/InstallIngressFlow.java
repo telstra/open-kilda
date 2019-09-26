@@ -87,6 +87,12 @@ public class InstallIngressFlow extends InstallTransitFlow {
     protected Long meterId;
 
     /**
+     * LLDP flag. Packets will be send to LLDP rule if True.
+     */
+    @JsonProperty("enable_lldp")
+    protected boolean enableLldp;
+
+    /**
      * Instance constructor.
      *
      * @param transactionId  transaction id
@@ -103,6 +109,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param meterId        flow meter id
      * @param ingressSwitchId id of the ingress switch
      * @param multiTable     multitable flag
+     * @param enableLldp lldp flag. Packets will be send to LLDP rule if True.
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -120,13 +127,15 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("bandwidth") final Long bandwidth,
                               @JsonProperty("meter_id") final Long meterId,
                               @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId,
-                              @JsonProperty("multi_table") final boolean multiTable) {
+                              @JsonProperty("multi_table") final boolean multiTable,
+                              @JsonProperty("enable_lldp") final boolean enableLldp) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, ingressSwitchId, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
         setMeterId(meterId);
+        setEnableLldp(enableLldp);
     }
 
     /**
@@ -222,6 +231,20 @@ public class InstallIngressFlow extends InstallTransitFlow {
     }
 
     /**
+     * Get enable LLDP flag.
+     */
+    public boolean isEnableLldp() {
+        return enableLldp;
+    }
+
+    /**
+     * Set enable LLDP flag.
+     */
+    public void setEnableLldp(boolean enableLldp) {
+        this.enableLldp = enableLldp;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -240,6 +263,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
                 .add("multi_table", multiTable)
+                .add("enable_lldp", enableLldp)
                 .toString();
     }
 
@@ -268,7 +292,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
                 && Objects.equals(getMeterId(), that.getMeterId())
-                && Objects.equals(isMultiTable(), that.isMultiTable());
+                && Objects.equals(isMultiTable(), that.isMultiTable())
+                && Objects.equals(isEnableLldp(), that.isEnableLldp());
     }
 
     /**
@@ -278,6 +303,6 @@ public class InstallIngressFlow extends InstallTransitFlow {
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
                 inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId,
-                multiTable);
+                multiTable, enableLldp);
     }
 }

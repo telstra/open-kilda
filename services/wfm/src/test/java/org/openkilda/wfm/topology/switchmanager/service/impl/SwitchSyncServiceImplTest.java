@@ -126,7 +126,7 @@ public class SwitchSyncServiceImplTest {
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 60,
                 FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L, INGRESS_SWITCH_ID,
-                false);
+                false, false);
         when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
                 .thenReturn(singletonList(installingRule));
 

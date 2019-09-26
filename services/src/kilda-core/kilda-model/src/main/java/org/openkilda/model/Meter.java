@@ -18,6 +18,7 @@ package org.openkilda.model;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Set;
 
 @Data
 public final class Meter implements Serializable {
@@ -28,7 +29,8 @@ public final class Meter implements Serializable {
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
     public static final int MIN_RATE_IN_KBPS = 64;
 
-    private static final String[] METER_FLAGS = {"KBPS", "BURST", "STATS"};
+    private static final String[] METER_KBPS_FLAGS = {"KBPS", "BURST", "STATS"};
+    private static final String[] METER_PKTPS_FLAGS = {"PKTPS", "BURST", "STATS"};
 
     private SwitchId switchId;
 
@@ -66,6 +68,20 @@ public final class Meter implements Serializable {
     }
 
     /**
+     * Calculate burst size considering hardware limitations.
+     * Noviflow switches round burst size if burst size > rate * 1.005.
+     */
+    public static long calculateBurstSizeConsideringHardwareLimitations(
+            long bandwidth, long requestedBurstSize, Set<SwitchFeature> features) {
+
+        if (features.contains(SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION)) {
+            return Math.min(requestedBurstSize, Math.round(bandwidth * MAX_NOVIFLOW_BURST_COEFFICIENT));
+        }
+
+        return requestedBurstSize;
+    }
+
+    /**
      * Convert rate from packets to kilobits.
      */
     public static long convertRateToKiloBits(long rateInPackets, long packetSizeInBytes) {
@@ -80,9 +96,13 @@ public final class Meter implements Serializable {
     }
 
     /**
-     * Get meter flags as string array.
+     * Get meter kbps flags as string array.
      */
-    public static String[] getMeterFlags() {
-        return METER_FLAGS;
+    public static String[] getMeterKbpsFlags() {
+        return METER_KBPS_FLAGS;
+    }
+
+    public static String[] getMeterPktpsFlags() {
+        return METER_PKTPS_FLAGS;
     }
 }
