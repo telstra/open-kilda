@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.37.0 (26/09/2019)
+
+### Features:
+-  [#2756](https://github.com/telstra/open-kilda/pull/2756) Added catching of LLDP by Floodlight (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**floodlight**]
+-  [#2697](https://github.com/telstra/open-kilda/pull/2697) Added instalation of LLDP rules (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**floodlight**][**storm-topologies**]
+-  [#2704](https://github.com/telstra/open-kilda/pull/2704) Added switch validation of LLDP (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**storm-topologies**]
+-  [#2643](https://github.com/telstra/open-kilda/pull/2643) Added ability to collect Connected Devices for flow (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**floodlight**][**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2817](https://github.com/telstra/open-kilda/pull/2817) Fixed null LLDP meter (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**floodlight**]
+-  [#2819](https://github.com/telstra/open-kilda/pull/2819) Do not catch LLDP if switch has only 1 OF table (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**floodlight**][**storm-topologies**]
+-  [#2820](https://github.com/telstra/open-kilda/pull/2820) Validate LLDP meters with Noviflow burstsize limitations (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**storm-topologies**]
+-  [#2825](https://github.com/telstra/open-kilda/pull/2825) Added LLDP cookies and meters to StatsTopology cache (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**storm-topologies**]
+-  [#2810](https://github.com/telstra/open-kilda/pull/2810) Fixed handling of unexpected responses in SwitchManagerWorker in Network topology. (Issue: [#2809](https://github.com/telstra/open-kilda/issues/2809)) [**storm-topologies**]
+
+### Improvements:
+-  [#2816](https://github.com/telstra/open-kilda/pull/2816) Extend lldp tests with lldp+vxlan tests [**tests**]
+-  [#2754](https://github.com/telstra/open-kilda/pull/2754) Add connected devices traffgen support to testing framework [**tests**]
+-  [#2824](https://github.com/telstra/open-kilda/pull/2824) fix logic in makePathMorePreferable [**tests**]
+-  [#2828](https://github.com/telstra/open-kilda/pull/2828) Update lldp tests to select switches for tests more granularly [**tests**]
+-  [#2776](https://github.com/telstra/open-kilda/pull/2776) Add test for 'new switch connects' scenario [**tests**]
+-  [#2782](https://github.com/telstra/open-kilda/pull/2782) add test "System doesn't reroute flow to a path with not enough bandwidth available" [**tests**]
+-  [#2800](https://github.com/telstra/open-kilda/pull/2800) add waiter to openTsdbSpec [**tests**]
+-  [#2808](https://github.com/telstra/open-kilda/pull/2808) Add test to verify single-port flow rules validation/synchronization [**tests**]
+-  [#2739](https://github.com/telstra/open-kilda/pull/2739) Func tests for connected devices rules (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) [**tests**]
+-  [#2807](https://github.com/telstra/open-kilda/pull/2807) Added event logging with getting statistics. (Issue: [#2801](https://github.com/telstra/open-kilda/issues/2801)) [**floodlight**][**storm-topologies**]
+-  [#2815](https://github.com/telstra/open-kilda/pull/2815) Fixed 1.14 migration 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.36.1...v1.37.0).
+
+### Affected Components:
+stats, nbworker, swmanager, fl, nb, flow, network, neo4j
+
+### Upgrade notes:
+
+Related to [#2643](https://github.com/telstra/open-kilda/pull/2643)
+
+Also please consider using following migration scripts to update db:
+- [1.14 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.37.0/services/neo4j/migrations/1.14-connected-device-indexes/1-add-connected-device-index.xml)
+
+In case of issues these rollback scripts should be executed:
+- [1.14 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.37.0/services/neo4j/migrations/1.14-connected-device-indexes/rollback.cql)
+
 ## v1.36.1 (19/09/2019)
 
 ### Bug Fixes:
