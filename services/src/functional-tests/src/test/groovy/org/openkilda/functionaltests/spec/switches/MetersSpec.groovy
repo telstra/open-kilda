@@ -28,6 +28,7 @@ import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -509,6 +510,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
@@ -605,6 +607,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "Try to reset meters for unmetered flow"() {
         given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
         def availableSwitches = topology.activeSwitches

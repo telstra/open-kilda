@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -161,7 +162,7 @@ class FlowHelper {
 
         log.debug("Updating flow '${flow.id}'")
         def response = northbound.updateFlow(flowId, flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         def flowEntryAfterUpdate = db.getFlow(flowId)
 

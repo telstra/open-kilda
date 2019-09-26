@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -15,6 +16,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -93,7 +95,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        }
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
@@ -120,7 +124,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        }
 
         and: "The flow allows traffic"
         withPool {
@@ -194,6 +200,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         def newFlowInfo = northbound.getFlow(flow.flowId)
         !newFlowInfo.pinned
         flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.flowId)
@@ -479,7 +488,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        }
 
         and: "Flow is pingable"
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {

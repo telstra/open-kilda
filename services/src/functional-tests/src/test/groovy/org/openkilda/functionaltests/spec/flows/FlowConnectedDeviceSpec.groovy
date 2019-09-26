@@ -1,13 +1,16 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -18,6 +21,7 @@ import org.openkilda.model.Flow
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.LldpResources
 import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -25,6 +29,8 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.LldpData
 import org.openkilda.testing.tools.ConnectedDevice
 
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -46,18 +52,24 @@ class FlowConnectedDeviceSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Unroll
+    @Tags([Tag.TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [Tag.SMOKE], iterationNameRegex = /srcLldp=true and dstLldp=true/),
             @IterationTag(tags = [Tag.HARDWARE], iterationNameRegex = /VXLAN/)
     ])
-    def "Able to create a #flowDescr flow with srcLldp=#srcEnabled and dstLldp=#dstEnabled"() {
+    def "Able to create a #flowDescr flow with srcLldp=#data.srcEnabled and dstLldp=#data.dstEnabled"() {
         given: "A flow with enabled or disabled connected devices"
+        assumeTrue("Ignored due to https://github.com/telstra/open-kilda/issues/2827",
+                data.encapsulation != FlowEncapsulationType.VXLAN)
         def tgService = traffExamProvider.get()
-        def flow = getFlowWithConnectedDevices(protectedFlow, oneSwitch, srcEnabled, dstEnabled)
-        flow.encapsulationType = encapsulation.toString()
+        def flow = getFlowWithConnectedDevices(data)
+        flow.encapsulationType = data.encapsulation.toString()
 
         when: "Create a flow with connected devices"
-        flowHelper.addFlow(flow)
+        with(flowHelper.addFlow(flow)) {
+            source.detectConnectedDevices.lldp == data.srcEnabled
+            destination.detectConnectedDevices.lldp == data.dstEnabled
+        }
 
         then: "Flow and src/dst switches are valid"
         def createdFlow = database.getFlow(flow.id)
@@ -85,10 +97,10 @@ class FlowConnectedDeviceSpec extends HealthCheckSpecification {
         then: "Getting connecting devices shows corresponding devices on each endpoint if enabled"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             with(northbound.getFlowConnectedDevices(flow.id)) {
-                it.source.lldp.size() == (srcEnabled ? 1 : 0)
-                it.destination.lldp.size() == (dstEnabled ? 1 : 0)
-                srcEnabled ? verifyEquals(it.source.lldp.first(), srcData) : true
-                dstEnabled ? verifyEquals(it.destination.lldp.first(), dstData) : true
+                it.source.lldp.size() == (data.srcEnabled ? 1 : 0)
+                it.destination.lldp.size() == (data.dstEnabled ? 1 : 0)
+                data.srcEnabled ? verifyEquals(it.source.lldp.first(), srcData) : true
+                data.dstEnabled ? verifyEquals(it.destination.lldp.first(), dstData) : true
             }
         }
 
@@ -96,21 +108,53 @@ class FlowConnectedDeviceSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
 
         then: "Delete action removed all rules and meters"
-        validateSwitchHasNoFlowRulesAndMeters(flow.source.datapath)
-        validateSwitchHasNoFlowRulesAndMeters(flow.destination.datapath)
+        Wrappers.wait(WAIT_OFFSET) {
+            validateSwitchHasNoFlowRulesAndMeters(flow.source.datapath)
+            validateSwitchHasNoFlowRulesAndMeters(flow.destination.datapath)
+        }
 
         where:
-        [protectedFlow, oneSwitch, srcEnabled, dstEnabled, encapsulation] << [
-                [false, false, false, true, FlowEncapsulationType.TRANSIT_VLAN],
-                [false, false, true, true, FlowEncapsulationType.TRANSIT_VLAN],
-                [false, true, true, true, FlowEncapsulationType.TRANSIT_VLAN],
-                [true, false, true, false, FlowEncapsulationType.TRANSIT_VLAN],
-                [true, false, true, true, FlowEncapsulationType.TRANSIT_VLAN],
-                [true, false, true, true, FlowEncapsulationType.VXLAN],
-                [false, false, false, true, FlowEncapsulationType.VXLAN],
-                [false, true, true, false, FlowEncapsulationType.VXLAN]
-        ]
-        flowDescr = sprintf("%s%s%s", encapsulation, protectedFlow ? " protected" : "", oneSwitch ? " oneSwitch" : "")
+        data <<
+                [
+                        new ConnectedDeviceTestData(protectedFlow: false, oneSwitch: false,
+                                srcEnabled: false, dstEnabled: true,
+                                encapsulation: FlowEncapsulationType.TRANSIT_VLAN),
+                        new ConnectedDeviceTestData(protectedFlow: true, oneSwitch: false,
+                                srcEnabled: true, dstEnabled: false,
+                                encapsulation: FlowEncapsulationType.TRANSIT_VLAN),
+                        new ConnectedDeviceTestData(protectedFlow: false, oneSwitch: false,
+                                srcEnabled: false, dstEnabled: true,
+                                encapsulation: FlowEncapsulationType.VXLAN),
+                        new ConnectedDeviceTestData(protectedFlow: true, oneSwitch: true,
+                                srcEnabled: true, dstEnabled: false,
+                                encapsulation: FlowEncapsulationType.VXLAN)
+                        //now assign each of the above data pcs a relevant switch pair
+                ].each { it.switchPair = getUniqueSwitchPairs()[0] } +
+                //now add more data, below iterations will be run for all unique switches with TG attached
+                [
+                        new ConnectedDeviceTestData(protectedFlow: false, oneSwitch: false, srcEnabled: true,
+                                dstEnabled: true, encapsulation: FlowEncapsulationType.TRANSIT_VLAN),
+                        new ConnectedDeviceTestData(protectedFlow: false, oneSwitch: true, srcEnabled: true,
+                                dstEnabled: true, encapsulation: FlowEncapsulationType.TRANSIT_VLAN),
+                        new ConnectedDeviceTestData(protectedFlow: true, oneSwitch: false, srcEnabled: true,
+                                dstEnabled: true, encapsulation: FlowEncapsulationType.VXLAN)
+                        //each of the above datapiece may repeat multiple times depending on amount of available TG switches
+                ].collectMany { dataPiece ->
+                    getUniqueSwitchPairs().collect {
+                        def newDataPiece = dataPiece.clone()
+                        newDataPiece.switchPair = it
+                        newDataPiece
+                    }
+                }
+        flowDescr = sprintf("%s%s%s", data.encapsulation, data.protectedFlow ? " protected" : "",
+                data.oneSwitch ? " oneSwitch" : "")
+    }
+
+    @AutoClone
+    private static class ConnectedDeviceTestData {
+        boolean protectedFlow, oneSwitch, srcEnabled, dstEnabled
+        FlowEncapsulationType encapsulation
+        SwitchPair switchPair
     }
 
     @Unroll
@@ -166,14 +210,10 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
                 [false, false, false, false],
                 [true, true, true, true],
-                [false, false, false, true],
-                [false, false, true, false],
-                [false, false, true, true],
-                [false, true, false, false],
-                [false, true, true, false],
-                [false, true, true, true],
                 [true, true, false, false],
-                [true, true, true, false]
+                [false, false, true, true],
+                [false, true, true, false],
+                [true, true, false, true]
         ]
     }
 
@@ -355,19 +395,58 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
      * single-switch different-port flow via this method.
      */
     private FlowPayload getFlowWithConnectedDevices(
-            boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled) {
+            boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled, SwitchPair switchPair) {
         assert !(oneSwitch && protectedFlow), "Cannot create one-switch flow with protected path"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
         def flow = null
         if (oneSwitch) {
-            flow = flowHelper.singleSwitchSinglePortFlow(srcSwitch)
+            flow = flowHelper.singleSwitchSinglePortFlow(switchPair.src)
         } else {
-            flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+            flow = flowHelper.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
         flow.source.detectConnectedDevices = new DetectConnectedDevicesPayload(srcEnabled, false)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(dstEnabled, false)
         return flow
+    }
+
+    private FlowPayload getFlowWithConnectedDevices(
+            boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled) {
+        def tgSwPair = getUniqueSwitchPairs()[0]
+        assert tgSwPair, "Unable to find a switchPair with traffgens for the requested flow arguments"
+        getFlowWithConnectedDevices(protectedFlow, oneSwitch, srcEnabled, dstEnabled, tgSwPair)
+    }
+
+
+    private FlowPayload getFlowWithConnectedDevices(ConnectedDeviceTestData testData) {
+        getFlowWithConnectedDevices(testData.protectedFlow, testData.oneSwitch, testData.srcEnabled,
+                testData.dstEnabled, testData.switchPair)
+    }
+
+    /**
+     * Pick as little as possible amount of switch pairs to cover all unique switch models we have (only connected
+     * to traffgens and lldp-enabled).
+     */
+    @Memoized
+    List<SwitchPair> getUniqueSwitchPairs() {
+        def tgSwitches = topology.activeTraffGens*.switchConnected
+                                 .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
+        def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.details.hardware].sort() }
+        List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
+            it.src in tgSwitches && it.dst in tgSwitches
+        }
+        def result = []
+        while (!unpickedTgSwitches.empty) {
+            def pair = switchPairs.sort(false) { switchPair ->
+                //prioritize swPairs with unique traffgens on both sides
+                [switchPair.src, switchPair.dst].count { Switch sw ->
+                    !unpickedTgSwitches.contains(sw)
+                }
+            }.first()
+            //pick first pair and then re-sort considering updated list of unpicked switches
+            result << pair
+            unpickedTgSwitches = unpickedTgSwitches - pair.src - pair.dst
+        }
+        return result
     }
 
     private void validateFlowAndSwitches(Flow flow) {
@@ -383,7 +462,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
 
     private void validateLldpMeters(Flow flow, boolean source) {
         def sw = source ? flow.srcSwitch : flow.destSwitch
-        if(sw.ofVersion == "OF_12") {
+        if (sw.ofVersion == "OF_12") {
             return //meters are not supported
         }
         def lldpEnabled = source ? flow.detectConnectedDevices.srcLldp : flow.detectConnectedDevices.dstLldp
@@ -392,7 +471,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         def nonDefaultMeters = northbound.getAllMeters(sw.switchId).meterEntries.findAll {
             !MeterId.isMeterIdOfDefaultRule(it.meterId)
         }
-        assert getExpectedNonDefaultMeterCount(flow, source) == nonDefaultMeters.size()
+        assert nonDefaultMeters.size() == getExpectedNonDefaultMeterCount(flow, source)
 
         validateLldpMeter(nonDefaultMeters, path.lldpResources, lldpEnabled)
 
@@ -416,7 +495,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         def path = source ? flow.forwardPath : flow.reversePath
 
         def allRules = northbound.getSwitchRules(switchId).flowEntries
-        assert getExpectedLldpRulesCount(flow, source) == allRules.count { it.tableId == 1 }
+        assert allRules.count { it.tableId == 1 } == getExpectedLldpRulesCount(flow, source)
 
         validateRules(allRules, path.cookie, path.lldpResources, lldpEnabled, false)
 
