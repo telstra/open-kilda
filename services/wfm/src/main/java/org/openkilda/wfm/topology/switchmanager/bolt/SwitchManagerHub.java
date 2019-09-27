@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.switchmanager.bolt;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
+import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
@@ -31,6 +33,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
+import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -40,8 +43,10 @@ import org.openkilda.wfm.topology.switchmanager.StreamType;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
+import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchRuleServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchSyncServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -64,6 +69,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     private final SwitchManagerTopologyConfig topologyConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
+    private transient SwitchRuleService switchRuleService;
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
@@ -79,6 +85,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         super.prepare(stormConf, context, collector);
         validateService = new SwitchValidateServiceImpl(this, persistenceManager);
         syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
+        switchRuleService = new SwitchRuleServiceImpl(this, persistenceManager.getRepositoryFactory());
+
     }
 
     @Override
@@ -89,6 +97,10 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         CommandData data = message.getData();
         if (data instanceof SwitchValidateRequest) {
             validateService.handleSwitchValidateRequest(key, (SwitchValidateRequest) data);
+        } else if (data instanceof SwitchRulesDeleteRequest) {
+            switchRuleService.deleteRules(key, (SwitchRulesDeleteRequest) data);
+        } else if (data instanceof SwitchRulesInstallRequest) {
+            switchRuleService.installRules(key, (SwitchRulesInstallRequest) data);
         } else {
             log.warn("Receive unexpected CommandMessage for key {}: {}", key, data);
         }
@@ -125,6 +137,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 syncService.handleReinstallDefaultRulesResponse(key, (FlowReinstallResponse) data);
             } else if (data instanceof DeleteMeterResponse) {
                 syncService.handleRemoveMetersResponse(key);
+            } else if (data instanceof SwitchRulesResponse) {
+                switchRuleService.rulesResponse(key, (SwitchRulesResponse) data);
             } else {
                 log.warn("Receive unexpected InfoData for key {}: {}", key, data);
             }

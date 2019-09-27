@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
+import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
@@ -43,7 +44,13 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
@@ -57,7 +64,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchValidateFsm
@@ -72,6 +82,9 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
+    private SwitchProperties switchProperties;
+    private List<Integer> islPorts;
+    private List<Integer> flowPorts;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
     private List<FlowEntry> expectedDefaultFlowEntries;
@@ -80,13 +93,28 @@ public class SwitchValidateFsm
     private ValidateMetersResult validateMetersResult;
 
     public SwitchValidateFsm(SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
-                             ValidationService validationService) {
+                             ValidationService validationService, RepositoryFactory repositoryFactory) {
         this.carrier = carrier;
         this.key = key;
         this.request = request;
         this.validationService = validationService;
         this.processMeters = request.isProcessMeters();
         this.switchId = request.getSwitchId();
+        this.flowPorts = new ArrayList<>();
+        Collection<FlowPath> flowPaths = repositoryFactory.createFlowPathRepository().findBySrcSwitch(switchId);
+        for (FlowPath flowPath : flowPaths) {
+            if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
+                flowPorts.add(flowPath.getFlow().getSrcPort());
+            } else if (!flowPath.isForward() && flowPath.getFlow().isDestWithMultiTable()) {
+                flowPorts.add(flowPath.getFlow().getDestPort());
+            }
+        }
+        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+        this.islPorts = islRepository.findBySrcSwitch(switchId).stream()
+                .map(Isl::getSrcPort)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -103,11 +131,15 @@ public class SwitchValidateFsm
                         SwitchManagerCarrier.class,
                         String.class,
                         SwitchValidateRequest.class,
-                        ValidationService.class);
+                        ValidationService.class,
+                        RepositoryFactory.class);
 
         builder.onEntry(INITIALIZED).callMethod("initialized");
         builder.externalTransition().from(INITIALIZED).to(RECEIVE_DATA).on(NEXT)
                 .callMethod("receiveData");
+        builder.externalTransition().from(INITIALIZED).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
         builder.internalTransition().within(RECEIVE_DATA).on(RULES_RECEIVED).callMethod("rulesReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_RECEIVED).callMethod("metersReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(EXPECTED_DEFAULT_RULES_RECEIVED)
@@ -141,6 +173,10 @@ public class SwitchValidateFsm
 
     protected void initialized(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
+        if (switchProperties == null) {
+            sendException(format("Switch properties not found for switch '%s'", switchId), ErrorType.NOT_FOUND);
+            return;
+        }
         log.info("Key: {}, validate FSM initialized", key);
     }
 
@@ -149,7 +185,10 @@ public class SwitchValidateFsm
         log.info("Key: {}, sending requests to get switch rules and meters", key);
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
-        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId));
+        boolean multiTable = switchProperties.isMultiTable();
+
+        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, islPorts,
+                flowPorts));
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
@@ -180,7 +219,7 @@ public class SwitchValidateFsm
     }
 
     protected void metersUnsupported(SwitchValidateState from, SwitchValidateState to,
-                                  SwitchValidateEvent event, Object context) {
+                                     SwitchValidateEvent event, Object context) {
         log.info("Key: {}, switch meters unsupported", key);
         this.presentMeters = emptyList();
         this.processMeters = false;
@@ -194,7 +233,7 @@ public class SwitchValidateFsm
     }
 
     protected void receivingDataFailedByTimeout(SwitchValidateState from, SwitchValidateState to,
-                                                 SwitchValidateEvent event, Object context) {
+                                                SwitchValidateEvent event, Object context) {
         ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Receiving data failed by timeout",
                 "Error when receive switch data");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
@@ -209,7 +248,7 @@ public class SwitchValidateFsm
         try {
             validateRulesResult = validationService.validateRules(switchId, flowEntries, expectedDefaultFlowEntries);
         } catch (Exception e) {
-            sendException(e);
+            sendException(e.getMessage());
         }
     }
 
@@ -222,7 +261,7 @@ public class SwitchValidateFsm
             }
 
         } catch (Exception e) {
-            sendException(e);
+            sendException(e.getMessage());
         }
     }
 
@@ -263,11 +302,15 @@ public class SwitchValidateFsm
         carrier.response(key, message);
     }
 
-    private void sendException(Exception e) {
-        ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, e.getMessage(),
+    private void sendException(String exceptionMessage, ErrorType errorType) {
+        ErrorData errorData = new ErrorData(errorType, exceptionMessage,
                 "Error in SwitchValidateFsm");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
         fire(ERROR, errorMessage);
+    }
+
+    private void sendException(String exceptionMessage) {
+        sendException(exceptionMessage, ErrorType.INTERNAL_ERROR);
     }
 
     public enum SwitchValidateState {

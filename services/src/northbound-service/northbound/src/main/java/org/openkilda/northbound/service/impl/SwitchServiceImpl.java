@@ -192,7 +192,7 @@ public class SwitchServiceImpl implements SwitchService {
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(floodlightTopic, request)
+        return messagingChannel.sendAndGet(switchManagerTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
                 .thenApply(SwitchRulesResponse::getRuleIds);
     }
@@ -205,7 +205,7 @@ public class SwitchServiceImpl implements SwitchService {
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(floodlightTopic, request)
+        return messagingChannel.sendAndGet(switchManagerTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
                 .thenApply(SwitchRulesResponse::getRuleIds);
     }
@@ -221,7 +221,7 @@ public class SwitchServiceImpl implements SwitchService {
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(floodlightTopic, request)
+        return messagingChannel.sendAndGet(switchManagerTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
                 .thenApply(SwitchRulesResponse::getRuleIds);
     }

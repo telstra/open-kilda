@@ -23,8 +23,10 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 
@@ -35,12 +37,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class FlowPathBuilder {
     private SwitchRepository switchRepository;
+    private SwitchPropertiesRepository switchPropertiesRepository;
 
     /**
      * Check whether the path and flow path represent the same.
@@ -104,6 +108,7 @@ public class FlowPathBuilder {
      */
     public FlowPath buildFlowPath(Flow flow, PathResources pathResources, Path path, Cookie cookie) {
         Map<SwitchId, Switch> switches = new HashMap<>();
+        Map<SwitchId, SwitchProperties> switchProperties = new HashMap<>();
         switches.put(flow.getSrcSwitch().getSwitchId(), switchRepository.reload(flow.getSrcSwitch()));
         switches.put(flow.getDestSwitch().getSwitchId(), switchRepository.reload(flow.getDestSwitch()));
 
@@ -117,7 +122,19 @@ public class FlowPathBuilder {
             throw new IllegalArgumentException(format("Path %s has different end-point %s than flow %s",
                     pathResources.getPathId(), path.getDestSwitchId(), flow.getFlowId()));
         }
+        Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
+                flow.getSrcSwitch().getSwitchId());
+        if (srcSwitchProperties.isPresent()) {
+            switchProperties.put(flow.getSrcSwitch().getSwitchId(), srcSwitchProperties.get());
+            flow.setSrcWithMultiTable(srcSwitchProperties.get().isMultiTable());
+        }
 
+        Optional<SwitchProperties> dstSwitchProperties = switchPropertiesRepository.findBySwitchId(
+                flow.getDestSwitch().getSwitchId());
+        if (dstSwitchProperties.isPresent()) {
+            switchProperties.put(flow.getDestSwitch().getSwitchId(), dstSwitchProperties.get());
+            flow.setDestWithMultiTable(dstSwitchProperties.get().isMultiTable());
+        }
         FlowPath flowPath = FlowPath.builder()
                 .flow(flow)
                 .pathId(pathResources.getPathId())
@@ -142,6 +159,15 @@ public class FlowPathBuilder {
                         switches.put(segment.getSrcSwitchId(), segmentSrcSwitch);
                     }
 
+                    SwitchProperties segmentSrcSwitchProperties = switchProperties.get(segment.getSrcSwitchId());
+                    if (segmentSrcSwitchProperties == null) {
+                        segmentSrcSwitchProperties = switchPropertiesRepository.findBySwitchId(segment.getSrcSwitchId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                        format("Path %s has end-point %s without switch properties",
+                                                pathResources.getPathId(), segment.getSrcSwitchId())));
+                        switchProperties.put(segment.getSrcSwitchId(), segmentSrcSwitchProperties);
+                    }
+
                     Switch segmentDestSwitch = switches.get(segment.getDestSwitchId());
                     if (segmentDestSwitch == null) {
                         segmentDestSwitch = switchRepository.findById(segment.getDestSwitchId())
@@ -151,10 +177,22 @@ public class FlowPathBuilder {
                         switches.put(segment.getDestSwitchId(), segmentDestSwitch);
                     }
 
+                    SwitchProperties segmentDstSwitchProperties = switchProperties.get(segment.getDestSwitchId());
+                    if (segmentDstSwitchProperties == null) {
+                        segmentDstSwitchProperties = switchPropertiesRepository
+                                .findBySwitchId(segment.getDestSwitchId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                        format("Path %s has end-point %s without switch properties",
+                                                pathResources.getPathId(), segment.getDestSwitchId())));
+                        switchProperties.put(segment.getDestSwitchId(), segmentDstSwitchProperties);
+                    }
+
                     return PathSegment.builder()
                             .srcSwitch(segmentSrcSwitch)
+                            .srcWithMultiTable(segmentSrcSwitchProperties.isMultiTable())
                             .srcPort(segment.getSrcPort())
                             .destSwitch(segmentDestSwitch)
+                            .destWithMultiTable(segmentDstSwitchProperties.isMultiTable())
                             .destPort(segment.getDestPort())
                             .latency(segment.getLatency())
                             .build();

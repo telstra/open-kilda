@@ -22,11 +22,13 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
-@Value
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchRulesDeleteRequest extends CommandData {
 
@@ -41,6 +43,15 @@ public class SwitchRulesDeleteRequest extends CommandData {
      */
     @JsonProperty("criteria")
     private DeleteRulesCriteria criteria;
+
+    @JsonProperty("multi_table")
+    private boolean multiTable = false;
+
+    @JsonProperty("isl_ports")
+    private List<Integer> islPorts = new ArrayList<>();
+
+    @JsonProperty("flow_ports")
+    private List<Integer> flowPorts = new ArrayList<>();
 
     /**
      * Constructs a delete switch rules request.
@@ -63,5 +74,17 @@ public class SwitchRulesDeleteRequest extends CommandData {
         this.deleteRulesAction = deleteRulesAction;
         // NB: criteria is only needed if deleteRulesAction is not provided
         this.criteria = deleteRulesAction == null ? Objects.requireNonNull(criteria) : criteria;
+    }
+
+    public boolean isMultiTable() {
+        return multiTable;
+    }
+
+    public List<Integer> getIslPorts() {
+        return islPorts;
+    }
+
+    public List<Integer> getFlowPorts() {
+        return flowPorts;
     }
 }
