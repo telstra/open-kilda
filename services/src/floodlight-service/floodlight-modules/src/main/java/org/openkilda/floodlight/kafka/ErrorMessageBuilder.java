@@ -27,6 +27,7 @@ final class ErrorMessageBuilder {
     private String description;
     private String correlationId;
     private String topic;
+    private String key;
 
     private ErrorMessageBuilder(ErrorType errorType) {
         this.errorType = errorType;
@@ -80,9 +81,22 @@ final class ErrorMessageBuilder {
         return this;
     }
 
+    /**
+     * Sets key and returns a reference to this Builder so that the methods can be chained together.
+     * @param key kafka key
+     * @return a reference to this Builder
+     */
+    ErrorMessageBuilder withKey(String key) {
+        this.key = key;
+        return this;
+    }
+
     void sendVia(IKafkaProducerService producerService) {
         ErrorData errorData = new ErrorData(errorType, message, description);
         ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(), correlationId);
-        producerService.sendMessageAndTrack(topic, correlationId, error);
+        if (key == null) {
+            key = correlationId;
+        }
+        producerService.sendMessageAndTrack(topic, key, error);
     }
 }

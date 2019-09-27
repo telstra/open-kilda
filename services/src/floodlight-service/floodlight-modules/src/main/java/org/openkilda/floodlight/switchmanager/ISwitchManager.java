@@ -17,6 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.FlowEncapsulationType;
@@ -139,7 +140,16 @@ public interface ISwitchManager extends IFloodlightService {
      * @param port isl port
      * @throws SwitchOperationException Switch not found
      */
-    void installEgressIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+    long installEgressIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Remove intermediate rule for isl on switch in table 0 to route egress in case of vxlan.
+     *
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    long removeEgressIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
      * Install intermediate rule for isl on switch in table 0 to route transit in case of vxlan.
@@ -148,7 +158,16 @@ public interface ISwitchManager extends IFloodlightService {
      * @param port isl port
      * @throws SwitchOperationException Switch not found
      */
-    void installTransitIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+    long installTransitIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Remove intermediate rule for isl on switch in table 0 to route transit in case of vxlan.
+     *
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    long removeTransitIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
      * Install intermediate rule for isl on switch in table 0 to route egress in case of vlan.
@@ -157,7 +176,17 @@ public interface ISwitchManager extends IFloodlightService {
      * @param port isl port
      * @throws SwitchOperationException Switch not found
      */
-    void installEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+    long installEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
+     *
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    long removeEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
 
     /**
      * Install intermediate rule for isl on switch in table 0 to route ingress traffic.
@@ -166,23 +195,61 @@ public interface ISwitchManager extends IFloodlightService {
      * @param port customer port
      * @throws SwitchOperationException Switch not found
      */
-    void installIntermediateIngressRule(final DatapathId dpid, int port) throws SwitchOperationException;
+    long installIntermediateIngressRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Remove intermediate rule for isl on switch in table 0 to route ingress traffic.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    long removeIntermediateIngressRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Build intermidiate flowmod for ingress rule.
+     *
+     * @param dpid switch id
+     * @param port port
+     * @return modification command
+     */
+    OFFlowMod buildIntermediateIngressRule(DatapathId dpid, int port) throws SwitchNotFoundException;
 
     /**
      * Install default pass through rule for pre ingress table.
      *
      * @param dpid datapathId of the switch
+     * @return cookie id
      * @throws SwitchOperationException Switch not found
      */
-    void installPreIngressTablePassThroughDefaultRule(final DatapathId dpid) throws SwitchOperationException;
+    Long installPreIngressTablePassThroughDefaultRule(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Install default pass through rule for pre egress table.
      *
      * @param dpid datapathId of the switch
+     * @return cookie id
      * @throws SwitchOperationException Switch not found
      */
-    void installEgressTablePassThroughDefaultRule(final DatapathId dpid) throws SwitchOperationException;
+    Long installEgressTablePassThroughDefaultRule(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install isl rules for switch endpoint.
+     *
+     * @param dpid datapathId of the switch
+     * @param port target port
+     * @throws SwitchOperationException Switch not found
+     */
+    List<Long> installMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
+
+    /**
+     * Remove isl rules for switch endpoint.
+     *
+     * @param dpid datapathId of the switch
+     * @param port target port
+     * @throws SwitchOperationException Switch not found
+     */
+    List<Long> removeMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
 
     /**
      * Installs custom drop rule .. ie cookie, priority, match
@@ -297,9 +364,20 @@ public interface ISwitchManager extends IFloodlightService {
      * Returns list of default flows that must be installed on a switch.
      *
      * @param dpid switch id.
+     * @param multiTable flag
      * @return list of default flows.
      */
-    List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid) throws SwitchOperationException;
+    List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable) throws SwitchOperationException;
+
+
+    /**
+     * Returns list of flows that must be installed for multitable pipeline per isl port.
+     *
+     * @param dpid switch id
+     * @param port isl port
+     * @return list of isl flows
+     */
+    List<OFFlowMod> getExpectedIslFlowsForPort(DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
      * Returns list of installed flows.
@@ -397,20 +475,26 @@ public interface ISwitchManager extends IFloodlightService {
      * Deletes the default rules (drop + verification) from the switch.
      *
      * @param dpid datapath ID of the switch
+     * @param islPorts ports with isl default rule
+     * @param flowPorts ports with flow default rule
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
-    List<Long> deleteDefaultRules(DatapathId dpid) throws SwitchOperationException;
+    List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
+                                  List<Integer> flowPorts) throws SwitchOperationException;
 
     /**
      * Delete rules that match the criteria.
      *
      * @param dpid datapath ID of the switch
      * @param criteria the list of delete criteria
+     * @param multiTable flag
+     * @param ruleType rule type
      * @return the list of removed cookies
      * @throws SwitchOperationException Switch not found
      */
-    List<Long> deleteRulesByCriteria(DatapathId dpid, DeleteRulesCriteria... criteria) throws SwitchOperationException;
+    List<Long> deleteRulesByCriteria(DatapathId dpid, boolean multiTable, RuleType ruleType,
+                                     DeleteRulesCriteria... criteria) throws SwitchOperationException;
 
     void safeModeTick();
 

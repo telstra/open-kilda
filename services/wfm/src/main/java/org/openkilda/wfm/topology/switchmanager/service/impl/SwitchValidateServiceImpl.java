@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
@@ -46,17 +47,20 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     ValidationService validationService;
     private SwitchManagerCarrier carrier;
     private StateMachineBuilder<SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, Object> builder;
+    private RepositoryFactory repositoryFactory;
 
     public SwitchValidateServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
         this.validationService = new ValidationServiceImpl(persistenceManager, carrier.getTopologyConfig());
+        this.repositoryFactory = persistenceManager.getRepositoryFactory();
     }
 
     @Override
     public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
         SwitchValidateFsm fsm =
-                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, validationService);
+                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, validationService,
+                        repositoryFactory);
 
         process(fsm);
     }

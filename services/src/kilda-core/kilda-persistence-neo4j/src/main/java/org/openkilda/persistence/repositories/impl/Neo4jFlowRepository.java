@@ -58,6 +58,8 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     static final String GROUP_ID_PROPERTY_NAME = "group_id";
     static final String SRC_PORT_PROPERTY_NAME = "src_port";
     static final String DST_PORT_PROPERTY_NAME = "dst_port";
+    static final String SRC_MULTI_TABLE_PROPERTY_NAME = "src_with_multi_table";
+    static final String DST_MULTI_TABLE_PROPERTY_NAME = "dst_with_multi_table";
     static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
     static final String STATUS_PROPERTY_NAME = "status";
 
@@ -140,6 +142,21 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         return Stream.concat(
                 loadAll(srcSwitchFilter.and(srcPortFilter)).stream(),
                 loadAll(dstSwitchFilter.and(dstPortFilter)).stream())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<Flow> findByEndpointWithMultiTableSupport(SwitchId switchId, int port) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port);
+        Filter srcMultiTableFilter = new Filter(SRC_MULTI_TABLE_PROPERTY_NAME, ComparisonOperator.IS_TRUE);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port);
+        Filter dstMultiTableFilter = new Filter(DST_MULTI_TABLE_PROPERTY_NAME, ComparisonOperator.IS_TRUE);
+
+        return Stream.concat(
+                loadAll(srcSwitchFilter.and(srcPortFilter).and(srcMultiTableFilter)).stream(),
+                loadAll(dstSwitchFilter.and(dstPortFilter).and(dstMultiTableFilter)).stream())
                 .collect(Collectors.toList());
     }
 

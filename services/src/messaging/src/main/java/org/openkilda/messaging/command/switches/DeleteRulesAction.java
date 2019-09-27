@@ -52,6 +52,21 @@ public enum DeleteRulesAction {
     // Remove unicast verification for VXLAN
     REMOVE_UNICAST_VXLAN,
 
+    // Remove  Pre Ingress Table pass through default
+    REMOVE_MULTITABLE_PRE_INGRESS_PASS_THROUGH,
+
+    // Remove  Ingress Drop rule
+    REMOVE_MULTITABLE_INGRESS_DROP,
+
+    // Remove  Post Ingress Drop rule
+    REMOVE_MULTITABLE_POST_INGRESS_DROP,
+
+    // Remove  Egress Table pass through default
+    REMOVE_MULTITABLE_EGRESS_PASS_THROUGH,
+
+    // Remove  Transit Table Drop rule
+    REMOVE_MULTITABLE_TRANSIT_DROP,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 

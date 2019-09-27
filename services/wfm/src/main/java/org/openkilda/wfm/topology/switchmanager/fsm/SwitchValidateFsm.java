@@ -43,7 +43,12 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
@@ -57,7 +62,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchValidateFsm
@@ -72,6 +80,9 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
+    private SwitchProperties switchProperties;
+    private List<Integer> islPorts;
+    private List<Integer> flowPorts;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
     private List<FlowEntry> expectedDefaultFlowEntries;
@@ -80,13 +91,28 @@ public class SwitchValidateFsm
     private ValidateMetersResult validateMetersResult;
 
     public SwitchValidateFsm(SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
-                             ValidationService validationService) {
+                             ValidationService validationService, RepositoryFactory repositoryFactory) {
         this.carrier = carrier;
         this.key = key;
         this.request = request;
         this.validationService = validationService;
         this.processMeters = request.isProcessMeters();
         this.switchId = request.getSwitchId();
+        this.flowPorts = new ArrayList<>();
+        Collection<FlowPath> flowPaths = repositoryFactory.createFlowPathRepository().findBySrcSwitch(switchId);
+        for (FlowPath flowPath : flowPaths) {
+            if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
+                flowPorts.add(flowPath.getFlow().getSrcPort());
+            } else if (!flowPath.isForward() && flowPath.getFlow().isDestWithMultiTable()) {
+                flowPorts.add(flowPath.getFlow().getDestPort());
+            }
+        }
+        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).get();
+        IslRepository islRepository = repositoryFactory.createIslRepository();
+        this.islPorts = islRepository.findBySrcSwitch(switchId).stream()
+                .map(isl -> isl.getSrcPort())
+                .collect(Collectors.toList());
     }
 
     /**
@@ -103,7 +129,8 @@ public class SwitchValidateFsm
                         SwitchManagerCarrier.class,
                         String.class,
                         SwitchValidateRequest.class,
-                        ValidationService.class);
+                        ValidationService.class,
+                        RepositoryFactory.class);
 
         builder.onEntry(INITIALIZED).callMethod("initialized");
         builder.externalTransition().from(INITIALIZED).to(RECEIVE_DATA).on(NEXT)
@@ -149,7 +176,10 @@ public class SwitchValidateFsm
         log.info("Key: {}, sending requests to get switch rules and meters", key);
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
-        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId));
+        boolean multiTable = switchProperties.isMultiTable();
+
+        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, islPorts,
+                flowPorts));
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
@@ -180,7 +210,7 @@ public class SwitchValidateFsm
     }
 
     protected void metersUnsupported(SwitchValidateState from, SwitchValidateState to,
-                                  SwitchValidateEvent event, Object context) {
+                                     SwitchValidateEvent event, Object context) {
         log.info("Key: {}, switch meters unsupported", key);
         this.presentMeters = emptyList();
         this.processMeters = false;
@@ -194,7 +224,7 @@ public class SwitchValidateFsm
     }
 
     protected void receivingDataFailedByTimeout(SwitchValidateState from, SwitchValidateState to,
-                                                 SwitchValidateEvent event, Object context) {
+                                                SwitchValidateEvent event, Object context) {
         ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Receiving data failed by timeout",
                 "Error when receive switch data");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);

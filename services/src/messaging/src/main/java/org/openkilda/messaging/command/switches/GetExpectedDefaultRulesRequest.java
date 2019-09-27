@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.List;
+
 @Value
 @Builder
 public class GetExpectedDefaultRulesRequest extends CommandData {
@@ -29,7 +31,22 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    @JsonProperty("multi_table")
+    private boolean multiTable;
+
+    @JsonProperty("isl_ports")
+    private  List<Integer> islPorts;
+
+    @JsonProperty("flow_ports")
+    private List<Integer> flowPorts;
+
+    public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId,
+                                          @JsonProperty("multi_table") boolean multiTable,
+                                          @JsonProperty("isl_ports") List<Integer> islPorts,
+                                          @JsonProperty("flow_ports") List<Integer> flowPorts) {
         this.switchId = switchId;
+        this.multiTable = multiTable;
+        this.islPorts = islPorts;
+        this.flowPorts = flowPorts;
     }
 }
