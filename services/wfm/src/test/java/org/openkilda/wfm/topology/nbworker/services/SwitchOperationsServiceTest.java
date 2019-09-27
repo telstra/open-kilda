@@ -39,9 +39,9 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-
+        ILinkOperationsServiceCarrier carrier = new ILinkOperationsServiceCarrier() {};
         switchOperationsService = new SwitchOperationsService(persistenceManager.getRepositoryFactory(),
-                persistenceManager.getTransactionManager());
+                persistenceManager.getTransactionManager(), carrier);
     }
 
     @Test

@@ -495,7 +495,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         def path = source ? flow.forwardPath : flow.reversePath
 
         def allRules = northbound.getSwitchRules(switchId).flowEntries
-        assert allRules.count { it.tableId == 1 } == getExpectedLldpRulesCount(flow, source)
+        def expected = getExpectedLldpRulesCount(flow, source) + 1
+        assert  expected == allRules.count { it.tableId == 3 }
+
 
         validateRules(allRules, path.cookie, path.lldpResources, lldpEnabled, false)
 
@@ -512,11 +514,11 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             assert ingressRules.size() == 0
         } else {
             assert ingressRules.size() == 1
-            assert ingressRules[0].instructions.goToTable == (lldpEnabled ? 1 : null)
-            assert ingressRules[0].tableId == 0
+            assert ingressRules[0].instructions.goToTable == (lldpEnabled ? 3 : null)
+            assert ingressRules[0].tableId == 2
         }
 
-        def lldpRules = allRules.findAll { it.tableId == 1 }
+        def lldpRules = allRules.findAll { it.tableId == 3 }
         if (lldpEnabled) {
             assert lldpRules.count { it.cookie == lldpResources.cookie.value } == 1
         } else {

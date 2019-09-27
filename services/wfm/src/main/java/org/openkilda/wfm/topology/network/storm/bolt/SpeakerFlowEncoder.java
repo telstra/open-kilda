@@ -13,13 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.services;
+package org.openkilda.wfm.topology.network.storm.bolt;
 
-import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.network.storm.ComponentId;
 
-public interface ILinkOperationsServiceCarrier {
-
-    default void islBfdFlagChanged(Isl isl) {}
-
-    default void notifyOfMultiTableUpdate(Isl isl) {}
+public class SpeakerFlowEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.SPEAKER_FLOW_ENCODER.toString();
 }

@@ -49,6 +49,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
+    private ILinkOperationsServiceCarrier carrier;
     private SwitchRepository switchRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
     private TransactionManager transactionManager;
@@ -58,7 +59,8 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
     private FlowPathRepository flowPathRepository;
 
     public SwitchOperationsService(RepositoryFactory repositoryFactory,
-                                   TransactionManager transactionManager) {
+                                   TransactionManager transactionManager,
+                                   ILinkOperationsServiceCarrier carrier) {
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.transactionManager = transactionManager;
         this.linkOperationsService
@@ -67,6 +69,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.carrier = carrier;
     }
 
     /**
@@ -260,14 +263,21 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             }
 
             SwitchProperties sf = foundSwitchProperties.get();
-
+            final boolean previousMultiTableFlag = sf.isMultiTable();
             sf.setMultiTable(update.isMultiTable());
             sf.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
-
             switchPropertiesRepository.createOrUpdate(sf);
+            if (previousMultiTableFlag != update.isMultiTable()) {
+                Collection<Isl> affectedIsls = islRepository.findBySrcSwitch(switchId);
+                for (Isl isl : affectedIsls) {
+                    carrier.notifyOfMultiTableUpdate(isl);
+                }
+            }
 
 
             return SwitchPropertiesMapper.INSTANCE.map(sf);
         });
     }
+
+
 }

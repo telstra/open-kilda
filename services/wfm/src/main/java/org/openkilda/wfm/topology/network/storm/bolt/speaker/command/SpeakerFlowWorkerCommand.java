@@ -13,34 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.model;
+package org.openkilda.wfm.topology.network.storm.bolt.speaker.command;
 
-import org.openkilda.model.IslDownReason;
+import org.openkilda.wfm.topology.network.storm.ICommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerFlowWorker;
 
-import lombok.Data;
 import lombok.Getter;
 
-@Data
-public class IslEndpointStatus {
+public abstract class SpeakerFlowWorkerCommand implements ICommand<SpeakerFlowWorker> {
     @Getter
-    private Status status;
+    private final String key;
 
-    @Getter
-    private IslDownReason downReason;
-
-    private boolean hasIslRules;
-
-    public IslEndpointStatus(Status status) {
-        this(status, null);
+    public SpeakerFlowWorkerCommand(String key) {
+        this.key = key;
     }
 
-    public IslEndpointStatus(Status status, IslDownReason downReason) {
-        this.status = status;
-        this.downReason = downReason;
 
-    }
-
-    public enum Status {
-        UP, DOWN, MOVED
-    }
+    public abstract void timeout(SpeakerFlowWorker handler);
 }

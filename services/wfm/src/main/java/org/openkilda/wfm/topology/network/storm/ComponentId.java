@@ -20,6 +20,7 @@ public enum ComponentId {
 
     INPUT_SPEAKER("input.speaker"),
     INPUT_SWMANAGER("input.swmanager"),
+    INPUT_SPEAKER_FLOW("input.speaker.flow"),
     NETWORK_HISTORY("network-history"),
 
     WATCH_LIST("watch-list-handler"),
@@ -28,6 +29,7 @@ public enum ComponentId {
 
     SPEAKER_ROUTER("speaker.router"),
     SWMANAGER_ROUTER("swmanager.router"),
+    SPEAKER_FLOW_ROUTER("speaker.flow.router"),
     SWITCH_HANDLER("switch-handler"),
     PORT_HANDLER("port-handler"),
     BFD_PORT_HANDLER("bfd-port-handler"),
@@ -37,7 +39,9 @@ public enum ComponentId {
     HISTORY_HANDLER("history-handler"),
 
     SPEAKER_ENCODER("speaker.encoder"),
+    SPEAKER_FLOW_ENCODER("speaker.flow.encoder"),
     SPEAKER_OUTPUT("speaker.output"),
+    SPEAKER_FLOW_OUTPUT("speaker.flow.output"),
 
     SWMANAGER_ENCODER("swmanager.encoder"),
     SWMANAGER_OUTPUT("swmanager.output"),

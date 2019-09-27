@@ -17,6 +17,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 
 class SwitchesSpec extends HealthCheckSpecification {
     def "System is able to return a list of all switches"() {

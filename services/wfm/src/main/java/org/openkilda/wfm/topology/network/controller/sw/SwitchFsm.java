@@ -29,6 +29,7 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.model.Endpoint;
@@ -71,7 +72,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final RetryPolicy transactionRetryPolicy;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
-
+    private final KildaConfigurationRepository kildaConfigurationRepository;
     private final SwitchId switchId;
 
     private final Set<SwitchFeature> features = new HashSet<>();
@@ -96,6 +97,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         this.switchId = switchId;
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+        this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
+                .createKildaConfigurationRepository();
 
         this.options = options;
     }
@@ -114,6 +117,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void syncEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         speakerData = context.getSpeakerData();
+        transactionManager.doInTransaction(transactionRetryPolicy, this::persistSwitchData);
         syncAttempts = options.getCountSynchronizationAttempts();
         performActionsDependingOnAttemptsCount(context);
     }
@@ -136,7 +140,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.ONLINE);
 
-        transactionManager.doInTransaction(transactionRetryPolicy, this::persistSwitchData);
         updatePorts(context, speakerData, true);
         speakerData = null;
     }
@@ -394,12 +397,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void persistSwitchProperties(Switch sw) {
+        boolean multiTable = kildaConfigurationRepository.get().isUseMultiTable()
+                && features.contains(SwitchFeature.MULTI_TABLE);
         Optional<SwitchProperties> switchPropertiesResult = switchPropertiesRepository.findBySwitchId(sw.getSwitchId());
         SwitchProperties switchProperties = switchPropertiesResult.orElseGet(() ->
                 SwitchProperties.builder()
                         .switchObj(sw)
                         .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                        .multiTable(false)
+                        .multiTable(multiTable)
                         .build());
         switchPropertiesRepository.createOrUpdate(switchProperties);
     }

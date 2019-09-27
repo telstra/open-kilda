@@ -49,11 +49,16 @@ public class KildaConfiguration {
     @Convert(graphPropertyType = String.class)
     private FlowEncapsulationType flowEncapsulationType;
 
+    @Property(name = "use_multi_table")
+    private boolean useMultiTable;
+
     /**
      * Constructor prevents initialization of entityId field.
      */
     @Builder(toBuilder = true)
-    KildaConfiguration(FlowEncapsulationType flowEncapsulationType) {
+    KildaConfiguration(FlowEncapsulationType flowEncapsulationType,
+                       boolean useMultiTable) {
         this.flowEncapsulationType = flowEncapsulationType;
+        this.useMultiTable = useMultiTable;
     }
 }

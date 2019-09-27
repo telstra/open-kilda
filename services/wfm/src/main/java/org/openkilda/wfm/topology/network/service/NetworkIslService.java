@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
+import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
@@ -119,6 +121,73 @@ public class NetworkIslService {
             bfdManager.disable(carrier);
         }
     }
+
+    /**
+     * Process installed isl rule notification.
+     * @param reference isl reference
+     * @param payload response payload
+     */
+    public void islDefaultRuleInstalled(IslReference reference, InstallIslDefaultRulesResult payload) {
+        log.debug("ISL service received isl rule installed for {} (on {})", reference, reference.getSource());
+        IslFsm islFsm = locateController(reference).fsm;
+        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
+                .installedRulesEndpoint(Endpoint.of(payload.getSrcSwitch(), payload.getSrcPort()))
+                .build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.ISL_RULE_INSTALLED, context);
+    }
+
+    /**
+     * Process removed isl rule notification.
+     * @param reference isl reference
+     * @param payload target endpoint
+     */
+    public void islDefaultRuleDeleted(IslReference reference, RemoveIslDefaultRulesResult payload) {
+        log.debug("ISL service received isl rule removed for {} (on {})", reference, reference.getSource());
+        IslController islController = controller.get(reference);
+        if (islController == null) {
+            log.info("Got clean up resources notification for not existing ISL {}", reference);
+            return;
+        }
+        IslFsm islFsm = islController.fsm;
+        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
+                .removedRulesEndpoint(Endpoint.of(payload.getSrcSwitch(), payload.getSrcPort()))
+                .build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.ISL_RULE_REMOVED, context);
+        if (islFsm.isTerminated()) {
+            controller.remove(reference);
+            islController.bfdManager.disable(carrier);
+        }
+    }
+
+
+    /**
+     * Process isl rule timeout notification.
+     * @param reference isl reference
+     * @param endpoint target endpoint
+     */
+    public void islDefaultTimeout(IslReference reference, Endpoint endpoint) {
+        log.debug("ISL service received isl rule timeout notification for {} (on {})",
+                reference, reference.getSource());
+        IslFsm islFsm = locateController(reference).fsm;
+        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
+                .build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.ISL_RULE_TIMEOUT, context);
+    }
+
+    /**
+     * Process isl rule timeout notification.
+     * @param reference isl reference
+     * @param endpoint target endpoint
+     */
+    public void islMultiTableModeUpdated(IslReference reference, Endpoint endpoint) {
+        log.debug("ISL service received multi table mode update {} (on {})",
+                reference, reference.getSource());
+        IslFsm islFsm = locateController(reference).fsm;
+        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
+                .build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MULTI_TABLE_MODE_UPDATED, context);
+    }
+
 
     /**
      * Remove isl by request.

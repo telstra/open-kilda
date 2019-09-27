@@ -20,6 +20,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.MultiTableModeUpdated;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
@@ -32,6 +34,7 @@ import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -39,8 +42,10 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
+import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -51,7 +56,7 @@ import org.apache.storm.tuple.Values;
 import java.util.Collections;
 import java.util.List;
 
-public class SwitchOperationsBolt extends PersistenceOperationsBolt {
+public class SwitchOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier {
     private transient SwitchOperationsService switchOperationsService;
     private transient FlowOperationsService flowOperationsService;
 
@@ -67,7 +72,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void init() {
         this.switchOperationsService =
-                new SwitchOperationsService(repositoryFactory, transactionManager);
+                new SwitchOperationsService(repositoryFactory, transactionManager, this);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
 
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
@@ -194,7 +199,19 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
         }
         return new SwitchPropertiesResponse(updated);
+
     }
+
+    @Override
+    public void notifyOfMultiTableUpdate(Isl isl) {
+        IslInfoData islInfoData = IslMapper.INSTANCE.map(isl);
+        MultiTableModeUpdated data = MultiTableModeUpdated.builder()
+                .source(islInfoData.getSource())
+                .destination(islInfoData.getDestination())
+                .build();
+        getOutput().emit(StreamType.DISCO.toString(), getCurrentTuple(), new Values(data, getCorrelationId()));
+    }
+
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

@@ -41,6 +41,7 @@ import org.openkilda.messaging.model.SpeakerSwitchPortView.State;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Isl;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -49,6 +50,7 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -102,6 +104,9 @@ public class NetworkSwitchServiceTest {
 
     @Mock
     private SwitchRepository switchRepository;
+
+    @Mock
+    private KildaConfigurationRepository kildaConfigurationRepository;
 
     @Mock
     private SwitchPropertiesRepository switchPropertiesRepository;
@@ -160,9 +165,12 @@ public class NetworkSwitchServiceTest {
 
         reset(switchRepository, switchPropertiesRepository);
 
+        when(kildaConfigurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
+
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
+        when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
     }
 
     @Test

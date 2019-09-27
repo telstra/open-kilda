@@ -50,6 +50,14 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
+    default String getFlowTopic() {
+        return getKafkaTopics().getFlowTopic();
+    }
+
+    default String getSpeakerFlowTopic() {
+        return getKafkaTopics().getSpeakerFlowTopic();
+    }
+
     default String getKafkaSpeakerDiscoTopic() {
         return getKafkaTopics().getSpeakerDiscoTopic();
     }
@@ -101,6 +109,12 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     // then synchronization will not be performed when the switch is activated.
     @Default("2")
     int getCountSynchronizationAttempts();
+
+    @Key("network.count.isl.rules.attempts")
+    // If the value of this parameter is 0 or less than zero,
+    // then synchronization will not be performed when the switch is activated.
+    @Default("2")
+    int getRulesSynchronizationAttempts();
 
     @Key("port.antiflap.stats.dumping.interval.seconds")
     @Default("60")

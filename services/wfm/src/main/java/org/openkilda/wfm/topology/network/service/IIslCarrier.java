@@ -28,4 +28,8 @@ public interface IIslCarrier {
     void triggerReroute(RerouteFlows trigger);
 
     void islStatusUpdateNotification(IslStatusUpdateNotification trigger);
+
+    void islDefaultRulesInstall(Endpoint source, Endpoint destination);
+
+    void islDefaultRulesDelete(Endpoint source, Endpoint destination);
 }
