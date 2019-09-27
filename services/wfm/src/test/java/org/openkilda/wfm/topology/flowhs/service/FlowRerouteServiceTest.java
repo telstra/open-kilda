@@ -30,6 +30,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
+import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.floodlight.flow.request.InstallFlowRule;
@@ -50,6 +51,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
@@ -59,6 +61,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
@@ -110,6 +113,15 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 Optional.of(Switch.builder().switchId(new SwitchId(1)).features(Sets.newHashSet(SwitchFeature.METERS))
                         .build()));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+
+        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
+        when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
+                Optional.of(SwitchProperties.builder()
+                        .multiTable(false)
+                        .supportedTransitEncapsulation(DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                        .build()));
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
+
 
         FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);

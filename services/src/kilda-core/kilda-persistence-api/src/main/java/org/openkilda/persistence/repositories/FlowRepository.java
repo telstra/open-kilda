@@ -47,6 +47,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findByEndpoint(SwitchId switchId, int port);
 
+    Collection<Flow> findByEndpointWithMultiTableSupport(SwitchId switchId, int port);
+
     Collection<Flow> findByEndpointSwitch(SwitchId switchId);
 
     Collection<Flow> findDownFlows();

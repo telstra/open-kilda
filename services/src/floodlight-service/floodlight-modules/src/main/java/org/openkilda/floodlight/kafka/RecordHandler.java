@@ -18,10 +18,18 @@ package org.openkilda.floodlight.kafka;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.openkilda.floodlight.kafka.ErrorMessageBuilder.anError;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.TRANSIT_TABLE_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
@@ -92,6 +100,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
+import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
@@ -111,6 +121,8 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
+import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
@@ -240,6 +252,10 @@ class RecordHandler implements Runnable {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
             doAliveRequest(message);
+        } else if (data instanceof InstallIslDefaultRulesCommand) {
+            doInstallIslDefaultRule(message);
+        } else if (data instanceof RemoveIslDefaultRulesCommand) {
+            doRemoveIslDefaultRule(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
         }
@@ -260,6 +276,38 @@ class RecordHandler implements Runnable {
         getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(new AliveResponse(context.getRegion(), totalFailedAmount), System.currentTimeMillis(),
                         message.getCorrelationId(), context.getRegion()));
+    }
+
+    private void doInstallIslDefaultRule(CommandMessage message) {
+        InstallIslDefaultRulesCommand toSetup = (InstallIslDefaultRulesCommand) message.getData();
+        InstallIslDefaultRulesResult result = new InstallIslDefaultRulesResult(toSetup.getSrcSwitch(),
+                toSetup.getSrcPort(), toSetup.getDstSwitch(), toSetup.getDstPort(), true);
+        try {
+            context.getSwitchManager().installMultitableEndpointIslRules(DatapathId.of(toSetup.getSrcSwitch().toLong()),
+                    toSetup.getSrcPort());
+        } catch (SwitchOperationException e) {
+            logger.error("Failed to remove isl rules for switch: '{}'", toSetup.getSrcSwitch(), e);
+            result.setSuccess(false);
+        }
+
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaFlowTopic(), record.key(), new InfoMessage(result,
+                System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
+    }
+
+    private void doRemoveIslDefaultRule(CommandMessage message) {
+        RemoveIslDefaultRulesCommand toRemove = (RemoveIslDefaultRulesCommand) message.getData();
+        RemoveIslDefaultRulesResult result = new RemoveIslDefaultRulesResult(toRemove.getSrcSwitch(),
+                toRemove.getSrcPort(), toRemove.getDstSwitch(), toRemove.getDstPort(), true);
+        try {
+            context.getSwitchManager().removeMultitableEndpointIslRules(DatapathId.of(toRemove.getSrcSwitch().toLong()),
+                    toRemove.getSrcPort());
+        } catch (SwitchOperationException e) {
+            logger.error("Failed to remove isl rules for switch: '{}'", toRemove.getSrcSwitch(), e);
+            result.setSuccess(false);
+        }
+
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaFlowTopic(), record.key(), new InfoMessage(result,
+                System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
     }
 
     private void doDiscoverIslCommand(CommandMessage message) {
@@ -318,9 +366,12 @@ class RecordHandler implements Runnable {
             logger.debug("Installing unmetered ingress flow. Switch: {}, cookie: {}",
                     command.getSwitchId(), command.getCookie());
         }
-
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        if (command.isMultiTable()) {
+            context.getSwitchManager().installIntermediateIngressRule(dpid, command.getInputPort());
+        }
         context.getSwitchManager().installIngressFlow(
-                DatapathId.of(command.getSwitchId().toLong()),
+                dpid,
                 DatapathId.of(command.getEgressSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
@@ -476,6 +527,11 @@ class RecordHandler implements Runnable {
         } else {
             logger.debug("Installing unmetered one switch flow. Switch: {}, cookie: {}",
                     command.getSwitchId(), command.getCookie());
+
+        }
+        if (command.isMultiTable()) {
+            context.getSwitchManager().installIntermediateIngressRule(DatapathId.of(command.getSwitchId().toLong()),
+                    command.getInputPort());
         }
 
         OutputVlanType directOutputVlanType = command.getOutputVlanType();
@@ -572,7 +628,8 @@ class RecordHandler implements Runnable {
         SwitchId switchId = request.getSwitchId();
         DatapathId dpid = DatapathId.of(switchId.toLong());
         try {
-            RemoveFlow command = new RemoveFlow(null, "REMOVE_DEFAULT_FLOW", cookie, switchId, null, null, false);
+            RemoveFlow command = new RemoveFlow(null, "REMOVE_DEFAULT_FLOW", cookie, switchId,
+                    null, null, false, null, false);
             Set<Long> removedFlows = new HashSet<>(processDeleteFlow(command, dpid));
 
             for (Long removedFlow : removedFlows) {
@@ -613,6 +670,30 @@ class RecordHandler implements Runnable {
             return switchManager.installRoundTripLatencyFlow(dpid);
         } else if (cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) {
             return switchManager.installUnicastVerificationRuleVxlan(dpid);
+        } else if (cookie == MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE) {
+            return switchManager.installPreIngressTablePassThroughDefaultRule(dpid);
+        } else if (cookie == MULTITABLE_INGRESS_DROP_COOKIE) {
+            return switchManager.installDropFlowForTable(dpid, INGRESS_TABLE_ID, MULTITABLE_INGRESS_DROP_COOKIE);
+        } else if (cookie == MULTITABLE_POST_INGRESS_DROP_COOKIE) {
+            return switchManager.installDropFlowForTable(dpid, POST_INGRESS_TABLE_ID,
+                    MULTITABLE_POST_INGRESS_DROP_COOKIE);
+        } else if (cookie == MULTITABLE_EGRESS_PASS_THROUGH_COOKIE) {
+            return switchManager.installEgressTablePassThroughDefaultRule(dpid);
+        } else if (cookie == MULTITABLE_TRANSIT_DROP_COOKIE) {
+            return switchManager.installDropFlowForTable(dpid, TRANSIT_TABLE_ID,
+                    MULTITABLE_TRANSIT_DROP_COOKIE);
+        } else if (Cookie.isIngressRulePassThrough(cookie)) {
+            long port = Cookie.getValueFromIntermediateCookie(cookie);
+            return switchManager.installIntermediateIngressRule(dpid, (int) port);
+        } else if (Cookie.isIslVlanEgress(cookie)) {
+            long port = Cookie.getValueFromIntermediateCookie(cookie);
+            return switchManager.installEgressIslVlanRule(dpid, (int) port);
+        } else if (Cookie.isIslVxlanTransit(cookie)) {
+            long port = Cookie.getValueFromIntermediateCookie(cookie);
+            return switchManager.installTransitIslVxlanRule(dpid, (int) port);
+        } else if (Cookie.isIslVxlanEgress(cookie)) {
+            long port = Cookie.getValueFromIntermediateCookie(cookie);
+            return switchManager.installEgressIslVxlanRule(dpid, (int) port);
         } else {
             logger.warn("Skipping the installation of unexpected default switch rule {} for switch {}",
                     Long.toHexString(cookie), switchId);
@@ -624,9 +705,13 @@ class RecordHandler implements Runnable {
         ISwitchManager switchManager = context.getSwitchManager();
         logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
 
+        if (command.isCleanUpIngress()) {
+            context.getSwitchManager().removeIntermediateIngressRule(dpid, command.getCriteria().getInPort());
+        }
         DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
                 .orElseGet(() -> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
-        List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, command.isMultiTable(),
+                command.getFlowType(), criteria);
         if (cookiesOfRemovedRules.isEmpty()) {
             logger.warn("No rules were removed by criteria {} for flow {} from switch {}",
                     criteria, command.getId(), dpid);
@@ -663,7 +748,7 @@ class RecordHandler implements Runnable {
                 request.getSwitchId(), request.getInstallRulesAction());
 
         final IKafkaProducerService producerService = getKafkaProducer();
-        final String replyToTopic = context.getKafkaNorthboundTopic();
+        final String replyToTopic = context.getKafkaSwitchManagerTopic();
 
         DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
         ISwitchManager switchManager = context.getSwitchManager();
@@ -694,6 +779,21 @@ class RecordHandler implements Runnable {
             } else if (installAction == InstallRulesAction.INSTALL_UNICAST_VXLAN) {
                 switchManager.installUnicastVerificationRuleVxlan(dpid);
                 installedRules.add(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH) {
+                switchManager.installPreIngressTablePassThroughDefaultRule(dpid);
+                installedRules.add(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_INGRESS_DROP) {
+                switchManager.installDropFlowForTable(dpid, INGRESS_TABLE_ID, MULTITABLE_INGRESS_DROP_COOKIE);
+                installedRules.add(MULTITABLE_INGRESS_DROP_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_POST_INGRESS_DROP) {
+                switchManager.installDropFlowForTable(dpid, POST_INGRESS_TABLE_ID, MULTITABLE_POST_INGRESS_DROP_COOKIE);
+                installedRules.add(MULTITABLE_POST_INGRESS_DROP_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_EGRESS_PASS_THROUGH) {
+                switchManager.installEgressTablePassThroughDefaultRule(dpid);
+                installedRules.add(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_TRANSIT_DROP) {
+                switchManager.installDropFlowForTable(dpid, TRANSIT_TABLE_ID, MULTITABLE_TRANSIT_DROP_COOKIE);
+                installedRules.add(MULTITABLE_TRANSIT_DROP_COOKIE);
             } else {
                 switchManager.installDefaultRules(dpid);
                 installedRules.addAll(asList(
@@ -705,12 +805,30 @@ class RecordHandler implements Runnable {
                         ROUND_TRIP_LATENCY_RULE_COOKIE,
                         VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
                 ));
+                if (request.isMultiTable()) {
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_INGRESS_DROP_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_POST_INGRESS_DROP_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_EGRESS_PASS_THROUGH_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_TRANSIT_DROP_COOKIE));
+                    for (int port : request.getIslPorts()) {
+                        installedRules.addAll(switchManager.installMultitableEndpointIslRules(dpid, port));
+                    }
+                    for (int port : request.getFlowPorts()) {
+                        installedRules.add(switchManager.installIntermediateIngressRule(dpid, port));
+                    }
+                }
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(installedRules);
             InfoMessage infoMessage = new InfoMessage(response,
                     System.currentTimeMillis(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, infoMessage);
+            producerService.sendMessageAndTrack(replyToTopic, record.key(), infoMessage);
 
         } catch (SwitchOperationException e) {
             logger.error("Failed to install rules on switch '{}'", request.getSwitchId(), e);
@@ -719,6 +837,7 @@ class RecordHandler implements Runnable {
                     .withDescription(request.getSwitchId().toString())
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
+                    .withKey(record.key())
                     .sendVia(producerService);
         }
     }
@@ -729,7 +848,7 @@ class RecordHandler implements Runnable {
                 request.getDeleteRulesAction(), request.getCriteria());
 
         final IKafkaProducerService producerService = getKafkaProducer();
-        final String replyToTopic = context.getKafkaNorthboundTopic();
+        final String replyToTopic = context.getKafkaSwitchManagerTopic();
 
         DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
         DeleteRulesAction deleteAction = request.getDeleteRulesAction();
@@ -770,6 +889,26 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).build();
                         break;
+                    case REMOVE_MULTITABLE_PRE_INGRESS_PASS_THROUGH:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE).build();
+                        break;
+                    case REMOVE_MULTITABLE_INGRESS_DROP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(MULTITABLE_INGRESS_DROP_COOKIE).build();
+                        break;
+                    case REMOVE_MULTITABLE_POST_INGRESS_DROP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE).build();
+                        break;
+                    case REMOVE_MULTITABLE_EGRESS_PASS_THROUGH:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE).build();
+                        break;
+                    case REMOVE_MULTITABLE_TRANSIT_DROP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(MULTITABLE_TRANSIT_DROP_COOKIE).build();
+                        break;
                     default:
                         logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
                 }
@@ -781,24 +920,44 @@ class RecordHandler implements Runnable {
 
                 // The cases when we delete the default rules.
                 if (deleteAction.defaultRulesToBeRemoved()) {
-                    removedRules.addAll(switchManager.deleteDefaultRules(dpid));
+                    removedRules.addAll(switchManager.deleteDefaultRules(dpid, request.getIslPorts(),
+                            request.getFlowPorts()));
                 }
             }
 
             // The case when we either delete by criteria or a specific default rule.
             if (criteria != null) {
-                removedRules.addAll(switchManager.deleteRulesByCriteria(dpid, criteria));
+                removedRules.addAll(switchManager.deleteRulesByCriteria(dpid, false, null, criteria));
             }
 
             // The cases when we (re)install the default rules.
             if (deleteAction != null && deleteAction.defaultRulesToBeInstalled()) {
                 switchManager.installDefaultRules(dpid);
+                if (request.isMultiTable()) {
+                    processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_INGRESS_DROP_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_POST_INGRESS_DROP_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            MULTITABLE_TRANSIT_DROP_COOKIE);
+                    for (int port : request.getIslPorts()) {
+                        switchManager.installMultitableEndpointIslRules(dpid, port);
+                    }
+
+                    for (int port : request.getFlowPorts()) {
+                        switchManager.installIntermediateIngressRule(dpid, port);
+                    }
+                }
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(removedRules);
             InfoMessage infoMessage = new InfoMessage(response,
                     System.currentTimeMillis(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, infoMessage);
+            producerService.sendMessageAndTrack(replyToTopic, record.key(), infoMessage);
 
         } catch (SwitchNotFoundException e) {
             logger.error("Deleting switch rules was unsuccessful. Switch '{}' not found", request.getSwitchId());
@@ -807,6 +966,7 @@ class RecordHandler implements Runnable {
                     .withDescription(request.getSwitchId().toString())
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
+                    .withKey(record.key())
                     .sendVia(producerService);
         } catch (SwitchOperationException e) {
             logger.error("Failed to delete switch '{}' rules.", request.getSwitchId(), e);
@@ -815,6 +975,7 @@ class RecordHandler implements Runnable {
                     .withDescription(request.getSwitchId().toString())
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
+                    .withKey(record.key())
                     .sendVia(producerService);
         }
     }
@@ -842,13 +1003,26 @@ class RecordHandler implements Runnable {
         IKafkaProducerService producerService = getKafkaProducer();
         String replyToTopic = context.getKafkaSwitchManagerTopic();
 
-        SwitchId switchId = ((GetExpectedDefaultRulesRequest) message.getData()).getSwitchId();
+        GetExpectedDefaultRulesRequest request = (GetExpectedDefaultRulesRequest) message.getData();
+        SwitchId switchId = request.getSwitchId();
+        boolean multiTable = request.isMultiTable();
+        List<Integer> islPorts = request.getIslPorts();
+        List<Integer> flowPorts = request.getFlowPorts();
 
         try {
             logger.debug("Loading expected default rules for switch {}", switchId);
-
+            DatapathId dpid = DatapathId.of(switchId.toLong());
             List<OFFlowMod> defaultRules =
-                    context.getSwitchManager().getExpectedDefaultFlows(DatapathId.of(switchId.toLong()));
+                    context.getSwitchManager().getExpectedDefaultFlows(dpid, multiTable);
+            if (multiTable) {
+                for (int port : islPorts) {
+                    List<OFFlowMod> islFlows = context.getSwitchManager().getExpectedIslFlowsForPort(dpid, port);
+                    defaultRules.addAll(islFlows);
+                }
+                for (int port : flowPorts) {
+                    defaultRules.add(context.getSwitchManager().buildIntermediateIngressRule(dpid, port));
+                }
+            }
             List<FlowEntry> flows = defaultRules.stream()
                     .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
                     .collect(Collectors.toList());
@@ -1302,7 +1476,7 @@ class RecordHandler implements Runnable {
             }
 
             CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId(),
-                                                               record.key());
+                    record.key());
             if (!dispatch(commandContext, message)) {
                 doControllerMsg(message);
             }

@@ -39,6 +39,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
@@ -85,6 +86,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private final IslRepository islRepository;
     private final FlowPathRepository flowPathRepository;
     private final FlowPathBuilder flowPathBuilder;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
 
     public ResourcesAllocationAction(PathComputer pathComputer, PersistenceManager persistenceManager,
                                      FlowResourcesManager resourcesManager) {
@@ -93,10 +95,11 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         this.resourcesManager = resourcesManager;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
 
-        this.flowPathBuilder = new FlowPathBuilder(switchRepository);
+        this.flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
     }
 
     @Override

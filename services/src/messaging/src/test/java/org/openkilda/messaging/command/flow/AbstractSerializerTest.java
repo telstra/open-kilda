@@ -539,7 +539,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void removeCommandTest() throws IOException, ClassNotFoundException {
         RemoveFlow data = new RemoveFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, METER_ID,
-                DeleteRulesCriteria.builder().cookie(COOKIE).build(), false);
+                DeleteRulesCriteria.builder().cookie(COOKIE).build(), false, null, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

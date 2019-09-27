@@ -26,6 +26,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -36,6 +38,15 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     @JsonProperty("install_rules")
     private InstallRulesAction installRulesAction;
+
+    @JsonProperty("multi_table")
+    private boolean multiTable = false;
+
+    @JsonProperty("isl_ports")
+    private List<Integer> islPorts = new ArrayList<>();
+
+    @JsonProperty("flow_ports")
+    private List<Integer> flowPorts = new ArrayList<>();
 
     /**
      * Constructs an install switch rules request.
@@ -62,6 +73,30 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     public InstallRulesAction getInstallRulesAction() {
         return installRulesAction;
+    }
+
+    public boolean isMultiTable() {
+        return multiTable;
+    }
+
+    public List<Integer> getIslPorts() {
+        return islPorts;
+    }
+
+    public List<Integer> getFlowPorts() {
+        return flowPorts;
+    }
+
+    public void setMultiTable(boolean multiTable) {
+        this.multiTable = multiTable;
+    }
+
+    public void setIslPorts(List<Integer> islPorts) {
+        this.islPorts = islPorts;
+    }
+
+    public void setFlowPorts(List<Integer> flowPorts) {
+        this.flowPorts = flowPorts;
     }
 
     @Override

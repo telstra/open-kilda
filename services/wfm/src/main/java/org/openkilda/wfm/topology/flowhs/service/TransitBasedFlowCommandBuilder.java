@@ -24,6 +24,7 @@ import org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.command.flow.FlowType;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -91,16 +92,20 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
         InstallIngressRule reverseRule;
         if (flow.isOneSwitchFlow()) {
             forwardRule = buildInstallOneSwitchRule(context, forwardPath,
-                    flow.getSrcPort(), flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan());
+                    flow.getSrcPort(), flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan(),
+                    flow.isSrcWithMultiTable());
             reverseRule = buildInstallOneSwitchRule(context, reversePath,
-                    flow.getDestPort(), flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan());
+                    flow.getDestPort(), flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan(),
+                    flow.isDestWithMultiTable());
         } else {
             forwardRule = buildInstallIngressRule(context, forwardPath,
                     flow.getSrcPort(), flow.getSrcVlan(), flow.getDestVlan(),
-                    getEncapsulation(forwardPath.getPathId(), reversePath.getPathId()));
+                    getEncapsulation(forwardPath.getPathId(), reversePath.getPathId()),
+                    flow.isSrcWithMultiTable());
             reverseRule = buildInstallIngressRule(context, reversePath,
                     flow.getDestPort(), flow.getDestVlan(), flow.getSrcVlan(),
-                    getEncapsulation(reversePath.getPathId(), forwardPath.getPathId()));
+                    getEncapsulation(reversePath.getPathId(), forwardPath.getPathId()),
+                    flow.isDestWithMultiTable());
         }
         return ImmutableList.of(forwardRule, reverseRule);
     }
@@ -145,7 +150,8 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
     private InstallMultiSwitchIngressRule buildInstallIngressRule(CommandContext context, FlowPath flowPath,
                                                                   int inputPort, int inputVlanId, int outputVlanId,
-                                                                  EncapsulationResources encapsulationResources) {
+                                                                  EncapsulationResources encapsulationResources,
+                                                                  boolean multiTable) {
         PathSegment ingressSegment = flowPath.getSegments().stream()
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
                 .findFirst()
@@ -169,12 +175,14 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .transitEncapsulationId(encapsulationResources.getTransitEncapsulationId())
                 .transitEncapsulationType(encapsulationResources.getEncapsulationType())
                 .egressSwitchId(flowPath.getDestSwitch().getSwitchId())
+                .multiTable(multiTable)
                 .build();
     }
 
     private InstallSingleSwitchIngressRule buildInstallOneSwitchRule(CommandContext context, FlowPath flowPath,
                                                                      int inputPort, int outputPort,
-                                                                     int inputVlanId, int outputVlanId) {
+                                                                     int inputVlanId, int outputVlanId,
+                                                                     boolean multiTable) {
         String commandId = commandIdGenerator.generate().toString();
         return InstallSingleSwitchIngressRule.builder()
                 .messageContext(new MessageContext(commandId, context.getCorrelationId()))
@@ -189,6 +197,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .outputVlanType(getOutputVlanType(inputVlanId, outputVlanId))
                 .inputVlanId(inputVlanId)
                 .outputVlanId(outputVlanId)
+                .multiTable(multiTable)
                 .build();
     }
 
@@ -208,7 +217,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
             InstallTransitRule transitRule = buildInstallTransitRule(context, flowPath,
                     income.getDestSwitch().getSwitchId(), income.getDestPort(), outcome.getSrcPort(),
-                    encapsulationResources);
+                    encapsulationResources, income.isDestWithMultiTable());
             commands.add(transitRule);
         }
 
@@ -220,7 +229,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
         InstallEgressRule egressRule = buildInstallEgressRule(context, flowPath,
                 egressSegment.getDestPort(), outputPort, srcVlan, destVlan,
-                encapsulationResources);
+                encapsulationResources, egressSegment.isDestWithMultiTable());
         commands.add(egressRule);
 
         return commands;
@@ -228,19 +237,21 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
     private InstallTransitRule buildInstallTransitRule(CommandContext context, FlowPath flowPath,
                                                        SwitchId switchId, int inputPort, int outputPort,
-                                                       EncapsulationResources encapsulationResources) {
+                                                       EncapsulationResources encapsulationResources,
+                                                       boolean multiTable) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
         return new InstallTransitRule(messageContext, commandId, flowPath.getFlow().getFlowId(), flowPath.getCookie(),
                 switchId, inputPort, outputPort,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
-                false);
+                multiTable);
     }
 
     private InstallEgressRule buildInstallEgressRule(CommandContext context, FlowPath flowPath,
                                                      int inputPort, int outputPort, int srcVlan, int destVlan,
-                                                     EncapsulationResources encapsulationResources) {
+                                                     EncapsulationResources encapsulationResources,
+                                                     boolean multiTable) {
         UUID commandId = commandIdGenerator.generate();
         return InstallEgressRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -254,6 +265,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .outputPort(outputPort)
                 .outputVlanId(destVlan)
                 .outputVlanType(getOutputVlanType(srcVlan, destVlan))
+                .multiTable(multiTable)
                 .build();
     }
 
@@ -273,6 +285,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .cookie(flowPath.getCookie())
                 .meterId(flowPath.getMeterId())
                 .criteria(ingressCriteria)
+                .flowType(FlowType.INGRESS)
                 .build();
     }
 
@@ -323,6 +336,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .cookie(flowPath.getCookie())
                 .switchId(switchId)
                 .criteria(criteria)
+                .flowType(FlowType.TRANSIT)
                 .build();
     }
 
@@ -339,6 +353,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .cookie(flowPath.getCookie())
                 .criteria(criteria)
                 .switchId(flowPath.getDestSwitch().getSwitchId())
+                .flowType(FlowType.EGRESS)
                 .build();
     }
 

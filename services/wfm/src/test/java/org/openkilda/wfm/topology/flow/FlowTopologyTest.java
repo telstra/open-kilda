@@ -866,7 +866,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private RemoveFlow removeFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Remove flow");
         RemoveFlow commandData = new RemoveFlow(TRANSACTION_ID, flowId, COOKIE, new SwitchId("ff:04"), 0L,
-                DeleteRulesCriteria.builder().cookie(COOKIE).build(), false);
+                DeleteRulesCriteria.builder().cookie(COOKIE).build(), false, null, false);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
         //sendTopologyEngineMessage(commandMessage);
         sendFlowMessage(commandMessage);

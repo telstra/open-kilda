@@ -516,7 +516,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendRemoveFlowCommand(UnidirectionalFlow flow) throws IOException {
         RemoveFlow removeFlow = new RemoveFlow(TRANSACTION_ID, flow.getFlowId(), flow.getCookie(),
-                flow.getSrcSwitch().getSwitchId(), flow.getMeterId(), null, false);
+                flow.getSrcSwitch().getSwitchId(), flow.getMeterId(), null, false, null, false);
         sendFlowCommand(removeFlow);
     }
 

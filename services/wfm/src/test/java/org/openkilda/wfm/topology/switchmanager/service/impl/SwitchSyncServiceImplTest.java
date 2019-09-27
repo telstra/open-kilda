@@ -268,7 +268,7 @@ public class SwitchSyncServiceImplTest {
                 new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
 
         RemoveFlow removeFlow = new RemoveFlow(UUID.randomUUID(),
-                FLOW_ID, EXCESS_COOKIE, SWITCH_ID, EXCESS_COOKIE, null, false);
+                FLOW_ID, EXCESS_COOKIE, SWITCH_ID, EXCESS_COOKIE, null, false, null, false);
         when(commandBuilder.buildCommandsToRemoveExcessRules(eq(SWITCH_ID), any(), any()))
                 .thenReturn(singletonList(removeFlow));
 

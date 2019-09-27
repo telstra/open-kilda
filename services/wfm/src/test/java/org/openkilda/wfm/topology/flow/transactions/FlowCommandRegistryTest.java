@@ -54,7 +54,8 @@ public class FlowCommandRegistryTest {
     private static final BaseInstallFlow FLOW_COMMAND_1 =
             new BaseInstallFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, 1, 1, false);
     private static final RemoveFlow FLOW_COMMAND_2 =
-            new RemoveFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, null, null, false);
+            new RemoveFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, null, null, false, null,
+                    false);
     private static final CommandData NON_FLOW_COMMAND =
             new DeallocateFlowResourcesRequest(TEST_FLOW, 0, 1L, new PathId(UUID.randomUUID().toString()),
                     FlowEncapsulationType.TRANSIT_VLAN);

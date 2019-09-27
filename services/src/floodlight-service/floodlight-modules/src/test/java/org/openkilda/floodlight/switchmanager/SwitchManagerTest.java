@@ -51,6 +51,11 @@ import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.of
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
@@ -836,10 +841,13 @@ public class SwitchManagerTest {
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
-                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
+                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
+                MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
+                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
+                MULTITABLE_TRANSIT_DROP_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(7);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(12);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -849,11 +857,12 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch, switchDescription);
 
         // when
-        List<Long> deletedRules = switchManager.deleteDefaultRules(dpid);
+        List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
+                Collections.emptyList());
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(7, actual.size());
+        assertEquals(12, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -862,9 +871,18 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_INGRESS_DROP_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_POST_INGRESS_DROP_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_TRANSIT_DROP_COOKIE)))));
+
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
-                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE));
+                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
+                MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
+                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
+                MULTITABLE_TRANSIT_DROP_COOKIE));
     }
 
     @Test
@@ -873,14 +891,18 @@ public class SwitchManagerTest {
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andReturn(dpid);
+        expect(iofSwitch.getId()).andStubReturn(dpid);
+
         expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
+                MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
+                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
+                MULTITABLE_TRANSIT_DROP_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(11);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(16);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -890,17 +912,23 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch, switchDescription);
 
         // when
-        List<Long> deletedRules = switchManager.deleteDefaultRules(dpid);
+        List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
+                Collections.emptyList());
 
         // then
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE));
+                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
+                MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
+                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
+                MULTITABLE_TRANSIT_DROP_COOKIE
+
+                ));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(11, actual.size());
+        assertEquals(16, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 7);
+        List<OFFlowMod> rulesMod = actual.subList(0, 12);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -909,6 +937,11 @@ public class SwitchManagerTest {
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_INGRESS_DROP_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_POST_INGRESS_DROP_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_TRANSIT_DROP_COOKIE)))));
 
 
         // verify meters deletion
@@ -944,7 +977,7 @@ public class SwitchManagerTest {
 
         // when
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().cookie(cookie).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -982,7 +1015,7 @@ public class SwitchManagerTest {
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().inPort(testInPort)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .egressSwitchId(SWITCH_ID).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1019,7 +1052,7 @@ public class SwitchManagerTest {
         // when
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().encapsulationId((int) testInVlan)
                 .encapsulationType(flowEncapsulationType).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1061,7 +1094,7 @@ public class SwitchManagerTest {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .egressSwitchId(SWITCH_ID)
                 .build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1103,7 +1136,7 @@ public class SwitchManagerTest {
                 .encapsulationType(FlowEncapsulationType.VXLAN)
                 .egressSwitchId(SWITCH_ID)
                 .build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1139,7 +1172,7 @@ public class SwitchManagerTest {
 
         // when
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().priority(testPriority).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1184,7 +1217,7 @@ public class SwitchManagerTest {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .egressSwitchId(SWITCH_ID)
                 .build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1221,7 +1254,7 @@ public class SwitchManagerTest {
 
         // when
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().outPort(testOutPort).build();
-        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, false, null, criteria);
 
         // then
         final OFFlowMod actual = capture.getValue();
@@ -1573,7 +1606,7 @@ public class SwitchManagerTest {
             expect(groupEntry.getGroup()).andStubReturn(OFGroup.of(groupId));
             expect(groupEntry.getBuckets()).andStubReturn(Lists.newArrayList(firstBucket, secondBucket));
 
-            replay(firstBucket,  secondBucket, groupEntry);
+            replay(firstBucket, secondBucket, groupEntry);
             meterConfigs.add(groupEntry);
         }
 

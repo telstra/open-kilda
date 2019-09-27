@@ -68,9 +68,9 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long VERIFICATION_UNICAST_VXLAN_RULE_COOKIE     = 0x07L | DEFAULT_RULE_FLAG;
     public static final long MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE = 0x08L | DEFAULT_RULE_FLAG;
     public static final long MULTITABLE_INGRESS_DROP_COOKIE             = 0x09L | DEFAULT_RULE_FLAG;
-    public static final long MULTITABLE_POST_INGRESS_DROP_COOKIE        = 0x10L | DEFAULT_RULE_FLAG;
-    public static final long MULTITABLE_EGRESS_PASS_THROUGH_COOKIE      = 0x11L | DEFAULT_RULE_FLAG;
-    public static final long MULTITABLE_TRANSIT_DROP_COOKIE             = 0x12L | DEFAULT_RULE_FLAG;
+    public static final long MULTITABLE_POST_INGRESS_DROP_COOKIE        = 0x0AL | DEFAULT_RULE_FLAG;
+    public static final long MULTITABLE_EGRESS_PASS_THROUGH_COOKIE      = 0x0BL | DEFAULT_RULE_FLAG;
+    public static final long MULTITABLE_TRANSIT_DROP_COOKIE             = 0x0CL | DEFAULT_RULE_FLAG;
 
     // 9 bits cookie type "field"
     public static final long TYPE_MASK                               = 0x1FF0_0000_0000_0000L;
