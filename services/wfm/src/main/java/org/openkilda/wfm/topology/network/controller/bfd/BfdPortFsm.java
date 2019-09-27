@@ -312,11 +312,9 @@ public final class BfdPortFsm extends
     }
 
     private SwitchReference makeSwitchReference(SwitchId datapath) throws SwitchReferenceLookupException {
-        Optional<Switch> sw = switchRepository.findById(datapath);
-        if (!sw.isPresent()) {
-            throw new SwitchReferenceLookupException(datapath, "persistent record is missing");
-        }
-        return makeSwitchReference(datapath, sw.get().getAddress());
+        Switch sw = switchRepository.findById(datapath)
+                .orElseThrow(() -> new SwitchReferenceLookupException(datapath, "persistent record is missing"));
+        return new SwitchReference(datapath, sw.getSocketAddress().getAddress());
     }
 
     private SwitchReference makeSwitchReference(SwitchId datapath, String ipAddress)

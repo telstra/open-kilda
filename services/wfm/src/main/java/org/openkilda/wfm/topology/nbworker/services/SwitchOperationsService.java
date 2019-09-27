@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
@@ -35,7 +35,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.mappers.SwitchMapper;
+import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -74,8 +74,9 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      *
      * @param switchId switch id.
      */
-    public Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
-        return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    public GetSwitchResponse getSwitch(SwitchId switchId) throws SwitchNotFoundException {
+        return new GetSwitchResponse(
+                switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId)));
     }
 
     /**
@@ -83,9 +84,9 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      *
      * @return all switches.
      */
-    public List<SwitchInfoData> getAllSwitches() {
+    public List<GetSwitchResponse> getAllSwitches() {
         return switchRepository.findAll().stream()
-                .map(SwitchMapper.INSTANCE::map)
+                .map(GetSwitchResponse::new)
                 .collect(Collectors.toList());
     }
 
@@ -241,10 +242,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      */
     public SwitchPropertiesDto getSwitchProperties(SwitchId switchId) {
         Optional<SwitchProperties> result = switchPropertiesRepository.findBySwitchId(switchId);
-        if (!result.isPresent()) {
-            return null;
-        }
-        return SwitchMapper.INSTANCE.map(result.get());
+        return result.map(SwitchPropertiesMapper.INSTANCE::map).orElse(null);
     }
 
     /**
@@ -254,7 +252,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      * @param switchPropertiesDto switch properties
      */
     public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchPropertiesDto) {
-        SwitchProperties update = SwitchMapper.INSTANCE.map(switchPropertiesDto);
+        SwitchProperties update = SwitchPropertiesMapper.INSTANCE.map(switchPropertiesDto);
         return transactionManager.doInTransaction(() -> {
             Optional<SwitchProperties> foundSwitchProperties = switchPropertiesRepository.findBySwitchId(switchId);
             if (!(foundSwitchProperties.isPresent())) {
@@ -269,7 +267,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             switchPropertiesRepository.createOrUpdate(sf);
 
 
-            return SwitchMapper.INSTANCE.map(sf);
+            return SwitchPropertiesMapper.INSTANCE.map(sf);
         });
     }
 }
