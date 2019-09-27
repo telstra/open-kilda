@@ -51,6 +51,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Shared
     int flowRulesCount = 2
 
+    @Shared
+    int multiTableFlowRules = 1
+
     def setupOnce() {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
         srcSwDefaultRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
@@ -66,7 +69,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultPlusFlowRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
-            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount
+            def multiTableFlowRules = 0
+            if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
+                multiTableFlowRules = 1
+            }
+            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
         }
 
         lockKeeper.knockoutSwitch(srcSwitch)
@@ -96,6 +103,15 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def deletedRules = northbound.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
 
         then: "The corresponding rules are really deleted"
+        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
+            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - expectedRules).find {
+                Cookie.isDefaultRule(it.cookie)
+            }
+            if (ingressRule) {
+                expectedRules = (expectedRules + ingressRule)
+            }
+
+        }
         deletedRules.size() == data.rulesDeleted
         Wrappers.wait(RULES_DELETION_TIME) {
             compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
@@ -116,12 +132,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
         data << [
                 [// Drop all rules
                  deleteRulesAction: DeleteRulesAction.DROP_ALL,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules,
                  getExpectedRules : { sw, defaultRules -> [] }
                 ],
                 [// Drop all rules, add back in the base default rules
                  deleteRulesAction: DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount,
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules,
                  getExpectedRules : { sw, defaultRules -> defaultRules }
                 ],
                 [// Don't drop the default rules, but do drop everything else
@@ -136,12 +152,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 ],
                 [// Drop all default rules
                  deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size(),
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRules,
                  getExpectedRules : { sw, defaultRules -> getFlowRules(sw) }
                 ],
                 [// Drop the default, add them back
                  deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size(),
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRules,
                  getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
                 ]
         ]
@@ -154,6 +170,15 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
+        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
+            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
+                Cookie.isDefaultRule(it.cookie)
+            }
+            if (ingressRule) {
+                data.defaultRules = (data.defaultRules + ingressRule)
+            }
+
+        }
         when: "Delete switch rules by #data.description"
         def deletedRules = northbound.deleteSwitchRules(
                 data.switch.dpId, getFlowRules(data.switch).first()."$data.description")
@@ -192,6 +217,16 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
+        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
+            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
+                Cookie.isDefaultRule(it.cookie)
+            }
+            if (ingressRule) {
+                data.defaultRules = (data.defaultRules + ingressRule)
+            }
+
+        }
+
         when: "Delete switch rules by non-existing #data.description"
         def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.value)
 
@@ -222,13 +257,23 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Able to delete switch rules by inPort/inVlan/outPort"() {
         given: "A switch with some flow rules installed"
         flowHelper.addFlow(flow)
+        def expectedRemovedRules = 1
+        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
+            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
+                Cookie.isDefaultRule(it.cookie)
+            }
+            if (ingressRule && data.removedRules == 1) {
+                data.defaultRules = (data.defaultRules + ingressRule)
+            }
+            expectedRemovedRules = data.removedRules
+        }
 
         when: "Delete switch rules by #data.description"
         def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
                 data.encapsulationType, data.outPort)
 
         then: "The requested rules are really deleted"
-        deletedRules.size() == 1
+        deletedRules.size() == expectedRemovedRules
         Wrappers.wait(RULES_DELETION_TIME) {
             def actualRules = northbound.getSwitchRules(data.switch.dpId).flowEntries
             assert actualRules.size() == data.defaultRules.size() + flowRulesCount - 1
@@ -247,7 +292,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   inPort           : flow.source.portNumber,
                   inVlan           : null,
                   encapsulationType: null,
-                  outPort          : null
+                  outPort          : null,
+                  removedRules     : 2
                  ],
                  [description      : "inVlan",
                   switch           : srcSwitch,
@@ -255,7 +301,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   inPort           : null,
                   inVlan           : flow.source.vlanId,
                   encapsulationType: "TRANSIT_VLAN",
-                  outPort          : null
+                  outPort          : null,
+                  removedRules     : 1
                  ],
                  [description      : "inPort and inVlan",
                   switch           : srcSwitch,
@@ -263,7 +310,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   inPort           : flow.source.portNumber,
                   inVlan           : flow.source.vlanId,
                   encapsulationType: "TRANSIT_VLAN",
-                  outPort          : null
+                  outPort          : null,
+                  removedRules     : 1
                  ],
                  [description      : "outPort",
                   switch           : dstSwitch,
@@ -271,7 +319,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   inPort           : null,
                   inVlan           : null,
                   encapsulationType: null,
-                  outPort          : flow.destination.portNumber
+                  outPort          : flow.destination.portNumber,
+                  removedRules     : 1
                  ]
         ]
     }
@@ -282,6 +331,16 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
+
+        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
+            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
+                Cookie.isDefaultRule(it.cookie)
+            }
+            if (ingressRule) {
+                data.defaultRules = (data.defaultRules + ingressRule)
+            }
+
+        }
 
         when: "Delete switch rules by non-existing #data.description"
         def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,

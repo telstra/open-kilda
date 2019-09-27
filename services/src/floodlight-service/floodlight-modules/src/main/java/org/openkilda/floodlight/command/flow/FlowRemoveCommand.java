@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.command.flow;
 
 import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdToMac;
+import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
 
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.MessageWriter;
@@ -27,7 +28,9 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.service.session.SessionService;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.MeterId;
@@ -44,6 +47,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
@@ -59,6 +63,7 @@ public class FlowRemoveCommand extends FlowCommand {
 
     private final MeterId meterId;
     private final DeleteRulesCriteria criteria;
+    private final RuleType ruleType;
 
     public FlowRemoveCommand(@JsonProperty("command_id") UUID commandId,
                              @JsonProperty("flowid") String flowId,
@@ -67,10 +72,12 @@ public class FlowRemoveCommand extends FlowCommand {
                              @JsonProperty("switch_id") SwitchId switchId,
                              @JsonProperty("meter_id") MeterId meterId,
                              @JsonProperty("criteria") DeleteRulesCriteria criteria,
-                             @JsonProperty("multi_table") boolean multiTable) {
+                             @JsonProperty("multi_table") boolean multiTable,
+                             @JsonProperty("rule_type") RuleType ruleType) {
         super(commandId, flowId, messageContext, cookie, switchId, multiTable);
         this.meterId = meterId;
         this.criteria = criteria;
+        this.ruleType = ruleType;
     }
 
     @Override
@@ -161,7 +168,28 @@ public class FlowRemoveCommand extends FlowCommand {
 
         Optional.ofNullable(criteria.getOutPort())
                 .ifPresent(outPort -> builder.setOutPort(OFPort.of(criteria.getOutPort())));
-
+        if (multiTable) {
+            switch (ruleType) {
+                case TRANSIT:
+                    builder.setTableId(TableId.of(SwitchManager.TRANSIT_TABLE_ID));
+                    break;
+                case EGRESS:
+                    builder.setTableId(TableId.of(SwitchManager.EGRESS_TABLE_ID));
+                    break;
+                case INGRESS:
+                    builder.setTableId(TableId.of(SwitchManager.INGRESS_TABLE_ID));
+                    break;
+                default:
+                    builder.setTableId(TableId.of(SwitchManager.INPUT_TABLE_ID));
+                    break;
+            }
+        } else {
+            if (POST_INGRESS.equals(ruleType)) {
+                builder.setTableId(TableId.of(SwitchManager.TABLE_1));
+            } else {
+                builder.setTableId(TableId.ALL);
+            }
+        }
         return builder.build();
     }
 

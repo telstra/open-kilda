@@ -40,6 +40,21 @@ public enum InstallRulesAction {
     // Install Unicast for VXLAN
     INSTALL_UNICAST_VXLAN,
 
+    // Install  Pre Ingress Table pass through default
+    INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH,
+
+    // Install  Ingress Drop rule
+    INSTALL_MULTITABLE_INGRESS_DROP,
+
+    // Install  Post Ingress Drop rule
+    INSTALL_MULTITABLE_POST_INGRESS_DROP,
+
+    // Install  Egress Table pass through default
+    INSTALL_MULTITABLE_EGRESS_PASS_THROUGH,
+
+    // Install  Transit Table Drop rule
+    INSTALL_MULTITABLE_TRANSIT_DROP,
+
     // Install all default rules (ie a combination of the above)
     INSTALL_DEFAULTS;
 }

@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.EGRESS_TABLE_ID;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdToMac;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 
@@ -35,6 +37,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,9 +85,12 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
         // build FLOW_MOD command, no meter
         MacAddress dstMac = convertDpIdToMac(sw.getId());
 
+        int targetTableId = multiTable ? EGRESS_TABLE_ID : INPUT_TABLE_ID;
+
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory)
                 .setMatch(matchFlow(inputPort, transitEncapsulationId, transitEncapsulationType, dstMac, ofFactory))
                 .setInstructions(ImmutableList.of(actions))
+                .setTableId(TableId.of(targetTableId))
                 .build();
 
         return Collections.singletonList(new MessageWriter(flowMod));

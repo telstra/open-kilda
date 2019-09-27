@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
@@ -56,6 +57,12 @@ public class RemoveFlow extends BaseFlow {
     @JsonProperty("multi_table")
     private boolean multiTable;
 
+    @JsonProperty("rule_type")
+    private RuleType ruleType;
+
+    @JsonProperty("clean_up_ingress")
+    private boolean cleanUpIngress;
+
     /**
      * Instance constructor.
      *
@@ -65,16 +72,20 @@ public class RemoveFlow extends BaseFlow {
      * @param switchId switch ID for flow removing
      * @param meterId meter id
      * @param criteria criteria to strictly match a rule.
+     * @param ruleType type of flow
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
+    @Builder
     public RemoveFlow(@JsonProperty(TRANSACTION_ID) UUID transactionId,
-            @JsonProperty(FLOW_ID) String flowId,
-            @JsonProperty("cookie") Long cookie,
-            @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("meter_id") Long meterId,
-            @JsonProperty("criteria") DeleteRulesCriteria criteria,
-            @JsonProperty("multi_table") boolean multiTable) {
+                      @JsonProperty(FLOW_ID) String flowId,
+                      @JsonProperty("cookie") Long cookie,
+                      @JsonProperty("switch_id") SwitchId switchId,
+                      @JsonProperty("meter_id") Long meterId,
+                      @JsonProperty("criteria") DeleteRulesCriteria criteria,
+                      @JsonProperty("multi_table") boolean multiTable,
+                      @JsonProperty("rule_type") RuleType ruleType,
+                      @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
         super(transactionId, flowId, cookie, switchId);
 
         if (meterId != null && meterId <= 0L) {
@@ -83,5 +94,7 @@ public class RemoveFlow extends BaseFlow {
         this.meterId = meterId;
         this.multiTable = multiTable;
         this.criteria = criteria;
+        this.ruleType = ruleType;
+        this.cleanUpIngress = cleanUpIngress;
     }
 }

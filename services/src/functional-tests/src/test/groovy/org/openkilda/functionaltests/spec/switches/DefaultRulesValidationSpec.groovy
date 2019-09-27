@@ -28,7 +28,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
         verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules.empty
             excessRules.empty
-            properRules == sw.defaultCookies
+            properRules.sort() == sw.defaultCookies.sort()
         }
 
         and: "Rule validation shows all expected default rules in 'proper' section"
@@ -36,7 +36,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
             rules.missing.empty
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper == sw.defaultCookies
+            rules.proper.sort() == sw.defaultCookies.sort()
         }
 
         where: "Run for all unique switches"
