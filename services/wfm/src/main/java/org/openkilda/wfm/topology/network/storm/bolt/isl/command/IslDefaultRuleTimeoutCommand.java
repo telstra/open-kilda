@@ -13,24 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    TO_SWITCH_MANAGER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY,
-    FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
+
+public class IslDefaultRuleTimeoutCommand extends IslCommand {
+    public IslDefaultRuleTimeoutCommand(Endpoint source, Endpoint destination) {
+        super(source, new IslReference(source, destination));
+    }
+
+    @Override
+    public void apply(IslHandler handler) {
+        handler.processIslRuleTimeout(getReference(), getEndpoint());
+    }
 }

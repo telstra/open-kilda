@@ -13,24 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.network.storm.bolt.speaker.command;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    TO_SWITCH_MANAGER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY,
-    FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER
+import org.openkilda.wfm.topology.network.storm.ICommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesWorker;
+
+import lombok.Getter;
+
+public abstract class SpeakerRulesWorkerCommand implements ICommand<SpeakerRulesWorker> {
+    @Getter
+    private final String key;
+
+    public SpeakerRulesWorkerCommand(String key) {
+        this.key = key;
+    }
+
+
+    public abstract void timeout(SpeakerRulesWorker handler);
 }

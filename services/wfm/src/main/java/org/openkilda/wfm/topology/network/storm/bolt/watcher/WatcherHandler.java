@@ -53,6 +53,7 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
             FIELD_ID_CONTEXT);
 
     public static final String STREAM_SPEAKER_ID = "speaker";
+    public static final String STREAM_SPEAKER_FLOW_ID = "speaker.flow";
     public static final Fields STREAM_SPEAKER_FIELDS = new Fields(
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
@@ -105,6 +106,7 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_SPEAKER_ID, STREAM_SPEAKER_FIELDS);
+        streamManager.declareStream(STREAM_SPEAKER_FLOW_ID, STREAM_SPEAKER_FIELDS);
     }
 
     @Override

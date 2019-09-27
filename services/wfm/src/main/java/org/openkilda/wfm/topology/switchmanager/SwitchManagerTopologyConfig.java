@@ -37,6 +37,10 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoSwitchManagerNetworkTopic();
     }
 
+    default String getKafkaSwitchManagerNbWorkerTopic() {
+        return getKafkaTopics().getTopoSwitchManagerNbWorkerTopic();
+    }
+
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
     }

@@ -13,24 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.network.storm.bolt;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    TO_SWITCH_MANAGER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY,
-    FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.network.storm.ComponentId;
+
+public class SpeakerRulesEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.SPEAKER_RULES_ENCODER.toString();
 }

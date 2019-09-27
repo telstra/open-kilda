@@ -23,12 +23,12 @@ title ISL FSM
 
 INIT --> DOWN : isl-up / set endpoint-(A||B)-status = UP\nisl-down / set endpoint-(A||B)-status = DOWN
 INIT --> DOWN : history [history-down]
-INIT --> UP : history [history-up]\n/ apply-history\n/ emit bisl-bfd-enable
+INIT --> SET_UP_RESOURCES : history [history-up]\n/ apply-history\n/ emit bisl-bfd-enable
 INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-status = MOVED
 
 state upAttempt <<choice>>
 state deleteAttempt <<choice>>
-deleteAttempt --> DELETED : [endpoint-(A&B)-status == DOWN]
+deleteAttempt --> CLEAN_UP_RESOURCES : [endpoint-(A&B)-status == DOWN]
 
 DOWN --> upAttempt : isl-up / set endpoint-(A||B)-status = DOWN && discovery-data
 DOWN --> MOVED : isl-move
@@ -37,8 +37,19 @@ DOWN : isl-down / set endpoint-(A||B)-status = DOWN
 DOWN : isl-down / persist DB state
 DOWN -> deleteAttempt : isl-remove
 
-upAttempt --> UP : [endpoint-(A&&B)-status == UP]
+upAttempt --> SET_UP_RESOURCES : [endpoint-(A&&B)-status == UP]
 upAttempt --> DOWN : [else]
+
+SET_UP_RESOURCES : enter / init attempts count from config
+SET_UP_RESOURCES : enter / send install isl rules for source endpoint
+SET_UP_RESOURCES : enter / send install isl rules for destination endpoint
+SET_UP_RESOURCES : isl-rule-installed [both sides are valid] / emit isl-up
+SET_UP_RESOURCES : isl-rule-installed [!both sides are valid] / wait for both endpoint responses
+SET_UP_RESOURCES : isl-rule-timeout [has attempts] / emit install isl rules for timeout endpoint
+SET_UP_RESOURCES : isl-rule-timeout [!has attempts] / emit isl-up
+SET_UP_RESOURCES --> DOWN : isl-down
+SET_UP_RESOURCES --> MOVED : isl-move
+SET_UP_RESOURCES --> UP : isl-up
 
 UP --> DOWN : isl-down
 UP --> MOVED : isl-move
@@ -49,6 +60,17 @@ UP : exit / set endpoint-(A|B)-status = !UP (determine by event)
 UP : exit / persist DB state
 UP : exit [physical-down] / raise ISL(uni) cost
 UP : exit / emit bisl-down
+
+CLEAN_UP_RESOURCES : enter / init attempts count from config
+CLEAN_UP_RESOURCES : enter / send remove isl rules for source endpoint
+CLEAN_UP_RESOURCES : enter / send remove isl rules for destination endpoint
+CLEAN_UP_RESOURCES : isl-rule-removed [!both endpoints are valid] / wait for both endpoint responses
+CLEAN_UP_RESOURCES : isl-rule-removed [both endpoints are valid] / emit isl-remove-finished
+CLEAN_UP_RESOURCES : isl-rule-timeout [has attempts] / emit remove isl rules for timeout endpoint
+CLEAN_UP_RESOURCES : isl-rule-timeout [!has attempts] / emit isl-remove-finished
+CLEAN_UP_RESOURCES : isl-rule-failed [has attempts] / resend remove commands
+CLEAN_UP_RESOURCES --> DELETED : isl-remove-finished
+
 
 MOVED --> upAttempt : isl-up / set endpoint-(A|B)-status = UP
 MOVED --> deleteAttempt : isl-remove

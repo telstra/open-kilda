@@ -50,6 +50,8 @@ public class NetworkOptions implements Serializable {
 
     private int countSynchronizationAttempts;
 
+    private long rulesSynchronizationAttempts;
+
     private long antiFlapStatsDumpingInterval;
 
     public NetworkOptions(NetworkTopologyConfig topologyConfig) {
@@ -71,5 +73,6 @@ public class NetworkOptions implements Serializable {
 
         countSynchronizationAttempts = topologyConfig.getCountSynchronizationAttempts();
         antiFlapStatsDumpingInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getPortAntiFlapStatsDumpingInterval());
+        rulesSynchronizationAttempts = topologyConfig.getRulesSynchronizationAttempts();
     }
 }

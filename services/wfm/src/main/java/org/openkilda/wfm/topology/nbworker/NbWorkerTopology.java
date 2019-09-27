@@ -83,6 +83,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
+    private static final String SWITCH_MANAGER_KAFKA_BOLT = "switch-manger-bolt";
     private static final String VALIDATION_WORKER_BOLT = "validation." + SpeakerWorkerBolt.ID;
     private static final String METER_MODIFY_WORKER_BOLT = "meter.modify." + SpeakerWorkerBolt.ID;
 
@@ -217,6 +218,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.FLOWHS.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME, StreamType.ERROR.toString())
@@ -251,6 +253,9 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(SPEAKER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()))
                 .shuffleGrouping(VALIDATION_WORKER_BOLT, StreamType.TO_SPEAKER.toString())
                 .shuffleGrouping(METER_MODIFY_WORKER_BOLT, StreamType.TO_SPEAKER.toString());
+
+        tb.setBolt(SWITCH_MANAGER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSwitchManagerTopic()))
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString());
 
         return tb.createTopology();
     }

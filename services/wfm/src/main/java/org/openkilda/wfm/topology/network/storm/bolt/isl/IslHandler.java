@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.network.storm.bolt.isl;
 
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
+import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
+import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.model.Isl;
@@ -25,6 +27,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
@@ -37,6 +40,9 @@ import org.openkilda.wfm.topology.network.storm.bolt.bfdport.command.BfdPortDisa
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.command.BfdPortEnableCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesWorker;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslInstallCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslRemoveCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -62,10 +68,16 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final Fields STREAM_STATUS_FIELDS = new Fields(
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_SPEAKER_RULES_ID = "speaker.rules";
+    public static final Fields STREAM_SPEAKER_RULES_FIELDS = new Fields(
+            KafkaEncoder.FIELD_ID_KEY, FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
     private final PersistenceManager persistenceManager;
     private final NetworkOptions options;
 
     private transient NetworkIslService service;
+    private transient TaskIdBasedKeyFactory keyFactory;
+
 
     public IslHandler(PersistenceManager persistenceManager, NetworkOptions options) {
         this.persistenceManager = persistenceManager;
@@ -79,6 +91,8 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
             handleUniIslCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerInput(input);
+        } else if (SpeakerRulesWorker.BOLT_ID.equals(source)) {
+            handleSpeakerRulesWorkerInput(input);
         } else {
             unhandledInput(input);
         }
@@ -94,9 +108,15 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         command.apply(this);
     }
 
+    private void handleSpeakerRulesWorkerInput(Tuple input) throws PipelineException {
+        IslCommand command = pullValue(input, SpeakerRulesWorker.FIELD_ID_PAYLOAD, IslCommand.class);
+        command.apply(this);
+    }
+
     @Override
     protected void init() {
         service = new NetworkIslService(this, persistenceManager, options);
+        keyFactory = new TaskIdBasedKeyFactory(getTaskId());
     }
 
     @Override
@@ -104,6 +124,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         streamManager.declareStream(STREAM_BFD_PORT_ID, STREAM_BFD_PORT_FIELDS);
         streamManager.declareStream(STREAM_REROUTE_ID, STREAM_REROUTE_FIELDS);
         streamManager.declareStream(STREAM_STATUS_ID, STREAM_STATUS_FIELDS);
+        streamManager.declareStream(STREAM_SPEAKER_RULES_ID, STREAM_SPEAKER_RULES_FIELDS);
     }
 
     @Override
@@ -128,10 +149,31 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         emit(STREAM_STATUS_ID, getCurrentTuple(), makeStatusUpdateTuple(trigger));
     }
 
+    @Override
+    public void islDefaultRulesInstall(Endpoint source, Endpoint destination) {
+        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeIslRulessInstallTuple(source, destination));
+    }
+
+    @Override
+    public void islDefaultRulesDelete(Endpoint source, Endpoint destination) {
+        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeIslRulesDeleteTuple(source, destination));
+    }
+
+    private Values makeIslRulessInstallTuple(Endpoint source, Endpoint destination) {
+        String key = keyFactory.next();
+        return new Values(key, new SpeakerRulesIslInstallCommand(key, source, destination),
+                getCommandContext());
+    }
+
+    private Values makeIslRulesDeleteTuple(Endpoint source, Endpoint destination) {
+        String key = keyFactory.next();
+        return new Values(key, new SpeakerRulesIslRemoveCommand(key, source, destination), getCommandContext());
+    }
+
     private Values makeBfdPortTuple(BfdPortCommand command) {
         Endpoint endpoint = command.getEndpoint();
         return new Values(endpoint.getDatapath(), command,
-                          getCommandContext().fork(String.format("ISL-2-BFD %s", endpoint)));
+                getCommandContext().fork(String.format("ISL-2-BFD %s", endpoint)));
     }
 
     private Values makeRerouteTuple(CommandData payload) {
@@ -160,6 +202,18 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     public void processBfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {
         service.bfdEnableDisable(reference, payload);
+    }
+
+    public void processIslRuleInstalled(IslReference reference, InstallIslDefaultRulesResult payload) {
+        service.islDefaultRuleInstalled(reference, payload);
+    }
+
+    public void processIslRuleDeleted(IslReference reference, RemoveIslDefaultRulesResult payload) {
+        service.islDefaultRuleDeleted(reference, payload);
+    }
+
+    public void processIslRuleTimeout(IslReference reference, Endpoint endpoint) {
+        service.islDefaultTimeout(reference, endpoint);
     }
 
     public void processIslRemove(IslReference reference) {

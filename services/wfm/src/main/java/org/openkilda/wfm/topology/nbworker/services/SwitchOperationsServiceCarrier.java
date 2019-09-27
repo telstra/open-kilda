@@ -13,24 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.nbworker.services;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    TO_SWITCH_MANAGER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY,
-    FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER
+import org.openkilda.model.SwitchId;
+
+public interface SwitchOperationsServiceCarrier {
+    void requestSwitchSync(SwitchId switchId);
 }
