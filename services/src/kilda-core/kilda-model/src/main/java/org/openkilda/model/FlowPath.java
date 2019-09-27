@@ -120,6 +120,8 @@ public class FlowPath implements Serializable {
     @Setter(AccessLevel.NONE)
     private List<PathSegment> segments = new ArrayList<>();
 
+
+
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                     @NonNull Flow flow, Cookie cookie, MeterId meterId, LldpResources lldpResources,
@@ -185,6 +187,10 @@ public class FlowPath implements Serializable {
         }
 
         this.segments = new ArrayList<>(segments);
+    }
+
+    public boolean isForward() {
+        return getFlow().isForward(this);
     }
 
     public boolean isProtected() {

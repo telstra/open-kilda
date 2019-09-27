@@ -43,6 +43,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
@@ -55,6 +56,7 @@ import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
@@ -85,7 +87,7 @@ import java.util.Optional;
 
 @RunWith(JUnitParamsRunner.class)
 public class FlowServiceTest extends Neo4jBasedTest {
-    public static final Object[][] SHOW_SRC_DEVICES_SHOW_DST_DEVICES_MATRIX = new Object[][] {
+    public static final Object[][] SHOW_SRC_DEVICES_SHOW_DST_DEVICES_MATRIX = new Object[][]{
             // showSrcConnectedDevices, showDstConnectedDevices
             {true, true},
             {true, false},
@@ -139,6 +141,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private static long BANDWIDTH = 1000L;
 
     private SwitchRepository switchRepository;
+    private SwitchPropertiesRepository switchPropertiesRepository;
     private IslRepository islRepository;
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
@@ -152,6 +155,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
     @Before
     public void setUp() {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
@@ -435,7 +439,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
     }
 
     private FlowPair createFlowPair(Flow flow, PathPair pathPair) {
-        FlowPathBuilder flowPathBuilder = new FlowPathBuilder(switchRepository);
+        FlowPathBuilder flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
 
         PathResources forwardPathResources = PathResources.builder().pathId(FORWARD_PATH_ID).build();
         PathResources reversePathResources = PathResources.builder().pathId(REVERSE_PATH_ID).build();
@@ -470,8 +474,11 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
     private void createTopology() {
         Switch switch1 = getOrCreateSwitch(SWITCH_ID_1);
+        getOrCreateSwitchProperties(switch1);
         Switch switch2 = getOrCreateSwitch(SWITCH_ID_2);
+        getOrCreateSwitchProperties(switch2);
         Switch switch3 = getOrCreateSwitch(SWITCH_ID_3);
+        getOrCreateSwitchProperties(switch3);
 
         createIsl(switch1, 11, switch2, 11);
         createIsl(switch2, 11, switch1, 11);
@@ -490,6 +497,15 @@ public class FlowServiceTest extends Neo4jBasedTest {
             switchRepository.createOrUpdate(sw);
             return sw;
         });
+    }
+
+    private void getOrCreateSwitchProperties(Switch sw) {
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(sw)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                .multiTable(false)
+                .build();
+        switchPropertiesRepository.createOrUpdate(switchProperties);
     }
 
     private Isl createIsl(Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {

@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.TRANSIT_TABLE_ID;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
 import org.openkilda.floodlight.command.MessageWriter;
@@ -40,6 +42,7 @@ import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,9 +78,12 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
         Match match = matchFlow(inputPort, transitEncapsulationId, transitEncapsulationType, null, factory);
         actionList.add(setOutputPort(factory, OFPort.of(outputPort)));
 
+        int targetTableId = multiTable ? TRANSIT_TABLE_ID : INPUT_TABLE_ID;
+
         OFFlowMod flowMod = prepareFlowModBuilder(factory)
                 .setInstructions(ImmutableList.of(applyActions(factory, actionList)))
                 .setMatch(match)
+                .setTableId(TableId.of(targetTableId))
                 .build();
         return Collections.singletonList(new MessageWriter(flowMod));
     }

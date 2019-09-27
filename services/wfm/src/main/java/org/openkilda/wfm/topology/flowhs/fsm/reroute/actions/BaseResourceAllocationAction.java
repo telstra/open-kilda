@@ -34,6 +34,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -74,6 +75,7 @@ abstract class BaseResourceAllocationAction extends
     protected final FlowRepository flowRepository;
     protected final FlowPathRepository flowPathRepository;
     protected final IslRepository islRepository;
+    protected final SwitchPropertiesRepository switchPropertiesRepository;
 
     protected final PathComputer pathComputer;
     protected final FlowResourcesManager resourcesManager;
@@ -86,13 +88,14 @@ abstract class BaseResourceAllocationAction extends
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
 
         this.pathComputer = pathComputer;
         this.resourcesManager = resourcesManager;
         this.dashboardLogger = dashboardLogger;
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        flowPathBuilder = new FlowPathBuilder(switchRepository);
+        flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
     }
 
     @Override

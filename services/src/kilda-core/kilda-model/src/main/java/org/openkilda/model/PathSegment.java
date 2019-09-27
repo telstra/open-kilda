@@ -72,6 +72,12 @@ public class PathSegment implements Serializable {
     @Property(name = "dst_port")
     private int destPort;
 
+    @Property(name = "src_with_multi_table")
+    private boolean srcWithMultiTable;
+
+    @Property(name = "dst_with_multi_table")
+    private boolean destWithMultiTable;
+
     // Hidden as used only by mapping to keep the order within a list of segments.
     @Property(name = "seq_id")
     @Setter(AccessLevel.PACKAGE)
@@ -83,12 +89,15 @@ public class PathSegment implements Serializable {
 
     @Builder(toBuilder = true)
     public PathSegment(@NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                       int srcPort, int destPort, Long latency) {
+                       int srcPort, int destPort, Long latency, boolean srcWithMultiTable,
+                       boolean destWithMultiTable) {
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;
         this.destPort = destPort;
         this.latency = latency;
+        this.srcWithMultiTable = srcWithMultiTable;
+        this.destWithMultiTable = destWithMultiTable;
     }
 
     /**

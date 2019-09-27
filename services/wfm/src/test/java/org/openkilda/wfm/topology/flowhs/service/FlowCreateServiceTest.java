@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.floodlight.flow.request.InstallEgressRule;
@@ -52,6 +53,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
@@ -62,6 +64,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -127,6 +130,14 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
                         .features(Sets.newHashSet(SwitchFeature.METERS))
                         .build()));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+
+        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
+        when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
+                Optional.of(SwitchProperties.builder()
+                        .multiTable(false)
+                        .supportedTransitEncapsulation(DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                        .build()));
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
         IslRepository islRepository = mock(IslRepository.class);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
