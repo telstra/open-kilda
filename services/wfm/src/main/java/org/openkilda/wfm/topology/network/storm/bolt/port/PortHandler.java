@@ -33,6 +33,7 @@ import org.openkilda.wfm.topology.network.service.NetworkAntiFlapService;
 import org.openkilda.wfm.topology.network.service.NetworkPortService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.DecisionMakerHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.history.command.AntiFlapPortHistoryWithStatsCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.history.command.PortHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
@@ -81,6 +82,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
                 .delayCoolingDown(options.getDelayCoolingDown())
                 .delayWarmUp(options.getDelayWarmUp())
                 .delayMin(options.getDelayMin())
+                .antiFlapStatsDumpingInterval(options.getAntiFlapStatsDumpingInterval())
                 .build();
     }
 
@@ -176,6 +178,19 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     @Override
     public void filteredLinkStatus(Endpoint endpoint, LinkStatus status) {
         portService.updateLinkStatus(endpoint, status);
+    }
+
+    @Override
+    public void sendAntiFlapPortHistoryEvent(Endpoint endpoint, PortHistoryEvent event, Instant time) {
+        HistoryCommand command =  new PortHistoryCommand(endpoint, event, time);
+        emit(STREAM_HISTORY_ID, getCurrentTuple(), makeHistoryTuple(command));
+    }
+
+    @Override
+    public void sendAntiFlapStatsPortHistoryEvent(Endpoint endpoint, PortHistoryEvent event, Instant time,
+                                                  int upEvents, int downEvents) {
+        HistoryCommand command =  new AntiFlapPortHistoryWithStatsCommand(endpoint, event, time, upEvents, downEvents);
+        emit(STREAM_HISTORY_ID, getCurrentTuple(), makeHistoryTuple(command));
     }
 
     // PortCommand processing

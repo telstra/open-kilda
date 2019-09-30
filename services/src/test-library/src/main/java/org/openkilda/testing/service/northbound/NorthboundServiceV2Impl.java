@@ -69,7 +69,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port, Long timeFrom, Long timeTo) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(
-                "/api/v2/switch/{switch_id}/ports/{port}/history");
+                "/api/v2/switches/{switch_id}/ports/{port}/history");
         if (timeFrom != null) {
             uriBuilder.queryParam("timeFrom", dateFormat.format(new Date(timeFrom)));
         }

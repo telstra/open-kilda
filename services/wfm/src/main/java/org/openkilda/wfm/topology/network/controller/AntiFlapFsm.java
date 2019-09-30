@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.controller;
 
+import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -31,6 +32,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.io.Serializable;
+import java.time.Instant;
 
 @Slf4j
 public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event, Context>  {
@@ -38,10 +40,15 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     private final long delayWarmUp;
     private final long delayCoolingDown;
     private final long delayMin;
+    private final long statsDumpingInterval;
 
     private long downTime = 0;
     private long upTime = 0;
     private long startTime = 0;
+
+    private long lastStatsSent = 0L;
+    private int upEventsCount = 0;
+    private int downEventsCount = 0;
 
     public static AntiFlapFsmFactory factory() {
         return new AntiFlapFsmFactory();
@@ -52,6 +59,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         delayCoolingDown = config.getDelayCoolingDown();
         delayWarmUp = config.getDelayWarmUp();
         delayMin = config.getDelayMin();
+        statsDumpingInterval = config.getAntiFlapStatsDumpingInterval();
 
         log.debug("{}", config);
     }
@@ -59,17 +67,19 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     // -- FSM actions --
 
     public void emitPortUpAndSaveTime(State from, State to, Event event, Context context) {
-        emitPortUp(from, to, event, context);
+        emitPortUp(context);
         savePortUpTime(from, to, event, context);
     }
 
     public void emitPortDownAndSaveTime(State from, State to, Event event, Context context) {
-        emitPortDown(from, to, event, context);
+        log.trace("emitPortDownAndSaveTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        emitPortDown(context);
         savePortDownTime(from, to, event, context);
     }
 
     public void portUpOnNothing(State from, State to, Event event, Context context) {
-        emitPortUp(from, to, event, context);
+        emitPortUp(context);
         savePortUpTime(from, to, event, context);
     }
 
@@ -81,9 +91,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         }
     }
 
-    public void emitPortUp(State from, State to, Event event, Context context) {
-        log.debug("emitPortUp {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
-                from, to, event, context);
+    private void emitPortUp(Context context) {
         log.debug("Emit physical port {} become {}", endpoint, LinkStatus.UP);
         context.getOutput().filteredLinkStatus(endpoint, LinkStatus.UP);
     }
@@ -94,6 +102,20 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         startTime = downTime = context.getTime();
         upTime = downTime - 1;
         log.debug("Physical port {} become DOWN on {}", endpoint, downTime);
+    }
+
+    public void handlePortUpWhileCoolingDown(State from, State to, Event event, Context context) {
+        log.debug("handlePortUpWhileCoolingDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        upEventsCount++;
+        savePortUpTime(from, to, event, context);
+    }
+
+    public void handlePortDownWhileCoolingDown(State from, State to, Event event, Context context) {
+        log.debug("handlePortDownWhileCoolingDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        downEventsCount++;
+        savePortDownTime(from, to, event, context);
     }
 
     public void savePortUpTime(State from, State to, Event event, Context context) {
@@ -110,7 +132,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     public void savePortDownTime(State from, State to, Event event, Context context) {
-        log.trace("savePortDownTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+        log.debug("savePortDownTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
                 from, to, event, context);
         downTime = context.getTime();
 
@@ -122,11 +144,9 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         log.debug("Physical port {} become DOWN on {}", endpoint, downTime);
     }
 
-    public void exitCoolingDown(State from, State to, Event event, Context context) {
-        log.debug("exitCoolingDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
-                from, to, event, context);
+    private void exitCoolingDown(Context context) {
         if (upWasLast()) {
-            emitPortUp(from, to, event, context);
+            emitPortUp(context);
         }
     }
 
@@ -149,9 +169,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         }
     }
 
-    public void emitPortDown(State from, State to, Event event, Context context) {
-        log.trace("emitPortDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
-                from, to, event, context);
+    private void emitPortDown(Context context) {
         log.debug("Emit physical port {} become {}", endpoint, LinkStatus.DOWN);
         context.getOutput().filteredLinkStatus(endpoint, LinkStatus.DOWN);
     }
@@ -163,8 +181,30 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
 
         if (now - last() > delayCoolingDown) {
             fire(Event.TO_NOTHING, context);
+        } else if (statsDumpingInterval > 0 && now - lastStatsSent > statsDumpingInterval) {
+            lastStatsSent = now;
+            context.getOutput().sendAntiFlapStatsPortHistoryEvent(endpoint, PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS,
+                    Instant.now(), upEventsCount, downEventsCount);
         }
+    }
 
+    public void activateAntiFlap(State from, State to, Event event, Context context) {
+        emitPortDown(context);
+
+        context.getOutput().sendAntiFlapPortHistoryEvent(endpoint, PortHistoryEvent.ANTI_FLAP_ACTIVATED, Instant.now());
+        lastStatsSent = context.getTime();
+    }
+
+    public void deactivateAntiFlap(State from, State to, Event event, Context context) {
+        log.debug("deactivateAntiFlap {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        exitCoolingDown(context);
+        Instant timeNow = Instant.now();
+        context.getOutput().sendAntiFlapStatsPortHistoryEvent(endpoint, PortHistoryEvent.ANTI_FLAP_DEACTIVATED, timeNow,
+                upEventsCount, downEventsCount);
+
+        upEventsCount = 0;
+        downEventsCount = 0;
     }
 
     // -- private/service methods --
@@ -224,13 +264,13 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
 
             // State.COOLING_DOWN
             builder.onEntry(State.COOLING_DOWN)
-                    .callMethod("emitPortDown");
+                    .callMethod("activateAntiFlap");
             builder.onExit(State.COOLING_DOWN)
-                    .callMethod("exitCoolingDown");
+                    .callMethod("deactivateAntiFlap");
             builder.internalTransition().within(State.COOLING_DOWN).on(Event.PORT_UP)
-                    .callMethod("savePortUpTime");
+                    .callMethod("handlePortUpWhileCoolingDown");
             builder.internalTransition().within(State.COOLING_DOWN).on(Event.PORT_DOWN)
-                    .callMethod("savePortDownTime");
+                    .callMethod("handlePortDownWhileCoolingDown");
             builder.internalTransition().within(State.COOLING_DOWN).on(Event.TICK)
                     .callMethod("tickCoolingDown");
             builder.transition()
@@ -265,6 +305,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         private final long delayWarmUp;
         private final long delayCoolingDown;
         private final long delayMin;
+        private final long antiFlapStatsDumpingInterval;
     }
 
     @Data
