@@ -488,7 +488,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         List<List<PathNode>> possibleFlowPaths = []
         def isl = topology.getIslsForActiveSwitches().find {
             possibleFlowPaths = database.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
-            possibleFlowPaths.size() > 1
+            possibleFlowPaths.size() > 1 && !it.srcSwitch.centec && !it.dstSwitch.centec &&
+                 it.srcSwitch.ofVersion != "OF_12" && it.dstSwitch.ofVersion != "OF_12"
         } ?: assumeTrue("No suiting switches found", false)
         def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
 

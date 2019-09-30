@@ -20,7 +20,9 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "System sets min port speed for isl capacity"() {
         given: "Two ports with different port speed"
-        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
+        def isl = topology.islsForActiveSwitches.find {
+            it.getAswitch()?.inPort && it.getAswitch()?.outPort
+        } ?: assumeTrue("Unable to find required ports in topology",false)
         def port = northbound.getPort(isl.srcSwitch.dpId, isl.srcPort)
         assumeTrue("Wasn't able to find required a-switch links", isl as boolean)
 

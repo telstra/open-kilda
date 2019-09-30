@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.logging
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -15,10 +16,11 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Slf4j
-@Tags(SMOKE)
+@Tags([SMOKE, VIRTUAL]) // is not working on stage env, different version of services
 @Narrative("This specification ensures that all logging facilities are up and running after Kilda deployment")
 class CheckLoggingSpec extends HealthCheckSpecification {
 

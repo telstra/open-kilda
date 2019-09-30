@@ -518,7 +518,7 @@ misconfigured"
                 path[1..-2].every { it.switchId.description.contains("OF_12") }
             }
             hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        }
+        } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -533,7 +533,7 @@ misconfigured"
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
-        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.dst.dpId)
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1,
