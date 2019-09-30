@@ -50,6 +50,10 @@ public class InstallMultiSwitchIngressRule extends InstallIngressRule {
     @JsonProperty("transit_encapsulation_type")
     protected FlowEncapsulationType transitEncapsulationType;
 
+    @JsonProperty("egress_switch_id")
+    protected SwitchId egressSwitchId;
+
+
     @JsonCreator
     @Builder
     public InstallMultiSwitchIngressRule(@JsonProperty("message_context") MessageContext messageContext,
@@ -66,10 +70,12 @@ public class InstallMultiSwitchIngressRule extends InstallIngressRule {
                                          @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                          @JsonProperty("transit_encapsulation_type")
                                                  FlowEncapsulationType transitEncapsulationType,
+                                         @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
                                          @JsonProperty("multi_table") boolean multiTable) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth,
                 outputVlanType, inputVlanId, multiTable);
         this.transitEncapsulationId = transitEncapsulationId;
         this.transitEncapsulationType = transitEncapsulationType;
+        this.egressSwitchId = egressSwitchId;
     }
 }

@@ -321,6 +321,7 @@ class RecordHandler implements Runnable {
 
         context.getSwitchManager().installIngressFlow(
                 DatapathId.of(command.getSwitchId().toLong()),
+                DatapathId.of(command.getEgressSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -330,7 +331,8 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanType(),
                 meterId,
                 command.getTransitEncapsulationType(),
-                command.isEnableLldp());
+                command.isEnableLldp(),
+                command.isMultiTable());
     }
 
     private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,
@@ -356,7 +358,8 @@ class RecordHandler implements Runnable {
                 command.getInputPort(),
                 command.getEncapsulationId(),
                 command.getMeterId(),
-                command.getEncapsulationType());
+                command.getEncapsulationType(),
+                command.isMultiTable());
     }
 
     /**
@@ -397,7 +400,7 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanId(),
                 command.getOutputVlanType(),
                 command.getTransitEncapsulationType(),
-                DatapathId.of(command.getIngressSwitchId().toLong()));
+                command.isMultiTable());
     }
 
     /**
@@ -436,7 +439,7 @@ class RecordHandler implements Runnable {
                 command.getOutputPort(),
                 command.getTransitEncapsulationId(),
                 command.getTransitEncapsulationType(),
-                DatapathId.of(command.getIngressSwitchId().toLong()));
+                command.isMultiTable());
     }
 
     /**
@@ -486,7 +489,9 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanId(),
                 directOutputVlanType,
                 meterId,
-                command.isEnableLldp());
+                command.isEnableLldp(),
+                command.isMultiTable());
+
     }
 
     /**

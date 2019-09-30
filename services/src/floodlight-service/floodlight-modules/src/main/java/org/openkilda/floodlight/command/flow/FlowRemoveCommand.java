@@ -141,12 +141,13 @@ public class FlowRemoveCommand extends FlowCommand {
 
         if (criteria.getInPort() != null) {
             // Match either In Port or both Port & Vlan criteria.
-            MacAddress srcMac = convertDpIdToMac(DatapathId.of(criteria.getIngressSwitchId().toLong()));
-
+            MacAddress dstMac = criteria.getEgressSwitchId() != null
+                    ? convertDpIdToMac(DatapathId.of(criteria.getEgressSwitchId().toLong()))
+                    : null;
             Match match = matchFlow(criteria.getInPort(),
 
                     Optional.ofNullable(criteria.getEncapsulationId()).orElse(0),
-                    criteria.getEncapsulationType(), srcMac, ofFactory);
+                    criteria.getEncapsulationType(), dstMac, ofFactory);
             builder.setMatch(match);
         } else if (criteria.getEncapsulationId() != null) {
             // Match In Vlan criterion if In Port is not specified

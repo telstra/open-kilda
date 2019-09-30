@@ -538,11 +538,11 @@ misconfigured"
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1,
-                        OutputVlanType.REPLACE, switchPair.dst.dpId, false)).toJson()))
+                        OutputVlanType.REPLACE, false)).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.id, 1L, transitSw, 1, 2, 1,
-                            FlowEncapsulationType.TRANSIT_VLAN, switchPair.dst.dpId, false)).toJson()))
+                            FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.src.dpId, 1, 2, 1, 1,
