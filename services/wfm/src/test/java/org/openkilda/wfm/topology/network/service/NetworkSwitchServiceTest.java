@@ -699,7 +699,7 @@ public class NetworkSwitchServiceTest {
         service.switchEvent(switchAddEvent);
 
         RulesSyncEntry rulesSyncEntry =
-                new RulesSyncEntry(singletonList(Cookie.FORWARD_FLOW_COOKIE_MASK | 1), emptyList(), emptyList(),
+                new RulesSyncEntry(singletonList(Cookie.buildForwardCookie(1).getValue()), emptyList(), emptyList(),
                         emptyList(), emptyList(), emptyList());
         MetersSyncEntry metersSyncEntry =
                 new MetersSyncEntry(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList());

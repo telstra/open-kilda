@@ -410,7 +410,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         FlowPath flowPath = FlowPath.builder()
                 .pathId(new PathId(flow.getFlowId() + "_forward_path"))
                 .flow(flow)
-                .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 1L))
+                .cookie(Cookie.buildForwardCookie(1L))
                 .meterId(new MeterId(1))
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
