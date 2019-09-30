@@ -111,20 +111,20 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Forward flow from source switch to destination switch"
-        def flow1 = flowHelper.randomFlow(switchPair)
+        def flow1 = flowHelper.randomFlow(switchPair).tap { it.pinned = true }
         flow1 = flowHelper.addFlow(flow1)
 
         and: "Reverse flow from destination switch to source switch"
-        def flow2 = flowHelper.randomFlow(switchPair)
+        def flow2 = flowHelper.randomFlow(switchPair).tap { it.pinned = true }
         flow2 = flowHelper.addFlow(flow2)
 
         and: "Forward flow from source switch to some 'internal' switch"
         def islToInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.id))).first()
-        def flow3 = flowHelper.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch)
+        def flow3 = flowHelper.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch).tap { it.pinned = true }
         flow3 = flowHelper.addFlow(flow3)
 
         and: "Reverse flow from 'internal' switch to source switch"
-        def flow4 = flowHelper.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch)
+        def flow4 = flowHelper.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch).tap { it.pinned = true }
         flow4 = flowHelper.addFlow(flow4)
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
@@ -153,7 +153,12 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.id).status == FlowState.DOWN }
+            [flow1, flow2, flow3, flow4].each {
+                assert northbound.getFlowStatus(it.id).status == FlowState.DOWN
+                def isls = pathHelper.getInvolvedIsls(northbound.getFlowPath(it.id))
+                assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
+            }
+
         }
 
         when: "Get all flows going through the link from source switch to 'internal' switch"

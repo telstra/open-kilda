@@ -8,7 +8,7 @@ floodlight.password=kilda
 floodlight.controllers.management=tcp:floodlight_one.pendev:6653
 floodlight.controllers.stat=tcp:floodlight_second.pendev:6653
 floodlight.regions=1
-floodlight.alive.timeout=5
+floodlight.alive.timeout=10
 floodlight.alive.interval=2
 
 neo.uri=bolt://localhost:7687
@@ -32,19 +32,19 @@ opentsdb.metric.prefix=kilda.
 
 spring.profiles.active=virtual
 
-reroute.delay=3
-reroute.hardtimeout=15
+reroute.delay=2
+reroute.hardtimeout=8
 
 discovery.interval=3
-discovery.timeout=15
+discovery.timeout=9
 
 antiflap.min=1
-antiflap.warmup=5
-antiflap.cooldown=10
+antiflap.warmup=3
+antiflap.cooldown=7
 
 isl.cost.when.port.down=10000
 isl.cost.when.under.maintenance=10000
-isl.unstable.timeout.sec=7200
+isl.unstable.timeout.sec=15
 
 burst.coefficient=1.05
 
@@ -62,4 +62,4 @@ grpc.password=kilda
 grpc.remote.log.server.ip=1.1.1.1
 grpc.remote.log.server.port=321
 
-use.hs=false
+use.hs=true

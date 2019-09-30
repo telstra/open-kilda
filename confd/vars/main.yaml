@@ -76,7 +76,7 @@ kilda_kafka_te_consumer_group: "kilda-tpe"
 # interval in ticks (seconds) between sending disco packets
 kilda_discovery_interval: 3
 kilda_discovery_packet_ttl: 5
-kilda_discovery_timeout: "15"
+kilda_discovery_timeout: "9"
 kilda_discovery_db_write_repeats_time_frame: 30
 
 kilda_worker_pool_size: 512
@@ -94,8 +94,8 @@ kilda_opentsdb_metric_prefix: "kilda."
 
 kilda_production_fileserver: "http://127.0.0.1"
 
-kilda_reroute_throttling_delay_min: 3
-kilda_reroute_throttling_delay_max: 15
+kilda_reroute_throttling_delay_min: 2
+kilda_reroute_throttling_delay_max: 8
 kilda_flow_default_priority: 1000
 
 kilda_flow_create_hub_retries: 3
@@ -106,11 +106,11 @@ kilda_diversity_switch_weight: 1000
 
 kilda_isl_cost_when_port_down: 10000
 kilda_isl_cost_when_under_maintenance: 10000
-kilda_isl_unstable_timeout_sec: 7200
+kilda_isl_unstable_timeout_sec: 15
 
 kilda_port_up_down_throttling_delay_seconds_min: 1
-kilda_port_up_down_throttling_delay_seconds_warm_up: 5
-kilda_port_up_down_throttling_delay_seconds_cool_down: 10
+kilda_port_up_down_throttling_delay_seconds_warm_up: 3
+kilda_port_up_down_throttling_delay_seconds_cool_down: 7
 
 kilda_bfd_port_offset: 200
 

@@ -5,7 +5,8 @@ This module holds functional tests designed to be run against staging OR virtual
   - [Failfast with no cleanup](#failfast-with-no-cleanup)
 - [How to run](#how-to-run)
 	- [Virtual (local Kilda)](#virtual-local-kilda)
-	- [Hardware (Staging)](#hardware-staging)
+	- [Hardware (Staging)](#hardware-remote-kilda-staging)
+	- [Test suites](#test-suites)
 	- [Artifacts](#artifacts)
 - [How to create a test](#how-to-create-a-test)
 	- [Best Practices](#best-practices)
@@ -49,7 +50,9 @@ files with default ones
 `spring.profiles.active` should be set to `hardware`.  
 Note that other properties should 
 correspond to actual Kilda properties that were used for deployment of the target env.
-- Check your `topology.yaml`. It should represent your actual hardware topology.
+- Check your `topology.yaml`. It should represent your actual expected hardware topology. You can automatically generate 
+`topology.yaml` based on currently discovered topology, but be aware that this will prevent you from catching
+some switch/isl discovery-related issues: `mvn test -Dtest=GenerateTopologyConfig -f functional-tests/` && `cp functional-tests/target/topology.yaml functional-tests/`
 - Now you can run tests by executing the following command in the terminal:  
 `mvn clean test -Pfunctional -f services/src/functional-tests`.
 
@@ -63,6 +66,16 @@ If you want to run a single test, you can use the following command:
 For example:  
 `mvn clean test -Pfunctional -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
 - Tests can be run as regular JUnit tests from your IDE
+
+## Test suites
+We leverage test suites by first tagging tests and then supplying a required `tag experession` when starting a test run.
+More info on how to form a tag expression can be found in javadoc here `org.openkilda.functionaltests.extension.tags.TagExtension`.  
+Common usages:  
+`mvn test -Pfunctional -Dtags=smoke` #shorten suite of most valuable test cases  
+`mvn test -Pfunctional '-Dtags=topology_dependent or hardware'`   
+`mvn test -Pfunctional -Dtags=smoke_switches` #focus on switch-related tests (e.g. smoke test integration with new switch firmware)  
+`mvn test -Pfunctional '-Dtags=not low_priority'` #exclude regression low-value tests. This suite is used to run
+func tests for each PR on github 
 
 ## Artifacts
 * Logs - ```target/logs```
@@ -115,4 +128,5 @@ test case at the end.
 # Other
 ### How to create a markdown report with test-cases from specifications
 Pass `-Dcom.athaydes.spockframework.report.IReportCreator=org.openkilda.functionaltests.helpers.TestCaseReportCreator`
-and find the report under `spock-reports/summary.md` after the test run.
+and find the report under `spock-reports/summary.md` after the test run. We use this report to update our wiki page
+https://github.com/telstra/open-kilda/wiki/Testing 

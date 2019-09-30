@@ -184,7 +184,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         given: "A direct link"
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
         assumeTrue("Unable to find ISL for this test", isl as boolean)
-        def timestampBefore = System.currentTimeMillis()
 
         and: "floodlightRoutePeriodicSync is disabled"
         northbound.toggleFeature(FeatureTogglesDto.builder()
@@ -192,6 +191,7 @@ class PortHistorySpec extends HealthCheckSpecification {
                 .build())
 
         when: "Execute port DOWN on the src switch"
+        def timestampBefore = System.currentTimeMillis()
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
@@ -207,29 +207,28 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         when: "Generate antiflap statistic"
         def count = 0
-        Integer intervalBetweenPortStateManipulation = (antiflapCooldown / 10).toInteger()
         Wrappers.timedLoop(antiflapDumpingInterval * 0.9) {
             northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            sleep(intervalBetweenPortStateManipulation)
             northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-            sleep(intervalBetweenPortStateManipulation)
             count += 1
         }
 
         then: "Antiflap statistic is available in port history"
-        Wrappers.wait(antiflapDumpingInterval * 0.1 + WAIT_OFFSET) {
-            Long timestampAfterStat = System.currentTimeMillis()
-            def soft = new SoftAssertions()
-            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
-                    timestampBefore, timestampAfterStat)) { history ->
-                soft.checkSucceeds { history.size() == 3 } // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS
+        Wrappers.wait(WAIT_OFFSET + antiflapDumpingInterval * 0.1) {
+            new SoftAssertions().with {
+                def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
+                        timestampBefore, System.currentTimeMillis())
+                checkSucceeds { assert history.size() == 3 }
+                // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS
                 def antiflapStat = history[-1]
-                checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
-                        PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS)
-                soft.checkSucceeds { antiflapStat.downCount == antiflapStat.upCount }
-                soft.checkSucceeds { Math.abs(count - antiflapStat.upCount) <= 1 }
+                checkSucceeds {
+                    checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
+                            PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS)
+                }
+                checkSucceeds { assert antiflapStat.downCount == antiflapStat.upCount }
+                checkSucceeds { assert Math.abs(count - antiflapStat.upCount) <= 1 }
+                verify()
             }
-            soft.verify()
         }
 
         and: "Cleanup: revert system to original state"
