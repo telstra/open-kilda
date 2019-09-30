@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -14,6 +15,7 @@ import org.openkilda.messaging.info.event.SwitchChangeType
 
 import spock.lang.Unroll
 
+@Tags([LOW_PRIORITY])
 class IslCostSpec extends HealthCheckSpecification {
 
     def setupOnce() {

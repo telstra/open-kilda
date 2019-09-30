@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.DEFAULT_COST
@@ -253,6 +254,59 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
         }
+    }
+
+    @Tags(HARDWARE)
+    def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
+        given: "A vxlan flow"
+        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
+            it.noviflow && !it.wb5164
+        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches", false)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            allTraffgenSwitchIds.contains(swP.src.dpId) && allTraffgenSwitchIds.contains(swP.dst.dpId) &&
+                    swP.paths.findAll { path ->
+                        pathHelper.getInvolvedSwitches(path).every { it.noviflow  && !it.wb5164 }
+                    }.size() > 1
+        } ?: assumeTrue("Unable to find required switches/paths in topology",false)
+        def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}
+
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = 0
+        flow.ignoreBandwidth = true
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelper.addFlow(flow)
+        def altPaths = availablePaths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }
+        def potentialNewPath = altPaths[0]
+        availablePaths.findAll { it != potentialNewPath }.each { pathHelper.makePathMorePreferable(potentialNewPath, it) }
+
+        when: "Start traffic examination"
+        def traffExam = traffExamProvider.get()
+        def bw = 100000 // 100 Mbps
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw)
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction, true)
+                direction.setResources(resources)
+            }
+        }
+
+        and: "While traffic flow is active, request a flow reroute"
+        [exam.forward, exam.reverse].each { assert !traffExam.isFinished(it) }
+        def reroute = northboundV2.rerouteFlow(flow.id)
+
+        then: "Flow is rerouted"
+        reroute.rerouted
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "Traffic examination result shows acceptable packet loss percentage"
+        def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
+        examReports.each {
+            //Minor packet loss is considered a measurement error and happens regardless of reroute
+            assert it.consumerReport.lostPercent < 1
+        }
+
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {
