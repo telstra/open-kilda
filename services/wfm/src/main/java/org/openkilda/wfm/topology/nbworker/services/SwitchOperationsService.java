@@ -147,13 +147,17 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         Switch sw = switchRepository.findById(switchId)
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
 
-        if (force) {
-            // forceDelete() removes switch along with all relationships.
-            switchRepository.forceDelete(sw.getSwitchId());
-        } else {
-            // delete() is used to be sure that we wouldn't delete switch if it has even one relationship.
-            switchRepository.delete(sw);
-        }
+        transactionManager.doInTransaction(() -> {
+            switchPropertiesRepository.findBySwitchId(sw.getSwitchId())
+                    .ifPresent(sp -> switchPropertiesRepository.delete(sp));
+            if (force) {
+                // forceDelete() removes switch along with all relationships.
+                switchRepository.forceDelete(sw.getSwitchId());
+            } else {
+                // delete() is used to be sure that we wouldn't delete switch if it has even one relationship.
+                switchRepository.delete(sw);
+            }
+        });
 
         return !switchRepository.exists(switchId);
     }
