@@ -1026,7 +1026,7 @@ switches"() {
         and: "The first flow allows traffic on the main path"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0)
+                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0, 5)
         [exam.forward, exam.reverse].each { direction ->
             def resources = traffExam.startExam(direction)
             direction.setResources(resources)
@@ -1038,7 +1038,7 @@ switches"() {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         def newExam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0)
+                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0, 5)
         [newExam.forward, newExam.reverse].each { direction ->
             def resources = traffExam.startExam(direction)
             direction.setResources(resources)
