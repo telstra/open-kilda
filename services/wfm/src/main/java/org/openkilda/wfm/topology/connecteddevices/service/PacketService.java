@@ -58,6 +58,7 @@ public class PacketService {
             String flowId = flowCookie.get().getFlowId();
             boolean isForward = cookie.isMaskedAsForward();
 
+            Instant now = Instant.now();
             ConnectedDevice device = connectedDeviceRepository
                     .findByUniqueFieldCombination(
                             flowId, isForward, data.getMacAddress(), LLDP, data.getChassisId(), data.getPortId())
@@ -65,7 +66,7 @@ public class PacketService {
                             .flowId(flowId)
                             .source(isForward)
                             .macAddress(data.getMacAddress())
-                            .timeFirstSeen(Instant.now())
+                            .timeFirstSeen(now)
                             .type(LLDP)
                             .chassisId(data.getChassisId())
                             .portId(data.getPortId())
@@ -77,7 +78,7 @@ public class PacketService {
             device.setSystemDescription(data.getSystemDescription());
             device.setSystemCapabilities(data.getSystemCapabilities());
             device.setManagementAddress(data.getManagementAddress());
-            device.setTimeLastSeen(Instant.now());
+            device.setTimeLastSeen(now);
             device.setType(LLDP);
 
             connectedDeviceRepository.createOrUpdate(device);
