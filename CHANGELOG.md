@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.38.0 (30/09/2019)
+
+### Features:
+-  [#2693](https://github.com/telstra/open-kilda/pull/2693) Added multitable support into floodlight logic [**floodlight**][**storm-topologies**]
+-  [#2745](https://github.com/telstra/open-kilda/pull/2745) Add switch connection port info. Fix #2681 (Issue: [#2681](https://github.com/telstra/open-kilda/issues/2681)) [**northbound**][**storm-topologies**]
+-  [#2812](https://github.com/telstra/open-kilda/pull/2812) Port history antiflap stats (Issue: [#2718](https://github.com/telstra/open-kilda/issues/2718)) [**storm-topologies**]
+
+### Bug Fixes:
+-  [#2830](https://github.com/telstra/open-kilda/pull/2830) Fixed different timeFirstSeen and TimeLastSeen for Connected Devices
+
+### Improvements:
+-  [#2624](https://github.com/telstra/open-kilda/pull/2624) OF cookie management cleanup [**floodlight**][**storm-topologies**]
+-  [#2796](https://github.com/telstra/open-kilda/pull/2796) add flowHistory test for v2 [**tests**]
+-  [#2831](https://github.com/telstra/open-kilda/pull/2831) Tag more low-value tests as LOW_PRIORITY [**tests**]
+-  [#2832](https://github.com/telstra/open-kilda/pull/2832) Removed migration 1.13 artifact
+-  [#2767](https://github.com/telstra/open-kilda/pull/2767) extend statistic test coverage for  different type of flow [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.37.0...v1.38.0).
+
+### Affected Components:
+swmanager, network, stats, fl, flow-hs, nbworker, flow, nb, connected
+
 ## v1.37.0 (26/09/2019)
 
 ### Features:
