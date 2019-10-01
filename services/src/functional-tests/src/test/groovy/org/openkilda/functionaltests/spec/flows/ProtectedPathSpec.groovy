@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -9,6 +10,7 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -576,6 +578,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -622,6 +625,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -725,7 +729,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "The flow allows traffic(on the main path)"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000, 5)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -1034,6 +1038,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "#flowDescription flow is DEGRADED when protected and alternative paths are not available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

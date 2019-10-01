@@ -42,7 +42,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.Set;
 import java.util.UUID;
@@ -83,12 +82,11 @@ public class InstallTransitRuleCommandTest {
                 outPort,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.transitFlowMod(inPort, outPort, transitEncapsulationId, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+                TRANSIT_VLAN), result);
     }
 
     @Test
@@ -107,11 +105,10 @@ public class InstallTransitRuleCommandTest {
                 outPort,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.transitFlowMod(inPort, outPort, transitEncapsulationId, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+                VXLAN), result);
     }
 }

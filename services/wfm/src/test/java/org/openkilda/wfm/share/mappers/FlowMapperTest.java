@@ -124,7 +124,7 @@ public class FlowMapperTest {
                 .pathId(new PathId("forward_flow_path"))
                 .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
-                .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 1))
+                .cookie(Cookie.buildForwardCookie(1))
                 .flow(flow)
                 .status(FlowPathStatus.ACTIVE)
                 .build();
@@ -134,7 +134,7 @@ public class FlowMapperTest {
                 .pathId(new PathId("reverse_flow_path"))
                 .srcSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
-                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 1))
+                .cookie(Cookie.buildReverseCookie(1))
                 .flow(flow)
                 .status(FlowPathStatus.ACTIVE)
                 .build();
@@ -144,7 +144,7 @@ public class FlowMapperTest {
                 .pathId(new PathId("forward_protected_flow_path"))
                 .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
-                .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 2))
+                .cookie(Cookie.buildForwardCookie(2))
                 .flow(flow)
                 .status(FlowPathStatus.INACTIVE)
                 .build();
@@ -154,7 +154,7 @@ public class FlowMapperTest {
                 .pathId(new PathId("reverse_protected_flow_path"))
                 .srcSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
-                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 2))
+                .cookie(Cookie.buildReverseCookie(2))
                 .flow(flow)
                 .status(FlowPathStatus.INACTIVE)
                 .build();

@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -302,6 +303,7 @@ switches"() {
     }
 
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Able to swap #endpointsPart (#description) for two flows with different source and the same destination \
 switches"() {
         given: "Two flows with different source and the same destination switches"
@@ -411,6 +413,7 @@ switches"() {
     }
 
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#description) for two flows with different source and destination switches"() {
         given: "Two flows with different source and destination switches"
         flowHelper.addFlow(flow1)
@@ -807,6 +810,7 @@ switches"() {
         database.resetCosts()
     }
 
+    @Tags(LOW_PRIORITY)
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
         def flow1SwitchPair = topologyHelper.getNeighboringSwitchPair()
@@ -940,6 +944,7 @@ switches"() {
     }
 
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#description) for two protected flows"() {
         given: "Two protected flows with different source and destination switches"
         flowHelper.addFlow(flow1.tap { it.allocateProtectedPath = true })
@@ -1026,7 +1031,7 @@ switches"() {
         and: "The first flow allows traffic on the main path"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0)
+                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0, 5)
         [exam.forward, exam.reverse].each { direction ->
             def resources = traffExam.startExam(direction)
             direction.setResources(resources)
@@ -1038,7 +1043,7 @@ switches"() {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         def newExam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0)
+                .buildBidirectionalExam(northbound.getFlow(flow1.id), 0, 5)
         [newExam.forward, newExam.reverse].each { direction ->
             def resources = traffExam.startExam(direction)
             direction.setResources(resources)

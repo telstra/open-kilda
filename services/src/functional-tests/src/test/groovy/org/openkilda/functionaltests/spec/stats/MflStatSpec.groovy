@@ -35,6 +35,11 @@ class MflStatSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    // statsrouter.request.interval = 60, this test often fails on jenkins with this value
+    // the statsrouter.request.interval is increased here to 120
+    @Shared
+    Integer statsRouterInterval = 120
+
     @Tags(VIRTUAL)
     def "System is able to collect stats from the statistic and management controllers"() {
         given: "A flow"
@@ -46,16 +51,13 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in openTSDB is created"
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.id]
-        // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-        // the statsrouter.request.interval is increased here to 120
-        def statsRouterInterval = 120
         def waitInterval = 10
         def initStat
         Wrappers.wait(statsRouterInterval, waitInterval) {
@@ -140,16 +142,13 @@ class MflStatSpec extends HealthCheckSpecification {
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth)
+                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in openTSDB is created"
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.flowId]
-        // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-        // the statsrouter.request.interval is increased here to 120
-        def statsRouterInterval = 120
         def waitInterval = 10
         def initStat
         Wrappers.wait(statsRouterInterval, waitInterval) {

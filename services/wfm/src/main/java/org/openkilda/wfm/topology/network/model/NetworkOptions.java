@@ -50,6 +50,8 @@ public class NetworkOptions implements Serializable {
 
     private int countSynchronizationAttempts;
 
+    private long antiFlapStatsDumpingInterval;
+
     public NetworkOptions(NetworkTopologyConfig topologyConfig) {
         discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
@@ -68,5 +70,6 @@ public class NetworkOptions implements Serializable {
         isRemoveExcessWhenSwitchSync = topologyConfig.isRemoveExcessWhenSwitchSync();
 
         countSynchronizationAttempts = topologyConfig.getCountSynchronizationAttempts();
+        antiFlapStatsDumpingInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getPortAntiFlapStatsDumpingInterval());
     }
 }

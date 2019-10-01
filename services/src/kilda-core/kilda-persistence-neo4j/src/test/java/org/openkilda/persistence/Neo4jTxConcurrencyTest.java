@@ -261,8 +261,13 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
                         }
 
                     } else {
-                        Cookie cookie = new Cookie(Arrays.asList(Cookie.FORWARD_FLOW_COOKIE_MASK,
-                                Cookie.REVERSE_FLOW_COOKIE_MASK).get(index % 2) | 3L);
+                        Cookie cookie;
+                        if (index % 2 == 0) {
+                            cookie = Cookie.buildForwardCookie(3);
+                        } else {
+                            cookie = Cookie.buildReverseCookie(3);
+                        }
+
                         FlowPath pathToUpdate =
                                 flowPathRepository.findByFlowIdAndCookie(TEST_FLOW_3_ID, cookie).get();
                         long latency = Math.abs(random.nextLong());

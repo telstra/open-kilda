@@ -74,9 +74,10 @@ public class SwitchSyncServiceImplTest {
 
     private static SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static SwitchId INGRESS_SWITCH_ID = new SwitchId(0x0000000000000002L);
+    private static SwitchId EGRESS_SWITCH_ID = new SwitchId(0x0000000000000002L);
     private static String FLOW_ID = "flow_id";
     private static String KEY = "KEY";
-    private static long EXCESS_COOKIE = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+    private static long EXCESS_COOKIE = Cookie.buildForwardCookie(1).getValue();
 
     @Mock
     private SwitchManagerCarrier carrier;
@@ -121,12 +122,13 @@ public class SwitchSyncServiceImplTest {
         service.commandBuilder = commandBuilder;
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
-        flowEntry = new FlowEntry(Cookie.FORWARD_FLOW_COOKIE_MASK | 7, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
+        flowEntry = new FlowEntry(
+                Cookie.buildForwardCookie(7).getValue(), 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
 
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 60,
-                FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L, INGRESS_SWITCH_ID,
-                false, false);
+                FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L,
+                EGRESS_SWITCH_ID, false, false);
         when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
                 .thenReturn(singletonList(installingRule));
 

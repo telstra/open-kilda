@@ -41,7 +41,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
-@RequestMapping("/v2/switch")
+@RequestMapping("/v2/switches")
 public class SwitchControllerV2 extends BaseController {
 
     @Autowired

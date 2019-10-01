@@ -140,15 +140,15 @@ public class FlowServiceTest {
     private static final int FLOW_A_REVERSE_METER_ID = 33;
     private static final int FLOW_A_FORWARD_METER_ID_PROTECTED = 42;
     private static final int FLOW_A_REVERSE_METER_ID_PROTECTED = 43;
-    private static final long FLOW_A_FORWARD_COOKIE = 1 | Cookie.FORWARD_FLOW_COOKIE_MASK;
-    private static final long FLOW_A_REVERSE_COOKIE = 1 | Cookie.REVERSE_FLOW_COOKIE_MASK;
-    private static final long FLOW_A_FORWARD_COOKIE_PROTECTED = 2 | Cookie.FORWARD_FLOW_COOKIE_MASK;
-    private static final long FLOW_A_REVERSE_COOKIE_PROTECTED = 2 | Cookie.REVERSE_FLOW_COOKIE_MASK;
+    private static final long FLOW_A_FORWARD_COOKIE = Cookie.buildForwardCookie(1).getValue();
+    private static final long FLOW_A_REVERSE_COOKIE = Cookie.buildReverseCookie(1).getValue();
+    private static final long FLOW_A_FORWARD_COOKIE_PROTECTED = Cookie.buildForwardCookie(2).getValue();
+    private static final long FLOW_A_REVERSE_COOKIE_PROTECTED = Cookie.buildReverseCookie(2).getValue();
     private static final int FLOW_B_SRC_PORT = 1;
     private static final int FLOW_B_SRC_VLAN = 15;
     private static final int FLOW_B_DST_VLAN = 16;
-    private static final long FLOW_B_FORWARD_COOKIE = 2 | Cookie.FORWARD_FLOW_COOKIE_MASK;
-    private static final long FLOW_B_REVERSE_COOKIE = 2 | Cookie.REVERSE_FLOW_COOKIE_MASK;
+    private static final long FLOW_B_FORWARD_COOKIE = Cookie.buildForwardCookie(2).getValue();
+    private static final long FLOW_B_REVERSE_COOKIE = Cookie.buildReverseCookie(2).getValue();
     private static final int FLOW_B_FORWARD_METER_ID = 34;
     private static final int FLOW_B_REVERSE_METER_ID = 35;
 

@@ -13,13 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.history.model;
+package org.openkilda.messaging.nbtopology.response;
 
-public enum PortHistoryEvent {
-    PORT_UP,
-    PORT_DOWN,
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.Switch;
 
-    ANTI_FLAP_ACTIVATED,
-    ANTI_FLAP_PERIODIC_STATS,
-    ANTI_FLAP_DEACTIVATED
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+/**
+ * Represents a switch northbound response.
+ */
+@Value
+public class GetSwitchResponse extends InfoData {
+    private static final long serialVersionUID = 1L;
+
+    @JsonProperty("payload")
+    protected Switch payload;
+
+    @JsonCreator
+    public GetSwitchResponse(@JsonProperty("payload") Switch payload) {
+        this.payload = payload;
+    }
 }

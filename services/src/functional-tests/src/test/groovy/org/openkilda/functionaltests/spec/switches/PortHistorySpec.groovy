@@ -18,12 +18,21 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
 import spock.lang.Unroll
 
+@See(["https://github.com/telstra/open-kilda/blob/issue/port-history-stats/docs/design/network-discovery/port-FSM.png",
+        "https://github.com/telstra/open-kilda/blob/issue/port-history-stats/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
 class PortHistorySpec extends HealthCheckSpecification {
     @Autowired
     NorthboundServiceV2 northboundV2
+
+    @Shared
+    //confd/templates/wfm/topology.properties.tmpl => port.antiflap.stats.dumping.interval.seconds = 60
+    //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
+    def antiflapDumpingInterval = 60
 
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /direct/)
@@ -39,10 +48,15 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history is created on the src switch"
-        def timestampAfterDown = System.currentTimeMillis()
-        with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
-            it.size() == 1
-            checkPortHistory(it[0], isl.srcSwitch.dpId, isl.srcPort, "PORT_DOWN")
+        Wrappers.wait(WAIT_OFFSET) {
+            Long timestampAfterDown = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
+                it.size() == 2
+                checkPortHistory(it.find { it.event == PortHistoryEvent.ANTI_FLAP_ACTIVATED.toString() },
+                        isl.srcSwitch.dpId, isl.srcPort, PortHistoryEvent.ANTI_FLAP_ACTIVATED)
+                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_DOWN.toString() }, isl.srcSwitch.dpId,
+                        isl.srcPort, PortHistoryEvent.PORT_DOWN)
+            }
         }
 
         when: "Execute port UP on the src switch"
@@ -52,22 +66,42 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history is updated on the src switch"
-        def timestampAfterUp = System.currentTimeMillis()
-        with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterUp)) {
-            it.size() == 2
-            checkPortHistory(it[1], isl.srcSwitch.dpId, isl.srcPort, "PORT_UP")
+        Long timestampAfterUp
+        Wrappers.wait(WAIT_OFFSET) {
+            timestampAfterUp = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterUp)) {
+                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_UP.toString() },
+                        isl.srcSwitch.dpId, isl.srcPort, PortHistoryEvent.PORT_UP)
+                def deactivateEvent = it.find { it.event == PortHistoryEvent.ANTI_FLAP_DEACTIVATED.toString() }
+                checkPortHistory(deactivateEvent, isl.srcSwitch.dpId, isl.srcPort,
+                        PortHistoryEvent.ANTI_FLAP_DEACTIVATED)
+                // no flapping occurs during cooldown, so antiflap stat doesn't exist in the ANTI_FLAP_DEACTIVATED event
+                !deactivateEvent.downCount
+                !deactivateEvent.upCount
+            }
         }
 
         and: "Port history on the dst switch is not empty when link is direct"
-        northboundV2.getPortHistory(isl.dstSwitch.dpId, isl.dstPort, timestampBefore, timestampAfterUp).size() ==
-                historySizeOnDstSw
+        with(northboundV2.getPortHistory(isl.dstSwitch.dpId, isl.dstPort, timestampBefore, timestampAfterUp)) {
+            it.size() == historySizeOnDstSw
+            if (historySizeOnDstSw as boolean) {
+                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_UP.toString() },
+                        isl.dstSwitch.dpId, isl.dstPort, PortHistoryEvent.PORT_UP)
+                def deactivateEvent = it.find { it.event == PortHistoryEvent.ANTI_FLAP_DEACTIVATED.toString() }
+                checkPortHistory(deactivateEvent, isl.dstSwitch.dpId, isl.dstPort,
+                        PortHistoryEvent.ANTI_FLAP_DEACTIVATED)
+                // no flapping occurs during cooldown, so antiflap stat doesn't exist in the ANTI_FLAP_DEACTIVATED event
+                !deactivateEvent.downCount
+                !deactivateEvent.upCount
+            }
+        }
 
         and: "Port history on the src switch is also available using default timeline"
-        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort).size() >= 2
+        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort).size() >= 4
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
-                ["direct", 2, getTopology().islsForActiveSwitches.find { !it.aswitch }],
+                ["direct", 4, getTopology().islsForActiveSwitches.find { !it.aswitch }],
                 ["a-switch", 0, getTopology().islsForActiveSwitches.find {
                     it.aswitch?.inPort && it.aswitch?.outPort
                 }]
@@ -91,7 +125,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         def timestampAfter = System.currentTimeMillis()
         def portHistory = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter)
-        assert portHistory.size() == 2
+        assert portHistory.size() == 4 // PORT_DOWN, ANTI_FLAP_ACTIVATED, PORT_UP, ANTI_FLAP_DEACTIVATED
 
         when: "Get port history on the src switch for incorrect timeline"
         def portH = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampAfter, timestampBefore)
@@ -125,7 +159,7 @@ class PortHistorySpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
         def timestampAfter = System.currentTimeMillis()
-        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 2
+        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
         and: "Deactivate the src switch"
         def switchToDisconnect = isl.srcSwitch
@@ -135,7 +169,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history on the src switch is still available"
-        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 2
+        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
         and: "Cleanup: Revive the src switch"
         lockKeeper.reviveSwitch(switchToDisconnect)
@@ -144,13 +178,120 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
     }
 
-    void checkPortHistory(PortHistoryResponse portHistory, SwitchId switchId, Integer port, String event) {
+    def "Port history is able to show ANTI_FLAP statistic"() {
+        given: "A direct link"
+        def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
+        assumeTrue("Unable to find ISL for this test", isl as boolean)
+        def timestampBefore = System.currentTimeMillis()
+
+        when: "Execute port DOWN on the src switch"
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+        }
+
+        then: "Port history is created on the src switch"
+        Wrappers.wait(WAIT_OFFSET) {
+            Long timestampAfterDown = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
+                it.size() == 2 // PORT_DOWN, ANTI_FLAP_ACTIVATED
+            }
+        }
+
+        when: "Generate antiflap statistic"
+        def count = 0
+        Integer intervalBetweenPortStateManipulation = (antiflapCooldown / 10).toInteger()
+        Wrappers.timedLoop(antiflapDumpingInterval * 0.9) {
+            northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            sleep(intervalBetweenPortStateManipulation)
+            northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+            sleep(intervalBetweenPortStateManipulation)
+            count += 1
+        }
+
+        then: "Antiflap statistic is available in port history"
+        Wrappers.wait(antiflapDumpingInterval * 0.1 + WAIT_OFFSET) {
+            Long timestampAfterStat = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterStat)) {
+                it.size() == 3 // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS
+                def antiflapStat = it[-1]
+                checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
+                        PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS)
+                count == antiflapStat.downCount
+                count == antiflapStat.upCount
+            }
+        }
+
+        and: "Cleanup: revert system to original state"
+        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
+    }
+
+    def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
+ before collecting ANTI_FLAP_PERIODIC_STATS"() {
+        assumeTrue("It can't be run when antiflap.cooldown + flap_duration > port.antiflap.stats.dumping.interval.seconds",
+                antiflapCooldown + 3 < antiflapDumpingInterval)
+        //port up/down procedure is done once in this test, so it can't take more than 3 seconds
+        assumeTrue("At least 10 seconds should be available for changing port status", antiflapCooldown >= 10)
+        // assume that portDown/portUp can take some time on hardware env(no more than 10 seconds)
+
+        given: "A direct link"
+        def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
+        assumeTrue("Unable to find ISL for this test", isl as boolean)
+        def timestampBefore = System.currentTimeMillis()
+
+        when: "Execute port DOWN on the src switch for activating antiflap"
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
+            Long timestampAfterDown = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
+                it.size() == 2 // PORT_DOWN, ANTI_FLAP_ACTIVATED
+            }
+        }
+
+        and: "Generate antiflap statistic"
+        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+
+        then: "Antiflap statistic is available in port history inside the ANTI_FLAP_DEACTIVATED event"
+        Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
+            Long timestampAfterStat = System.currentTimeMillis()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterStat)) {
+                it.findAll { it.event == PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS.toString() }.empty
+                it.size() == 3 // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_DEACTIVATED
+                def antiflapStat = it[-1]
+                checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
+                        PortHistoryEvent.ANTI_FLAP_DEACTIVATED)
+                antiflapStat.downCount == 1
+                antiflapStat.upCount == 1
+            }
+        }
+
+        and: "Cleanup: revert system to original state"
+        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        }
+    }
+
+    void checkPortHistory(PortHistoryResponse portHistory, SwitchId switchId, Integer port, PortHistoryEvent event) {
         verifyAll(portHistory) {
             id != null
             switchId == switchId
             portNumber == port
-            it.event == event.toUpperCase() // PORT_UP, PORT_DOWN
+            it.event == event.toString()
             date != null
         }
+    }
+
+    enum PortHistoryEvent {
+        PORT_UP,
+        PORT_DOWN,
+        ANTI_FLAP_ACTIVATED,
+        ANTI_FLAP_DEACTIVATED,
+        ANTI_FLAP_PERIODIC_STATS
     }
 }

@@ -102,6 +102,10 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     @Default("2")
     int getCountSynchronizationAttempts();
 
+    @Key("port.antiflap.stats.dumping.interval.seconds")
+    @Default("60")
+    int getPortAntiFlapStatsDumpingInterval();
+
     @Configuration
     @Key("discovery")
     interface DiscoveryConfig {

@@ -518,7 +518,7 @@ misconfigured"
                 path[1..-2].every { it.switchId.description.contains("OF_12") }
             }
             hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        }
+        } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelper.randomFlow(switchPair)
@@ -533,16 +533,16 @@ misconfigured"
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
-        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.dst.dpId)
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1,
-                        OutputVlanType.REPLACE, switchPair.dst.dpId, false)).toJson()))
+                        OutputVlanType.REPLACE, false)).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.id, 1L, transitSw, 1, 2, 1,
-                            FlowEncapsulationType.TRANSIT_VLAN, switchPair.dst.dpId, false)).toJson()))
+                            FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.src.dpId, 1, 2, 1, 1,

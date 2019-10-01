@@ -15,8 +15,10 @@
 
 package org.openkilda.model;
 
+import org.openkilda.converters.InetSocketAddressConverter;
 import org.openkilda.converters.SwitchFeatureConverter;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -34,6 +36,7 @@ import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
+import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
@@ -71,7 +74,9 @@ public class Switch implements Serializable {
     @Convert(graphPropertyType = String.class)
     private SwitchStatus status;
 
-    private String address;
+    // switch socket address on FL side
+    @Convert(InetSocketAddressConverter.class)
+    private InetSocketAddress socketAddress;
 
     private String hostname;
 
@@ -102,12 +107,12 @@ public class Switch implements Serializable {
     private Instant timeModify;
 
     @Builder(toBuilder = true)
-    public Switch(@NonNull SwitchId switchId, SwitchStatus status, String address,
+    public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,
                   String hostname, String controller, String description, boolean underMaintenance,
                   Instant timeCreate, Instant timeModify, Set<SwitchFeature> features) {
         this.switchId = switchId;
         this.status = status;
-        this.address = address;
+        this.socketAddress = socketAddress;
         this.hostname = hostname;
         this.controller = controller;
         this.description = description;
@@ -140,6 +145,7 @@ public class Switch implements Serializable {
                 && E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(hardwareDescription).matches();
     }
 
+    @JsonIgnore
     public boolean isActive() {
         return status == SwitchStatus.ACTIVE;
     }
