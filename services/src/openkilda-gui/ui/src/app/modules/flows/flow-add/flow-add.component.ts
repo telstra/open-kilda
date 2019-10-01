@@ -5,9 +5,7 @@ import { ToastrService } from "ngx-toastr";
 import { SwitchService } from "../../../common/services/switch.service";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { Select2Data } from "ng-select2-component";
-import { environment } from "../../../../environments/environment";
 import { Router } from "@angular/router";
-import { NgxSpinnerModule, NgxSpinnerService } from "ngx-spinner";
 import { AlertifyService } from "../../../common/services/alertify.service";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Location } from "@angular/common";
@@ -198,6 +196,8 @@ export class FlowAddComponent implements OnInit {
           response => {
             this.toaster.success("Flow created successfully", "Success!");
             localStorage.removeItem('flows');
+            localStorage.removeItem('filterFlag');          
+            localStorage.removeItem('flowsinventory'); 
             this.router.navigate(["/flows/details/" + response.flowid]);
             this.loaderService.hide();
           },

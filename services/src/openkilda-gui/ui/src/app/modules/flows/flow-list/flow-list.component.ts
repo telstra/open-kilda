@@ -27,10 +27,12 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
   storedData = [];
   statusParams = [];
   loadCount = 0;
-
+  textSearch:any;
   loadingData = true;
   storeLinkSetting : boolean = false;
   statusList : any = [];
+  filterFlag:string= localStorage.getItem('filterFlag') || 'controller';
+  activeStatus :any = '';
 
 
   constructor(private router:Router, 
@@ -40,16 +42,37 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     private renderer: Renderer2,
     private commonService: CommonService
   ) { 
-    var flowListData = JSON.parse(localStorage.getItem("flows"));
+    
+    this.checkFlowData();
+
+    let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
+    this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
+    this.statusList = JSON.parse(localStorage.getItem("linkStoreStatusList"));
+   }
+
+   checkFlowData(){
+      var flowListData:any = {};
+     
+      if(this.filterFlag == 'controller'){
+        flowListData = JSON.parse(localStorage.getItem("flows"));
+      }else{
+        flowListData = JSON.parse(localStorage.getItem("flowsinventory"));
+      }
+   
     if(flowListData){
       var storageTime = flowListData.timeStamp;
       var startTime = new Date(storageTime).getTime();
       var lastTime = new Date().getTime();
       let timeminDiff = lastTime - startTime;
       var diffMins = Math.round(((timeminDiff % 86400000) % 3600000) / 60000);
-      if(diffMins < 5){
+      if(diffMins < 30){
         this.storedData  = flowListData.list_data || [];
         this.dataSet = this.storedData;
+        if(this.filterFlag == 'inventory'){
+          this.dataSet = this.dataSet.filter(function(d){
+            return d['inventory-flow'];
+          })
+        }
       }else{
         this.storedData  =  [];
         this.dataSet = this.storedData;
@@ -59,11 +82,6 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
         this.storedData  =  [];
         this.dataSet = this.storedData;
     }
-    
-
-    let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
-    this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
-    this.statusList = JSON.parse(localStorage.getItem("linkStoreStatusList"));
    }
 
   ngOnInit(){
@@ -77,7 +95,8 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
       	localStorage.setItem("activeFlowStatusFilter",this.statusParams.join(","));
       }
     }
-    this.getFlowList(this.statusParams);
+    this.activeStatus = this.statusParams.join(',');
+    this.getFlowList(this.statusParams,this.filterFlag);
   }
 
   ngAfterViewInit(){
@@ -88,22 +107,41 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     
   }
 
-  getFlowList(statusParam){
+  fulltextSearch(e){ 
+    this.textSearch = e.target.value || ' ';
+  }
+  getFlowList(statusParam,filter){ 
     this.loadingData = true;
+    this.dataSet = [];
     this.loaderService.show("Loading Flows");
-    if(this.storedData && this.storedData.length <=0 ){  
+    localStorage.removeItem('flowDetail');
+    if(filter != null) { 
+      this.filterFlag = filter;
+      this.checkFlowData();
+     }
+    if(this.storedData && this.storedData.length <=0 ){ 
       var statusParam = statusParam.filter(function (el) {
         return el != null && el != "";
       });
-
-      let filtersOptions = statusParam.length > 0 ? { status:statusParam.join(","),_:new Date().getTime()} : {_:new Date().getTime()};
+      let filtersOptions = statusParam.length > 0 ? { status:statusParam.join(","),controller:this.filterFlag == 'controller',_:new Date().getTime()} : {controller:this.filterFlag == 'controller',_:new Date().getTime()};
       this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
         this.dataSet = data || [];
         if(this.dataSet.length == 0){
           this.toastr.info("No Flows Available",'Information');
         }else{
           var flowListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
-          localStorage.setItem('flows',flowListData);
+          localStorage.setItem('filterFlag',this.filterFlag)
+          if(this.filterFlag == 'controller'){
+            localStorage.setItem('flows',flowListData);
+          }else{
+            localStorage.setItem('flowsinventory',flowListData);
+          }
+         
+        }
+        if(this.filterFlag == 'inventory'){
+          this.dataSet = this.dataSet.filter(function(d){
+            return d['inventory-flow'];
+          })
         }
         this.loadingData = false;     
       },error=>{
@@ -113,17 +151,27 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
         this.dataSet = [];  
       });
     }else{
-      this.loadingData = false;
+      setTimeout(()=>{
+        this.loadingData = false;
+        this.loaderService.hide();
+      },100);
+      
     }
   }
 
   refreshFlowList(statusParam){
     this.srcSwitch = null;
     this.dstSwitch = null;
-    this.statusParams = statusParam;
-    localStorage.removeItem('flows');
+    this.statusParams = [];
+    this.statusParams.push(statusParam);
+
+    if(this.filterFlag == 'controller'){
+      localStorage.removeItem('flows');
+    }else{    
+      localStorage.removeItem('flowsinventory');
+    }
     this.storedData = [];
-    this.getFlowList(statusParam);
+    this.getFlowList(this.statusParams,this.filterFlag);
   }
 
   

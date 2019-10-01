@@ -46,8 +46,9 @@ export class SwitchService {
     return this.httpClient.get<any[]>(url);
   }
 
-  getSwitchDetail(switchId): Observable<{}>{
-    return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}`);
+  getSwitchDetail(switchId,filter): Observable<{}>{
+    var query:any = {controller:filter=='controller'};
+    return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}`,{params:query});
   }
 
     getSwitchMetersList(switchId) : Observable<any[]>{

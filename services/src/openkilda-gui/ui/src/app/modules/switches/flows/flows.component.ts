@@ -23,6 +23,7 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
   customerid : boolean = false;
   flowid : boolean = false;
   bandwidth : boolean = false;
+  flowSubscriber = null;
 
   constructor(private renderer:Renderer2,private loaderService : LoaderService,private switchService:SwitchService) { }
 
@@ -62,7 +63,7 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
     var ref = this;
     let switchId = this.switchid;
     let portNumber = this.portnumber
-    this.switchService.getSwitchPortFlows(switchId,portNumber).subscribe((flows:any)=>{
+    this.flowSubscriber = this.switchService.getSwitchPortFlows(switchId,portNumber).subscribe((flows:any)=>{
       let flowList =  flows || [];
       let newFlowList = [];
       flowList.forEach(customer => {
@@ -110,6 +111,10 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
+    if(this.flowSubscriber){
+      this.flowSubscriber.unsubscribe();
+      this.flowSubscriber = null;
+    }
   }
 
   ngOnChanges(change: SimpleChanges){

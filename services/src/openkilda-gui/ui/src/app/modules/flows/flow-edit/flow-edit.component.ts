@@ -5,7 +5,6 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { ToastrService } from "ngx-toastr";
 import { SwitchService } from "../../../common/services/switch.service";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
-import { AlertifyService } from "../../../common/services/alertify.service";
 import { LoaderService } from "../../../common/services/loader.service";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { OtpComponent } from "../../../common/components/otp/otp.component"
@@ -45,7 +44,6 @@ export class FlowEditComponent implements OnInit {
     private toaster: ToastrService,
     private switchService: SwitchService,
     private switchIdMaskPipe: SwitchidmaskPipe,
-    private alertifyService: AlertifyService,
     private loaderService: LoaderService,
     private modalService: NgbModal,
     private _location:Location,
@@ -77,7 +75,8 @@ export class FlowEditComponent implements OnInit {
       return { label: (k).toString(), value: (k).toString() };
     });
     let flowId: string = this.route.snapshot.paramMap.get("id");
-    this.getFlowDetail(flowId);
+    var filterFlag = localStorage.getItem('filterFlag');
+    this.getFlowDetail(flowId,filterFlag);
   }
 
   ngAfterViewInit() {}
@@ -87,11 +86,11 @@ export class FlowEditComponent implements OnInit {
   }
 
   /**Get flow detail via api call */
-  getFlowDetail(flowId) {
+  getFlowDetail(flowId,filterFlag) {
     this.loaderService.show("Loading Flow Detail");
-    this.flowService.getFlowDetailById(flowId).subscribe(
-      flow => {
-        this.flowDetailData = flow;
+    var flow_detail = JSON.parse(localStorage.getItem('flowDetail')) || null;
+    if(flow_detail){
+      this.flowDetailData = flow_detail;
         this.flowDetail = {
           flowid: flow.flowid,
           description: flow.description || "",
@@ -103,20 +102,44 @@ export class FlowEditComponent implements OnInit {
           target_port: flow.dst_port.toString(),
           target_vlan: flow.dst_vlan.toString()
         };
-        this.flowId = flow.flowid;
+        this.flowId = flow_detail.flowid;
         this.flowEditForm.setValue(this.flowDetail);
 
         this.getSwitchList();
         this.getPorts("source_switch" , true);
         this.getPorts("target_switch", true);
-      },
-      error => {
-        var errorMsg =error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No flow found';
-       this.toaster.error(errorMsg, "Error");
-        this.goToBack();
-        this.loaderService.hide();
-      }
-    );
+    }else{
+      this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
+        flow => {
+          this.flowDetailData = flow;
+          this.flowDetail = {
+            flowid: flow.flowid,
+            description: flow.description || "",
+            maximum_bandwidth: flow.maximum_bandwidth || 0,
+            source_switch: flow.source_switch,
+            source_port: flow.src_port.toString(),
+            source_vlan: flow.src_vlan.toString(),
+            target_switch: flow.target_switch,
+            target_port: flow.dst_port.toString(),
+            target_vlan: flow.dst_vlan.toString(),
+            diverse_flowid:flow['diverse-flowid'] || null,
+          };
+          this.flowId = flow.flowid;
+          this.flowEditForm.setValue(this.flowDetail);
+  
+          this.getSwitchList();
+          this.getPorts("source_switch" , true);
+          this.getPorts("target_switch", true);
+        },
+        error => {
+          var errorMsg =error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No flow found';
+         this.toaster.error(errorMsg, "Error");
+          this.goToBack();
+          this.loaderService.hide();
+        }
+      );
+    }
+    
   }
 
   /** Get switches list via api call */
@@ -253,6 +276,8 @@ export class FlowEditComponent implements OnInit {
           response => {
             this.toaster.success("Flow updated successfully on controller", "Success!");
             localStorage.removeItem('flows');
+            localStorage.removeItem('filterFlag');          
+            localStorage.removeItem('flowsinventory'); 
             this.router.navigate(["/flows/details/" + response.flowid]);
             this.loaderService.hide();
           },

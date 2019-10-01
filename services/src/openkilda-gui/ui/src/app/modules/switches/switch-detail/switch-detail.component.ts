@@ -78,8 +78,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
     this.route.params.subscribe(params => {
       this.switchId = params['id'];
+      var filter = localStorage.getItem("switchFilterFlag");
       localStorage.removeItem('portLoaderEnabled');
-      this.getSwitchDetail(params['id']);
+      this.getSwitchDetail(params['id'],filter);
     });
 
     if(this.router.url.includes("/port")){
@@ -170,14 +171,14 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     
   }
 
-  getSwitchDetail(switchId){
+  getSwitchDetail(switchId,filter){
 
     this.loaderService.show("Loading Switch Details");
 
     this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting=>{
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
       
-      this.switchService.getSwitchDetail(switchId).subscribe((retrievedSwitchObject : any)=>{
+      this.switchService.getSwitchDetail(switchId,filter).subscribe((retrievedSwitchObject : any)=>{
         if(!retrievedSwitchObject){
           this.loaderService.hide();
           this.toastr.error("No Switch Found",'Error');

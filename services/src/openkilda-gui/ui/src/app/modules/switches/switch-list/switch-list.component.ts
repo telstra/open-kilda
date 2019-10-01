@@ -16,6 +16,7 @@ import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from "@angular/platform-browser";
 import { StoreSettingtService } from "src/app/common/services/store-setting.service";
+import { CommonService } from "src/app/common/services/common.service";
 
 @Component({
   selector: "app-switch-list",
@@ -28,6 +29,8 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
   loadingData = true;
   hasStoreSetting = false;
   settingSubscriber = null;
+  textSearch:any;
+  switchFilterFlag:string = localStorage.getItem('switchFilterFlag') || 'controller';
 
   constructor(
     private router: Router,
@@ -36,7 +39,8 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     private loaderService: LoaderService,
     private titleService: Title,
     private renderer: Renderer2,
-    private storeSwitchService: StoreSettingtService
+    private storeSwitchService: StoreSettingtService,
+    private commonService:CommonService
   ) {}
 
   ngOnInit() {
@@ -49,9 +53,19 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
 
 
 
-  loadSwitchList(){
+  loadSwitchList(filter){
     this.dataSet = [];
-    var switchListData = JSON.parse(localStorage.getItem("SWITCHES_LIST"));
+    this.loadingData = true;
+    if(filter!=null){
+      this.switchFilterFlag = filter;
+    }
+    var switchListData:any = {};
+    if(this.switchFilterFlag == 'controller'){
+       switchListData = JSON.parse(localStorage.getItem("SWITCHES_LIST"));
+    }else{
+      switchListData = JSON.parse(localStorage.getItem("SWITCHES_LIST_ALL"));
+    }
+   
     if(switchListData){
       var storageTime = switchListData.timeStamp;
       var startTime = new Date(storageTime).getTime();
@@ -61,29 +75,52 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
       var switchList = switchListData.list_data;
       if (switchList && diffMins < 5) {
         this.dataSet = switchList;
-        this.loadingData = false;
+        if(this.switchFilterFlag == 'inventory'){
+          this.dataSet = this.dataSet.filter((d)=>{
+            return d['inventory-switch'];
+          })
+        }
+        setTimeout(()=>{
+          this.loadingData = false;
+        },100);
+        
       } else {
-        this.getSwitchList();
+        this.getSwitchList(this.switchFilterFlag);
       }
     }else{
-       this.getSwitchList();
+       this.getSwitchList(this.switchFilterFlag);
     }
     
   }
-
-  getSwitchList() {
+  fulltextSearch(e){ 
+    this.textSearch = e.target.value || ' ';
+  }
+  getSwitchList(filter) {
+    if(filter !=null){
+      this.switchFilterFlag = filter;
+    }
     this.loadingData = true;
     this.loaderService.show("Loading Switches");
-    let query = { _: new Date().getTime(),storeConfigurationStatus:this.hasStoreSetting };
+    let query = {controller:this.switchFilterFlag == 'controller', _: new Date().getTime(),storeConfigurationStatus:this.hasStoreSetting };
     this.switchService.getSwitchList(query).subscribe(
       (data: any) => {
         var switchListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
-        localStorage.setItem("SWITCHES_LIST", switchListData);
+        if(this.switchFilterFlag == 'controller'){
+          localStorage.setItem("SWITCHES_LIST", switchListData);
+        }else{
+          localStorage.setItem("SWITCHES_LIST_ALL", switchListData);
+        }
+       
         if (!data || data.length == 0) {
           this.toastr.info("No Switch Available", "Information");
           this.dataSet = [];
         } else {
           this.dataSet = data;
+          if(this.switchFilterFlag == 'inventory'){
+            this.dataSet = this.dataSet.filter((d)=>{
+              return d['inventory-switch'];
+            })
+          }
         }
         this.loadingData = false;
       },
@@ -101,7 +138,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     
     this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting=>{
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
-      this.loadSwitchList();
+      this.loadSwitchList(this.switchFilterFlag);
     });
 
     this.storeSwitchService.checkSwitchStoreDetails(query);

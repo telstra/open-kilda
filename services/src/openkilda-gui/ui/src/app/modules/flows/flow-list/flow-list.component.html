@@ -1,2 +1,47 @@
-<div class="row"></div>
-<app-flow-datatables [srcSwitch]="srcSwitch" [statusList]="statusList" [statusParams] = "statusParams" (refresh)="refreshFlowList($event.statusParam)"  [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>
+<div class="row">
+    <div class="col-sm-12">
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="form-group input-group-sm">
+                     <input type="text" id="search-input" class="form-control"  (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                 </div>
+            </div>
+              <div  class="col-sm-8 text-right text-filters mb-3">
+                  <!-- <a class="cursor-pointer"><i class="fa fa-cog"></i> Custom View | </a> -->
+                  <div *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : filterFlag == 'all','btn-dark': filterFlag != 'all'}">
+                      <input type="radio" (click)="getFlowList(statusParams,'all')" name="options" id="option1" autocomplete="off" checked> All
+                    </label>
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : filterFlag == 'controller','btn-dark': filterFlag != 'controller'}">
+                      <input type="radio" (click)="getFlowList(statusParams,'controller')" name="options" id="option2" autocomplete="off"> Controller
+                    </label>
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : filterFlag == 'inventory','btn-dark': filterFlag != 'inventory'}">
+                      <input type="radio" (click)="getFlowList(statusParams,'inventory')" name="options" id="option3" autocomplete="off"> Inventory
+                    </label>
+                    
+                  </div>
+                  &nbsp;
+                  <div class="btn-group" *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory') && filterFlag !='controller'">
+                      <div ngbDropdown class="d-inline-block">
+                        | <a class="cursor-pointer" ngbDropdownToggle  ><i class="fa fa-cog"></i> Filters | </a>
+                       <div ngbDropdownMenu style="padding:10px;">
+                         <label  class="mb-1"><b>Status</b></label>
+                         <div class="filterMenues">
+                            <ng-template ngFor let-status [ngForOf]="statusList">
+                                <button  class="dropdown-item cursor-pointer" (click)="refreshFlowList(status)">{{status}}<i class="fa fa-check" *ngIf="status.toLowerCase() == activeStatus.toLowerCase()"></i></button>
+                             </ng-template>
+                         </div>
+                         
+                        </div>
+                      </div>
+                    </div>
+                    <a *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="cursor-pointer" (click)="refreshFlowList(activeStatus.toLowerCase())"><i class="fa fa-refresh"></i>  Refresh</a>
+                    <a *ngIf="!storeLinkSetting" class="cursor-pointer" (click)="refreshFlowList('')"><i class="fa fa-refresh"></i>  Refresh</a>
+              </div>
+         </div>
+         
+     </div>
+    <div class="clear clearfix"></div>
+    <div class="col-sm-12" *ngIf="storeLinkSetting"> Status:{{statusParams.join(",")}}</div>
+</div>
+<app-flow-datatables [srcSwitch]="srcSwitch" [textSearch]="textSearch"  [filterFlag]="filterFlag" [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>

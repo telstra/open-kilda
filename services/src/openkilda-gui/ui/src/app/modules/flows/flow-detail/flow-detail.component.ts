@@ -23,6 +23,7 @@ declare var jQuery: any;
 export class FlowDetailComponent implements OnInit {
   openedTab = "graph";
   flowDetail: any;
+  controllerFilter:boolean=false;
   graphOptions = {
     radius: 35,
     text_center: false,
@@ -118,6 +119,8 @@ export class FlowDetailComponent implements OnInit {
     //let flowId: string = this.route.snapshot.paramMap.get("id");
     this.route.params.subscribe(params => {
       this.loadStatsGraph = false;
+      var filterFlag = localStorage.getItem("filterFlag");
+      this.controllerFilter = filterFlag == 'controller';
       if(!localStorage.getItem("haslinkStoreSetting")){
         let query = {_:new Date().getTime()};
         this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
@@ -125,15 +128,15 @@ export class FlowDetailComponent implements OnInit {
             localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
             localStorage.setItem('haslinkStoreSetting',"1");
             this.storeLinkSetting = true;
-            this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+            this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
           }else{
-            this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+            this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
           }
         },(err)=>{
-          this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+          this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
         });
       }else{
-        this.getFlowDetail(params['id']);// reset and set based on new parameter this time
+        this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
       }
       
       this.sourceCheckedValue = false;
@@ -466,7 +469,7 @@ export class FlowDetailComponent implements OnInit {
       });
   }
   /**fetching flow detail via API call */
-  getFlowDetail(flowId) {
+  getFlowDetail(flowId,filterFlag) {
     this.openedTab = 'graph';
     this.loadStatsGraph = true;
     this.clearResyncedFlow();
@@ -474,11 +477,12 @@ export class FlowDetailComponent implements OnInit {
     this.loaderService.show("Loading Flow Detail");
     this.bandWidthDescrepancy  = false;
     this.statusDescrepancy = false;
-    this.flowService.getFlowDetailById(flowId).subscribe(
+    this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
       flow => {
         flow["source_switch"] = this.convertSwitchPattern(flow["source_switch"]);
         flow["target_switch"] = this.convertSwitchPattern(flow["target_switch"]);
         this.flowDetail = flow;
+        localStorage.setItem('flowDetail',JSON.stringify(this.flowDetail));
         this.clipBoardItems = Object.assign(this.clipBoardItems,{
           flowName: flow.flowid,
           sourceSwitchName: flow["source_switch_name"],

@@ -28,6 +28,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit,OnDestroy {
   portForm: FormGroup;
   port_src_switch: any;
   retrievedSwitchObject: any;
+  graphSubscriber=null;
   responseGraph = [];
   autoReloadTimerId = null;  
   getautoReloadValues = this.commonService.getAutoreloadValues();
@@ -140,7 +141,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit,OnDestroy {
       
     }
     
-    this.dygraphService.
+    this.graphSubscriber = this.dygraphService.
       getForwardGraphData(
         this.port_src_switch,
         this.portDataObject.port_number,
@@ -247,6 +248,10 @@ export class PortGraphComponent implements OnInit, AfterViewInit,OnDestroy {
   ngOnDestroy(){
     if (this.autoReloadTimerId) {
       clearInterval(this.autoReloadTimerId);
+    }
+    if(this.graphSubscriber){
+      this.graphSubscriber.unsubscribe();
+      this.graphSubscriber = null;
     }
 
   }
