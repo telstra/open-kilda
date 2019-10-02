@@ -346,7 +346,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getMeterId(), that.getMeterId())
                 && Objects.equals(isMultiTable(), that.isMultiTable())
                 && Objects.equals(isEnableLldp(), that.isEnableLldp())
-                && Objects.equals(getEgressSwitchId(), that.getEgressSwitchId());
+                && Objects.equals(getEgressSwitchId(), that.getEgressSwitchId())
                 && Objects.equals(getApplications(), that.getApplications());
     }
 

@@ -58,7 +58,6 @@ import java.util.UUID;
 public class UpdateIngressFlow extends InstallIngressFlow {
     private static final long serialVersionUID = 7144549070441946589L;
 
-
     /**
      * Instance constructor.
      *
@@ -74,7 +73,7 @@ public class UpdateIngressFlow extends InstallIngressFlow {
      * @param outputVlanType output vlan type action
      * @param bandwidth flow bandwidth
      * @param meterId flow meter id
-     * @param ingressSwitchId id of the ingress switch
+     * @param egressSwitchId id of the ingress switch
      * @param multiTable multitable flag
      * @param enableLldp lldp flag. Packets will be send to LLDP rule if True.
      * @param applications the applications on which the actions is performed.
@@ -95,12 +94,12 @@ public class UpdateIngressFlow extends InstallIngressFlow {
                              @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                              @JsonProperty("bandwidth") Long bandwidth,
                              @JsonProperty("meter_id") Long meterId,
-                             @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId,
+                             @JsonProperty("ingress_switch_id") SwitchId egressSwitchId,
                              @JsonProperty("multi_table") boolean multiTable,
                              @JsonProperty("enable_lldp") boolean enableLldp,
                              @JsonProperty("applications") Set<FlowApplication> applications) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, inputVlanId, transitEncapsulationId,
-                transitEncapsulationType, outputVlanType, bandwidth, meterId, ingressSwitchId, multiTable,
+                transitEncapsulationType, outputVlanType, bandwidth, meterId, egressSwitchId, multiTable,
                 enableLldp, applications);
 
     }
@@ -109,7 +108,7 @@ public class UpdateIngressFlow extends InstallIngressFlow {
         super(command.getTransactionId(), command.getId(), command.getCookie(), command.getSwitchId(),
                 command.getInputPort(), command.getOutputPort(), command.getInputVlanId(),
                 command.getTransitEncapsulationId(), command.getTransitEncapsulationType(), command.getOutputVlanType(),
-                command.getBandwidth(), command.getMeterId(), command.getIngressSwitchId(), command.isMultiTable(),
+                command.getBandwidth(), command.getMeterId(), command.getEgressSwitchId(), command.isMultiTable(),
                 command.isEnableLldp(), command.getApplications());
 
     }
