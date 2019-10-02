@@ -71,7 +71,7 @@ class Context(object):
     def set_root(self, root):
         self.root = pathlib.Path(root)
         if not self._init_done:
-            self.root.mkdir(parents=True, exist_ok=True)
+            os.makedirs(str(self.root), exist_ok=True)
         return self
 
     def set_default_logging(self):
