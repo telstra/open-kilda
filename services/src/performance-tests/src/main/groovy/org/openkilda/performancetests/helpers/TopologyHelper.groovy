@@ -1,5 +1,7 @@
 package org.openkilda.performancetests.helpers
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -8,10 +10,15 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.labservice.model.LabInstance
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
+import org.springframework.web.client.HttpClientErrorException
+
+import java.util.concurrent.TimeUnit
 
 @Component("performance")
 class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelper {
@@ -20,6 +27,12 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     NorthboundService northbound
     @Autowired
     LabService labService
+
+    @Autowired
+    IslUtils islUtils
+
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
 
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
@@ -31,21 +44,21 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     List<String> statControllers
 
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
-        if (islsAmount < (switchesAmount -1)) {
+        if (islsAmount < (switchesAmount - 1)) {
             throw new RuntimeException("Not enough ISLs were requested. islsAmount should be >= (switchesAmount - 1)")
         }
         def topo = new CustomTopology()
         switchesAmount.times { i ->
-            def region = i % regions.size()
+            def region = i % regions.take(2).size() //TODO(rtretiak): to remove 'take' when stage env deals with '3' region
             topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}")
         }
         //create links between neighbor switches
         def allSwitches = topo.getSwitches()
         for (def i = 0; i < allSwitches.size() - 1; i++) {
-            topo.addIsl(allSwitches[i], allSwitches[i+1])
+            topo.addIsl(allSwitches[i], allSwitches[i + 1])
         }
         //create links between random switches
-        (islsAmount-topo.getIsls().size()).times {
+        (islsAmount - topo.getIsls().size()).times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
@@ -93,14 +106,23 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         if (lab) {
             labService.deleteLab(lab)
         } else {
-            def currentLab = labService.getLab()
-            if(currentLab) {
-                labService.deleteLab(currentLab)
+            labService.flushLabs()
+        }
+        TimeUnit.SECONDS.sleep(discoveryTimeout + 3)
+        northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.each {
+            try {
+                northbound.deleteLink(islUtils.toLinkParameters(it))
+            } catch (HttpClientErrorException e) {
+                if (e.statusCode == HttpStatus.NOT_FOUND) {
+                    //fine, it's not present, do nothing
+                } else {
+                    throw e
+                }
             }
         }
-        def topoSwitches = northbound.getAllSwitches().findAll { it.switchId in topo.switches*.dpId }
+        def topoSwitches = northbound.getAllSwitches().findAll { it.state == SwitchChangeType.DEACTIVATED }
         topoSwitches.each {
-            northbound.deleteSwitch(it.switchId, true)
+            northbound.deleteSwitch(it.switchId, false)
         }
     }
 

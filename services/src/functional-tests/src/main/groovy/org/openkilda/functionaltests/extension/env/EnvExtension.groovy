@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.extension.env
 
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.extension.spring.SpringContextExtension
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
@@ -77,6 +78,10 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         northbound.toggleFeature(features)
 
         labService.flushLabs()
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.empty
+        }
+        northbound.deleteAllFlows()
         labService.createLab(topology)
 
         //wait until topology is discovered

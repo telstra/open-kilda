@@ -112,7 +112,7 @@ class ContentionV2Spec extends BaseSpecification {
             def rerouteTask = { northboundV2.rerouteFlow(flow.id) }
             rerouteTask.callAsync()
             sleep(100) //experimentally find out that this ensures better overlapping of DB operations
-            relatedSwitches.eachParallel { northbound.synchronizeSwitchRules(it.dpId) } //#2563 to fire at this line
+            relatedSwitches.eachParallel { northbound.synchronizeSwitch(it.dpId, true) } //#2563 to fire at this line
         }
 
         then: "Flow is Up and path has changed"
@@ -135,6 +135,7 @@ class ContentionV2Spec extends BaseSpecification {
 
         and: "Cleanup: remove flow and reset costs"
         flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
 }
