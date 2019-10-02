@@ -259,7 +259,7 @@ public interface ISwitchManager extends IFloodlightService {
     long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                            int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
                            FlowEncapsulationType encapsulationType,
-                           boolean multiTable)
+                           boolean multiTable, Set<FlowApplication> applications)
             throws SwitchOperationException;
 
     /**

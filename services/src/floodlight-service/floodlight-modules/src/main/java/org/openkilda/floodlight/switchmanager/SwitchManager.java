@@ -446,7 +446,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
-            installTelescopeRule(sw, TABLE_1, cookie, transitTunnelId);
+            installTelescopeFlow(sw, TABLE_1, cookie, transitTunnelId);
         }
 
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
@@ -476,7 +476,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return instructions;
     }
 
-    private void installTelescopeRule(IOFSwitch sw, int tableId, long flowCookie, int tunnelId)
+    private void installTelescopeFlow(IOFSwitch sw, int tableId, long flowCookie, int tunnelId)
             throws OfInstallException {
         OFFactory ofFactory = sw.getOFFactory();
         if (sw.getOFFactory().getVersion() == OF_12) {
@@ -544,7 +544,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                                   int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
                                   FlowEncapsulationType encapsulationType,
-                                  boolean multiTable) throws SwitchOperationException {
+                                  boolean multiTable, Set<FlowApplication> applications)
+            throws SwitchOperationException {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
@@ -562,10 +563,31 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY,
                 multiTable ? EGRESS_TABLE_ID : INPUT_TABLE_ID)
                 .setMatch(matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType, dpid))
-                .setInstructions(ImmutableList.of(actions))
+                .setInstructions(createEgressFlowInstructions(ofFactory, actions, transitTunnelId, applications))
                 .build();
 
+        if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
+            installTelescopeFlow(sw, TABLE_1, cookie, transitTunnelId);
+        }
+
         return pushFlow(sw, "--InstallEgressFlow--", flowMod);
+    }
+
+    private List<OFInstruction> createEgressFlowInstructions(
+            OFFactory ofFactory, OFInstructionApplyActions actions, int transitTunnelId,
+            Set<FlowApplication> applications) {
+        List<OFInstruction> instructions = new ArrayList<>();
+
+        instructions.add(actions);
+
+        if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
+            instructions.add(ofFactory.instructions().gotoTable(TableId.of(TABLE_1)));
+            instructions.add(ofFactory.instructions().buildWriteMetadata()
+                    .setMetadata(U64.of(transitTunnelId))
+                    .setMetadataMask(U64.of(4095)).build());
+        }
+
+        return instructions;
     }
 
     /**

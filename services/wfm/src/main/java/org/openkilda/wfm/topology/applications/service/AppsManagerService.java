@@ -26,6 +26,7 @@ import org.openkilda.applications.info.apps.RemoveExclusionResult;
 import org.openkilda.applications.model.Endpoint;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
+import org.openkilda.messaging.command.flow.UpdateEgressFlow;
 import org.openkilda.messaging.command.flow.UpdateIngressFlow;
 import org.openkilda.messaging.command.switches.InstallExclusionRequest;
 import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
@@ -117,6 +118,7 @@ public class AppsManagerService {
     private void addAppForFlowPath(Flow flow, FlowPath flowPath, FlowApplication application) {
         persistApplication(flowPath, application);
         carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flowPath));
+        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flowPath));
     }
 
     private void persistApplication(FlowPath flowPath, FlowApplication application) {
@@ -176,6 +178,7 @@ public class AppsManagerService {
     private void removeAppForFlowPath(Flow flow, FlowPath flowPath, FlowApplication application) {
         removeFromDatabase(flowPath, application);
         carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flowPath));
+        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flowPath));
     }
 
     private void removeFromDatabase(FlowPath flowPath, FlowApplication application) {
@@ -239,9 +242,7 @@ public class AppsManagerService {
 
     private UpdateIngressFlow buildUpdateIngressRuleCommand(Flow flow, FlowPath flowPath) {
         List<PathSegment> segments = flowPath.getSegments();
-        if (segments.isEmpty()) {
-            throw new IllegalArgumentException("Neither one switch flow nor path segments provided");
-        }
+        requireSegments(segments);
 
         PathSegment ingressSegment = segments.get(0);
         if (!ingressSegment.getSrcSwitch().getSwitchId().equals(flowPath.getSrcSwitch().getSwitchId())) {
@@ -253,12 +254,32 @@ public class AppsManagerService {
                 ingressSegment.getSrcPort(), encapsulationResources));
     }
 
+    private UpdateEgressFlow buildUpdateEgressRuleCommand(Flow flow, FlowPath flowPath) {
+        List<PathSegment> segments = flowPath.getSegments();
+        requireSegments(segments);
+
+        PathSegment egressSegment = segments.get(segments.size() - 1);
+        if (!egressSegment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
+            throw new IllegalStateException(
+                    format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
+        }
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
+        return new UpdateEgressFlow(flowCommandFactory.buildInstallEgressFlow(flowPath,
+                egressSegment.getDestPort(), encapsulationResources));
+    }
+
     private EncapsulationResources getEncapsulationResources(Flow flow, FlowPath flowPath) {
         return flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
                 flow.getOppositePathId(flowPath.getPathId()),
                 flow.getEncapsulationType())
                 .orElseThrow(() -> new IllegalStateException(
                         format("Encapsulation resources are not found for path %s", flowPath)));
+    }
+
+    private void requireSegments(List<PathSegment> segments) {
+        if (segments.isEmpty()) {
+            throw new IllegalArgumentException("Neither one switch flow nor path segments provided");
+        }
     }
 
     /**

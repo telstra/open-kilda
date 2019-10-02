@@ -130,7 +130,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, false);
+                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, false, new HashSet<>());
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

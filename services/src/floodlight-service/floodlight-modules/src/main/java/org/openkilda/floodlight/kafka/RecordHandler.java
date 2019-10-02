@@ -70,6 +70,7 @@ import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.UpdateEgressFlow;
 import org.openkilda.messaging.command.flow.UpdateIngressFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
@@ -195,6 +196,8 @@ class RecordHandler implements Runnable {
             doDiscoverPathCommand(data);
         } else if (data instanceof UpdateIngressFlow) {
             doProcessUpdateIngressFlow(message);
+        } else if (data instanceof UpdateEgressFlow) {
+            doProcessUpdateEgressFlow(message);
         } else if (data instanceof InstallIngressFlow) {
             doProcessIngressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallLldpFlow) {
@@ -444,6 +447,35 @@ class RecordHandler implements Runnable {
         }
     }
 
+    private void doProcessUpdateEgressFlow(CommandMessage message) {
+        InstallEgressFlow command = (InstallEgressFlow) message.getData();
+        logger.info("Updating egress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
+
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
+                .cookie(command.getCookie())
+                .encapsulationId(command.getTransitEncapsulationId())
+                .encapsulationType(command.getTransitEncapsulationType())
+                .inPort(command.getInputPort())
+                .outPort(command.getOutputPort())
+                .build();
+        RemoveFlow removeCommand = RemoveFlow.builder()
+                .transactionId(UUID.randomUUID())
+                .flowId("UPDATE_EGRESS")
+                .cookie(command.getCookie())
+                .criteria(criteria)
+                .multiTable(command.isMultiTable())
+                .switchId(command.getSwitchId())
+                .build();
+
+        try {
+            processDeleteFlow(removeCommand, dpid);
+            installEgressFlow(command);
+        } catch (SwitchOperationException e) {
+            logger.error("Updating egress rule (cookie = {}) was unsuccessful", command.getCookie(), e);
+        }
+    }
+
     private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,
                                           Destination replyDestination) throws FlowCommandException {
         InstallLldpFlow command = (InstallLldpFlow) message.getData();
@@ -509,7 +541,8 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanId(),
                 command.getOutputVlanType(),
                 command.getTransitEncapsulationType(),
-                command.isMultiTable());
+                command.isMultiTable(),
+                command.getApplications());
     }
 
     /**

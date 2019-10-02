@@ -241,7 +241,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outPort,
                 encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), outVlan, getOutputVlanType(flow, flowPath),
-                false);
+                false, flowPath.getApplications());
     }
 
     private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
