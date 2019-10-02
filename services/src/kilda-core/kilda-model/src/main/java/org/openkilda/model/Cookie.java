@@ -82,6 +82,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long MULTITABLE_ISL_VXLAN_TRANSIT_RULES_TYPE = 0x0040_0000_0000_0000L;
     public static final long MULTITABLE_INGRESS_RULES_TYPE           = 0x0050_0000_0000_0000L;
     public static final long EXCLUSION_COOKIE_TYPE                   = 0x0060_0000_0000_0000L;
+    public static final long TELESCOPE_COOKIE_TYPE                   = 0x0070_0000_0000_0000L;
 
     private final long value;
 
@@ -135,6 +136,14 @@ public class Cookie implements Comparable<Cookie>, Serializable {
      */
     public static Cookie buildExclusionCookie(Long unmaskedCookie, boolean forward) {
         return buildTypedCookie(Cookie.EXCLUSION_COOKIE_TYPE, unmaskedCookie, forward);
+    }
+
+    public static Cookie buildTelescopeCookie(Long unmaskedCookie, boolean forward) {
+        return buildTypedCookie(Cookie.TELESCOPE_COOKIE_TYPE, unmaskedCookie, forward);
+    }
+
+    public static Cookie buildTelescopeCookieFromFlowCookie(Long flowCookie) {
+        return new Cookie(flowCookie | Cookie.TELESCOPE_COOKIE_TYPE);
     }
 
     private static Cookie buildTypedCookie(Long typeMask, Long unmaskedCookie, boolean forward) {
@@ -227,6 +236,10 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     public static boolean isMaskedAsExclusion(long value) {
         return (TYPE_MASK & value) == EXCLUSION_COOKIE_TYPE;
+    }
+
+    public static boolean isMaskedAsTelescope(long value) {
+        return (TYPE_MASK & value) == TELESCOPE_COOKIE_TYPE;
     }
 
     public static long getValueFromIntermediateCookie(long value) {

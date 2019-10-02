@@ -444,6 +444,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
+
+        if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
+            installTelescopeRule(sw, TABLE_1, cookie, transitTunnelId);
+        }
+
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
     }
 
@@ -469,6 +474,25 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return instructions;
+    }
+
+    private void installTelescopeRule(IOFSwitch sw, int tableId, long flowCookie, int tunnelId)
+            throws OfInstallException {
+        OFFactory ofFactory = sw.getOFFactory();
+        if (sw.getOFFactory().getVersion() == OF_12) {
+            return;
+        }
+
+        long cookie = Cookie.buildTelescopeCookieFromFlowCookie(flowCookie).getValue();
+        Match.Builder match = sw.getOFFactory().buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId), OFMetadata.ofRaw(4095));
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, 2, tableId)
+                .setTableId(TableId.of(tableId))
+                .setMatch(match.build())
+                .setActions(Collections.singletonList(actionSetOutputPort(ofFactory, OFPort.of(15))))
+                .build();
+
+        pushFlow(sw, "--InstallTelescope--", flowMod);
     }
 
     /**
@@ -1340,7 +1364,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return null;
         }
 
-        return prepareFlowModBuilder(ofFactory, cookie, 2, tableId)
+        return prepareFlowModBuilder(ofFactory, cookie, 10, tableId)
                 .setTableId(TableId.of(tableId))
                 .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
                 .build();
