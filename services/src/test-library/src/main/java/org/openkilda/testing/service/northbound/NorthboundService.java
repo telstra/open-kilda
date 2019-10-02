@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowAppsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
@@ -196,6 +197,18 @@ public interface NorthboundService {
     //feature network
 
     PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
+
+    //apps
+
+    FlowAppsDto getFlowApps(String flowId);
+
+    FlowAppsDto addFlowApp(String flowId, String app);
+
+    FlowAppsDto addFlowApp(String flowId, String app, SwitchId switchId, Integer port, Integer vlan);
+
+    FlowAppsDto removeFlowApp(String flowId, String app);
+
+    FlowAppsDto removeFlowApp(String flowId, String app, SwitchId switchId, Integer port, Integer vlan);
 
     /**
      * Returns all active links.

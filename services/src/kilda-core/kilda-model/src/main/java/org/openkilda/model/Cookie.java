@@ -225,6 +225,10 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         return (TYPE_MASK & value) == Cookie.MULTITABLE_INGRESS_RULES_TYPE;
     }
 
+    public static boolean isMaskedAsExclusion(long value) {
+        return (TYPE_MASK & value) == EXCLUSION_COOKIE_TYPE;
+    }
+
     public static long getValueFromIntermediateCookie(long value) {
         return value & ISL_COOKIE_VALUE_MASK;
     }

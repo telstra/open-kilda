@@ -42,7 +42,10 @@ import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowAddAppDto;
+import org.openkilda.northbound.dto.v1.flows.FlowAppsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v1.flows.FlowEndpoint;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -643,6 +646,61 @@ public class NorthboundServiceImpl implements NorthboundService {
     @Override
     public FlowConnectedDevicesResponse getFlowConnectedDevices(String flowId) {
         return getFlowConnectedDevices(flowId, null);
+    }
+
+    @Override
+    public FlowAppsDto getFlowApps(String flowId) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/applications");
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()),
+                FlowAppsDto.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowAppsDto addFlowApp(String flowId, String app) {
+        return addFlowApp(flowId, app, null, null, null);
+    }
+
+    @Override
+    public FlowAppsDto addFlowApp(String flowId, String app, SwitchId switchId, Integer port, Integer vlan) {
+        UriComponentsBuilder uriBuilder
+                = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/applications/{application}");
+        HttpEntity httpEntity = new HttpEntity(buildHeadersWithCorrelationId());
+        if (switchId != null && port != null && vlan != null) {
+            FlowAddAppDto addAppDto = FlowAddAppDto.builder()
+                    .endpoint(FlowEndpoint.builder()
+                            .switchId(switchId)
+                            .portNumber(port)
+                            .vlanId(vlan)
+                            .build())
+                    .build();
+            httpEntity = new HttpEntity<>(addAppDto, buildHeadersWithCorrelationId());
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                httpEntity, FlowAppsDto.class, flowId, app).getBody();
+    }
+
+    @Override
+    public FlowAppsDto removeFlowApp(String flowId, String app) {
+        return removeFlowApp(flowId, app, null, null, null);
+    }
+
+    @Override
+    public FlowAppsDto removeFlowApp(String flowId, String app, SwitchId switchId, Integer port, Integer vlan) {
+        UriComponentsBuilder uriBuilder
+                = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/applications/{application}");
+        if (switchId != null) {
+            uriBuilder.queryParam("switch", switchId.toString());
+        }
+        if (port != null) {
+            uriBuilder.queryParam("port", port);
+        }
+        if (vlan != null) {
+            uriBuilder.queryParam("vlan", vlan);
+        }
+
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowAppsDto.class, flowId, app).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
