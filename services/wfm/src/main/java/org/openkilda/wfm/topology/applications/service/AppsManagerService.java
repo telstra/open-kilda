@@ -24,6 +24,7 @@ import org.openkilda.applications.info.apps.FlowApplicationCreated;
 import org.openkilda.applications.info.apps.FlowApplicationRemoved;
 import org.openkilda.applications.info.apps.RemoveExclusionResult;
 import org.openkilda.applications.model.Endpoint;
+import org.openkilda.applications.model.Exclusion;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
 import org.openkilda.messaging.command.flow.UpdateEgressFlow;
@@ -32,6 +33,7 @@ import org.openkilda.messaging.command.switches.InstallExclusionRequest;
 import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.info.apps.AppsEntry;
 import org.openkilda.messaging.info.apps.FlowAppsResponse;
+import org.openkilda.model.ApplicationRule;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowApplication;
@@ -39,6 +41,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -63,12 +66,14 @@ public class AppsManagerService {
     private final FlowPathRepository flowPathRepository;
     private final FlowCommandFactory flowCommandFactory = new FlowCommandFactory();
     private final FlowResourcesManager flowResourcesManager;
+    private final ApplicationRepository applicationRepository;
 
     public AppsManagerService(AppsManagerCarrier carrier,
                               PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
         this.carrier = carrier;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.applicationRepository = persistenceManager.getRepositoryFactory().createApplicationRepository();
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
     }
 
@@ -298,6 +303,19 @@ public class AppsManagerService {
         boolean flowPathIsForward = flow.isForward(flowPath);
         Cookie cookie = Cookie.buildExclusionCookie(flowPath.getCookie().getUnmaskedValue(), flowPathIsForward);
 
+        ApplicationRule rule = ApplicationRule.builder()
+                .flowId(flow.getFlowId())
+                .switchId(switchId)
+                .srcIp(payload.getExclusion().getSrcIp())
+                .srcPort(payload.getExclusion().getSrcPort())
+                .dstIp(payload.getExclusion().getDstIp())
+                .dstPort(payload.getExclusion().getDstPort())
+                .proto(payload.getExclusion().getProto())
+                .ethType(payload.getExclusion().getEthType())
+                .build();
+
+        applicationRepository.createOrUpdate(rule);
+
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
         carrier.emitSpeakerCommand(InstallExclusionRequest.builder()
                 .switchId(switchId)
@@ -334,6 +352,14 @@ public class AppsManagerService {
 
         boolean flowPathIsForward = flow.isForward(flowPath);
         Cookie cookie = Cookie.buildExclusionCookie(flowPath.getCookie().getUnmaskedValue(), flowPathIsForward);
+        Exclusion exclusion = payload.getExclusion();
+
+        Optional<ApplicationRule> ruleOptional = applicationRepository.lookupRuleByMatchAndFlow(switchId,
+                flow.getFlowId(), exclusion.getSrcIp(), exclusion.getSrcPort(), exclusion.getDstIp(),
+                exclusion.getDstPort(), exclusion.getProto(), exclusion.getEthType());
+        if (ruleOptional.isPresent()) {
+            applicationRepository.delete(ruleOptional.get());
+        }
 
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
         carrier.emitSpeakerCommand(RemoveExclusionRequest.builder()
@@ -365,7 +391,7 @@ public class AppsManagerService {
 
         throw new IllegalArgumentException(
                 format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
-                switchId, port, vlan));
+                        switchId, port, vlan));
     }
 
     private void checkFlowAppInstallation(FlowPath flowPath, String application) {

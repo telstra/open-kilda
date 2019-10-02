@@ -69,4 +69,6 @@ public interface RepositoryFactory {
     PortHistoryRepository createPortHistoryRepository();
 
     PortPropertiesRepository createPortPropertiesRepository();
+
+    ApplicationRepository createApplicationRepository();
 }
