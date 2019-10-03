@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -44,6 +47,41 @@ class IslDiscoverySpec extends HealthCheckSpecification {
             assert northbound.getLink(targetIsl).state == IslChangeType.DISCOVERED
         }
         targetIsl.srcPort == flow.source.portNumber
+    }
 
+    @Ignore("not ready yet")
+    def "tbd"() {
+        given: "A connected a-switch link"
+        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
+        assumeTrue("Can't find connected a-switch link", isl.asBoolean())
+
+        and: "A non-connected a-switch link with a flow on the src port"
+        def notConnectedIsl = topology.notConnectedIsls.find {
+            it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
+        }
+        assumeTrue("Can't find non-connected a-switch link", notConnectedIsl.asBoolean())
+        def flow = flowHelper.singleSwitchFlow(notConnectedIsl.srcSwitch)
+        flow.source.portNumber = notConnectedIsl.srcPort
+        flowHelper.addFlow(flow)
+
+        when: "Replug one end of the connected link to the not connected one"
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+
+        then: "???"
+        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+        assert northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+
+        and: "Cleanup: Restore system"
+        // Replug the link back where it was
+        islUtils.replug(newIsl, true, isl, false)
+        // Original ISL becomes DISCOVERED again
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        // delete MOVED ISL
+        assert northbound.deleteLink(islUtils.toLinkParameters(newIsl)).size() == 2
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !islUtils.getIslInfo(newIsl).isPresent()
+            assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
+        }
     }
 }
