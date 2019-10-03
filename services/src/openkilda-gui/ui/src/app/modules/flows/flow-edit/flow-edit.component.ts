@@ -115,15 +115,15 @@ export class FlowEditComponent implements OnInit {
     if (flow_detail) {
       this.flowDetailData = flow_detail;
         this.flowDetail = {
-          flowid: flow.flowid,
-          description: flow.description || "",
-          maximum_bandwidth: flow.maximum_bandwidth || 0,
-          source_switch: flow.source_switch,
-          source_port: flow.src_port.toString(),
-          source_vlan: flow.src_vlan.toString(),
-          target_switch: flow.target_switch,
-          target_port: flow.dst_port.toString(),
-          target_vlan: flow.dst_vlan.toString()
+          flowid: flow_detail.flowid,
+          description: flow_detail.description || "",
+          maximum_bandwidth: flow_detail.maximum_bandwidth || 0,
+          source_switch: flow_detail.source_switch,
+          source_port: flow_detail.src_port.toString(),
+          source_vlan: flow_detail.src_vlan.toString(),
+          target_switch: flow_detail.target_switch,
+          target_port: flow_detail.dst_port.toString(),
+          target_vlan: flow_detail.dst_vlan.toString(),
         };
         this.flowId = flow_detail.flowid;
         this.flowEditForm.setValue(this.flowDetail);

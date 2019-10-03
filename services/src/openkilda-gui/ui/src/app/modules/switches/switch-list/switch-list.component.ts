@@ -40,7 +40,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     private titleService: Title,
     private renderer: Renderer2,
     private storeSwitchService: StoreSettingtService,
-    private commonService:CommonService
+    public commonService:CommonService
   ) {}
 
   ngOnInit() {

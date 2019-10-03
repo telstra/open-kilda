@@ -40,7 +40,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     private toastr: ToastrService,
     private loaderService : LoaderService,
     private renderer: Renderer2,
-    private commonService: CommonService
+    public commonService: CommonService
   ) { 
     
     this.checkFlowData();
