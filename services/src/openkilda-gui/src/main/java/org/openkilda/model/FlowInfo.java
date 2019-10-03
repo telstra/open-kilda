@@ -32,7 +32,7 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"flowid", "source_switch", "src_port", "src_vlan", "target_switch", "dst_port",
-        "dst_vlan", "maximum_bandwidth", "status", "description", "last-updated", "discrepancy"})
+        "dst_vlan", "maximum_bandwidth", "status", "description", "diverse-flowid", "last-updated", "discrepancy"})
 @Data
 public class FlowInfo implements Serializable {
 
@@ -64,6 +64,9 @@ public class FlowInfo implements Serializable {
 
     @JsonProperty("dst_vlan")
     private int dstVlan;
+    
+    @JsonProperty("diverse-flowid")
+    private String diverseFlowid;
 
 
     @JsonProperty("maximum_bandwidth")
