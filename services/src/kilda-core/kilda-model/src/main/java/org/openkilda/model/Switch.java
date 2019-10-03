@@ -32,14 +32,12 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -107,10 +105,6 @@ public class Switch implements Serializable {
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
-
-    @JsonIgnore
-    @Relationship(type = "has")
-    private Collection<PortProperties> portProperties;
 
     @Builder(toBuilder = true)
     public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,

@@ -208,7 +208,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             PortProperties portProperties = switchOperationsService.getPortProperties(request.getSwitchId(),
                     request.getPort());
             return PortMapper.INSTANCE.map(portProperties);
-        } catch (PersistenceException e) {
+        } catch (PersistenceException | SwitchNotFoundException e) {
             String message = String.format("Port properties not found: %s", e.getMessage());
             log.error(message);
             throw new MessageException(ErrorType.NOT_FOUND, message, "Could not get port properties.");

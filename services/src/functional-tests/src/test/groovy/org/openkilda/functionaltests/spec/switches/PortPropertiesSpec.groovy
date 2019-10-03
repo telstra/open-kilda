@@ -57,10 +57,12 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         and: "Port discovery property is really updated"
-        with(northboundV2.getPortProperties(isl.srcSwitch.dpId, isl.srcPort)) {
-            it.switchId == isl.srcSwitch.dpId
-            it.portNumber == isl.srcPort
-            it.discoveryEnabled == newDiscoveryEnabled
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            with(northboundV2.getPortProperties(isl.srcSwitch.dpId, isl.srcPort)) {
+                it.switchId == isl.srcSwitch.dpId
+                it.portNumber == isl.srcPort
+                it.discoveryEnabled == newDiscoveryEnabled
+            }
         }
 
         cleanup: "Restore init port discovery property on the port"
@@ -78,7 +80,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
         e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Port properties not found: No switch found with id '${NON_EXISTENT_SWITCH_ID}'"
+                "Port properties not found: Switch ${NON_EXISTENT_SWITCH_ID} not found."
 
         when: "Try to update port discovery property for non-existing switch"
         northboundV2.updatePortProperties(NON_EXISTENT_SWITCH_ID, port, new PortPropertiesDto(discoveryEnabled: true))
@@ -88,7 +90,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         exc.statusCode == HttpStatus.NOT_FOUND
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update port properties for '${NON_EXISTENT_SWITCH_ID}_${port}':\
- No switch found with id '${NON_EXISTENT_SWITCH_ID}'"
+ Switch ${NON_EXISTENT_SWITCH_ID} not found."
     }
 
     def "Informative error is returned when trying to update port properties with non-existing port number"() {

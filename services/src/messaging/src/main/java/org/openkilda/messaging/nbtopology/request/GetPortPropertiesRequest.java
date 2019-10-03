@@ -19,6 +19,8 @@ import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Getter;
 import lombok.ToString;
 
@@ -26,11 +28,10 @@ import lombok.ToString;
 @ReadRequest
 @Getter
 @ToString
+@JsonNaming(SnakeCaseStrategy.class)
 public class GetPortPropertiesRequest extends SwitchesBaseRequest {
 
-    @JsonProperty("switch_id")
     private SwitchId switchId;
-    @JsonProperty("port")
     private int port;
 
     public GetPortPropertiesRequest(@JsonProperty("switch_id") SwitchId switchId,

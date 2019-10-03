@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -27,10 +27,14 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.model.PortProperties;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionCallbackWithoutResult;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -45,6 +49,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkPortServiceTest {
@@ -58,10 +63,16 @@ public class NetworkPortServiceTest {
     private PersistenceManager persistenceManager;
 
     @Mock
+    private TransactionManager transactionManager;
+
+    @Mock
     private RepositoryFactory repositoryFactory;
 
     @Mock
     private PortPropertiesRepository portPropertiesRepository;
+
+    @Mock
+    private SwitchRepository switchRepository;
 
     private final SwitchId alphaDatapath = new SwitchId(1);
 
@@ -76,13 +87,19 @@ public class NetworkPortServiceTest {
 
         reset(persistenceManager);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        doAnswer(invocation -> {
+            TransactionCallbackWithoutResult tr = invocation.getArgument(0);
+            tr.doInTransaction();
+            return null;
+        }).when(transactionManager).doInTransaction(any(TransactionCallbackWithoutResult.class));
 
         reset(portPropertiesRepository);
-        when(portPropertiesRepository.getBySwitchIdAndPort(any(SwitchId.class), anyInt()))
-                .thenReturn(PortProperties.builder().discoveryEnabled(true).build());
+        reset(switchRepository);
 
         reset(repositoryFactory);
         when(repositoryFactory.createPortPropertiesRepository()).thenReturn(portPropertiesRepository);
+        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
     }
 
     @Test
@@ -198,9 +215,15 @@ public class NetworkPortServiceTest {
     }
 
     @Test
-    public void updatePortProperties() {
+    public void createPortProperties() {
         NetworkPortService service = makeService();
-        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+        int port = 7;
+        Endpoint endpoint = Endpoint.of(alphaDatapath, port);
+
+        when(portPropertiesRepository.getBySwitchIdAndPort(alphaDatapath, port))
+                .thenReturn(Optional.empty());
+        when(switchRepository.findById(alphaDatapath))
+                .thenReturn(Optional.of(getDefaultSwitch()));
 
         service.setup(endpoint, null);
         service.updateOnlineMode(endpoint, true);
@@ -209,13 +232,59 @@ public class NetworkPortServiceTest {
 
         service.remove(endpoint);
 
-        verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 1), null);
+        verify(carrier).setupUniIslHandler(endpoint, null);
         verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_UP), any(Instant.class));
         verify(carrier).enableDiscoveryPoll(endpoint);
-        verify(carrier, new Times(2)).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
-        verify(carrier).notifyPortDiscoveryFailed(Endpoint.of(alphaDatapath, 1));
+        verify(carrier, new Times(2)).disableDiscoveryPoll(endpoint);
+        verify(carrier).notifyPortDiscoveryFailed(endpoint);
         verify(carrier).notifyPortPropertiesChanged(any(PortProperties.class));
-        verify(carrier).removeUniIslHandler(Endpoint.of(alphaDatapath, 1));
+        verify(carrier).removeUniIslHandler(endpoint);
+
+        verify(portPropertiesRepository).createOrUpdate(PortProperties.builder()
+                .switchObj(getDefaultSwitch())
+                .port(port)
+                .discoveryEnabled(false)
+                .build());
+    }
+
+    @Test
+    public void disableDiscoveryWhenPortDown() {
+        NetworkPortService service = makeService();
+        int port = 7;
+        Endpoint endpoint = Endpoint.of(alphaDatapath, port);
+
+        when(portPropertiesRepository.getBySwitchIdAndPort(alphaDatapath, port))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(PortProperties.builder()
+                        .switchObj(getDefaultSwitch())
+                        .port(port)
+                        .discoveryEnabled(false)
+                        .build()));
+        when(switchRepository.findById(alphaDatapath))
+                .thenReturn(Optional.of(getDefaultSwitch()));
+
+        service.setup(endpoint, null);
+        service.updateOnlineMode(endpoint, true);
+        service.updateLinkStatus(endpoint, LinkStatus.DOWN);
+        service.updatePortProperties(endpoint, false);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+
+        service.remove(endpoint);
+
+        verify(carrier).setupUniIslHandler(endpoint, null);
+        verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_DOWN), any(Instant.class));
+        verify(carrier, new Times(2)).disableDiscoveryPoll(endpoint);
+        verify(carrier).notifyPortPhysicalDown(endpoint);
+        verify(carrier).notifyPortPropertiesChanged(any(PortProperties.class));
+        verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_UP), any(Instant.class));
+        verify(carrier, new Times(0)).enableDiscoveryPoll(endpoint);
+        verify(carrier).removeUniIslHandler(endpoint);
+
+        verify(portPropertiesRepository).createOrUpdate(PortProperties.builder()
+                .switchObj(getDefaultSwitch())
+                .port(port)
+                .discoveryEnabled(false)
+                .build());
     }
 
     private NetworkPortService makeService() {
@@ -224,5 +293,9 @@ public class NetworkPortServiceTest {
         when(dashboardLoggerBuilder.build(any(Logger.class))).thenReturn(dashboardLogger);
 
         return new NetworkPortService(carrier, persistenceManager, dashboardLoggerBuilder);
+    }
+
+    private Switch getDefaultSwitch() {
+        return Switch.builder().switchId(alphaDatapath).build();
     }
 }

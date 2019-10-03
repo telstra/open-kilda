@@ -18,6 +18,7 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
@@ -30,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public class Neo4jPortPropertiesRepositoryTest extends Neo4jBasedTest {
 
@@ -72,32 +74,11 @@ public class Neo4jPortPropertiesRepositoryTest extends Neo4jBasedTest {
                 .discoveryEnabled(false).build();
 
         portPropertiesRepository.createOrUpdate(portProperties);
-        PortProperties portPropertiesResult =
+        Optional<PortProperties> portPropertiesResult =
                 portPropertiesRepository.getBySwitchIdAndPort(origSwitch.getSwitchId(), port);
-        assertEquals(origSwitch.getSwitchId(), portPropertiesResult.getSwitchObj().getSwitchId());
-        assertEquals(port, portPropertiesResult.getPort());
-        assertFalse(portPropertiesResult.isDiscoveryEnabled());
-    }
-
-    @Test
-    public void shouldGetDefaultPortProperties() {
-        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID).build();
-
-        switchRepository.createOrUpdate(origSwitch);
-
-        int port = 7;
-
-        PortProperties portProperties = PortProperties.builder()
-                .switchObj(origSwitch)
-                .port(8)
-                .discoveryEnabled(false).build();
-
-        portPropertiesRepository.createOrUpdate(portProperties);
-
-        PortProperties portPropertiesResult =
-                portPropertiesRepository.getBySwitchIdAndPort(origSwitch.getSwitchId(), port);
-        assertEquals(origSwitch.getSwitchId(), portPropertiesResult.getSwitchObj().getSwitchId());
-        assertEquals(port, portPropertiesResult.getPort());
-        assertEquals(PortProperties.DISCOVERY_ENABLED_DEFAULT, portPropertiesResult.isDiscoveryEnabled());
+        assertTrue(portPropertiesResult.isPresent());
+        assertEquals(origSwitch.getSwitchId(), portPropertiesResult.get().getSwitchObj().getSwitchId());
+        assertEquals(port, portPropertiesResult.get().getPort());
+        assertFalse(portPropertiesResult.get().isDiscoveryEnabled());
     }
 }

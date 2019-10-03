@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 
 import lombok.AccessLevel;
@@ -43,13 +44,18 @@ public class PortProperties implements Serializable {
 
     public static final boolean DISCOVERY_ENABLED_DEFAULT = true;
 
+    public static PortPropertiesBuilder getDefault() {
+        return PortProperties.builder()
+                .discoveryEnabled(DISCOVERY_ENABLED_DEFAULT);
+    }
+
     @Id
     @GeneratedValue
     @Setter(AccessLevel.NONE)
     private Long entityId;
 
     @NonNull
-    @Relationship(type = "has", direction = INCOMING)
+    @Relationship(type = "owns", direction = INCOMING)
     private Switch switchObj;
 
     @Property(name = "port_no")
@@ -58,10 +64,14 @@ public class PortProperties implements Serializable {
     @Property(name = "discovery_enabled")
     private boolean discoveryEnabled;
 
+    @Property(name = "discriminator")
+    private String discriminator;
+
     @Builder(toBuilder = true)
-    public PortProperties(Switch switchObj, int port, boolean discoveryEnabled) {
+    public PortProperties(@NonNull Switch switchObj, int port, boolean discoveryEnabled) {
         this.switchObj = switchObj;
         this.port = port;
         this.discoveryEnabled = discoveryEnabled;
+        this.discriminator = format("%s_%d", switchObj.getSwitchId().toString(), port);
     }
 }

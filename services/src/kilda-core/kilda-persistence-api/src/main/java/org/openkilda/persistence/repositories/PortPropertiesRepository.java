@@ -18,7 +18,12 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.SwitchId;
 
+import java.util.Collection;
+import java.util.Optional;
+
 public interface PortPropertiesRepository extends Repository<PortProperties> {
 
-    PortProperties getBySwitchIdAndPort(SwitchId switchId, int port);
+    Optional<PortProperties> getBySwitchIdAndPort(SwitchId switchId, int port);
+
+    Collection<PortProperties> getAllBySwitchId(SwitchId switchId);
 }

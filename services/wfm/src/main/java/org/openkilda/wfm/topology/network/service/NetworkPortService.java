@@ -15,15 +15,19 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.error.ErrorType.NOT_FOUND;
 
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PortProperties;
+import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -49,7 +53,9 @@ public class NetworkPortService {
 
     private final IPortCarrier carrier;
     private final PersistenceManager persistenceManager;
+    private final TransactionManager transactionManager;
     private final PortPropertiesRepository portPropertiesRepository;
+    private final SwitchRepository switchRepository;
 
     public NetworkPortService(IPortCarrier carrier, PersistenceManager persistenceManager) {
         this(carrier, persistenceManager, NetworkTopologyDashboardLogger.builder());
@@ -60,7 +66,9 @@ public class NetworkPortService {
                        NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
+        this.transactionManager = persistenceManager.getTransactionManager();
         this.portPropertiesRepository = persistenceManager.getRepositoryFactory().createPortPropertiesRepository();
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         controllerFactory = PortFsm.factory();
         controllerExecutor = controllerFactory.produceExecutor();
@@ -85,7 +93,7 @@ public class NetworkPortService {
         log.info("Port service receive remove request for {}", endpoint);
         PortFsm portFsm = controller.remove(endpoint);
         if (portFsm == null) {
-            throw new IllegalStateException(String.format("Port FSM not found (%s).", endpoint));
+            throw new IllegalStateException(format("Port FSM not found (%s).", endpoint));
         }
         PortFsmContext context = PortFsmContext.builder(carrier).build();
         controllerExecutor.fire(portFsm, PortFsmEvent.PORT_DEL, context);
@@ -122,7 +130,7 @@ public class NetworkPortService {
                 break;
             default:
                 throw new IllegalArgumentException(
-                        String.format("Unsupported %s value %s", LinkStatus.class.getName(), status));
+                        format("Unsupported %s value %s", LinkStatus.class.getName(), status));
         }
         controllerExecutor.fire(portFsm, event, PortFsmContext.builder(carrier).build());
     }
@@ -157,20 +165,22 @@ public class NetworkPortService {
      */
     public void updatePortProperties(Endpoint endpoint, boolean discoveryEnabled) {
         try {
-            PortProperties portProperties = savePortProperties(endpoint, discoveryEnabled);
+            transactionManager.doInTransaction(() -> {
+                PortProperties portProperties = savePortProperties(endpoint, discoveryEnabled);
 
-            PortFsm portFsm = locateController(endpoint);
-            PortFsmContext context = PortFsmContext.builder(carrier).build();
+                PortFsm portFsm = locateController(endpoint);
+                PortFsmContext context = PortFsmContext.builder(carrier).build();
 
-            PortFsmEvent event = discoveryEnabled ? PortFsmEvent.ENABLE_DISCOVERY : PortFsmEvent.DISABLE_DISCOVERY;
-            controllerExecutor.fire(portFsm, event, context);
+                PortFsmEvent event = discoveryEnabled ? PortFsmEvent.ENABLE_DISCOVERY : PortFsmEvent.DISABLE_DISCOVERY;
+                controllerExecutor.fire(portFsm, event, context);
 
-            carrier.notifyPortPropertiesChanged(portProperties);
+                carrier.notifyPortPropertiesChanged(portProperties);
+            });
         } catch (PersistenceException e) {
-            String message = String.format("Could not update port properties for '%s': %s", endpoint, e.getMessage());
+            String message = format("Could not update port properties for '%s': %s", endpoint, e.getMessage());
             throw new MessageException(NOT_FOUND, message, "Persistence exception");
         } catch (IllegalStateException e) {
-            String message = String.format("Port not found: '%s'", e.getMessage());
+            String message = format("Port not found: '%s'", e.getMessage());
             throw new MessageException(NOT_FOUND, message, "Port not found exception");
         }
     }
@@ -180,14 +190,20 @@ public class NetworkPortService {
     private PortFsm locateController(Endpoint endpoint) {
         PortFsm portFsm = controller.get(endpoint);
         if (portFsm == null) {
-            throw new IllegalStateException(String.format("Port FSM not found (%s).", endpoint));
+            throw new IllegalStateException(format("Port FSM not found (%s).", endpoint));
         }
         return portFsm;
     }
 
     private PortProperties savePortProperties(Endpoint endpoint, boolean discoveryEnabled) {
+        Switch sw = switchRepository.findById(endpoint.getDatapath())
+                .orElseThrow(() -> new PersistenceException(format("Switch %s not found.", endpoint.getDatapath())));
         PortProperties portProperties = portPropertiesRepository
-                .getBySwitchIdAndPort(endpoint.getDatapath(), endpoint.getPortNumber());
+                .getBySwitchIdAndPort(endpoint.getDatapath(), endpoint.getPortNumber())
+                .orElse(PortProperties.getDefault()
+                        .switchObj(sw)
+                        .port(endpoint.getPortNumber())
+                        .build());
         portProperties.setDiscoveryEnabled(discoveryEnabled);
         portPropertiesRepository.createOrUpdate(portProperties);
         return portProperties;
