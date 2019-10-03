@@ -20,15 +20,26 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 
 import java.util.List;
 
 public interface NorthboundServiceV2 {
+
+    //flows
+
     FlowResponseV2 addFlow(FlowRequestV2 request);
 
     FlowRerouteResponseV2 rerouteFlow(String flowId);
 
+    //switches
+
     List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port);
 
     List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port, Long timeFrom, Long timeTo);
+
+    PortPropertiesResponse getPortProperties(SwitchId switchId, Integer port);
+
+    PortPropertiesResponse updatePortProperties(SwitchId switchId, Integer port, PortPropertiesDto payload);
 }
