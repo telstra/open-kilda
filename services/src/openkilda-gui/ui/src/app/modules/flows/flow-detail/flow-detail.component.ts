@@ -477,12 +477,62 @@ export class FlowDetailComponent implements OnInit {
     this.loaderService.show("Loading Flow Detail");
     this.bandWidthDescrepancy  = false;
     this.statusDescrepancy = false;
+    var flowDetail = null;
+    if(filterFlag == 'controller'){
+      let flowData  = JSON.parse(localStorage.getItem('flows')) || {};
+      let flowList = typeof(flowData.list_data) != 'undefined' ? flowData.list_data: [];
+      if(flowList && flowList.length){
+        flowList.forEach(element => { 
+         if(element.flowid == flowId){
+           flowDetail = element;
+           return;
+         }
+        });
+      }
+    }else{
+      var flowData = JSON.parse(localStorage.getItem('flowsinventory')) || {};
+      let flowList = typeof(flowData.list_data) != 'undefined' ? flowData.list_data: [];
+      if(flowList && flowList.length){
+        flowList.forEach(element => { 
+         if(element.flowid == flowId){
+           flowDetail = element;
+           return;
+         }
+        });
+    }
+  }
+  if(flowDetail && flowDetail.flowid){
+       flowDetail["source_switch"] = this.convertSwitchPattern(flowDetail["source_switch"]);
+        flowDetail["target_switch"] = this.convertSwitchPattern(flowDetail["target_switch"]);
+        this.flowDetail = flowDetail;
+        this.clipBoardItems = Object.assign(this.clipBoardItems,{
+          flowName: flowDetail.flowid,
+          sourceSwitchName: flowDetail["source_switch_name"],
+          sourceSwitch: flowDetail["source_switch"],
+          targetSwitchName: flowDetail["target_switch_name"],
+          targetSwitch: flowDetail["target_switch"]
+        });
+
+        if(flowDetail['discrepancy'] && (flowDetail['discrepancy']['status'] || flowDetail['discrepancy']['bandwidth'])){
+          if(flowDetail['discrepancy']['status']){
+            this.statusDescrepancy  = true;
+            this.descrepancyData.status.controller = (typeof(flowDetail['discrepancy']['status-value']['controller-status'])!='undefined') ?  flowDetail['discrepancy']['status-value']['controller-status'] : "-";
+            this.descrepancyData.status.inventory = (typeof(flowDetail['discrepancy']['status-value']['inventory-status'])!='undefined') ?  flowDetail['discrepancy']['status-value']['inventory-status'] : "-";
+          }
+          if(flowDetail['discrepancy']['bandwidth']){
+            this.bandWidthDescrepancy = true;
+            this.descrepancyData.bandwidth.controller = (typeof(flowDetail['discrepancy']['bandwidth-value']['controller-bandwidth'])!='undefined') ?  flowDetail['discrepancy']['bandwidth-value']['controller-bandwidth'] : "-";
+            this.descrepancyData.bandwidth.inventory = (typeof(flowDetail['discrepancy']['bandwidth-value']['inventory-bandwidth'])!='undefined') ?  flowDetail['discrepancy']['bandwidth-value']['inventory-bandwidth'] : "-";
+          }
+        }
+        
+        this.loaderService.hide();
+  }else{
     this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
       flow => {
         flow["source_switch"] = this.convertSwitchPattern(flow["source_switch"]);
         flow["target_switch"] = this.convertSwitchPattern(flow["target_switch"]);
         this.flowDetail = flow;
-        localStorage.setItem('flowDetail',JSON.stringify(this.flowDetail));
         this.clipBoardItems = Object.assign(this.clipBoardItems,{
           flowName: flow.flowid,
           sourceSwitchName: flow["source_switch_name"],
@@ -513,6 +563,8 @@ export class FlowDetailComponent implements OnInit {
         this.loaderService.hide();
       }
     );
+  }
+   
   }
 
   convertSwitchPattern(switchId){

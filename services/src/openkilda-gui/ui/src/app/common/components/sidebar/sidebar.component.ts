@@ -19,8 +19,7 @@ export class SidebarComponent implements OnInit {
         localStorage.removeItem('haslinkStoreSetting');
         localStorage.removeItem('linkStoreSetting');
         localStorage.removeItem('linkStoreStatusList');
-        localStorage.removeItem('activeFlowStatusFilter');    
-        localStorage.removeItem('flowDetail');   
+        localStorage.removeItem('activeFlowStatusFilter'); 
         localStorage.removeItem('filterFlag');          
         localStorage.removeItem('flowsinventory');       
       }
@@ -31,7 +30,6 @@ export class SidebarComponent implements OnInit {
       if(!this.currentUrl.includes('/switches')) {
         localStorage.removeItem('SWITCHES_LIST');
         localStorage.removeItem('SWITCHES_LIST_ALL');
-        localStorage.removeItem('switchDetailsJSON');
         localStorage.removeItem('switchPortDetail');  
       }  
      
