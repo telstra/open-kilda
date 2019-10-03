@@ -131,6 +131,7 @@ public class SwitchIntegrationService {
             SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
             if (switchInfo != null) {
                 switchInfo.setName(customSwitchName(getSwitchNames(), switchInfo.getSwitchId()));
+                switchInfo.setControllerSwitch(true);
                 return switchInfo;
             }
         }
@@ -150,6 +151,7 @@ public class SwitchIntegrationService {
             Map<String, String> csNames = getSwitchNames();
             for (SwitchInfo switchInfo : switches) {
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
+                switchInfo.setControllerSwitch(true);
             }
         }
         return switches;

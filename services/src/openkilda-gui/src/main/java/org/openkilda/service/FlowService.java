@@ -91,7 +91,7 @@ public class FlowService {
      *
      * @return SwitchRelationData
      */
-    public List<FlowInfo> getAllFlows(List<String> statuses) {
+    public List<FlowInfo> getAllFlows(List<String> statuses, boolean controller) {
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -102,24 +102,26 @@ public class FlowService {
                 flows = new ArrayList<FlowInfo>();
             }
         }
-        if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-            try {
-                UserInfo userInfo = userService.getLoggedInUserInfo();
-                if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
-                    List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
-                    String status = "";
-                    for (String statusObj : statuses) {
-                        if (StringUtil.isNullOrEmpty(status)) {
-                            status += statusObj;
-                        } else {
-                            status += "," + statusObj;
+        if (!controller) {
+            if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
+                try {
+                    UserInfo userInfo = userService.getLoggedInUserInfo();
+                    if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                        List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
+                        String status = "";
+                        for (String statusObj : statuses) {
+                            if (StringUtil.isNullOrEmpty(status)) {
+                                status += statusObj;
+                            } else {
+                                status += "," + statusObj;
+                            }
                         }
+                        inventoryFlows = flowStoreService.getFlowsWithParams(status);
+                        processInventoryFlow(flows, inventoryFlows);
                     }
-                    inventoryFlows = flowStoreService.getFlowsWithParams(status);
-                    processInventoryFlow(flows, inventoryFlows);
+                } catch (Exception ex) {
+                    LOGGER.error("Error occurred while retrieving flows from store", ex);
                 }
-            } catch (Exception ex) {
-                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flows;
@@ -212,7 +214,7 @@ public class FlowService {
      *            the flow id
      * @return the flow by id
      */
-    public FlowInfo getFlowById(String flowId) {
+    public FlowInfo getFlowById(String flowId, boolean controller) {
         FlowInfo flowInfo = new FlowInfo();
         Flow flow = null;
         try {
@@ -224,10 +226,10 @@ public class FlowService {
         if (flow != null) {
             flowInfo = flowConverter.toFlowInfo(flow, csNames);
         }
-        if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-            try {
-                UserInfo userInfo = userService.getLoggedInUserInfo();
-                if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+        UserInfo userInfo = userService.getLoggedInUserInfo();
+        if (!controller && userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+            if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
+                try {
                     InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
                     if (flow != null && inventoryFlow != null) {
                         flowInfo.setState(inventoryFlow.getState());
@@ -246,7 +248,7 @@ public class FlowService {
                         if (("UP".equalsIgnoreCase(flowInfo.getStatus())
                                 && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                                 || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
-                                        && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                                    && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                             discrepancy.setStatus(true);
 
                             FlowState flowState = new FlowState();
@@ -254,6 +256,7 @@ public class FlowService {
                             flowState.setInventoryState(inventoryFlow.getState());
                             discrepancy.setStatusValue(flowState);
                         }
+                        flowInfo.setInventoryFlow(true);
                         flowInfo.setDiscrepancy(discrepancy);
                     } else if (inventoryFlow == null && flow != null) {
                         FlowDiscrepancy discrepancy = new FlowDiscrepancy();
@@ -276,9 +279,9 @@ public class FlowService {
                     } else {
                         flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                     }
+                } catch (Exception ex) {
+                    LOGGER.error("Error occurred while retrieving flows from store", ex);
                 }
-            } catch (Exception ex) {
-                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flowInfo;

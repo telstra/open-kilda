@@ -74,6 +74,8 @@ public class FlowConverter {
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
         flowInfo.setDescription(flow.getDescription());
         flowInfo.setStatus(flow.getStatus().toUpperCase());
+        flowInfo.setDiverseFlowid(flow.getDiverseFlowId());
+        flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {
             String switchName = switchIntegrationService.customSwitchName(csNames, source.getSwitchId());

@@ -31,6 +31,7 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
 import org.openkilda.test.MockitoExtension;
+import org.openkilda.util.TestFlowMock;
 import org.openkilda.util.TestIslMock;
 import org.openkilda.util.TestSwitchMock;
 
@@ -95,7 +96,7 @@ public class SwitchControllerTest {
     public void testGetAllSwitchesDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            when(serviceSwitch.getSwitches(false)).thenReturn(switchesInfo);
+            when(serviceSwitch.getSwitches(false, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchesInfo);
             mockMvc.perform(get("/api/switch/list").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
@@ -103,12 +104,21 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
+    
+    @Test
+    public void testGetSwitchById() throws Exception {
+        SwitchInfo switchInfo = new SwitchInfo();
+        when(serviceSwitch.getSwitch(TestSwitchMock.SWITCH_ID, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchInfo);
+        mockMvc.perform(get("/api/switch/{switchId}", TestFlowMock.FLOW_ID).contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk());
+        assertTrue(true);
+    }
 
     @Test
     public void testGetSwichLinkDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            when(serviceSwitch.getSwitches(false)).thenReturn(switchesInfo);
+            when(serviceSwitch.getSwitches(false, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchesInfo);
             mockMvc.perform(get("/api/switch/links").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
