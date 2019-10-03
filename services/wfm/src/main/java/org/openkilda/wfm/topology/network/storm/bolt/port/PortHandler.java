@@ -79,8 +79,8 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     public static final String STREAM_HISTORY_ID = "history";
     private static final Fields STREAM_HISTORY_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
-    public static final String STREAM_NB_RESPONSE_ID = "northbound";
-    private static final Fields STREAM_NB_RESPONSE_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+    public static final String STREAM_NORTHBOUND_ID = "northbound";
+    private static final Fields STREAM_NORTHBOUND_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private transient NetworkPortService portService;
     private transient NetworkAntiFlapService antiFlapService;
@@ -128,7 +128,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         } catch (MessageException e) {
             log.error("Handle port command exception", e);
             ErrorData data = new ErrorData(e.getErrorType(), e.getMessage(), e.getErrorDescription());
-            emit(STREAM_NB_RESPONSE_ID, getCurrentTuple(), new Values(data, getCommandContext()));
+            emit(STREAM_NORTHBOUND_ID, getCurrentTuple(), new Values(data, getCommandContext()));
         }
     }
 
@@ -152,7 +152,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
         streamManager.declareStream(STREAM_HISTORY_ID, STREAM_HISTORY_FIELDS);
-        streamManager.declareStream(STREAM_NB_RESPONSE_ID, STREAM_NB_RESPONSE_FIELDS);
+        streamManager.declareStream(STREAM_NORTHBOUND_ID, STREAM_NORTHBOUND_FIELDS);
     }
 
     // IPortCarrier
@@ -201,7 +201,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     @Override
     public void notifyPortPropertiesChanged(PortProperties portProperties) {
         PortPropertiesPayload payload = PortMapper.INSTANCE.map(portProperties);
-        emit(STREAM_NB_RESPONSE_ID, getCurrentTuple(), makePortPropertiesTuple(payload));
+        emit(STREAM_NORTHBOUND_ID, getCurrentTuple(), makePortPropertiesTuple(payload));
     }
 
     // IAntiFlapCarrier

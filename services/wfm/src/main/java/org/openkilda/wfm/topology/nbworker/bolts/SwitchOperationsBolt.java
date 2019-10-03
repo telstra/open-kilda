@@ -37,7 +37,6 @@ import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
@@ -204,15 +203,9 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {
-        try {
-            PortProperties portProperties = switchOperationsService.getPortProperties(request.getSwitchId(),
-                    request.getPort());
-            return PortMapper.INSTANCE.map(portProperties);
-        } catch (PersistenceException e) {
-            String message = String.format("Port properties not found: %s", e.getMessage());
-            log.error(message);
-            throw new MessageException(ErrorType.NOT_FOUND, message, "Could not get port properties.");
-        }
+        PortProperties portProperties =
+                switchOperationsService.getPortProperties(request.getSwitchId(), request.getPort());
+        return PortMapper.INSTANCE.map(portProperties);
     }
 
     @Override

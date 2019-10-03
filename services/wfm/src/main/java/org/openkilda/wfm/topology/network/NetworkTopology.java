@@ -25,7 +25,7 @@ import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
-import org.openkilda.wfm.topology.network.storm.bolt.NbEncoder;
+import org.openkilda.wfm.topology.network.storm.bolt.NorthboundEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.RerouteEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.StatusEncoder;
@@ -100,7 +100,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         outputSwitchManager(topology, scaleFactor);
         outputReroute(topology, scaleFactor);
         outputStatus(topology, scaleFactor);
-        outputNb(topology, scaleFactor);
+        outputNorthbound(topology, scaleFactor);
 
         historyBolt(topology, scaleFactor);
 
@@ -298,14 +298,14 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .shuffleGrouping(StatusEncoder.BOLT_ID);
     }
 
-    private void outputNb(TopologyBuilder topology, int scaleFactor) {
-        NbEncoder bolt = new NbEncoder();
-        topology.setBolt(NbEncoder.BOLT_ID, bolt, scaleFactor)
-                .shuffleGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_NB_RESPONSE_ID);
+    private void outputNorthbound(TopologyBuilder topology, int scaleFactor) {
+        NorthboundEncoder bolt = new NorthboundEncoder();
+        topology.setBolt(NorthboundEncoder.BOLT_ID, bolt, scaleFactor)
+                .shuffleGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_NORTHBOUND_ID);
 
-        KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
-        topology.setBolt(ComponentId.NB_OUTPUT.toString(), kafkaNbBolt, scaleFactor)
-                .shuffleGrouping(NbEncoder.BOLT_ID);
+        KafkaBolt kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
+        topology.setBolt(ComponentId.NB_OUTPUT.toString(), kafkaNorthboundBolt, scaleFactor)
+                .shuffleGrouping(NorthboundEncoder.BOLT_ID);
     }
 
     private void historyBolt(TopologyBuilder topology, int scaleFactor) {

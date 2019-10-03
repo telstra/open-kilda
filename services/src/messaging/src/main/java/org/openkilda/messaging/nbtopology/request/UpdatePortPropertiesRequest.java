@@ -19,19 +19,19 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.ToString;
 
 @SuppressWarnings("squid:MaximumInheritanceDepth")
 @Data
 @ToString
+@JsonNaming(SnakeCaseStrategy.class)
 public class UpdatePortPropertiesRequest extends InfoData {
 
-    @JsonProperty("switch_id")
     private SwitchId switchId;
-    @JsonProperty("port")
     private int port;
-    @JsonProperty("discovery_enabled")
     private boolean discoveryEnabled;
 
     public UpdatePortPropertiesRequest(@JsonProperty("switch_id") SwitchId switchId,

@@ -16,8 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
-import static org.openkilda.model.PortProperties.DISCOVERY_ENABLED_DEFAULT;
+import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.SWITCH_NAME_PROPERTY_NAME;
 
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
@@ -27,18 +26,22 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Optional;
 
 @Slf4j
 public class Neo4jPortPropertiesRepository extends Neo4jGenericRepository<PortProperties>
         implements PortPropertiesRepository {
 
-    private Neo4jSwitchRepository neo4jSwitchRepository;
+    private static final String SWITCH_FIELD = "switchObj";
+    private static final String PORT_FIELD = "port_no";
 
     public Neo4jPortPropertiesRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
-        neo4jSwitchRepository = new Neo4jSwitchRepository(sessionFactory, transactionManager);
     }
 
     @Override
@@ -47,36 +50,37 @@ public class Neo4jPortPropertiesRepository extends Neo4jGenericRepository<PortPr
     }
 
     @Override
-    public PortProperties getBySwitchIdAndPort(SwitchId switchId, int port) {
+    public Optional<PortProperties> getBySwitchIdAndPort(SwitchId switchId, int port) {
         if (switchId == null) {
             throw new PersistenceException("Switch id should not be null");
         }
+        Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
+        Filter portFilter = new Filter(PORT_FIELD, ComparisonOperator.EQUALS, port);
+        Filters filters = switchFilter.and(portFilter);
 
-        Switch sw = neo4jSwitchRepository.findById(switchId)
-                .orElseThrow(() -> new PersistenceException(format("No switch found with id '%s'", switchId)));
-        if (sw.getPortProperties() == null) {
-            return getDefault(sw, port);
-        }
-        List<PortProperties> portProperties = sw.getPortProperties().stream()
-                .filter(p -> p.getPort() == port)
-                .collect(toList());
+        Collection<PortProperties> portProperties = loadAll(filters);
+
         if (portProperties.size() > 1) {
             throw new PersistenceException(
                     format("Found more than one PortProperties by switch id '%s' and port '%d'", switchId, port));
         }
-        return portProperties.isEmpty() ? getDefault(sw, port) : portProperties.get(0);
+        return portProperties.stream().findFirst();
+    }
+
+    @Override
+    public Collection<PortProperties> getAllBySwitchId(SwitchId switchId) {
+        if (switchId == null) {
+            throw new PersistenceException("Switch id should not be null");
+        }
+        Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
+
+        return loadAll(switchFilter);
     }
 
     @Override
     protected int getDepthCreateUpdateEntity() {
         return 1;
-    }
-
-    private PortProperties getDefault(Switch sw, int port) {
-        return PortProperties.builder()
-                .switchObj(sw)
-                .port(port)
-                .discoveryEnabled(DISCOVERY_ENABLED_DEFAULT)
-                .build();
     }
 }

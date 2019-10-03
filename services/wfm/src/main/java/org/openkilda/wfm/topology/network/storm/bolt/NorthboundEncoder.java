@@ -18,6 +18,6 @@ package org.openkilda.wfm.topology.network.storm.bolt;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 
-public class NbEncoder extends KafkaEncoder {
+public class NorthboundEncoder extends KafkaEncoder {
     public static final String BOLT_ID = ComponentId.NB_ENCODER.toString();
 }

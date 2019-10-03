@@ -43,13 +43,14 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     private final PortReportFsm reportFsm;
     private final PortPropertiesRepository portPropertiesRepository;
 
-    public static PortFsmFactory factory() {
-        return new PortFsmFactory();
+    public static PortFsmFactory factory(PersistenceManager persistenceManager) {
+        return new PortFsmFactory(persistenceManager);
     }
 
-    public PortFsm(PortReportFsm reportFsm, PersistenceManager persistenceManager, Endpoint endpoint, Isl history) {
+    public PortFsm(PortReportFsm reportFsm, PortPropertiesRepository portPropertiesRepository, Endpoint endpoint,
+                   Isl history) {
         this.reportFsm = reportFsm;
-        this.portPropertiesRepository = persistenceManager.getRepositoryFactory().createPortPropertiesRepository();
+        this.portPropertiesRepository = portPropertiesRepository;
         this.endpoint = endpoint;
         this.history = history;
     }
@@ -62,9 +63,11 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
     public void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         reportFsm.fire(PortFsmEvent.PORT_UP);
-        PortProperties portProperties
-                = portPropertiesRepository.getBySwitchIdAndPort(endpoint.getDatapath(), endpoint.getPortNumber());
-        if (portProperties.isDiscoveryEnabled()) {
+        boolean discoveryEnabled = portPropertiesRepository
+                .getBySwitchIdAndPort(endpoint.getDatapath(), endpoint.getPortNumber())
+                .map(PortProperties::isDiscoveryEnabled)
+                .orElse(PortProperties.DISCOVERY_ENABLED_DEFAULT);
+        if (discoveryEnabled) {
             context.getOutput().enableDiscoveryPoll(endpoint);
         }
     }
@@ -106,12 +109,15 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
     public static class PortFsmFactory {
         private final StateMachineBuilder<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> builder;
+        private final PortPropertiesRepository portPropertiesRepository;
 
-        PortFsmFactory() {
+        PortFsmFactory(PersistenceManager persistenceManager) {
+            portPropertiesRepository = persistenceManager.getRepositoryFactory().createPortPropertiesRepository();
+
             builder = StateMachineBuilderFactory.create(
                     PortFsm.class, PortFsmState.class, PortFsmEvent.class, PortFsmContext.class,
                     // extra parameters
-                    PortReportFsm.class, PersistenceManager.class, Endpoint.class, Isl.class);
+                    PortReportFsm.class, PortPropertiesRepository.class, Endpoint.class, Isl.class);
 
             // INIT
             builder.transition()
@@ -174,10 +180,9 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
             return new FsmExecutor<>(PortFsmEvent.NEXT);
         }
 
-        public PortFsm produce(PortReportFsm.PortReportFsmFactory reportFactory,
-                               PersistenceManager persistenceManager, Endpoint endpoint, Isl history) {
+        public PortFsm produce(PortReportFsm.PortReportFsmFactory reportFactory, Endpoint endpoint, Isl history) {
             return builder.newStateMachine(PortFsmState.INIT, reportFactory.produce(endpoint),
-                    persistenceManager, endpoint, history);
+                    portPropertiesRepository, endpoint, history);
         }
     }
 
