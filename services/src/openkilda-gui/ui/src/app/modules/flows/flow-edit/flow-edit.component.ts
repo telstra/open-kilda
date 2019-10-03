@@ -88,8 +88,31 @@ export class FlowEditComponent implements OnInit {
   /**Get flow detail via api call */
   getFlowDetail(flowId,filterFlag) {
     this.loaderService.show("Loading Flow Detail");
-    var flow_detail = JSON.parse(localStorage.getItem('flowDetail')) || null;
-    if(flow_detail){
+    var flow_detail  = null;
+    if(filterFlag == 'controller') {
+        let flowData  = JSON.parse(localStorage.getItem('flows')) || {};
+        let flowList = typeof(flowData.list_data) != 'undefined' ? flowData.list_data: [];
+        if (flowList && flowList.length){
+          flowList.forEach(element => { 
+          if(element.flowid == flowId){
+            flow_detail = element;
+            return;
+          }
+          });
+        }
+      }else{
+        var flowData = JSON.parse(localStorage.getItem('flowsinventory')) || {};
+        let flowList = typeof(flowData.list_data) != 'undefined' ? flowData.list_data: [];
+        if (flowList && flowList.length) {
+          flowList.forEach(element => { 
+          if (element.flowid == flowId) {
+            flow_detail = element;
+            return;
+          }
+          });
+      }
+    }
+    if (flow_detail) {
       this.flowDetailData = flow_detail;
         this.flowDetail = {
           flowid: flow.flowid,
