@@ -31,6 +31,6 @@ RUN    wget -q https://archive.apache.org/dist/storm/apache-storm-1.1.0/$PACKAGE
 
 WORKDIR /opt/storm/
 
-COPY conf/storm.yaml /opt/storm/conf/storm.yaml
+COPY storm.yaml /opt/storm/conf/storm.yaml
 COPY log4j2 /opt/storm/log4j2
 COPY lib/*.jar /opt/storm/lib/
