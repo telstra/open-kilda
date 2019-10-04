@@ -18,18 +18,20 @@ package org.openkilda.messaging.command.switches;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
 @Value
 @Builder
-public class ValidateRulesRequest extends CommandData {
+public class DumpRulesForNbworkerRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    public ValidateRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    @JsonCreator
+    public DumpRulesForNbworkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
         this.switchId = switchId;
     }
 }

@@ -21,9 +21,9 @@ import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
-import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -86,8 +86,8 @@ public class SpeakerRequestBolt extends RequestBolt {
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
                 commandMessage.getCorrelationId(), null);
         Values values = new Values(commandMessage.getCorrelationId(), errorMessage);
-        if (commandMessage.getData() instanceof ValidateRulesRequest) {
-            getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
+        if (commandMessage.getData() instanceof DumpRulesForNbworkerRequest) {
+            getOutput().emit(Stream.NB_WORKER, input, values);
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest
                 || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest
                 || commandMessage.getData() instanceof GetExpectedDefaultRulesRequest
@@ -105,8 +105,7 @@ public class SpeakerRequestBolt extends RequestBolt {
         super.declareOutputFields(outputFieldsDeclarer);
         Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
                 FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
-
-        outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
+        outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
         outputFieldsDeclarer.declareStream(Stream.KILDA_SWITCH_MANAGER, fields);
     }
 }
