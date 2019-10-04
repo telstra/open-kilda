@@ -3,6 +3,7 @@ package org.openkilda.performancetests
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
+import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -11,6 +12,7 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,6 +25,10 @@ import spock.lang.Specification
 class BaseSpecification extends Specification implements SetupOnce {
     @Autowired
     NorthboundService northbound
+    @Autowired
+    NorthboundServiceV2 northboundV2
+    @Autowired
+    FlowHelperV2 flowHelperV2
     @Autowired
     LabService labService
     @Autowired
