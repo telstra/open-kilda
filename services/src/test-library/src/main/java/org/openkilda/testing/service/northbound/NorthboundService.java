@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
+import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -196,6 +197,12 @@ public interface NorthboundService {
     //feature network
 
     PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
+
+    // configuration
+
+    KildaConfigurationDto getKildaConfiguration();
+
+    KildaConfigurationDto updateKildaConfiguration(KildaConfigurationDto configuration);
 
     /**
      * Returns all active links.
