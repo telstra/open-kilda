@@ -24,7 +24,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public abstract class ExclusionInfoData extends InfoAppData {
+public abstract class ExclusionInfoData extends FlowAppInfoData {
     private static final long serialVersionUID = 8904373571016951443L;
 
     @JsonProperty("exclusion")

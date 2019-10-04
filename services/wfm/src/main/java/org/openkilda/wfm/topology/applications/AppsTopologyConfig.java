@@ -27,6 +27,10 @@ public interface AppsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getAppsNotificationTopic();
     }
 
+    default String getKafkaAppsStatsTopic() {
+        return getKafkaTopics().getAppsStatsTopic();
+    }
+
     default String getKafkaApplicationsNbTopic() {
         return getKafkaTopics().getTopoAppsNbTopic();
     }
@@ -37,5 +41,9 @@ public interface AppsTopologyConfig extends AbstractTopologyConfig {
 
     default String getKafkaSpeakerTopic() {
         return getKafkaTopics().getSpeakerTopic();
+    }
+
+    default String getKafkaStatsTopic() {
+        return getKafkaTopics().getStatsTopic();
     }
 }

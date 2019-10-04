@@ -15,7 +15,7 @@
 
 package org.openkilda.applications.info.apps;
 
-import org.openkilda.applications.info.InfoAppData;
+import org.openkilda.applications.info.FlowAppInfoData;
 import org.openkilda.applications.model.Endpoint;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -26,7 +26,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class FlowApplicationRemoved extends InfoAppData {
+public class FlowApplicationRemoved extends FlowAppInfoData {
     private static final long serialVersionUID = 8851415138197215262L;
 
     @Builder

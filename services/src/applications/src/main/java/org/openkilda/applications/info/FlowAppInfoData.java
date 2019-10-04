@@ -13,27 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications.info.apps;
+package org.openkilda.applications.info;
 
-import org.openkilda.applications.info.FlowAppInfoData;
 import org.openkilda.applications.model.Endpoint;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class FlowApplicationCreated extends FlowAppInfoData {
-    private static final long serialVersionUID = 6315865255658611225L;
+public abstract class FlowAppInfoData extends InfoAppData {
+    private static final long serialVersionUID = 9091738864215003053L;
 
-    @Builder
-    @JsonCreator
-    public FlowApplicationCreated(@JsonProperty("flow_id") String flowId,
-                                  @JsonProperty("endpoint") Endpoint endpoint,
-                                  @JsonProperty("application") String application) {
-        super(flowId, endpoint, application);
-    }
+    @JsonProperty("flow_id")
+    private String flowId;
+
+    @JsonProperty("endpoint")
+    private Endpoint endpoint;
+
+    @JsonProperty("application")
+    private String application;
 }

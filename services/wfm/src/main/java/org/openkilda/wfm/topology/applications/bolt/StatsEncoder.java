@@ -13,27 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.wfm.topology.applications.bolt;
 
-import org.openkilda.applications.model.Endpoint;
+import org.openkilda.wfm.topology.applications.AppsTopology.ComponentId;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
-@Data
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-public abstract class ExclusionData extends AppData {
-    private static final long serialVersionUID = 9091738864215003053L;
-
-    @JsonProperty("flow_id")
-    private String flowId;
-
-    @JsonProperty("endpoint")
-    private Endpoint endpoint;
-
-    @JsonProperty("application")
-    private String application;
+public class StatsEncoder extends AppsEncoder {
+    public static final String BOLT_ID = ComponentId.STATS_ENCODER.toString();
+    public static final String INPUT_STREAM_ID = "stats.stream";
 }

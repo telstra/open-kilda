@@ -26,6 +26,8 @@ import org.openkilda.wfm.topology.applications.bolt.AppsManager;
 import org.openkilda.wfm.topology.applications.bolt.NorthboundEncoder;
 import org.openkilda.wfm.topology.applications.bolt.NotificationsEncoder;
 import org.openkilda.wfm.topology.applications.bolt.SpeakerEncoder;
+import org.openkilda.wfm.topology.applications.bolt.StatsEncoder;
+import org.openkilda.wfm.topology.applications.bolt.StatsReplyBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -51,15 +53,19 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
 
         inputSpout(topologyBuilder);
         inputNbSpout(topologyBuilder);
+        inputStatsSpout(topologyBuilder);
 
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         appsManager(topologyBuilder, persistenceManager, flowResourcesConfig);
 
+        statsReply(topologyBuilder);
+
         outputNorthbound(topologyBuilder);
         outputSpeaker(topologyBuilder);
         outputNotification(topologyBuilder);
+        outputStats(topologyBuilder);
 
         return topologyBuilder.createTopology();
     }
@@ -76,12 +82,24 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
         topologyBuilder.setSpout(ComponentId.APPS_SPOUT.toString(), spout, parallelism);
     }
 
+    private void inputStatsSpout(TopologyBuilder topologyBuilder) {
+        KafkaSpout<String, Message> spout = buildKafkaSpout(
+                topologyConfig.getKafkaStatsTopic(), ComponentId.STATS_SPOUT.toString());
+        topologyBuilder.setSpout(ComponentId.STATS_SPOUT.toString(), spout, parallelism);
+    }
+
     private void appsManager(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager,
                              FlowResourcesConfig flowResourcesConfig) {
         AppsManager bolt = new AppsManager(persistenceManager, flowResourcesConfig);
         topologyBuilder.setBolt(AppsManager.BOLT_ID, bolt, parallelism)
                 .shuffleGrouping(ComponentId.APPS_SPOUT.toString())
                 .shuffleGrouping(ComponentId.APPS_NB_SPOUT.toString());
+    }
+
+    private void statsReply(TopologyBuilder topologyBuilder) {
+        StatsReplyBolt bolt = new StatsReplyBolt();
+        topologyBuilder.setBolt(StatsReplyBolt.BOLT_ID, bolt, parallelism)
+                .shuffleGrouping(ComponentId.STATS_SPOUT.toString());
     }
 
     private void outputNorthbound(TopologyBuilder topologyBuilder) {
@@ -114,11 +132,24 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
                 .shuffleGrouping(NotificationsEncoder.BOLT_ID);
     }
 
+    private void outputStats(TopologyBuilder topologyBuilder) {
+        StatsEncoder bolt = new StatsEncoder();
+        topologyBuilder.setBolt(StatsEncoder.BOLT_ID, bolt, parallelism)
+                .shuffleGrouping(StatsReplyBolt.BOLT_ID, StatsEncoder.INPUT_STREAM_ID);
+
+        KafkaBolt output = buildKafkaBoltWithAppMessageSupport(topologyConfig.getKafkaAppsStatsTopic());
+        topologyBuilder.setBolt(ComponentId.STATS_OUTPUT.toString(), output, parallelism)
+                .shuffleGrouping(StatsEncoder.BOLT_ID);
+    }
+
     public enum ComponentId {
         APPS_SPOUT("apps.spout"),
         APPS_NB_SPOUT("apps.nb.spout"),
+        STATS_SPOUT("stats.spout"),
 
         APPS_MANAGER("apps.manager"),
+
+        STATS_REPLY("stats.reply"),
 
         NORTHBOUND_ENCODER("nb.encoder"),
         NORTHBOUND_OUTPUT("nb.output"),
@@ -127,7 +158,10 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
         SPEAKER_OUTPUT("speaker.output"),
 
         NOTIFICATION_ENCODER("notification.encoder"),
-        NOTIFICATION_OUTPUT("notification.output");
+        NOTIFICATION_OUTPUT("notification.output"),
+
+        STATS_ENCODER("stats.encoder"),
+        STATS_OUTPUT("stats.output");
 
         private final String value;
 

@@ -51,7 +51,7 @@ import org.apache.storm.tuple.Values;
 public class AppsManager extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.APPS_MANAGER.toString();
 
-    public static final String FIELD_ID_KEY = MessageKafkaTranslator.KEY_FIELD;
+    public static final String FIELD_ID_KEY = MessageKafkaTranslator.FIELD_ID_KEY;
     public static final String FIELD_ID_PAYLOAD = MessageKafkaTranslator.FIELD_ID_PAYLOAD;
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);

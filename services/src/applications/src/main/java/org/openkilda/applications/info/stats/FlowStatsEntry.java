@@ -13,13 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications;
+package org.openkilda.applications.info.stats;
 
+import org.openkilda.applications.ClassPropertyWrapper;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-public abstract class AppData extends ClassPropertyWrapper {
-    private static final long serialVersionUID = 4330509836408089959L;
+@Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class FlowStatsEntry extends ClassPropertyWrapper {
+    private static final long serialVersionUID = 2097291163552781243L;
+
+    private int tableId;
+    private long cookie;
+    private long packetCount;
+    private long byteCount;
+    private int inPort;
+    private int outPort;
 }

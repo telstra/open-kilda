@@ -235,4 +235,8 @@ public interface KafkaTopicsConfig {
     @Key("apps.notification")
     @Default("kilda.apps.notification.pub")
     String getAppsNotificationTopic();
+
+    @Key("apps.stats")
+    @Default("kilda.stats.pub")
+    String getAppsStatsTopic();
 }

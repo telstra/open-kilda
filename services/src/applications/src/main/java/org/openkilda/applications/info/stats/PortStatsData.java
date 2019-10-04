@@ -13,27 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.applications.info.apps;
+package org.openkilda.applications.info.stats;
 
-import org.openkilda.applications.info.FlowAppInfoData;
-import org.openkilda.applications.model.Endpoint;
+import org.openkilda.applications.info.InfoAppData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-@Data
-@EqualsAndHashCode(callSuper = true)
-public class FlowApplicationCreated extends FlowAppInfoData {
-    private static final long serialVersionUID = 6315865255658611225L;
+import java.util.List;
 
-    @Builder
-    @JsonCreator
-    public FlowApplicationCreated(@JsonProperty("flow_id") String flowId,
-                                  @JsonProperty("endpoint") Endpoint endpoint,
-                                  @JsonProperty("application") String application) {
-        super(flowId, endpoint, application);
-    }
+@Data
+@Builder
+@EqualsAndHashCode(callSuper = true)
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class PortStatsData extends InfoAppData {
+    private static final long serialVersionUID = 4459652909968133548L;
+
+    private String switchId;
+    private List<PortStatsEntry> stats;
 }
