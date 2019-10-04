@@ -142,10 +142,6 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         return buildTypedCookie(Cookie.TELESCOPE_COOKIE_TYPE, unmaskedCookie, forward);
     }
 
-    public static Cookie buildTelescopeCookieFromFlowCookie(Long flowCookie) {
-        return new Cookie(flowCookie | Cookie.TELESCOPE_COOKIE_TYPE);
-    }
-
     private static Cookie buildTypedCookie(Long typeMask, Long unmaskedCookie, boolean forward) {
         if (unmaskedCookie == null) {
             return null;

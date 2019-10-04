@@ -495,4 +495,26 @@ public interface ISwitchManager extends IFloodlightService {
     long removeExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
                          IpProtocol proto, EthType ethType, int transitTunnelId)
             throws SwitchOperationException;
+
+    /**
+     *Install Telescope flow.
+     *
+     * @param dpid              switch id.
+     * @param cookie            cookie.
+     * @param tunnelId          transit tunnel id. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    Long installTelescopeFlow(DatapathId dpid, long cookie, int tunnelId) throws SwitchOperationException;
+
+    /**
+     *Remove Telescope flow.
+     *
+     * @param dpid              switch id.
+     * @param cookie            cookie.
+     * @param tunnelId          transit tunnel id. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    Long removeTelescopeFlow(DatapathId dpid, long cookie, int tunnelId) throws SwitchOperationException;
 }

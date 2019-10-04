@@ -116,6 +116,7 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -442,6 +443,8 @@ class RecordHandler implements Runnable {
         try {
             processDeleteFlow(removeCommand, dpid);
             installIngressFlow(command);
+            processApplications(command.getApplications(), dpid, command.getCookie(),
+                    command.getTransitEncapsulationId());
         } catch (SwitchOperationException e) {
             logger.error("Updating ingress rule (cookie = {}) was unsuccessful", command.getCookie(), e);
         }
@@ -471,9 +474,25 @@ class RecordHandler implements Runnable {
         try {
             processDeleteFlow(removeCommand, dpid);
             installEgressFlow(command);
+            processApplications(command.getApplications(), dpid, command.getCookie(),
+                    command.getTransitEncapsulationId());
         } catch (SwitchOperationException e) {
             logger.error("Updating egress rule (cookie = {}) was unsuccessful", command.getCookie(), e);
         }
+    }
+
+    private void processApplications(Set<FlowApplication> applications,
+                                     DatapathId dpid, long flowCookie, int tunnelId) throws SwitchOperationException {
+        if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
+            context.getSwitchManager().installTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId);
+        } else {
+            context.getSwitchManager().removeTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId);
+        }
+    }
+
+    private long getTelescopeCookie(long flowCookie) {
+        Cookie cookie = new Cookie(flowCookie);
+        return Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(), cookie.isMaskedAsForward()).getValue();
     }
 
     private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,

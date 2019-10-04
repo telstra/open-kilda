@@ -445,10 +445,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
 
-        if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
-            installTelescopeFlow(sw, TABLE_1, cookie, transitTunnelId);
-        }
-
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
     }
 
@@ -476,23 +472,42 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return instructions;
     }
 
-    private void installTelescopeFlow(IOFSwitch sw, int tableId, long flowCookie, int tunnelId)
-            throws OfInstallException {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Long installTelescopeFlow(DatapathId dpid, long cookie, int tunnelId) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         if (sw.getOFFactory().getVersion() == OF_12) {
-            return;
+            return null;
         }
 
-        long cookie = Cookie.buildTelescopeCookieFromFlowCookie(flowCookie).getValue();
-        Match.Builder match = sw.getOFFactory().buildMatch()
-                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId), OFMetadata.ofRaw(4095));
-        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, 2, tableId)
-                .setTableId(TableId.of(tableId))
-                .setMatch(match.build())
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, 2, TABLE_1)
+                .setMatch(getMetadataMatchBuilder(sw, tunnelId).build())
                 .setActions(Collections.singletonList(actionSetOutputPort(ofFactory, OFPort.of(15))))
                 .build();
 
-        pushFlow(sw, "--InstallTelescope--", flowMod);
+        return pushFlow(sw, "--InstallTelescopeFlow--", flowMod);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Long removeTelescopeFlow(DatapathId dpid, long cookie, int tunnelId) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        if (sw.getOFFactory().getVersion() == OF_12) {
+            return null;
+        }
+
+        OFFlowDelete flowDelete = sw.getOFFactory().buildFlowDelete()
+                .setCookie(U64.of(cookie))
+                .setTableId(TableId.of(TABLE_1))
+                .setMatch(getMetadataMatchBuilder(sw, tunnelId).build())
+                .build();
+
+        return pushFlow(sw, "--RemoveTelescopeFlow--", flowDelete);
     }
 
     /**
@@ -565,10 +580,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType, dpid))
                 .setInstructions(createEgressFlowInstructions(ofFactory, actions, transitTunnelId, applications))
                 .build();
-
-        if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
-            installTelescopeFlow(sw, TABLE_1, cookie, transitTunnelId);
-        }
 
         return pushFlow(sw, "--InstallEgressFlow--", flowMod);
     }
@@ -1408,14 +1419,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private Match buildExclusionMatch(IOFSwitch sw, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
                                       IpProtocol proto, EthType ethType, int tunnelId) {
-        Match.Builder match = sw.getOFFactory().buildMatch()
-                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId), OFMetadata.ofRaw(4095))
+        Match.Builder match = getMetadataMatchBuilder(sw, tunnelId)
                 .setExact(MatchField.IPV4_SRC, srcIp)
                 .setExact(MatchField.IPV4_DST, dstIp)
                 .setExact(MatchField.IP_PROTO, proto)
                 .setExact(MatchField.ETH_TYPE, ethType);
         setMatchPorts(match, proto, srcPort, dstPort);
         return match.build();
+    }
+
+    private Match.Builder getMetadataMatchBuilder(IOFSwitch sw, int tunnelId) {
+        return sw.getOFFactory().buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId), OFMetadata.ofRaw(4095));
     }
 
     private void setMatchPorts(Match.Builder match, IpProtocol proto, int srcPort, int dstPort) {
