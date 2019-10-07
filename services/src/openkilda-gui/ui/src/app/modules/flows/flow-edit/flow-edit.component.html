@@ -4,7 +4,7 @@
         <div class="col-sm-12">
     <h6 class="card-title card-custom-title">FLOW DETAILS
 
-      <span *ngIf="commonService.hasPermission('fw_flow_delete') && (!storeLinkSetting || (storeLinkSetting && flowDetailData.hasOwnProperty('discrepancy') && flowDetailData['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetailData['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" (click)="deleteFlow()">Delete</span> 
+      <span *ngIf="commonService.hasPermission('fw_flow_delete') && (!storeLinkSetting || (flowDetailData.hasOwnProperty('controller-flow')  && flowDetailData['controller-flow'] ) || (storeLinkSetting && flowDetailData.hasOwnProperty('discrepancy') && flowDetailData['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetailData['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" (click)="deleteFlow()">Delete</span> 
       <div class="clear clearfix"></div>     
     </h6>
     <div class="card">
@@ -32,6 +32,13 @@
               <div *ngIf="submitted && f.maximum_bandwidth.errors" class="invalid-feedback">
                     <div *ngIf="f.maximum_bandwidth.errors.required">Maximum bandwidth is required</div>
                   </div>
+            </div>
+          </div>
+
+          <div class='form-group row flow_details'>
+            <label class='col-sm-3 col-form-label'>Diverse Flow:</label>
+            <div class='col-sm-4'>
+              <ng-select dropdownPosition="bottom" searchable="true" placeholder="Select Diverse Flow" formControlName="diverse_flowid" [items]="diverseFlowList" bindLabel="flowid"     bindValue="flowid"></ng-select>
             </div>
           </div>
         </div>
