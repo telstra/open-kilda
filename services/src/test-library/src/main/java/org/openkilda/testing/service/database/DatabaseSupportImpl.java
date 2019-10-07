@@ -341,6 +341,17 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
+    public boolean updateIslTimeUnstable(Isl isl, Instant newTimeUnstable) {
+        org.openkilda.model.Isl islToUpdate = islRepository.findByEndpoints(
+                isl.getSrcSwitch().getDpId(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId(), isl.getDstPort()).get();
+        islToUpdate.setTimeUnstable(newTimeUnstable);
+        islRepository.createOrUpdate(islToUpdate);
+
+        return islToUpdate.getTimeUnstable().equals(newTimeUnstable);
+    }
+
+    @Override
     public List<Object> dumpAllNodes() {
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
         String query = "MATCH (n) RETURN n";
