@@ -46,7 +46,10 @@ public enum ComponentId {
     REROUTE_OUTPUT("reroute.output"),
 
     STATUS_ENCODER("status.encoder"),
-    STATUS_OUTPUT("status.output");
+    STATUS_OUTPUT("status.output"),
+
+    NB_ENCODER("nb.encoder"),
+    NB_OUTPUT("nb.output");
 
     private final String value;
 

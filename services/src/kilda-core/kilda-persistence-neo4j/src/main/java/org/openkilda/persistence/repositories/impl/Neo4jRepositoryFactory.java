@@ -29,6 +29,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -166,5 +167,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public PortHistoryRepository createPortHistoryRepository() {
         return new Neo4jPortHistoryRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public PortPropertiesRepository createPortPropertiesRepository() {
+        return new Neo4jPortPropertiesRepository(sessionFactory, transactionManager);
     }
 }

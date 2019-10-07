@@ -18,6 +18,8 @@ package org.openkilda.northbound.controller.v2;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.annotations.ApiOperation;
@@ -28,6 +30,8 @@ import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -74,4 +78,33 @@ public class SwitchControllerV2 extends BaseController {
         return switchService.getPortHistory(switchId, port, timeFrom, timeTo);
     }
 
+    /**
+     * Get port properties.
+     *
+     * @param switchId the switch id.
+     * @param port the port of the switch.
+     * @return port properties.
+     */
+    @ApiOperation(value = "Get port properties", response = PortPropertiesResponse.class)
+    @GetMapping(value = "/{switch_id}/ports/{port}/properties")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<PortPropertiesResponse> getPortProperties(@PathVariable("switch_id") SwitchId switchId,
+                                                                       @PathVariable("port") int port) {
+        return switchService.getPortProperties(switchId, port);
+    }
+
+    /**
+     * Update port properties.
+     *
+     * @param switchId the switch id.
+     * @param port the port of the switch.
+     */
+    @ApiOperation(value = "Update port properties", response = PortPropertiesResponse.class)
+    @PutMapping(value = "/{switch_id}/ports/{port}/properties")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<PortPropertiesResponse> updatePortProperties(@PathVariable("switch_id") SwitchId switchId,
+                                                                          @PathVariable("port") int port,
+                                                                          @RequestBody PortPropertiesDto dto) {
+        return switchService.updatePortProperties(switchId, port, dto);
+    }
 }

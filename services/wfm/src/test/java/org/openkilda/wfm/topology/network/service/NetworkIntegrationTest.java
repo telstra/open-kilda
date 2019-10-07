@@ -137,7 +137,7 @@ public class NetworkIntegrationTest {
     @Before
     public void setUp() throws Exception {
         switchService = new NetworkSwitchService(null, persistenceManager, options);
-        portService = new NetworkPortService(null);
+        portService = new NetworkPortService(null, persistenceManager);
         bfdPortService = new NetworkBfdPortService(integrationCarrier, persistenceManager);
         uniIslService = new NetworkUniIslService(null);
         islService = new NetworkIslService(null, persistenceManager, options);
