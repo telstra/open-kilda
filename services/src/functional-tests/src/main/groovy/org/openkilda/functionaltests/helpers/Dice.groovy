@@ -16,10 +16,11 @@ class Dice {
 
     Dice(List<Face> faces) {
         assert faces.sum { it.chance } == 100, "Sum of all event chances must be equal to 100"
-        faces.findAll { it.chance > 0 }[1..-1].eachWithIndex { e, i ->
-            e.chance += faces[i].chance
+        def filteredFaces = faces.findAll { it.chance > 0 }
+        filteredFaces[1..-1].eachWithIndex { e, i ->
+            e.chance += filteredFaces[i].chance
         }
-        this.faces = faces.sort { it.chance }
+        this.faces = filteredFaces.sort { it.chance }
     }
 
     def roll() {
@@ -29,6 +30,7 @@ class Dice {
 
     @Canonical
     static class Face {
+        String name
         Integer chance
         Callable event
     }

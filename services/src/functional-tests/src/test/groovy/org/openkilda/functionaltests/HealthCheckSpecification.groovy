@@ -9,7 +9,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 
 class HealthCheckSpecification extends BaseSpecification {
-    
+
     @HealthCheck
     def "Kilda is UP and topology is clean"() {
         expect: "Kilda's health check request is successful"
@@ -45,8 +45,8 @@ class HealthCheckSpecification extends BaseSpecification {
             }
 
             topology.activeSwitches.findAll {
-                !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
-                    it.key > MAX_SYSTEM_RULE_METER_ID
+                !it.virtual && it.ofVersion != "OF_12" && !northbound.getAllMeters(it.dpId).meterEntries.findAll {
+                    it.meterId > MAX_SYSTEM_RULE_METER_ID
                 }.isEmpty()
             }.empty
         }

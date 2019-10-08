@@ -27,7 +27,6 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
         if (profile == "hardware" && cleanup) {
             log.warn("Cleanup mode is ON. Cleanup may be destructive and mask potential defects related to improper" +
                     " topology discovery, default rules setup on switch discovery, bandwidth discovery etc.")
-            lockKeeper.removeFloodlightAccessRestrictions()
             deleteAllFlows()
             //ISL-related things
             def links = northbound.getAllLinks()

@@ -18,12 +18,15 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface SwitchRepository extends Repository<Switch> {
     boolean exists(SwitchId switchId);
 
     Optional<Switch> findById(SwitchId switchId);
+
+    Collection<Switch> findSwitchesInFlowPathByFlowId(String flowId);
 
     Switch reload(Switch entity);
 

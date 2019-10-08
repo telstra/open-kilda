@@ -112,7 +112,7 @@ public class LinkOperationsService {
                                      int destinationPort)
             throws IllegalIslStateException, IslNotFoundException {
         log.info("Delete ISL with following parameters: "
-                        + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'",
+                        + "source switch '{}', source port '{}', destination switch '{}', destination port '{}'",
                 sourceSwitch, sourcePort, destinationSwitch, destinationPort);
 
         List<Isl> isls = new ArrayList<>();

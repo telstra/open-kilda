@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.messaging.payload.switches;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Value;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
-@Builder
-public class ValidateRulesRequest extends CommandData {
+@Data
+@NoArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
+public class PortPropertiesPayload extends InfoData {
 
-    @JsonProperty("switch_id")
     private SwitchId switchId;
-
-    public ValidateRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = switchId;
-    }
+    private int portNumber;
+    private boolean discoveryEnabled;
 }

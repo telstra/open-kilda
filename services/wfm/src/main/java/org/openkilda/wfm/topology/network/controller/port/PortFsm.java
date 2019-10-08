@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.network.controller.port;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PortProperties;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -38,13 +41,16 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     private final Isl history;
 
     private final PortReportFsm reportFsm;
+    private final PortPropertiesRepository portPropertiesRepository;
 
-    public static PortFsmFactory factory() {
-        return new PortFsmFactory();
+    public static PortFsmFactory factory(PersistenceManager persistenceManager) {
+        return new PortFsmFactory(persistenceManager);
     }
 
-    public PortFsm(PortReportFsm reportFsm, Endpoint endpoint, Isl history) {
+    public PortFsm(PortReportFsm reportFsm, PortPropertiesRepository portPropertiesRepository, Endpoint endpoint,
+                   Isl history) {
         this.reportFsm = reportFsm;
+        this.portPropertiesRepository = portPropertiesRepository;
         this.endpoint = endpoint;
         this.history = history;
     }
@@ -57,7 +63,23 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
     public void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         reportFsm.fire(PortFsmEvent.PORT_UP);
+        boolean discoveryEnabled = portPropertiesRepository
+                .getBySwitchIdAndPort(endpoint.getDatapath(), endpoint.getPortNumber())
+                .map(PortProperties::isDiscoveryEnabled)
+                .orElse(PortProperties.DISCOVERY_ENABLED_DEFAULT);
+        if (discoveryEnabled) {
+            context.getOutput().enableDiscoveryPoll(endpoint);
+        }
+    }
+
+    public void enableDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().enableDiscoveryPoll(endpoint);
+    }
+
+    public void disableDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+        IPortCarrier output = context.getOutput();
+        output.disableDiscoveryPoll(endpoint);
+        output.notifyPortDiscoveryFailed(endpoint);
     }
 
     public void proxyDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
@@ -87,12 +109,15 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
     public static class PortFsmFactory {
         private final StateMachineBuilder<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> builder;
+        private final PortPropertiesRepository portPropertiesRepository;
 
-        PortFsmFactory() {
+        PortFsmFactory(PersistenceManager persistenceManager) {
+            portPropertiesRepository = persistenceManager.getRepositoryFactory().createPortPropertiesRepository();
+
             builder = StateMachineBuilderFactory.create(
                     PortFsm.class, PortFsmState.class, PortFsmEvent.class, PortFsmContext.class,
                     // extra parameters
-                    PortReportFsm.class, Endpoint.class, Isl.class);
+                    PortReportFsm.class, PortPropertiesRepository.class, Endpoint.class, Isl.class);
 
             // INIT
             builder.transition()
@@ -108,7 +133,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
             builder.transition()
                     .from(PortFsmState.OPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
             builder.defineSequentialStatesOn(PortFsmState.OPERATIONAL,
-                                             PortFsmState.UNKNOWN, PortFsmState.UP, PortFsmState.DOWN);
+                    PortFsmState.UNKNOWN, PortFsmState.UP, PortFsmState.DOWN);
 
             // UNOPERATIONAL
             builder.transition()
@@ -131,6 +156,10 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
                     .callMethod("proxyDiscovery");
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.FAIL)
                     .callMethod("proxyFail");
+            builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.ENABLE_DISCOVERY)
+                    .callMethod("enableDiscovery");
+            builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.DISABLE_DISCOVERY)
+                    .callMethod("disableDiscovery");
             builder.onEntry(PortFsmState.UP)
                     .callMethod("upEnter");
 
@@ -151,9 +180,9 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
             return new FsmExecutor<>(PortFsmEvent.NEXT);
         }
 
-        public PortFsm produce(PortReportFsm.PortReportFsmFactory reportFactory,
-                               Endpoint endpoint, Isl history) {
-            return builder.newStateMachine(PortFsmState.INIT, reportFactory.produce(endpoint), endpoint, history);
+        public PortFsm produce(PortReportFsm.PortReportFsmFactory reportFactory, Endpoint endpoint, Isl history) {
+            return builder.newStateMachine(PortFsmState.INIT, reportFactory.produce(endpoint),
+                    portPropertiesRepository, endpoint, history);
         }
     }
 
@@ -167,7 +196,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
         public static PortFsmContextBuilder builder(IPortCarrier output) {
             return new PortFsmContextBuilder()
-                .output(output);
+                    .output(output);
         }
     }
 
@@ -176,6 +205,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
         ONLINE, OFFLINE,
         PORT_UP, PORT_DOWN, PORT_DEL,
+        ENABLE_DISCOVERY, DISABLE_DISCOVERY,
         DISCOVERY, FAIL
     }
 

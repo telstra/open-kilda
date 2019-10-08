@@ -39,9 +39,12 @@ state OPERATIONAL {
 
     UP --> DOWN : port-down
     UP : enter / emit port-down into report
-    UP : enter / issue addWatch
+    UP : enter[discovery-enabled] / issue addWatch
     UP : poll-discovery / emit discovery
     UP : poll-fail / emit fail
+    UP : enable-discovery / issue addWatch
+    UP : disable-discovery / issue delWatch
+    UP : disable-discovery / issue notifyUniIslFail
 }
 
 OPERATIONAL --> UNOPERATIONAL : offline

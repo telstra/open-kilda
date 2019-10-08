@@ -37,6 +37,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 
 import java.time.Instant;
 import java.util.List;
@@ -233,18 +235,38 @@ public interface SwitchService {
     /**
      * Get switch properties.
      *
-     * @param switchId id of the swtich
+     * @param switchId id of the switch
      * @return switch properties object
      */
     CompletableFuture<SwitchPropertiesDto> getSwitchProperties(SwitchId switchId);
 
 
     /**
-     * Update switch switch properties.
+     * Update switch properties.
      *
-     * @param switchId id of the swtich
+     * @param switchId id of the switch
      * @return switch properties object
      */
     CompletableFuture<SwitchPropertiesDto> updateSwitchProperties(SwitchId switchId,
                                                                   SwitchPropertiesDto switchPropertiesDto);
+
+    /**
+     * Get port properties.
+     *
+     * @param switchId id of the switch
+     * @param port port number
+     * @return port properties object
+     */
+    CompletableFuture<PortPropertiesResponse> getPortProperties(SwitchId switchId, int port);
+
+    /**
+     * Update port properties.
+     *
+     * @param switchId id of the switch
+     * @param port port number
+     * @param portPropertiesDto port properties
+     * @return port properties object
+     */
+    CompletableFuture<PortPropertiesResponse> updatePortProperties(SwitchId switchId, int port,
+                                                                   PortPropertiesDto portPropertiesDto);
 }

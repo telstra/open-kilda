@@ -15,7 +15,6 @@ class VirtualEnvCleanupExtension extends EnvCleanupExtension {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
         if (profile == "virtual") {
             lockKeeper.removeFloodlightAccessRestrictions()
-            deleteAllFlows()
             def links = northbound.getAllLinks()
             deleteInactiveIsls(links)
             def switches = northbound.getAllSwitches()

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -32,15 +33,14 @@ class MflStatSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Shared
+    // statsrouter.request.interval = 60
+    def statsRouterInterval = 60
+
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-    // the statsrouter.request.interval is increased here to 120
-    @Shared
-    Integer statsRouterInterval = 120
-
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, LOW_PRIORITY])
     def "System is able to collect stats from the statistic and management controllers"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
@@ -51,7 +51,7 @@ class MflStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 5)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -60,7 +60,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.id]
         def waitInterval = 10
         def initStat
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             initStat = otsdb.query(startTime, metric, tags).dps
             assert initStat.size() >= 1
         }
@@ -74,7 +74,8 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected because management controller is set"
         def statFromMgmtController
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
+        Wrappers.wait(statsRouterInterval * 2 + WAIT_OFFSET, waitInterval) {
             statFromMgmtController = otsdb.query(startTime, metric, tags).dps
             assert statFromMgmtController.size() > initStat.size()
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
@@ -89,7 +90,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected because statistic controller is set"
         def statFromStatsController
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             statFromStatsController = otsdb.query(startTime, metric, tags).dps
             assert statFromStatsController.size() > statFromMgmtController.size()
             assert statFromStatsController.entrySet()[-2].value < statFromStatsController.entrySet()[-1].value
@@ -104,12 +105,11 @@ class MflStatSpec extends HealthCheckSpecification {
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
-        double interval = statsRouterInterval * 0.2
         def statAfterDeletingControllers
         Wrappers.timedLoop(statsRouterInterval) {
             statAfterDeletingControllers = otsdb.query(startTime, metric, tags).dps
             assert statAfterDeletingControllers.size() == statFromStatsController.size()
-            sleep((interval * 1000).toLong())
+            sleep((waitInterval * 1000).toLong())
         }
 
         when: "Restore default controllers on the src switches"
@@ -120,7 +120,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         then: "Old statistic should be collected"
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             def oldStats = otsdb.query(startTime, metric, tags).dps
             oldStats.size() > statAfterDeletingControllers.size()
             assert oldStats.entrySet()[-2].value < oldStats.entrySet()[-1].value
@@ -142,7 +142,7 @@ class MflStatSpec extends HealthCheckSpecification {
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 3)
+                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -151,7 +151,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.flowId]
         def waitInterval = 10
         def initStat
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             initStat = otsdb.query(startTime, metric, tags).dps
             assert initStat.size() >= 1
         }
@@ -165,7 +165,8 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected because management controller is set"
         def statFromMgmtController
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
+        Wrappers.wait(statsRouterInterval * 2 + WAIT_OFFSET, waitInterval) {
             statFromMgmtController = otsdb.query(startTime, metric, tags).dps
             assert statFromMgmtController.size() > initStat.size()
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
@@ -180,7 +181,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected because statistic controller is set"
         def statFromStatsController
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             statFromStatsController = otsdb.query(startTime, metric, tags).dps
             assert statFromStatsController.size() > statFromMgmtController.size()
             assert statFromStatsController.entrySet()[-2].value < statFromStatsController.entrySet()[-1].value
@@ -195,12 +196,11 @@ class MflStatSpec extends HealthCheckSpecification {
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
-        double interval = statsRouterInterval * 0.2
         def statAfterDeletingControllers
         Wrappers.timedLoop(statsRouterInterval) {
             statAfterDeletingControllers = otsdb.query(startTime, metric, tags).dps
             assert statAfterDeletingControllers.size() == statFromStatsController.size()
-            sleep((interval * 1000).toLong())
+            sleep((waitInterval * 1000).toLong())
         }
 
         when: "Restore default controllers on the src switches"
@@ -211,7 +211,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         then: "Old statistic should be collected"
-        Wrappers.wait(statsRouterInterval, waitInterval) {
+        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             def oldStats = otsdb.query(startTime, metric, tags).dps
             oldStats.size() > statAfterDeletingControllers.size()
             assert oldStats.entrySet()[-2].value < oldStats.entrySet()[-1].value

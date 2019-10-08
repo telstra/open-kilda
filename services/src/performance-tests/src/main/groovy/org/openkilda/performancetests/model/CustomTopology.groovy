@@ -4,12 +4,16 @@ import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.github.javafaker.Faker
 import groovy.transform.InheritConstructors
 
 @InheritConstructors
 class CustomTopology extends TopologyDefinition {
     @JsonIgnore
     def r = new Random()
+
+    @JsonIgnore
+    Faker faker = new Faker()
 
     CustomTopology() {
         super([], [], [], TraffGenConfig.defaultConfig())
@@ -22,7 +26,7 @@ class CustomTopology extends TopologyDefinition {
      * @return the added switch
      */
     Switch addCasualSwitch(String controller) {
-        def swId = new SwitchId(r.nextLong())
+        def swId = new SwitchId(faker.internet().macAddress())
         def sw = Switch.factory("sw${switches.size() + 1}", swId, "OF_13", Status.Active,
                 null, null, controller)
         switches << sw

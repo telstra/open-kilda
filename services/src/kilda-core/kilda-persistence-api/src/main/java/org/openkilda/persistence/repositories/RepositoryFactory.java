@@ -67,4 +67,6 @@ public interface RepositoryFactory {
     ConnectedDeviceRepository createConnectedDeviceRepository();
 
     PortHistoryRepository createPortHistoryRepository();
+
+    PortPropertiesRepository createPortPropertiesRepository();
 }

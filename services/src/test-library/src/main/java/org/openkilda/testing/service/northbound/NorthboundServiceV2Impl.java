@@ -21,6 +21,8 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +82,22 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         PortHistoryResponse[] portHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), PortHistoryResponse[].class, switchId, port).getBody();
         return Arrays.asList(portHistory);
+    }
+
+    @Override
+    public PortPropertiesResponse getPortProperties(SwitchId switchId, Integer port) {
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/ports/{port}/properties", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PortPropertiesResponse.class,
+                switchId, port).getBody();
+    }
+
+    @Override
+    public PortPropertiesResponse updatePortProperties(SwitchId switchId, Integer port, PortPropertiesDto payload) {
+        log.debug("Update port property. Switch: {}, port: {}, disableDiscovery: {}.", switchId, port,
+                payload.isDiscoveryEnabled());
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/ports/{port}/properties", HttpMethod.PUT,
+                new HttpEntity<>(payload, buildHeadersWithCorrelationId()), PortPropertiesResponse.class,
+                switchId, port).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

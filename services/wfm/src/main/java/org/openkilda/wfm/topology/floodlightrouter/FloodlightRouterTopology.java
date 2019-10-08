@@ -226,7 +226,6 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                                                    KafkaTopicsConfig topicsConfig) {
         KafkaBolt kildaNorthboundKafkaBolt = buildKafkaBolt(topicsConfig.getNorthboundTopic());
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_KAFKA_BOLT, kildaNorthboundKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT, Stream.NORTHBOUND_REPLY)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT, Stream.NORTHBOUND_REPLY);
     }
 

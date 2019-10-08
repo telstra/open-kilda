@@ -18,9 +18,11 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
@@ -31,6 +33,7 @@ import org.junit.Test;
 
 public class SwitchOperationsServiceTest extends Neo4jBasedTest {
     private static SwitchRepository switchRepository;
+    private static PortPropertiesRepository portPropertiesRepository;
     private static SwitchOperationsService switchOperationsService;
 
     private static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
@@ -39,6 +42,7 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
+        portPropertiesRepository = repositoryFactory.createPortPropertiesRepository();
 
         switchOperationsService = new SwitchOperationsService(persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager());
@@ -56,5 +60,17 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
         switchOperationsService.updateSwitchUnderMaintenanceFlag(TEST_SWITCH_ID, false);
         sw = switchRepository.findById(TEST_SWITCH_ID).get();
         assertFalse(sw.isUnderMaintenance());
+    }
+
+    @Test
+    public void shouldDeletePortPropertiesWhenDeletingSwitch() throws SwitchNotFoundException {
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        switchRepository.createOrUpdate(sw);
+        PortProperties portProperties = PortProperties.builder().switchObj(sw).port(7).discoveryEnabled(false).build();
+        portPropertiesRepository.createOrUpdate(portProperties);
+
+        switchOperationsService.deleteSwitch(TEST_SWITCH_ID, false);
+        assertFalse(switchRepository.findById(TEST_SWITCH_ID).isPresent());
+        assertTrue(portPropertiesRepository.findAll().isEmpty());
     }
 }

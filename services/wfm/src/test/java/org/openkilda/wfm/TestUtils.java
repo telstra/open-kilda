@@ -21,7 +21,6 @@ import com.google.common.io.Files;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import org.apache.curator.test.TestingServer;
-import org.apache.storm.Config;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,19 +35,13 @@ public final class TestUtils {
 
     private TestUtils() {}
 
-    public static Properties serverProperties(ZookeeperConfig config) {
+    private static Properties serverProperties(ZookeeperConfig config) {
         Properties props = new Properties();
         props.setProperty("zookeeper.connect", config.getHosts());
         props.setProperty("broker.id", "1");
         props.setProperty("delete.topic.enable", "true");
+        props.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
         return props;
-    }
-
-    public static Config stormConfig() {
-        Config config = new Config();
-        config.setDebug(false);
-        config.setNumWorkers(1);
-        return config;
     }
 
     public static class KafkaTestFixture {
@@ -66,7 +59,7 @@ public final class TestUtils {
             this.start(props);
         }
 
-        public void start(Properties props) throws Exception {
+        private void start(Properties props) throws Exception {
             Integer port = getZkPort(props);
 
             zk = new TestingServer(port, tempDir); // this starts the zk server
@@ -80,6 +73,11 @@ public final class TestUtils {
             System.out.println("Started KAFKA: ");
         }
 
+        /**
+         * Stop kafka and zookeeper.
+         *
+         * @throws IOException IO exception
+         */
         public void stop() throws IOException {
             kafka.shutdown();
             zk.stop();
