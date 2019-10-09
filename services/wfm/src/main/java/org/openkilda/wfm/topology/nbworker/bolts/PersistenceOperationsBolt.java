@@ -64,6 +64,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
             List<InfoData> result = processRequest(input, request);
             getOutput().emit(input, new Values(result, getCommandContext()));
         } catch (MessageException e) {
+            log.error(e.getMessage());
             ErrorData data = new ErrorData(e.getErrorType(), e.getMessage(), e.getErrorDescription());
             getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, getCommandContext()));
         }
