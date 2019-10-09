@@ -79,8 +79,9 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Port properties not found: Switch ${NON_EXISTENT_SWITCH_ID} not found."
+        def response = e.responseBodyAsString.to(MessageError)
+        response.errorMessage == "Switch ${NON_EXISTENT_SWITCH_ID} not found."
+        response.errorDescription == "Couldn't get port properties"
 
         when: "Try to update port discovery property for non-existing switch"
         northboundV2.updatePortProperties(NON_EXISTENT_SWITCH_ID, port, new PortPropertiesDto(discoveryEnabled: true))
