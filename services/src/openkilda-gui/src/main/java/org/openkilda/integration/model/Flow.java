@@ -20,8 +20,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import lombok.Data;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Data
 @JsonPropertyOrder({"flowid", "source", "destination", "maximum-bandwidth", "description",
         "last-updated"})
 public class Flow {
@@ -49,6 +52,9 @@ public class Flow {
     
     @JsonProperty("timeout")
     private int timeout;
+    
+    @JsonProperty("diverse-flowid")
+    private String diverseFlowId;
 
     public String getId() {
         return id;

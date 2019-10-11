@@ -49,7 +49,7 @@ public class FlowConverter {
      * @param flows the flows
      * @return the list
      */
-    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) {
+    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) { 
         if (!CollectionUtil.isEmpty(flows)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
             final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
@@ -74,6 +74,8 @@ public class FlowConverter {
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
         flowInfo.setDescription(flow.getDescription());
         flowInfo.setStatus(flow.getStatus().toUpperCase());
+        flowInfo.setDiverseFlowid(flow.getDiverseFlowId());
+        flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {
             String switchName = switchIntegrationService.customSwitchName(csNames, source.getSwitchId());
