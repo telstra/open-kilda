@@ -146,12 +146,15 @@ public abstract class IConstants {
         public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
         public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
         public static final String UPDATE_SWITCH_UNDER_MAINTENANCE = GET_SWITCHES + "/{switch_id}/under-maintenance";
+        public static final String GET_SWITCH_FLOWS = GET_SWITCHES + "/{switch_id}/flows";
+        public static final String GET_SWITCH_PORT_FLOWS = GET_SWITCHES + "/{switch_id}/flows?port={port}";
         public static final String UPDATE_LINK_UNDER_MAINTENANCE = GET_LINKS + "/under-maintenance";
         public static final String UPDATE_LINK_MAINTENANCE = GET_LINKS + "/under-maintenance";
         public static final String DELETE_LINK = GET_LINKS;
         public static final String UPDATE_LINK_BANDWIDTH = GET_LINKS 
                 + "/bandwidth?src_switch={src_switch}&src_port={src_port}&"
                 + "dst_switch={dst_switch}&dst_port={dst_port}";
+        public static final String GET_NETWORK_PATH = "/network/paths?src_switch={src_switch}&dst_switch={dst_switch}";
     }
     
     public final class OpenTsDbUrl {

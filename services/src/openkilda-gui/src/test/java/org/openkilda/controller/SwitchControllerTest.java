@@ -31,6 +31,7 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
 import org.openkilda.test.MockitoExtension;
+import org.openkilda.util.TestFlowMock;
 import org.openkilda.util.TestIslMock;
 import org.openkilda.util.TestSwitchMock;
 
@@ -47,7 +48,9 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -95,7 +98,7 @@ public class SwitchControllerTest {
     public void testGetAllSwitchesDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            when(serviceSwitch.getSwitches(false)).thenReturn(switchesInfo);
+            when(serviceSwitch.getSwitches(false, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchesInfo);
             mockMvc.perform(get("/api/switch/list").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
@@ -103,12 +106,35 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
+    
+    @Test
+    public void testGetAllSwitchFlows() {
+        ResponseEntity<List<?>> responseList = new ResponseEntity<List<?>>(HttpStatus.OK);
+        try {
+            when(serviceSwitch.getPortFlows(TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT,
+                    TestFlowMock.CONTROLLER_FLAG)).thenReturn(responseList);
+            mockMvc.perform(get("/api/switch/{switchId}/flows", TestSwitchMock.SWITCH_ID)
+                    .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+            assertTrue(true);
+        } catch (Exception e) {
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testGetSwitchById() throws Exception {
+        SwitchInfo switchInfo = new SwitchInfo();
+        when(serviceSwitch.getSwitch(TestSwitchMock.SWITCH_ID, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchInfo);
+        mockMvc.perform(get("/api/switch/{switchId}", TestFlowMock.FLOW_ID).contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk());
+        assertTrue(true);
+    }
 
     @Test
     public void testGetSwichLinkDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            when(serviceSwitch.getSwitches(false)).thenReturn(switchesInfo);
+            when(serviceSwitch.getSwitches(false, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchesInfo);
             mockMvc.perform(get("/api/switch/links").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);

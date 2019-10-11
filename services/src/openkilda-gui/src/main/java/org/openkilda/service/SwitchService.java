@@ -19,6 +19,7 @@ import org.openkilda.constants.HttpError;
 import org.openkilda.constants.IConstants;
 import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
+import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.PortConfiguration;
@@ -42,10 +43,10 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
@@ -78,6 +79,9 @@ public class SwitchService {
     @Autowired
     private SwitchNameRepository switchNameRepository;
 
+    @Autowired
+    private FlowConverter flowConverter;
+    
     /**
      * get All SwitchList.
      *
@@ -85,18 +89,21 @@ public class SwitchService {
      * @throws IntegrationException the integration exception
 
      */
-    public List<SwitchInfo> getSwitches(boolean storeConfigurationStatus) throws IntegrationException {
+    public List<SwitchInfo> getSwitches(boolean storeConfigurationStatus, boolean controller) 
+            throws IntegrationException {
         List<SwitchInfo> switchInfo = switchIntegrationService.getSwitches();
         if (switchInfo == null) {
             switchInfo = new ArrayList<SwitchInfo>();
         }
-        if (storeConfigurationStatus && storeService.getSwitchStoreConfig().getUrls().size() > 0) {
+        if (!controller) {
             try {
                 UserInfo userInfo = userService.getLoggedInUserInfo();
                 if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)) {
-                    List<InventorySwitch> inventorySwitches = new ArrayList<InventorySwitch>();
-                    inventorySwitches = switchStoreService.getSwitches();
-                    processInventorySwitch(switchInfo, inventorySwitches);
+                    if (storeConfigurationStatus && storeService.getSwitchStoreConfig().getUrls().size() > 0) {
+                        List<InventorySwitch> inventorySwitches = new ArrayList<InventorySwitch>();
+                        inventorySwitches = switchStoreService.getSwitches();
+                        processInventorySwitch(switchInfo, inventorySwitches);
+                    }
                 }
             } catch (Exception ex) {
                 LOGGER.error("Error occurred while retrieving switches from store", ex);
@@ -105,7 +112,6 @@ public class SwitchService {
         return switchInfo;
     }
     
-    
     /**
      * get All SwitchList.
      *
@@ -113,33 +119,32 @@ public class SwitchService {
      * @throws IntegrationException the integration exception
 
      */
-    public SwitchInfo getSwitch(final String switchId) throws IntegrationException {
-
+    public SwitchInfo getSwitch(final String switchId, boolean controller) throws IntegrationException {
         SwitchInfo switchInfo = null;
         try {
             switchInfo = switchIntegrationService.getSwitchesById(switchId);
         } catch (Exception ex) {
-            LOGGER.error(
-                    "Error occurred while retrieving switches from controller",
-                    ex);
+            LOGGER.error("Error occurred while retrieving switches from controller", ex);
         }
-        if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
+        if (!controller) {
             try {
                 UserInfo userInfo = userService.getLoggedInUserInfo();
                 if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)) {
-                    InventorySwitch inventorySwitch = switchStoreService.getSwitch(switchId);
-                    if (inventorySwitch != null) {
-                        switchInfo = processInventorySwitch(switchInfo, inventorySwitch);
-                    } else {
-                        SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
-                        discrepancy.setControllerDiscrepancy(false);
-                        discrepancy.setStatus(true);
-                        discrepancy.setInventoryDiscrepancy(true);
+                    if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
+                        InventorySwitch inventorySwitch = switchStoreService.getSwitch(switchId);
+                        if (inventorySwitch.getSwitchId() != null) {
+                            switchInfo = processInventorySwitch(switchInfo, inventorySwitch);
+                        } else {
+                            SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
+                            discrepancy.setControllerDiscrepancy(false);
+                            discrepancy.setStatus(true);
+                            discrepancy.setInventoryDiscrepancy(true);
 
-                        SwitchStatus switchState = new SwitchStatus();
-                        switchState.setControllerStatus(switchInfo.getState());
-                        discrepancy.setStatusValue(switchState);
-                        switchInfo.setDiscrepancy(discrepancy);
+                            SwitchStatus switchState = new SwitchStatus();
+                            switchState.setControllerStatus(switchInfo.getState());
+                            discrepancy.setStatusValue(switchState);
+                            switchInfo.setDiscrepancy(discrepancy);
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -168,6 +173,7 @@ public class SwitchService {
 
                 switchInfo.setDiscrepancy(discrepancy);
             }
+            switchInfo.setInventorySwitch(true);
         }
         return switchInfo;
     }
@@ -211,7 +217,6 @@ public class SwitchService {
             } else {
                 SwitchInfo switchInfoObj = new SwitchInfo();
                 toSwitchInfo(switchInfoObj, inventorySwitch);
-                switchInfoObj.setInventorySwitch(true);
                 discrepancySwitch.add(switchInfoObj);
             }
         }
@@ -234,7 +239,7 @@ public class SwitchService {
                 switchState.setControllerStatus(switchInfo.getState());
                 switchState.setInventoryStatus(null);
                 discrepancy.setStatusValue(switchState);
-
+                
                 switchInfo.setDiscrepancy(discrepancy);
             }
             switchInfo.setControllerSwitch(true);
@@ -274,6 +279,7 @@ public class SwitchService {
         switchInfo.setName(inventorySwitch.getSwitchId());
         switchInfo.setDescription(inventorySwitch.getDescription());
         switchInfo.setUuid(inventorySwitch.getUuid());
+        switchInfo.setInventorySwitch(true);
 
         SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
         discrepancy.setControllerDiscrepancy(true);
@@ -401,17 +407,25 @@ public class SwitchService {
      * @param port the port
      * @return the customers detail
      */
-    public List<Customer> getPortFlows(String switchId, String port) {
-        List<Customer> customers = new ArrayList<Customer>();
-        
-        if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
-            try {
-                customers = switchStoreService.getPortFlows(switchId, port);
-            } catch (Exception ex) {
-                LOGGER.warn("Get port flows.", ex);
+    public ResponseEntity<List<?>> getPortFlows(String switchId, String port, boolean inventory) {
+        if (!inventory) {
+            List<FlowInfo> flowList = switchIntegrationService.getSwitchFlows(switchId, port);
+            return new ResponseEntity<List<?>>(flowList, HttpStatus.OK);
+        } 
+        if (inventory && port != null) {
+            if (userService.getLoggedInUserInfo().getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                List<Customer> customers = new ArrayList<Customer>();
+                if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
+                    try {
+                        customers = switchStoreService.getPortFlows(switchId, port);
+                    } catch (Exception ex) {
+                        LOGGER.warn("Error occured while retreiving port flows.", ex);
+                    }
+                }
+                return new ResponseEntity<List<?>>(customers, HttpStatus.OK);
             }
         }
-        return customers;
+        return null;
     }
     
     /**
