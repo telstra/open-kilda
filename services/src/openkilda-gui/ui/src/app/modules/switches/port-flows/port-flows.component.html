@@ -1,0 +1,92 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+  <div class="dataTables_wrapper no-footer" id="port-flow">
+    <table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+        <thead>
+          <tr class="tableHeading">
+            <th class="">
+              <span title="Flow ID"> Flow ID </span>
+              <i class="fa fa-search" (click)="toggleSearch($event,'expandedFlowId')"></i>
+              <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedFlowId" id="expandedFlowId"/>
+            </th>
+            <th class="" >
+               <span title="Source Switch">Src Switch</span>
+                <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcSwitchName')"></i>
+                <input  value="{{ srcSwitch }}" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedSrcSwitchName" id="expandedSrcSwitchName"/>
+             </th>
+            <th> <span title="Source Switch">Src Switch ID</span></th>
+            <th >
+              <span title="Source Port">
+                Src Port
+              </span>
+                <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcSwitchPort')"></i>
+                <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedSrcSwitchPort"id="expandedSrcSwitchPort"/>
+            </th>
+            <th>
+                <span title="Source VLAN"> Src VLAN</span>
+              <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcSwitchVlan')"></i>
+              <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedSrcSwitchVlan" id="expandedSrcSwitchVlan"/>
+            </th>
+            <th class="">
+              <span title="Destination Switch">  Dst Switch</span>
+                <i class="fa fa-search" (click)="toggleSearch($event,'expandedTargetSwitchName')"></i>
+                <input  value="{{ dstSwitch }}" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchName" id="expandedTargetSwitchName"/>
+             </th>
+            <th > <span  title="Destination Switch">Dst Switch ID</span></th>
+            <th >
+              <span title="Destination Port">  Dst Port </span>
+                <i class="fa fa-search" (click)="toggleSearch($event,'expandedTargetSwitchPort')"></i>
+                <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchPort" id="expandedTargetSwitchPort"/>
+            </th>
+            <th >
+                <span title="Destination VLAN"> Dst VLAN   </span>
+              <i class="fa fa-search" (click)="toggleSearch($event,'expandedTargetSwitchVlan')"></i>
+              <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchVlan" id="expandedTargetSwitchVlan"/>
+             </th>
+            <th >
+                <span title="Bandwidth (Mbps)"> Bandwidth (Mbps)</span>
+                    <i class="fa fa-search" (click)="toggleSearch($event,'expandedBandwidth')"></i>
+                    <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedBandwidth" id="expandedBandwidth"/>
+            </th>
+            <th >
+                <span title="State"> Status</span>
+                 <i class="fa fa-search" (click)="toggleSearch($event,'expandedState')"></i>
+                 <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedState" id="expandedState"/>
+             </th>
+           
+            <th >
+                <span title="Description">   Description </span>
+                     <i class="fa fa-search" (click)="toggleSearch($event,'expandedDescription')"></i>
+                     <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedDescription" id="expandedDescription"/>
+             </th>
+            <th>
+              <span title="type">  type  </span>
+            </th> 
+        </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of data; let i = index"  class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" >
+            <td  class="divTableCell" title="{{row.flowid }}"> 
+              {{row.flowid || "-"}} 
+            
+             </td>
+            <td class="divTableCell" title="{{row.source_switch_name}}" >
+              {{row.source_switch_name || "-"}}
+            
+            </td>
+            <td  class="divTableCell" title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
+            <td  class="divTableCell" title="{{row.src_port}}">{{row.src_port || "-"}}</td>
+            <td  class="divTableCell">{{row.src_vlan || "-"}}</td>
+            <td  class="divTableCell" title="{{row.target_switch_name}}">
+              {{row.target_switch_name || "-"}}
+              
+            </td>
+             <td   class="divTableCell" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
+            <td  class="divTableCell">{{row.dst_port || "-"}}</td>
+            <td  class="divTableCell">{{row.dst_vlan || "-"}}</td>
+            <td  class="divTableCell">{{row.maximum_bandwidth / 1000  || "-"}}</td>
+            <td  class="divTableCell" title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
+            <td  class="divTableCell" title="{{row.description}}">{{row.description || "-"}}</td>
+            <td  class="divTableCell" >{{ descrepancyString(row) }}</td>
+          </tr>
+        </tbody>
+      </table>

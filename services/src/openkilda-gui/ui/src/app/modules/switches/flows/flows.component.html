@@ -1,12 +1,25 @@
 <div class="row">
     <div class="col-sm-12">
         <div class="row">
+          
             <div class="col-sm-4">
                 <div class="form-group input-group-sm">
                      <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
                  </div>
             </div>
-              <div class="col-sm-8 text-right text-filters mb-3" id="buttons">
+            <div class="col-sm-6 text-right text-filters">
+                <div *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : portFlowFlag == 'controller','btn-dark': portFlowFlag != 'controller'}">
+                      <input type="radio" (click)="loadPortFlows('controller')" name="options" id="option2" autocomplete="off"> Controller
+                    </label>
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : portFlowFlag == 'inventory','btn-dark': portFlowFlag != 'inventory'}">
+                      <input type="radio" (click)="loadPortFlows('inventory')" name="options" id="option3" autocomplete="off"> Inventory
+                    </label>
+                    
+                  </div>
+            </div>
+           
+              <div class="col-sm-2 text-right text-filters mb-3" id="buttons">
                   
               </div>
          </div>
@@ -14,52 +27,5 @@
      </div>
     <div class="clear clearfix"></div>
   </div>
-  <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
-<div class="dataTables_wrapper no-footer" id="port-flow">
-  <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
-    <thead>
-      <tr class="tableHeading">
-        <th>
-          <span title="Customer Name">Customer Name</span>
-          <i class="fa fa-search" (click)="toggleSearch($event,'customername')"></i>
-            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="customername" [hidden]="!customername" />
-
-        </th>
-        <th>
-          <span title="Customer ID">Customer ID</span>
-          <i class="fa fa-search" (click)="toggleSearch($event,'customerid')"></i>
-            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="customerid" [hidden]="!customerid" />
-
-        </th>
-        <th>
-          <span title="Flow ID">Flow ID</span>
-          <i class="fa fa-search" (click)="toggleSearch($event,'flowid')"></i>
-            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="flowid" [hidden]="!flowid" />
-
-        </th>
-        <th>
-          <span title="BandWidth">Bandwidth</span>
-          <i class="fa fa-search" (click)="toggleSearch($event,'bandwidth')"></i>
-            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="bandwidth" [hidden]="!bandwidth" />
-        </th>
-      </tr>
-    </thead>
-    <tbody >
-      <tr   *ngFor="let row of data; let i = index" class="flowDataRow">
-          <td class="divTableCell" title="{{row['flow-id'] ? row['company-name'] : '-'}}" >
-            {{row['company-name'] ? row['company-name'] : '-'}}
-          </td>
-          <td class="divTableCell" title="{{row['flow-id'] ? row['customer-uuid'] : '-'}}" >
-            {{row['customer-uuid'] ? row['customer-uuid'] : '-'}}
-          </td>
-          <td class="divTableCell" title="{{row['flow-id'] ? row['flow-id'] : ''}}" >
-            {{row['flow-id'] ? row['flow-id'] : '-'}}
-          </td>
-          <td class="divTableCell" title="{{row['bandwidth'] ? row['bandwidth'] : ''}}" >
-            {{row['bandwidth'] ? row['bandwidth'] : '-'}}
-          </td>
-         
-      </tr>
-  </tbody>
-  </table>
-</div>
+  <app-port-flows *ngIf="portFlowFlag == 'controller' && !ifLoadingData" [textSearch]="textSearch" [data] = "data"></app-port-flows>
+  <app-port-inventory-flows *ngIf="portFlowFlag == 'inventory' && !ifLoadingData" [textSearch]="textSearch" [data]="data"></app-port-inventory-flows>

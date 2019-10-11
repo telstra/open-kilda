@@ -19,7 +19,9 @@ export class SidebarComponent implements OnInit {
         localStorage.removeItem('haslinkStoreSetting');
         localStorage.removeItem('linkStoreSetting');
         localStorage.removeItem('linkStoreStatusList');
-        localStorage.removeItem('activeFlowStatusFilter');        
+        localStorage.removeItem('activeFlowStatusFilter'); 
+        localStorage.removeItem('filterFlag');          
+        localStorage.removeItem('flowsinventory');       
       }
       if(!this.currentUrl.includes('/isl')) {
         localStorage.removeItem('linkData');
@@ -27,8 +29,13 @@ export class SidebarComponent implements OnInit {
       } 
       if(!this.currentUrl.includes('/switches')) {
         localStorage.removeItem('SWITCHES_LIST');
-        localStorage.removeItem('switchDetailsJSON');
+        localStorage.removeItem('SWITCHES_LIST_ALL');
         localStorage.removeItem('switchPortDetail');  
+      }  
+
+      if(!this.currentUrl.includes('/port')) {
+        localStorage.removeItem('portFlows');
+        localStorage.removeItem('portFlowInventory');
       }  
      
       this.commonService.setCurrentUrl(router.url);

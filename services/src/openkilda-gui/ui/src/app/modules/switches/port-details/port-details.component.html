@@ -91,7 +91,7 @@
       <li [ngClass]="{'active': openedTab == 'graph'}">
         <a href="javascript:void(0)" (click)="toggleTab('graph')" data-toggle="tab">GRAPH</a>
       </li>
-      <li *ngIf="hasStoreSetting && commonService.hasPermission('sw_switch_inventory') && commonService.hasPermission('menu_flows')" [ngClass]="{'active': openedTab == 'flow'}">
+      <li *ngIf="commonService.hasPermission('sw_switch_inventory') && commonService.hasPermission('menu_flows')" [ngClass]="{'active': openedTab == 'flow'}">
         <a href="javascript:void(0)" (click)="toggleTab('flow')" data-toggle="tab">FLOWS</a>
       </li>
       <li *ngIf="hasStoreSetting && assignmentTypeDescrepancy" [ngClass]="{'active': openedTab == 'descripancy'}">
@@ -103,7 +103,7 @@
         <app-port-graph *ngIf="openedTab == 'graph'"></app-port-graph>
       </div>
       <div class="tab-pane" [ngClass]="{'active': openedTab == 'flow'}">
-          <app-flows [switchid]="retrievedSwitchObject.switch_id" [portnumber]="portDataObject.port_number" *ngIf="openedTab == 'flow' && hasStoreSetting"></app-flows>
+          <app-flows [switchid]="retrievedSwitchObject.switch_id"  [portnumber]="portDataObject.port_number" *ngIf="openedTab == 'flow'"></app-flows>
       </div>
       <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
         <div class="table-responsive">

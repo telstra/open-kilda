@@ -24,17 +24,20 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   switchDetail:any = {};
   switch_id: string;
   switchNameForm:FormGroup;
+  loadswitchFlows= false;
   name: string;
   address: string;
   hostname: string;
   description: string;
   state: string;
+  switchFlows:any;
   openedTab : string = 'port';
   isSwitchNameEdit = false;
   isStorageDBType= false;
   evacuate:boolean = false;;
   underMaintenance:boolean;
-  currentRoute: string = 'switch-details';
+  currentRoute: string = 'switch-details';  
+  switchFlowFlag :any = 'controller';
   clipBoardItems = {
     sourceSwitchName:"",
     sourceSwitch:"",
@@ -78,8 +81,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
     this.route.params.subscribe(params => {
       this.switchId = params['id'];
+      var filter = localStorage.getItem("switchFilterFlag");
       localStorage.removeItem('portLoaderEnabled');
-      this.getSwitchDetail(params['id']);
+      this.getSwitchDetail(params['id'],filter);
     });
 
     if(this.router.url.includes("/port")){
@@ -120,11 +124,27 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
   toggleTab(tab, enableLoader = false){
     this.openedTab = tab;
-    if(enableLoader){
+    if(tab == 'flows'){
+        this.loadSwitchFlows(this.switchDetail.switch_id);
+    }else if(enableLoader){
       this.isLoaderActive = true;
     }else{
       this.isLoaderActive = false;
     }
+  }
+
+  loadSwitchFlows(switchId){
+    this.loaderService.show('Loading Flows..');
+    var filter = this.switchFlowFlag =='inventory' ;
+    this.loadswitchFlows = false;
+    this.switchService.getSwitchFlows(switchId,filter,null).subscribe(data=>{
+      this.switchFlows = data;
+      this.loadswitchFlows = true;
+    },error=>{
+      this.loaderService.hide();
+      this.switchFlows = [];
+      this.loadswitchFlows = true;
+    })
   }
 
   copyToClip(event, copyItem) {
@@ -170,55 +190,107 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     
   }
 
-  getSwitchDetail(switchId){
+  getSwitchDetail(switchId,filter){
 
     this.loaderService.show("Loading Switch Details");
 
     this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting=>{
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
-      
-      this.switchService.getSwitchDetail(switchId).subscribe((retrievedSwitchObject : any)=>{
-        if(!retrievedSwitchObject){
-          this.loaderService.hide();
-          this.toastr.error("No Switch Found",'Error');
-          this.router.navigate([
-            "/switches"
-          ]);        
-        }else{
-        this.switchDetail = retrievedSwitchObject;
-        localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
-        this.switch_id =retrievedSwitchObject.switch_id;
-        this.switchNameForm.controls['name'].setValue(retrievedSwitchObject.name);
-        this.name =retrievedSwitchObject.name;
-        this.address =retrievedSwitchObject.address;
-        this.hostname =retrievedSwitchObject.hostname;
-        this.description =retrievedSwitchObject.description;
-        this.state =retrievedSwitchObject.state;
-        this.underMaintenance = retrievedSwitchObject["under_maintenance"];
+
+      let switchDetail = null;
+      if (filter == 'controller') {
+        var switchData = JSON.parse(localStorage.getItem('SWITCHES_LIST')) || {};
+        let switchList = typeof(switchData.list_data) != 'undefined' ? switchData.list_data: [];
+        if (switchList && switchList.length) {
+          switchList.forEach(element => { 
+            if (element.switch_id == switchId) {
+              switchDetail = element;
+              return;
+            }
+          });
+        }
+      }else{
+        var switchData = JSON.parse(localStorage.getItem('SWITCHES_LIST_ALL')) || {};
+        let switchList = typeof(switchData.list_data) != 'undefined' ? switchData.list_data: [];
+        if (switchList && switchList.length) {
+          switchList.forEach(element => { 
+            if (element.switch_id == switchId) {
+              switchDetail = element;
+              return;
+            }
+          });
+        }
+      }
+      if(switchDetail && switchDetail.switch_id){
+        this.switchDetail = switchDetail;
+        this.switch_id =switchDetail.switch_id;
+        this.switchNameForm.controls['name'].setValue(switchDetail.name);
+        this.name =switchDetail.name;
+        this.address =switchDetail.address;
+        this.hostname =switchDetail.hostname;
+        this.description =switchDetail.description;
+        this.state =switchDetail.state;
+        this.underMaintenance = switchDetail["under_maintenance"];
         this.clipBoardItems = Object.assign(this.clipBoardItems,{
             
-            sourceSwitchName: retrievedSwitchObject.name,
+            sourceSwitchName: switchDetail.name,
             sourceSwitch: this.switch_id,
-            targetSwitchName: retrievedSwitchObject.hostname
+            targetSwitchName: switchDetail.hostname
             
           });
           this.loaderService.hide();
-          if(retrievedSwitchObject['discrepancy'] && (retrievedSwitchObject['discrepancy']['status'])){
-            if(retrievedSwitchObject['discrepancy']['status']){
+          if(switchDetail['discrepancy'] && (switchDetail['discrepancy']['status'])){
+            if(switchDetail['discrepancy']['status']){
               this.statusDescrepancy  = true;
-              this.descrepancyData.status.controller = (typeof(retrievedSwitchObject['discrepancy']['status-value']['controller-status'])!='undefined') ?  retrievedSwitchObject['discrepancy']['status-value']['controller-status'] : "-";
-              this.descrepancyData.status.inventory = (typeof(retrievedSwitchObject['discrepancy']['status-value']['inventory-status'])!='undefined') ?  retrievedSwitchObject['discrepancy']['status-value']['inventory-status'] : "-";
+              this.descrepancyData.status.controller = (typeof(switchDetail['discrepancy']['status-value']['controller-status'])!='undefined') ?  switchDetail['discrepancy']['status-value']['controller-status'] : "-";
+              this.descrepancyData.status.inventory = (typeof(switchDetail['discrepancy']['status-value']['inventory-status'])!='undefined') ?  switchDetail['discrepancy']['status-value']['inventory-status'] : "-";
             }
             
           }
-        }
-      },err=>{
-
-          this.loaderService.hide();
-          this.toastr.error("No Switch Found",'Error');
-          this.router.navigate(['/switches']);
-
-      });
+      }else{
+        this.switchService.getSwitchDetail(switchId,filter).subscribe((retrievedSwitchObject : any)=>{
+          if(!retrievedSwitchObject){
+            this.loaderService.hide();
+            this.toastr.error("No Switch Found",'Error');
+            this.router.navigate([
+              "/switches"
+            ]);        
+          }else{
+          this.switchDetail = retrievedSwitchObject;
+          this.switch_id =retrievedSwitchObject.switch_id;
+          this.switchNameForm.controls['name'].setValue(retrievedSwitchObject.name);
+          this.name =retrievedSwitchObject.name;
+          this.address =retrievedSwitchObject.address;
+          this.hostname =retrievedSwitchObject.hostname;
+          this.description =retrievedSwitchObject.description;
+          this.state =retrievedSwitchObject.state;
+          this.underMaintenance = retrievedSwitchObject["under_maintenance"];
+          this.clipBoardItems = Object.assign(this.clipBoardItems,{
+              
+              sourceSwitchName: retrievedSwitchObject.name,
+              sourceSwitch: this.switch_id,
+              targetSwitchName: retrievedSwitchObject.hostname
+              
+            });
+            this.loaderService.hide();
+            if(retrievedSwitchObject['discrepancy'] && (retrievedSwitchObject['discrepancy']['status'])){
+              if(retrievedSwitchObject['discrepancy']['status']){
+                this.statusDescrepancy  = true;
+                this.descrepancyData.status.controller = (typeof(retrievedSwitchObject['discrepancy']['status-value']['controller-status'])!='undefined') ?  retrievedSwitchObject['discrepancy']['status-value']['controller-status'] : "-";
+                this.descrepancyData.status.inventory = (typeof(retrievedSwitchObject['discrepancy']['status-value']['inventory-status'])!='undefined') ?  retrievedSwitchObject['discrepancy']['status-value']['inventory-status'] : "-";
+              }
+              
+            }
+          }
+        },err=>{
+  
+            this.loaderService.hide();
+            this.toastr.error("No Switch Found",'Error');
+            this.router.navigate(['/switches']);
+  
+        });
+      }
+      
     });
     let query = {_:new Date().getTime()};
     this.storeSwitchService.checkSwitchStoreDetails(query);

@@ -19,12 +19,10 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   @Input() data = [];
   @Input() srcSwitch : string;
   @Input() dstSwitch : string;
-  @Output() refresh =  new EventEmitter();
-  @Input()  statusParams:any;
-  @Input() statusList:any;
+  @Input() filterFlag:string;
+  @Input() textSearch:any;
 
-  typeFilter = 'all';
-  
+  typeFilter:string = '';
   dtOptions = {};
   dtTrigger: Subject<any> = new Subject();
 
@@ -46,7 +44,6 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   loadFilter : boolean =  false;
   activeStatus :any = '';
   clipBoardItems = [];
-  filterForm : FormGroup;
 
   constructor(private loaderService:LoaderService, private renderer: Renderer2,private router: Router,
     public commonService: CommonService,
@@ -57,8 +54,6 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false;    
    }
   ngOnInit() {
-   this.activeStatus = this.statusParams.join(",");
-    this.filterForm = this.formBuilder.group({ status: (this.statusParams && this.statusParams.length > 0) ? this.statusParams[this.statusParams.length-1]: 'active'});
     let ref= this;
     this.dtOptions = {
       pageLength: 10,
@@ -72,6 +67,11 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
       stateSave: false,
       language: {
         searchPlaceholder: "Search"
+      },
+      buttons:{
+        buttons:[
+          { extend: 'csv', text: 'Export', className: 'btn btn-dark' }
+        ]
       },
       "aoColumns": [
         { sWidth: '15%' },
@@ -113,39 +113,34 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   }
 
   ngOnChanges(change:SimpleChanges){
-    if(change.data){
-      if(change.data.currentValue){
+    if( typeof(change.data)!='undefined' && change.data){
+      if(typeof(change.data)!=='undefined' && change.data.currentValue){
         this.data  = change.data.currentValue;
         this.clipBoardItems = this.data;
       }
     }
-
-    if(change.srcSwitch.currentValue){
+    if(typeof(change.textSearch)!=='undefined' && change.textSearch.currentValue){
+      this.fulltextSearch(change.textSearch.currentValue);
+    }
+    if(typeof(change.srcSwitch)!=='undefined' &&  change.srcSwitch.currentValue){
       this.expandedSrcSwitchName =  true;
     }else{
       this.expandedSrcSwitchName =  false;
     }
-   if(change.dstSwitch.currentValue){
+   if(typeof(change.dstSwitch)!='undefined' && change.dstSwitch.currentValue){
       this.expandedTargetSwitchName = true;
     }else{
       this.expandedTargetSwitchName = false;
     } 
 
     this.triggerSearch();
-
   }
   loadFilters() {
     this.loadFilter = ! this.loadFilter;
   }
-  refreshList(status){
-    let statusParam = [];
-    statusParam.push(status);
-    localStorage.setItem("activeFlowStatusFilter",statusParam.join(","));
-    this.refresh.emit({statusParam:statusParam});
-  }
-  fulltextSearch(e:any){ 
-      var value = e.target.value;
-      this.typeFilter = 'all';
+ 
+  fulltextSearch(value:any){ 
+    if(this.dtTrigger)
         this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
           dtInstance.search(value)
                   .draw();
@@ -200,6 +195,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   }
 
   showFlow(flowObj : Flow){
+    localStorage.setItem("filterFlag",this.filterFlag);
     this.router.navigate(['/flows/details/'+flowObj.flowid]);
   }
  
@@ -233,14 +229,6 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     return text.join(", ");
   }
 
-  toggleType(type){
-    this.typeFilter = type;
-    let searchString = type =='all' ? '' : type+":true";
-    this.renderer.selectRootElement('#search-input').value="";
-    this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-      dtInstance.search(searchString).draw();
-    });
-  }
 
   copyToClip(event, copyItem,index) {
     var copyItem = this.clipBoardItems[index][copyItem];

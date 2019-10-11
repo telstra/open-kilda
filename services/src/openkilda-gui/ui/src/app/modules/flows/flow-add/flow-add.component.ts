@@ -5,9 +5,7 @@ import { ToastrService } from "ngx-toastr";
 import { SwitchService } from "../../../common/services/switch.service";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { Select2Data } from "ng-select2-component";
-import { environment } from "../../../../environments/environment";
 import { Router } from "@angular/router";
-import { NgxSpinnerModule, NgxSpinnerService } from "ngx-spinner";
 import { AlertifyService } from "../../../common/services/alertify.service";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Location } from "@angular/common";
@@ -34,6 +32,7 @@ export class FlowAddComponent implements OnInit {
   mainTargetPorts = [];
   flowDetail: any;
   vlanPorts = [];
+  diverseFlowList:any=[];
   virtualScrollFlag = true;
 
   constructor(
@@ -68,19 +67,31 @@ export class FlowAddComponent implements OnInit {
       source_vlan: ["0"],
       target_switch:[null, Validators.required],
       target_port: [null, Validators.required],
-      target_vlan: ["0"]
+      target_vlan: ["0"],
+      diverse_flowid:[null]
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
       return { label: k.toString() , value: k.toString()  };
     });
-
+    this.getflowList();
     this.getSwitchList();
   }
+
+ 
 
   /** getter to get form fields */
   get f() {
     return this.flowAddForm.controls;
+  }
+
+  getflowList(){
+      let filtersOptions = {controller:true,_:new Date().getTime()};
+        this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
+          this.diverseFlowList = data || [];
+        },error=>{
+           this.diverseFlowList = [];  
+        });
   }
 
   /** Get switches list via api call */
@@ -185,7 +196,8 @@ export class FlowAddComponent implements OnInit {
       },
       flowid: this.flowAddForm.controls["flowname"].value,
       "maximum-bandwidth": this.flowAddForm.controls["maximum_bandwidth"].value,
-      description: this.flowAddForm.controls["description"].value
+      description: this.flowAddForm.controls["description"].value,
+      "diverse-flowid": this.flowAddForm.controls["diverse_flowid"].value || null
     };
 
     const modalReff = this.modalService.open(ModalconfirmationComponent);
@@ -198,6 +210,8 @@ export class FlowAddComponent implements OnInit {
           response => {
             this.toaster.success("Flow created successfully", "Success!");
             localStorage.removeItem('flows');
+            localStorage.removeItem('filterFlag');          
+            localStorage.removeItem('flowsinventory'); 
             this.router.navigate(["/flows/details/" + response.flowid]);
             this.loaderService.hide();
           },

@@ -1,0 +1,50 @@
+<div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
+  <div class="dataTables_wrapper no-footer" id="port-flow">
+    
+  <table  datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+    <thead>
+      <tr class="tableHeading">
+        <th>
+          <span title="Customer Name">Customer Name</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'customername')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="customername" [hidden]="!customername" />
+
+        </th>
+        <th>
+          <span title="Customer ID">Customer ID</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'customerid')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="customerid" [hidden]="!customerid" />
+
+        </th>
+        <th>
+          <span title="Flow ID">Flow ID</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'flowid')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="flowid" [hidden]="!flowid" />
+
+        </th>
+        <th>
+          <span title="BandWidth">Bandwidth</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'bandwidth')"></i>
+            <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="bandwidth" [hidden]="!bandwidth" />
+        </th>
+      </tr>
+    </thead>
+    <tbody >
+      <tr   *ngFor="let row of data; let i = index" class="flowDataRow">
+          <td class="divTableCell" title="{{row['flow-id'] ? row['company-name'] : '-'}}" >
+            {{row['company-name'] ? row['company-name'] : '-'}}
+          </td>
+          <td class="divTableCell" title="{{row['flow-id'] ? row['customer-uuid'] : '-'}}" >
+            {{row['customer-uuid'] ? row['customer-uuid'] : '-'}}
+          </td>
+          <td class="divTableCell" title="{{row['flow-id'] ? row['flow-id'] : ''}}" >
+            {{row['flow-id'] ? row['flow-id'] : '-'}}
+          </td>
+          <td class="divTableCell" title="{{row['bandwidth'] ? row['bandwidth'] : ''}}" >
+            {{row['bandwidth'] ? row['bandwidth'] : '-'}}
+          </td>
+         
+      </tr>
+  </tbody>
+  </table>
+</div>
