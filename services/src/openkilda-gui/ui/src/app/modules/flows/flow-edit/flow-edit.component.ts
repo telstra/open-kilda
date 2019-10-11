@@ -148,8 +148,6 @@ export class FlowEditComponent implements OnInit {
           };
           this.flowId = flow.flowid;
           this.flowEditForm.setValue(this.flowDetail);
-  
-          this.getflowList();
           this.getSwitchList();
           this.getPorts("source_switch" , true);
           this.getPorts("target_switch", true);

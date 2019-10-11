@@ -19,6 +19,21 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
+  srcSwitch : string;
+  dstSwitch : string;
+  expandedSrcSwitchName : boolean = false;
+  expandedSrcSwitchPort : boolean = false;
+  expandedSrcSwitchVlan : boolean = false;
+
+  expandedTargetSwitchName : boolean = false;
+  expandedTargetSwitchPort : boolean = false;
+  expandedTargetSwitchVlan : boolean = false;
+
+  expandedBandwidth: boolean = false;
+  expandedFlowId : boolean = false;
+  expandedState : boolean = false;
+  expandedStatus : boolean = false;
+  expandedDescription : boolean = false;
   constructor(private renderer:Renderer2 , private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService) { }
 
   ngOnInit() {
