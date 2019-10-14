@@ -95,20 +95,20 @@
             </td>
            
             <td class="divTableCell subPortTable" title="">
-              <span>{{item.stats['tx-bytes'] || "-"}}</span>
-              <span>{{item.stats['rx-bytes'] || "-"}}</span>
+              <span title="{{item.stats['rx-bytes'] || "-"}}">{{item.stats['rx-bytes'] || "-"}}</span>
+              <span title="{{item.stats['tx-bytes'] || "-"}}">{{item.stats['tx-bytes'] || "-"}}</span>
             </td>
             <td class="divTableCell subPortTable" title="">
-              <span title="{{item.stats['tx-packets'] || '-'}}">{{item.stats['tx-packets'] || "-"}}</span>
-              <span title="{{item.stats['rx-packets'] || '-'}}">{{item.stats['rx-packets'] || '-'}}</span>
+              <span title="{{item.stats['rx-packets'] || '-'}}">{{item.stats['rx-packets'] || "-"}}</span>
+              <span title="{{item.stats['tx-packets'] || '-'}}">{{item.stats['tx-packets'] || '-'}}</span>
             </td>
             <td class="divTableCell subPortTable" title="">
-              <span title="{{item.stats['tx-dropped'] || '-'}}">{{item.stats['tx-dropped'] || '-'}}</span>
               <span title="{{item.stats['rx-dropped'] || '-'}}">{{item.stats['rx-dropped'] || '-'}}</span>
+              <span title="{{item.stats['tx-dropped'] || '-'}}">{{item.stats['tx-dropped'] || '-'}}</span>
             </td>
             <td class="divTableCell subPortTable" title="">
-              <span title="{{item.stats['tx-errors'] || '-'}}">{{item.stats['tx-errors'] || '-'}}</span>
               <span title="{{item.stats['rx-errors'] || '-'}}">{{item.stats['rx-errors'] || '-'}}</span>
+              <span title="{{item.stats['tx-errors'] || '-'}}">{{item.stats['tx-errors'] || '-'}}</span>
             </td>
             <td class="divTableCell" title="{{item.stats[collisions] || '-'}}">
               <p>{{item.stats['collisions'] || '-'}}</p>
