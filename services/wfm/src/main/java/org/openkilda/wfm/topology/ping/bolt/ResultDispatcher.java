@@ -35,30 +35,23 @@ public class ResultDispatcher extends Abstract {
         PingContext pingContext = pullPingContext(input);
 
         final String stream = dispatch(pingContext);
-        if (stream == null) {
-            log.error("There is no result manager for ping kind {}", pingContext.getKind());
-        } else {
-            Values output = new Values(pingContext, pullContext(input));
-            getOutput().emit(stream, input, output);
-        }
+
+        Values output = new Values(pingContext, pullContext(input));
+        getOutput().emit(stream, input, output);
     }
 
     private String dispatch(PingContext pingContext) {
-        String value;
         final Kinds kind = pingContext.getKind();
         switch (kind) {
             case PERIODIC:
-                value = STREAM_PERIODIC_ID;
-                break;
+                return STREAM_PERIODIC_ID;
             case ON_DEMAND:
-                value = STREAM_MANUAL_ID;
-                break;
+                return STREAM_MANUAL_ID;
 
             default:
                 throw new IllegalArgumentException(String.format(
                         "Unsupported value %s.%s", kind.getClass().getName(), kind));
         }
-        return value;
     }
 
     @Override

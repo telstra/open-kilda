@@ -703,6 +703,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get flow stats for {}.", dpid, e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             throw new SwitchNotFoundException(dpid);
         }
 
@@ -738,6 +741,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get meter config stats for {}.", dpid, e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         return result;
@@ -772,6 +778,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error("Could not get meter config stats for {}.", dpid, e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         return meterConfig;
@@ -1178,7 +1187,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             ListenableFuture<List<OFGroupDescStatsReply>> future = sw.writeStatsRequest(groupRequest);
             replies = future.get(10, TimeUnit.SECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            logger.error(String.format("Could not dump groups on switch %s.", sw.getId()), e);
+            logger.error("Could not dump groups on switch {}.", sw.getId(), e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             return Collections.emptyList();
         }
 
@@ -1663,6 +1675,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             result = future.get(10, TimeUnit.SECONDS);
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             logger.error("Could not get a barrier reply for {}.", sw.getId(), e);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
         }
         return result;
     }

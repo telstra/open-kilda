@@ -292,7 +292,8 @@ public class FlowSteps implements En {
             IslInfoData isl = allLinks.stream().filter(link ->
                     link.getSource().getSwitchId().equals(from.getSwitchId())
                             && link.getDestination().getSwitchId().equals(to.getSwitchId()))
-                    .findFirst().get();
+                    .findFirst().orElseThrow(() -> new IllegalStateException(
+                            format("Isl from %s to %s not found.", from.getSwitchId(), to.getSwitchId())));
             minBw = Math.min(isl.getAvailableBandwidth(), minBw);
             minSpeed = Math.min(isl.getSpeed(), minSpeed);
         }
@@ -351,12 +352,13 @@ public class FlowSteps implements En {
         });
         RangeSet<Integer> availableVlansRange = TreeRangeSet.create();
         Switch theSwitch = topologyDefinition.getSwitches().stream()
-                .filter(sw -> sw.getDpId().equals(switchDpId)).findFirst().get();
+                .filter(sw -> sw.getDpId().equals(switchDpId)).findFirst()
+                .orElseThrow(() -> new IllegalStateException(format("Switch %s not found.", switchDpId)));
         theSwitch.getOutPorts().forEach(port -> availableVlansRange.addAll(port.getVlanRange()));
         availableVlansRange.removeAll(allocatedVlans);
         return availableVlansRange.asRanges().stream()
                 .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                .findFirst().get();
+                .findFirst().orElseThrow(() -> new IllegalStateException("No ranges found."));
     }
 
     private void eachFlowIsUp(Set<FlowPayload> flows) {

@@ -15,10 +15,13 @@
 
 package org.openkilda.testing.tools;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException;
 import org.openkilda.testing.service.traffexam.TraffExamService;
@@ -111,9 +114,15 @@ public class FlowTrafficExamBuilder {
 
         //do not allow traffic exam on OF version <1.3. We are not installing meters on OF 1.2 intentionally
         String srcOfVersion = topology.getSwitches().stream().filter(sw ->
-                sw.getDpId().equals(flow.getSource().getDatapath())).findFirst().get().getOfVersion();
+                sw.getDpId().equals(flow.getSource().getDatapath())).findFirst()
+                .map(Switch::getOfVersion)
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Switch %s not found", flow.getSource().getDatapath())));
         String dstOfVersion = topology.getSwitches().stream().filter(sw ->
-                sw.getDpId().equals(flow.getDestination().getDatapath())).findFirst().get().getOfVersion();
+                sw.getDpId().equals(flow.getDestination().getDatapath())).findFirst()
+                .map(Switch::getOfVersion)
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Switch %s not found", flow.getDestination().getDatapath())));
 
         checkIsFlowApplicable(flow, source.isPresent() && !"OF_12".equals(srcOfVersion),
                 dest.isPresent() && !"OF_12".equals(dstOfVersion));
@@ -157,7 +166,7 @@ public class FlowTrafficExamBuilder {
         }
 
         if (message != null) {
-            throw new FlowNotApplicableException(String.format(
+            throw new FlowNotApplicableException(format(
                     "Flow's %s %s not applicable for traffic examination.", flow.getId(), message));
         }
     }

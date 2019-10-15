@@ -45,7 +45,7 @@
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
-        <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
+        <puppycrawl-tools-checkstyle.version>8.18</puppycrawl-tools-checkstyle.version>
 
         <argLine>-Xmx1028m -XX:MaxPermSize=512m</argLine>
     </properties>
