@@ -133,8 +133,8 @@ public class Node {
      * Restore node.
      */
     public void restore() {
-        if ((backupIncomingLinks != null || !backupIncomingLinks.isEmpty())
-                && (backupOutgoingLinks != null || !backupOutgoingLinks.isEmpty())) {
+        if (backupIncomingLinks != null && !backupIncomingLinks.isEmpty()
+                && backupOutgoingLinks != null && !backupOutgoingLinks.isEmpty()) {
             incomingLinks = backupIncomingLinks;
             outgoingLinks = backupOutgoingLinks;
         }

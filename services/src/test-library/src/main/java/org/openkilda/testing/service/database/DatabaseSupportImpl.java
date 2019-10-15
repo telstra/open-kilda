@@ -198,7 +198,8 @@ public class DatabaseSupportImpl implements Database {
 
     @Override
     public Switch getSwitch(SwitchId switchId) {
-        return switchRepository.findById(switchId).get();
+        return switchRepository.findById(switchId)
+                .orElseThrow(() -> new IllegalStateException(format("Switch %s not found", switchId)));
     }
 
     /**
@@ -290,7 +291,8 @@ public class DatabaseSupportImpl implements Database {
      */
     @Override
     public Flow getFlow(String flowId) {
-        return flowRepository.findById(flowId).get();
+        return flowRepository.findById(flowId)
+                .orElseThrow(() -> new IllegalStateException(format("Flow %s not found", flowId)));
     }
 
     /**

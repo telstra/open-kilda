@@ -138,7 +138,6 @@ public class Flow implements Serializable {
     @Property(name = "periodic_pings")
     private boolean periodicPings;
 
-    @NonNull
     @Property(name = "encapsulation_type")
     @Convert(graphPropertyType = String.class)
     private FlowEncapsulationType encapsulationType;
