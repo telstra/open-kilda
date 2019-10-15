@@ -701,8 +701,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         .flatMap(List::stream)
                         .collect(Collectors.toList());
             }
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.error("Could not get flow stats for {}.", dpid, e);
+            throw new SwitchNotFoundException(dpid);
+        } catch (InterruptedException e) {
+            logger.error("Could not get flow stats for {}.", dpid, e);
+            Thread.currentThread().interrupt();
             throw new SwitchNotFoundException(dpid);
         }
 
@@ -736,8 +740,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         .flatMap(List::stream)
                         .collect(Collectors.toList());
             }
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.error("Could not get meter config stats for {}.", dpid, e);
+        } catch (InterruptedException e) {
+            logger.error("Could not get meter config stats for {}.", dpid, e);
+            Thread.currentThread().interrupt();
         }
 
         return result;
@@ -770,8 +777,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         .collect(Collectors.toList());
                 meterConfig = result.size() >= 1 ? result.get(0) : null;
             }
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.error("Could not get meter config stats for {}.", dpid, e);
+        } catch (InterruptedException e) {
+            logger.error("Could not get meter config stats for {}.", dpid, e);
+            Thread.currentThread().interrupt();
+            throw new SwitchNotFoundException(dpid);
         }
 
         return meterConfig;
@@ -1177,8 +1188,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         try {
             ListenableFuture<List<OFGroupDescStatsReply>> future = sw.writeStatsRequest(groupRequest);
             replies = future.get(10, TimeUnit.SECONDS);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            logger.error(String.format("Could not dump groups on switch %s.", sw.getId()), e);
+        } catch (ExecutionException | TimeoutException e) {
+            logger.error("Could not dump groups on switch {}.", sw.getId(), e);
+            return Collections.emptyList();
+        } catch (InterruptedException e) {
+            logger.error("Could not dump groups on switch {}.", sw.getId(), e);
+            Thread.currentThread().interrupt();
             return Collections.emptyList();
         }
 
@@ -1661,8 +1676,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         try {
             ListenableFuture<OFBarrierReply> future = sw.writeRequest(barrierRequest);
             result = future.get(10, TimeUnit.SECONDS);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.error("Could not get a barrier reply for {}.", sw.getId(), e);
+        } catch (InterruptedException e) {
+            logger.error("Could not get a barrier reply for {}.", sw.getId(), e);
+            Thread.currentThread().interrupt();
         }
         return result;
     }

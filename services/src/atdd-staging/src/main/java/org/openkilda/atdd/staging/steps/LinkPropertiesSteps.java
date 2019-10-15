@@ -15,6 +15,7 @@
 
 package org.openkilda.atdd.staging.steps;
 
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
@@ -92,7 +93,9 @@ public class LinkPropertiesSteps {
     @Then("^response link properties from request has property '(.*)' with value '(.*)'$")
     public void verifyResponseLinkProperties(String key, String value) {
         LinkPropsDto props = getLinkPropsResponse.stream()
-                .filter(p -> p.equals(linkPropsRequest)).findFirst().get();
+                .filter(p -> p.equals(linkPropsRequest)).findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Link properties %s not found.", linkPropsRequest)));
         assertThat(value, equalTo(String.valueOf(props.getProperty(key))));
     }
 

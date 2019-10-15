@@ -45,7 +45,7 @@
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
-        <puppycrawl-tools-checkstyle.version>8.10</puppycrawl-tools-checkstyle.version>
+        <puppycrawl-tools-checkstyle.version>8.18</puppycrawl-tools-checkstyle.version>
 
         <argLine>-Xmx1028m -XX:MaxPermSize=512m</argLine>
     </properties>
@@ -329,7 +329,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.1.13.Final</version>
+            <version>4.1.42.Final</version>
             <scope>test</scope>
         </dependency>
         <dependency>
