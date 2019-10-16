@@ -182,7 +182,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         reroute.rerouted
         expect reroute.path.nodes, sameBeanAs(PathHelper.convertToNodesV2(potentialNewPath))
                 .ignoring("segmentLatency")
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET * 1.5) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
@@ -296,7 +296,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         reroute.rerouted
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET * 1.5) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
