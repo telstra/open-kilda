@@ -530,5 +530,4 @@ public class SwitchService {
                 .updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
         return linkBandwidthUpdate;
     }
-
 }

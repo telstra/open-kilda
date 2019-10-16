@@ -18,5 +18,6 @@ package org.openkilda.util;
 public interface TestFlowMock {
 
     static final String FLOW_ID = "03Jun131532_588_vegetableoil2002";
+    static final boolean CONTROLLER_FLAG = true;
 
 }

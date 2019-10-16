@@ -33,7 +33,7 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
     var ref = this;
     var filterFlag = this.portFlowFlag == 'inventory';
     let switchId = this.switchid;
-    let portNumber = this.portnumber
+    let portNumber = this.portnumber;
     var flowData = null;
     if(filterFlag){
       flowData = JSON.parse(localStorage.getItem('portFlowInventory')) || null;
