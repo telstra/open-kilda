@@ -28,7 +28,9 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   switch_id: string;	
   switchPortDataSet: any;
   anyData: any;
-  portListTimerId: any;
+  portListTimerId: any;  
+  portListSubscriber = null;
+  loadPorts = false;
   hasStoreSetting ;
   constructor(private switchService:SwitchService,
     private toastr: ToastrService,
@@ -114,12 +116,17 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   }
 
   portListData(){
+      if(this.loadPorts){
+        return ;
+      }
       if(localStorage.getItem('portLoaderEnabled')){
           this.loaderService.show("Loading Ports");
       }
-      this.switchService.getSwitchPortsStats(this.maskPipe.transform(this.switch_id,'legacy')).subscribe((data : Array<object>) =>{
+      this.loadPorts = true;
+      this.portListSubscriber = this.switchService.getSwitchPortsStats(this.maskPipe.transform(this.switch_id,'legacy')).subscribe((data : Array<object>) =>{
         this.rerender();
         this.ngAfterViewInit();
+        this.loadPorts= false;
         localStorage.setItem('switchPortDetail', JSON.stringify(data));
         this.switchPortDataSet = data;
         for(let i = 0; i<this.switchPortDataSet.length; i++){
@@ -212,6 +219,11 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     // Unsubscribe the event
     this.dtTrigger.unsubscribe();
     clearInterval(this.portListTimerId);
+    if(this.portListSubscriber){
+      this.portListSubscriber.unsubscribe();
+      this.portListSubscriber = null;
+    }
+    this.loadPorts = false;
   }
 
   rerender(): void {

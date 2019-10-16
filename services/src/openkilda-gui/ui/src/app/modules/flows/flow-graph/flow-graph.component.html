@@ -1,4 +1,4 @@
-<div class="row topology-graph">
+<div class="row topology-graph" >
   <div class="col-md-8">
     <app-dygraph (zoomChange)="zoom($event)"></app-dygraph>
   </div>
@@ -12,7 +12,7 @@
         <div class="form-group row">
           <label for="inputEmail3" class="col-sm-4 col-form-label">Timezone : </label>
           <div class="col-sm-8">
-            <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimeZone()">
+              <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimeZone()">
               <option value="UTC">UTC</option>
               <option value="LOCAL">My Timezone</option>
             </select>
@@ -33,7 +33,7 @@
         <div class="form-group row">
           <label for="inputEmail3" class="col-sm-4 col-form-label">Downsample : </label>
           <div class="col-sm-8">
-            <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
+              <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
               <option value="30s">30s</option>
               <option value="1m">1m</option>
               <option value="5m">5m</option>
@@ -54,7 +54,7 @@
         <div class="form-group row" *ngIf="f.graph.value=='flow' || f.graph.value=='flowmeter'">
           <label for="inputEmail3" class="col-sm-4 col-form-label">Metric: </label>
           <div class="col-sm-8">
-            <select formControlName="metric" class="form-control" (change)="loadGraphData()">
+             <select formControlName="metric" class="form-control" (change)="loadGraphData()">
               <option *ngFor="let option of flowMetrics" value="{{option.value}}">{{option.label}}</option>
             </select>
           </div>
@@ -62,7 +62,7 @@
         <div class="form-group row" *ngIf="f.graph.value=='flowpacket'">
           <label for="inputEmail3" class="col-sm-4 col-form-label">Direction: </label>
           <div class="col-sm-8">
-            <select formControlName="direction" class="form-control" (change)="loadGraphData()">
+             <select formControlName="direction" class="form-control" (change)="loadGraphData()">
               <option *ngFor="let option of packetMetrics" value="{{option.value}}">{{option.label}}</option>
             </select>
           </div>
@@ -70,7 +70,7 @@
         <div class="form-group row" *ngIf="f.graph.value=='flowmeter'">
           <label for="inputEmail3" class="col-sm-4 col-form-label">Direction: </label>
           <div class="col-sm-8">
-            <select formControlName="meterdirection" class="form-control" (change)="loadGraphData()">
+              <select formControlName="meterdirection" class="form-control" (change)="loadGraphData()">
               <option *ngFor="let option of metersDirection" value="{{option.value}}">{{option.label}}</option>
             </select>
           </div>
@@ -81,7 +81,7 @@
             <input formControlName="auto_reload" value="1" type="checkbox">
           </div>
           <div class="col-sm-7" *ngIf="f.auto_reload.value">
-           <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" class="form-control">
+              <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" class="form-control">
                 <option value="">Please select a value</option>
                 <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>
              </select>

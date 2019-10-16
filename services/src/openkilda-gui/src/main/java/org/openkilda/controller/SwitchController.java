@@ -83,8 +83,10 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<SwitchInfo> getSwitchesDetail(
             @RequestParam(value = "storeConfigurationStatus", required = false) 
-            final boolean storeConfigurationStatus) {
-        return serviceSwitch.getSwitches(storeConfigurationStatus);
+            final boolean storeConfigurationStatus,
+            @RequestParam(value = "controller", required = false) 
+            final boolean controller) {
+        return serviceSwitch.getSwitches(storeConfigurationStatus, controller);
     }
 
     /**
@@ -94,8 +96,10 @@ public class SwitchController {
      */
     @RequestMapping(value = "/{switchId}")
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody SwitchInfo getSwitchDetail(@PathVariable final String switchId) {
-        return serviceSwitch.getSwitch(switchId);
+    public @ResponseBody SwitchInfo getSwitchDetail(@PathVariable final String switchId,
+            @RequestParam(value = "controller", required = false) 
+            final boolean controller) {
+        return serviceSwitch.getSwitch(switchId, controller);
     }
 
     /**

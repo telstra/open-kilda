@@ -1,32 +1,3 @@
-<div class="row">
-  <div class="col-sm-12">
-      <div class="row">
-          <div class="col-sm-4">
-              <div class="form-group input-group-sm">
-                   <input id="search-input" type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
-               </div>
-          </div>
-            <div class="col-sm-8 text-right text-filters mb-3">
-                <div *ngIf="hasStoreSetting && commonService.hasPermission('sw_switch_inventory')" class="btn-group btn-group-sm btn-group-toggle mr-1" data-toggle="buttons">
-                    <label class="btn" (click)="toggleType('all')" [ngClass]="{ 'btn-secondary' : typeFilter == 'all','btn-dark': typeFilter != 'all'}">
-                      <input type="radio" name="options" id="option1" autocomplete="off" checked> All
-                    </label>
-                    <label class="btn" (click)="toggleType('controller')" [ngClass]="{ 'btn-secondary' : typeFilter == 'controller','btn-dark': typeFilter != 'controller'}">
-                      <input type="radio" name="options" id="option2" autocomplete="off"> Controller
-                    </label>
-                    <label class="btn" (click)="toggleType('inventory')" [ngClass]="{ 'btn-secondary' : typeFilter == 'inventory','btn-dark': typeFilter != 'inventory'}">
-                      <input type="radio" name="options" id="option3" autocomplete="off"> Inventory
-                    </label>
-                    <a *ngIf="hasStoreSetting" class="mr-1"> &nbsp;| </a>
-                  </div>
-                  
-               <a class="cursor-pointer" (click)="refreshList()"><i class="fa fa-refresh"></i>  Refresh</a>
-            </div>
-       </div>
-       
-   </div>
-  <div class="clear clearfix"></div>
-</div>
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
   <table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
@@ -93,7 +64,7 @@
               </context-menu>
             </td>
             <td class="divTableCell" title="{{ ((row['controller-switch'] == true && row['state'] == 'ACTIVATED') || (row['name']!=='undefined') ) ? row['name'] : row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}" [contextMenu]="copySwitchName">
-              {{ ((row['controller-switch'] == true && row['state'] == 'ACTIVATED') || (row['name']!=='undefined') ) ? checkValue(row['name']) : (row['common-name']) ? checkValue(row['common-name']) : checkValue(row['name']) }}
+              {{ ((row['controller-switch'] == true && row['state'] == 'ACTIVATED') || (row['name']!=='undefined') )? checkValue(row['name']) : (row['common-name']) ? checkValue(row['common-name']) : checkValue(row['name']) }}
               <context-menu #copySwitchName>
                 <ng-template contextMenuItem (execute)="copyToClip($event,'name',i);">
                   Copy to Clipboard

@@ -10,7 +10,7 @@
             <div class="clear clearfix"></div>
         </div>
       <p class="text-center flow-title" >Flow ID : <span [contextMenu]="copyFLow">{{flowDetail.flowid}}</span>
-      <a *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
+      <a *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || controllerFilter || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
       </p>
       
     

@@ -96,8 +96,9 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<FlowInfo> getFlows(
-            @RequestParam(name = "status", required = false) List<String> statuses) {
-        return flowService.getAllFlows(statuses);
+            @RequestParam(name = "status", required = false) List<String> statuses,
+            @RequestParam(name = "controller", required = false) boolean controller) {
+        return flowService.getAllFlows(statuses, controller);
     }
 
     /**
@@ -154,12 +155,12 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId) {
+    public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId,
+            @RequestParam(name = "controller", required = false) boolean controller) {
         LOGGER.info("Get flow by id. Flow id: '" + flowId + "'");
-        FlowInfo flowInfo = flowService.getFlowById(flowId);
+        FlowInfo flowInfo = flowService.getFlowById(flowId, controller);
         if (flowInfo != null && StringUtil.isNullOrEmpty(flowInfo.getFlowid())) {
             throw new NoDataFoundException("No flow found");
-           
         }
         return flowInfo;
     }
