@@ -96,9 +96,10 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        def responsePing1 = northbound.pingFlow(flow.id, new PingInput())
-        responsePing1.forward.pingSuccess
-        responsePing1.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         northbound.updateFlow(flow.id, flow.tap { it.encapsulationType = encapsulationUpdate })
@@ -122,9 +123,10 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        def responsePing2 = northbound.pingFlow(flow.id, new PingInput())
-        responsePing2.forward.pingSuccess
-        responsePing2.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
 
         and: "Rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.id)
@@ -456,9 +458,10 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "Flow is pingable"
-        def responsePing1 = northbound.pingFlow(flow.id, new PingInput())
-        responsePing1.forward.pingSuccess
-        responsePing1.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         northbound.updateFlow(flow.id, flow.tap { it.encapsulationType = encapsulationUpdate })
@@ -473,9 +476,10 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        def responsePing2 = northbound.pingFlow(flow.id, new PingInput())
-        responsePing2.forward.pingSuccess
-        responsePing2.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
 
         and: "Rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.id)

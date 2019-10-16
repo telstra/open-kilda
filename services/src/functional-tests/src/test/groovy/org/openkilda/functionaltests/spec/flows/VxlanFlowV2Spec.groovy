@@ -4,6 +4,8 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -76,22 +78,24 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         def flowInfoFromDb = database.getFlow(flow.flowId)
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
-        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan as boolean == vxlanRule
-            rules.find {
-                it.cookie == flowInfoFromDb.reversePath.cookie.value
-            }.match.tunnelId as boolean == vxlanRule
-        }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan as boolean == vxlanRule
+                rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId as boolean == vxlanRule
+            }
 
-        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb.forwardPath.cookie.value
-            }.match.tunnelId as boolean == vxlanRule
-            rules.find {
-                it.cookie == flowInfoFromDb.reversePath.cookie.value
-            }.instructions.applyActions.pushVxlan as boolean == vxlanRule
+            verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.match.tunnelId as boolean == vxlanRule
+                rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.instructions.applyActions.pushVxlan as boolean == vxlanRule
+            }
         }
 
         and: "Flow is valid"
@@ -149,22 +153,24 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
 
         and: "New rules are installed correctly"
-        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
-            rules.find {
-                it.cookie == flowInfoFromDb2.reversePath.cookie.value
-            }.match.tunnelId as boolean == !vxlanRule
-        }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
+                rules.find {
+                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
+                }.match.tunnelId as boolean == !vxlanRule
+            }
 
-        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-            }.match.tunnelId as boolean == !vxlanRule
-            rules.find {
-                it.cookie == flowInfoFromDb2.reversePath.cookie.value
-            }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
+            verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+                }.match.tunnelId as boolean == !vxlanRule
+                rules.find {
+                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
+                }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
+            }
         }
 
         and: "Cleanup: Delete the flow"
@@ -241,28 +247,30 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         // protected path creates engressRule
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
-        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan
-            rules.find {
-                it.cookie == flowInfoFromDb.reversePath.cookie.value
-            }.match.tunnelId
-            rules.find {
-                it.cookie == flowInfoFromDb.protectedReversePath.cookie.value
-            }.match.tunnelId
-        }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan
+                rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId
+                rules.find {
+                    it.cookie == flowInfoFromDb.protectedReversePath.cookie.value
+                }.match.tunnelId
+            }
 
-        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb.forwardPath.cookie.value
-            }.match.tunnelId
-            rules.find {
-                it.cookie == flowInfoFromDb.reversePath.cookie.value
-            }.instructions.applyActions.pushVxlan
-            rules.find {
-                it.cookie == flowInfoFromDb.protectedForwardPath.cookie.value
-            }.match.tunnelId
+            verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.match.tunnelId
+                rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.instructions.applyActions.pushVxlan
+                rules.find {
+                    it.cookie == flowInfoFromDb.protectedForwardPath.cookie.value
+                }.match.tunnelId
+            }
         }
 
         and: "Validation of flow must be successful"
@@ -280,7 +288,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         !northbound.getFlow(flow.flowId).flowStatusDetails
 
         and: "Rules for protected path are deleted"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(RULES_DELETION_TIME) {
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
@@ -294,22 +302,24 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
                 [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
 
-        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan
-            rules.find {
-                it.cookie == flowInfoFromDb2.reversePath.cookie.value
-            }.match.tunnelId
-        }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan
+                rules.find {
+                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
+                }.match.tunnelId
+            }
 
-        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            rules.find {
-                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-            }.match.tunnelId
-            rules.find {
-                it.cookie == flowInfoFromDb2.reversePath.cookie.value
-            }.instructions.applyActions.pushVxlan
+            verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+                rules.find {
+                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+                }.match.tunnelId
+                rules.find {
+                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
+                }.instructions.applyActions.pushVxlan
+            }
         }
 
         and: "Validation of flow must be successful"
@@ -462,13 +472,15 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Correct rules are installed"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         // vxlan rules are not creating for a one-switch flow
-        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            !rules.find {
-                it.cookie == flowInfoFromDb.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan
-            !rules.find {
-                it.cookie == flowInfoFromDb.reversePath.cookie.value
-            }.match.tunnelId
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                !rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan
+                !rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId
+            }
         }
 
         and: "Flow is valid"
@@ -504,13 +516,15 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
 
         and: "New rules are installed correctly"
-        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            !rules.find {
-                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan
-            !rules.find {
-                it.cookie == flowInfoFromDb2.reversePath.cookie.value
-            }.match.tunnelId
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                !rules.find {
+                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan
+                !rules.find {
+                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
+                }.match.tunnelId
+            }
         }
 
         and: "Cleanup: Delete the flow"
