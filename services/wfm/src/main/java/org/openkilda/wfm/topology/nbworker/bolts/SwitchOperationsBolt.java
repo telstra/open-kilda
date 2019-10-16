@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -31,7 +32,9 @@ import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRe
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
+import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -39,6 +42,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
@@ -89,6 +93,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             result = Collections.singletonList(getSwitchProperties((GetSwitchPropertiesRequest) request));
         } else if (request instanceof UpdateSwitchPropertiesRequest) {
             result = Collections.singletonList(updateSwitchProperties((UpdateSwitchPropertiesRequest) request));
+        } else if (request instanceof GetPortPropertiesRequest) {
+            result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -194,6 +200,12 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
         }
         return new SwitchPropertiesResponse(updated);
+    }
+
+    private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {
+        PortProperties portProperties =
+                switchOperationsService.getPortProperties(request.getSwitchId(), request.getPort());
+        return PortMapper.INSTANCE.map(portProperties);
     }
 
     @Override

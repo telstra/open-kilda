@@ -6,4 +6,3 @@ org.openkilda.functionaltests.extension.env.AssumeProfileExtension
 org.openkilda.functionaltests.extension.healthcheck.HealthCheckExtension
 org.openkilda.functionaltests.extension.FeatureOrderExtension
 org.openkilda.functionaltests.extension.TestDataLoggingExtension
-org.openkilda.functionaltests.extension.failfast.FailFastExtension

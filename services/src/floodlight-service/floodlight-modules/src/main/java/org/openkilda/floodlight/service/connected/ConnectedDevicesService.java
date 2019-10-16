@@ -48,12 +48,6 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
 
     @Override
     public Command makeCommand(CommandContext context, OfInput input) {
-        producerService = context.getModuleContext().getServiceImpl(IKafkaProducerService.class);
-        KafkaChannel kafkaChannel = context.getModuleContext().getServiceImpl(KafkaUtilityService.class)
-                .getKafkaChannel();
-        region = kafkaChannel.getRegion();
-        logger.info("region: {}", region);
-        topic = kafkaChannel.getConnectedDevicesTopic();
         return new Command(context) {
             @Override
             public Command call() {
@@ -120,6 +114,11 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         logger.info("Stating {}", ConnectedDevicesService.class.getCanonicalName());
         KafkaChannel kafkaChannel = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
         logger.info("region: {}", kafkaChannel.getRegion());
+
+        region = kafkaChannel.getRegion();
+        producerService = context.getServiceImpl(IKafkaProducerService.class);
+        topic = kafkaChannel.getConnectedDevicesTopic();
+
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
     }

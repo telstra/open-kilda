@@ -36,6 +36,7 @@ import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequ
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
@@ -43,7 +44,6 @@ import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.request.RemoveBfdSession;
 import org.openkilda.messaging.floodlight.request.SetupBfdSession;
@@ -105,8 +105,8 @@ public final class RouterUtils {
                 return ((DumpPortDescriptionRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersRequest) {
                 return ((DumpMetersRequest) commandData).getSwitchId();
-            } else if (commandData instanceof ValidateRulesRequest) {
-                return ((ValidateRulesRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DumpRulesForNbworkerRequest) {
+                return ((DumpRulesForNbworkerRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {

@@ -1,0 +1,31 @@
+@startuml
+title Disable port discovery
+
+participant Northbound as NB
+control kilda.topo.disco as DI
+control kilda.northbound.storm as NBT
+box NetworkTopology
+participant SpeakerRouter as SR
+participant KafkaNbBolt as KNB
+participant PortHandler as PH
+participant NetworkPortService as NPS
+database DB
+participant PortFsm as PFSM
+end box
+
+NB -> DI : UpdatePortPropertiesRequest
+DI -> SR : UpdatePortPropertiesRequest
+SR -> PH : UpdatePortPropertiesCommand
+PH -> NPS : update port properties
+activate NPS
+NPS -> DB : save properties into DB
+NPS -> PFSM : fire disable discovery event
+PFSM -> PH : emit WatchListPollRemoveCommand
+PFSM -> PH : emit UniIslFailCommand
+PFSM -> NPS :
+NPS -> PH : send response
+deactivate NPS
+PH -> KNB : send response
+KNB -> NBT : response
+NBT -> NB : response
+@enduml

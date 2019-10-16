@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
+import org.openkilda.model.PortProperties;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
@@ -106,6 +107,11 @@ public class NetworkIntegrationCarrier
     @Override
     public void removeUniIslHandler(Endpoint endpoint) {
         uniIslService.uniIslRemove(endpoint);
+    }
+
+    @Override
+    public void notifyPortPropertiesChanged(PortProperties portProperties) {
+        // Northbound service is not covered by this test
     }
 
     @Override
