@@ -5,11 +5,9 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.applications.command.CommandAppMessage
 import org.openkilda.applications.command.apps.CreateExclusion
 import org.openkilda.applications.command.apps.RemoveExclusion
-import org.openkilda.applications.model.Endpoint
 import org.openkilda.applications.model.Exclusion
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.model.Cookie
 import org.openkilda.model.Flow
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -60,7 +58,7 @@ class AppsSpec extends HealthCheckSpecification {
         when: "Add an application to the flow and create an exclude"
         northbound.addFlowApp(flow.getId(), app, switchId, port, vlan)
         def udpData = UdpData.buildRandom()
-        addExclude(flow.getId(), flow.getSource(), udpData)
+        addExclude(flow.getId(), udpData)
 
         then: "A rule masked as exclusion is returned"
         Wrappers.wait(WAIT_OFFSET) {
@@ -81,7 +79,7 @@ class AppsSpec extends HealthCheckSpecification {
         }
 
         when: "Remove the exclude"
-        removeExclude(flow.getId(), flow.getSource(), udpData)
+        removeExclude(flow.getId(), udpData)
 
         then: "The rule masked as exclusion is not returned"
         Wrappers.wait(WAIT_OFFSET) {
@@ -100,16 +98,11 @@ class AppsSpec extends HealthCheckSpecification {
         device && device.close()
     }
 
-    private void addExclude(String flowId, FlowEndpointPayload endpoint, UdpData udpData) {
+    private void addExclude(String flowId, UdpData udpData) {
         def producer = new KafkaProducer(producerProps)
         def createExclusion = CommandAppMessage.builder()
                 .payload(CreateExclusion.builder()
                         .flowId(flowId)
-                        .endpoint(Endpoint.builder()
-                                .switchId(endpoint.getDatapath().toString())
-                                .portNumber(endpoint.getPortNumber())
-                                .vlanId(endpoint.getVlanId())
-                                .build())
                         .application(app)
                         .exclusion(Exclusion.builder()
                                 .srcIp(udpData.getSrcIp())
@@ -127,16 +120,11 @@ class AppsSpec extends HealthCheckSpecification {
         producer.flush()
     }
 
-    private void removeExclude(String flowId, FlowEndpointPayload endpoint, UdpData udpData) {
+    private void removeExclude(String flowId, UdpData udpData) {
         def producer = new KafkaProducer(producerProps)
         def createExclusion = CommandAppMessage.builder()
                 .payload(RemoveExclusion.builder()
                         .flowId(flowId)
-                        .endpoint(Endpoint.builder()
-                                .switchId(endpoint.getDatapath().toString())
-                                .portNumber(endpoint.getPortNumber())
-                                .vlanId(endpoint.getVlanId())
-                                .build())
                         .application(app)
                         .exclusion(Exclusion.builder()
                                 .srcIp(udpData.getSrcIp())

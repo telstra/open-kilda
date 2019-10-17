@@ -18,7 +18,6 @@ package org.openkilda.applications.command;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.applications.command.apps.CreateExclusion;
-import org.openkilda.applications.model.Endpoint;
 import org.openkilda.applications.model.Exclusion;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,11 +29,6 @@ public class CommandMessageJsonSerializeTest {
     public void shouldSerializeToJson() throws Exception {
         CreateExclusion createExclusion = CreateExclusion.builder()
                 .flowId("flow_id")
-                .endpoint(Endpoint.builder()
-                        .portNumber(2)
-                        .switchId("00:00:00:00:00:00:00:01")
-                        .vlanId(2)
-                        .build())
                 .application("app")
                 .exclusion(Exclusion.builder()
                         .srcIp("127.0.0.2")

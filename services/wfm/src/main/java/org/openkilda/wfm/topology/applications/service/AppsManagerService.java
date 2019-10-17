@@ -23,7 +23,6 @@ import org.openkilda.applications.info.apps.CreateExclusionResult;
 import org.openkilda.applications.info.apps.FlowApplicationCreated;
 import org.openkilda.applications.info.apps.FlowApplicationRemoved;
 import org.openkilda.applications.info.apps.RemoveExclusionResult;
-import org.openkilda.applications.model.Endpoint;
 import org.openkilda.applications.model.Exclusion;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
@@ -39,7 +38,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -55,7 +53,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -82,48 +79,38 @@ public class AppsManagerService {
      */
     public void getEnabledFlowApplications(String flowId) throws FlowNotFoundException {
         Flow flow = getFlow(flowId);
-        sendNbResponse(flow);
+        sendResponse(flow);
     }
 
     /**
      * Process adding application for flow endpoint or endpoints.
      */
     public void addFlowApplication(FlowAddAppRequest payload) throws FlowNotFoundException {
-        SwitchId switchId = payload.getSwitchId();
-        Integer port = payload.getPortNumber();
-        Integer vlan = payload.getVlanId();
         FlowApplication application = convertApplicationFromString(payload.getApplication());
         Flow flow = getFlow(payload.getFlowId());
 
-        if (processBothEndpoints(switchId, port, vlan)) {
-            addAppForFlowPath(flow, flow.getForwardPath(), application);
-            addAppForFlowPath(flow, flow.getReversePath(), application);
-        } else if (endpointForForwardPath(flow, switchId, port, vlan)) {
-            addAppForFlowPath(flow, flow.getForwardPath(), application);
-        } else if (endpointForReversePath(flow, switchId, port, vlan)) {
-            addAppForFlowPath(flow, flow.getReversePath(), application);
-        } else {
-            throw new IllegalArgumentException(
-                    format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
-                            switchId, port, vlan));
+        switch (application) {
+            case TELESCOPE:
+                addTelescopeForFlow(flow);
+                break;
+            default:
+                throw new UnsupportedOperationException(
+                        format("%s application adding has not yet been implemented.", application));
         }
 
-        if (processBothEndpoints(switchId, port, vlan)) {
-            sendFlowCreateNotification(flow.getFlowId(), payload.getApplication(), flow.getSrcSwitch().getSwitchId(),
-                    flow.getSrcPort(), flow.getSrcVlan());
-            sendFlowCreateNotification(flow.getFlowId(), payload.getApplication(), flow.getDestSwitch().getSwitchId(),
-                    flow.getDestPort(), flow.getDestVlan());
-        } else {
-            sendFlowCreateNotification(flow.getFlowId(), payload.getApplication(), switchId, port, vlan);
-        }
-
-        sendNbResponse(flow);
+        sendResponse(flow);
     }
 
-    private void addAppForFlowPath(Flow flow, FlowPath flowPath, FlowApplication application) {
-        persistApplication(flowPath, application);
-        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flowPath));
-        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flowPath));
+    private void addTelescopeForFlow(Flow flow) {
+        persistApplication(flow.getForwardPath(), FlowApplication.TELESCOPE);
+        persistApplication(flow.getReversePath(), FlowApplication.TELESCOPE);
+        installTelescopeFlowRules(flow);
+        sendAppCreateNotification(flow.getFlowId(), FlowApplication.TELESCOPE);
+    }
+
+    private void installTelescopeFlowRules(Flow flow) {
+        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flow.getForwardPath()));
+        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flow.getReversePath()));
     }
 
     private void persistApplication(FlowPath flowPath, FlowApplication application) {
@@ -133,15 +120,10 @@ public class AppsManagerService {
         flowPathRepository.createOrUpdate(flowPath);
     }
 
-    private void sendFlowCreateNotification(String flowId, String app, SwitchId switchId, Integer port, Integer vlan) {
+    private void sendAppCreateNotification(String flowId, FlowApplication application) {
         carrier.emitNotification(FlowApplicationCreated.builder()
                 .flowId(flowId)
-                .application(app)
-                .endpoint(Endpoint.builder()
-                        .switchId(switchId.toString())
-                        .portNumber(port)
-                        .vlanId(vlan)
-                        .build())
+                .application(application.toString().toLowerCase())
                 .build());
     }
 
@@ -149,41 +131,31 @@ public class AppsManagerService {
      * Process removing application for flow endpoint or endpoints.
      */
     public void removeFlowApplication(FlowRemoveAppRequest payload) throws FlowNotFoundException {
-        SwitchId switchId = payload.getSwitchId();
-        Integer port = payload.getPortNumber();
-        Integer vlan = payload.getVlanId();
         FlowApplication application = convertApplicationFromString(payload.getApplication());
         Flow flow = getFlow(payload.getFlowId());
 
-        if (processBothEndpoints(switchId, port, vlan)) {
-            removeAppForFlowPath(flow, flow.getForwardPath(), application);
-            removeAppForFlowPath(flow, flow.getReversePath(), application);
-        } else if (endpointForForwardPath(flow, switchId, port, vlan)) {
-            removeAppForFlowPath(flow, flow.getForwardPath(), application);
-        } else if (endpointForReversePath(flow, switchId, port, vlan)) {
-            removeAppForFlowPath(flow, flow.getReversePath(), application);
-        } else {
-            throw new IllegalArgumentException(
-                    format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
-                            switchId, port, vlan));
+        switch (application) {
+            case TELESCOPE:
+                removeTelescopeForFlow(flow);
+                break;
+            default:
+                throw new UnsupportedOperationException(
+                        format("%s application removing has not yet been implemented.", application));
         }
 
-        if (processBothEndpoints(switchId, port, vlan)) {
-            sendFlowRemoveNotification(flow.getFlowId(), payload.getApplication(), flow.getSrcSwitch().getSwitchId(),
-                    flow.getSrcPort(), flow.getSrcVlan());
-            sendFlowRemoveNotification(flow.getFlowId(), payload.getApplication(), flow.getDestSwitch().getSwitchId(),
-                    flow.getDestPort(), flow.getDestVlan());
-        } else {
-            sendFlowRemoveNotification(flow.getFlowId(), payload.getApplication(), switchId, port, vlan);
-        }
-
-        sendNbResponse(flow);
+        sendResponse(flow);
     }
 
-    private void removeAppForFlowPath(Flow flow, FlowPath flowPath, FlowApplication application) {
-        removeFromDatabase(flowPath, application);
-        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flowPath));
-        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flowPath));
+    private void removeTelescopeForFlow(Flow flow) {
+        removeFromDatabase(flow.getForwardPath(), FlowApplication.TELESCOPE);
+        removeFromDatabase(flow.getReversePath(), FlowApplication.TELESCOPE);
+        removeAppForFlowPath(flow);
+        sendAppRemoveNotification(flow.getFlowId(), FlowApplication.TELESCOPE);
+    }
+
+    private void removeAppForFlowPath(Flow flow) {
+        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flow.getForwardPath()));
+        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flow.getReversePath()));
     }
 
     private void removeFromDatabase(FlowPath flowPath, FlowApplication application) {
@@ -193,19 +165,14 @@ public class AppsManagerService {
         flowPathRepository.createOrUpdate(flowPath);
     }
 
-    private void sendFlowRemoveNotification(String flowId, String app, SwitchId switchId, Integer port, Integer vlan) {
+    private void sendAppRemoveNotification(String flowId, FlowApplication application) {
         carrier.emitNotification(FlowApplicationRemoved.builder()
                 .flowId(flowId)
-                .application(app)
-                .endpoint(Endpoint.builder()
-                        .switchId(switchId.toString())
-                        .portNumber(port)
-                        .vlanId(vlan)
-                        .build())
+                .application(application.toString().toLowerCase())
                 .build());
     }
 
-    private void sendNbResponse(Flow flow) {
+    private void sendResponse(Flow flow) {
         carrier.emitNorthboundResponse(FlowAppsResponse.builder()
                 .flowId(flow.getFlowId())
                 .srcApps(AppsEntry.builder()
@@ -223,22 +190,6 @@ public class AppsManagerService {
 
     private Flow getFlow(String flowId) throws FlowNotFoundException {
         return flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
-    }
-
-    private boolean processBothEndpoints(SwitchId switchId, Integer port, Integer vlan) {
-        return switchId == null && port == null && vlan == null;
-    }
-
-    private boolean endpointForForwardPath(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
-        return flow.getSrcSwitch().getSwitchId().equals(switchId)
-                && Objects.equals(flow.getSrcPort(), port)
-                && Objects.equals(flow.getSrcVlan(), vlan);
-    }
-
-    private boolean endpointForReversePath(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
-        return flow.getDestSwitch().getSwitchId().equals(switchId)
-                && Objects.equals(flow.getDestPort(), port)
-                && Objects.equals(flow.getDestVlan(), vlan);
     }
 
     private FlowApplication convertApplicationFromString(String application) {
@@ -293,44 +244,39 @@ public class AppsManagerService {
     public void processCreateExclusion(CreateExclusion payload) throws FlowNotFoundException {
         Flow flow = getFlow(payload.getFlowId());
 
-        SwitchId switchId = new SwitchId(payload.getEndpoint().getSwitchId());
-        int port = payload.getEndpoint().getPortNumber();
-        int vlan = payload.getEndpoint().getVlanId();
+        checkTelescopeAppInstallation(flow);
 
-        FlowPath flowPath = getFlowPathByEndpoint(flow, switchId, port, vlan);
-        checkFlowAppInstallation(flowPath, payload.getApplication());
+        Exclusion exclusion = payload.getExclusion();
 
-        boolean flowPathIsForward = flow.isForward(flowPath);
-        Cookie cookie = Cookie.buildExclusionCookie(flowPath.getCookie().getUnmaskedValue(), flowPathIsForward);
-
+        Cookie cookie = Cookie.buildExclusionCookie(flow.getForwardPath().getCookie().getUnmaskedValue(), true);
         ApplicationRule rule = ApplicationRule.builder()
                 .flowId(flow.getFlowId())
-                .switchId(switchId)
-                .srcIp(payload.getExclusion().getSrcIp())
-                .srcPort(payload.getExclusion().getSrcPort())
-                .dstIp(payload.getExclusion().getDstIp())
-                .dstPort(payload.getExclusion().getDstPort())
-                .proto(payload.getExclusion().getProto())
-                .ethType(payload.getExclusion().getEthType())
+                .switchId(flow.getSrcSwitch().getSwitchId())
+                .srcIp(exclusion.getSrcIp())
+                .srcPort(exclusion.getSrcPort())
+                .dstIp(exclusion.getDstIp())
+                .dstPort(exclusion.getDstPort())
+                .proto(exclusion.getProto())
+                .ethType(exclusion.getEthType())
                 .build();
 
         applicationRepository.createOrUpdate(rule);
 
-        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
         carrier.emitSpeakerCommand(InstallExclusionRequest.builder()
-                .switchId(switchId)
+                .switchId(flow.getSrcSwitch().getSwitchId())
                 .cookie(cookie.getValue())
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
-                .srcIp(payload.getExclusion().getSrcIp())
-                .srcPort(payload.getExclusion().getSrcPort())
-                .dstIp(payload.getExclusion().getDstIp())
-                .dstPort(payload.getExclusion().getDstPort())
-                .proto(payload.getExclusion().getProto())
-                .ethType(payload.getExclusion().getEthType())
+                .srcIp(exclusion.getSrcIp())
+                .srcPort(exclusion.getSrcPort())
+                .dstIp(exclusion.getDstIp())
+                .dstPort(exclusion.getDstPort())
+                .proto(exclusion.getProto())
+                .ethType(exclusion.getEthType())
+                .expirationTimeout(Optional.ofNullable(payload.getExpirationTimeout()).orElse(0))
                 .build());
         carrier.emitNotification(CreateExclusionResult.builder()
                 .flowId(payload.getFlowId())
-                .endpoint(payload.getEndpoint())
                 .application(payload.getApplication())
                 .exclusion(payload.getExclusion())
                 .success(true)
@@ -343,27 +289,19 @@ public class AppsManagerService {
     public void processRemoveExclusion(RemoveExclusion payload) throws FlowNotFoundException {
         Flow flow = getFlow(payload.getFlowId());
 
-        SwitchId switchId = new SwitchId(payload.getEndpoint().getSwitchId());
-        int port = payload.getEndpoint().getPortNumber();
-        int vlan = payload.getEndpoint().getVlanId();
+        checkTelescopeAppInstallation(flow);
 
-        FlowPath flowPath = getFlowPathByEndpoint(flow, switchId, port, vlan);
-        checkFlowAppInstallation(flowPath, payload.getApplication());
-
-        boolean flowPathIsForward = flow.isForward(flowPath);
-        Cookie cookie = Cookie.buildExclusionCookie(flowPath.getCookie().getUnmaskedValue(), flowPathIsForward);
         Exclusion exclusion = payload.getExclusion();
 
-        Optional<ApplicationRule> ruleOptional = applicationRepository.lookupRuleByMatchAndFlow(switchId,
-                flow.getFlowId(), exclusion.getSrcIp(), exclusion.getSrcPort(), exclusion.getDstIp(),
-                exclusion.getDstPort(), exclusion.getProto(), exclusion.getEthType());
-        if (ruleOptional.isPresent()) {
-            applicationRepository.delete(ruleOptional.get());
-        }
+        Cookie cookie = Cookie.buildExclusionCookie(flow.getForwardPath().getCookie().getUnmaskedValue(), true);
+        Optional<ApplicationRule> ruleOptional = applicationRepository.lookupRuleByMatchAndFlow(
+                flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), exclusion.getSrcIp(), exclusion.getSrcPort(),
+                exclusion.getDstIp(), exclusion.getDstPort(), exclusion.getProto(), exclusion.getEthType());
+        ruleOptional.ifPresent(applicationRepository::delete);
 
-        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
         carrier.emitSpeakerCommand(RemoveExclusionRequest.builder()
-                .switchId(switchId)
+                .switchId(flow.getSrcSwitch().getSwitchId())
                 .cookie(cookie.getValue())
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
                 .srcIp(payload.getExclusion().getSrcIp())
@@ -375,28 +313,19 @@ public class AppsManagerService {
                 .build());
         carrier.emitNotification(RemoveExclusionResult.builder()
                 .flowId(payload.getFlowId())
-                .endpoint(payload.getEndpoint())
                 .application(payload.getApplication())
                 .exclusion(payload.getExclusion())
                 .success(true)
                 .build());
     }
 
-    private FlowPath getFlowPathByEndpoint(Flow flow, SwitchId switchId, Integer port, Integer vlan) {
-        if (endpointForForwardPath(flow, switchId, port, vlan)) {
-            return flow.getForwardPath();
-        } else if (endpointForReversePath(flow, switchId, port, vlan)) {
-            return flow.getReversePath();
-        }
-
-        throw new IllegalArgumentException(
-                format("Endpoint {switch_id = %s, port_number = %d, vlan_id = %d} is not a flow endpoint.",
-                        switchId, port, vlan));
+    private void checkTelescopeAppInstallation(Flow flow) {
+        checkFlowAppInstallation(flow.getForwardPath(), FlowApplication.TELESCOPE);
+        checkFlowAppInstallation(flow.getReversePath(), FlowApplication.TELESCOPE);
     }
 
-    private void checkFlowAppInstallation(FlowPath flowPath, String application) {
-        FlowApplication flowApplication = convertApplicationFromString(application);
-        if (flowPath.getApplications() == null || !flowPath.getApplications().contains(flowApplication)) {
+    private void checkFlowAppInstallation(FlowPath flowPath, FlowApplication application) {
+        if (flowPath.getApplications() == null || !flowPath.getApplications().contains(application)) {
             throw new IllegalArgumentException(format("Flow application \"%s\" is not installed for the flow %s",
                     application, flowPath.getFlow().getFlowId()));
         }

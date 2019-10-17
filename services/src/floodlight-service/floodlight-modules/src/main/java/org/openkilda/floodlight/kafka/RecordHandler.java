@@ -270,15 +270,16 @@ class RecordHandler implements Runnable {
         Long cookie = command.getCookie();
         int tunnelId = command.getTunnelId();
         IPv4Address srcIp = IPv4Address.of(command.getSrcIp());
-        int srcPort = command.getSrcPort();
+        Integer srcPort = command.getSrcPort();
         IPv4Address dstIp = IPv4Address.of(command.getDstIp());
-        int dstPort = command.getDstPort();
+        Integer dstPort = command.getDstPort();
         IpProtocol proto = convertStringToIpProtocol(command.getProto());
         EthType ethType = convertStringToEthType(command.getEthType());
+        int timeout = command.getExpirationTimeout();
 
         try {
             context.getSwitchManager()
-                    .installExclusion(dpid, cookie, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
+                    .installExclusion(dpid, cookie, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId, timeout);
         } catch (SwitchOperationException e) {
             logger.error("Installation exclusion on switch {} was unsuccessful", command.getSwitchId(), e);
         }
@@ -292,9 +293,9 @@ class RecordHandler implements Runnable {
         Long cookie = command.getCookie();
         int tunnelId = command.getTunnelId();
         IPv4Address srcIp = IPv4Address.of(command.getSrcIp());
-        int srcPort = command.getSrcPort();
+        Integer srcPort = command.getSrcPort();
         IPv4Address dstIp = IPv4Address.of(command.getDstIp());
-        int dstPort = command.getDstPort();
+        Integer dstPort = command.getDstPort();
         IpProtocol proto = convertStringToIpProtocol(command.getProto());
         EthType ethType = convertStringToEthType(command.getEthType());
 

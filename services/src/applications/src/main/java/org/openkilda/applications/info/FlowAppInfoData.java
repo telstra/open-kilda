@@ -15,8 +15,6 @@
 
 package org.openkilda.applications.info;
 
-import org.openkilda.applications.model.Endpoint;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,9 +28,6 @@ public abstract class FlowAppInfoData extends InfoAppData {
 
     @JsonProperty("flow_id")
     private String flowId;
-
-    @JsonProperty("endpoint")
-    private Endpoint endpoint;
 
     @JsonProperty("application")
     private String application;

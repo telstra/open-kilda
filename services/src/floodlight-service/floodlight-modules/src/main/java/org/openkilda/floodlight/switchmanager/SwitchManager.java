@@ -1389,9 +1389,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
     }
 
-    private OFFlowMod buildExclusionDropFlow(IOFSwitch sw, int tableId, Long cookie, IPv4Address srcIp, int srcPort,
-                                             IPv4Address dstIp, int dstPort, IpProtocol proto, EthType ethType,
-                                             int tunnelId) {
+    private OFFlowMod buildExclusionDropFlow(IOFSwitch sw, int tableId, Long cookie, IPv4Address srcIp,
+                                             Integer srcPort, IPv4Address dstIp, Integer dstPort,
+                                             IpProtocol proto, EthType ethType,
+                                             int tunnelId, int timeout) {
         OFFactory ofFactory = sw.getOFFactory();
         if (sw.getOFFactory().getVersion() == OF_12) {
             return null;
@@ -1400,12 +1401,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return prepareFlowModBuilder(ofFactory, cookie, 10, tableId)
                 .setTableId(TableId.of(tableId))
                 .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
+                .setHardTimeout(timeout)
                 .build();
     }
 
     private OFFlowDelete buildExclusionDeleteCommand(IOFSwitch sw, int tableId, Long cookie, IPv4Address srcIp,
-                                                     int srcPort, IPv4Address dstIp, int dstPort, IpProtocol proto,
-                                                     EthType ethType, int tunnelId) {
+                                                     Integer srcPort, IPv4Address dstIp, Integer dstPort,
+                                                     IpProtocol proto, EthType ethType, int tunnelId) {
         if (sw.getOFFactory().getVersion() == OF_12) {
             return null;
         }
@@ -1417,13 +1419,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
     }
 
-    private Match buildExclusionMatch(IOFSwitch sw, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+    private Match buildExclusionMatch(IOFSwitch sw, IPv4Address srcIp, Integer srcPort,
+                                      IPv4Address dstIp, Integer dstPort,
                                       IpProtocol proto, EthType ethType, int tunnelId) {
-        Match.Builder match = getMetadataMatchBuilder(sw, tunnelId)
-                .setExact(MatchField.IPV4_SRC, srcIp)
-                .setExact(MatchField.IPV4_DST, dstIp)
-                .setExact(MatchField.IP_PROTO, proto)
-                .setExact(MatchField.ETH_TYPE, ethType);
+        Match.Builder match = getMetadataMatchBuilder(sw, tunnelId);
+        Optional.ofNullable(srcIp).ifPresent(ip -> match.setExact(MatchField.IPV4_SRC, ip));
+        Optional.ofNullable(dstIp).ifPresent(ip -> match.setExact(MatchField.IPV4_DST, ip));
+        Optional.ofNullable(proto).ifPresent(protocol -> match.setExact(MatchField.IP_PROTO, protocol));
+        Optional.ofNullable(ethType).ifPresent(type -> match.setExact(MatchField.ETH_TYPE, type));
         setMatchPorts(match, proto, srcPort, dstPort);
         return match.build();
     }
@@ -1433,13 +1436,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMasked(MatchField.METADATA, OFMetadata.ofRaw(tunnelId), OFMetadata.ofRaw(4095));
     }
 
-    private void setMatchPorts(Match.Builder match, IpProtocol proto, int srcPort, int dstPort) {
+    private void setMatchPorts(Match.Builder match, IpProtocol proto, Integer srcPort, Integer dstPort) {
+        if (proto == null) {
+            return;
+        }
+
         if (IpProtocol.TCP.equals(proto)) {
-            match.setExact(MatchField.TCP_SRC, TransportPort.of(srcPort));
-            match.setExact(MatchField.TCP_DST, TransportPort.of(dstPort));
+            Optional.ofNullable(srcPort).ifPresent(port -> match.setExact(MatchField.TCP_SRC, TransportPort.of(port)));
+            Optional.ofNullable(dstPort).ifPresent(port -> match.setExact(MatchField.TCP_DST, TransportPort.of(port)));
+
         } else if (IpProtocol.UDP.equals(proto)) {
-            match.setExact(MatchField.UDP_SRC, TransportPort.of(srcPort));
-            match.setExact(MatchField.UDP_DST, TransportPort.of(dstPort));
+            Optional.ofNullable(srcPort).ifPresent(port -> match.setExact(MatchField.UDP_SRC, TransportPort.of(port)));
+            Optional.ofNullable(dstPort).ifPresent(port -> match.setExact(MatchField.UDP_DST, TransportPort.of(port)));
         } else {
             logger.debug("Unexpected IP protocol {}", proto);
         }
@@ -2620,18 +2628,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public long installExclusion(DatapathId dpid, Long cookie,
-                                 IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
-                                 IpProtocol proto, EthType ethType, int transitTunnelId)
+                                 IPv4Address srcIp, Integer srcPort, IPv4Address dstIp, Integer dstPort,
+                                 IpProtocol proto, EthType ethType, int transitTunnelId, int timeout)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
         return pushFlow(sw, "--InstallExclusion--", buildExclusionDropFlow(sw, TABLE_1, cookie, srcIp, srcPort,
-                dstIp, dstPort, proto, ethType, transitTunnelId));
+                dstIp, dstPort, proto, ethType, transitTunnelId, timeout));
     }
 
     @Override
     public long removeExclusion(DatapathId dpid, Long cookie,
-                                IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
+                                IPv4Address srcIp, Integer srcPort, IPv4Address dstIp, Integer dstPort,
                                 IpProtocol proto, EthType ethType, int transitTunnelId)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);

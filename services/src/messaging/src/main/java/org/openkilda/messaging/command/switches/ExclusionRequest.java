@@ -41,13 +41,13 @@ public class ExclusionRequest extends CommandData {
     private String srcIp;
 
     @JsonProperty("src_port")
-    private int srcPort;
+    private Integer srcPort;
 
     @JsonProperty("dst_ip")
     private String dstIp;
 
     @JsonProperty("dst_port")
-    private int dstPort;
+    private Integer dstPort;
 
     @JsonProperty("proto")
     private String proto;

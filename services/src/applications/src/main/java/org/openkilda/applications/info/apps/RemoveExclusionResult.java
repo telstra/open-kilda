@@ -16,7 +16,6 @@
 package org.openkilda.applications.info.apps;
 
 import org.openkilda.applications.info.ExclusionInfoData;
-import org.openkilda.applications.model.Endpoint;
 import org.openkilda.applications.model.Exclusion;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -33,10 +32,9 @@ public class RemoveExclusionResult extends ExclusionInfoData {
     @Builder
     @JsonCreator
     public RemoveExclusionResult(@JsonProperty("flow_id") String flowId,
-                                 @JsonProperty("endpoint") Endpoint endpoint,
                                  @JsonProperty("application") String application,
                                  @JsonProperty("exclusion") Exclusion exclusion,
                                  @JsonProperty("success") Boolean success) {
-        super(flowId, endpoint, application, exclusion, success);
+        super(flowId, application, exclusion, success);
     }
 }

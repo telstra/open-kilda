@@ -17,8 +17,6 @@ package org.openkilda.applications.info.apps;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.applications.model.Endpoint;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 
@@ -28,11 +26,6 @@ public class FlowApplicationCreatedJsonSerializeTest {
     public void shouldSerializeToJson() throws Exception {
         FlowApplicationCreated flowApplicationCreated = FlowApplicationCreated.builder()
                 .flowId("flow_id")
-                .endpoint(Endpoint.builder()
-                        .portNumber(2)
-                        .switchId("00:00:00:00:00:00:00:01")
-                        .vlanId(2)
-                        .build())
                 .application("app")
                 .build();
 

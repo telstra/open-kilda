@@ -15,7 +15,6 @@
 
 package org.openkilda.applications.info;
 
-import org.openkilda.applications.model.Endpoint;
 import org.openkilda.applications.model.Exclusion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -33,9 +32,9 @@ public abstract class ExclusionInfoData extends FlowAppInfoData {
     @JsonProperty("success")
     private Boolean success;
 
-    public ExclusionInfoData(String flowId, Endpoint endpoint, String application, Exclusion exclusion,
+    public ExclusionInfoData(String flowId, String application, Exclusion exclusion,
                              Boolean success) {
-        super(flowId, endpoint, application);
+        super(flowId, application);
         this.exclusion = exclusion;
         this.success = success;
     }

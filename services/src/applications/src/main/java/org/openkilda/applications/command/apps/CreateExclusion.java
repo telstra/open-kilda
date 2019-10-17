@@ -16,7 +16,6 @@
 package org.openkilda.applications.command.apps;
 
 import org.openkilda.applications.command.ExclusionCommandData;
-import org.openkilda.applications.model.Endpoint;
 import org.openkilda.applications.model.Exclusion;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -30,12 +29,16 @@ import lombok.EqualsAndHashCode;
 public class CreateExclusion extends ExclusionCommandData {
     private static final long serialVersionUID = 1637629656717188688L;
 
+    @JsonProperty("expiration_timeout")
+    private Integer expirationTimeout;
+
     @Builder
     @JsonCreator
     public CreateExclusion(@JsonProperty("flow_id") String flowId,
-                           @JsonProperty("endpoint") Endpoint endpoint,
                            @JsonProperty("application") String application,
-                           @JsonProperty("exclusion") Exclusion exclusion) {
-        super(flowId, endpoint, application, exclusion);
+                           @JsonProperty("exclusion") Exclusion exclusion,
+                           @JsonProperty("expiration_timeout") Integer expirationTimeout) {
+        super(flowId, application, exclusion);
+        this.expirationTimeout = expirationTimeout;
     }
 }

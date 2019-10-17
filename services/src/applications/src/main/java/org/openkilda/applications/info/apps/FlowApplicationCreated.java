@@ -16,7 +16,6 @@
 package org.openkilda.applications.info.apps;
 
 import org.openkilda.applications.info.FlowAppInfoData;
-import org.openkilda.applications.model.Endpoint;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -32,8 +31,7 @@ public class FlowApplicationCreated extends FlowAppInfoData {
     @Builder
     @JsonCreator
     public FlowApplicationCreated(@JsonProperty("flow_id") String flowId,
-                                  @JsonProperty("endpoint") Endpoint endpoint,
                                   @JsonProperty("application") String application) {
-        super(flowId, endpoint, application);
+        super(flowId, application);
     }
 }

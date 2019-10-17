@@ -474,8 +474,9 @@ public interface ISwitchManager extends IFloodlightService {
      * @return transaction id.
      * @throws SwitchOperationException Switch not found.
      */
-    long installExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
-                          IpProtocol proto, EthType ethType, int transitTunnelId)
+    long installExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, Integer srcPort,
+                          IPv4Address dstIp, Integer dstPort, IpProtocol proto, EthType ethType,
+                          int transitTunnelId, int timeout)
             throws SwitchOperationException;
 
     /**
@@ -492,8 +493,8 @@ public interface ISwitchManager extends IFloodlightService {
      * @return transaction id.
      * @throws SwitchOperationException Switch not found.
      */
-    long removeExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, int srcPort, IPv4Address dstIp, int dstPort,
-                         IpProtocol proto, EthType ethType, int transitTunnelId)
+    long removeExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, Integer srcPort,
+                         IPv4Address dstIp, Integer dstPort, IpProtocol proto, EthType ethType, int transitTunnelId)
             throws SwitchOperationException;
 
     /**

@@ -33,9 +33,9 @@ public class RemoveExclusionRequest extends ExclusionRequest {
                                   @JsonProperty("cookie") Long cookie,
                                   @JsonProperty("tunnel_id") int tunnelId,
                                   @JsonProperty("src_ip") String srcIp,
-                                  @JsonProperty("src_port") int srcPort,
+                                  @JsonProperty("src_port") Integer srcPort,
                                   @JsonProperty("dst_ip") String dstIp,
-                                  @JsonProperty("dst_port") int dstPort,
+                                  @JsonProperty("dst_port") Integer dstPort,
                                   @JsonProperty("proto") String proto,
                                   @JsonProperty("eth_type") String ethType) {
         super(switchId, cookie, tunnelId, srcIp, srcPort, dstIp, dstPort, proto, ethType);
