@@ -462,13 +462,15 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Correct rules are installed"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         // vxlan rules are not creating for a one-switch flow
-        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            !rules.find {
-                it.cookie == flowInfoFromDb.forwardPath.cookie.value
-            }.instructions.applyActions.pushVxlan
-            !rules.find {
-                it.cookie == flowInfoFromDb.reversePath.cookie.value
-            }.match.tunnelId
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                !rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.instructions.applyActions.pushVxlan
+                !rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId
+            }
         }
 
         and: "Flow is valid"
