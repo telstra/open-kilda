@@ -1,49 +1,3 @@
-<div class="row">
-    <div class="col-sm-12">
-        <div class="row">
-            <div class="col-sm-4">
-                <div class="form-group input-group-sm">
-                     <input type="text" id="search-input" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
-                 </div>
-            </div>
-              <div  class="col-sm-8 text-right text-filters mb-3">
-                  <!-- <a class="cursor-pointer"><i class="fa fa-cog"></i> Custom View | </a> -->
-                  <div *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
-                    <label class="btn" (click)="toggleType('all')" [ngClass]="{ 'btn-secondary' : typeFilter == 'all','btn-dark': typeFilter != 'all'}">
-                      <input type="radio" name="options" id="option1" autocomplete="off" checked> All
-                    </label>
-                    <label class="btn" (click)="toggleType('controller')" [ngClass]="{ 'btn-secondary' : typeFilter == 'controller','btn-dark': typeFilter != 'controller'}">
-                      <input type="radio" name="options" id="option2" autocomplete="off"> Controller
-                    </label>
-                    <label class="btn" (click)="toggleType('inventory')" [ngClass]="{ 'btn-secondary' : typeFilter == 'inventory','btn-dark': typeFilter != 'inventory'}">
-                      <input type="radio" name="options" id="option3" autocomplete="off"> Inventory
-                    </label>
-                    
-                  </div>
-                  &nbsp;
-                  <div class="btn-group" *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')">
-                      <div ngbDropdown class="d-inline-block">
-                        | <a class="cursor-pointer" ngbDropdownToggle  ><i class="fa fa-cog"></i> Filters | </a>
-                       <div ngbDropdownMenu style="padding:10px;">
-                         <label  class="mb-1"><b>Status</b></label>
-                         <div class="filterMenues">
-                            <ng-template ngFor let-status [ngForOf]="statusList">
-                                <button  class="dropdown-item cursor-pointer" (click)="refreshList(status)">{{status}}<i class="fa fa-check" *ngIf="status.toLowerCase() == activeStatus.toLowerCase()"></i></button>
-                             </ng-template>
-                         </div>
-                         
-                        </div>
-                      </div>
-                    </div>
-                    <a *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="cursor-pointer" (click)="refreshList(activeStatus.toLowerCase())"><i class="fa fa-refresh"></i>  Refresh</a>
-                    <a *ngIf="!storeLinkSetting" class="cursor-pointer" (click)="refreshList('')"><i class="fa fa-refresh"></i>  Refresh</a>
-              </div>
-         </div>
-         
-     </div>
-    <div class="clear clearfix"></div>
-    <div class="col-sm-12" *ngIf="storeLinkSetting"> Status:{{statusParams.join(",")}}</div>
-</div>
 
 <div class="flow-table-wrapper" [hidden]="wrapperHide"></div>
 <table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
@@ -176,7 +130,8 @@
         <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td title="{{row.description}}">{{row.description || "-"}}</td>
         <td >{{ descrepancyString(row) }}</td>
-        <td ><a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
+        <td >
+           <a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (row.hasOwnProperty('controller-flow')  && row['controller-flow'] ) ||  (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
         
         
         

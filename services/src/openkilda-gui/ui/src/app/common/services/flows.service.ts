@@ -17,8 +17,10 @@ export class FlowsService {
     return this.httpClient.get<Flow[]>(`${environment.apiEndPoint}/flows/list`,{params:query});
   }
 
-  getFlowDetailById(flowId):Observable<any>{
-    return this.httpClient.get<any>(`${environment.apiEndPoint}/flows/${flowId}`);
+
+  getFlowDetailById(flowId,filterFlag):Observable<any>{
+    let query:any = {controller:filterFlag == 'controller'};
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/flows/${flowId}`,{params:query});
   }
 
   createFlow(data):Observable<any>{

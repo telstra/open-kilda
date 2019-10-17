@@ -6,7 +6,6 @@ import { Router } from '@angular/router';
 import { Switch } from 'src/app/common/data-models/switch';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { ClipboardService } from 'ngx-clipboard';
-import { CommonService } from 'src/app/common/services/common.service';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -17,7 +16,8 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   @ViewChild(DataTableDirective)  datatableElement: DataTableDirective;
   @Input() data =[];
-  @Output() refresh =  new EventEmitter();
+  @Input() switchFilterFlag:string;  
+  @Input() textSearch:any;
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
@@ -32,11 +32,9 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   description : boolean = false;
   state : boolean = false;
   clipBoardItems = [];
-  typeFilter = 'all';
   constructor(private loaderService : LoaderService,
     private renderer: Renderer2, 
     private router:Router,
-    public commonService:CommonService,
     private storeSwitchService: StoreSettingtService,
     private clipboardService:ClipboardService
   ) { }
@@ -96,12 +94,8 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     this.dtTrigger.unsubscribe();
   }
 
-  refreshList(){
-    this.refresh.emit();
-  }
-  fulltextSearch(e:any){ 
-      var value = e.target.value;
-      this.typeFilter = 'all';
+  fulltextSearch(value:any){ 
+    if(this.dtTrigger)
         this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
           dtInstance.search(value)
                   .draw();
@@ -114,6 +108,9 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         this.data  = change.data.currentValue;
         this.clipBoardItems = this.data;
       }
+    }
+    if(typeof(change.textSearch)!=='undefined' && change.textSearch.currentValue){
+      this.fulltextSearch(change.textSearch.currentValue);
     }
   }
 
@@ -132,6 +129,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       "switchDetailsJSON",
       JSON.stringify(switchDetailsJSON)
     );
+    localStorage.setItem("switchFilterFlag",this.switchFilterFlag);
     this.router.navigate(["/switches/details/" + switchObj.switch_id]);
   }
 
@@ -189,15 +187,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
     return text.join(", ");
   }
-  toggleType(type){
-    this.typeFilter = type;
-    let searchString = type =='all' ? '' : type+":true";
-    console.log('searchString',searchString);
-    this.renderer.selectRootElement('#search-input').value="";
-    this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-      dtInstance.search(searchString).draw();
-    });
-  }
+  
   checkSwitchSettings(){
 
     this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
