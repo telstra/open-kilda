@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -318,7 +319,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelper.deleteFlow(flow.flowId, RULES_DELETION_TIME * 2)
     }
 
     @Tags(HARDWARE)

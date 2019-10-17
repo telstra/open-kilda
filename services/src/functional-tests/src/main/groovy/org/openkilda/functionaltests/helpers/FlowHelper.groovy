@@ -142,15 +142,20 @@ class FlowHelper {
      * Deletes flow with checking rules on source and destination switches.
      * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
      */
-    FlowPayload deleteFlow(String flowId) {
+    FlowPayload deleteFlow(String flowId, int waitTime) {
+        def waitT = waitTime ? waitTime : RULES_DELETION_TIME
         def flowEntry = db.getFlow(flowId)
 
         log.debug("Deleting flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
 
-        checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
+        checkRulesOnSwitches(flowEntry, waitT, false)
 
         return response
+    }
+
+    FlowPayload deleteFlow(String flowId) {
+        deleteFlow(flowId, null)
     }
 
     /**
