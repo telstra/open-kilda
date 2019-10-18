@@ -8,8 +8,6 @@ parallelism = 1
 workers = 1
 
 kafka.hosts = {{ getv "/kilda_kafka_hosts" }}
-kafka.partitions.default = 1
-kafka.replication.default = 3
 
 reroute.throttling.delay.min = {{ getv "/kilda_reroute_throttling_delay_min" }}
 reroute.throttling.delay.max = {{ getv "/kilda_reroute_throttling_delay_max" }}
