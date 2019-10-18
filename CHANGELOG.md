@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.39.1 (17/10/2019)
+
+### Bug Fixes:
+-  [#2850](https://github.com/telstra/open-kilda/pull/2850) Replaced oraclejdk8 to openjdk8 [**tests**]
+
+### Improvements:
+-  [#2664](https://github.com/telstra/open-kilda/pull/2664) Create SimpleSwitchRule class for switch rules validation. (Issue: [#1442](https://github.com/telstra/open-kilda/issues/1442)) [**storm-topologies**]
+-  [#2849](https://github.com/telstra/open-kilda/pull/2849) Improvement/controller filter default (Issues: [#2787](https://github.com/telstra/open-kilda/issues/2787) [#2803](https://github.com/telstra/open-kilda/issues/2803)) [**gui**]
+-  [#2841](https://github.com/telstra/open-kilda/pull/2841) Allow to use traffexam on python-3.5.2 [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.39.0...v1.39.1).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.39.0 (07/10/2019)
 
 ### Features:
@@ -44,6 +62,7 @@ Also please consider using following migration scripts to update db:
 In case of issues these rollback scripts should be executed:
 - [1.15 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.39.0/services/neo4j/migrations/1.15-port-properties/rollback.cql)
 
+---
 
 ## v1.38.0 (30/09/2019)
 
@@ -67,6 +86,8 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 swmanager, network, stats, fl, flow-hs, nbworker, flow, nb, connected
+
+---
 
 ## v1.37.0 (26/09/2019)
 
@@ -122,6 +143,8 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 GUI
 
+---
+
 ## v1.36.0 (18/09/2019)
 
 ### Features:
@@ -151,6 +174,8 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 fl, neo4j, flow-hs, nb, flow, network, nbworker, stats
+
+---
 
 ## v1.35.1 (11/09/2019)
 
