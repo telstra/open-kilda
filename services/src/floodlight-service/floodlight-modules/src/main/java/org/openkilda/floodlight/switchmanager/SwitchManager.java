@@ -476,7 +476,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public Long installTelescopeFlow(DatapathId dpid, long cookie, int tunnelId) throws SwitchOperationException {
+    public Long installTelescopeFlow(DatapathId dpid, long cookie, int tunnelId, int telescopePort)
+            throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         if (sw.getOFFactory().getVersion() == OF_12) {
@@ -485,7 +486,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, 2, TABLE_1)
                 .setMatch(getMetadataMatchBuilder(sw, tunnelId).build())
-                .setActions(Collections.singletonList(actionSetOutputPort(ofFactory, OFPort.of(15))))
+                .setActions(Collections.singletonList(actionSetOutputPort(ofFactory, OFPort.of(telescopePort))))
                 .build();
 
         return pushFlow(sw, "--InstallTelescopeFlow--", flowMod);

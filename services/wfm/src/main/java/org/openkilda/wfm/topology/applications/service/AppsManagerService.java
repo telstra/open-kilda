@@ -26,8 +26,9 @@ import org.openkilda.applications.info.apps.RemoveExclusionResult;
 import org.openkilda.applications.model.Exclusion;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
-import org.openkilda.messaging.command.flow.UpdateEgressFlow;
-import org.openkilda.messaging.command.flow.UpdateIngressFlow;
+import org.openkilda.messaging.command.flow.InstallEgressFlow;
+import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.UpdateIngressAndEgressFlows;
 import org.openkilda.messaging.command.switches.InstallExclusionRequest;
 import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.info.apps.AppsEntry;
@@ -38,11 +39,17 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.wfm.error.ExclusionAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -53,17 +60,22 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
 public class AppsManagerService {
     private final AppsManagerCarrier carrier;
+
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
-    private final FlowCommandFactory flowCommandFactory = new FlowCommandFactory();
-    private final FlowResourcesManager flowResourcesManager;
     private final ApplicationRepository applicationRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final TransactionManager transactionManager;
+
+    private final FlowResourcesManager flowResourcesManager;
+    private final FlowCommandFactory flowCommandFactory = new FlowCommandFactory();
 
     public AppsManagerService(AppsManagerCarrier carrier,
                               PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
@@ -71,6 +83,8 @@ public class AppsManagerService {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.applicationRepository = persistenceManager.getRepositoryFactory().createApplicationRepository();
+        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+        this.transactionManager = persistenceManager.getTransactionManager();
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
     }
 
@@ -102,18 +116,15 @@ public class AppsManagerService {
     }
 
     private void addTelescopeForFlow(Flow flow) {
-        persistApplication(flow.getForwardPath(), FlowApplication.TELESCOPE);
-        persistApplication(flow.getReversePath(), FlowApplication.TELESCOPE);
-        installTelescopeFlowRules(flow);
+        transactionManager.doInTransaction(() -> {
+            addAppToFlowPath(flow.getForwardPath(), FlowApplication.TELESCOPE);
+            addAppToFlowPath(flow.getReversePath(), FlowApplication.TELESCOPE);
+            sendUpdateFlowEndpointRulesCommand(flow);
+        });
         sendAppCreateNotification(flow.getFlowId(), FlowApplication.TELESCOPE);
     }
 
-    private void installTelescopeFlowRules(Flow flow) {
-        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flow.getForwardPath()));
-        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flow.getReversePath()));
-    }
-
-    private void persistApplication(FlowPath flowPath, FlowApplication application) {
+    private void addAppToFlowPath(FlowPath flowPath, FlowApplication application) {
         Set<FlowApplication> applications = Optional.ofNullable(flowPath.getApplications()).orElse(new HashSet<>());
         applications.add(application);
         flowPath.setApplications(applications);
@@ -147,18 +158,16 @@ public class AppsManagerService {
     }
 
     private void removeTelescopeForFlow(Flow flow) {
-        removeFromDatabase(flow.getForwardPath(), FlowApplication.TELESCOPE);
-        removeFromDatabase(flow.getReversePath(), FlowApplication.TELESCOPE);
-        removeAppForFlowPath(flow);
+        transactionManager.doInTransaction(() -> {
+            sendUpdateFlowEndpointRulesCommand(flow);
+            removeAppFromFlowPath(flow.getForwardPath(), FlowApplication.TELESCOPE);
+            removeAppFromFlowPath(flow.getReversePath(), FlowApplication.TELESCOPE);
+            sendUpdateFlowEndpointRulesCommand(flow);
+        });
         sendAppRemoveNotification(flow.getFlowId(), FlowApplication.TELESCOPE);
     }
 
-    private void removeAppForFlowPath(Flow flow) {
-        carrier.emitSpeakerCommand(buildUpdateIngressRuleCommand(flow, flow.getForwardPath()));
-        carrier.emitSpeakerCommand(buildUpdateEgressRuleCommand(flow, flow.getReversePath()));
-    }
-
-    private void removeFromDatabase(FlowPath flowPath, FlowApplication application) {
+    private void removeAppFromFlowPath(FlowPath flowPath, FlowApplication application) {
         Set<FlowApplication> applications = Optional.ofNullable(flowPath.getApplications()).orElse(new HashSet<>());
         applications.remove(application);
         flowPath.setApplications(applications);
@@ -196,7 +205,23 @@ public class AppsManagerService {
         return FlowApplication.valueOf(application.toUpperCase());
     }
 
-    private UpdateIngressFlow buildUpdateIngressRuleCommand(Flow flow, FlowPath flowPath) {
+    private void sendUpdateFlowEndpointRulesCommand(Flow flow) throws SwitchPropertiesNotFoundException {
+        carrier.emitSpeakerCommand(buildUpdateFlowEndpointRulesCommand(flow));
+    }
+
+    private UpdateIngressAndEgressFlows buildUpdateFlowEndpointRulesCommand(Flow flow)
+            throws SwitchPropertiesNotFoundException {
+        SwitchId switchId = flow.getSrcSwitch().getSwitchId();
+        SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
+        Objects.requireNonNull(switchProperties.getTelescopePort(),
+                format("Telescope port for switch '%s' is not set", switchId));
+
+        return new UpdateIngressAndEgressFlows(buildIngressRuleCommand(flow, flow.getForwardPath()),
+                buildEgressRuleCommand(flow, flow.getReversePath()), switchProperties.getTelescopePort());
+    }
+
+    private InstallIngressFlow buildIngressRuleCommand(Flow flow, FlowPath flowPath) {
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
 
@@ -206,11 +231,12 @@ public class AppsManagerService {
                     format("FlowSegment was not found for ingress flow rule, flowId: %s", flow.getFlowId()));
         }
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
-        return new UpdateIngressFlow(flowCommandFactory.buildInstallIngressFlow(flow, flowPath,
-                ingressSegment.getSrcPort(), encapsulationResources));
+
+        return flowCommandFactory.buildInstallIngressFlow(flow, flowPath, ingressSegment.getSrcPort(),
+                encapsulationResources);
     }
 
-    private UpdateEgressFlow buildUpdateEgressRuleCommand(Flow flow, FlowPath flowPath) {
+    private InstallEgressFlow buildEgressRuleCommand(Flow flow, FlowPath flowPath) {
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
 
@@ -220,8 +246,8 @@ public class AppsManagerService {
                     format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flowPath);
-        return new UpdateEgressFlow(flowCommandFactory.buildInstallEgressFlow(flowPath,
-                egressSegment.getDestPort(), encapsulationResources));
+
+        return flowCommandFactory.buildInstallEgressFlow(flowPath, egressSegment.getDestPort(), encapsulationResources);
     }
 
     private EncapsulationResources getEncapsulationResources(Flow flow, FlowPath flowPath) {
@@ -241,12 +267,19 @@ public class AppsManagerService {
     /**
      * Create exclusion for the flow.
      */
-    public void processCreateExclusion(CreateExclusion payload) throws FlowNotFoundException {
+    public void processCreateExclusion(CreateExclusion payload)
+            throws FlowNotFoundException, ExclusionAlreadyExistException {
         Flow flow = getFlow(payload.getFlowId());
 
         checkTelescopeAppInstallation(flow);
 
         Exclusion exclusion = payload.getExclusion();
+        Optional<ApplicationRule> ruleOptional = applicationRepository.lookupRuleByMatchAndFlow(
+                flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), exclusion.getSrcIp(), exclusion.getSrcPort(),
+                exclusion.getDstIp(), exclusion.getDstPort(), exclusion.getProto(), exclusion.getEthType());
+        if (ruleOptional.isPresent()) {
+            throw new ExclusionAlreadyExistException(exclusion);
+        }
 
         Cookie cookie = Cookie.buildExclusionCookie(flow.getForwardPath().getCookie().getUnmaskedValue(), true);
         ApplicationRule rule = ApplicationRule.builder()
@@ -278,6 +311,7 @@ public class AppsManagerService {
         carrier.emitNotification(CreateExclusionResult.builder()
                 .flowId(payload.getFlowId())
                 .application(payload.getApplication())
+                .expirationTimeout(payload.getExpirationTimeout())
                 .exclusion(payload.getExclusion())
                 .success(true)
                 .build());

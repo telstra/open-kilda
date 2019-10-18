@@ -23,7 +23,7 @@ import org.openkilda.messaging.error.ErrorType;
 
 public interface AppsManagerCarrier {
 
-    void emitNorthboundErrorMessage(ErrorType errorType, String errorMessage);
+    void emitErrorMessage(ErrorType errorType, String errorMessage);
 
     void emitNorthboundResponse(MessageData payload);
 

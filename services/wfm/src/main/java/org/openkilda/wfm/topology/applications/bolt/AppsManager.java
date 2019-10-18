@@ -35,8 +35,10 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.ExclusionAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.applications.AppsManagerCarrier;
 import org.openkilda.wfm.topology.applications.AppsTopology.ComponentId;
@@ -91,13 +93,16 @@ public class AppsManager extends AbstractBolt {
             processMessage(message);
         } catch (FlowNotFoundException e) {
             log.error("Flow not found", e);
-            carrier.emitNorthboundErrorMessage(ErrorType.NOT_FOUND, e.getMessage());
+            carrier.emitErrorMessage(ErrorType.NOT_FOUND, e.getMessage());
+        } catch (SwitchPropertiesNotFoundException e) {
+            log.error("Switch properties not found", e);
+            carrier.emitErrorMessage(ErrorType.NOT_FOUND, e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("Invalid request parameters", e);
-            carrier.emitNorthboundErrorMessage(ErrorType.PARAMETERS_INVALID, e.getMessage());
+            carrier.emitErrorMessage(ErrorType.PARAMETERS_INVALID, e.getMessage());
         } catch (Exception e) {
             log.error("Unhandled exception", e);
-            carrier.emitNorthboundErrorMessage(ErrorType.INTERNAL_ERROR, e.getMessage());
+            carrier.emitErrorMessage(ErrorType.INTERNAL_ERROR, e.getMessage());
         }
     }
 
@@ -108,6 +113,9 @@ public class AppsManager extends AbstractBolt {
         } catch (FlowNotFoundException e) {
             log.error("Flow not found", e);
             carrier.emitAppError(ErrorAppType.NOT_FOUND, e.getMessage());
+        } catch (ExclusionAlreadyExistException e) {
+            log.error("Exclusion already exists", e);
+            carrier.emitAppError(ErrorAppType.ALREADY_EXISTS, e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("Invalid request parameters", e);
             carrier.emitAppError(ErrorAppType.PARAMETERS_INVALID, e.getMessage());
@@ -117,7 +125,7 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processMessage(Message message) throws FlowNotFoundException {
+    private void processMessage(Message message) throws FlowNotFoundException, SwitchPropertiesNotFoundException {
         if (message instanceof CommandMessage) {
             processCommandData(((CommandMessage) message).getData());
         } else {
@@ -125,7 +133,7 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processAppMessage(AppMessage message) throws FlowNotFoundException {
+    private void processAppMessage(AppMessage message) throws FlowNotFoundException, ExclusionAlreadyExistException {
         if (message instanceof CommandAppMessage) {
             processCommandAppData(message.getPayload());
         } else {
@@ -145,7 +153,7 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processCommandAppData(AppData payload) throws FlowNotFoundException {
+    private void processCommandAppData(AppData payload) throws FlowNotFoundException, ExclusionAlreadyExistException {
         if (payload instanceof CreateExclusion) {
             service.processCreateExclusion((CreateExclusion) payload);
         } else if (payload instanceof RemoveExclusion) {
@@ -166,7 +174,7 @@ public class AppsManager extends AbstractBolt {
     private class AppsManagerCarrierImpl implements AppsManagerCarrier {
 
         @Override
-        public void emitNorthboundErrorMessage(ErrorType errorType, String errorMessage) {
+        public void emitErrorMessage(ErrorType errorType, String errorMessage) {
             ErrorData errorData = new ErrorData(errorType, errorMessage, "Error in the Apps Manager");
             emitNorthboundResponse(errorData);
         }

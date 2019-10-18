@@ -276,6 +276,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
             sf.setMultiTable(update.isMultiTable());
             sf.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
+            sf.setTelescopePort(update.getTelescopePort());
 
             switchPropertiesRepository.createOrUpdate(sf);
 

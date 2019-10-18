@@ -30,4 +30,7 @@ public class SwitchPropertiesDto implements Serializable {
 
     @JsonProperty("multi_table")
     private boolean multiTable;
+
+    @JsonProperty("telescope_port")
+    private Integer telescopePort;
 }

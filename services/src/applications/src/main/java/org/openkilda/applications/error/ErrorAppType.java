@@ -22,17 +22,13 @@ import lombok.AllArgsConstructor;
 public enum ErrorAppType {
     INTERNAL_ERROR("Internal service error"),
 
-    CREATION_FAILURE("Flow creation error"),
-
-    UPDATE_FAILURE("Flow update error"),
-
-    DELETION_FAILURE("Flow deletion error"),
-
     NOT_IMPLEMENTED("Feature not implemented"),
 
     NOT_FOUND("Object was not found"),
 
     PARAMETERS_INVALID("Invalid request parameters"),
+
+    ALREADY_EXISTS("Object already exists"),
 
     REQUEST_INVALID("Invalid request");
 

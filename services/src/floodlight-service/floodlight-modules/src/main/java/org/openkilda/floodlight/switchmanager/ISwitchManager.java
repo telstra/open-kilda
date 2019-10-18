@@ -506,7 +506,8 @@ public interface ISwitchManager extends IFloodlightService {
      * @return transaction id.
      * @throws SwitchOperationException Switch not found.
      */
-    Long installTelescopeFlow(DatapathId dpid, long cookie, int tunnelId) throws SwitchOperationException;
+    Long installTelescopeFlow(DatapathId dpid, long cookie, int tunnelId, int telescopePort)
+            throws SwitchOperationException;
 
     /**
      *Remove Telescope flow.

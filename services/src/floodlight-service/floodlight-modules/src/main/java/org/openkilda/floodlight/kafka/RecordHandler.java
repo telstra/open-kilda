@@ -70,8 +70,7 @@ import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.UpdateEgressFlow;
-import org.openkilda.messaging.command.flow.UpdateIngressFlow;
+import org.openkilda.messaging.command.flow.UpdateIngressAndEgressFlows;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -195,10 +194,6 @@ class RecordHandler implements Runnable {
             doDiscoverIslCommand(message);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
-        } else if (data instanceof UpdateIngressFlow) {
-            doProcessUpdateIngressFlow(message);
-        } else if (data instanceof UpdateEgressFlow) {
-            doProcessUpdateEgressFlow(message);
         } else if (data instanceof InstallIngressFlow) {
             doProcessIngressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallLldpFlow) {
@@ -253,6 +248,8 @@ class RecordHandler implements Runnable {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
             doAliveRequest(message);
+        } else if (data instanceof UpdateIngressAndEgressFlows) {
+            doProcessUpdateIngressAndEgressFlows(message);
         } else if (data instanceof InstallExclusionRequest) {
             doInstallExclusion(message);
         } else if (data instanceof RemoveExclusionRequest) {
@@ -418,74 +415,65 @@ class RecordHandler implements Runnable {
                 command.getApplications());
     }
 
-    private void doProcessUpdateIngressFlow(CommandMessage message) {
-        InstallIngressFlow command = (InstallIngressFlow) message.getData();
-        logger.info("Updating ingress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
+    private void doProcessUpdateIngressAndEgressFlows(CommandMessage message) {
+        UpdateIngressAndEgressFlows commandData = (UpdateIngressAndEgressFlows) message.getData();
+        InstallIngressFlow ingressFlowCommand = commandData.getInstallIngressFlow();
+        InstallEgressFlow egressFlowCommand = commandData.getInstallEgressFlow();
+        int telescopePort = commandData.getTelescopePort();
 
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
-                .cookie(command.getCookie())
-                .encapsulationId(command.getTransitEncapsulationId())
-                .encapsulationType(command.getTransitEncapsulationType())
-                .egressSwitchId(command.getEgressSwitchId())
-                .inPort(command.getInputPort())
-                .outPort(command.getOutputPort())
-                .build();
-        RemoveFlow removeCommand = RemoveFlow.builder()
-                .transactionId(UUID.randomUUID())
-                .flowId("UPDATE_INGRESS")
-                .cookie(command.getCookie())
-                .criteria(criteria)
-                .multiTable(command.isMultiTable())
-                .switchId(command.getSwitchId())
-                .meterId(command.getMeterId())
-                .build();
+        logger.info("Updating ingress flow '{}' and egress flow '{}' on switch '{}'",
+                ingressFlowCommand.getId(), egressFlowCommand.getId(), ingressFlowCommand.getSwitchId());
 
+        DatapathId dpid = DatapathId.of(ingressFlowCommand.getSwitchId().toLong());
+
+        RemoveFlow removeIngressFlow = buildRemoveFlowCommand(ingressFlowCommand, "UPDATE_INGRESS");
+        RemoveFlow removeEgressFlow = buildRemoveFlowCommand(egressFlowCommand, "UPDATE_EGRESS");
         try {
-            processDeleteFlow(removeCommand, dpid);
-            installIngressFlow(command);
-            processApplications(command.getApplications(), dpid, command.getCookie(),
-                    command.getTransitEncapsulationId());
+            processDeleteFlow(removeIngressFlow, dpid);
+            processDeleteFlow(removeEgressFlow, dpid);
+
+            installIngressFlow(ingressFlowCommand);
+            installEgressFlow(egressFlowCommand);
+
+            processApplications(ingressFlowCommand.getApplications(), dpid, ingressFlowCommand.getCookie(),
+                    ingressFlowCommand.getTransitEncapsulationId(), telescopePort);
         } catch (SwitchOperationException e) {
-            logger.error("Updating ingress rule (cookie = {}) was unsuccessful", command.getCookie(), e);
+            logger.error("Updating ingress rule (cookie = {}) and egress rule (cookie = {}) was unsuccessful",
+                    ingressFlowCommand.getCookie(), egressFlowCommand.getCookie(), e);
         }
     }
 
-    private void doProcessUpdateEgressFlow(CommandMessage message) {
-        InstallEgressFlow command = (InstallEgressFlow) message.getData();
-        logger.info("Updating egress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
-
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
+    private RemoveFlow buildRemoveFlowCommand(InstallTransitFlow command, String flowId) {
+        DeleteRulesCriteria.DeleteRulesCriteriaBuilder criteria = DeleteRulesCriteria.builder()
                 .cookie(command.getCookie())
                 .encapsulationId(command.getTransitEncapsulationId())
                 .encapsulationType(command.getTransitEncapsulationType())
                 .inPort(command.getInputPort())
-                .outPort(command.getOutputPort())
-                .build();
-        RemoveFlow removeCommand = RemoveFlow.builder()
-                .transactionId(UUID.randomUUID())
-                .flowId("UPDATE_EGRESS")
-                .cookie(command.getCookie())
-                .criteria(criteria)
-                .multiTable(command.isMultiTable())
-                .switchId(command.getSwitchId())
-                .build();
-
-        try {
-            processDeleteFlow(removeCommand, dpid);
-            installEgressFlow(command);
-            processApplications(command.getApplications(), dpid, command.getCookie(),
-                    command.getTransitEncapsulationId());
-        } catch (SwitchOperationException e) {
-            logger.error("Updating egress rule (cookie = {}) was unsuccessful", command.getCookie(), e);
+                .outPort(command.getOutputPort());
+        if (command instanceof InstallIngressFlow) {
+            criteria.egressSwitchId(((InstallIngressFlow) command).getEgressSwitchId());
         }
+
+        RemoveFlow.RemoveFlowBuilder removeCommand = RemoveFlow.builder()
+                .transactionId(UUID.randomUUID())
+                .flowId(flowId)
+                .cookie(command.getCookie())
+                .criteria(criteria.build())
+                .multiTable(command.isMultiTable())
+                .switchId(command.getSwitchId());
+
+        if (command instanceof InstallIngressFlow) {
+            removeCommand.meterId(((InstallIngressFlow) command).getMeterId());
+        }
+
+        return removeCommand.build();
     }
 
-    private void processApplications(Set<FlowApplication> applications,
-                                     DatapathId dpid, long flowCookie, int tunnelId) throws SwitchOperationException {
+    private void processApplications(Set<FlowApplication> applications, DatapathId dpid,
+                                     long flowCookie, int tunnelId, int telescopePort) throws SwitchOperationException {
         if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
-            context.getSwitchManager().installTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId);
+            context.getSwitchManager()
+                    .installTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId, telescopePort);
         } else {
             context.getSwitchManager().removeTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId);
         }

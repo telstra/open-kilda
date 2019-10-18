@@ -29,12 +29,17 @@ import lombok.EqualsAndHashCode;
 public class CreateExclusionResult extends ExclusionInfoData {
     private static final long serialVersionUID = 8358390289680992980L;
 
+    @JsonProperty("expiration_timeout")
+    private Integer expirationTimeout;
+
     @Builder
     @JsonCreator
     public CreateExclusionResult(@JsonProperty("flow_id") String flowId,
                                  @JsonProperty("application") String application,
+                                 @JsonProperty("expiration_timeout") Integer expirationTimeout,
                                  @JsonProperty("exclusion") Exclusion exclusion,
                                  @JsonProperty("success") Boolean success) {
         super(flowId, application, exclusion, success);
+        this.expirationTimeout = expirationTimeout;
     }
 }
