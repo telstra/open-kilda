@@ -137,7 +137,7 @@ public class SplitterBolt extends BaseRichBolt {
                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
             } else if (data instanceof FlowDeleteRequest) {
-                String flowId = ((FlowDeleteRequest) data).getPayload().getFlowId();
+                String flowId = ((FlowDeleteRequest) data).getFlowId();
 
                 Values values = new Values(message, flowId);
                 logger.info("Flow {} delete message: values={}", flowId, values);

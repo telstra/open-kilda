@@ -25,6 +25,7 @@ import org.openkilda.northbound.service.FlowService;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,6 +60,13 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlow(@PathVariable("flow_id") String flowId) {
         return flowService.rerouteFlowV2(flowId);
+    }
+
+    @ApiOperation(value = "Deletes flow", response = FlowResponseV2.class)
+    @DeleteMapping(value = "/{flow_id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowResponseV2> deleteFlow(@PathVariable(name = "flow_id") String flowId) {
+        return flowService.deleteFlowV2(flowId);
     }
 
 
