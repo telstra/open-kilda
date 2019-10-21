@@ -181,7 +181,7 @@ public abstract class OfFlowStatsMapper {
                 .applyActions(applyActions)
                 .goToMeter(meter)
                 .goToTable(table)
-                .metadata(metadata)
+                .writeMetadata(metadata)
                 .build();
     }
 

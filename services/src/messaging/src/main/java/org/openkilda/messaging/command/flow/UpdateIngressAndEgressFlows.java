@@ -35,12 +35,17 @@ public class UpdateIngressAndEgressFlows extends CommandData {
     @JsonProperty("telescope_port")
     private int telescopePort;
 
+    @JsonProperty("telescope_cookie")
+    private long telescopeCookie;
+
     @JsonCreator
     public UpdateIngressAndEgressFlows(@JsonProperty("ingress_flow") InstallIngressFlow installIngressFlow,
                                        @JsonProperty("egress_flow") InstallEgressFlow installEgressFlow,
-                                       @JsonProperty("telescope_port") int telescopePort) {
+                                       @JsonProperty("telescope_port") int telescopePort,
+                                       @JsonProperty("telescope_cookie") long telescopeCookie) {
         this.installIngressFlow = installIngressFlow;
         this.installEgressFlow = installEgressFlow;
         this.telescopePort = telescopePort;
+        this.telescopeCookie = telescopeCookie;
     }
 }

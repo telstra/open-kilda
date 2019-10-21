@@ -217,8 +217,11 @@ public class AppsManagerService {
         Objects.requireNonNull(switchProperties.getTelescopePort(),
                 format("Telescope port for switch '%s' is not set", switchId));
 
+        Cookie cookie = flow.getForwardPath().getCookie();
+        Cookie telescopeCookie = Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(), cookie.isMaskedAsForward());
         return new UpdateIngressAndEgressFlows(buildIngressRuleCommand(flow, flow.getForwardPath()),
-                buildEgressRuleCommand(flow, flow.getReversePath()), switchProperties.getTelescopePort());
+                buildEgressRuleCommand(flow, flow.getReversePath()), switchProperties.getTelescopePort(),
+                telescopeCookie.getValue());
     }
 
     private InstallIngressFlow buildIngressRuleCommand(Flow flow, FlowPath flowPath) {

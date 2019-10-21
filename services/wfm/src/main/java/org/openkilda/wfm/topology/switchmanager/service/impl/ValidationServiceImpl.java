@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.LldpResources;
 import org.openkilda.model.Meter;
@@ -99,8 +100,19 @@ public class ValidationServiceImpl implements ValidationService {
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
+        paths.stream()
+                .filter(path -> path.getApplications() != null
+                        && path.getApplications().contains(FlowApplication.TELESCOPE))
+                .map(FlowPath::getCookie)
+                .map(this::buildTelescopeCookie)
+                .forEach(expectedCookies::add);
+
         return makeRulesResponse(
                 expectedCookies, presentRules, expectedDefaultRules, switchId);
+    }
+
+    private long buildTelescopeCookie(Cookie flowCookie) {
+        return Cookie.buildTelescopeCookie(flowCookie.getUnmaskedValue(), true).getValue();
     }
 
     @VisibleForTesting
@@ -145,6 +157,17 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         Set<Long> misconfiguredRules = new HashSet<>();
+        presentRules.forEach(rule -> {
+            Cookie cookie = new Cookie(rule.getCookie());
+            long telescopeCookie = buildTelescopeCookie(cookie);
+            Long writeMetadata = rule.getInstructions().getWriteMetadata();
+            if (Cookie.isMaskedAsFlowCookie(cookie.getValue()) && properRules.contains(cookie.getValue())
+                    && expectedCookies.contains(telescopeCookie) == (writeMetadata == null)) {
+
+                misconfiguredRules.add(cookie.getValue());
+                properRules.remove(cookie.getValue());
+            }
+        });
 
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);

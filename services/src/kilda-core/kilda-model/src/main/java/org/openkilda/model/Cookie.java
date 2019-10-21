@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
  * 4 - Multi-table ISL rule for vxlan encapsulation for transit table
  * 5 - Multi-table customer flow rule for ingress table pass-through
  * 6 - Exclude rule
+ * 7 - Telescope rule.
  * </p>
  */
 @Value

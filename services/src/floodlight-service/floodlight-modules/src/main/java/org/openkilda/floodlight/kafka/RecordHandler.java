@@ -420,9 +420,10 @@ class RecordHandler implements Runnable {
         InstallIngressFlow ingressFlowCommand = commandData.getInstallIngressFlow();
         InstallEgressFlow egressFlowCommand = commandData.getInstallEgressFlow();
         int telescopePort = commandData.getTelescopePort();
+        long telescopeCookie = commandData.getTelescopeCookie();
 
-        logger.info("Updating ingress flow '{}' and egress flow '{}' on switch '{}'",
-                ingressFlowCommand.getId(), egressFlowCommand.getId(), ingressFlowCommand.getSwitchId());
+        logger.info("Updating ingress flow and egress flow with ID '{}' on switch '{}'",
+                ingressFlowCommand.getId(), ingressFlowCommand.getSwitchId());
 
         DatapathId dpid = DatapathId.of(ingressFlowCommand.getSwitchId().toLong());
 
@@ -435,7 +436,7 @@ class RecordHandler implements Runnable {
             installIngressFlow(ingressFlowCommand);
             installEgressFlow(egressFlowCommand);
 
-            processApplications(ingressFlowCommand.getApplications(), dpid, ingressFlowCommand.getCookie(),
+            processApplications(ingressFlowCommand.getApplications(), dpid, telescopeCookie,
                     ingressFlowCommand.getTransitEncapsulationId(), telescopePort);
         } catch (SwitchOperationException e) {
             logger.error("Updating ingress rule (cookie = {}) and egress rule (cookie = {}) was unsuccessful",
@@ -469,19 +470,14 @@ class RecordHandler implements Runnable {
         return removeCommand.build();
     }
 
-    private void processApplications(Set<FlowApplication> applications, DatapathId dpid,
-                                     long flowCookie, int tunnelId, int telescopePort) throws SwitchOperationException {
+    private void processApplications(Set<FlowApplication> applications, DatapathId dpid, long telescopeCookie,
+                                     int tunnelId, int telescopePort) throws SwitchOperationException {
         if (applications != null && applications.contains(FlowApplication.TELESCOPE)) {
             context.getSwitchManager()
-                    .installTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId, telescopePort);
+                    .installTelescopeFlow(dpid, telescopeCookie, tunnelId, telescopePort);
         } else {
-            context.getSwitchManager().removeTelescopeFlow(dpid, getTelescopeCookie(flowCookie), tunnelId);
+            context.getSwitchManager().removeTelescopeFlow(dpid, telescopeCookie, tunnelId);
         }
-    }
-
-    private long getTelescopeCookie(long flowCookie) {
-        Cookie cookie = new Cookie(flowCookie);
-        return Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(), cookie.isMaskedAsForward()).getValue();
     }
 
     private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,
