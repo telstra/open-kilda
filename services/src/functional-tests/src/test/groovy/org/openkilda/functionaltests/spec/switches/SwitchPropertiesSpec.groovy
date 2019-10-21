@@ -9,7 +9,12 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
 
+@Narrative("""Switch properties are created automatically once switch is connected to the controller
+and deleted once switch is deleted.
+Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
+Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
 class SwitchPropertiesSpec extends HealthCheckSpecification {
     def "Able to manipulate with switch properties"() {
         given: "A switch with switch feature on it"
