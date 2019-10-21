@@ -21,6 +21,7 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -63,6 +64,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CommandBuilderImplTest {
 
@@ -87,7 +90,9 @@ public class CommandBuilderImplTest {
     @Test
     public void testCommandBuilder() {
         List<BaseInstallFlow> response = commandBuilder
-                .buildCommandsToSyncMissingRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
+                .buildCommandsToSyncMissingRules(SWITCH_ID_B,
+                        Stream.of(1L, 2L, 3L, 4L).map(Cookie::buildForwardCookie).map(Cookie::getValue)
+                                .collect(Collectors.toList()));
         assertEquals(4, response.size());
         assertTrue(response.get(0) instanceof InstallEgressFlow);
         assertTrue(response.get(1) instanceof InstallTransitFlow);
@@ -119,34 +124,45 @@ public class CommandBuilderImplTest {
                     .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                     .build();
 
-            FlowPath flowPath = FlowPath.builder()
+            FlowPath forwardPath = FlowPath.builder()
                     .flow(flow)
                     .pathId(new PathId(String.format(
                             "(%s-%s)--%s", srcSwitchId.toOtsdFormat(), destSwitchId.toOtsdFormat(), UUID.randomUUID())))
                     .srcSwitch(srcSwitch)
                     .destSwitch(destSwitch)
-                    .cookie(new Cookie(cookie))
+                    .cookie(Cookie.buildForwardCookie(cookie))
                     .segments(emptyList())
                     .build();
-            flow.setForwardPath(forward ? flowPath : null);
-            flow.setReversePath(forward ? null : flowPath);
+            FlowPath reversePath = FlowPath.builder()
+                    .flow(flow)
+                    .pathId(new PathId(String.format(
+                            "(%s-%s)--%s", destSwitchId.toOtsdFormat(), srcSwitchId.toOtsdFormat(), UUID.randomUUID())))
+                    .srcSwitch(destSwitch)
+                    .destSwitch(srcSwitch)
+                    .cookie(Cookie.buildReverseCookie(cookie))
+                    .segments(emptyList())
+                    .build();
+            flow.setForwardPath(forward ? forwardPath : reversePath);
+            flow.setReversePath(forward ? reversePath : forwardPath);
 
-            when(flowPathRepository.findById(eq(flowPath.getPathId())))
-                    .thenReturn(Optional.of(flowPath));
+            when(flowPathRepository.findById(eq(forwardPath.getPathId())))
+                    .thenReturn(Optional.of(forwardPath));
+            when(flowPathRepository.findById(eq(reversePath.getPathId())))
+                    .thenReturn(Optional.of(reversePath));
             when(flowPathRepository.findByFlowId(eq(flowId)))
-                    .thenReturn(asList(flowPath));
+                    .thenReturn(asList(forwardPath, reversePath));
             when(flowRepository.findById(eq(flowId)))
                     .thenReturn(Optional.of(flow));
 
             TransitVlan transitVlanEntity = TransitVlan.builder()
                     .flowId(flow.getFlowId())
-                    .pathId(flowPath.getPathId())
+                    .pathId(forwardPath.getPathId())
                     .vlan(transitVlan)
                     .build();
-            when(transitVlanRepository.findByPathId(flowPath.getPathId(), null))
+            when(transitVlanRepository.findByPathId(eq(forwardPath.getPathId()), any()))
                     .thenReturn(singleton(transitVlanEntity));
 
-            return flowPath;
+            return forwardPath;
         }
 
         private PathSegment buildSegment(FlowPath path, SwitchId srcSwitchId, SwitchId destSwitchId) {

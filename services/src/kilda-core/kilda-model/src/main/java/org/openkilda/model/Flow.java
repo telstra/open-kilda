@@ -446,15 +446,15 @@ public class Flow implements Serializable {
     /**
      * Return opposite pathId to passed pathId.
      */
-    public PathId getOppositePathId(@NonNull PathId pathId) {
-        if (pathId.equals(forwardPathId)) {
-            return reversePathId;
-        } else if (pathId.equals(reversePathId)) {
-            return forwardPathId;
-        } else if (pathId.equals(protectedForwardPathId)) {
-            return protectedReversePathId;
-        } else if (pathId.equals(protectedReversePathId)) {
-            return protectedForwardPathId;
+    public Optional<PathId> getOppositePathId(@NonNull PathId pathId) {
+        if (pathId.equals(forwardPathId) && reversePathId != null) {
+            return Optional.of(reversePathId);
+        } else if (pathId.equals(reversePathId) && forwardPathId != null) {
+            return Optional.of(forwardPathId);
+        } else if (pathId.equals(protectedForwardPathId) && protectedReversePathId != null) {
+            return Optional.of(protectedReversePathId);
+        } else if (pathId.equals(protectedReversePathId) && protectedForwardPathId != null) {
+            return Optional.of(protectedForwardPathId);
         } else {
             // Handling the case of non-active paths.
             Optional<Long> requestedPathCookie = paths.stream()
@@ -463,18 +463,11 @@ public class Flow implements Serializable {
                     .map(FlowPath::getCookie)
                     .map(Cookie::getUnmaskedValue);
             if (requestedPathCookie.isPresent()) {
-                Optional<PathId> oppositePathId = paths.stream()
+                return paths.stream()
                         .filter(path -> !path.getPathId().equals(pathId))
                         .filter(path -> path.getCookie().getUnmaskedValue() == requestedPathCookie.get())
                         .findAny()
                         .map(FlowPath::getPathId);
-                if (oppositePathId.isPresent()) {
-                    return oppositePathId.get();
-                } else {
-                    throw new IllegalArgumentException(
-                            format("Flow %s does not have reverse path with cookie %s", flowId,
-                                    requestedPathCookie.get()));
-                }
             } else {
                 throw new IllegalArgumentException(format("Flow %s does not have path %s", flowId, pathId));
             }

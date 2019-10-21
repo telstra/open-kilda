@@ -68,6 +68,14 @@ public interface FlowService {
     CompletableFuture<FlowResponsePayload> deleteFlow(final String id);
 
     /**
+     * Deletes flow.
+     *
+     * @param id flow id
+     * @return deleted flow
+     */
+    CompletableFuture<FlowResponseV2> deleteFlowV2(final String id);
+
+    /**
      * Updates flow.
      *
      * @param flow flow

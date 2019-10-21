@@ -36,6 +36,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String FLOW_CREATE_EVENT = "flow_create";
     private static final String FLOW_UPDATE_EVENT = "flow_update";
     private static final String FLOW_DELETE_EVENT = "flow_delete";
+    private static final String DELETE_RESULT_EVENT = "flow_delete_result";
     private static final String PATHS_SWAP_EVENT = "paths_swap";
     private static final String REROUTE_EVENT = "flow_reroute";
     private static final String REROUTE_RESULT_EVENT = "flow_reroute_result";
@@ -190,6 +191,32 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_DELETE_EVENT);
         invokeLogger(Level.INFO, String.format("Delete the flow %s", flowId), data);
+    }
+
+    /**
+     * Log a flow-delete-successful event.
+     */
+    public void onSuccessfulFlowDelete(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-delete-successful");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, DELETE_RESULT_EVENT);
+        data.put("delete-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful delete of the flow %s", flowId), data);
+    }
+
+    /**
+     * Log a flow-delete-failed event.
+     */
+    public void onFailedFlowDelete(String flowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-delete-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, DELETE_RESULT_EVENT);
+        data.put("delete-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the flow %s, reason: %s", flowId, failureReason),
+                data);
     }
 
     /**

@@ -23,11 +23,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.flow.FlowRequest;
-import org.openkilda.pce.AvailableNetworkFactory;
-import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathComputerConfig;
-import org.openkilda.pce.PathComputerFactory;
+import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -36,8 +32,8 @@ import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
-import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
+import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
@@ -46,43 +42,36 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
+public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
-    private final FlowCreateConfig config;
+    private final FlowDeleteConfig config;
     private final PersistenceManager persistenceManager;
-    private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
 
-    private transient FlowCreateService service;
+    private transient FlowDeleteService service;
     private String currentKey;
 
-    public FlowCreateHubBolt(FlowCreateConfig config, PersistenceManager persistenceManager,
-                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+    public FlowDeleteHubBolt(FlowDeleteConfig config, PersistenceManager persistenceManager,
+                             FlowResourcesConfig flowResourcesConfig) {
         super(config);
 
         this.config = config;
         this.persistenceManager = persistenceManager;
-        this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
     }
 
     @Override
     protected void init() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        AvailableNetworkFactory availableNetworkFactory =
-                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
-        PathComputer pathComputer =
-                new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
-
-        service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getFlowCreationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
+        service = new FlowDeleteService(this, persistenceManager, resourcesManager,
+                config.getTransactionRetriesLimit(), config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
-        FlowRequest payload = pullValue(input, FIELD_ID_PAYLOAD, FlowRequest.class);
-        service.handleRequest(currentKey, pullContext(input), payload);
+        FlowDeleteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowDeleteRequest.class);
+        service.handleRequest(currentKey, pullContext(input), request.getFlowId());
     }
 
     @Override
@@ -95,6 +84,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
         service.handleTimeout(key);
     }
 
@@ -131,15 +121,15 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Getter
-    public static class FlowCreateConfig extends Config {
-        private int flowCreationRetriesLimit;
+    public static class FlowDeleteConfig extends Config {
+        private int transactionRetriesLimit;
         private int speakerCommandRetriesLimit;
 
-        @Builder(builderMethodName = "flowCreateBuilder", builderClassName = "flowCreateBuild")
-        public FlowCreateConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
-                                int flowCreationRetriesLimit, int speakerCommandRetriesLimit) {
+        @Builder(builderMethodName = "flowDeleteBuilder", builderClassName = "flowDeleteBuild")
+        public FlowDeleteConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
+                                int transactionRetriesLimit, int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, timeoutMs, autoAck);
-            this.flowCreationRetriesLimit = flowCreationRetriesLimit;
+            this.transactionRetriesLimit = transactionRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
     }

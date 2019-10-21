@@ -132,6 +132,18 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
     }
 
     @Override
+    public List<RemoveRule> createRemoveNonIngressRules(CommandContext context, Flow flow, FlowPath path) {
+        if (flow.isOneSwitchFlow()) {
+            // Removing of single switch rules is done with no output port in criteria.
+            return Collections.emptyList();
+        }
+
+        return collectRemoveNonIngressRules(context, path,
+                path.isForward() ? flow.getDestPort() : flow.getSrcPort(),
+                getEncapsulation(path.getPathId(), path.getPathId()));
+    }
+
+    @Override
     public List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow) {
         return createRemoveIngressRules(context, flow, flow.getForwardPath(), flow.getReversePath());
     }
@@ -141,11 +153,19 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                                                      FlowPath forwardPath, FlowPath reversePath) {
         RemoveRule removeForwardIngress =
                 buildRemoveIngressRule(context, forwardPath, flow.getSrcPort(), flow.getSrcVlan(),
-                        getEncapsulation(forwardPath.getPathId(), reversePath.getPathId()));
+                        flow.getEncapsulationType());
         RemoveRule removeReverseIngress =
                 buildRemoveIngressRule(context, reversePath, flow.getDestPort(), flow.getDestVlan(),
-                        getEncapsulation(reversePath.getPathId(), forwardPath.getPathId()));
+                        flow.getEncapsulationType());
         return ImmutableList.of(removeForwardIngress, removeReverseIngress);
+    }
+
+    @Override
+    public List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow, FlowPath path) {
+        return ImmutableList.of(buildRemoveIngressRule(context, path,
+                path.isForward() ? flow.getSrcPort() : flow.getDestPort(),
+                path.isForward() ? flow.getSrcVlan() : flow.getDestVlan(),
+                flow.getEncapsulationType()));
     }
 
     private InstallMultiSwitchIngressRule buildInstallIngressRule(CommandContext context, FlowPath flowPath,
@@ -270,11 +290,11 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
     }
 
     private RemoveRule buildRemoveIngressRule(CommandContext context, FlowPath flowPath, int inputPort, int inputVlanId,
-                                              EncapsulationResources encapsulationResources) {
+                                              FlowEncapsulationType encapsulationType) {
         Integer outputPort = flowPath.getSegments().isEmpty() ? null : flowPath.getSegments().get(0).getSrcPort();
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
-                inputVlanId, 0, outputPort, encapsulationResources.getEncapsulationType(),
+                inputVlanId, 0, outputPort, encapsulationType,
                 null);
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()

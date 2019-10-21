@@ -37,6 +37,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowHsSpeakerTopic();
     }
 
+    @Key("flow.hub.transaction.retries")
+    @Default("3")
+    int getHubTransactionRetries();
+
     @Key("flow.create.hub.timeout.seconds")
     @Default("30")
     int getCreateHubTimeoutSeconds();
@@ -60,4 +64,16 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.reroute.speaker.timeout.seconds")
     @Default("10")
     int getRerouteSpeakerTimeoutSeconds();
+
+    @Key("flow.delete.hub.timeout.seconds")
+    @Default("30")
+    int getDeleteHubTimeoutSeconds();
+
+    @Key("flow.delete.speaker.timeout.seconds")
+    @Default("10")
+    int getDeleteSpeakerTimeoutSeconds();
+
+    @Key("flow.delete.speaker.command.retries")
+    @Default("3")
+    int getDeleteSpeakerCommandRetries();
 }

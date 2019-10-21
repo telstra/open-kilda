@@ -103,7 +103,10 @@ public class CommandBuilderImpl implements CommandBuilder {
                                 PathSegment foundIngressSegment = flowPath.getSegments().get(0);
                                 EncapsulationResources encapsulationResources =
                                         flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                                                flow.getOppositePathId(flowPath.getPathId()),
+                                                flow.getOppositePathId(flowPath.getPathId())
+                                                        .orElseThrow(() -> new IllegalStateException(
+                                                                format("Flow %s does not have reverse path for %s",
+                                                                        flow.getFlowId(), flowPath.getPathId()))),
                                                 flow.getEncapsulationType())
                                                 .orElseThrow(() -> new IllegalStateException(
                                         format("Encapsulation resources are not found for path %s", flowPath)));
@@ -202,7 +205,10 @@ public class CommandBuilderImpl implements CommandBuilder {
 
         EncapsulationResources encapsulationResources =
                 flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                        flow.getOppositePathId(flowPath.getPathId()), flow.getEncapsulationType())
+                        flow.getOppositePathId(flowPath.getPathId())
+                                .orElseThrow(() -> new IllegalStateException(
+                                        format("Flow %s does not have reverse path for %s",
+                                                flow.getFlowId(), flowPath.getPathId()))), flow.getEncapsulationType())
                         .orElseThrow(() -> new IllegalStateException(
                                         format("Encapsulation resources are not found for path %s", flowPath)));
 
