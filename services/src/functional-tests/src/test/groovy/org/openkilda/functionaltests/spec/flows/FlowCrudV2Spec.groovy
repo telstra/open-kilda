@@ -83,7 +83,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.checkRulesOnSwitches(flow.flowId, RULES_INSTALLATION_TIME, true)
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -129,7 +129,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         when: "Remove the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
         !northbound.getAllFlows().find { it.id == flow.flowId }
@@ -169,7 +169,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.getAllFlows()*.id.containsAll(flows*.flowId)
 
         and: "Cleanup: delete flows"
-        flows.each { flowHelper.deleteFlow(it.flowId) }
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         data << [
@@ -266,7 +266,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         when: "Remove the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
         !northbound.getAllFlows().find { it.id == flow.flowId }
@@ -291,7 +291,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Cleanup: delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
@@ -331,7 +331,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow, conflictingFlow)
 
         and: "Cleanup: delete the dominant flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << getConflictingData() + [
@@ -376,7 +376,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
         and: "Delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
         database.resetCosts()
     }
 
@@ -568,7 +568,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowInfo.lastUpdated < newFlowInfo.lastUpdated
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Unroll
@@ -592,7 +592,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowInfo.lastUpdated < newFlowInfo.lastUpdated
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
@@ -668,7 +668,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System allows to create diverse flows"() {
@@ -695,7 +695,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "System allows to set/update description/priority/max-latency for a flow"(){
@@ -742,7 +742,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         newFlowInfo.periodicPings == newPeriodicPing
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
@@ -823,7 +823,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flows"
-        [vlanFlow, defaultFlow].each { flow -> flowHelper.deleteFlow(flow.flowId) }
+        [vlanFlow, defaultFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
     }
 
     @Shared

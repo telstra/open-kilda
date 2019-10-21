@@ -43,7 +43,6 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
-import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
@@ -256,10 +255,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowDeleteRequestTest() throws IOException, ClassNotFoundException {
-        FlowDto deleteFlow = new FlowDto();
-        deleteFlow.setFlowId(flowName);
-        deleteFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(false, false, false, false));
-        FlowDeleteRequest data = new FlowDeleteRequest(deleteFlow);
+        FlowDeleteRequest data = new FlowDeleteRequest(flowName);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -275,7 +271,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(deleteFlow.hashCode(), resultData.getPayload().hashCode());
+        assertEquals(data.getFlowId(), resultData.getFlowId());
     }
 
     @Test

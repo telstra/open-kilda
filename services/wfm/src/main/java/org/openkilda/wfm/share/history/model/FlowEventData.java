@@ -42,7 +42,8 @@ public class FlowEventData {
     public enum Event {
         CREATE("Flow creating"),
         UPDATE("Flow updating"),
-        REROUTE("Flow rerouting");
+        REROUTE("Flow rerouting"),
+        DELETE("Flow deleting");
 
         private String description;
     }

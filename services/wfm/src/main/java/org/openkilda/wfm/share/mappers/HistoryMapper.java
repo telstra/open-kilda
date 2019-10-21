@@ -110,6 +110,25 @@ public abstract class HistoryMapper {
     @Mapping(source = "flow.flowId", target = "flowId")
     @Mapping(source = "flow.bandwidth", target = "bandwidth")
     @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
+    @Mapping(source = "forward.cookie", target = "forwardCookie")
+    @Mapping(source = "forward.meterId", target = "forwardMeterId")
+    @Mapping(source = "forward.status", target = "forwardStatus")
+    @BeanMapping(ignoreByDefault = true)
+    public abstract FlowDumpData map(Flow flow, FlowPath forward);
+
+    /**
+     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * to the dump data.
+     */
+    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(source = "flow.srcPort", target = "sourcePort")
+    @Mapping(source = "flow.destPort", target = "destinationPort")
+    @Mapping(source = "flow.srcVlan", target = "sourceVlan")
+    @Mapping(source = "flow.destVlan", target = "destinationVlan")
+    @Mapping(source = "flow.flowId", target = "flowId")
+    @Mapping(source = "flow.bandwidth", target = "bandwidth")
+    @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
     @Mapping(target = "forwardCookie", expression =
             "java(org.openkilda.model.Cookie.buildForwardCookie(resources.getUnmaskedCookie()))")
     @Mapping(target = "reverseCookie", expression =
