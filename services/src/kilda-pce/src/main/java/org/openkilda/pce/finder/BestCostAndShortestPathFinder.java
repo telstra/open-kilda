@@ -344,10 +344,6 @@ public class BestCostAndShortestPathFinder implements PathFinder {
 
         for (Edge i : path) {
             Node srcSwitch = i.getSrcSwitch();
-            if (srcSwitch == null) {
-                throw new IllegalStateException(
-                        format("confirmIsls: Found a null switch during getPath(hint): %s", i.getSrcSwitch()));
-            }
 
             Set<Edge> pathsToDst = srcSwitch.getOutgoingLinks().stream()
                     .filter(link -> link.getDestSwitch().equals(i.getDestSwitch()))

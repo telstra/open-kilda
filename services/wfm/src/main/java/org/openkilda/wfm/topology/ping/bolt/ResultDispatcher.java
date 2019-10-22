@@ -35,12 +35,9 @@ public class ResultDispatcher extends Abstract {
         PingContext pingContext = pullPingContext(input);
 
         final String stream = dispatch(pingContext);
-        if (stream == null) {
-            log.error("There is no result manager for ping kind {}", pingContext.getKind());
-        } else {
-            Values output = new Values(pingContext, pullContext(input));
-            getOutput().emit(stream, input, output);
-        }
+
+        Values output = new Values(pingContext, pullContext(input));
+        getOutput().emit(stream, input, output);
     }
 
     private String dispatch(PingContext pingContext) {

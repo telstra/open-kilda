@@ -84,7 +84,7 @@ public class PingResponseCommand extends PingCommand {
     private void process(PingData data) {
         Long latency = input.getLatency();
         if (latency == null) {
-            log.warn("There is no latency info for {} - ping latency is unreliable");
+            log.warn("There is no latency info for {} - ping latency is unreliable", data.getPingId());
             latency = 0L;
         }
         PingMeters meters = data.produceMeasurements(input.getReceiveTime(), latency);

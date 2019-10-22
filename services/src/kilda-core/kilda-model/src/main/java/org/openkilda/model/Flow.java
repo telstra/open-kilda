@@ -195,7 +195,7 @@ public class Flow implements Serializable {
         this.description = description;
         this.periodicPings = periodicPings;
         this.allocateProtectedPath = allocateProtectedPath;
-        this.encapsulationType = encapsulationType;
+        this.encapsulationType = encapsulationType == null ? FlowEncapsulationType.TRANSIT_VLAN : encapsulationType;
         this.status = status;
         this.maxLatency = maxLatency;
         this.priority = priority;

@@ -187,6 +187,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
             Thread.sleep(topologyConfig.getLocalExecutionTime());
         } catch (InterruptedException e) {
             logger.warn("Execution process have been interrupted.");
+            Thread.currentThread().interrupt();
         }
     }
 

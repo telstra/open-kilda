@@ -130,15 +130,11 @@ public class FlowOperationsBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = tuple.getStringByField(Utils.FLOW_ID);
-        String correlationId = Utils.DEFAULT_CORRELATION_ID;
         Message msg = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
-        correlationId = msg.getCorrelationId();
-        boolean isRecoverable = false;
+        String correlationId = msg.getCorrelationId();
 
         try {
-
             CommandMessage cmsg = (msg instanceof CommandMessage) ? (CommandMessage) msg : null;
-            InfoMessage imsg = (msg instanceof InfoMessage) ? (InfoMessage) msg : null;
             logger.info("Flow request: {}={}, {}={}, stream={}", Utils.CORRELATION_ID, correlationId,
                     Utils.FLOW_ID, flowId, streamId);
             switch (streamId) {
@@ -153,17 +149,11 @@ public class FlowOperationsBolt extends BaseRichBolt {
             emitError(tuple, correlationId, exception, true);
         } catch (CacheException exception) {
             emitError(tuple, correlationId, exception, false);
-
         } catch (Exception e) {
             logger.error("Unhandled exception", e);
         } finally {
             logger.debug("Command message ack: {}", tuple);
-
-            if (isRecoverable) {
-                outputCollector.fail(tuple);
-            } else {
-                outputCollector.ack(tuple);
-            }
+            outputCollector.ack(tuple);
         }
     }
 
