@@ -4,8 +4,6 @@ parallelism = 1
 workers = 1
 
 kafka.hosts = kafka.pendev:9092
-kafka.partitions.default = 1
-kafka.replication.default = 3
 kafka.topic.ctrl = kilda.ctrl
 kafka.topic.flow = kilda.flow
 kafka.topic.flow.status = kilda.flow.status

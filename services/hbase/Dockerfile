@@ -16,15 +16,15 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE hbase-1.2.4
+ENV PACKAGE hbase-2.0.2
 
 WORKDIR /tmp/
 
-RUN    wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz \
-    && wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz.md5 \
-    && sed 's/\ //g' ${PACKAGE}-bin.tar.gz.md5 > $PACKAGE.tmp.md5 \
-    && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > ${PACKAGE}-bin.tar.gz.md5 \
-    && md5sum -c ${PACKAGE}-bin.tar.gz.md5 \
+RUN    wget -q https://archive.apache.org/dist/hbase/2.0.2/${PACKAGE}-bin.tar.gz \
+    && wget -q https://archive.apache.org/dist/hbase/2.0.2/${PACKAGE}-bin.tar.gz.sha512 \
+    && sed 's/\ //g' ${PACKAGE}-bin.tar.gz.sha512 | tr -d '\n' > $PACKAGE.tmp.sha512 \
+    && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.sha512 > ${PACKAGE}-bin.tar.gz.sha512 \
+    && sha512sum -c ${PACKAGE}-bin.tar.gz.sha512 \
     && tar -xzf ${PACKAGE}-bin.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE /opt/hbase \
     && rm -rfv /tmp/*
