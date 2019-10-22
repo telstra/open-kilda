@@ -21,10 +21,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 public class BfdFeature extends AbstractFeature {
-    private static final Pattern NOVIFLOW_SOFTWARE_REGEX = Pattern.compile("^NW\\d{3}\\.\\d+\\.\\d+$");
 
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {
@@ -34,7 +32,7 @@ public class BfdFeature extends AbstractFeature {
         if (description == null || description.getSoftwareDescription() == null) {
             return empty;
         }
-        if (!NOVIFLOW_SOFTWARE_REGEX.matcher(description.getSoftwareDescription()).matches()) {
+        if (!NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX.matcher(description.getSoftwareDescription()).matches()) {
             return empty;
         }
 
