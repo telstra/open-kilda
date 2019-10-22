@@ -49,7 +49,7 @@ public class FlowConverter {
      * @param flows the flows
      * @return the list
      */
-    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) {
+    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) { 
         if (!CollectionUtil.isEmpty(flows)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
             final Map<String, String> csNames = switchIntegrationService.getSwitchNames();

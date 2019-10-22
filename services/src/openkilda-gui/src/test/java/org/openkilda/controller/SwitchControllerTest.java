@@ -48,7 +48,9 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -101,6 +103,20 @@ public class SwitchControllerTest {
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testGetAllSwitchFlows() {
+        ResponseEntity<List<?>> responseList = new ResponseEntity<List<?>>(HttpStatus.OK);
+        try {
+            when(serviceSwitch.getPortFlows(TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT,
+                    TestFlowMock.CONTROLLER_FLAG)).thenReturn(responseList);
+            mockMvc.perform(get("/api/switch/{switchId}/flows", TestSwitchMock.SWITCH_ID)
+                    .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+            assertTrue(true);
+        } catch (Exception e) {
             assertTrue(false);
         }
     }

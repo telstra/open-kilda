@@ -41,7 +41,7 @@ export class SwitchService {
         return this.httpClient.put(url,{"status":status});
   }
 
-  getSwitchPortFlows(switchId,portNumber): Observable<any[]>{
+  getSwitchPortFlows(switchId,portNumber,filter): Observable<any[]>{
     const url = `${environment.apiEndPoint}/switch/${switchId}/${portNumber}/flows`; 
     return this.httpClient.get<any[]>(url);
   }
@@ -51,17 +51,25 @@ export class SwitchService {
     return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}`,{params:query});
   }
 
-    getSwitchMetersList(switchId) : Observable<any[]>{
-      let timestamp = new Date().getTime();
-      return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/meters/${switchId}?_=${timestamp}`);
+  getSwitchFlows(switchId,filter,port): Observable<{}>{
+    var url = `${environment.apiEndPoint}/switch/${switchId}/flows?inventory=`+filter;
+    if(port){
+      url = url + "&port="+port;
     }
+    return this.httpClient.get(url);
+  }
 
-    saveSwitcName(name,switchid){
-      return this.httpClient.patch<any>(`${environment.apiEndPoint}/switch/name/${switchid}`,name);
-    }
+  getSwitchMetersList(switchId) : Observable<any[]>{
+    let timestamp = new Date().getTime();
+    return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/meters/${switchId}?_=${timestamp}`);
+  }
 
-    switchMaintenance(data,switchid){
-      return this.httpClient.post<any>(`${environment.apiEndPoint}/switch/under-maintenance/${switchid}`,data);
-    }
+  saveSwitcName(name,switchid){
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/switch/name/${switchid}`,name);
+  }
+
+  switchMaintenance(data,switchid){
+    return this.httpClient.post<any>(`${environment.apiEndPoint}/switch/under-maintenance/${switchid}`,data);
+  }
 
 }

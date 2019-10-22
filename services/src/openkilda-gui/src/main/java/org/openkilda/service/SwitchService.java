@@ -19,6 +19,7 @@ import org.openkilda.constants.HttpError;
 import org.openkilda.constants.IConstants;
 import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
+import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.PortConfiguration;
@@ -43,6 +44,8 @@ import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
@@ -76,6 +79,9 @@ public class SwitchService {
     @Autowired
     private SwitchNameRepository switchNameRepository;
 
+    @Autowired
+    private FlowConverter flowConverter;
+    
     /**
      * get All SwitchList.
      *
@@ -105,7 +111,6 @@ public class SwitchService {
         }
         return switchInfo;
     }
-    
     
     /**
      * get All SwitchList.
@@ -402,17 +407,25 @@ public class SwitchService {
      * @param port the port
      * @return the customers detail
      */
-    public List<Customer> getPortFlows(String switchId, String port) {
-        List<Customer> customers = new ArrayList<Customer>();
-        
-        if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
-            try {
-                customers = switchStoreService.getPortFlows(switchId, port);
-            } catch (Exception ex) {
-                LOGGER.warn("Get port flows.", ex);
+    public ResponseEntity<List<?>> getPortFlows(String switchId, String port, boolean inventory) {
+        if (!inventory) {
+            List<FlowInfo> flowList = switchIntegrationService.getSwitchFlows(switchId, port);
+            return new ResponseEntity<List<?>>(flowList, HttpStatus.OK);
+        } 
+        if (inventory && port != null) {
+            if (userService.getLoggedInUserInfo().getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                List<Customer> customers = new ArrayList<Customer>();
+                if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
+                    try {
+                        customers = switchStoreService.getPortFlows(switchId, port);
+                    } catch (Exception ex) {
+                        LOGGER.warn("Error occured while retreiving port flows.", ex);
+                    }
+                }
+                return new ResponseEntity<List<?>>(customers, HttpStatus.OK);
             }
         }
-        return customers;
+        return null;
     }
     
     /**
