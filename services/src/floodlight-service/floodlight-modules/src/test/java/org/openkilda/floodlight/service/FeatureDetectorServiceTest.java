@@ -87,6 +87,13 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     }
 
     @Test
+    public void bfdDevFirmware() {
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.2.0_dev", "NS21100", OFVersion.OF_13, 1),
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
+                        NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION));
+    }
+
+    @Test
     public void bfdReview() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_14, 1),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, BFD_REVIEW, METERS, RESET_COUNTS_FLAG,
