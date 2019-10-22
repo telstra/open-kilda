@@ -115,6 +115,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void syncEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         speakerData = context.getSpeakerData();
         syncAttempts = options.getCountSynchronizationAttempts();
+
+        transactionManager.doInTransaction(transactionRetryPolicy, this::persistSwitchData);
+
         performActionsDependingOnAttemptsCount(context);
     }
 
@@ -136,7 +139,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.ONLINE);
 
-        transactionManager.doInTransaction(transactionRetryPolicy, this::persistSwitchData);
+        transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.ACTIVE));
         updatePorts(context, speakerData, true);
         speakerData = null;
     }
@@ -385,7 +388,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         sw.setOfDescriptionSerialNumber(description.getSerialNumber());
         sw.setOfDescriptionDatapath(description.getDatapath());
 
-        sw.setStatus(SwitchStatus.ACTIVE);
+        sw.setStatus(SwitchStatus.INACTIVE);
 
         sw.setFeatures(speakerData.getFeatures());
 

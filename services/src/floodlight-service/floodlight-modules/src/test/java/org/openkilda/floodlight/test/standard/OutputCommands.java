@@ -153,8 +153,7 @@ public interface OutputCommands {
                 .build();
     }
 
-    default Match matchFlow(DatapathId dpid, int inputPort, int tunnelId, FlowEncapsulationType encapsulationType
-    ) {
+    default Match matchFlow(DatapathId dpid, int inputPort, int tunnelId, FlowEncapsulationType encapsulationType) {
         Match.Builder matchBuilder = ofFactory.buildMatch();
         matchBuilder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
         switch (encapsulationType) {
@@ -469,7 +468,6 @@ public interface OutputCommands {
 
     /**
      * Install intermediate rule for isl on switch in table 0 to route ingress traffic.
-     *
      * @param dpid datapathId of the switch
      * @param port customer port
      */
@@ -491,7 +489,6 @@ public interface OutputCommands {
 
     /**
      * Install default pass through rule for pre ingress table.
-     *
      * @param dpid datapathId of the switch
      */
     default OFFlowAdd installPreIngressTablePassThroughDefaultRule(DatapathId dpid) {
@@ -510,7 +507,6 @@ public interface OutputCommands {
 
     /**
      * Install default pass through rule for pre egress table.
-     *
      * @param dpid datapathId of the switch
      */
     default OFFlowAdd installEgressTablePassThroughDefaultRule(final DatapathId dpid) {

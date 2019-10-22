@@ -108,7 +108,8 @@ public class CommandBuilderImpl implements CommandBuilder {
                                                 .orElseThrow(() -> new IllegalStateException(
                                         format("Encapsulation resources are not found for path %s", flowPath)));
                                 commands.add(flowCommandFactory.buildInstallIngressFlow(flow, flowPath,
-                                        foundIngressSegment.getSrcPort(), encapsulationResources));
+                                        foundIngressSegment.getSrcPort(), encapsulationResources,
+                                        foundIngressSegment.isSrcWithMultiTable()));
                             }
                         }
                     }
@@ -177,8 +178,13 @@ public class CommandBuilderImpl implements CommandBuilder {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, encapsulationId,
                 0, outPort, encapsulationType, ingressSwitchId);
 
-        return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
-                switchId, null, criteria, false);
+        return RemoveFlow.builder()
+                .transactionId(transactionIdGenerator.generate())
+                .flowId("SWMANAGER_BATCH_REMOVE")
+                .cookie(entry.getCookie())
+                .switchId(switchId)
+                .criteria(criteria)
+                .build();
     }
 
     private List<BaseInstallFlow> buildInstallCommandFromSegment(FlowPath flowPath, PathSegment segment) {
@@ -202,7 +208,8 @@ public class CommandBuilderImpl implements CommandBuilder {
 
         if (segment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
             return Collections.singletonList(
-                    flowCommandFactory.buildInstallEgressFlow(flowPath, segment.getDestPort(), encapsulationResources));
+                    flowCommandFactory.buildInstallEgressFlow(flowPath, segment.getDestPort(), encapsulationResources,
+                            segment.isDestWithMultiTable()));
         } else {
             int segmentIdx = flowPath.getSegments().indexOf(segment);
             if (segmentIdx < 0 || segmentIdx + 1 == flowPath.getSegments().size()) {
@@ -215,7 +222,8 @@ public class CommandBuilderImpl implements CommandBuilder {
 
             return Collections.singletonList(flowCommandFactory.buildInstallTransitFlow(
                     flowPath, segment.getDestSwitch().getSwitchId(), segment.getDestPort(),
-                    foundPairedFlowSegment.getSrcPort(), encapsulationResources));
+                    foundPairedFlowSegment.getSrcPort(), encapsulationResources,
+                    segment.isDestWithMultiTable()));
         }
     }
 }

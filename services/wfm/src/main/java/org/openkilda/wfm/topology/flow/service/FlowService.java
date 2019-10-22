@@ -42,8 +42,10 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.Path;
+import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
@@ -57,6 +59,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -110,6 +113,7 @@ public class FlowService extends BaseFlowService {
     private static final int RETRY_DELAY = 100;
 
     private final SwitchRepository switchRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
     private final FlowPathRepository flowPathRepository;
     private final IslRepository islRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
@@ -130,6 +134,7 @@ public class FlowService extends BaseFlowService {
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
         connectedDeviceRepository = repositoryFactory.createConnectedDeviceRepository();
+        switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.pathComputerFactory = pathComputerFactory;
         this.flowValidator = flowValidator;
         this.flowCommandFactory = flowCommandFactory;
@@ -141,9 +146,9 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The flow and paths are created with IN_PROGRESS status.
      *
-     * @param flow          the flow to be created.
+     * @param flow the flow to be created.
      * @param diverseFlowId the flow id to build diverse group.
-     * @param sender        the command sender for flow rules installation.
+     * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
     public FlowPair createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender)
@@ -167,6 +172,20 @@ public class FlowService extends BaseFlowService {
             result = (FlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
                         ensureEncapsulationType(flow);
+                        Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                                flow.getSrcSwitch().getSwitchId());
+                        boolean srcWithMultiTable = false;
+                        if (srcSwitchFeatures.isPresent()) {
+                            srcWithMultiTable = srcSwitchFeatures.get().isMultiTable();
+                        }
+                        flow.setSrcWithMultiTable(srcWithMultiTable);
+                        Optional<SwitchProperties> destSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                                flow.getDestSwitch().getSwitchId());
+                        boolean destWithMultiTable = false;
+                        if (destSwitchFeatures.isPresent()) {
+                            destWithMultiTable = destSwitchFeatures.get().isMultiTable();
+                        }
+                        flow.setDestWithMultiTable(destWithMultiTable);
                         // TODO: the strategy is defined either per flow or system-wide.
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair pathPair = pathComputer.getPath(flow);
@@ -249,7 +268,7 @@ public class FlowService extends BaseFlowService {
      * Stores a flow and related entities into DB, and invokes flow rules installation via the command sender.
      *
      * @param flowPair the flow to be saved.
-     * @param sender   the command sender for flow rules installation.
+     * @param sender the command sender for flow rules installation.
      */
     public void saveFlow(FlowPair flowPair, FlowCommandSender sender) throws FlowAlreadyExistException,
             ResourceAllocationException {
@@ -364,9 +383,9 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The updated flow has IN_PROGRESS status.
      *
-     * @param updatingFlow  the flow to be updated.
+     * @param updatingFlow the flow to be updated.
      * @param diverseFlowId the flow id to build diverse group.
-     * @param sender        the command sender for flow rules installation and deletion.
+     * @param sender the command sender for flow rules installation and deletion.
      * @return the updated flow with the path and resources set.
      */
     public FlowPair updateFlow(Flow updatingFlow, String diverseFlowId, FlowCommandSender sender)
@@ -402,6 +421,20 @@ public class FlowService extends BaseFlowService {
             result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
                         ensureEncapsulationType(updatingFlow);
+                        Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                                updatingFlow.getSrcSwitch().getSwitchId());
+                        boolean srcWithMultiTable = false;
+                        if (srcSwitchFeatures.isPresent()) {
+                            srcWithMultiTable = srcSwitchFeatures.get().isMultiTable();
+                        }
+                        updatingFlow.setSrcWithMultiTable(srcWithMultiTable);
+                        Optional<SwitchProperties> destSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                                updatingFlow.getDestSwitch().getSwitchId());
+                        boolean destWithMultiTable = false;
+                        if (destSwitchFeatures.isPresent()) {
+                            destWithMultiTable = destSwitchFeatures.get().isMultiTable();
+                        }
+                        updatingFlow.setDestWithMultiTable(destWithMultiTable);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair newPathPair = pathComputer.getPath(updatingFlow,
                                 currentFlow.getFlow().getFlowPathIds());
@@ -477,10 +510,10 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The rerouted flow has IN_PROGRESS status.
      *
-     * @param flowId         the flow to be rerouted.
+     * @param flowId the flow to be rerouted.
      * @param forceToReroute if true the flow will be recreated even there's no better path found.
-     * @param pathIds        the set of path if to reroute.
-     * @param sender         the command sender for flow rules installation and deletion.
+     * @param pathIds the set of path if to reroute.
+     * @param sender the command sender for flow rules installation and deletion.
      */
     public ReroutedFlowPaths rerouteFlow(String flowId, boolean forceToReroute, Set<PathId> pathIds,
                                          FlowCommandSender sender) throws RecoverableException, UnroutableFlowException,
@@ -695,9 +728,9 @@ public class FlowService extends BaseFlowService {
     /**
      * Swaps primary path for the flow with protected paths.
      *
-     * @param flowId    the flow id to be updated.
+     * @param flowId the flow id to be updated.
      * @param pathId the primary path id to move from.
-     * @param sender    the command sender for flow rules installation and deletion.
+     * @param sender the command sender for flow rules installation and deletion.
      * @return the updated flow.
      */
     public UnidirectionalFlow pathSwap(String flowId, PathId pathId, FlowCommandSender sender)
@@ -797,8 +830,8 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * It also affects the flow status if both (forward and reverse) paths are active.
      *
-     * @param flowId         the flow to be updated.
-     * @param pathId         the flow path to be updated.
+     * @param flowId the flow to be updated.
+     * @param pathId the flow path to be updated.
      * @param flowPathStatus the status to be set.
      */
 
@@ -827,6 +860,7 @@ public class FlowService extends BaseFlowService {
 
     /**
      * Returns list of flows id in diverse group.
+     *
      * @param flowId the flow to get diverse group.
      * @param groupId the group of flows with which the target flow is diverse.
      * @return list of flows id.
@@ -930,6 +964,7 @@ public class FlowService extends BaseFlowService {
 
     private FlowPath buildFlowPath(Flow flow, Path path, FlowPathStatus pathStatus, Instant timeCreate) {
         PathId pathId = new PathId(UUID.randomUUID().toString());
+
         FlowPath flowPath = FlowPath.builder()
                 .flow(flow)
                 .pathId(pathId)
@@ -944,19 +979,38 @@ public class FlowService extends BaseFlowService {
                 .build();
 
         List<PathSegment> segments = path.getSegments().stream()
-                .map(segment -> PathSegment.builder()
-                        .srcSwitch(switchRepository.reload(Switch.builder()
-                                .switchId(segment.getSrcSwitchId()).build()))
-                        .srcPort(segment.getSrcPort())
-                        .destSwitch(switchRepository.reload(Switch.builder()
-                                .switchId(segment.getDestSwitchId()).build()))
-                        .destPort(segment.getDestPort())
-                        .latency(segment.getLatency())
-                        .build())
+                .map(segment -> buildPathSegment(segment))
                 .collect(Collectors.toList());
         flowPath.setSegments(segments);
 
         return flowPath;
+    }
+
+    private PathSegment buildPathSegment(Segment segment) {
+        Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                segment.getSrcSwitchId());
+        boolean srcWithMultiTable = false;
+        if (srcSwitchFeatures.isPresent()) {
+            srcWithMultiTable = srcSwitchFeatures.get().isMultiTable();
+        }
+        Optional<SwitchProperties> destSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                segment.getDestSwitchId());
+        boolean destWithMultiTable = false;
+        if (destSwitchFeatures.isPresent()) {
+            destWithMultiTable = destSwitchFeatures.get().isMultiTable();
+        }
+        return PathSegment.builder()
+                .srcSwitch(switchRepository.reload(Switch.builder()
+                        .switchId(segment.getSrcSwitchId()).build()))
+                .srcPort(segment.getSrcPort())
+                .srcWithMultiTable(srcWithMultiTable)
+                .destSwitch(switchRepository.reload(Switch.builder()
+                        .switchId(segment.getDestSwitchId()).build()))
+                .destPort(segment.getDestPort())
+                .destWithMultiTable(destWithMultiTable)
+                .latency(segment.getLatency())
+                .build();
+
     }
 
     private void ensureEncapsulationType(Flow flow) {
@@ -1089,7 +1143,7 @@ public class FlowService extends BaseFlowService {
 
     private UnidirectionalFlow buildForwardUnidirectionalFlow(FlowPathWithEncapsulation flowPath) {
         EncapsulationId encapsulationId = null;
-        if  (flowPath.getEncapsulation() != null) {
+        if (flowPath.getEncapsulation() != null) {
             encapsulationId = flowPath.getEncapsulation().getEncapsulation();
         }
         return new UnidirectionalFlow(flowPath.getFlowPath(), encapsulationId, true);
@@ -1246,8 +1300,18 @@ public class FlowService extends BaseFlowService {
     }
 
     private CommandGroup createRemoveIngressRules(FlowPath flowPath) {
+        boolean checkIngress = false;
+        SwitchId ingressSwitchId = flowPath.getSrcSwitch().getSwitchId();
+        int ingressPort = 0;
+        if (flowPath.isForward()) {
+            ingressPort = flowPath.getFlow().getSrcPort();
+        } else {
+            ingressPort = flowPath.getFlow().getDestPort();
+        }
+        boolean cleanUpIngress = flowRepository.findByEndpointWithMultiTableSupport(
+                ingressSwitchId, ingressPort).size() == 0;
         return new CommandGroup(singletonList(
-                flowCommandFactory.createRemoveIngressRulesForFlow(flowPath)), FailureReaction.IGNORE);
+                flowCommandFactory.createRemoveIngressRulesForFlow(flowPath, cleanUpIngress)), FailureReaction.IGNORE);
     }
 
     private Optional<CommandGroup> createRemoveLldpTransitAndEgressRules(
@@ -1469,9 +1533,9 @@ public class FlowService extends BaseFlowService {
     }
 
     private List<FlowPair> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
-                                                              Flow updatingFirstFlow,
-                                                              FlowPathsWithEncapsulation currentSecondFlow,
-                                                              Flow updatingSecondFlow, FlowCommandSender sender)
+                                     Flow updatingFirstFlow,
+                                     FlowPathsWithEncapsulation currentSecondFlow,
+                                     Flow updatingSecondFlow, FlowCommandSender sender)
             throws ResourceAllocationException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
         List<PathId> flowsPath = new ArrayList<>(currentFirstFlow.getFlow().getFlowPathIds());
