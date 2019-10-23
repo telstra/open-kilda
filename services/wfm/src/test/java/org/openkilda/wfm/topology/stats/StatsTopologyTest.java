@@ -70,6 +70,7 @@ import org.apache.storm.generated.StormTopology;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -85,6 +86,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@Ignore("blocked by storm bug https://issues.apache.org/jira/browse/STORM-3038")
 public class StatsTopologyTest extends AbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();

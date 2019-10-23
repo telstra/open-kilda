@@ -34,7 +34,7 @@
 
         <project.checkstyle.root>${project.parent.basedir}/checkstyle</project.checkstyle.root>
 
-        <apache.kafka.version>0.10.2.1</apache.kafka.version>
+        <apache.kafka.version>2.0.0</apache.kafka.version>
         <commons.cli.version>1.4</commons.cli.version>
         <commons.codec.version>1.10</commons.codec.version>
         <commons-collections.version>4.1</commons-collections.version>

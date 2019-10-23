@@ -94,6 +94,7 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Ignore("blocked by storm bug https://issues.apache.org/jira/browse/STORM-3038")
 public class FlowTopologyTest extends AbstractStormTest {
     private static final long FLOW_STATUS_UPDATE_TIMEOUT_MS = 5000;
 

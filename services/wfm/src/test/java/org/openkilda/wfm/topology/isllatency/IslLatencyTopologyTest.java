@@ -51,12 +51,14 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Properties;
 import java.util.UUID;
 
+@Ignore("blocked by storm bug https://issues.apache.org/jira/browse/STORM-3038")
 public class IslLatencyTopologyTest extends AbstractStormTest {
 
     private static final int POLL_TIMEOUT = 1000;

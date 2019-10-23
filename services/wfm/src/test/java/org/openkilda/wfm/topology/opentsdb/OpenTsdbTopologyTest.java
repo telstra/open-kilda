@@ -28,6 +28,7 @@ import org.apache.storm.testing.MockedSources;
 import org.apache.storm.tuple.Values;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
@@ -37,6 +38,7 @@ import org.mockserver.verify.VerificationTimes;
 import java.util.Collections;
 import java.util.Map;
 
+@Ignore("blocked by storm bug https://issues.apache.org/jira/browse/STORM-3038")
 public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
     private static ClientAndServer mockServer;

@@ -86,15 +86,15 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
     @Test
     public void partitionSpreading() throws Exception {
         RecordMetadata[] sendResults = new RecordMetadata[]{
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0)
+                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0),
+                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0L, 0, 0)
         };
 
         Integer[] expectedPartitions = new Integer[] {

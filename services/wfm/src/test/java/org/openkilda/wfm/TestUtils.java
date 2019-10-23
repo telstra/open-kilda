@@ -41,6 +41,7 @@ public final class TestUtils {
         props.setProperty("broker.id", "1");
         props.setProperty("delete.topic.enable", "true");
         props.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
+        props.setProperty("offsets.topic.replication.factor", "1");
         return props;
     }
 
