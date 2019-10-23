@@ -30,9 +30,9 @@ import java.util.stream.Collectors;
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |            Payload Reserved           |                       |
+ * |            Payload Reserved           |     Type Metadata     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |           Reserved Prefix           |C|     Rule Type   | | | |
+ * |       |       Reserved Prefix       |C|    Rule Type    | | | |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * <p>
  * Rule types:
@@ -85,6 +85,9 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long EXCLUSION_COOKIE_TYPE                   = 0x0060_0000_0000_0000L;
     public static final long TELESCOPE_COOKIE_TYPE                   = 0x0070_0000_0000_0000L;
 
+    public static final long TYPE_METADATA_MASK                      = 0x0000_000F_FFF0_0000L;
+    public static final int TYPE_METADATA_SHIFT = 20; // count of Payload Reserved bits.
+
     private final long value;
 
     /**
@@ -135,8 +138,8 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     /**
      * Creates masked cookie for exclusion rule.
      */
-    public static Cookie buildExclusionCookie(Long unmaskedCookie, boolean forward) {
-        return buildTypedCookie(Cookie.EXCLUSION_COOKIE_TYPE, unmaskedCookie, forward);
+    public static Cookie buildExclusionCookie(Long unmaskedCookie, int metadata) {
+        return buildTypedCookie(Cookie.EXCLUSION_COOKIE_TYPE, unmaskedCookie, metadata, true);
     }
 
     public static Cookie buildTelescopeCookie(Long unmaskedCookie, boolean forward) {
@@ -144,11 +147,20 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     }
 
     private static Cookie buildTypedCookie(Long typeMask, Long unmaskedCookie, boolean forward) {
+        return buildTypedCookie(typeMask, unmaskedCookie, 0, forward);
+    }
+
+    private static Cookie buildTypedCookie(Long typeMask, Long unmaskedCookie, int metadata, boolean forward) {
         if (unmaskedCookie == null) {
             return null;
         }
         long directionMask = forward ? FLOW_PATH_FORWARD_FLAG : FLOW_PATH_REVERSE_FLAG;
-        return new Cookie(unmaskedCookie | typeMask | directionMask);
+        long typeMetadata = ((long) metadata << TYPE_METADATA_SHIFT) & TYPE_METADATA_MASK;
+        return new Cookie(unmaskedCookie | typeMask | directionMask | typeMetadata);
+    }
+
+    public int getTypeMetadata() {
+        return (int) (value & TYPE_METADATA_MASK) >> TYPE_METADATA_SHIFT;
     }
 
     /**

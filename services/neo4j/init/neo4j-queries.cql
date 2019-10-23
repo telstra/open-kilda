@@ -44,3 +44,5 @@ CREATE INDEX ON :`connected_device` (`port_id`);
 CREATE CONSTRAINT ON (`port_properties`:`port_properties`) ASSERT `port_properties`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`port_properties`:`port_properties`) ASSERT `port_properties`.`discriminator` IS UNIQUE;
 CREATE CONSTRAINT ON (`application_rule`:`application_rule`) ASSERT `application_rule`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`exclusion_id`:`exclusion_id`) ASSERT `exclusion_id`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`exclusion_id`:`exclusion_id`) ASSERT `exclusion_id`.`unique_index` IS UNIQUE;

@@ -48,9 +48,11 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.error.ExclusionAlreadyExistException;
+import org.openkilda.wfm.error.ExclusionNotFoundException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.ExclusionIdPool;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
@@ -58,6 +60,7 @@ import org.openkilda.wfm.topology.applications.AppsManagerCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -66,6 +69,7 @@ import java.util.Set;
 
 @Slf4j
 public class AppsManagerService {
+
     private final AppsManagerCarrier carrier;
 
     private final FlowRepository flowRepository;
@@ -76,6 +80,7 @@ public class AppsManagerService {
 
     private final FlowResourcesManager flowResourcesManager;
     private final FlowCommandFactory flowCommandFactory = new FlowCommandFactory();
+    private final ExclusionIdPool exclusionIdPool;
 
     public AppsManagerService(AppsManagerCarrier carrier,
                               PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig) {
@@ -86,6 +91,7 @@ public class AppsManagerService {
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.transactionManager = persistenceManager.getTransactionManager();
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        this.exclusionIdPool = new ExclusionIdPool(persistenceManager);
     }
 
     /**
@@ -284,16 +290,22 @@ public class AppsManagerService {
             throw new ExclusionAlreadyExistException(exclusion);
         }
 
-        Cookie cookie = Cookie.buildExclusionCookie(flow.getForwardPath().getCookie().getUnmaskedValue(), true);
+        int expirationTimeout = Optional.ofNullable(payload.getExpirationTimeout()).orElse(0);
+        Cookie flowCookie = flow.getForwardPath().getCookie();
+        Cookie cookie = Cookie.buildExclusionCookie(flowCookie.getUnmaskedValue(),
+                exclusionIdPool.allocate(flow.getFlowId()));
         ApplicationRule rule = ApplicationRule.builder()
                 .flowId(flow.getFlowId())
                 .switchId(flow.getSrcSwitch().getSwitchId())
+                .cookie(cookie)
                 .srcIp(exclusion.getSrcIp())
                 .srcPort(exclusion.getSrcPort())
                 .dstIp(exclusion.getDstIp())
                 .dstPort(exclusion.getDstPort())
                 .proto(exclusion.getProto())
                 .ethType(exclusion.getEthType())
+                .timeCreate(Instant.now())
+                .expirationTimeout(expirationTimeout)
                 .build();
 
         applicationRepository.createOrUpdate(rule);
@@ -309,12 +321,12 @@ public class AppsManagerService {
                 .dstPort(exclusion.getDstPort())
                 .proto(exclusion.getProto())
                 .ethType(exclusion.getEthType())
-                .expirationTimeout(Optional.ofNullable(payload.getExpirationTimeout()).orElse(0))
+                .expirationTimeout(expirationTimeout)
                 .build());
         carrier.emitNotification(CreateExclusionResult.builder()
                 .flowId(payload.getFlowId())
                 .application(payload.getApplication())
-                .expirationTimeout(payload.getExpirationTimeout())
+                .expirationTimeout(expirationTimeout)
                 .exclusion(payload.getExclusion())
                 .success(true)
                 .build());
@@ -323,23 +335,28 @@ public class AppsManagerService {
     /**
      * Remove exclusion for the flow.
      */
-    public void processRemoveExclusion(RemoveExclusion payload) throws FlowNotFoundException {
+    public void processRemoveExclusion(RemoveExclusion payload)
+            throws FlowNotFoundException, ExclusionNotFoundException {
         Flow flow = getFlow(payload.getFlowId());
 
         checkTelescopeAppInstallation(flow);
 
         Exclusion exclusion = payload.getExclusion();
 
-        Cookie cookie = Cookie.buildExclusionCookie(flow.getForwardPath().getCookie().getUnmaskedValue(), true);
         Optional<ApplicationRule> ruleOptional = applicationRepository.lookupRuleByMatchAndFlow(
                 flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), exclusion.getSrcIp(), exclusion.getSrcPort(),
                 exclusion.getDstIp(), exclusion.getDstPort(), exclusion.getProto(), exclusion.getEthType());
-        ruleOptional.ifPresent(applicationRepository::delete);
+        if (!ruleOptional.isPresent()) {
+            throw new ExclusionNotFoundException(exclusion);
+        }
+        ApplicationRule rule = ruleOptional.get();
+        applicationRepository.delete(rule);
+        exclusionIdPool.deallocate(flow.getFlowId(), rule.getCookie().getTypeMetadata());
 
         EncapsulationResources encapsulationResources = getEncapsulationResources(flow, flow.getForwardPath());
         carrier.emitSpeakerCommand(RemoveExclusionRequest.builder()
                 .switchId(flow.getSrcSwitch().getSwitchId())
-                .cookie(cookie.getValue())
+                .cookie(rule.getCookie().getValue())
                 .tunnelId(encapsulationResources.getTransitEncapsulationId())
                 .srcIp(payload.getExclusion().getSrcIp())
                 .srcPort(payload.getExclusion().getSrcPort())

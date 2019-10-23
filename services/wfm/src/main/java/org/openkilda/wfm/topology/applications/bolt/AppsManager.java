@@ -36,6 +36,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.ExclusionAlreadyExistException;
+import org.openkilda.wfm.error.ExclusionNotFoundException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
@@ -113,6 +114,9 @@ public class AppsManager extends AbstractBolt {
         } catch (FlowNotFoundException e) {
             log.error("Flow not found", e);
             carrier.emitAppError(ErrorAppType.NOT_FOUND, e.getMessage());
+        } catch (ExclusionNotFoundException e) {
+            log.error("Exclusion not found", e);
+            carrier.emitAppError(ErrorAppType.NOT_FOUND, e.getMessage());
         } catch (ExclusionAlreadyExistException e) {
             log.error("Exclusion already exists", e);
             carrier.emitAppError(ErrorAppType.ALREADY_EXISTS, e.getMessage());
@@ -133,7 +137,9 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processAppMessage(AppMessage message) throws FlowNotFoundException, ExclusionAlreadyExistException {
+    private void processAppMessage(AppMessage message)
+            throws FlowNotFoundException, ExclusionAlreadyExistException, ExclusionNotFoundException {
+
         if (message instanceof CommandAppMessage) {
             processCommandAppData(message.getPayload());
         } else {
@@ -153,7 +159,9 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processCommandAppData(AppData payload) throws FlowNotFoundException, ExclusionAlreadyExistException {
+    private void processCommandAppData(AppData payload)
+            throws FlowNotFoundException, ExclusionAlreadyExistException, ExclusionNotFoundException {
+
         if (payload instanceof CreateExclusion) {
             service.processCreateExclusion((CreateExclusion) payload);
         } else if (payload instanceof RemoveExclusion) {

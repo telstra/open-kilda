@@ -71,4 +71,6 @@ public interface RepositoryFactory {
     PortPropertiesRepository createPortPropertiesRepository();
 
     ApplicationRepository createApplicationRepository();
+
+    ExclusionIdRepository createExclusionIdRepository();
 }

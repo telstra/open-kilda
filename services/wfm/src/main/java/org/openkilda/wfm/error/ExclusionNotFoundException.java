@@ -18,11 +18,11 @@ package org.openkilda.wfm.error;
 import org.openkilda.applications.model.Exclusion;
 
 /**
- * {@code ExclusionAlreadyExistException} indicates that an exclusion already exist.
+ * {@code ExclusionNotFoundException} indicates that an exclusion can't be found / doesn't exist.
  */
-public class ExclusionAlreadyExistException extends Exception {
+public class ExclusionNotFoundException extends Exception {
 
-    public ExclusionAlreadyExistException(Exclusion exclusion) {
-        super(String.format("%s already exists", exclusion));
+    public ExclusionNotFoundException(Exclusion exclusion) {
+        super(String.format("%s not found", exclusion));
     }
 }

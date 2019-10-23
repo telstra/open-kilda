@@ -27,6 +27,9 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantStringConverter;
+
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -50,6 +53,10 @@ public class ApplicationRule {
     @Property(name = "switch_id")
     private SwitchId switchId;
 
+    @NonNull
+    @Convert(graphPropertyType = Long.class)
+    private Cookie cookie;
+
     @Property("src_ip")
     private String srcIp;
 
@@ -68,17 +75,26 @@ public class ApplicationRule {
     @Property("eth_type")
     private String ethType;
 
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
+
+    @Property("expiration_timeout")
+    private int expirationTimeout;
+
     @Builder(toBuilder = true)
-    public ApplicationRule(String flowId, SwitchId switchId, String srcIp, int srcPort, String dstIp, int dstPort,
-                            String proto, String ethType) {
+    public ApplicationRule(String flowId, SwitchId switchId, Cookie cookie, String srcIp, int srcPort, String dstIp,
+                           int dstPort, String proto, String ethType, Instant timeCreate, int expirationTimeout) {
         this.flowId = flowId;
         this.switchId = switchId;
+        this.cookie = cookie;
         this.srcIp = srcIp;
         this.srcPort = srcPort;
         this.dstIp = dstIp;
         this.dstPort = dstPort;
         this.proto = proto;
         this.ethType = ethType;
-
+        this.timeCreate = timeCreate;
+        this.expirationTimeout = expirationTimeout;
     }
 }
