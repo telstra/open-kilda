@@ -20,7 +20,7 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
 
   filterForm: FormGroup;
   flowMetrics = [];
-
+  timezoneData = [{label:'UTC', value:'UTC'},{label:'My Timezone',value:'My'}];
   constructor(
     private flowService: FlowsService,
     private dygraphService: DygraphService,

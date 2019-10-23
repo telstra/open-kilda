@@ -34,6 +34,7 @@ export class FlowEditComponent implements OnInit {
   flowDetailData  = {}
   flowDetail: any;
   vlanPorts: Array<any>;
+  diverseFlowList:any=[];
   storeLinkSetting = false;
 
   constructor(
@@ -68,7 +69,9 @@ export class FlowEditComponent implements OnInit {
       source_vlan: ["0"],
       target_switch: [null, Validators.required],
       target_port: [null, Validators.required],
-      target_vlan: ["0"]
+      target_vlan: ["0"],
+      diverse_flowid:[null],
+      allocate_protected_path:[null],
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
@@ -124,10 +127,13 @@ export class FlowEditComponent implements OnInit {
           target_switch: flow_detail.target_switch,
           target_port: flow_detail.dst_port.toString(),
           target_vlan: flow_detail.dst_vlan.toString(),
+          diverse_flowid:( typeof(flow_detail['diverse_with']) && flow_detail['diverse_with'].length > 0 )? flow_detail['diverse_with'][0] : null,
+          allocate_protected_path:flow_detail['allocate_protected_path'] || null,
         };
         this.flowId = flow_detail.flowid;
         this.flowEditForm.setValue(this.flowDetail);
 
+        this.getflowList();
         this.getSwitchList();
         this.getPorts("source_switch" , true);
         this.getPorts("target_switch", true);
@@ -145,9 +151,13 @@ export class FlowEditComponent implements OnInit {
             target_switch: flow.target_switch,
             target_port: flow.dst_port.toString(),
             target_vlan: flow.dst_vlan.toString(),
+            diverse_flowid:flow['diverse-flowid'] || null,
+            allocate_protected_path:flow['allocate_protected_path'] || null,
           };
           this.flowId = flow.flowid;
           this.flowEditForm.setValue(this.flowDetail);
+  
+          this.getflowList();
           this.getSwitchList();
           this.getPorts("source_switch" , true);
           this.getPorts("target_switch", true);
@@ -281,9 +291,10 @@ export class FlowEditComponent implements OnInit {
         "vlan-id": this.flowEditForm.controls["target_vlan"].value
       },
       flowid: this.flowEditForm.controls["flowid"].value,
-      "maximum-bandwidth": this.flowEditForm.controls["maximum_bandwidth"]
-        .value,
-      description: this.flowEditForm.controls["description"].value
+      "maximum-bandwidth": this.flowEditForm.controls["maximum_bandwidth"].value,
+       description: this.flowEditForm.controls["description"].value,
+      "diverse-flowid":this.flowEditForm.controls["diverse_flowid"].value,
+      "allocate_protected_path":this.flowEditForm.controls["allocate_protected_path"].value,
     };
 
     const modalRef = this.modalService.open(ModalconfirmationComponent);
@@ -312,6 +323,10 @@ export class FlowEditComponent implements OnInit {
     });
 
    
+  }
+
+  setProtectedpath(e){
+    this.flowEditForm.controls['allocate_protected_path'].setValue(e.target.checked);
   }
 
   /**Delete flow */
@@ -367,7 +382,20 @@ export class FlowEditComponent implements OnInit {
       }
     });
   }
-
+  getflowList(){
+    var ref = this;
+    let filtersOptions = {controller:true,_:new Date().getTime()};
+      this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
+        this.diverseFlowList = data || [];
+        if(this.diverseFlowList && this.diverseFlowList.length){
+          this.diverseFlowList = this.diverseFlowList.filter(function(d){
+              return d.flowid != ref.flowDetail.flowid;
+          })
+        }
+      },error=>{
+         this.diverseFlowList = [];  
+      });
+}
   goToBack(){
     this._location.back();
   }

@@ -34,6 +34,28 @@
                   </div>
             </div>
           </div>
+
+          <div class='form-group row flow_details'>
+            <label class='col-sm-3 col-form-label'>Diverse Flow:</label>
+            <div class='col-sm-4'>
+              <ng-select dropdownPosition="bottom" searchable="true" placeholder="Select Diverse Flow" formControlName="diverse_flowid" [items]="diverseFlowList" bindLabel="flowid"     bindValue="flowid"></ng-select>
+            </div>
+          </div>
+          <div class='form-group row flow_details'>
+            <label class='col-sm-3 col-form-label'>Protected Path:</label>
+            <div class='col-sm-4'>
+              <div class="pull-left">
+                <div class="onoffswitch">
+                  <input  formControlName="allocate_protected_path" type="checkbox" (change)="setProtectedpath($event)" name="onoffswitch" class="onoffswitch-checkbox"
+                    id="onoffswitchsource">
+                  <label class="onoffswitch-label" for="onoffswitchsource">
+                    <span class="onoffswitch-inner "></span>
+                    <span class="onoffswitch-switch"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

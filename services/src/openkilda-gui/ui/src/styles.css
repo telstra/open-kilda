@@ -1072,6 +1072,16 @@ path.down {
   stroke-width: 1px;
 }
 
+.switch.blue {
+  fill:white;
+}
+
+.common_switch{
+  fill:white!important;
+  stroke: #b0b0b0;
+  stroke-width: 5px;
+}
+
 .circle.red {
   fill: #d93923;
   stroke: #d93923;
@@ -1132,14 +1142,13 @@ text {
 #ping-hover-txt:before,
 #topology-click-txt:before {
   border-color: rgba(204, 204, 204, 0);
-  border-right-color: #ccc;
+  border-right-color: #bebaba;
   border-width: 11px;
   margin-top: -11px;
 }
 #topology-hover-txt .form-wrapper,
 #ping-hover-txt .form-wrapper,
 #diversepath-hover-txt .form-wrapper,
-#flowpath-hover-txt .form-wrapper,
 #topology-click-txt .form-wrapper {
   border: none;
 }
@@ -1180,7 +1189,7 @@ text {
 #ping-hover-txt.left:before,
 #topology-click-txt.left:before {
   border-color: rgba(204, 204, 204, 0);
-  border-left-color: #ccc;
+  border-left-color: #bebaba;
   border-width: 11px;
   margin-top: -11px;
 }
@@ -1191,8 +1200,6 @@ text {
 #ping-hover-txt p,
 #diversepath-hover-txt label,
 #diversepath-hover-txt p,
-#flowpath-hover-txt label,
-#flowpath-hover-txt p,
 #topology-click-txt label,
 #topology-click-txt p {
   padding: 0px 15px;
@@ -1209,12 +1216,12 @@ text {
   font-size: 12px;
 }
 
-#ping-hover-txt div.form-wrapper,#diversepath-hover-txt div.form-wrapper,#flowpath-hover-txt  div.form-wrapper{
+#ping-hover-txt div.form-wrapper,#diversepath-hover-txt div.form-wrapper{
   padding: 12px 10px;
   font-size: 12px;
 }
 
-#diversepath-hover-txt ,#flowpath-hover-txt{
+#diversepath-hover-txt{
   background: #262d37;
   position: fixed;
   border-radius: 4px;
@@ -1222,7 +1229,7 @@ text {
   z-index:4;
 }
 
-#diversepath-hover-txt:after ,#flowpath-hover-txt:after {
+#diversepath-hover-txt:after {
 	top: 100%;
 	left: 50%;
 	border: solid transparent;
@@ -1269,6 +1276,10 @@ path.link {
   stroke:#d934CF;
   stroke-width:5px!important;
 }
+.dashed_path_protected{
+  stroke-dasharray: 20,29;
+  stroke-width:2.5px;
+}
 .orange_percentage{
     stroke-width: 5!important;	
   stroke:#FF8C00;
@@ -1291,8 +1302,17 @@ path.link {
   position: absolute;
   background: #fff;
   width: 100%;
-  height: 95%;
-  top: 35px;
+  height: 75%;
+  top: 25%;
+  left: 0px;
+  z-index: 3;
+}
+
+#networkpathGraphWrapper .path-graph-wrapper{
+  position: absolute;
+  background: #fff;
+  width: 100%;
+  height: 100%;
   left: 0px;
   z-index: 3;
 }
@@ -1341,7 +1361,7 @@ path.link {
   line-height: 20px;
   font-size: 14px;
   position: absolute;
-  right: 15px;
+  right: 12px;
   top: 30px;
   text-align: left;
   z-index: 10;
@@ -2233,15 +2253,16 @@ section {
 
 .sidebar ul li a {
   display: block;
-  color: rgb(176, 176, 176);
+  color: rgb(176, 176, 176)!important;
   font-size: 14px;
   padding: 0px 15px;
 }
 
 .sidebar ul li a i {
   margin-right: 10px;
-  font-size: 22px;
+  font-size: 18px;
   vertical-align: sub;
+  color:#EEE;
 }
 
 .sidebar ol, ul {
@@ -2342,28 +2363,7 @@ footer {
 
 /****** side bar css end *****/
 
-#flowpath-hover-txt {
-  background: #262d37;
-  position: fixed;
-  border-radius: 4px;
-  color: #fff;
-  z-index:4;
-}
 
-#flowpath-hover-txt:after {
-	top: 100%;
-	left: 50%;
-	border: solid transparent;
-	content: " ";
-	height: 0;
-	width: 0;
-	position: absolute;
-	pointer-events: none;
-	border-color: rgba(38, 45, 55, 0);
-	border-top-color: #262d37;
-	border-width: 8px;
-  margin-left: -8px;
-}
 /*** path Css **/
 #ForwardRow h3, #ReversePath h3 {
   margin: 0 0 25px;
@@ -2472,24 +2472,52 @@ a.badge.badge-dark.custom-button {
 }
 
 /** path css end ****/
-
+.rightbar_overlay_diverse{
+  position: absolute;
+  right: 0;
+}
 .rightbar_overlay{
     float:right;
-    padding: 10px 5px;
+    padding: 20px 5px;
 }
 .rightbar_overlay ul{
   position: absolute;
-  right:0px;
+  right: 7px;
   max-height: 550px;
-  overflow-y: scroll;
   overflow: hidden;
-}
-.rightbar_overlay ul li{
-  padding: 5px;
+  overflow-y: auto;
+  top: 42px;
   border: 1px solid #ccc;
-  margin: 4px 0px;
+}
+.rightbar_overlay ul li.selectedFLow {
+  background: #FFF;
+}
+.rightbar_overlay ul li.active {
+  background: #CCC;
+}
+
+.rightbar_overlay ul li{
+  padding: 7px;
+  border-top: 1px solid #ccc;
+  margin: 0px;
   cursor: pointer;
   font-size: 10px;
+  display: block;
+  white-space: nowrap;
+}
+
+.rightbar_overlay ul li:first-child{
+  border: none;
+}
+
+.rightbar_overlay ul li span {
+  vertical-align: middle;
+  display: inline-block;
+}
+.rightbar_overlay a.custom-icon-path.cursor-pointer {
+  padding: 6px 10px;
+  font-size: 15px;
+  border: 1px solid #ccc;
 }
 .color-pointer{
   width: 15px;
@@ -2617,3 +2645,49 @@ a.custom-icon-path.cursor-pointer {
 .onoffpathdiverse-checkbox:checked + .onoffpathdiverse-label .onoffpathdiverse-switch {
   right: -6px;
 }
+
+.aEnd,
+.zEnd {
+  fill: #444;
+  font-family: helvetica;
+  font-size: 8pt;
+}
+.activerow{
+  background:#E3E3E3!important;
+}
+.network-path-tbl tr{
+  cursor:pointer;
+}
+table.network-path-tbl{
+  max-height:350px!important;
+  border:1px solid #ccc;
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+table.network-path-tbl thead { 
+  background-color: #343a40;
+  border-color: #343a40;
+  color: #FFF;
+  display:inline-table;
+  width:100%;
+  border-bottom: 1px solid #ccc;
+  }
+  table.network-path-tbl tbody{
+    display:inline-table;
+    width: 100%;
+  }
+  table.network-path-tbl tr{
+    text-align: center!important;
+  }
+
+/* table.network-path-tbl tbody,
+table.network-path-tbl thead { display: block; }
+
+table.network-path-tbl tbody {
+    height: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+} */

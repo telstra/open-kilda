@@ -68,7 +68,8 @@ export class FlowAddComponent implements OnInit {
       target_switch:[null, Validators.required],
       target_port: [null, Validators.required],
       target_vlan: ["0"],
-      diverse_flowid:[null]
+      diverse_flowid:[null],
+      allocate_protected_path:[null]
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
@@ -197,9 +198,9 @@ export class FlowAddComponent implements OnInit {
       flowid: this.flowAddForm.controls["flowname"].value,
       "maximum-bandwidth": this.flowAddForm.controls["maximum_bandwidth"].value,
       description: this.flowAddForm.controls["description"].value,
-      "diverse-flowid": this.flowAddForm.controls["diverse_flowid"].value || null
+      "diverse-flowid": this.flowAddForm.controls["diverse_flowid"].value || null,
+      "allocate_protected_path": this.flowAddForm.controls["allocate_protected_path"].value || null,
     };
-
     const modalReff = this.modalService.open(ModalconfirmationComponent);
     modalReff.componentInstance.title = "Confirmation";
     modalReff.componentInstance.content = 'Are you sure you want to create a new flow ?';
@@ -234,10 +235,13 @@ export class FlowAddComponent implements OnInit {
     });
 
   }
-
+  setProtectedpath(e){
+    this.flowAddForm.controls['allocate_protected_path'].setValue(e.target.checked);
+  }
   goToBack(){
     this._location.back();
   }
+
 
   getVLAN(type){
     if(type == "source_port"){ 

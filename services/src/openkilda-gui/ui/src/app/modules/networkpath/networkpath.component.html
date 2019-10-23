@@ -1,0 +1,98 @@
+<div class="network_path_div">
+  <form [formGroup]="networkpathForm" id="networkpathForm" #roleform="ngForm">
+    <div class="row form-group clearfix">
+      <div class="col-sm-6">
+        <div class="row">
+          <label class='col-sm-3 col-form-label'>Source Switch:</label>
+          <div class='col-sm-6'>
+            <ng-select
+            formControlName="source_switch"
+             [items]="switchList"
+             bindLabel="name"
+             bindValue="switch_id"
+             labelForId="switch_id"
+             placeholder="Select Switch"
+             clearAllText="Clear">               
+             </ng-select>
+             <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
+              <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="row">
+          <label class='col-sm-3 col-form-label'>Destination Switch:</label>
+          <div class='col-sm-6'>
+            <ng-select
+            formControlName="target_switch"
+             [items]="switchList"
+             bindLabel="name"
+             bindValue="switch_id"
+             labelForId="switch_id"
+             placeholder="Select Switch"
+             clearAllText="Clear">
+             </ng-select>
+             <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
+              <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
+            </div>
+  
+          </div>
+          <div class="col-sm-3">
+            <span class="btn kilda_btn" (click)="getNetworkPath()" style="margin-right:65px;">Go</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+</div>
+<div *ngIf="networkPaths && networkPaths.length" class="col-md-12 mt-5" style="border-top:1px solid #ccc;">
+  <div class="row">
+    <div class="col-md-3">
+        <table class="table network-path-tbl mt-5" >
+            <thead>
+              <th>Bandwidth(Mbps) <i style="cursor:pointer;" (click)="sortNetworkData('bandwidth');" class="fa fa-fw fa-sort"></i> </th>
+              <th>Latency(Mbps) <i style="cursor:pointer;"  (click)="sortNetworkData('latency');"  class="fa fa-fw fa-sort"></i></th>
+            </thead>
+          </table>
+          <table  class="table network-path-tbl" style="margin-top:-18px;">
+              <tbody>
+                  <tr (click)="viewPath(i,pathData.nodes)" [ngClass]= "{'activerow':activeRowIndex == i}" *ngFor="let pathData of networkPaths; let i = index;">
+                     <td>{{pathData.bandwidth / 1000}}</td>
+                    <td>{{pathData.latency / 1000}}</td>
+                    </tr>
+          </tbody>
+          </table>
+    </div>
+    <div class="col-md-9" style="border-left:1px solid #ccc; min-height:350px; ">
+      <div class="main-list" style="float:right; margin-top:10px;" *ngIf="loadZoomIcon">
+          <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(-1)"><i class="fa fa-search-minus"></i></a>
+           <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(1)"><i class="fa fa-search-plus"></i></a>
+        </div>
+      <div id="networkpathGraphWrapper" class="pathGraph">
+        <div class="path-graph-component-loader" [hidden] ="!pathLoader"></div>
+        <div class="path-graph-wrapper" [hidden]="!loadpathGraph"></div>
+        <svg id="svgForwardPath" width="1000" height="450"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- <div class="row networkPath">
+  <div  *ngFor="let pathData of networkPaths;let i = index" class="col-xs-12 col-md-12 col-lg-12">
+    <h3 class="text-center"> PATH:{{i+1}}</h3>
+    <div  *ngFor="let path of pathData.nodes" class="path">
+      <div *ngIf="path.input_port" class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
+      <div *ngIf="path.input_port" class="line"></div>
+      <div class="text cursor-pointer"  id="switch-name" >{{path.switch_name}}</div>
+      <div *ngIf="path.output_port" class="line"></div>
+      <div *ngIf="path.output_port" class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
+      <div *ngIf="path.output_port" class="line islPath"></div>
+      <div *ngIf="pathData.nodes.length > 5" class="vertical-line"></div>
+      <div *ngIf="pathData.nodes.length > 5" class="horizontal-line"></div>
+      <div *ngIf="pathData.nodes.length > 5" class="vertical-line-2"></div>
+    </div>  
+    
+  </div>
+</div> -->

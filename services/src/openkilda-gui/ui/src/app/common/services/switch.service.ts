@@ -35,6 +35,11 @@ export class SwitchService {
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/stats/switchports/${switchId}/${startDate}/${endDate}/${downSample}?_=${timestamp}`); 
 }
 
+getNetworkPath(source_switch,target_switch){
+  let timestamp = new Date().getTime();
+  return this.httpClient.get<any>(`${environment.apiEndPoint}/network/paths?src_switch=${source_switch}&dst_switch=${target_switch}&_=${timestamp}`); 
+}
+
   
   configurePort(switchId, portNumber, status): Observable<{}>{
         const url = `${environment.apiEndPoint}/switch/${switchId}/${portNumber}/config`; 
