@@ -774,8 +774,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         .flatMap(List::stream)
                         .collect(Collectors.toList());
             }
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.error("Could not get flow stats for {}.", dpid, e);
+            throw new SwitchNotFoundException(dpid);
+        } catch (InterruptedException e) {
+            logger.error("Could not get flow stats for {}.", dpid, e);
+            Thread.currentThread().interrupt();
             throw new SwitchNotFoundException(dpid);
         }
 

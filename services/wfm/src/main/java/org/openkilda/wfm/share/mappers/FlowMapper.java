@@ -42,6 +42,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Convert {@link UnidirectionalFlow} to {@link FlowDto} and back.
@@ -103,9 +104,10 @@ public abstract class FlowMapper {
      * <p/>
      * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
      * with only switchId filled.</strong>
+     * If no encapsulation type is provided then defaultFlowEncapsulationType will be used.
      */
-    public UnidirectionalFlow map(FlowDto flowDto) {
-        Flow flow = buildFlow(flowDto);
+    public UnidirectionalFlow map(FlowDto flowDto, Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
+        Flow flow = buildFlow(flowDto, defaultFlowEncapsulationType);
 
         FlowPath flowPath = buildPath(flow, flowDto);
         flow.setForwardPath(flowPath);
@@ -117,13 +119,15 @@ public abstract class FlowMapper {
 
     /**
      * Convert {@link FlowPairDto} to {@link FlowPair}.
+     * If no encapsulation type is provided then defaultFlowEncapsulationType will be used.
      */
-    public FlowPair map(FlowPairDto<FlowDto, FlowDto> flowPair) {
+    public FlowPair map(FlowPairDto<FlowDto, FlowDto> flowPair,
+                        Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
         if (flowPair == null) {
             return null;
         }
 
-        Flow flow = buildFlow(flowPair.getLeft());
+        Flow flow = buildFlow(flowPair.getLeft(), defaultFlowEncapsulationType);
 
         FlowPath forwardPath = buildPath(flow, flowPair.getLeft());
         FlowPath reversePath = buildPath(flow, flowPair.getRight());
@@ -214,8 +218,10 @@ public abstract class FlowMapper {
     /**
      * Convert {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType} to {@link FlowEncapsulationType}.
      */
-    public FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType encapsulationType) {
-        return encapsulationType != null ? FlowEncapsulationType.valueOf(encapsulationType.name()) : null;
+    public FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType encapsulationType,
+                                     Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
+        return encapsulationType != null ? FlowEncapsulationType.valueOf(encapsulationType.name()) :
+                defaultFlowEncapsulationType.get();
     }
 
     /**
@@ -266,7 +272,7 @@ public abstract class FlowMapper {
                 .build();
     }
 
-    private Flow buildFlow(FlowDto flow) {
+    private Flow buildFlow(FlowDto flow, Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
         Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
         Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
 
@@ -284,7 +290,7 @@ public abstract class FlowMapper {
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
                 .allocateProtectedPath(flow.isAllocateProtectedPath())
-                .encapsulationType(map(flow.getEncapsulationType()))
+                .encapsulationType(map(flow.getEncapsulationType(), defaultFlowEncapsulationType))
                 .maxLatency(flow.getMaxLatency())
                 .priority(flow.getPriority())
                 .timeCreate(map(flow.getCreatedTime()))
