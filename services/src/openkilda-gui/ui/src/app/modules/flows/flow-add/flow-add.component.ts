@@ -34,6 +34,7 @@ export class FlowAddComponent implements OnInit {
   vlanPorts = [];
   diverseFlowList:any=[];
   virtualScrollFlag = true;
+  allocate_protected_path:false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -237,6 +238,7 @@ export class FlowAddComponent implements OnInit {
   }
   setProtectedpath(e){
     this.flowAddForm.controls['allocate_protected_path'].setValue(e.target.checked);
+    this.allocate_protected_path = e.target.checked;
   }
   goToBack(){
     this._location.back();

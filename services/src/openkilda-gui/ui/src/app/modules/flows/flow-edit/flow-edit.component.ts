@@ -36,6 +36,7 @@ export class FlowEditComponent implements OnInit {
   vlanPorts: Array<any>;
   diverseFlowList:any=[];
   storeLinkSetting = false;
+  allocate_protected_path = false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -131,6 +132,7 @@ export class FlowEditComponent implements OnInit {
           allocate_protected_path:flow_detail['allocate_protected_path'] || null,
         };
         this.flowId = flow_detail.flowid;
+        this.allocate_protected_path = flow_detail.allocate_protected_path || false;
         this.flowEditForm.setValue(this.flowDetail);
 
         this.getflowList();
@@ -327,6 +329,7 @@ export class FlowEditComponent implements OnInit {
 
   setProtectedpath(e){
     this.flowEditForm.controls['allocate_protected_path'].setValue(e.target.checked);
+    this.allocate_protected_path = e.target.checked;
   }
 
   /**Delete flow */

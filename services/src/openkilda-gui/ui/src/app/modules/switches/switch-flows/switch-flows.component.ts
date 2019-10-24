@@ -135,7 +135,7 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit,OnChanges, AfterV
   ngAfterViewInit(): void {
     this.dtTrigger.next();
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-      dtInstance.columns().every(function () { console.log(' i m here 1')
+      dtInstance.columns().every(function () { 
         const that = this;
         $('input', this.header()).on('keyup change', function () {
           if (that.search() !== this['value']) {
@@ -189,6 +189,9 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit,OnChanges, AfterV
     }
   }
 
+  showFlow(flowObj){
+    this.router.navigate(['/flows/details/'+flowObj.flowid]);
+  }
   fulltextSearch(e:any){ 
     var value = e.target.value;
     console.log('value',value);

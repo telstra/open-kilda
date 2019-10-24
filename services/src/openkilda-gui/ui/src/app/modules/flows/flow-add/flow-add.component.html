@@ -47,7 +47,7 @@
                 <div class='col-sm-4'>
                   <div class="pull-left">
                     <div class="onoffswitch">
-                      <input  [checked]="allocate_protected_path" type="checkbox" (change)="setProtectedpath($event)" name="onoffswitch" class="onoffswitch-checkbox"
+                      <input  formControlName="allocate_protected_path" [checked]="allocate_protected_path" type="checkbox" (change)="setProtectedpath($event)" name="onoffswitch" class="onoffswitch-checkbox"
                         id="onoffswitchsource">
                       <label class="onoffswitch-label" for="onoffswitchsource">
                         <span class="onoffswitch-inner "></span>

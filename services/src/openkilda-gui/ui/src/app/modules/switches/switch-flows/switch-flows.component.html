@@ -79,7 +79,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let row of data; let i = index"  class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" >
+      <tr *ngFor="let row of data; let i = index" (click)="showFlow(row)"  class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" >
         <td class="divTableCell" title="{{row.flowid }}"> 
           {{row.flowid || "-"}} 
         
