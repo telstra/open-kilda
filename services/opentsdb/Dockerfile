@@ -20,12 +20,12 @@ WORKDIR /tmp/
 
 COPY app /app
 
-RUN    wget -q https://github.com/OpenTSDB/opentsdb/releases/download/v2.4.0/opentsdb-2.4.0_all.deb \
+RUN    wget -q https://github.com/OpenTSDB/opentsdb/releases/download/v2.3.0/opentsdb-2.3.0_all.deb \
     && apt-get update -q \
     && apt-get install -yq --no-install-recommends \
         gnuplot \
         python-happybase \
-    && dpkg -i opentsdb-2.4.0_all.deb \
+    && dpkg -i opentsdb-2.3.0_all.deb \
     && chmod 777 /app/* \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
