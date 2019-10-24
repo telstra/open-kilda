@@ -233,7 +233,7 @@ public class FlowsIntegrationService {
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 Flow flow = restClientManager.getResponse(response, Flow.class);
-                return flowConverter.toFlowWithSwitchNames(flow);
+                return flow;
             }
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting flow by id:" + flowId, e);

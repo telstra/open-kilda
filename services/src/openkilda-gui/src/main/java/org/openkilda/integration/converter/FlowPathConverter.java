@@ -17,6 +17,7 @@ package org.openkilda.integration.converter;
 
 import org.openkilda.integration.model.response.FlowPathNode;
 import org.openkilda.integration.model.response.FlowPayload;
+import org.openkilda.integration.model.response.OtherFlows;
 import org.openkilda.integration.service.SwitchIntegrationService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,19 @@ public class FlowPathConverter {
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         setSwitchName(flowPayload.getForward(), csNames);
         setSwitchName(flowPayload.getReverse(), csNames);
+        if (flowPayload.getProtectedPath() != null) {
+            setSwitchName(flowPayload.getProtectedPath().getForward(), csNames);
+            setSwitchName(flowPayload.getProtectedPath().getReverse(), csNames);
+        }
+        if (flowPayload.getDiversePath() != null) {
+            List<OtherFlows> otherFlows = flowPayload.getDiversePath().getOtherFlows();
+            if (otherFlows != null) {
+                otherFlows.parallelStream().forEach((otherFlow) -> {
+                    setSwitchName(otherFlow.getForward(), csNames);
+                    setSwitchName(otherFlow.getReverse(), csNames);
+                });
+            }
+        }
         return flowPayload;
     }
     

@@ -72,6 +72,7 @@ public class FlowConverter {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
+        flowInfo.setAllocateProtectedPath(flow.isAllocateProtectedPath());
         flowInfo.setDescription(flow.getDescription());
         flowInfo.setStatus(flow.getStatus().toUpperCase());
         flowInfo.setDiverseFlowid(flow.getDiverseFlowId());
