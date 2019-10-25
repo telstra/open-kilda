@@ -29,10 +29,13 @@ import org.openkilda.wfm.topology.applications.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.applications.bolt.StatsEncoder;
 import org.openkilda.wfm.topology.applications.bolt.StatsReplyBolt;
 
+import com.google.common.collect.Lists;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
+
+import java.util.List;
 
 public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
 
@@ -52,7 +55,7 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
         TopologyBuilder topologyBuilder = new TopologyBuilder();
 
         inputSpout(topologyBuilder);
-        inputNbSpout(topologyBuilder);
+        inputRequestSpout(topologyBuilder);
         inputStatsSpout(topologyBuilder);
 
         PersistenceManager persistenceManager =
@@ -70,9 +73,10 @@ public class AppsTopology extends AbstractTopology<AppsTopologyConfig> {
         return topologyBuilder.createTopology();
     }
 
-    private void inputNbSpout(TopologyBuilder topologyBuilder) {
-        KafkaSpout<String, Message> spout = buildKafkaSpout(
-                topologyConfig.getKafkaApplicationsNbTopic(), ComponentId.APPS_NB_SPOUT.toString());
+    private void inputRequestSpout(TopologyBuilder topologyBuilder) {
+        List<String> topics = Lists.newArrayList(topologyConfig.getKafkaApplicationsNbTopic(),
+                topologyConfig.getKafkaApplicationsFlTopic());
+        KafkaSpout<String, Message> spout = buildKafkaSpout(topics, ComponentId.APPS_NB_SPOUT.toString());
         topologyBuilder.setSpout(ComponentId.APPS_NB_SPOUT.toString(), spout, parallelism);
     }
 

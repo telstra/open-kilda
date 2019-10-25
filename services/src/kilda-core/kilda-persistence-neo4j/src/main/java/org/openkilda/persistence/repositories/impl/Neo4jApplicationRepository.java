@@ -43,15 +43,8 @@ public class Neo4jApplicationRepository extends Neo4jGenericRepository<Applicati
     public Optional<ApplicationRule> lookupRuleByMatchAndFlow(SwitchId switchId, String flowId, String srcIp,
                                                                 Integer srcPort, String dstIp, Integer dstPort,
                                                                 String proto, String ethType) {
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("switch_id", switchId.toString());
+        Map<String, Object> parameters = getBaseParameters(switchId, srcIp, srcPort, dstIp, dstPort, proto, ethType);
         parameters.put("flow_id", flowId);
-        parameters.put("src_ip", srcIp);
-        parameters.put("src_port", srcPort);
-        parameters.put("dst_ip", dstIp);
-        parameters.put("dst_port", dstPort);
-        parameters.put("proto", proto);
-        parameters.put("eth_type", ethType);
 
         String query = "MATCH (ar:application_rule) "
                 + "WHERE ar.switch_id = $switch_id "
@@ -64,6 +57,45 @@ public class Neo4jApplicationRepository extends Neo4jGenericRepository<Applicati
                 + " AND ar.eth_type = $eth_type "
                 + "RETURN ar";
 
+        return processQuery(parameters, query);
+    }
+
+    @Override
+    public Optional<ApplicationRule> lookupRuleByMatchAndCookie(SwitchId switchId, Long cookie, String srcIp,
+                                                                Integer srcPort, String dstIp, Integer dstPort,
+                                                                String proto, String ethType) {
+        Map<String, Object> parameters = getBaseParameters(switchId, srcIp, srcPort, dstIp, dstPort, proto, ethType);
+        parameters.put("cookie", cookie);
+
+        String query = "MATCH (ar:application_rule) "
+                + "WHERE ar.switch_id = $switch_id "
+                + " AND ar.cookie = $cookie "
+                + " AND ar.src_ip = $src_ip "
+                + " AND ar.src_port = $src_port "
+                + " AND ar.dst_ip = $dst_ip "
+                + " AND ar.dst_port = $dst_port "
+                + " AND ar.proto = $proto "
+                + " AND ar.eth_type = $eth_type "
+                + "RETURN ar";
+
+        return processQuery(parameters, query);
+    }
+
+    private Map<String, Object> getBaseParameters(SwitchId switchId, String srcIp, Integer srcPort,
+                                                  String dstIp, Integer dstPort, String proto, String ethType) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("switch_id", switchId.toString());
+        parameters.put("src_ip", srcIp);
+        parameters.put("src_port", srcPort);
+        parameters.put("dst_ip", dstIp);
+        parameters.put("dst_port", dstPort);
+        parameters.put("proto", proto);
+        parameters.put("eth_type", ethType);
+
+        return parameters;
+    }
+
+    private Optional<ApplicationRule> processQuery(Map<String, Object> parameters, String query) {
         Collection<ApplicationRule> results = Lists.newArrayList(
                 getSession().query(getEntityType(), query, parameters));
 

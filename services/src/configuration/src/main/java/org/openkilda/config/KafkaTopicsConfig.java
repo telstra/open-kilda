@@ -228,6 +228,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.nb.apps_request.priv")
     String getTopoAppsNbTopic();
 
+    @Key("topo.apps.fl")
+    @Default("kilda.fl.apps_request.priv")
+    String getTopoAppsFlTopic();
+
     @Key("apps")
     @Default("kilda.apps.pub")
     String getAppsTopic();

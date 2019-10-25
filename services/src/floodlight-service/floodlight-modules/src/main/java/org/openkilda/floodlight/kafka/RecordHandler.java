@@ -30,6 +30,8 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.SpeakerCommand;
+import org.openkilda.floodlight.converter.EthTypeMapper;
+import org.openkilda.floodlight.converter.IpProtocolMapper;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -270,8 +272,8 @@ class RecordHandler implements Runnable {
         Integer srcPort = command.getSrcPort();
         IPv4Address dstIp = IPv4Address.of(command.getDstIp());
         Integer dstPort = command.getDstPort();
-        IpProtocol proto = convertStringToIpProtocol(command.getProto());
-        EthType ethType = convertStringToEthType(command.getEthType());
+        IpProtocol proto = IpProtocolMapper.INSTANCE.convert(command.getProto());
+        EthType ethType = EthTypeMapper.INSTANCE.convert(command.getEthType());
         int timeout = command.getExpirationTimeout();
 
         try {
@@ -293,34 +295,14 @@ class RecordHandler implements Runnable {
         Integer srcPort = command.getSrcPort();
         IPv4Address dstIp = IPv4Address.of(command.getDstIp());
         Integer dstPort = command.getDstPort();
-        IpProtocol proto = convertStringToIpProtocol(command.getProto());
-        EthType ethType = convertStringToEthType(command.getEthType());
+        IpProtocol proto = IpProtocolMapper.INSTANCE.convert(command.getProto());
+        EthType ethType = EthTypeMapper.INSTANCE.convert(command.getEthType());
 
         try {
             context.getSwitchManager()
                     .removeExclusion(dpid, cookie, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId);
         } catch (SwitchOperationException e) {
             logger.error("Removing exclusion from switch {} was unsuccessful", command.getSwitchId(), e);
-        }
-    }
-
-    private IpProtocol convertStringToIpProtocol(String proto) {
-        if ("TCP".equals(proto)) {
-            return IpProtocol.TCP;
-        } else if ("UDP".equals(proto)) {
-            return IpProtocol.UDP;
-        } else {
-            logger.error("Unexpected ip protocol {}", proto);
-            return IpProtocol.NONE;
-        }
-    }
-
-    private EthType convertStringToEthType(String ethType) {
-        if ("IPv4".equals(ethType)) {
-            return EthType.IPv4;
-        } else {
-            logger.error("Unexpected ethernet type {}", ethType);
-            return EthType.NONE;
         }
     }
 

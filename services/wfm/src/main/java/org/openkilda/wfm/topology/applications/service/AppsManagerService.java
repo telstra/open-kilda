@@ -333,6 +333,21 @@ public class AppsManagerService {
     }
 
     /**
+     * Remove exclusion by match and cookie.
+     */
+    public void processRemoveExclusion(RemoveExclusionRequest payload) {
+        Optional<ApplicationRule> ruleOptional = applicationRepository.lookupRuleByMatchAndCookie(
+                payload.getSwitchId(), payload.getCookie(), payload.getSrcIp(), payload.getSrcPort(),
+                payload.getDstIp(), payload.getDstPort(), payload.getProto(), payload.getEthType());
+        if (!ruleOptional.isPresent()) {
+            return;
+        }
+        ApplicationRule rule = ruleOptional.get();
+        applicationRepository.delete(rule);
+        exclusionIdPool.deallocate(rule.getFlowId(), rule.getCookie().getTypeMetadata());
+    }
+
+    /**
      * Remove exclusion for the flow.
      */
     public void processRemoveExclusion(RemoveExclusion payload)

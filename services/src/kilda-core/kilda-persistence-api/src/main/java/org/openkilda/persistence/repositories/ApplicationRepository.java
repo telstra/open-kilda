@@ -25,4 +25,8 @@ public interface ApplicationRepository extends Repository<ApplicationRule> {
     Optional<ApplicationRule> lookupRuleByMatchAndFlow(SwitchId switchId, String flowId, String srcIp,
                                                        Integer srcPort, String dstIp, Integer dstPort,
                                                        String proto, String ethType);
+
+    Optional<ApplicationRule> lookupRuleByMatchAndCookie(SwitchId switchId, Long cookie, String srcIp,
+                                                         Integer srcPort, String dstIp, Integer dstPort,
+                                                         String proto, String ethType);
 }

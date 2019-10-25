@@ -35,6 +35,10 @@ public interface AppsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoAppsNbTopic();
     }
 
+    default String getKafkaApplicationsFlTopic() {
+        return getKafkaTopics().getTopoAppsFlTopic();
+    }
+
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
     }

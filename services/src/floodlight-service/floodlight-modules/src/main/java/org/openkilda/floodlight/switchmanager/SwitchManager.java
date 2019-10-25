@@ -71,6 +71,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -1402,7 +1403,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return prepareFlowModBuilder(ofFactory, cookie, 10, tableId)
                 .setTableId(TableId.of(tableId))
                 .setMatch(buildExclusionMatch(sw, srcIp, srcPort, dstIp, dstPort, proto, ethType, tunnelId))
-                .setHardTimeout(timeout)
+                .setIdleTimeout(timeout)
+                .setFlags(Sets.newHashSet(OFFlowModFlags.SEND_FLOW_REM))
                 .build();
     }
 

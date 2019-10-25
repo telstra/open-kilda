@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.apps.FlowAddAppRequest;
 import org.openkilda.messaging.command.apps.FlowAppsReadRequest;
 import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
+import org.openkilda.messaging.command.switches.RemoveExclusionRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
@@ -80,7 +81,7 @@ public class AppsManager extends AbstractBolt {
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (ComponentId.APPS_NB_SPOUT.toString().equals(source)) {
-            processNbInput(input);
+            processRequestInput(input);
         } else if (ComponentId.APPS_SPOUT.toString().equals(source)) {
             processInput(input);
         } else {
@@ -88,7 +89,7 @@ public class AppsManager extends AbstractBolt {
         }
     }
 
-    private void processNbInput(Tuple input) throws PipelineException {
+    private void processRequestInput(Tuple input) throws PipelineException {
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
         try {
             processMessage(message);
@@ -154,6 +155,8 @@ public class AppsManager extends AbstractBolt {
             service.addFlowApplication((FlowAddAppRequest) payload);
         } else if (payload instanceof FlowRemoveAppRequest) {
             service.removeFlowApplication((FlowRemoveAppRequest) payload);
+        } else if (payload instanceof RemoveExclusionRequest) {
+            service.processRemoveExclusion((RemoveExclusionRequest) payload);
         } else {
             throw new UnsupportedOperationException(format("Unexpected message payload \"%s\"", payload.getClass()));
         }
