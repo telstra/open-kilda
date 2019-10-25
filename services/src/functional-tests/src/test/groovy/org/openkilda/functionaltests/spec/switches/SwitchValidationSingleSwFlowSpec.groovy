@@ -483,7 +483,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id, true)
 
         then: "Switch validation returns empty sections"
         with(northbound.validateSwitch(sw.dpId)) {
