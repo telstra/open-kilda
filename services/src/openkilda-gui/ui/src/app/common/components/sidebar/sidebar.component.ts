@@ -32,6 +32,11 @@ export class SidebarComponent implements OnInit {
         localStorage.removeItem('SWITCHES_LIST_ALL');
         localStorage.removeItem('switchPortDetail');  
       }  
+
+      if(!this.currentUrl.includes('/port')) {
+        localStorage.removeItem('portFlows');
+        localStorage.removeItem('portFlowInventory');
+      }  
      
       this.commonService.setCurrentUrl(router.url);
       

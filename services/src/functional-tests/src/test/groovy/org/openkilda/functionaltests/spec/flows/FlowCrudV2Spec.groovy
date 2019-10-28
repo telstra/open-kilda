@@ -132,7 +132,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
-        !northbound.getAllFlows().find { it.flowId == flow.flowId }
+        !northbound.getAllFlows().find { it.id == flow.flowId }
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) {

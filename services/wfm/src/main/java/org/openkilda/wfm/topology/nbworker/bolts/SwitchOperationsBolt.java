@@ -37,6 +37,7 @@ import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
@@ -162,11 +163,9 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
                 return switchOperationsService.deleteSwitch(switchId, force);
             } catch (SwitchNotFoundException e) {
                 String message = String.format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
-                log.error(message);
                 throw new MessageException(ErrorType.NOT_FOUND, message, "Switch is not found.");
             } catch (IllegalSwitchStateException e) {
                 String message = String.format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
-                log.error(message);
                 throw new MessageException(ErrorType.REQUEST_INVALID, message, "Switch is in illegal state");
             }
         });
@@ -185,7 +184,6 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         if (found == null) {
             String message = String.format("Failed to found properties for switch '%s'.",
                     request.getSwitchId());
-            log.error(message);
             throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
         }
         return new SwitchPropertiesResponse(found);
@@ -196,16 +194,19 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
                 request.getSwitchProperties());
         if (updated == null) {
             String message = String.format("Failed to update switch properties for switch '%s'", request.getSwitchId());
-            log.error(message);
             throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
         }
         return new SwitchPropertiesResponse(updated);
     }
 
     private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {
-        PortProperties portProperties =
-                switchOperationsService.getPortProperties(request.getSwitchId(), request.getPort());
-        return PortMapper.INSTANCE.map(portProperties);
+        try {
+            PortProperties portProperties =
+                    switchOperationsService.getPortProperties(request.getSwitchId(), request.getPort());
+            return PortMapper.INSTANCE.map(portProperties);
+        } catch (PersistenceException | SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Couldn't get port properties");
+        }
     }
 
     @Override

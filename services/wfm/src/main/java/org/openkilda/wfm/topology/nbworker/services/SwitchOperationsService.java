@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.model.Flow;
@@ -28,7 +26,6 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -290,18 +287,12 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      * @param switchId target switch id
      * @param port port number
      */
-    public PortProperties getPortProperties(SwitchId switchId, int port) {
-        try {
-            return portPropertiesRepository.getBySwitchIdAndPort(switchId, port)
-                    .orElse(PortProperties.builder()
-                            .switchObj(switchRepository.findById(switchId)
-                                    .orElseThrow(() -> new SwitchNotFoundException(switchId)))
-                            .port(port)
-                            .build());
-        } catch (PersistenceException | SwitchNotFoundException e) {
-            String message = String.format("Port properties not found: %s", e.getMessage());
-            log.error(message);
-            throw new MessageException(ErrorType.NOT_FOUND, message, "Could not get port properties.");
-        }
+    public PortProperties getPortProperties(SwitchId switchId, int port) throws SwitchNotFoundException {
+        return portPropertiesRepository.getBySwitchIdAndPort(switchId, port)
+                .orElse(PortProperties.builder()
+                        .switchObj(switchRepository.findById(switchId)
+                                .orElseThrow(() -> new SwitchNotFoundException(switchId)))
+                        .port(port)
+                        .build());
     }
 }

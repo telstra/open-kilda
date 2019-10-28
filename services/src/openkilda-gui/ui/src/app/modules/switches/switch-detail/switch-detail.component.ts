@@ -24,17 +24,20 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   switchDetail:any = {};
   switch_id: string;
   switchNameForm:FormGroup;
+  loadswitchFlows= false;
   name: string;
   address: string;
   hostname: string;
   description: string;
   state: string;
+  switchFlows:any;
   openedTab : string = 'port';
   isSwitchNameEdit = false;
   isStorageDBType= false;
   evacuate:boolean = false;;
   underMaintenance:boolean;
-  currentRoute: string = 'switch-details';
+  currentRoute: string = 'switch-details';  
+  switchFlowFlag :any = 'controller';
   clipBoardItems = {
     sourceSwitchName:"",
     sourceSwitch:"",
@@ -121,11 +124,27 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
   toggleTab(tab, enableLoader = false){
     this.openedTab = tab;
-    if(enableLoader){
+    if(tab == 'flows'){
+        this.loadSwitchFlows(this.switchDetail.switch_id);
+    }else if(enableLoader){
       this.isLoaderActive = true;
     }else{
       this.isLoaderActive = false;
     }
+  }
+
+  loadSwitchFlows(switchId){
+    this.loaderService.show('Loading Flows..');
+    var filter = this.switchFlowFlag =='inventory' ;
+    this.loadswitchFlows = false;
+    this.switchService.getSwitchFlows(switchId,filter,null).subscribe(data=>{
+      this.switchFlows = data;
+      this.loadswitchFlows = true;
+    },error=>{
+      this.loaderService.hide();
+      this.switchFlows = [];
+      this.loadswitchFlows = true;
+    })
   }
 
   copyToClip(event, copyItem) {

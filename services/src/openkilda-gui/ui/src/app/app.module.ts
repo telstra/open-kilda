@@ -87,6 +87,9 @@ import { SessionComponent } from './modules/settings/session/session.component';
 import { ImportTopologySettingComponent } from './modules/topology/import-topology-setting/import-topology-setting.component';
 import { ExportTopologySettingComponent } from './modules/topology/export-topology-setting/export-topology-setting.component';
 import { IslmaintenancemodalComponent } from './common/components/islmaintenancemodal/islmaintenancemodal.component';
+import { SwitchFlowsComponent } from './modules/switches/switch-flows/switch-flows.component';
+import { PortFlowsComponent } from './modules/switches/port-flows/port-flows.component';
+import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-flows/port-inventory-flows.component';
 
 @NgModule({
   declarations: [
@@ -160,6 +163,9 @@ import { IslmaintenancemodalComponent } from './common/components/islmaintenance
     ImportTopologySettingComponent,
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
+    SwitchFlowsComponent,
+    PortFlowsComponent,
+    PortInventoryFlowsComponent,
   ],
   imports: [
     HttpClientModule,

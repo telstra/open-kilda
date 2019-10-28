@@ -464,7 +464,8 @@ public class FlowServiceImpl implements FlowService {
     }
 
     private FlowPathPayload buildFlowPathPayload(List<FlowPathDto> paths, String flowId) {
-        FlowPathDto askedPathDto = paths.stream().filter(e -> e.getId().equals(flowId)).findAny().get();
+        FlowPathDto askedPathDto = paths.stream().filter(e -> e.getId().equals(flowId)).findAny()
+                .orElseThrow(() -> new IllegalStateException(format("Path for flow %s is not found.", flowId)));
         // fill primary flow path
         FlowPathPayload payload = new FlowPathPayload();
         payload.setId(askedPathDto.getId());

@@ -32,11 +32,11 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.service.SwitchService;
-import org.openkilda.store.model.Customer;
 import org.openkilda.utility.StringUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -263,7 +263,7 @@ public class SwitchController {
         activityLogger.log(ActivityType.CONFIGURE_SWITCH_PORT, "SW_" + switchId + ", P_" + port);
         return serviceSwitch.configurePort(switchId, port, configuration);
     }
-
+    
     /**
      * Gets Port flows.
      *
@@ -271,11 +271,12 @@ public class SwitchController {
      * @param port the port
      * @return the customers detail
      */
-    @RequestMapping(path = "/{switchId}/{port}/flows", method = RequestMethod.GET)
+    @RequestMapping(path = "/{switchId}/flows", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody List<Customer> getPortFlows(@PathVariable final String switchId,
-            @PathVariable final String port) {
-        return serviceSwitch.getPortFlows(switchId, port);
+    public @ResponseBody ResponseEntity<List<?>> getPortFlows(@PathVariable final String switchId,
+            @RequestParam(value = "port", required = false) final String port, 
+            @RequestParam(value = "inventory", required = false) final boolean inventory) {
+        return serviceSwitch.getPortFlows(switchId, port, inventory);
     }
 
     /**

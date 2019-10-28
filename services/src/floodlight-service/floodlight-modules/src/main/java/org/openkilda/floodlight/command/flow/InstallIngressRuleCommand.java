@@ -16,6 +16,9 @@
 package org.openkilda.floodlight.command.flow;
 
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ETH_SRC_OFFSET;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INTERNAL_ETH_SRC_OFFSET;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_SIZE_IN_BITS;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_IPV4_DST;
@@ -48,6 +51,7 @@ import com.google.common.collect.ImmutableSet;
 import lombok.Getter;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -55,12 +59,17 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -113,6 +122,10 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                 .ifPresent(commands::add);
         OFFlowMod ruleCommand = getInstallRuleCommand(sw, featureDetectorService);
         commands.add(new MessageWriter(ruleCommand));
+        if (multiTable) {
+            // NOTE(tdurakov): reinstall ingress port pass through command in case of multi-table
+            commands.add(new MessageWriter(getIntermediateIngressRule(sw, inputPort)));
+        }
         return commands;
     }
 
@@ -130,6 +143,23 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
 
     OFPort getOutputPort() {
         return OFPort.of(outputPort);
+    }
+
+    final OFFlowMod getIntermediateIngressRule(IOFSwitch sw, int port) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .build();
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        return ofFactory.buildFlowAdd()
+                    .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                    .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                    .setBufferId(OFBufferId.NO_BUFFER)
+                    .setCookie(U64.of(Cookie.encodeIngressRulePassThrough(port)))
+                    .setPriority(INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
+                    .setTableId(TableId.of(INPUT_TABLE_ID))
+                    .setMatch(match)
+                    .setInstructions(ImmutableList.of(goToTable)).build();
     }
 
     final OFFlowMod getInstallRuleCommand(IOFSwitch sw, FeatureDetectorService featureDetectorService) {
@@ -152,10 +182,12 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         // build match by input port and input vlan id
         Match match = matchFlow(inputPort, inputVlanId, FlowEncapsulationType.TRANSIT_VLAN, null, ofFactory);
 
+        int targetTableId = multiTable ? INGRESS_TABLE_ID : INPUT_TABLE_ID;
         // build FLOW_MOD command with meter
         OFFlowAdd.Builder builder = prepareFlowModBuilder(ofFactory)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match)
+                .setTableId(TableId.of(targetTableId))
                 .setPriority(inputVlanId == 0 ? SwitchManager.DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY);
 
         if (supportedFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {

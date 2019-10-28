@@ -142,9 +142,13 @@
           <li  [ngClass]="{'active': openedTab == 'meters'}">
             <a href="javascript:void(0)" (click)="toggleTab('meters')" data-toggle="tab" id="meters-list">METERS</a>
           </li>
+          <li  *ngIf="commonService.hasPermission('sw_switch_inventory') && commonService.hasPermission('menu_flows')"  [ngClass]="{'active': openedTab == 'flows'}">
+            <a href="javascript:void(0)" (click)="toggleTab('flows')" data-toggle="tab" id="flow-list">FLOWS</a>
+          </li>
           <li *ngIf="hasStoreSetting && statusDescrepancy" [ngClass]="{'active': openedTab == 'descripancy'}">
             <a href="javascript:void(0)" (click)="toggleTab('descripancy')" data-toggle="tab" id="descripancy-list">DISCREPANCY</a>
           </li>
+         
         </ul>
         <div class="tab-content clearfix">
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'port'}" id="1a">
@@ -155,6 +159,9 @@
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'meters'}" >
             <app-switch-meters *ngIf="openedTab == 'meters'"></app-switch-meters>
+          </div>
+          <div class="tab-pane" [ngClass]="{'active': openedTab == 'flows'}" >
+              <app-switch-flows  [data]="switchFlows" *ngIf="openedTab == 'flows' && loadswitchFlows"></app-switch-flows>
           </div>
             <div class="tab-pane" [ngClass]="{'active': openedTab == 'descripancy'}" id="a">
             <div class="table-responsive">

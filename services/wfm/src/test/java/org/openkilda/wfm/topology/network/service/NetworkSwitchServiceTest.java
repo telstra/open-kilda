@@ -894,7 +894,7 @@ public class NetworkSwitchServiceTest {
                 LinkStatus.of(ports.get(0).getState()));
 
         verify(switchRepository).createOrUpdate(argThat(sw ->
-                sw.getStatus() == SwitchStatus.ACTIVE && sw.getSwitchId() == alphaDatapath));
+                sw.getStatus() == SwitchStatus.INACTIVE && sw.getSwitchId() == alphaDatapath));
         verify(switchPropertiesRepository).createOrUpdate(argThat(sf ->
                 sf.getSupportedTransitEncapsulation().equals(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
     }

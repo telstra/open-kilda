@@ -599,4 +599,46 @@ public class SwitchIntegrationService {
         }
         return null;
     }
+    
+    /**
+     * Gets the switch flows.
+     *
+     * @return the FlowInfo
+     */
+    public List<FlowInfo> getSwitchFlows(String switchId, String port) {
+        List<Flow> flowList = getSwitchPortFlows(switchId, port);
+        if (flowList != null) {
+            return flowConverter.toFlowsInfo(flowList);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets the switch flows.
+     *
+     * @return the Flow
+     */
+    public List<Flow> getSwitchPortFlows(String switchId, String port) {
+        try {
+            HttpResponse response;
+            if (port == null) {
+                response = restClientManager.invoke(
+               applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+               .GET_SWITCH_FLOWS.replace("{switch_id}", switchId),
+               HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            } else {
+                response = restClientManager.invoke(
+                           applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                           .GET_SWITCH_PORT_FLOWS.replace("{switch_id}", switchId).replace("{port}", port),
+                           HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            } 
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, Flow.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while getting switch flows", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        }
+        return null;
+    }
 }

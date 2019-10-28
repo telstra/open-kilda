@@ -1,17 +1,16 @@
 package org.openkilda.messaging.info.flow;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.openkilda.messaging.Utils.MAPPER;
+
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.IOException;
-
-import static org.openkilda.messaging.Utils.MAPPER;
-
 
 public class FlowStatusResponseTest {
 
@@ -29,17 +28,17 @@ public class FlowStatusResponseTest {
 
      */
 
-    private final String json = "{" +
-            "\"clazz\":\"org.openkilda.messaging.info.InfoMessage\"," +
-            "\"destination\":\"NORTHBOUND\"," +
-            "\"payload\":{" +
-                "\"clazz\":\"org.openkilda.messaging.info.flow.FlowStatusResponse\"," +
-                "\"payload\":{" +
-                    "\"flowid\":\"FLOW\"," +
-                    "\"status\":\"UP\"}," +
-                "\"timestamp\":1520474258050}," +
-            "\"timestamp\":10," +
-            "\"correlation_id\":\"CORRELATION\"}";
+    private final String json = "{"
+            + "\"clazz\":\"org.openkilda.messaging.info.InfoMessage\","
+            + "\"destination\":\"NORTHBOUND\","
+            + "\"payload\":{"
+            +     "\"clazz\":\"org.openkilda.messaging.info.flow.FlowStatusResponse\","
+            +     "\"payload\":{"
+            +         "\"flowid\":\"FLOW\","
+            +         "\"status\":\"UP\"},"
+            +     "\"timestamp\":1520474258050},"
+            + "\"timestamp\":10,"
+            + "\"correlation_id\":\"CORRELATION\"}";
 
     @Test
     public void testJsonSerialization() throws IOException {
@@ -47,8 +46,8 @@ public class FlowStatusResponseTest {
          * Start with serializing to JSON.
          * Then re-populate from JSON.
          */
-        InfoMessage msg = new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload("FLOW",FlowState.UP)), 10L,"CORRELATION", Destination.NORTHBOUND,
-                null);
+        InfoMessage msg = new InfoMessage(new FlowStatusResponse(
+                new FlowIdStatusPayload("FLOW", FlowState.UP)), 10L, "CORRELATION", Destination.NORTHBOUND, null);
 
         InfoMessage fromJson = MAPPER.readValue(json, InfoMessage.class);
         FlowStatusResponse fsrJson = (FlowStatusResponse) fromJson.getData();

@@ -53,8 +53,10 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Default rules are installed on the switch"
-        def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
-        cookies.sort() == sw.defaultCookies.sort()
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
+            cookies.sort() == sw.defaultCookies.sort()
+        }
     }
 
     @Unroll
@@ -173,13 +175,13 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules == deletedRules
             excessRules.empty
-            properRules == sw.defaultCookies.findAll { it != data.cookie }
+            properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
         verifyAll(northbound.validateSwitch(sw.dpId)) {
             rules.missing == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper == sw.defaultCookies.findAll { it != data.cookie }
+            rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
         and: "Install default rules back"

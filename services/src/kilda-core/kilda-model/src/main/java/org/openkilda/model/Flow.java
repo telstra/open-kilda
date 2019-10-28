@@ -168,13 +168,20 @@ public class Flow implements Serializable {
     @Convert(DetectConnectedDevicesConverter.class)
     private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(false, false, false, false);
 
+    @Property(name = "src_with_multi_table")
+    private boolean srcWithMultiTable;
+
+    @Property(name = "dst_with_multi_table")
+    private boolean destWithMultiTable;
+
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int destPort, int destVlan,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
                 boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
-                Integer maxLatency, Integer priority, Instant timeCreate, Instant timeModify, boolean pinned,
-                DetectConnectedDevices detectConnectedDevices) {
+                Integer maxLatency, Integer priority,
+                Instant timeCreate, Instant timeModify, boolean pinned,
+                boolean srcWithMultiTable, boolean destWithMultiTable, DetectConnectedDevices detectConnectedDevices) {
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -188,7 +195,7 @@ public class Flow implements Serializable {
         this.description = description;
         this.periodicPings = periodicPings;
         this.allocateProtectedPath = allocateProtectedPath;
-        this.encapsulationType = encapsulationType;
+        this.encapsulationType = encapsulationType == null ? FlowEncapsulationType.TRANSIT_VLAN : encapsulationType;
         this.status = status;
         this.maxLatency = maxLatency;
         this.priority = priority;
@@ -196,6 +203,8 @@ public class Flow implements Serializable {
         this.timeModify = timeModify;
         this.pinned = pinned;
         setDetectConnectedDevices(detectConnectedDevices);
+        this.srcWithMultiTable = srcWithMultiTable;
+        this.destWithMultiTable = destWithMultiTable;
     }
 
     /**

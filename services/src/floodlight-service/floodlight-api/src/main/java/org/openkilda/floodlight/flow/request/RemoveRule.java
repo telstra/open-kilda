@@ -18,6 +18,7 @@ package org.openkilda.floodlight.flow.request;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.MeterId;
@@ -45,6 +46,9 @@ public class RemoveRule extends SpeakerFlowRequest {
     @JsonProperty("meter_id")
     private MeterId meterId;
 
+    @JsonProperty("rule_type")
+    private RuleType ruleType;
+
     @JsonCreator
     @Builder
     public RemoveRule(@JsonProperty("message_context") MessageContext messageContext,
@@ -54,10 +58,12 @@ public class RemoveRule extends SpeakerFlowRequest {
                       @JsonProperty("cookie") final Cookie cookie,
                       @JsonProperty("criteria") DeleteRulesCriteria criteria,
                       @JsonProperty("meter_id") MeterId meterId,
-                      @JsonProperty("multi_table") boolean multiTable) {
+                      @JsonProperty("multi_table") boolean multiTable,
+                      @JsonProperty("rule_type") RuleType ruleType) {
         super(messageContext, commandId, flowId, switchId, multiTable);
         this.criteria = criteria;
         this.cookie = cookie;
         this.meterId = meterId;
+        this.ruleType = ruleType;
     }
 }
