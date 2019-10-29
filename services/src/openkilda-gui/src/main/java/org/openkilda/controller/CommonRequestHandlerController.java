@@ -24,7 +24,7 @@ import javax.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping(value = { "/home", "/topology", "/flows", "/isl", "/switches", "/usermanagement", "/useractivity",
-        "/storesetting", "/application-setting" }, method = RequestMethod.GET)
+        "/storesetting", "/application-setting", "/networkpath" }, method = RequestMethod.GET)
 public class CommonRequestHandlerController extends BaseController {
     /**
      * CommonRequestHandlerController.
