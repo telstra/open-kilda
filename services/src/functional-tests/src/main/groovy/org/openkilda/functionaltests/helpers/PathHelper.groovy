@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component
 @Component
 @Slf4j
 class PathHelper {
-    static final Integer NOT_PREFERABLE_COST = 10000
+    static final Integer NOT_PREFERABLE_COST = 99999999
 
     @Autowired
     TopologyDefinition topology

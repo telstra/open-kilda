@@ -18,6 +18,7 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -179,6 +180,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
     }
 
+    @Ignore("unstable") //TODO: fix test ASAP
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "A direct link"
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
