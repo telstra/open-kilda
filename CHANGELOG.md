@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.40.0 (28/10/2019)
+
+### Features:
+-  [#2867](https://github.com/telstra/open-kilda/pull/2867) Feature/switch flows (Issue: [#2768](https://github.com/telstra/open-kilda/issues/2768)) [**gui**]
+
+### Bug Fixes:
+-  [#2871](https://github.com/telstra/open-kilda/pull/2871) Fixed BFD feature detector [**floodlight**]
+-  [#2875](https://github.com/telstra/open-kilda/pull/2875) Fix db migrations versioning 
+
+### Improvements:
+-  [#2848](https://github.com/telstra/open-kilda/pull/2848) add narrative annotation into SwitchPropertiesSpec [**tests**]
+-  [#2853](https://github.com/telstra/open-kilda/pull/2853) Fix exception handling in northbound worker (Issue: [#2847](https://github.com/telstra/open-kilda/issues/2847)) [**storm-topologies**]
+-  [#2863](https://github.com/telstra/open-kilda/pull/2863) minor fix in FlowCrudV2Spec [**tests**]
+-  [#2864](https://github.com/telstra/open-kilda/pull/2864) Update jackson lib version [**storm-topologies**][**tests**]
+-  [#2866](https://github.com/telstra/open-kilda/pull/2866) minor changes in vxlanFlow v1/v2 specs [**tests**]
+
+### Other changes:
+-  [#2699](https://github.com/telstra/open-kilda/pull/2699) Multitable switch isl lcm [**northbound**][**storm-topologies**]
+-  [#2862](https://github.com/telstra/open-kilda/pull/2862) Fix major sonar issues [**floodlight**][**northbound**][**storm-topologies**][**tests**]
+-  [#2868](https://github.com/telstra/open-kilda/pull/2868) Bumped versions of hbase, kafka, opentsdb, storm and zookeeper [**storm-topologies**]
+-  [#2879](https://github.com/telstra/open-kilda/pull/2879) Revert "Bumped versions of hbase, kafka, opentsdb, storm and zookeeper" (Issue: [#2868](https://github.com/telstra/open-kilda/issues/2868)) 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.39.1...v1.40.0).
+
+### Affected Components:
+ping, flow-hs, flow, neo4j, nb, swmanager, nbworker, fl
+
+### Upgrade notes:
+
+Related to [#2699](https://github.com/telstra/open-kilda/pull/2699)
+
+Also please consider using following migration scripts to update db:
+- [1.16 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.40.0/services/neo4j/migrations/1.16-multi-table-flag/1-add-multi-table-flag.xml)
+
+In case of issues these rollback scripts should be executed:
+- [1.16 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.40.0/services/neo4j/migrations/1.16-multi-table-flag/rollback.cql)
+
+---
+
 ## v1.39.1 (17/10/2019)
 
 ### Bug Fixes:

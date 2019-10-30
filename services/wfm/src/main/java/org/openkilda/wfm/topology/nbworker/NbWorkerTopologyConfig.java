@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ package org.openkilda.wfm.topology.nbworker;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
+import com.sabre.oss.conf4j.annotation.Description;
+import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
@@ -41,4 +44,18 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaDiscoTopic() {
         return getKafkaTopics().getTopoDiscoTopic();
     }
+
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
+    }
+
+    @Key("nbworker.operation.timeout.seconds")
+    @Default("10")
+    @Description("The timeout for performing async operations")
+    int getOperationTimeout();
+
+    @Key("nbworker.process.timeout.seconds")
+    @Default("20")
+    @Description("The timeout for performing H&S operations")
+    int getProcessTimeout();
 }

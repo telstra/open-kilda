@@ -13,21 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.nbworker.bolts;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.info.InfoData;
+
+import java.util.List;
+
+public interface FlowValidationHubCarrier {
+
+    void sendCommandToSpeakerWorker(String key, CommandData commandData);
+
+    void sendToResponseSplitterBolt(String key, List<? extends InfoData> message);
+
+    void sendToMessageEncoder(String key, ErrorData errorData);
+
+    void endProcessing(String key);
 }
