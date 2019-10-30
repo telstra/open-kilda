@@ -25,9 +25,8 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -35,39 +34,34 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 @Slf4j
-public class RevertResourceAllocationAction extends BaseFlowPathRemovalAction {
-
+public class RevertResourceAllocationAction extends
+        BaseFlowPathRemovalAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowResourcesManager resourcesManager;
 
     public RevertResourceAllocationAction(PersistenceManager persistenceManager,
                                           FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-
         this.resourcesManager = resourcesManager;
     }
 
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        transactionManager.doInTransaction(() -> {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
             FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
             if (newPrimaryResources != null) {
                 resourcesManager.deallocatePathResources(newPrimaryResources);
-                log.debug("Resources has been de-allocated: {}", newPrimaryResources);
                 saveHistory(stateMachine, flow, newPrimaryResources);
             }
 
             FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
             if (newProtectedResources != null) {
                 resourcesManager.deallocatePathResources(newProtectedResources);
-                log.debug("Resources has been de-allocated: {}", newProtectedResources);
                 saveHistory(stateMachine, flow, newProtectedResources);
             }
 
@@ -94,35 +88,29 @@ public class RevertResourceAllocationAction extends BaseFlowPathRemovalAction {
                 log.debug("Removing the new primary paths {} / {}", newPrimaryForward, newPrimaryReverse);
                 deleteFlowPaths(newPrimaryForward, newPrimaryReverse);
 
-                saveHistory(stateMachine, flow.getFlowId(), newPrimaryForward, newPrimaryReverse);
+                saveActionWithDumpToHistory(stateMachine, flow, newPrimaryForward, newPrimaryReverse);
             }
 
             if (newProtectedForward != null && newProtectedReverse != null) {
                 log.debug("Removing the new protected paths {} / {}", newProtectedForward, newProtectedReverse);
                 deleteFlowPaths(newProtectedForward, newProtectedReverse);
 
-                saveHistory(stateMachine, flow.getFlowId(), newProtectedForward, newProtectedReverse);
+                saveActionWithDumpToHistory(stateMachine, flow, newProtectedForward, newProtectedReverse);
             }
         });
 
         stateMachine.setNewPrimaryResources(null);
+        stateMachine.setNewPrimaryForwardPath(null);
+        stateMachine.setNewPrimaryReversePath(null);
         stateMachine.setNewProtectedResources(null);
+        stateMachine.setNewProtectedForwardPath(null);
+        stateMachine.setNewProtectedReversePath(null);
     }
 
     private void saveHistory(FlowRerouteFsm stateMachine, Flow flow, FlowResources resources) {
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, resources);
-        flowDumpData.setDumpType(DumpType.STATE_BEFORE);
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowDumpData(flowDumpData)
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow resources were deallocated")
-                        .time(Instant.now())
-                        .description(format("Flow resources for %s/%s were deallocated",
-                                resources.getForward().getPathId(), resources.getReverse().getPathId()))
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
+        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, resources, DumpType.STATE_BEFORE);
+        stateMachine.saveActionWithDumpToHistory("Flow resources were deallocated",
+                format("The flow resources for %s / %s were deallocated",
+                        resources.getForward().getPathId(), resources.getReverse().getPathId()), flowDumpData);
     }
 }

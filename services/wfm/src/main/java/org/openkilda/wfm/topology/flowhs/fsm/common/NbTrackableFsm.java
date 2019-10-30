@@ -15,24 +15,19 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 
-import lombok.Getter;
 import org.squirrelframework.foundation.fsm.StateMachine;
 
-@Getter
-public abstract class WithContextStateMachine<T extends StateMachine<T, S, E, C>, S, E, C>
-        extends AbstractBaseFsm<T, S, E, C> {
+public abstract class NbTrackableFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+        extends FlowProcessingFsm<T, S, E, C> {
 
-    private final CommandContext commandContext;
-
-    public WithContextStateMachine(CommandContext commandContext) {
-        this.commandContext = commandContext;
+    public NbTrackableFsm(CommandContext commandContext) {
+        super(commandContext);
     }
 
-    public abstract void fireNext(C context);
+    public abstract void sendResponse(Message message);
 
-    public abstract void fireError();
-
+    public abstract void fireNoPathFound(String errorReason);
 }

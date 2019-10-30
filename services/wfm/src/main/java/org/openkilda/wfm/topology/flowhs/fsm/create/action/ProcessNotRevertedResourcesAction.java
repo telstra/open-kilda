@@ -15,19 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import static java.lang.String.format;
+
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class ProcessNotRevertedResourcesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class ProcessNotRevertedResourcesAction extends
+        HistoryRecordingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+    public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         stateMachine.getFlowResources().forEach(resource ->
-                log.warn("Failed to revert flow resources for flow {}: {}", stateMachine.getFlowId(), resource));
+                stateMachine.saveErrorToHistory("Failed to revert flow resources",
+                        format("Failed to revert the resources: %s", resource)));
     }
 }

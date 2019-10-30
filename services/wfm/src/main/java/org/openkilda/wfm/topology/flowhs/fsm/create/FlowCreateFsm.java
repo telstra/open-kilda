@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.create;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -29,7 +31,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
@@ -40,6 +42,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.FlowValidateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedResponseAction;
@@ -63,20 +67,18 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Getter
 @Setter
 @Slf4j
-public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, State, Event, FlowCreateContext> {
+public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private final String flowId;
     private final FlowCreateHubCarrier carrier;
 
+    private final String flowId;
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;
     private PathId reversePathId;
@@ -84,7 +86,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     private PathId protectedReversePathId;
 
     private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
-    private Set<UUID> failedCommands = new HashSet<>();
+    private Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
+    protected Map<UUID, FlowResponse> failedValidationResponses = new HashMap<>();
 
     private Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
     private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
@@ -94,6 +97,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     // NB: it differs from command execution retries amount.
     private int remainRetries;
     private boolean timedOut;
+
+    private String errorReason;
 
     private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
         super(commandContext);
@@ -108,6 +113,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
 
     /**
      * Initiates a retry if limit is not exceeded.
+     *
      * @return true if retry was triggered.
      */
     public boolean retryIfAllowed() {
@@ -141,15 +147,16 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     protected void afterTransitionCausedException(State fromState, State toState, Event event,
                                                   FlowCreateContext context) {
         super.afterTransitionCausedException(fromState, toState, event, context);
+        String errorMessage = getLastException().getMessage();
         if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
             ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not create flow",
-                    getLastException().getMessage());
+                    errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                     getCommandContext().getCorrelationId());
             carrier.sendNorthboundResponse(message);
         }
 
-        fireError();
+        fireError(errorMessage);
     }
 
     @Override
@@ -158,8 +165,23 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     }
 
     @Override
-    public void fireError() {
-        fire(Event.ERROR);
+    public void fireError(String errorReason) {
+        fireError(Event.ERROR, errorReason);
+    }
+
+    private void fireError(Event errorEvent, String errorReason) {
+        if (this.errorReason != null) {
+            log.error("Subsequent error fired: " + errorReason);
+        } else {
+            this.errorReason = errorReason;
+        }
+
+        fire(errorEvent);
+    }
+
+    @Override
+    public void fireNoPathFound(String errorReason) {
+        fireError(Event.PATH_NOT_FOUND, errorReason);
     }
 
     @Override
@@ -231,7 +253,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         private final Config config;
 
         Factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier, Config config,
-                       FlowResourcesManager resourcesManager, PathComputer pathComputer) {
+                FlowResourcesManager resourcesManager, PathComputer pathComputer) {
             this.builder = StateMachineBuilderFactory.create(
                     FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
                     String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class);
@@ -255,7 +277,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State.FLOW_VALIDATED)
                     .to(State.RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
-                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager, resourcesManager));
+                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager,
+                            config.getTransactionRetriesLimit(), resourcesManager));
 
             // there is possibility that during resources allocation we have to revalidate flow again.
             // e.g. if we try to simultaneously create two flows with the same flow id then both threads can go
@@ -419,15 +442,18 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State._FAILED)
                     .to(State.RESOURCES_ALLOCATED)
                     .on(Event.RETRY)
-                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager, resourcesManager));
+                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager,
+                            config.getTransactionRetriesLimit(), resourcesManager));
 
             builder.transitions()
                     .from(State._FAILED)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
-            builder.defineFinalState(State.FINISHED);
-            builder.defineFinalState(State.FINISHED_WITH_ERROR);
+            builder.defineFinalState(State.FINISHED)
+                    .addEntryAction(new OnFinishedAction(dashboardLogger));
+            builder.defineFinalState(State.FINISHED_WITH_ERROR)
+                    .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
         public FlowCreateFsm produce(String flowId, CommandContext commandContext) {
@@ -442,5 +468,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         int flowCreationRetriesLimit = 10;
         @Builder.Default
         int speakerCommandRetriesLimit = 3;
+        @Builder.Default
+        int transactionRetriesLimit = 3;
     }
 }

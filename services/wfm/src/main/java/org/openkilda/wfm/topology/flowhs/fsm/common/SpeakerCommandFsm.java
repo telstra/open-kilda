@@ -32,7 +32,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 @Slf4j
 @Getter
-public final class SpeakerCommandFsm extends WithContextStateMachine<SpeakerCommandFsm, State, Event, FlowResponse> {
+public final class SpeakerCommandFsm extends WithCommandContextFsm<SpeakerCommandFsm, State, Event, FlowResponse> {
 
     private final SpeakerFlowRequest request;
     private final FlowCreateHubCarrier carrier;
@@ -72,7 +72,7 @@ public final class SpeakerCommandFsm extends WithContextStateMachine<SpeakerComm
     }
 
     @Override
-    public void fireError() {
+    public void fireError(String errorReason) {
         fire(Event.ERROR);
     }
 

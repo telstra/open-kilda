@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import static java.lang.String.format;
+
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -27,8 +30,7 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnReceivedResponseAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext>  {
-
+public class OnReceivedResponseAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     public OnReceivedResponseAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
@@ -55,9 +57,10 @@ public class OnReceivedResponseAction extends FlowProcessingAction<FlowCreateFsm
         if (response.isSuccess()) {
             stateMachine.fire(Event.RULE_RECEIVED, context);
         } else {
-            log.info("Failed to load rule from the switch {}, command: id {}",
-                    response.getCommandId(), response.getSwitchId());
-            stateMachine.getFailedCommands().add(response.getCommandId());
+            stateMachine.saveErrorToHistory("Rule validation failed",
+                    format("Failed to validate the rule: commandId %s, switch %s",
+                            response.getCommandId(), response.getSwitchId()));
+            stateMachine.getFailedCommands().put(response.getCommandId(), (FlowErrorResponse) response);
         }
     }
 }

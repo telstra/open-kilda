@@ -17,27 +17,21 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class DumpIngressRulesAction extends
-        AnonymousAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class DumpIngressRulesAction extends HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
-    public void execute(State from, State to,
-                        Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        log.debug("Validating installed ingress rules for the flow {}",
-                stateMachine.getFlowId());
-
+    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         Collection<GetInstalledRule> dumpFlowRules = stateMachine.getIngressCommands().values().stream()
                 .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
                         command.getFlowId(), command.getSwitchId(), command.getCookie(), false))
@@ -48,5 +42,7 @@ public class DumpIngressRulesAction extends
         stateMachine.setPendingCommands(dumpFlowRules.stream()
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet()));
+
+        stateMachine.saveActionToHistory("Started validation of installed ingress rules");
     }
 }

@@ -23,7 +23,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -42,20 +42,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
-public class RevertNewRulesAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-
         commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
@@ -90,8 +86,6 @@ public class RevertNewRulesAction extends
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             removeCommands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
-            removeCommands.addAll(commandBuilder.createRemoveIngressRules(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
         stateMachine.setRemoveCommands(removeCommands.stream()
@@ -103,9 +97,6 @@ public class RevertNewRulesAction extends
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);
 
-        log.debug("Commands for removing rules have been sent for the flow {}", stateMachine.getFlowId());
-
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                "Remove commands for new rules have been sent.");
+        stateMachine.saveActionToHistory("Commands for removing new rules have been sent");
     }
 }

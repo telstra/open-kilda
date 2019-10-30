@@ -15,43 +15,43 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.HashSet;
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotRemovedRulesAction
-        extends AnonymousAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
-
+public class HandleNotRemovedRulesAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
-    public void execute(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                        FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getErrorResponses().isEmpty()) {
+    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getFailedCommands().isEmpty()) {
             for (UUID commandId : stateMachine.getPendingCommands()) {
                 RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
                 if (nonDeletedRule != null) {
-                    log.warn("Failed to remove {} from the switch {}", nonDeletedRule, nonDeletedRule.getSwitchId());
+                    stateMachine.saveErrorToHistory("Failed to delete rule",
+                            format("Failed to delete the rule: commandId %s, switch %s, rule %s",
+                                    commandId, nonDeletedRule.getSwitchId(), nonDeletedRule));
                 } else {
                     InstallIngressRule ingressRule = stateMachine.getIngressCommands().get(commandId);
-                    log.warn("Failed to reinstall ingress {} on the switch {}", ingressRule, ingressRule.getSwitchId());
+                    stateMachine.saveErrorToHistory("Failed to reinstall ingress rule",
+                            format("Failed to install the ingress rule: commandId %s, switch %s, rule %s",
+                                    commandId, ingressRule.getSwitchId(), ingressRule));
                 }
-            }
-
-            for (UUID commandId : stateMachine.getErrorResponses().keySet()) {
-                FlowErrorResponse errorResponse = stateMachine.getErrorResponses().get(commandId);
-                log.warn("Failed to remove {} from the switch {}", errorResponse, errorResponse.getSwitchId());
             }
         }
 
-        log.info("Canceling all pending commands: {}", stateMachine.getPendingCommands());
+        log.debug("Canceling all pending commands: {}", stateMachine.getPendingCommands());
         stateMachine.setPendingCommands(new HashSet<>());
     }
 }

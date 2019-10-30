@@ -1,0 +1,104 @@
+/* Copyright 2019 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
+
+import static java.lang.String.format;
+
+import org.openkilda.floodlight.flow.request.InstallFlowRule;
+import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.model.Cookie;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
+
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.UUID;
+
+@Slf4j
+public class OnReceivedRemoveResponseAction extends
+        HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+    private final int speakerCommandRetriesLimit;
+
+    public OnReceivedRemoveResponseAction(int speakerCommandRetriesLimit) {
+        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+    }
+
+    @Override
+    protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
+        UUID commandId = response.getCommandId();
+        RemoveRule removeCommand = stateMachine.getRemoveCommands().get(commandId);
+        InstallFlowRule installCommand = stateMachine.getInstallCommand(commandId);
+        if (!stateMachine.getPendingCommands().contains(commandId)
+                || (removeCommand == null && installCommand == null)) {
+            log.warn("Received a response for unexpected command: {}", response);
+            return;
+        }
+
+        Cookie cookie = stateMachine.getCookieForCommand(commandId);
+
+        if (response.isSuccess()) {
+            stateMachine.getPendingCommands().remove(commandId);
+
+            stateMachine.saveActionToHistory("Rule was deleted",
+                    format("The rule was removed: switch %s, cookie %s", response.getSwitchId(), cookie));
+        } else {
+            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+
+            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            if (retries < speakerCommandRetriesLimit) {
+                stateMachine.getRetriedCommands().put(commandId, ++retries);
+
+                stateMachine.saveErrorToHistory("Failed to remove rule", format(
+                        "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                + "Retrying (attempt %d)",
+                        commandId, errorResponse.getSwitchId(), cookie, errorResponse, retries));
+
+                if (removeCommand != null) {
+                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand);
+                } else if (installCommand != null) {
+                    stateMachine.getCarrier().sendSpeakerRequest(installCommand);
+                }
+            } else {
+                stateMachine.getPendingCommands().remove(commandId);
+
+                stateMachine.saveErrorToHistory("Failed to remove rule", format(
+                        "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error: %s",
+                        commandId, errorResponse.getSwitchId(), cookie, errorResponse));
+
+                stateMachine.getFailedCommands().put(commandId, errorResponse);
+            }
+        }
+
+        if (stateMachine.getPendingCommands().isEmpty()) {
+            if (stateMachine.getFailedCommands().isEmpty()) {
+                log.debug("Received responses for all pending remove commands of the flow {}",
+                        stateMachine.getFlowId());
+                stateMachine.fire(Event.RULES_REMOVED);
+            } else {
+                String errorMessage = format("Received error response(s) for %d remove commands",
+                        stateMachine.getFailedCommands().size());
+                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.fireError(errorMessage);
+            }
+        }
+    }
+}

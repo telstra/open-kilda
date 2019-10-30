@@ -19,7 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -28,9 +28,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertFlowStatusAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class RevertFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     public RevertFlowStatusAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
@@ -44,8 +42,7 @@ public class RevertFlowStatusAction extends
 
             flowRepository.updateStatus(flowId, originalStatus);
 
-            saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
-                    format("Revert the flow status to %s.", originalStatus));
+            stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalStatus));
         }
     }
 }

@@ -15,38 +15,41 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.HashSet;
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotRemovedRulesAction
-        extends AnonymousAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
-
+public class HandleNotRemovedRulesAction extends
+        HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
-    public void execute(State from, State to,
-                        Event event, FlowDeleteContext context,
-                        FlowDeleteFsm stateMachine) {
-        if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getErrorResponses().isEmpty()) {
+    public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
+        if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getFailedCommands().isEmpty()) {
             for (UUID commandId : stateMachine.getPendingCommands()) {
                 RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
                 if (nonDeletedRule != null) {
-                    log.warn("Failed to remove {} from the switch {}", nonDeletedRule, nonDeletedRule.getSwitchId());
+                    stateMachine.saveErrorToHistory("Failed to remove rule",
+                            format("Failed to remove the rule: commandId %s, switch %s, cookie %s", commandId,
+                                    nonDeletedRule.getSwitchId(), nonDeletedRule.getCookie()));
                 }
             }
 
-            for (UUID commandId : stateMachine.getErrorResponses().keySet()) {
-                FlowErrorResponse errorResponse = stateMachine.getErrorResponses().get(commandId);
-                log.warn("Failed to remove {} from the switch {}", errorResponse, errorResponse.getSwitchId());
+            for (UUID commandId : stateMachine.getFailedCommands().keySet()) {
+                FlowErrorResponse errorResponse = stateMachine.getFailedCommands().get(commandId);
+                stateMachine.saveErrorToHistory("Failed to remove rule",
+                        format("Failed to remove the rule: commandId %s, switch %s. Error %s", commandId,
+                                errorResponse.getSwitchId(), errorResponse));
             }
         }
 

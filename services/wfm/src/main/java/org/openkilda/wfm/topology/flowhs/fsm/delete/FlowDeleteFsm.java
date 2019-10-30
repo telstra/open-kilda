@@ -15,19 +15,22 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.CompleteFlowPathRemovalAction;
@@ -36,6 +39,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotDeallocated
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotRemovedRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnErrorResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnReceivedResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RemoveFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RemoveRulesAction;
@@ -60,8 +65,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public final class FlowDeleteFsm
-        extends NbTrackableStateMachine<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Event, FlowDeleteContext> {
 
     private final FlowDeleteHubCarrier carrier;
     private final String flowId;
@@ -71,7 +75,7 @@ public final class FlowDeleteFsm
 
     private Set<UUID> pendingCommands = Collections.emptySet();
     private Map<UUID, Integer> retriedCommands = new HashMap<>();
-    private Map<UUID, FlowErrorResponse> errorResponses = new HashMap<>();
+    private Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
 
     private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
 
@@ -139,21 +143,27 @@ public final class FlowDeleteFsm
                 .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                 .onEach(Event.NEXT, Event.ERROR)
                 .perform(new RevertFlowStatusAction(persistenceManager));
+
+        builder.defineFinalState(State.FINISHED)
+                .addEntryAction(new OnFinishedAction(dashboardLogger));
+        builder.defineFinalState(State.FINISHED_WITH_ERROR)
+                .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
+
         return builder;
     }
 
     @Override
-    protected void afterTransitionCausedException(State fromState, State toState,
-                                                  Event event, FlowDeleteContext context) {
+    protected void afterTransitionCausedException(State fromState, State toState, Event event,
+                                                  FlowDeleteContext context) {
+        String errorMessage = getLastException().getMessage();
         if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
-            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not delete flow",
-                    getLastException().getMessage());
+            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not delete flow", errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                     getCommandContext().getCorrelationId());
             carrier.sendNorthboundResponse(message);
         }
 
-        fireError();
+        fireError(errorMessage);
 
         super.afterTransitionCausedException(fromState, toState, event, context);
     }
@@ -164,8 +174,23 @@ public final class FlowDeleteFsm
     }
 
     @Override
-    public void fireError() {
-        fire(Event.ERROR);
+    public void fireError(String errorReason) {
+        fireError(Event.ERROR, errorReason);
+    }
+
+    private void fireError(Event errorEvent, String errorReason) {
+        if (this.errorReason != null) {
+            log.error("Subsequent error fired: " + errorReason);
+        } else {
+            this.errorReason = errorReason;
+        }
+
+        fire(errorEvent);
+    }
+
+    @Override
+    public void fireNoPathFound(String errorReason) {
+        throw new UnsupportedOperationException("Invalid for delete FSM");
     }
 
     @Override
@@ -197,6 +222,17 @@ public final class FlowDeleteFsm
             flowResources = new ArrayList<>();
         }
         flowResources.add(resources);
+    }
+
+    public Cookie getCookieForCommand(UUID commandId) {
+        Cookie cookie;
+        if (removeCommands.containsKey(commandId)) {
+            RemoveRule removeRule = removeCommands.get(commandId);
+            cookie = removeRule.getCookie();
+        } else {
+            throw new IllegalStateException(format("Failed to find remove rule command with id %s", commandId));
+        }
+        return cookie;
     }
 
     public enum State {

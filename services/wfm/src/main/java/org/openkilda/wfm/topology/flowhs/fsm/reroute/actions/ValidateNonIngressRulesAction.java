@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -32,12 +33,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class ValidateNonIngressRulesAction extends RuleProcessingAction {
-
+public class ValidateNonIngressRulesAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowResponse response = context.getFlowResponse();
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         stateMachine.getPendingCommands().remove(commandId);
 
@@ -47,26 +47,22 @@ public class ValidateNonIngressRulesAction extends RuleProcessingAction {
         }
 
         if (response.isSuccess()) {
-            RulesValidator validator =
-                    new NonIngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse());
+            RulesValidator validator = new NonIngressRulesValidator(expected, (FlowRuleResponse) response);
             if (validator.validate()) {
-                String message = format("Non ingress rule %s has been validated successfully on switch %s",
-                        expected.getCookie(), expected.getSwitchId());
-                log.debug(message);
-                sendHistoryUpdate(stateMachine, "Rule is validated", message);
+                stateMachine.saveActionToHistory("Rule was validated",
+                        format("The non ingress rule has been validated successfully: switch %s, cookie %s",
+                                expected.getSwitchId(), expected.getCookie()));
             } else {
-                String message = format("Non ingress rule %s is missing on switch %s",
-                        expected.getCookie(), expected.getSwitchId());
-                log.warn(message);
-                sendHistoryUpdate(stateMachine, "Rule is missing", message);
+                stateMachine.saveErrorToHistory("Rule is missing or invalid",
+                        format("Non ingress rule is missing or invalid: switch %s, cookie %s",
+                                expected.getSwitchId(), expected.getCookie()));
 
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }
         } else {
-            String message = format("Failed to validate non ingress rule %s on switch %s",
-                    expected.getCookie(), expected.getSwitchId());
-            log.warn(message);
-            sendHistoryUpdate(stateMachine, "Rule validation failed", message);
+            stateMachine.saveErrorToHistory("Rule validation failed",
+                    format("Failed to validate non ingress rule %s on switch %s",
+                            expected.getCookie(), expected.getSwitchId()));
 
             stateMachine.getFailedValidationResponses().put(commandId, response);
         }
@@ -76,8 +72,8 @@ public class ValidateNonIngressRulesAction extends RuleProcessingAction {
                 log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_VALIDATED);
             } else {
-                log.warn("Found missing rules or received error response(s) on validation commands of the flow {}",
-                        stateMachine.getFlowId());
+                stateMachine.saveErrorToHistory(
+                        "Found missing rules or received error response(s) on validation commands");
                 stateMachine.fire(Event.MISSING_RULE_FOUND);
             }
         }

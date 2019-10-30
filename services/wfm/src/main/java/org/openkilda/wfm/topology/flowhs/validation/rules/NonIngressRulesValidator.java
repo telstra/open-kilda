@@ -34,23 +34,22 @@ public class NonIngressRulesValidator extends RulesValidator {
     public boolean validate() {
         boolean valid = super.validate();
         if (expected instanceof InstallEgressRule) {
-            valid = valid & validateEgressRule();
+            return valid & validateEgressRule();
         }
 
         return valid;
     }
 
     private boolean validateEgressRule() {
-        boolean valid = true;
         InstallEgressRule expectedEgressRule = (InstallEgressRule) expected;
 
         if (!Objects.equals(expectedEgressRule.getOutputVlanId(), actual.getOutVlan())) {
             log.warn("Output vlan mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expectedEgressRule.getOutputVlanId(),
                     actual.getOutVlan());
-            valid = false;
+            return false;
         }
 
-        return valid;
+        return true;
     }
 }

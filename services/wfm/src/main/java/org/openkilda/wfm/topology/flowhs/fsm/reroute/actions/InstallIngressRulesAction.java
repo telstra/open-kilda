@@ -22,7 +22,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -40,21 +40,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class InstallIngressRulesAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class InstallIngressRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public InstallIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-
         commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Flow flow = getFlow(stateMachine.getFlowId());
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        String flowId = stateMachine.getFlowId();
+        Flow flow = getFlow(flowId);
 
         FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
                 ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
@@ -81,17 +78,11 @@ public class InstallIngressRulesAction extends
         stateMachine.setPendingCommands(commandIds);
 
         if (commands.isEmpty()) {
-            log.debug("No install commands for ingress rules for the flow {}", stateMachine.getFlowId());
-
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                    "No install commands for ingress rules.");
+            stateMachine.saveActionToHistory("No need to install ingress rules");
 
             stateMachine.fire(Event.INGRESS_IS_SKIPPED);
         } else {
-            log.debug("Commands for installing ingress rules have been sent for the flow {}", stateMachine.getFlowId());
-
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                    "Install ingress commands have been sent.");
+            stateMachine.saveActionToHistory("Commands for installing ingress rules have been sent");
         }
     }
 }

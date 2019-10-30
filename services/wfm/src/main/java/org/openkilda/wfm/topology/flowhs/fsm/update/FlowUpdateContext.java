@@ -13,19 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.common;
+package org.openkilda.wfm.topology.flowhs.fsm.update;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.wfm.CommandContext;
+import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
-import org.squirrelframework.foundation.fsm.StateMachine;
+import lombok.Builder;
+import lombok.Data;
 
-public abstract class NbTrackableStateMachine<T extends StateMachine<T, S, E, C>, S, E, C>
-        extends WithContextStateMachine<T, S, E, C> {
+@Data
+public class FlowUpdateContext extends FlowContext {
+    private RequestedFlow targetFlow;
 
-    public NbTrackableStateMachine(CommandContext commandContext) {
-        super(commandContext);
+    @Builder
+    public FlowUpdateContext(FlowResponse speakerFlowResponse, RequestedFlow targetFlow) {
+        super(speakerFlowResponse);
+        this.targetFlow = targetFlow;
     }
-
-    public abstract void sendResponse(Message message);
 }

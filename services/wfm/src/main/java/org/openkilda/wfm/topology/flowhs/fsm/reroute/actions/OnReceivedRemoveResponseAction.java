@@ -17,53 +17,87 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.floodlight.flow.request.InstallFlowRule;
+import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.model.Cookie;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedRemoveResponseAction extends RuleProcessingAction {
+public class OnReceivedRemoveResponseAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+    private final int speakerCommandRetriesLimit;
+
+    public OnReceivedRemoveResponseAction(int speakerCommandRetriesLimit) {
+        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+    }
+
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowResponse response = context.getFlowResponse();
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        if (stateMachine.getPendingCommands().remove(commandId)) {
-            long cookie = getCookieForCommand(stateMachine, commandId);
-
-            if (response.isSuccess()) {
-                String message = format("Rule %s was removed from switch %s", cookie, response.getSwitchId());
-                log.debug(message);
-                sendHistoryUpdate(stateMachine, "Rule deleted", message);
-            } else {
-                FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-                String message = format("Failed to remove rule %s from switch %s: %s. Description: %s",
-                        cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(),
-                        errorResponse.getDescription());
-                log.warn(message);
-                sendHistoryUpdate(stateMachine, "Failed to remove rule", message);
-
-                stateMachine.getErrorResponses().put(commandId, errorResponse);
-            }
-        } else {
+        RemoveRule removeCommand = stateMachine.getRemoveCommands().get(commandId);
+        InstallFlowRule installCommand = stateMachine.getInstallCommand(commandId);
+        if (!stateMachine.getPendingCommands().contains(commandId)
+                || (removeCommand == null && installCommand == null)) {
             log.warn("Received a response for unexpected command: {}", response);
+            return;
+        }
+
+        Cookie cookie = stateMachine.getCookieForCommand(commandId);
+
+        if (response.isSuccess()) {
+            stateMachine.getPendingCommands().remove(commandId);
+
+            stateMachine.saveActionToHistory("Rule was deleted",
+                    format("The rule was removed: switch %s, cookie %s", response.getSwitchId(), cookie));
+        } else {
+            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+
+            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            if (retries < speakerCommandRetriesLimit) {
+                stateMachine.getRetriedCommands().put(commandId, ++retries);
+
+                stateMachine.saveErrorToHistory("Failed to remove rule", format(
+                        "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                + "Retrying (attempt %d)",
+                        commandId, errorResponse.getSwitchId(), cookie, errorResponse, retries));
+
+                if (removeCommand != null) {
+                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand);
+                } else if (installCommand != null) {
+                    stateMachine.getCarrier().sendSpeakerRequest(installCommand);
+                }
+            } else {
+                stateMachine.getPendingCommands().remove(commandId);
+
+                stateMachine.saveErrorToHistory("Failed to remove rule", format(
+                        "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error: %s",
+                        commandId, errorResponse.getSwitchId(), cookie, errorResponse));
+
+                stateMachine.getFailedCommands().put(commandId, errorResponse);
+            }
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getErrorResponses().isEmpty()) {
+            if (stateMachine.getFailedCommands().isEmpty()) {
                 log.debug("Received responses for all pending remove commands of the flow {}",
                         stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_REMOVED);
             } else {
-                log.warn("Received error response(s) for some remove commands of the flow {}",
-                        stateMachine.getFlowId());
-                stateMachine.fireError();
+                String errorMessage = format("Received error response(s) for %d remove commands",
+                        stateMachine.getFailedCommands().size());
+                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.fireError(errorMessage);
             }
         }
     }

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -319,7 +321,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                 flowOperationsService.groupFlowIdWithPathIdsForRerouting(
                         flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort)
                 ).forEach((flowId, pathIds) -> {
-                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds,
+                            format("evacuated due to link maintenance %s_%d - %s_%d",
+                                    srcSwitch, srcPort, dstSwitch, dstPort));
                     CommandContext forkedContext = getCommandContext().fork(flowId);
                     getOutput().emit(
                             flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),

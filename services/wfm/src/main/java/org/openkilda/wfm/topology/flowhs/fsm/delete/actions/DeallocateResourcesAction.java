@@ -20,9 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -30,7 +28,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
 import java.util.Collection;
 
 @Slf4j
@@ -50,23 +47,9 @@ public class DeallocateResourcesAction extends FlowProcessingAction<FlowDeleteFs
                 flowResources.forEach(resources -> {
                     resourcesManager.deallocatePathResources(resources);
 
-                    log.debug("Resources has been de-allocated: {}", resources);
-
-                    saveHistory(stateMachine, resources);
+                    stateMachine.saveActionToHistory("Flow resources were deallocated",
+                            format("The flow resources for %s / %s were deallocated",
+                                    resources.getForward().getPathId(), resources.getReverse().getPathId()));
                 }));
-    }
-
-    private void saveHistory(FlowDeleteFsm stateMachine, FlowResources resources) {
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow resources were deallocated")
-                        .time(Instant.now())
-                        .description(format("Flow resources for %s/%s were deallocated",
-                                resources.getForward().getPathId(), resources.getReverse().getPathId()))
-                        .flowId(stateMachine.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

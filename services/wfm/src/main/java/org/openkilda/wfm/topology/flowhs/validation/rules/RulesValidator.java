@@ -32,34 +32,38 @@ public class RulesValidator {
 
     /**
      * Verify whether actual and expected rules are the same.
+     *
      * @return a result of validation.
      */
     public boolean validate() {
-        boolean valid = true;
+        return validateCookie() && validateInputPort() && validateOutputPort();
+    }
+
+    protected boolean validateCookie() {
         if (!Objects.equals(expected.getCookie(), actual.getCookie())) {
             log.warn("Installed flow {} doesn't have required cookie {} on the switch {}",
                     expected.getFlowId(), expected.getCookie(), expected.getSwitchId());
-            valid = false;
+            return false;
         }
 
+        return true;
+    }
+
+    protected boolean validateInputPort() {
         if (!Objects.equals(expected.getInputPort(), actual.getInPort())) {
             log.warn("Input port mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expected.getInputPort(), actual.getInPort());
-            valid = false;
+            return false;
         }
+        return true;
+    }
 
+    protected boolean validateOutputPort() {
         if (!Objects.equals(expected.getOutputPort(), actual.getOutPort())) {
             log.warn("Output port mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expected.getOutputPort(), actual.getOutPort());
-            valid = false;
+            return false;
         }
-
-        if (!Objects.equals(expected.getOutputPort(), actual.getOutPort())) {
-            log.warn("Output port mismatch for the flow {} on the switch {}. Expected {}, actual {}",
-                    expected.getFlowId(), expected.getSwitchId(), expected.getOutputPort(), actual.getOutPort());
-            valid = false;
-        }
-
-        return valid;
+        return true;
     }
 }

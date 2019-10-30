@@ -25,7 +25,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -123,10 +123,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);
 
-        log.debug("Commands for removing rules have been sent for the flow {}", stateMachine.getFlowId());
-
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                "Remove commands for old rules have been sent.");
+        stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }
 
     private FlowResources buildResources(Flow flow, FlowPath forwardPath, FlowPath reversePath) {

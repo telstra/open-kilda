@@ -10,7 +10,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
@@ -24,7 +23,6 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -43,12 +41,6 @@ So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
 class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
-
-    @Autowired
-    NorthboundServiceV2 northboundV2
-
-    @Autowired
-    FlowHelperV2 flowHelperV2
 
     @Unroll
     @Tags(HARDWARE)
@@ -121,7 +113,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
-        northbound.updateFlow(flowInfo.id, flowInfo.tap { it.encapsulationType = encapsulationUpdate })
+        northboundV2.updateFlow(flowInfo.id, 
+                flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = encapsulationUpdate }))
 
         then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
         def flowInfo2 = northbound.getFlow(flow.flowId)
@@ -174,7 +167,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         encapsulationCreate                | encapsulationUpdate
@@ -200,7 +193,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         flowInfo.pinned
 
         when: "Update the flow (pinned=false)"
-        northbound.updateFlow(flowInfo.id, flowInfo.tap { it.pinned = false })
+        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
 
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.flowId)
@@ -211,7 +204,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(HARDWARE)
@@ -281,7 +274,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         def flowData = northbound.getFlow(flow.flowId)
         def protectedFlowPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
-        northbound.updateFlow(flowData.id, flowData.tap { it.allocateProtectedPath = false })
+        northboundV2.updateFlow(flowData.id, flowHelperV2.toV2(flowData.tap { it.allocateProtectedPath = false }))
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath
@@ -328,7 +321,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(HARDWARE)
@@ -350,13 +343,13 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         defaultFlow.encapsulationType = FlowEncapsulationType.VXLAN
         flowHelperV2.addFlow(defaultFlow)
 
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.source.vlanId = 10
         flow.destination.vlanId = 10
 
         then: "System allows tagged traffic on the default flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000, 5)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 5)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -366,7 +359,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(defaultFlow.flowId)
+        flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     def "System doesn't allow to create a flow with 'VXLAN' encapsulation on a non-noviflow switches"() {
@@ -383,8 +376,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : " +
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
                 " doesn't have links with enough bandwidth"
     }
@@ -447,8 +441,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : Failed to find path with " +
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: " +
                 "Switch $switchPair.dst.dpId doesn't have links with enough bandwidth"
     }
@@ -493,7 +488,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
-        northbound.updateFlow(flowInfo1.id, flowInfo1.tap { it.encapsulationType = encapsulationUpdate })
+        northboundV2.updateFlow(flowInfo1.id,
+                flowHelperV2.toV2(flowInfo1.tap { it.encapsulationType = encapsulationUpdate }))
 
         then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
         def flowInfo2 = northbound.getFlow(flow.flowId)
@@ -528,7 +524,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         encapsulationCreate                | encapsulationUpdate
@@ -546,18 +542,21 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         when: "Try to change the encapsulation type to VXLAN"
         def flowData = northbound.getFlow(flow.flowId)
-        flowHelper.updateFlow(flowData.id, flowData.tap { it.encapsulationType = FlowEncapsulationType.VXLAN })
+        flowHelperV2.updateFlow(flowData.id,
+                flowHelperV2.toV2(flowData.tap { it.encapsulationType = FlowEncapsulationType.VXLAN }))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not update flow: \
-Not enough bandwidth found or path not found. Failed to find path with requested bandwidth=$flow.maximumBandwidth: \
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. \
+Failed to find path with requested bandwidth=$flow.maximumBandwidth: \
 Switch $switchPair.src.dpId doesn't have links with enough bandwidth"
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     FlowPayload toFlowPayload(FlowRequestV2 flow) {

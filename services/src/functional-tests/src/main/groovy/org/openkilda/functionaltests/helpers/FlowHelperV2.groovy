@@ -1,11 +1,14 @@
 package org.openkilda.functionaltests.helpers
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -148,6 +151,14 @@ class FlowHelperV2 {
     }
 
     /**
+     * Adds flow with checking flow status and rules on source and destination switches.
+     * It is supposed if rules are installed on source and destination switches, the flow is completely created.
+     */
+    FlowResponseV2 addFlow(FlowCreatePayload flow) {
+        return addFlow(toV2(flow));
+    }
+
+    /**
      * Deletes flow with checking rules on source and destination switches.
      * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
      */
@@ -164,6 +175,34 @@ class FlowHelperV2 {
         checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
 
         return response
+    }
+
+    /**
+     * Updates flow with checking flow status and rules on source and destination switches.
+     * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
+     */
+    FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
+        def flowEntryBeforeUpdate = db.getFlow(flowId)
+
+        log.debug("Updating flow '${flowId}'")
+        def response = northboundV2.updateFlow(flowId, flow)
+        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
+
+        def flowEntryAfterUpdate = db.getFlow(flowId)
+
+        // TODO(ylobankov): Delete check for rules installation once we add a new test to verify this functionality.
+        checkRulesOnSwitches(flowEntryAfterUpdate, RULES_INSTALLATION_TIME, true)
+        checkRulesOnSwitches(flowEntryBeforeUpdate, RULES_DELETION_TIME, false)
+
+        return response
+    }
+
+    /**
+     * Updates flow with checking flow status and rules on source and destination switches.
+     * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
+     */
+    FlowResponseV2 updateFlow(String flowId, FlowCreatePayload flow) {
+        return updateFlow(flowId, toV2(flow))
     }
 
     /**
@@ -186,9 +225,35 @@ class FlowHelperV2 {
     }
 
     /**
+     * Checks flow rules presence (or absence) on all involved switches.
+     */
+    void checkRulesOnSwitches(String flowId, int timeout, boolean rulesPresent) {
+        def flowEntry = db.getFlow(flowId)
+        def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
+        def switches = PathHelper.convert(northbound.getFlowPath(flowEntry.flowId))*.switchId.toSet()
+        withPool {
+            switches.eachParallel { sw ->
+                Wrappers.wait(timeout) {
+                    try {
+                        def result = northbound.getSwitchRules(sw).flowEntries*.cookie
+                        assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
+                    } catch (HttpClientErrorException exc) {
+                        if (exc.rawStatusCode == 404) {
+                            log.warn("Switch '$sw' was not found when checking rules after flow "
+                                    + (rulesPresent ? "creation" : "deletion"))
+                        } else {
+                            throw exc
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Checks flow rules presence (or absence) on source and destination switches.
      */
-    private void checkRulesOnSwitches(Flow flowEntry, int timeout, boolean rulesPresent) {
+    void checkRulesOnSwitches(Flow flowEntry, int timeout, boolean rulesPresent) {
         def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
         def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
         withPool {
@@ -229,6 +294,37 @@ class FlowHelperV2 {
 
     static FlowEndpointPayload toV1(FlowEndpointV2 ep) {
         new FlowEndpointPayload(ep.switchId, ep.portNumber, ep.vlanId, new DetectConnectedDevicesPayload(false, false))
+    }
+
+    static FlowRequestV2 toV2(FlowPayload flow) {
+        FlowRequestV2.builder()
+                .flowId(flow.id)
+                .description(flow.description)
+                .maximumBandwidth(flow.maximumBandwidth)
+                .ignoreBandwidth(flow.ignoreBandwidth)
+                .allocateProtectedPath(flow.allocateProtectedPath)
+                .periodicPings(flow.periodicPings)
+                .encapsulationType(flow.encapsulationType)
+                .maxLatency(flow.maxLatency)
+                .pinned(flow.pinned)
+                .priority(flow.priority)
+                .source(toV2(flow.source))
+                .destination(toV2(flow.destination))
+                .build()
+    }
+
+    static FlowRequestV2 toV2(FlowCreatePayload flow) {
+        def result = toV2((FlowPayload)flow);
+        result.setDiverseFlowId(flow.getDiverseFlowId());
+        return result;
+    }
+
+    static FlowEndpointV2 toV2(FlowEndpointPayload ep) {
+        FlowEndpointV2.builder()
+                .switchId(ep.getSwitchDpId())
+                .portNumber(ep.getPortId())
+                .vlanId(ep.getVlanId())
+                .build()
     }
 
     /**

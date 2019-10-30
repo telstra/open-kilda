@@ -17,54 +17,81 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.floodlight.flow.request.InstallFlowRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.model.Cookie;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends RuleProcessingAction {
+public class OnReceivedInstallResponseAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+    private final int speakerCommandRetriesLimit;
+
+    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
+        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+    }
+
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowResponse response = context.getFlowResponse();
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        if (stateMachine.getPendingCommands().remove(commandId)) {
-            long cookie = getCookieForCommand(stateMachine, commandId);
-
-            if (response.isSuccess()) {
-                String message = format("Rule %s was installed successfully on switch %s", cookie,
-                        response.getSwitchId());
-                log.debug(message);
-                sendHistoryUpdate(stateMachine, "Rule installed", message);
-            } else {
-                FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-                String message = format("Failed to install rule %s on switch %s: %s. Description: %s",
-                        cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(),
-                        errorResponse.getDescription());
-                log.warn(message);
-                sendHistoryUpdate(stateMachine, "Rule not installed", message);
-
-                stateMachine.getErrorResponses().put(commandId, errorResponse);
-            }
-        } else {
+        InstallFlowRule command = stateMachine.getInstallCommand(commandId);
+        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
             log.warn("Received a response for unexpected command: {}", response);
+            return;
+        }
+
+        Cookie cookie = stateMachine.getCookieForCommand(commandId);
+
+        if (response.isSuccess()) {
+            stateMachine.getPendingCommands().remove(commandId);
+
+            stateMachine.saveActionToHistory("Rule was installed",
+                    format("The rule was installed: switch %s, cookie %s",
+                            response.getSwitchId(), cookie));
+        } else {
+            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+
+            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            if (retries < speakerCommandRetriesLimit) {
+                stateMachine.getRetriedCommands().put(commandId, ++retries);
+
+                stateMachine.saveErrorToHistory("Failed to install rule", format(
+                        "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                + "Retrying (attempt %d)",
+                        commandId, errorResponse.getSwitchId(), cookie, errorResponse, retries));
+
+                stateMachine.getCarrier().sendSpeakerRequest(command);
+            } else {
+                stateMachine.getPendingCommands().remove(commandId);
+
+                stateMachine.saveErrorToHistory("Failed to install rule", format(
+                        "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
+                        commandId, errorResponse.getSwitchId(), cookie, errorResponse));
+
+                stateMachine.getFailedCommands().put(commandId, errorResponse);
+            }
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getErrorResponses().isEmpty()) {
+            if (stateMachine.getFailedCommands().isEmpty()) {
                 log.debug("Received responses for all pending install commands of the flow {}",
                         stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_INSTALLED);
             } else {
-                log.warn("Received error response(s) for some install commands of the flow {}",
-                        stateMachine.getFlowId());
-                stateMachine.fireError();
+                String errorMessage = format("Received error response(s) for %d install commands",
+                        stateMachine.getFailedCommands().size());
+                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.fireError(errorMessage);
             }
         }
     }

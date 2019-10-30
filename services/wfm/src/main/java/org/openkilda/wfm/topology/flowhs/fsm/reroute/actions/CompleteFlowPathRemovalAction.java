@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -33,23 +33,23 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 @Slf4j
-public class CompleteFlowPathRemovalAction extends BaseFlowPathRemovalAction {
-    private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
+public class CompleteFlowPathRemovalAction extends
+        BaseFlowPathRemovalAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+    private final int transactionRetriesLimit;
 
-    public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager) {
+    public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
         super(persistenceManager);
+        this.transactionRetriesLimit = transactionRetriesLimit;
     }
 
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverableException.class)
                 .retryOn(RecoverablePersistenceException.class)
                 .retryOn(ClientException.class)
-                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT);
+                .withMaxRetries(transactionRetriesLimit);
 
-        transactionManager.doInTransaction(retryPolicy, () -> {
+        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
             Flow flow = getFlow(stateMachine.getFlowId());
 
             FlowPath oldPrimaryForward = null;
@@ -73,14 +73,14 @@ public class CompleteFlowPathRemovalAction extends BaseFlowPathRemovalAction {
                 log.debug("Completing removal of the flow path {} / {}", oldPrimaryForward, oldPrimaryReverse);
                 deleteFlowPaths(oldPrimaryForward, oldPrimaryReverse);
 
-                saveHistory(stateMachine, stateMachine.getFlowId(), oldPrimaryForward, oldPrimaryReverse);
+                saveActionWithDumpToHistory(stateMachine, flow, oldPrimaryForward, oldPrimaryReverse);
             }
 
             if (oldProtectedForward != null && oldProtectedReverse != null) {
                 log.debug("Completing removal of the flow path {} / {}", oldProtectedForward, oldProtectedReverse);
                 deleteFlowPaths(oldProtectedForward, oldProtectedReverse);
 
-                saveHistory(stateMachine, stateMachine.getFlowId(), oldProtectedForward, oldProtectedReverse);
+                saveActionWithDumpToHistory(stateMachine, flow, oldProtectedForward, oldProtectedReverse);
             }
         });
     }

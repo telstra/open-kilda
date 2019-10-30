@@ -75,7 +75,8 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
         service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getFlowCreationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
+                config.getFlowCreationRetriesLimit(), config.getTransactionRetriesLimit(),
+                config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
@@ -95,6 +96,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
         service.handleTimeout(key);
     }
 
@@ -133,13 +135,16 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     @Getter
     public static class FlowCreateConfig extends Config {
         private int flowCreationRetriesLimit;
+        private int transactionRetriesLimit;
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowCreateBuilder", builderClassName = "flowCreateBuild")
         public FlowCreateConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
-                                int flowCreationRetriesLimit, int speakerCommandRetriesLimit) {
+                                int flowCreationRetriesLimit, int transactionRetriesLimit,
+                                int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, timeoutMs, autoAck);
             this.flowCreationRetriesLimit = flowCreationRetriesLimit;
+            this.transactionRetriesLimit = transactionRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
     }

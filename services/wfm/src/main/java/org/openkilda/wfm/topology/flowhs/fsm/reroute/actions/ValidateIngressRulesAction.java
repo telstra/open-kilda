@@ -23,6 +23,7 @@ import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -35,8 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class ValidateIngressRulesAction extends RuleProcessingAction {
-
+public class ValidateIngressRulesAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final SwitchRepository switchRepository;
 
     public ValidateIngressRulesAction(PersistenceManager persistenceManager) {
@@ -44,9 +45,8 @@ public class ValidateIngressRulesAction extends RuleProcessingAction {
     }
 
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowResponse response = context.getFlowResponse();
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         stateMachine.getPendingCommands().remove(commandId);
 
@@ -60,27 +60,23 @@ public class ValidateIngressRulesAction extends RuleProcessingAction {
                     .orElseThrow(() -> new IllegalStateException(format("Failed to find switch %s",
                             expected.getSwitchId())));
 
-            RulesValidator validator =
-                    new IngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse(),
-                            switchObj.getFeatures());
+            RulesValidator validator = new IngressRulesValidator(expected, (FlowRuleResponse) response,
+                    switchObj.getFeatures());
             if (validator.validate()) {
-                String message = format("Ingress rule %s has been validated successfully on switch %s",
-                        expected.getCookie(), expected.getSwitchId());
-                log.debug(message);
-                sendHistoryUpdate(stateMachine, "Rule is validated", message);
+                stateMachine.saveActionToHistory("Rule was validated",
+                        format("The ingress rule has been validated successfully: switch %s, cookie %s",
+                                expected.getSwitchId(), expected.getCookie()));
             } else {
-                String message = format("Ingress rule %s is missing on switch %s",
-                        expected.getCookie(), expected.getSwitchId());
-                log.warn(message);
-                sendHistoryUpdate(stateMachine, "Rule is missing", message);
+                stateMachine.saveErrorToHistory("Rule is missing or invalid",
+                        format("The ingress rule is missing or invalid: switch %s, cookie %s",
+                                expected.getSwitchId(), expected.getCookie()));
 
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }
         } else {
-            String message = format("Failed to validate ingress rule %s on switch %s",
-                    expected.getCookie(), expected.getSwitchId());
-            log.warn(message);
-            sendHistoryUpdate(stateMachine, "Rule validation failed", message);
+            stateMachine.saveErrorToHistory("Rule validation failed",
+                    format("Failed to validate the ingress rule: switch %s, cookie %s",
+                            expected.getSwitchId(), expected.getCookie()));
 
             stateMachine.getFailedValidationResponses().put(commandId, response);
         }
@@ -90,8 +86,8 @@ public class ValidateIngressRulesAction extends RuleProcessingAction {
                 log.debug("Ingress rules have been validated for flow {}", stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_VALIDATED);
             } else {
-                log.warn("Found missing rules or received error response(s) on validation commands of the flow {}",
-                        stateMachine.getFlowId());
+                stateMachine.saveErrorToHistory(
+                        "Found missing rules or received error response(s) on validation commands");
                 stateMachine.fire(Event.MISSING_RULE_FOUND);
             }
         }

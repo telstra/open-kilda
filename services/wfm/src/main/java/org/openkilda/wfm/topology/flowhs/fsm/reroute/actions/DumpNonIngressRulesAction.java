@@ -18,13 +18,13 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.Collection;
 import java.util.Map;
@@ -34,18 +34,12 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class DumpNonIngressRulesAction extends
-        AnonymousAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
-    public void execute(State from, State to,
-                        Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        log.debug("Validating installed non ingress rules for the flow {}",
-                stateMachine.getFlowId());
-
+    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         Map<UUID, InstallTransitRule> nonIngressCommands = stateMachine.getNonIngressCommands();
-
         if (nonIngressCommands.isEmpty()) {
-            log.debug("No need to validate non ingress rules for one switch flow");
+            stateMachine.saveActionToHistory("No need to validate non ingress rules");
 
             stateMachine.fire(Event.RULES_VALIDATED);
         } else {
@@ -59,6 +53,8 @@ public class DumpNonIngressRulesAction extends
                     .map(SpeakerFlowRequest::getCommandId)
                     .collect(Collectors.toSet());
             stateMachine.setPendingCommands(commandIds);
+
+            stateMachine.saveActionToHistory("Started validation of installed non ingress rules");
         }
     }
 }

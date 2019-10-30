@@ -13,47 +13,33 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
 import lombok.extern.slf4j.Slf4j;
-
-import java.time.Instant;
 
 /**
  * A base for action classes that remove flow paths.
  */
 @Slf4j
-abstract class BaseFlowPathRemovalAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C> extends
+        FlowProcessingAction<T, S, E, C> {
+    protected final IslRepository islRepository;
 
-    protected final TransactionManager transactionManager;
-    protected final FlowPathRepository flowPathRepository;
-    private final IslRepository islRepository;
-
-    BaseFlowPathRemovalAction(PersistenceManager persistenceManager) {
+    public BaseFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
 
-        transactionManager = persistenceManager.getTransactionManager();
-        flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
@@ -64,7 +50,7 @@ abstract class BaseFlowPathRemovalAction extends
         updateIslsForFlowPath(forwardPath, reversePath);
     }
 
-    private void updateIslsForFlowPath(FlowPath... paths) {
+    protected void updateIslsForFlowPath(FlowPath... paths) {
         for (FlowPath path : paths) {
             path.getSegments().forEach(pathSegment -> {
                 log.debug("Updating ISL for the path segment: {}", pathSegment);
@@ -83,20 +69,11 @@ abstract class BaseFlowPathRemovalAction extends
         islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
     }
 
-    protected void saveHistory(FlowRerouteFsm stateMachine, String flowId, FlowPath forwardPath, FlowPath reversePath) {
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(forwardPath.getFlow(), forwardPath, reversePath);
-        flowDumpData.setDumpType(DumpType.STATE_BEFORE);
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowDumpData(flowDumpData)
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow paths were removed")
-                        .time(Instant.now())
-                        .description(format("Flow paths %s/%s were removed",
-                                forwardPath.getPathId(), reversePath.getPathId()))
-                        .flowId(flowId)
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
+    protected void saveActionWithDumpToHistory(T stateMachine, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
+        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, forwardPath, reversePath, DumpType.STATE_BEFORE);
+        stateMachine.saveActionWithDumpToHistory(
+                "Flow paths were removed",
+                format("The flow paths %s / %s were removed", forwardPath.getPathId(), reversePath.getPathId()),
+                flowDumpData);
     }
 }
