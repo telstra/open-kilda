@@ -879,6 +879,71 @@ class FlowCrudSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tags(LOW_PRIORITY)
+    def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
+        given: "Two active not neighboring switches"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.find { it.unique { it.switchId }.size() >= 4 }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Select path for further manipulation with it"
+        def selectedPath = switchPair.paths.max { it.size() }
+        def altPaths = switchPair.paths.findAll { it != selectedPath }
+
+        and: "Make all alternative paths unavailable (bring ports down on the src/intermediate switches)"
+        List<PathNode> broughtDownPortsSrcSwitch = []
+        altPaths.findAll { it.first().portNo != selectedPath.first().portNo }.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPortsSrcSwitch.add(src)
+            antiflap.portDown(src.switchId, src.portNo)
+        }
+
+        List<PathNode> broughtDownPortsIntermSwitch = []
+        altPaths.findAll { it.first().portNo == selectedPath.first().portNo &&
+                it[2].portNo != selectedPath[2].portNo && it[2].switchId == selectedPath[2].switchId
+        }.unique { it[2] }.each { path ->
+            def src = path[2]
+            broughtDownPortsIntermSwitch.add(src)
+            antiflap.portDown(src.switchId, src.portNo)
+        }
+
+        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == FAILED
+            }.size() == (broughtDownPortsSrcSwitch.size() + broughtDownPortsIntermSwitch.size()) * 2
+        }
+
+        and: "Update reverse path to have not enough bandwidth to handle the flow"
+        //Forward path is still have enough bandwidth
+        def flowBandwidth = 500
+        def islsToModify = pathHelper.getInvolvedIsls(selectedPath)[1]
+        def newIslBandwidth = flowBandwidth - 1
+        islsToModify.each {
+            database.updateIslAvailableBandwidth(it.reversed, newIslBandwidth)
+            database.updateIslMaxBandwidth(it.reversed, newIslBandwidth)
+        }
+
+        when: "Create a flow"
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = flowBandwidth
+        flowHelper.addFlow(flow)
+
+        then: "Flow is not created"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage.contains("Could not create flow")
+
+        and: "Restore topology, delete the flow and reset costs"
+        [broughtDownPortsSrcSwitch, broughtDownPortsIntermSwitch].each { sw ->
+            sw.each { antiflap.portUp(it.switchId, it.portNo) }
+        }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != FAILED }
+        }
+        database.resetCosts()
+        islsToModify.each { database.resetIslBandwidth(it) }
+    }
+
     @Shared
     def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
                          String conflictingEndpoint ->
