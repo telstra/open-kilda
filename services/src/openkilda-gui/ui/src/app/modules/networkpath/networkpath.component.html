@@ -12,7 +12,8 @@
              bindValue="switch_id"
              labelForId="switch_id"
              placeholder="Select Switch"
-             clearAllText="Clear">               
+             clearAllText="Clear"
+             [clearable]="f.source_switch.value">               
              </ng-select>
              <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
               <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
@@ -31,7 +32,8 @@
              bindValue="switch_id"
              labelForId="switch_id"
              placeholder="Select Switch"
-             clearAllText="Clear">
+             clearAllText="Clear"
+             [clearable]="f.target_switch.value">
              </ng-select>
              <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
               <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
@@ -49,11 +51,12 @@
 </div>
 <div *ngIf="networkPaths && networkPaths.length" class="col-md-12 mt-5" style="border-top:1px solid #ccc;">
   <div class="row">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <table class="table network-path-tbl mt-5" >
             <thead>
               <th>Bandwidth(Mbps) <i style="cursor:pointer;" (click)="sortNetworkData('bandwidth');" class="fa fa-fw fa-sort"></i> </th>
               <th>Latency(Mbps) <i style="cursor:pointer;"  (click)="sortNetworkData('latency');"  class="fa fa-fw fa-sort"></i></th>
+              <th>Nodes <i style="cursor:pointer;"  (click)="sortNetworkData('nodes');"  class="fa fa-fw fa-sort"></i></th>
             </thead>
           </table>
           <table  class="table network-path-tbl" style="margin-top:-18px;">
@@ -61,11 +64,12 @@
                   <tr (click)="viewPath(i,pathData.nodes)" [ngClass]= "{'activerow':activeRowIndex == i}" *ngFor="let pathData of networkPaths; let i = index;">
                      <td>{{pathData.bandwidth / 1000}}</td>
                     <td>{{pathData.latency / 1000}}</td>
+                    <td>{{pathData.nodes.length}}</td>
                     </tr>
           </tbody>
           </table>
     </div>
-    <div class="col-md-9" style="border-left:1px solid #ccc; min-height:350px; ">
+    <div class="col-md-8" style="border-left:1px solid #ccc; min-height:350px; ">
       <div class="main-list" style="float:right; margin-top:10px;" *ngIf="loadZoomIcon">
           <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(-1)"><i class="fa fa-search-minus"></i></a>
            <a  class="custom-icon-path cursor-pointer" (click)="zoomFn(1)"><i class="fa fa-search-plus"></i></a>

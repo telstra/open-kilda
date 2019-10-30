@@ -18,7 +18,7 @@ import { CommonService } from 'src/app/common/services/common.service';
 export class NetworkpathComponent implements OnInit {
   networkpathForm: FormGroup;
   switchList:any=[];
-  sortFlag:any={ bandwidth:false,latency:false};
+  sortFlag:any={ bandwidth:false,latency:false,nodes:false};
   activeRowIndex = null;
   activePathData = null;
   submitted:boolean= false;
@@ -112,11 +112,17 @@ export class NetworkpathComponent implements OnInit {
     if(this.sortFlag[type]){
       this.sortFlag[type] = !this.sortFlag[type];
       this.networkPaths = this.networkPaths.sort(function(a,b){
+        if(type == 'nodes'){
+          return a[type].length - b[type].length;
+        }
         return a[type] - b[type];
       })
     }else{
       this.sortFlag[type] = !this.sortFlag[type];
       this.networkPaths = this.networkPaths.sort(function(a,b){
+        if(type == 'nodes'){
+          return a[type].length - b[type].length;
+        }
         return b[type] - a[type];
       })
     }
@@ -138,12 +144,17 @@ export class NetworkpathComponent implements OnInit {
     if (this.networkpathForm.invalid) {
       return;
     }
-    this.loaderService.show('fetching network paths...')
+    this.loaderService.show('fetching network paths...');
+    self.networkPaths = [];
     this.switchService.getNetworkPath(this.networkpathForm.controls['source_switch'].value,this.networkpathForm.controls['target_switch'].value).subscribe(function(paths){
        self.networkPaths = paths.paths;
+       if(self.networkPaths.length == 0){
+        this.toastr.error("No data found",'Success');
+       }
        self.loaderService.hide();
     },error=>{
       self.loaderService.hide();
+      this.toastr.error("Error:"+error.error['error-auxiliary-message'],'Error');
     })
   }
   
