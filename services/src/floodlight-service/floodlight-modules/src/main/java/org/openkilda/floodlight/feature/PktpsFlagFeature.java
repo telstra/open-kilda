@@ -40,7 +40,9 @@ public class PktpsFlagFeature extends AbstractFeature {
         }
 
         if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(description.getManufacturerDescription())
-                || E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(description.getHardwareDescription()).matches()) {
+                || E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(description.getHardwareDescription()).matches()
+                || NOVIFLOW_VIRTUAL_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
+                        description.getHardwareDescription()).matches()) {
             // Actually E switches support PKTPS flag. But they can't work with PKTPS and KBPS flags in the same time.
             // KBPS flag is used for Flow creation so we must enable it to be able to create Flows on E switches.
             // PKTPS is used for default rule meters and it can be replaced by KBPS (with recalculated rate and
