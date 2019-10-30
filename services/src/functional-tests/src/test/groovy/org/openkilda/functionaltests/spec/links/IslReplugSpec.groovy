@@ -55,11 +55,20 @@ class IslReplugSpec extends HealthCheckSpecification {
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
 
-        and: "MOVED ISL can be deleted"
+        when: "Remove the MOVED ISL"
         assert northbound.deleteLink(islUtils.toLinkParameters(newIsl)).size() == 2
+
+        then: "Moved ISL is removed"
         Wrappers.wait(WAIT_OFFSET) {
             assert !islUtils.getIslInfo(newIsl).isPresent()
             assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
+        }
+
+        and: "The src and dst switches of the isl pass switch validation"
+        [isl.srcSwitch.dpId, isl.dstSwitch.dpId].each { swId ->
+            with(northbound.validateSwitch(swId)) { validationResponse ->
+                switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
+            }
         }
     }
 

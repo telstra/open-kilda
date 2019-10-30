@@ -9,6 +9,7 @@ import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult

@@ -1,9 +1,13 @@
 package org.openkilda.functionaltests.helpers
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
+import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -228,6 +232,11 @@ class FlowHelper {
 
         def commonSwitches = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         def commonTransitSwitches = mainFlowTransitSwitches*.switchId.intersect(protectedFlowTransitSwitches*.switchId)
+        def multiTableIsEnabled = (mainFlowPath + protectedFlowPath).unique {
+            it.switchId
+        }*.switchId.collectEntries { swId ->
+            [swId, northbound.getSwitchProperties(swId).multiTable]
+        }
 
         def flowInfo = db.getFlow(flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
@@ -235,36 +244,61 @@ class FlowHelper {
         def protectedForwardCookie = flowInfo.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
 
-        def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainSwitch.switchId).flowEntries*.cookie
-        assert rulesOnSrcSwitch.containsAll([mainForwardCookie, mainReverseCookie, protectedReverseCookie])
-        assert !rulesOnSrcSwitch.contains(protectedForwardCookie)
+        def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainSwitch.switchId).flowEntries
+        def multiTableStateSrcSw = multiTableIsEnabled[srcMainSwitch.switchId]
+        assert rulesOnSrcSwitch.find {
+            it.cookie == mainForwardCookie
+        }.tableId == (multiTableStateSrcSw ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        assert rulesOnSrcSwitch.find {
+            it.cookie == mainReverseCookie
+        }.tableId == (multiTableStateSrcSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        assert rulesOnSrcSwitch.find {
+            it.cookie == protectedReverseCookie
+        }.tableId == (multiTableStateSrcSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        assert !rulesOnSrcSwitch*.cookie.contains(protectedForwardCookie)
 
-        def rulesOnDstSwitch = northbound.getSwitchRules(dstMainSwitch.switchId).flowEntries*.cookie
-        assert rulesOnDstSwitch.containsAll([mainForwardCookie, mainReverseCookie, protectedForwardCookie])
-        assert !rulesOnDstSwitch.contains(protectedReverseCookie)
+        def rulesOnDstSwitch = northbound.getSwitchRules(dstMainSwitch.switchId).flowEntries
+        def multiTableStateDstSw = multiTableIsEnabled[dstMainSwitch.switchId]
+        assert rulesOnDstSwitch.find {
+            it.cookie == mainForwardCookie
+        }.tableId == (multiTableStateDstSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        assert rulesOnDstSwitch.find {
+            it.cookie == mainReverseCookie
+        }.tableId == (multiTableStateDstSw ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        assert rulesOnDstSwitch.find {
+            it.cookie == protectedForwardCookie
+        }.tableId == (multiTableStateDstSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        assert !rulesOnDstSwitch*.cookie.contains(protectedReverseCookie)
 
         //this loop checks rules on common nodes(except src and dst switches)
         withPool {
             commonTransitSwitches.eachParallel { sw ->
-                def rules = northbound.getSwitchRules(sw).flowEntries*.cookie
-                assert rules.containsAll([mainForwardCookie, mainReverseCookie,
-                                          protectedForwardCookie, protectedReverseCookie])
+                def rules = northbound.getSwitchRules(sw).flowEntries
+                def transitTableId = multiTableIsEnabled[sw] ? TRANSIT_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                assert rules.find { it.cookie == mainForwardCookie }.tableId == transitTableId
+                assert rules.find { it.cookie == mainReverseCookie }.tableId == transitTableId
+                assert rules.find { it.cookie == protectedForwardCookie }.tableId == transitTableId
+                assert rules.find { it.cookie == protectedReverseCookie }.tableId == transitTableId
             }
         }
 
         //this loop checks rules on unique transit nodes
         withPool {
             protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
-                def rules = northbound.getSwitchRules(node.switchId).flowEntries*.cookie
-                assert rules.containsAll([protectedForwardCookie, protectedReverseCookie])
+                def rules = northbound.getSwitchRules(node.switchId).flowEntries
+                def transitTableId = multiTableIsEnabled[node.switchId] ? TRANSIT_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                assert rules.find { it.cookie == protectedForwardCookie }.tableId == transitTableId
+                assert rules.find { it.cookie == protectedReverseCookie }.tableId == transitTableId
             }
         }
 
         //this loop checks rules on unique main nodes
         withPool {
             mainFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
-                def rules = northbound.getSwitchRules(node.switchId).flowEntries*.cookie
-                assert rules.containsAll([mainForwardCookie, mainReverseCookie])
+                def rules = northbound.getSwitchRules(node.switchId).flowEntries
+                def transitTableId = multiTableIsEnabled[node.switchId] ? TRANSIT_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                assert rules.find { it.cookie == mainForwardCookie }.tableId == transitTableId
+                assert rules.find { it.cookie == mainReverseCookie }.tableId == transitTableId
             }
         }
     }

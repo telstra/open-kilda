@@ -39,7 +39,7 @@ class PathHelper {
         def notPreferableIsls = getInvolvedIsls(path)
         log.debug "ISLs to avoid: $notPreferableIsls"
         northbound.updateLinkProps(notPreferableIsls.collectMany { isl ->
-            [islUtils.toLinkProps(isl, ["cost": (NOT_PREFERABLE_COST ** 2).toString()])]
+            [islUtils.toLinkProps(isl, ["cost": (NOT_PREFERABLE_COST * 3).toString()])]
         })
     }
 

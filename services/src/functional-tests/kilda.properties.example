@@ -63,3 +63,4 @@ grpc.remote.log.server.ip=1.1.1.1
 grpc.remote.log.server.port=321
 
 use.hs=false
+use.multitable=true
