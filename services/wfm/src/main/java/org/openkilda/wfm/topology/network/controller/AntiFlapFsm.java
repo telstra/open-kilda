@@ -19,6 +19,7 @@ import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Context;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Event;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.State;
@@ -36,6 +37,8 @@ import java.time.Instant;
 
 @Slf4j
 public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event, Context>  {
+    private final NetworkTopologyDashboardLogger dashboardLogger;
+
     private final Endpoint endpoint;
     private final long delayWarmUp;
     private final long delayCoolingDown;
@@ -50,11 +53,13 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     private int upEventsCount = 0;
     private int downEventsCount = 0;
 
-    public static AntiFlapFsmFactory factory() {
-        return new AntiFlapFsmFactory();
+    public static AntiFlapFsmFactory factory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+        return new AntiFlapFsmFactory(dashboardLoggerBuilder);
     }
 
-    public AntiFlapFsm(Config config) {
+    public AntiFlapFsm(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder, Config config) {
+        dashboardLogger = dashboardLoggerBuilder.build(log);
+
         endpoint = config.getEndpoint();
         delayCoolingDown = config.getDelayCoolingDown();
         delayWarmUp = config.getDelayWarmUp();
@@ -145,6 +150,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     private void exitCoolingDown(Context context) {
+        dashboardLogger.onPortFlappingStop(endpoint);
         if (upWasLast()) {
             emitPortUp(context);
         }
@@ -189,6 +195,8 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     public void activateAntiFlap(State from, State to, Event event, Context context) {
+        dashboardLogger.onPortFlappingStart(endpoint);
+
         emitPortDown(context);
 
         context.getOutput().sendAntiFlapPortHistoryEvent(endpoint, PortHistoryEvent.ANTI_FLAP_ACTIVATED, Instant.now());
@@ -222,13 +230,17 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     public static class AntiFlapFsmFactory {
+        private final NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder;
+
         private final StateMachineBuilder<AntiFlapFsm, State, Event, Context> builder;
 
-        AntiFlapFsmFactory() {
+        AntiFlapFsmFactory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+            this.dashboardLoggerBuilder = dashboardLoggerBuilder;
+
             builder = StateMachineBuilderFactory.create(
                     AntiFlapFsm.class, State.class, Event.class, Context.class,
                     // extra parameters
-                    Config.class);
+                    NetworkTopologyDashboardLogger.Builder.class, Config.class);
 
             // INIT
             builder.transition()
@@ -282,7 +294,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         }
 
         public AntiFlapFsm produce(Config config) {
-            return builder.newStateMachine(State.INIT, config);
+            return builder.newStateMachine(State.INIT, dashboardLoggerBuilder, config);
         }
     }
 

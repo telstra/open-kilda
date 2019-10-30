@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Context;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Event;
@@ -42,7 +43,7 @@ public class NetworkAntiFlapService {
         this.carrier = carrier;
         this.config = config;
 
-        controllerFactory = AntiFlapFsm.factory();
+        controllerFactory = AntiFlapFsm.factory(NetworkTopologyDashboardLogger.builder());
         controllerExecutor = controllerFactory.produceExecutor();
     }
 

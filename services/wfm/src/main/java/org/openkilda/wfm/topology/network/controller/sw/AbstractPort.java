@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.controller.sw;
 
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
@@ -61,5 +62,5 @@ public abstract class AbstractPort implements Serializable {
      *
      * @return the type of port.
      */
-    public abstract String getLogIdentifier();
+    public abstract String makeDashboardPortLabel(NetworkTopologyDashboardLogger dashboardLogger);
 }

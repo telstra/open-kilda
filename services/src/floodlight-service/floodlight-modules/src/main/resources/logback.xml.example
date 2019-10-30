@@ -1,28 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" debug="true" scanPeriod="5 seconds">
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%date{ISO8601} %-5level %logger{15} - [%X] %msg%n</pattern>
-        </encoder>
-    </appender>
-    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <destination>logstash.pendev:5002</destination>
+  <!-- stdout -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%date{ISO8601} %-5level %logger{15} - [%X] %msg%n</pattern>
+    </encoder>
+  </appender>
 
-        <!-- encoder is required -->
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-    </appender>
-    <root level="DEBUG">
-        <appender-ref ref="STDOUT"/>
-        <appender-ref ref="LOGSTASH"/>
-    </root>
+  <!-- logback -->
+  <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+    <destination>logstash.pendev:5002</destination>
+    <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+      <providers>
+        <timestamp/>
+        <version/>
+        <message/>
+        <loggerName>
+          <fieldName>loggerName</fieldName>
+        </loggerName>
+        <threadName>
+          <fieldName>thread</fieldName>
+        </threadName>
+        <logLevel/>
+        <nestedField>
+          <fieldName>contextMap</fieldName>
+          <providers>
+            <mdc/>
+          </providers>
+        </nestedField>
+        <stackTrace/>
+        <pattern>
+          <pattern>{"role":"${FL_ROLE}","region":"${FL_REGION}"}</pattern>
+        </pattern>
+      </providers>
+    </encoder>
+  </appender>>
 
-    <logger name="io" level="ERROR"/> <!-- Netty logging -->
-    <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
-    <logger name="net.floodlightcontroller" level="INFO"/>
-    <logger name="org.openkilda.floodlight.*" level="DEBUG"/>
-    <logger name="org.openkilda.floodlight.pathverification.PathVerificationService.ISL" level="INFO"/>
-    <logger name="org.sdnplatform" level="ERROR"/>
-    <logger name="org.openkilda" level="DEBUG"/>
-    <logger name="ch.qos.logback" level="DEBUG"/>
+  <!-- access log -->
+  <appender name="ACCESS_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>/var/log//floodlight_access.log.nsjson</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>/var/log//floodlight_access.log.json.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+      <maxFileSize>250MB</maxFileSize>
+      <totalSizeCap>1GB</totalSizeCap>
+      <maxHistory>4</maxHistory>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+       <customFields>{"role":"${FL_ROLE}","region":"${FL_REGION}"}</customFields>
+    </encoder>
+  </appender>
 
+  <!-- logging setup -->
+  <root level="INFO">
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="LOGSTASH" />
+  </root>
+
+  <!-- custom log levels -->
+  <logger name="io" level="ERROR"/> <!-- Netty logging -->
+  <logger name="LogService" level="INFO" additivity="false"><!-- Restlet access logging detached from root -->
+    <appender-ref ref="ACCESS_JSON"/>
+  </logger>
+  <logger name="net.floodlightcontroller" level="INFO"/>
+  <logger name="org.sdnplatform" level="ERROR"/>
+  <logger name="ch.qos.logback" level="INFO"/>
+  <logger name="org.apache.kafka.clients" level="INFO"/>
+  <logger name="org.openkilda.floodlight.switchmanager.SwitchManager" level="DEBUG"/>
+  <logger name="org.openkilda.floodlight.pathverification.PathVerificationService.ISL" level="INFO"/>
+  <logger name="org.openkilda" level="DEBUG"/>
 </configuration>
