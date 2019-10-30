@@ -10,6 +10,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
@@ -43,7 +45,13 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     String profile
     
     @Value('${use.hs}')
-    boolean useHs    
+    boolean useHs
+
+    @Value('${use.multitable}')
+    boolean useMultitable
+
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
 
     @Override
     void start() {
@@ -54,6 +62,8 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     void notifyContextInitialized(ApplicationContext applicationContext) {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
         if (profile == "virtual") {
+            log.info("Multi table is enabled by default: $useMultitable")
+            northbound.updateKildaConfiguration(new KildaConfigurationDto(useMultiTable: useMultitable))
             buildVirtualEnvironment()
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
@@ -78,10 +88,31 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         northbound.toggleFeature(features)
 
         labService.flushLabs()
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
             assert northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.empty
+            assert northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }.empty
         }
+        log.info("Deleting all flows")
         northbound.deleteAllFlows()
+
+        log.info("Deleting all links")
+        northbound.getAllLinks().unique {
+            [it.source.switchId.toString(), it.source.portNo,
+             it.destination.switchId.toString(), it.destination.portNo].sort()
+        }.each { it ->
+            northbound.deleteLink(new LinkParametersDto(it.source.switchId.toString(), it.source.portNo,
+                    it.destination.switchId.toString(), it.destination.portNo))
+        }
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northbound.getAllLinks().empty
+        }
+
+        log.info("Deleting all switches")
+        northbound.getAllSwitches().each { northbound.deleteSwitch(it.switchId, false) }
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northbound.getAllSwitches().empty
+        }
+
         labService.createLab(topology)
 
         //wait until topology is discovered

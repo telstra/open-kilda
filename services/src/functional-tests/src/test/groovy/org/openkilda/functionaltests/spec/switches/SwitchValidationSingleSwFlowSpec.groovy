@@ -5,7 +5,9 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -118,7 +120,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
+        def isMultitableEnabled = northbound.getSwitchProperties(sw.dpId).multiTable ?
+                INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+        def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size() + isMultitableEnabled
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
         def meterIds = getCreatedMeterIds(sw.dpId)

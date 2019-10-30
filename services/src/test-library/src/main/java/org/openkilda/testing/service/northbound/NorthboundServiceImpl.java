@@ -625,6 +625,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchFeatures) {
+        log.debug("Update switch properties on the switch: {} with new properties: {}", switchId, switchFeatures);
         return restTemplate.exchange("/api/v1/switches/{switch_id}/properties", HttpMethod.PUT,
                 new HttpEntity<>(switchFeatures, buildHeadersWithCorrelationId()), SwitchPropertiesDto.class,
                 switchId).getBody();
@@ -654,6 +655,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public KildaConfigurationDto updateKildaConfiguration(KildaConfigurationDto configuration) {
+        log.debug("Update kilda configuration: {}", configuration);
         return restTemplate.exchange("/api/v1/config", HttpMethod.PATCH,
                 new HttpEntity<>(configuration, buildHeadersWithCorrelationId()),
                 KildaConfigurationDto.class).getBody();

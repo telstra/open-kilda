@@ -52,7 +52,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     int flowRulesCount = 2
 
     @Shared
-    int multiTableFlowRules = 1
+    // multiTableFlowRule is an extra rule which is created after creating a flow
+    int multiTableFlowRulesCount = 1
 
     def setupOnce() {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
@@ -95,6 +96,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
+        assumeTrue("Multi table should be disabled on the src switch",
+                !northbound.getSwitchProperties(srcSwitch.dpId).multiTable)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
@@ -103,15 +106,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def deletedRules = northbound.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
 
         then: "The corresponding rules are really deleted"
-        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
-            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - expectedRules).find {
-                Cookie.isDefaultRule(it.cookie)
-            }
-            if (ingressRule) {
-                expectedRules = (expectedRules + ingressRule)
-            }
-
-        }
         deletedRules.size() == data.rulesDeleted
         Wrappers.wait(RULES_DELETION_TIME) {
             compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
@@ -158,6 +152,86 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 [// Drop the default, add them back in single-table mode
                  deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
                  rulesDeleted     : srcSwDefaultRules.size(),
+                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
+                ]
+        ]
+    }
+
+    @Unroll
+    @Tags([SMOKE])
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
+    def "Able to delete rules from a switch with multi table mode (delete-action=#data.deleteRulesAction)"() {
+        given: "A switch with some flow rules installed"
+        assumeTrue("Multi table should be enabled on the src switch",
+                northbound.getSwitchProperties(srcSwitch.dpId).multiTable)
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Delete rules from the switch"
+        def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
+        def extraIngressFlowRule
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            extraIngressFlowRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - expectedRules).findAll {
+                Cookie.isIngressRulePassThrough(it.cookie)
+            }
+            assert extraIngressFlowRule.size() == multiTableFlowRulesCount
+        }
+
+        if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
+                                       DeleteRulesAction.IGNORE_DEFAULTS,
+                                       DeleteRulesAction.REMOVE_ADD_DEFAULTS,
+                                       DeleteRulesAction.OVERWRITE_DEFAULTS]) {
+            expectedRules = (expectedRules + extraIngressFlowRule)
+        }
+        def deletedRules = northbound.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
+
+        then: "The corresponding rules are really deleted"
+        deletedRules.size() == data.rulesDeleted
+        Wrappers.wait(RULES_DELETION_TIME) {
+            compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        and: "Install default rules if necessary"
+        if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
+            northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
+            }
+        }
+
+        where:
+        data << [
+                [// Drop all rules
+                 deleteRulesAction: DeleteRulesAction.DROP_ALL,
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount,
+                 getExpectedRules : { sw, defaultRules -> [] }
+                ],
+                [// Drop all rules, add back in the base default rules
+                 deleteRulesAction: DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
+                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount,
+                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                ],
+                [// Don't drop the default rules, but do drop everything else
+                 deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
+                 rulesDeleted     : flowRulesCount,
+                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                ],
+                [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
+                 deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
+                 rulesDeleted     : flowRulesCount,
+                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                ],
+                [// Drop all default rules
+                 deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount,
+                 getExpectedRules : { sw, defaultRules -> getFlowRules(sw) }
+                ],
+                [// Drop the default, add them back
+                 deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount,
                  getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
                 ]
         ]
