@@ -24,6 +24,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,8 @@ public interface Database {
     boolean updateIslCost(Isl isl, int value);
 
     boolean resetCosts();
+
+    boolean updateIslTimeUnstable(Isl isl, Instant newTimeUnstable);
 
     // Switches
 
