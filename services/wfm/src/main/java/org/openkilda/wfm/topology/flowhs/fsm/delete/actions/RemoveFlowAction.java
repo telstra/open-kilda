@@ -18,9 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.RecoverablePersistenceException;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -29,8 +27,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
 import org.neo4j.driver.v1.exceptions.ClientException;
-
-import java.time.Instant;
 
 @Slf4j
 public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
@@ -53,20 +49,8 @@ public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State,
             log.debug("Removing the flow {}", flow);
             flowRepository.delete(flow);
 
-            saveHistory(stateMachine, stateMachine.getFlowId());
+            stateMachine.saveActionToHistory("Flow was removed",
+                    String.format("The flow %s was removed", stateMachine.getFlowId()));
         });
-    }
-
-    protected void saveHistory(FlowDeleteFsm stateMachine, String flowId) {
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow was removed")
-                        .time(Instant.now())
-                        .description(String.format("Flow %s were removed", flowId))
-                        .flowId(flowId)
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

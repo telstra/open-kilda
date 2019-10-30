@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.validation.rules;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.SwitchFeature;
 
@@ -38,22 +39,35 @@ public class IngressRulesValidator extends RulesValidator {
 
     @Override
     public boolean validate() {
-        boolean valid = super.validate();
+        boolean valid = validateCookie() && validateInputPort() && validateVlanId() && validateMeter();
 
+        if (expected instanceof InstallSingleSwitchIngressRule
+                && expected.getInputPort().equals(expected.getOutputPort())) {
+            return valid;
+        }
+
+        return valid & validateOutputPort();
+    }
+
+    private boolean validateVlanId() {
         InstallIngressRule expectedIngress = (InstallIngressRule) expected;
         if (!Objects.equals(expectedIngress.getInputVlanId(), actual.getInVlan())) {
             log.warn("Input vlan mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expectedIngress.getInputVlanId(), actual.getInVlan());
-            valid = false;
+            return false;
         }
+        return true;
+    }
 
+    private boolean validateMeter() {
+        InstallIngressRule expectedIngress = (InstallIngressRule) expected;
         if (switchFeatures.contains(SwitchFeature.METERS) && !Objects.equals(expectedIngress.getMeterId(),
                 actual.getMeterId())) {
             log.warn("Meter mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expectedIngress.getMeterId(), actual.getMeterId());
-            valid = false;
+            return false;
         }
 
-        return valid;
+        return true;
     }
 }

@@ -20,6 +20,8 @@ import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -41,30 +43,46 @@ public class FlowCreateService {
 
     private final FlowCreateFsm.Factory fsmFactory;
     private final FlowCreateHubCarrier carrier;
+    private final PersistenceManager persistenceManager;
+    private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
 
     public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
-                             int genericRetriesLimit, int speakerCommandRetriesLimit) {
+                             int genericRetriesLimit, int transactionRetriesLimit, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
-                .createKildaConfigurationRepository();
+        this.persistenceManager = persistenceManager;
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowEventRepository = repositoryFactory.createFlowEventRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
 
         Config fsmConfig = Config.builder()
                 .flowCreationRetriesLimit(genericRetriesLimit)
+                .transactionRetriesLimit(transactionRetriesLimit)
                 .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
                 .build();
-        this.fsmFactory =
-                FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager, pathComputer);
+        fsmFactory = FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager, pathComputer);
     }
 
     /**
      * Handles request for flow creation.
-     * @param key command identifier.
+     *
+     * @param key     command identifier.
      * @param request request data.
      */
     public void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
-        log.debug("Handling flow create request with key {}", key);
+        log.debug("Handling flow create request with key {} and flow ID: {}", key, request.getFlowId());
+
+        if (fsms.containsKey(key)) {
+            log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
+            return;
+        }
+
+        String eventKey = commandContext.getCorrelationId();
+        if (flowEventRepository.existsByTaskId(eventKey)) {
+            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            return;
+        }
 
         FlowCreateFsm fsm = fsmFactory.produce(request.getFlowId(), commandContext);
         fsms.put(key, fsm);
@@ -84,13 +102,14 @@ public class FlowCreateService {
 
     /**
      * Handles async response from worker.
+     *
      * @param key command identifier.
      */
     public void handleAsyncResponse(String key, FlowResponse flowResponse) {
-        log.debug("Received response {}", flowResponse);
+        log.debug("Received flow command response {}", flowResponse);
         FlowCreateFsm fsm = fsms.get(key);
         if (fsm == null) {
-            log.info("Failed to find fsm: received response with key {} for non pending fsm", key);
+            log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
         }
 
@@ -105,16 +124,19 @@ public class FlowCreateService {
 
     /**
      * Handles timeout case.
+     *
      * @param key command identifier.
      */
     public void handleTimeout(String key) {
         log.debug("Handling timeout for {}", key);
         FlowCreateFsm fsm = fsms.get(key);
-
-        if (fsm != null) {
-            fsm.fireTimeout();
-            removeIfFinished(fsm, key);
+        if (fsm == null) {
+            log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
+            return;
         }
+
+        fsm.fireTimeout();
+        removeIfFinished(fsm, key);
     }
 
     private void processNext(FlowCreateFsm fsm, FlowCreateContext context) {

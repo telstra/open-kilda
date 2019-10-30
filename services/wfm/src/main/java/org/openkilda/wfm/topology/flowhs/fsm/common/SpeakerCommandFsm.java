@@ -32,7 +32,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 @Slf4j
 @Getter
-public final class SpeakerCommandFsm extends WithContextStateMachine<SpeakerCommandFsm, State, Event, FlowResponse> {
+public final class SpeakerCommandFsm extends WithCommandContextFsm<SpeakerCommandFsm, State, Event, FlowResponse> {
 
     private final SpeakerFlowRequest request;
     private final FlowCreateHubCarrier carrier;
@@ -55,8 +55,7 @@ public final class SpeakerCommandFsm extends WithContextStateMachine<SpeakerComm
                 log.debug("About to retry execution of the command {}", flowResponse);
                 fire(Event.RETRY);
             } else {
-                log.info("Failed to execute the flow command {}", flowResponse);
-                fire(Event.ERROR);
+                fireError(flowResponse.toString());
             }
         }
     }
@@ -72,7 +71,8 @@ public final class SpeakerCommandFsm extends WithContextStateMachine<SpeakerComm
     }
 
     @Override
-    public void fireError() {
+    public void fireError(String errorReason) {
+        log.info("Failed to execute the flow command {}", errorReason);
         fire(Event.ERROR);
     }
 

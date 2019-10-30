@@ -15,26 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
-import org.openkilda.wfm.share.flow.resources.FlowResources;
+import static java.lang.String.format;
+
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
-
-import java.util.Collection;
 
 @Slf4j
-public class HandleNotDeallocatedResourcesAction
-        extends AnonymousAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
-
+public class HandleNotDeallocatedResourcesAction extends
+        HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
-    public void execute(State from, State to,
-                        Event event, FlowDeleteContext context,
-                        FlowDeleteFsm stateMachine) {
-        Collection<FlowResources> flowResources = stateMachine.getFlowResources();
-        flowResources.forEach(resources -> log.warn("Failed to deallocate resources: {}", resources));
+    public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
+        stateMachine.getFlowResources().forEach(resources ->
+                stateMachine.saveErrorToHistory("Failed to deallocate resources",
+                        format("Failed to deallocate resources: %s", resources)));
     }
 }

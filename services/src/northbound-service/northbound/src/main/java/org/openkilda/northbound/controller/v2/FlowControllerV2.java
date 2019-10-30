@@ -28,6 +28,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -47,6 +48,14 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
         return flowService.createFlow(flow);
+    }
+
+    @ApiOperation(value = "Updates flow", response = FlowResponseV2.class)
+    @PutMapping(value = "/{flow_id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
+                                                        @RequestBody FlowRequestV2 flow) {
+        return flowService.updateFlow(flow);
     }
 
     /**

@@ -84,7 +84,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         String wfmStatsTopic = topologyConfig.getKafkaStatsTopic();
         logger.debug("connecting to {} topic", wfmStatsTopic);
         builder.setSpout(WFM_STATS_SPOUT, buildKafkaSpout(wfmStatsTopic, WFM_STATS_SPOUT));
-        
+
         WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt();
         builder.setBolt(WFM_STATS_PARSE_BOLT_NAME, wfmStatsParseBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(WFM_STATS_SPOUT);

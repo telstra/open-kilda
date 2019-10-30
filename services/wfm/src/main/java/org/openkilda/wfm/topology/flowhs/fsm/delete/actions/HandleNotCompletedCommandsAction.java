@@ -15,38 +15,35 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.util.HashSet;
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotCompletedCommandsAction
-        extends AnonymousAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
-
+public class HandleNotCompletedCommandsAction extends
+        HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
-    public void execute(State from, State to,
-                        Event event, FlowDeleteContext context,
-                        FlowDeleteFsm stateMachine) {
-        if (!stateMachine.getPendingCommands().isEmpty()) {
-            for (UUID commandId : stateMachine.getPendingCommands()) {
-                RemoveRule notCompletedCommand = stateMachine.getRemoveCommands().get(commandId);
-                if (notCompletedCommand != null) {
-                    log.warn("Completing the removal operation although the command may not be finished yet: "
-                                    + "commandId {}, switch {}, cookie {}", commandId,
-                            notCompletedCommand.getSwitchId(), notCompletedCommand.getCookie());
-                }
+    public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
+        for (UUID commandId : stateMachine.getPendingCommands()) {
+            RemoveRule notCompletedCommand = stateMachine.getRemoveCommands().get(commandId);
+            if (notCompletedCommand != null) {
+                stateMachine.saveErrorToHistory("Command is not finished yet",
+                        format("Completing the removal operation although the command may not be finished yet: "
+                                        + "commandId %s, switch %s, cookie %s", commandId,
+                                notCompletedCommand.getSwitchId(), notCompletedCommand.getCookie()));
             }
         }
 
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.setPendingCommands(new HashSet<>());
+        stateMachine.getPendingCommands().clear();
     }
 }

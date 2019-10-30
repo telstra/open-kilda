@@ -41,7 +41,6 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRequest;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -60,12 +59,12 @@ import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
@@ -90,6 +89,9 @@ import java.util.UUID;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FlowCreateServiceTest extends AbstractFlowTest {
+    private static final int GENERIC_RETRIES_LIMIT = 0;
+    private static final int TRANSACTION_RETRIES_LIMIT = 3;
+    private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 0;
 
     private static final SwitchId SRC_SWITCH = new SwitchId(1L);
     private static final SwitchId TRANSIT_SWITCH = new SwitchId(2L);
@@ -114,8 +116,6 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         when(configurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
         when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(configurationRepository);
 
-        FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
-        when(featureTogglesRepository.find()).thenReturn(Optional.of(getFeatureToggles()));
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
@@ -148,8 +148,13 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
             return flowPath;
         }).when(flowPathRepository).createOrUpdate(any(FlowPath.class));
 
+        FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
+        when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
+        when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
+
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any(SpeakerFlowRequest.class));
-        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                GENERIC_RETRIES_LIMIT, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 
     @After
@@ -255,7 +260,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldRollbackIfEgressRuleNotInstalled() throws Exception {
-        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                GENERIC_RETRIES_LIMIT, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
         String key = "failed_flow_create";
         String flowId = "failed_flow_id";
 
@@ -316,7 +322,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldRollbackIfIngressRuleNotInstalled() throws Exception {
-        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                GENERIC_RETRIES_LIMIT, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
         String key = "failed_flow_create";
         String flowId = "failed_flow_id";
 
@@ -382,7 +389,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     public void shouldCreateFlowWithRetryNonIngressRuleIfSwitchIsUnavailable() throws Exception {
         int retriesLimit = 10;
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                0, retriesLimit);
+                GENERIC_RETRIES_LIMIT, TRANSACTION_RETRIES_LIMIT, retriesLimit);
         String key = "retries_non_ingress_installation";
         String flowId = "failed_flow_id";
 
@@ -444,7 +451,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     public void shouldCreateFlowWithRetryIngressRuleIfSwitchIsUnavailable() throws Exception {
         int retriesLimit = 10;
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                0, retriesLimit);
+                GENERIC_RETRIES_LIMIT, TRANSACTION_RETRIES_LIMIT, retriesLimit);
         String key = "retries_non_ingress_installation";
         String flowId = "failed_flow_id";
 
@@ -615,6 +622,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
             // once flow is created in DB it will be available for loading by flow id
             when(flowRepository.findById(eq(flowId))).thenReturn(Optional.of(flow));
+            when(flowRepository.exists(eq(flowId))).thenReturn(true);
 
             // flow path should also being created
             when(flowPathRepository.findById(flow.getForwardPathId()))
@@ -629,12 +637,6 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
             }
             return null;
         }).when(flowRepository).createOrUpdate(any(Flow.class));
-    }
-
-    private FeatureToggles getFeatureToggles() {
-        return FeatureToggles.builder()
-                .createFlowEnabled(true)
-                .build();
     }
 
     private PathPair getPathOneSwitch() {

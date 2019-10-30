@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import static java.lang.String.format;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -26,13 +24,10 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -45,60 +40,41 @@ import java.util.Optional;
 @Slf4j
 public class PostResourceAllocationAction extends
         NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
-    private final FlowRepository flowRepository;
-    private final FlowPathRepository flowPathRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public PostResourceAllocationAction(PersistenceManager persistenceManager,
                                         FlowOperationsDashboardLogger dashboardLogger) {
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        super(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
 
     @Override
-    protected Optional<Message> perform(State from, State to,
-                                        Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected Optional<Message> performWithResponse(State from, State to, Event event, FlowRerouteContext context,
+                                                    FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        try {
-            FlowPath newForwardPath = null;
-            if (stateMachine.getNewPrimaryForwardPath() != null) {
-                newForwardPath = flowPathRepository.findById(stateMachine.getNewPrimaryForwardPath())
-                        .orElseThrow(() -> new FlowProcessingException(format("Flow path %s not found",
-                                stateMachine.getNewPrimaryForwardPath())));
-            }
 
-            PathId currentForwardId;
-            if (newForwardPath != null) {
-                currentForwardId = newForwardPath.getFlow().getForwardPathId();
-            } else {
-                Flow flow = flowRepository.findById(flowId, FetchStrategy.NO_RELATIONS)
-                        .orElseThrow(() -> new FlowProcessingException(format("Flow %s not found", flowId)));
-                currentForwardId = flow.getForwardPathId();
-            }
-            FlowPath currentForwardPath = flowPathRepository.findById(currentForwardId)
-                    .orElseThrow(() -> new FlowProcessingException(format("Flow path %s not found",
-                            currentForwardId)));
-
-            if (stateMachine.getNewPrimaryForwardPath() == null && stateMachine.getNewPrimaryReversePath() == null
-                    && stateMachine.getNewProtectedForwardPath() == null
-                    && stateMachine.getNewProtectedReversePath() == null) {
-                dashboardLogger.onFailedFlowReroute(flowId,
-                        format("Reroute %s is unsuccessful: can't find new path(s).", flowId));
-
-                stateMachine.fire(Event.REROUTE_IS_SKIPPED);
-            }
-
-            return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,
-                    stateMachine.getCommandContext()));
-        } catch (Exception e) {
-            String errorDescription = format("Failed to create flow paths for flow %s: %s",
-                    flowId, e.getMessage());
-            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
-
-            throw e;
+        FlowPath newForwardPath = null;
+        if (stateMachine.getNewPrimaryForwardPath() != null) {
+            newForwardPath = getFlowPath(stateMachine.getNewPrimaryForwardPath());
         }
+
+        PathId currentForwardId;
+        if (newForwardPath != null) {
+            currentForwardId = newForwardPath.getFlow().getForwardPathId();
+        } else {
+            Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
+            currentForwardId = flow.getForwardPathId();
+        }
+        FlowPath currentForwardPath = getFlowPath(currentForwardId);
+
+        if (stateMachine.getNewPrimaryForwardPath() == null && stateMachine.getNewPrimaryReversePath() == null
+                && stateMachine.getNewProtectedForwardPath() == null
+                && stateMachine.getNewProtectedReversePath() == null) {
+            stateMachine.fireRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
+        }
+
+        return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,
+                stateMachine.getCommandContext()));
     }
 
     private Message buildRerouteResponseMessage(FlowPath currentForward, FlowPath newForward,

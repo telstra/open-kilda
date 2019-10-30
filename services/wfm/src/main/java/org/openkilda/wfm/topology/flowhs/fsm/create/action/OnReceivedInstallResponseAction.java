@@ -31,8 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends OnReceivedResponseAction {
-
+public class OnReceivedInstallResponseAction extends OnReceivedValidationResponseAction {
     public OnReceivedInstallResponseAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
@@ -43,13 +42,15 @@ public class OnReceivedInstallResponseAction extends OnReceivedResponseAction {
 
         if (stateMachine.getPendingCommands().isEmpty()) {
             if (stateMachine.getFailedCommands().isEmpty()) {
-                log.debug("Successfully executed all pending commands");
+                log.debug("Received responses for all pending install commands of the flow {}",
+                        stateMachine.getFlowId());
                 stateMachine.fire(Event.NEXT);
             } else {
-                log.debug("Received responses of all pending commands. Total failed commands: {}",
+                String errorMessage = format("Received error response(s) for %d install commands",
                         stateMachine.getFailedCommands().size());
                 stateMachine.getFailedCommands().clear();
-                stateMachine.fireError();
+                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.fireError(errorMessage);
             }
         }
     }
@@ -65,27 +66,23 @@ public class OnReceivedInstallResponseAction extends OnReceivedResponseAction {
         } else if (stateMachine.getIngressCommands().containsKey(commandId)) {
             installRule = stateMachine.getIngressCommands().get(commandId);
         } else {
-            throw new IllegalStateException(format("Failed to find install rule command with id %s", commandId));
+            throw new IllegalStateException(format("Failed to find an install rule command with id %s", commandId));
         }
 
         if (response.isSuccess()) {
-            log.debug("Rule {} was installed on switch {}", installRule.getCookie(), response.getSwitchId());
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule installed",
-                    format("Rule was installed successfully: cookie %s, switch %s",
-                            installRule.getCookie(), response.getSwitchId()));
+            stateMachine.saveActionToHistory("Rule was installed",
+                    format("The rule was installed: switch %s, cookie %s",
+                            response.getSwitchId(), installRule.getCookie()));
         } else {
             handleError(stateMachine, response, installRule);
         }
     }
 
     private void handleError(FlowCreateFsm stateMachine, FlowResponse response, InstallFlowRule command) {
-        stateMachine.getFailedCommands().add(command.getCommandId());
         FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-        String message = format("Failed to install rule %s, on the switch %s: %s. Description: %s",
-                command.getCookie(), errorResponse.getSwitchId(), errorResponse.getErrorCode(),
-                errorResponse.getDescription());
-        log.error(message);
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule not installed",
-                message);
+        stateMachine.getFailedCommands().put(command.getCommandId(), errorResponse);
+        stateMachine.saveErrorToHistory("Failed to install rule",
+                format("Failed to install the rule: switch %s, cookie %s. Error: %s",
+                        errorResponse.getSwitchId(), command.getCookie(), errorResponse));
     }
 }

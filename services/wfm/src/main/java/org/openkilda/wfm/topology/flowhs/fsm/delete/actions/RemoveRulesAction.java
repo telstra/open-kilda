@@ -25,7 +25,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -74,7 +74,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                 FlowPath forward = path.isForward() ? path : oppositePath;
                 FlowPath reverse = path.isForward() ? oppositePath : path;
                 if (forward != null) {
-                    stateMachine.addFlowResources(buildResources(flow, forward,
+                    stateMachine.getFlowResources().add(buildResources(flow, forward,
                             reverse != null ? reverse : forward));
                     if (reverse != null) {
                         commands.addAll(commandBuilder.createRemoveNonIngressRules(
@@ -95,7 +95,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                     }
                 } else {
                     log.warn("No forward path found for {}, trying to delete as unpaired path", reverse.getPathId());
-                    stateMachine.addFlowResources(buildResources(flow, reverse, reverse));
+                    stateMachine.getFlowResources().add(buildResources(flow, reverse, reverse));
                     commands.addAll(commandBuilder.createRemoveNonIngressRules(
                             stateMachine.getCommandContext(), flow, reverse));
                     if (!reverse.getPathId().equals(flow.getProtectedReversePathId())) {
@@ -106,19 +106,16 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             }
         }
 
-        stateMachine.setRemoveCommands(commands.stream()
+        stateMachine.getRemoveCommands().putAll(commands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.setPendingCommands(commandIds);
+        stateMachine.getPendingCommands().addAll(commandIds);
 
-        log.debug("Commands for removing rules have been sent for the flow {}", stateMachine.getFlowId());
-
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                "Remove commands for rules have been sent.");
+        stateMachine.saveActionToHistory("Remove commands for rules have been sent");
     }
 
     private FlowResources buildResources(Flow flow, FlowPath forwardPath, FlowPath reversePath) {

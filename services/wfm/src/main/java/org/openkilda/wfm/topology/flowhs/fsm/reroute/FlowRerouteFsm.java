@@ -15,45 +15,36 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AbandonPendingCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocatePrimaryResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocateProtectedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CancelPendingCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DeallocateResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DumpIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DumpNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotRemovedPathsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotRemovedRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotRevertedResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnNoPathFoundAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedRemoveResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedRemoveOrRevertResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.PostResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RemoveOldRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertFlowStatusAction;
@@ -73,24 +64,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-
 @Getter
 @Setter
 @Slf4j
-public final class FlowRerouteFsm
-        extends NbTrackableStateMachine<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     private final FlowRerouteHubCarrier carrier;
 
-    private String flowId;
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
@@ -98,249 +78,12 @@ public final class FlowRerouteFsm
     private FlowStatus originalFlowStatus;
     private FlowEncapsulationType originalEncapsulationType;
 
+    private FlowStatus newFlowStatus;
     private FlowEncapsulationType newEncapsulationType;
-    private FlowResources newPrimaryResources;
-    private FlowResources newProtectedResources;
-    private PathId newPrimaryForwardPath;
-    private PathId newPrimaryReversePath;
-    private PathId newProtectedForwardPath;
-    private PathId newProtectedReversePath;
 
-    private Collection<FlowResources> oldResources;
-    private PathId oldPrimaryForwardPath;
-    private FlowPathStatus oldPrimaryForwardPathStatus;
-    private PathId oldPrimaryReversePath;
-    private FlowPathStatus oldPrimaryReversePathStatus;
-    private PathId oldProtectedForwardPath;
-    private FlowPathStatus oldProtectedForwardPathStatus;
-    private PathId oldProtectedReversePath;
-    private FlowPathStatus oldProtectedReversePathStatus;
-
-    private Set<UUID> pendingCommands = Collections.emptySet();
-
-    private Map<UUID, FlowErrorResponse> errorResponses = new HashMap<>();
-
-    private Map<UUID, FlowResponse> failedValidationResponses = new HashMap<>();
-
-    private Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
-    private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
-    private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
-
-    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier) {
-        super(commandContext);
+    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
+        super(commandContext, flowId);
         this.carrier = carrier;
-
-    }
-
-    private static StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder(
-            PersistenceManager persistenceManager, PathComputer pathComputer, FlowResourcesManager resourcesManager) {
-        StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder =
-                StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
-                        FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class);
-
-        FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
-
-        builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
-                .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
-        builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
-
-        builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
-                .perform(new AllocatePrimaryResourcesAction(persistenceManager, pathComputer, resourcesManager,
-                        dashboardLogger));
-        builder.transitions().from(State.FLOW_VALIDATED)
-                .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
-                .on(Event.NEXT)
-                .perform(new AllocateProtectedResourcesAction(persistenceManager, pathComputer, resourcesManager,
-                        dashboardLogger));
-        builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
-                .on(Event.NO_PATH_FOUND);
-        builder.transitions().from(State.PRIMARY_RESOURCES_ALLOCATED)
-                .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
-                .on(Event.NEXT)
-                .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
-        builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
-                .on(Event.NO_PATH_FOUND);
-        builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)
-                .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_NON_INGRESS_RULES)
-                .on(Event.NEXT)
-                .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
-        builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.FINISHED).on(Event.REROUTE_IS_SKIPPED)
-                .perform(new RevertFlowStatusAction(persistenceManager));
-        builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
-                .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction());
-        builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
-                .on(Event.RULES_INSTALLED);
-        builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
-                .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new CancelPendingCommandsAction());
-
-        builder.transition().from(State.NON_INGRESS_RULES_INSTALLED).to(State.VALIDATING_NON_INGRESS_RULES)
-                .on(Event.NEXT)
-                .perform(new DumpNonIngressRulesAction());
-        builder.transitions().from(State.NON_INGRESS_RULES_INSTALLED)
-                .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateNonIngressRulesAction());
-        builder.transition().from(State.VALIDATING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_VALIDATED)
-                .on(Event.RULES_VALIDATED);
-        builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
-                .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
-                .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR)
-                .perform(new CancelPendingCommandsAction());
-
-        builder.transition().from(State.NON_INGRESS_RULES_VALIDATED).to(State.PATHS_SWAPPED).on(Event.NEXT)
-                .perform(new SwapFlowPathsAction(persistenceManager, resourcesManager));
-        builder.transitions().from(State.NON_INGRESS_RULES_VALIDATED)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.transition().from(State.PATHS_SWAPPED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)
-                .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
-        builder.transitions().from(State.PATHS_SWAPPED)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction());
-        builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_INSTALLED)
-                .on(Event.RULES_INSTALLED);
-        builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
-                .on(Event.INGRESS_IS_SKIPPED);
-        builder.transitions().from(State.INSTALLING_INGRESS_RULES)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new CancelPendingCommandsAction());
-
-        builder.transition().from(State.INGRESS_RULES_INSTALLED).to(State.VALIDATING_INGRESS_RULES).on(Event.NEXT)
-                .perform(new DumpIngressRulesAction());
-        builder.transitions().from(State.INGRESS_RULES_INSTALLED)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateIngressRulesAction(persistenceManager));
-        builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
-                .on(Event.RULES_VALIDATED);
-        builder.transitions().from(State.VALIDATING_INGRESS_RULES)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR)
-                .perform(new CancelPendingCommandsAction());
-
-        builder.transition().from(State.INGRESS_RULES_VALIDATED).to(State.NEW_PATHS_INSTALLATION_COMPLETED)
-                .on(Event.NEXT)
-                .perform(new CompleteFlowPathInstallationAction(persistenceManager));
-        builder.transitions().from(State.INGRESS_RULES_VALIDATED)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.transition().from(State.NEW_PATHS_INSTALLATION_COMPLETED).to(State.REMOVING_OLD_RULES).on(Event.NEXT)
-                .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
-        builder.transitions().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
-                .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedRemoveResponseAction());
-        builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
-                .on(Event.RULES_REMOVED);
-        builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
-                .on(Event.ERROR)
-                .perform(new HandleNotRemovedRulesAction());
-
-        builder.transition().from(State.OLD_RULES_REMOVED).to(State.OLD_PATHS_REMOVAL_COMPLETED).on(Event.NEXT)
-                .perform(new CompleteFlowPathRemovalAction(persistenceManager));
-
-        builder.transition().from(State.OLD_PATHS_REMOVAL_COMPLETED).to(State.DEALLOCATING_OLD_RESOURCES)
-                .on(Event.NEXT);
-        builder.transition().from(State.OLD_PATHS_REMOVAL_COMPLETED).to(State.DEALLOCATING_OLD_RESOURCES)
-                .on(Event.ERROR)
-                .perform(new HandleNotRemovedPathsAction());
-
-        builder.transition().from(State.DEALLOCATING_OLD_RESOURCES).to(State.OLD_RESOURCES_DEALLOCATED).on(Event.NEXT)
-                .perform(new DeallocateResourcesAction(persistenceManager, resourcesManager));
-
-        builder.transition().from(State.OLD_RESOURCES_DEALLOCATED).to(State.UPDATING_FLOW_STATUS).on(Event.NEXT);
-        builder.transition().from(State.OLD_RESOURCES_DEALLOCATED).to(State.UPDATING_FLOW_STATUS)
-                .on(Event.ERROR)
-                .perform(new HandleNotDeallocatedResourcesAction());
-
-        builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
-                .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
-
-        builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
-        builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
-
-        builder.transition().from(State.MARKING_FLOW_DOWN).to(State.REVERTING_ALLOCATED_RESOURCES)
-                .on(Event.NEXT)
-                .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger));
-
-        builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
-                .on(Event.NEXT)
-                .perform(new RevertPathsSwapAction(persistenceManager));
-
-        builder.transitions().from(State.PATHS_SWAP_REVERTED)
-                .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
-                .onEach(Event.NEXT, Event.ERROR)
-                .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
-
-        builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedRemoveResponseAction());
-        builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
-                .on(Event.RULES_REMOVED);
-        builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
-                .on(Event.ERROR)
-                .perform(new HandleNotRemovedRulesAction());
-
-        builder.transitions().from(State.NEW_RULES_REVERTED)
-                .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
-                .onEach(Event.NEXT, Event.ERROR);
-
-        builder.transitions().from(State.REVERTING_ALLOCATED_RESOURCES)
-                .toAmong(State.RESOURCES_ALLOCATION_REVERTED, State.RESOURCES_ALLOCATION_REVERTED)
-                .onEach(Event.NEXT, Event.ERROR)
-                .perform(new RevertResourceAllocationAction(persistenceManager, resourcesManager));
-        builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW_STATUS).on(Event.NEXT);
-        builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW_STATUS)
-                .on(Event.ERROR)
-                .perform(new HandleNotRevertedResourceAllocationAction());
-
-        builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
-                .onEach(Event.NEXT, Event.ERROR)
-                .perform(new RevertFlowStatusAction(persistenceManager));
-        return builder;
-    }
-
-    @Override
-    protected void afterTransitionCausedException(State fromState, State toState,
-                                                  Event event, FlowRerouteContext context) {
-        if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
-            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow",
-                    getLastException().getMessage());
-            Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
-                    getCommandContext().getCorrelationId());
-            carrier.sendNorthboundResponse(message);
-        }
-
-        fireError();
-
-        super.afterTransitionCausedException(fromState, toState, event, context);
     }
 
     @Override
@@ -349,8 +92,27 @@ public final class FlowRerouteFsm
     }
 
     @Override
-    public void fireError() {
-        fire(Event.ERROR);
+    public void fireError(String errorReason) {
+        fireError(Event.ERROR, errorReason);
+    }
+
+    private void fireError(Event errorEvent, String errorReason) {
+        if (this.errorReason != null) {
+            log.error("Subsequent error fired: " + errorReason);
+        } else {
+            this.errorReason = errorReason;
+        }
+
+        fire(errorEvent);
+    }
+
+    @Override
+    public void fireNoPathFound(String errorReason) {
+        fireError(Event.NO_PATH_FOUND, errorReason);
+    }
+
+    public void fireRerouteIsSkipped(String errorReason) {
+        fireError(Event.REROUTE_IS_SKIPPED, errorReason);
     }
 
     @Override
@@ -358,26 +120,230 @@ public final class FlowRerouteFsm
         carrier.sendNorthboundResponse(message);
     }
 
-    public static FlowRerouteFsm newInstance(CommandContext commandContext, FlowRerouteHubCarrier carrier,
-                                             PersistenceManager persistenceManager,
-                                             PathComputer pathComputer, FlowResourcesManager resourcesManager) {
-        return newInstance(State.INITIALIZED, commandContext, carrier,
-                persistenceManager, pathComputer, resourcesManager);
-    }
+    public static class Factory {
+        private final StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder;
+        private final FlowRerouteHubCarrier carrier;
 
-    public static FlowRerouteFsm newInstance(State state, CommandContext commandContext,
-                                             FlowRerouteHubCarrier carrier,
-                                             PersistenceManager persistenceManager,
-                                             PathComputer pathComputer, FlowResourcesManager resourcesManager) {
-        return builder(persistenceManager, pathComputer, resourcesManager)
-                .newStateMachine(state, commandContext, carrier);
-    }
+        public Factory(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
+                       PathComputer pathComputer, FlowResourcesManager resourcesManager,
+                       int transactionRetriesLimit, int speakerCommandRetriesLimit) {
+            this.carrier = carrier;
 
-    public void addOldResources(FlowResources flowResources) {
-        if (oldResources == null) {
-            oldResources = new ArrayList<>();
+            builder = StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
+                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class);
+
+            FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
+            builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
+                    .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
+            builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
+
+            builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
+                    .perform(new AllocatePrimaryResourcesAction(persistenceManager, transactionRetriesLimit,
+                            pathComputer, resourcesManager, dashboardLogger));
+            builder.transitions().from(State.FLOW_VALIDATED)
+                    .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
+                    .on(Event.NEXT)
+                    .perform(new AllocateProtectedResourcesAction(persistenceManager, transactionRetriesLimit,
+                            pathComputer, resourcesManager, dashboardLogger));
+            builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
+                    .on(Event.NO_PATH_FOUND);
+            builder.transitions().from(State.PRIMARY_RESOURCES_ALLOCATED)
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
+                    .on(Event.NEXT)
+                    .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
+            builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
+                    .on(Event.NO_PATH_FOUND);
+            builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_NON_INGRESS_RULES)
+                    .on(Event.NEXT)
+                    .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
+            builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.FINISHED_WITH_ERROR)
+                    .on(Event.REROUTE_IS_SKIPPED)
+                    .perform(new RevertFlowStatusAction(persistenceManager));
+            builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+            builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+            builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
+                    .on(Event.RULES_INSTALLED);
+            builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
+                    .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new AbandonPendingCommandsAction());
+
+            builder.transition().from(State.NON_INGRESS_RULES_INSTALLED).to(State.VALIDATING_NON_INGRESS_RULES)
+                    .on(Event.NEXT)
+                    .perform(new DumpNonIngressRulesAction());
+            builder.transitions().from(State.NON_INGRESS_RULES_INSTALLED)
+                    .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+            builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+            builder.transition().from(State.VALIDATING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_VALIDATED)
+                    .on(Event.RULES_VALIDATED);
+            builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
+                    .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
+                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR)
+                    .perform(new AbandonPendingCommandsAction());
+
+            builder.transition().from(State.NON_INGRESS_RULES_VALIDATED).to(State.PATHS_SWAPPED).on(Event.NEXT)
+                    .perform(new SwapFlowPathsAction(persistenceManager, resourcesManager));
+            builder.transitions().from(State.NON_INGRESS_RULES_VALIDATED)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transition().from(State.PATHS_SWAPPED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)
+                    .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
+            builder.transitions().from(State.PATHS_SWAPPED)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+            builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+            builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_INSTALLED)
+                    .on(Event.RULES_INSTALLED);
+            builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
+                    .on(Event.INGRESS_IS_SKIPPED);
+            builder.transitions().from(State.INSTALLING_INGRESS_RULES)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new AbandonPendingCommandsAction());
+
+            builder.transition().from(State.INGRESS_RULES_INSTALLED).to(State.VALIDATING_INGRESS_RULES).on(Event.NEXT)
+                    .perform(new DumpIngressRulesAction());
+            builder.transitions().from(State.INGRESS_RULES_INSTALLED)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+            builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+            builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
+                    .on(Event.RULES_VALIDATED);
+            builder.transitions().from(State.VALIDATING_INGRESS_RULES)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR)
+                    .perform(new AbandonPendingCommandsAction());
+
+            builder.transition().from(State.INGRESS_RULES_VALIDATED).to(State.NEW_PATHS_INSTALLATION_COMPLETED)
+                    .on(Event.NEXT)
+                    .perform(new CompleteFlowPathInstallationAction(persistenceManager));
+            builder.transitions().from(State.INGRESS_RULES_VALIDATED)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transition().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
+                    .to(State.REMOVING_OLD_RULES).on(Event.NEXT)
+                    .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
+            builder.transitions().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+            builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+            builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
+                    .on(Event.RULES_REMOVED);
+            builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotCompletedCommandsAction());
+
+            builder.transition().from(State.OLD_RULES_REMOVED).to(State.OLD_PATHS_REMOVAL_COMPLETED).on(Event.NEXT)
+                    .perform(new CompleteFlowPathRemovalAction(persistenceManager, transactionRetriesLimit));
+
+            builder.transition().from(State.OLD_PATHS_REMOVAL_COMPLETED).to(State.DEALLOCATING_OLD_RESOURCES)
+                    .on(Event.NEXT);
+            builder.transition().from(State.OLD_PATHS_REMOVAL_COMPLETED).to(State.DEALLOCATING_OLD_RESOURCES)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotRemovedPathsAction());
+
+            builder.transition().from(State.DEALLOCATING_OLD_RESOURCES)
+                    .to(State.OLD_RESOURCES_DEALLOCATED).on(Event.NEXT)
+                    .perform(new DeallocateResourcesAction(persistenceManager, resourcesManager));
+
+            builder.transition().from(State.OLD_RESOURCES_DEALLOCATED).to(State.UPDATING_FLOW_STATUS).on(Event.NEXT);
+            builder.transition().from(State.OLD_RESOURCES_DEALLOCATED).to(State.UPDATING_FLOW_STATUS)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotDeallocatedResourcesAction());
+
+            builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
+                    .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
+
+            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
+            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+
+            builder.transition().from(State.MARKING_FLOW_DOWN).to(State.REVERTING_ALLOCATED_RESOURCES)
+                    .on(Event.NEXT)
+                    .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger));
+
+            builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
+                    .on(Event.NEXT)
+                    .perform(new RevertPathsSwapAction(persistenceManager));
+
+            builder.transitions().from(State.PATHS_SWAP_REVERTED)
+                    .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
+                    .onEach(Event.NEXT, Event.ERROR)
+                    .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
+
+            builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+            builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+            builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
+                    .on(Event.RULES_REMOVED);
+            builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotCompletedCommandsAction());
+
+            builder.transitions().from(State.NEW_RULES_REVERTED)
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
+                    .onEach(Event.NEXT, Event.ERROR);
+
+            builder.transitions().from(State.REVERTING_ALLOCATED_RESOURCES)
+                    .toAmong(State.RESOURCES_ALLOCATION_REVERTED, State.RESOURCES_ALLOCATION_REVERTED)
+                    .onEach(Event.NEXT, Event.ERROR)
+                    .perform(new RevertResourceAllocationAction(persistenceManager, resourcesManager));
+            builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED)
+                    .to(State.REVERTING_FLOW_STATUS).on(Event.NEXT);
+            builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW_STATUS)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotRevertedResourceAllocationAction());
+
+            builder.transitions().from(State.REVERTING_FLOW_STATUS)
+                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .onEach(Event.NEXT, Event.ERROR)
+                    .perform(new RevertFlowStatusAction(persistenceManager));
+
+            builder.defineFinalState(State.FINISHED)
+                    .addEntryAction(new OnFinishedAction(dashboardLogger));
+            builder.defineFinalState(State.FINISHED_WITH_ERROR)
+                    .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
-        oldResources.add(flowResources);
+
+        public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId) {
+            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        }
     }
 
     public enum State {
@@ -433,7 +399,8 @@ public final class FlowRerouteFsm
         NO_PATH_FOUND,
         REROUTE_IS_SKIPPED,
 
-        COMMAND_EXECUTED,
+        RESPONSE_RECEIVED,
+        ERROR_RECEIVED,
 
         INGRESS_IS_SKIPPED,
 

@@ -26,12 +26,14 @@ import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallback;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -60,6 +62,8 @@ public abstract class AbstractFlowTest {
     PathComputer pathComputer;
     @Mock
     FlowResourcesManager flowResourcesManager;
+    @Mock
+    FeatureTogglesRepository featureTogglesRepository;
 
     final Queue<SpeakerFlowRequest> requests = new ArrayDeque<>();
     final Map<SwitchId, Map<Cookie, InstallFlowRule>> installedRules = new HashMap<>();
@@ -96,6 +100,14 @@ public abstract class AbstractFlowTest {
                 return new RetryPolicy().retryIf(result -> false);
             }
         });
+
+        when(featureTogglesRepository.find()).thenReturn(Optional.of(
+                FeatureToggles.DEFAULTS.toBuilder()
+                        .createFlowEnabled(true)
+                        .updateFlowEnabled(true)
+                        .deleteFlowEnabled(true)
+                        .build()
+        ));
     }
 
     Answer getSpeakerCommandsAnswer() {

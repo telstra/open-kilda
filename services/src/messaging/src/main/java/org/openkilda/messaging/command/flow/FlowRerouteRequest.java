@@ -49,16 +49,21 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("force")
     private boolean force;
 
-    public FlowRerouteRequest(String flowId, boolean force) {
-        this(flowId, force, Collections.emptySet());
+    @JsonProperty("reason")
+    private String reason;
+
+    public FlowRerouteRequest(String flowId, boolean force, String reason) {
+        this(flowId, force, Collections.emptySet(), reason);
     }
 
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
                               @JsonProperty("force") boolean force,
-                              @NonNull @JsonProperty("path_ids") Set<PathId> pathIds) {
+                              @NonNull @JsonProperty("path_ids") Set<PathId> pathIds,
+                              @JsonProperty("reason") String reason) {
         this.flowId = flowId;
         this.force = force;
         this.pathIds = pathIds;
+        this.reason = reason;
     }
 }

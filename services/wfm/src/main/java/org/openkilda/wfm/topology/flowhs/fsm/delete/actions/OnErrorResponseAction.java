@@ -21,6 +21,7 @@ import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.Cookie;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -31,7 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class OnErrorResponseAction extends RuleProcessingAction {
+public class OnErrorResponseAction extends HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     private final int speakerCommandRetriesLimit;
 
     public OnErrorResponseAction(int speakerCommandRetriesLimit) {
@@ -39,10 +40,8 @@ public class OnErrorResponseAction extends RuleProcessingAction {
     }
 
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowDeleteContext context,
-                           FlowDeleteFsm stateMachine) {
-        FlowResponse response = context.getFlowResponse();
+    protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         if (response.isSuccess() || !(response instanceof FlowErrorResponse)) {
             throw new IllegalArgumentException(
                     format("Invoked %s for a success response: %s", this.getClass(), response));
@@ -51,37 +50,35 @@ public class OnErrorResponseAction extends RuleProcessingAction {
         UUID failedCommandId = response.getCommandId();
         RemoveRule failedCommand = stateMachine.getRemoveCommands().get(failedCommandId);
         if (!stateMachine.getPendingCommands().contains(failedCommandId) || failedCommand == null) {
-            log.warn("Received a response for unexpected command: {}", response);
+            log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-        Cookie cookie = getCookieForCommand(stateMachine, failedCommandId);
+        Cookie cookie = stateMachine.getCookieForCommand(failedCommandId);
 
         int retries = stateMachine.getRetriedCommands().getOrDefault(failedCommandId, 0);
         if (retries < speakerCommandRetriesLimit) {
             stateMachine.getRetriedCommands().put(failedCommandId, ++retries);
 
-            String message = format(
+            stateMachine.saveErrorToHistory("Failed to remove rule", format(
                     "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. Retrying (attempt %d)",
-                    failedCommandId, errorResponse.getSwitchId(), cookie, errorResponse, retries);
-            log.warn(message);
-            sendHistoryUpdate(stateMachine, "Failed to remove rule", message);
+                    failedCommandId, errorResponse.getSwitchId(), cookie, errorResponse, retries));
 
             stateMachine.getCarrier().sendSpeakerRequest(failedCommand);
         } else {
             stateMachine.getPendingCommands().remove(failedCommandId);
 
-            String message = format("Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s",
-                    failedCommandId, errorResponse.getSwitchId(), cookie, errorResponse);
-            log.warn(message);
-            sendHistoryUpdate(stateMachine, "Failed to remove rule", message);
+            stateMachine.saveErrorToHistory("Failed to remove rule",
+                    format("Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s",
+                            failedCommandId, errorResponse.getSwitchId(), cookie, errorResponse));
 
-            stateMachine.getErrorResponses().put(failedCommandId, errorResponse);
+            stateMachine.getFailedCommands().put(failedCommandId, errorResponse);
 
             if (stateMachine.getPendingCommands().isEmpty()) {
-                log.warn(format("Received error response(s) for %d remove commands",
-                        stateMachine.getErrorResponses().size()));
+                String errorMessage = format("Received error response(s) for %d remove commands",
+                        stateMachine.getFailedCommands().size());
+                stateMachine.saveErrorToHistory(errorMessage);
                 stateMachine.fire(Event.RULES_REMOVED);
             }
         }

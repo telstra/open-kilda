@@ -62,7 +62,7 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
         List<FlowEventPayload> flowEvents = listFlowEvents(
                 request.getFlowId(),
                 Instant.ofEpochSecond(request.getTimestampFrom()),
-                Instant.ofEpochSecond(request.getTimestampTo()));
+                Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1));
         return Collections.singletonList(new FlowHistoryData(flowEvents));
     }
 

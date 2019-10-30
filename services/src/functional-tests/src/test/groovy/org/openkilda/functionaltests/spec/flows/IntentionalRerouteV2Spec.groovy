@@ -15,7 +15,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -32,18 +31,15 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Autowired
-    NorthboundServiceV2 northboundV2
-
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
-        def currentPathDto = northbound.getFlowPath(flow.id)
+        def currentPathDto = northbound.getFlowPath(flow.flowId)
         def currentPath = PathHelper.convert(currentPathDto)
         def currentPathNodesV2 = PathHelper.convertToNodesV2(currentPathDto)
 
@@ -66,17 +62,17 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Init a reroute to a more preferable path"
-        def rerouteResponse = northboundV2.rerouteFlow(flow.id)
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
         !rerouteResponse.rerouted
         rerouteResponse.path.nodes == currentPathNodesV2
 
-        PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
+        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
 
         and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -87,11 +83,11 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-        flowHelper.addFlow(flow)
-        def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        flowHelperV2.addFlow(flow)
+        def currentPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         when: "Make one of the alternative paths to be the most preferable among all others"
         def preferableAltPath = switchPair.paths.find { it != currentPath }
@@ -110,12 +106,12 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Init a reroute of the flow"
-        def rerouteResponse = northboundV2.rerouteFlow(flow.id)
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         then: "The flow is successfully rerouted and goes through the preferable path"
-        def pathDto = northbound.getFlowPath(flow.id)
+        def pathDto = northbound.getFlowPath(flow.flowId)
         def newPath = PathHelper.convert(pathDto)
         def newPathNodesV2 = PathHelper.convertToNodesV2(pathDto)
 
@@ -124,14 +120,14 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         newPath == preferableAltPath
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         and: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
-        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        flowHelperV2.deleteFlow(flow.flowId)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
@@ -154,11 +150,11 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         def changedIsls = allPaths.findAll { it != longestPath }
                 .collect { pathHelper.makePathMorePreferable(longestPath, it) }
         //and create the flow that uses the long path
-        def flow = flowHelper.randomFlow(src, dst)
+        def flow = flowHelperV2.randomFlow(src, dst)
         flow.maximumBandwidth = 0
         flow.ignoreBandwidth = true
-        flowHelper.addFlow(flow)
-        assert pathHelper.convert(northbound.getFlowPath(flow.id)) == longestPath
+        flowHelperV2.addFlow(flow)
+        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == longestPath
         //now make another long path more preferable, for reroute to rebuild the rules on other switches in the future
         northbound.updateLinkProps((changedIsls + changedIsls*.reversed)
                 .collect { islUtils.toLinkProps(it, [cost: DEFAULT_COST.toString()]) })
@@ -176,13 +172,13 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         and: "While traffic flow is active, request a flow reroute"
         [exam.forward, exam.reverse].each { assert !traffExam.isFinished(it) }
-        def reroute = northboundV2.rerouteFlow(flow.id)
+        def reroute = northboundV2.rerouteFlow(flow.flowId)
 
         then: "Flow is rerouted"
         reroute.rerouted
         expect reroute.path.nodes, sameBeanAs(PathHelper.convertToNodesV2(potentialNewPath))
                 .ignoring("segmentLatency")
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
@@ -192,19 +188,19 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
         flow.ignoreBandwidth = true
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-        flowHelper.addFlow(flow)
-        def currentPathDto = northbound.getFlowPath(flow.id)
+        flowHelperV2.addFlow(flow)
+        def currentPathDto = northbound.getFlowPath(flow.flowId)
         def currentPath = PathHelper.convert(currentPathDto)
         def currentPathNodesV2 = PathHelper.convertToNodesV2(currentPathDto)
 
@@ -227,18 +223,18 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Init a reroute to a more preferable path"
-        def rerouteResponse = northboundV2.rerouteFlow(flow.id)
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "The flow is rerouted because ignoreBandwidth=true"
 
         rerouteResponse.rerouted
         rerouteResponse.path.nodes != currentPathNodesV2
 
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
-        def updatedPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        def updatedPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         updatedPath != currentPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Available bandwidth was not changed while rerouting due to ignoreBandwidth=true"
         def allLinks = northbound.getAllLinks()
@@ -249,7 +245,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -270,12 +266,12 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         } ?: assumeTrue("Unable to find required switches/paths in topology",false)
         def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}
 
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = 0
         flow.ignoreBandwidth = true
         flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelper.addFlow(flow)
-        def altPaths = availablePaths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }
+        flowHelperV2.addFlow(flow)
+        def altPaths = availablePaths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.flowId)) }
         def potentialNewPath = altPaths[0]
         availablePaths.findAll { it != potentialNewPath }.each { pathHelper.makePathMorePreferable(potentialNewPath, it) }
 
@@ -292,11 +288,11 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         and: "While traffic flow is active, request a flow reroute"
         [exam.forward, exam.reverse].each { assert !traffExam.isFinished(it) }
-        def reroute = northboundV2.rerouteFlow(flow.id)
+        def reroute = northboundV2.rerouteFlow(flow.flowId)
 
         then: "Flow is rerouted"
         reroute.rerouted
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
@@ -306,7 +302,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def cleanup() {

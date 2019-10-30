@@ -8,11 +8,9 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.history.FlowEventPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -23,13 +21,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
     String createHistoryActionV1 = "Created the flow"
     String updateAction = "Flow updating"
     String updateHistoryAction = "Updated the flow"
-    String createHistoryActionV2 = "Created successfully"
 
     @Shared
     Long timestampBefore
-
-    @Autowired
-    FlowHelperV2 flowHelperV2
 
     def setupOnce() {
         timestampBefore = System.currentTimeSeconds() - 5
@@ -64,39 +58,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         def flowHistory3 = northbound.getFlowHistory(flow.id, timestampBefore, timestampAfterUpdate)
         assert flowHistory3.size() == 2
         checkHistoryDeleteAction(flowHistory3, flow.id)
-    }
-
-    @Tags(SMOKE)
-    def "History records are created for the create/update actions using custom timeline (v2)"() {
-        when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
-
-        then: "History record is created"
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
-            verifyAll(northbound.getFlowHistory(flow.flowId, timestampBefore, System.currentTimeSeconds())) { flowH ->
-                flowH.size() == 1
-                checkHistoryCreateV2Action(flowH[0], flow.flowId)
-            }
-        }
-
-        when: "Update the created flow"
-         def flowInfo = northbound.getFlow(flow.flowId)
-        flowHelper.updateFlow(flowInfo.id, flowInfo.tap { it.description = it.description + "updated" })
-
-        then: "History record is created after updating the flow"
-        Long timestampAfterUpdate = System.currentTimeSeconds()
-        verifyAll(northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterUpdate)){ flowH ->
-            flowH.size() == 2
-            checkHistoryUpdateAction(flowH[1], flow.flowId)
-        }
-
-        when: "Delete the updated flow"
-        flowHelper.deleteFlow(flow.flowId)
-
-        then: "History is still available for the deleted flow"
-        northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterUpdate).size() == 2
     }
 
     def "History records are created for the create/update actions using default timeline"() {
@@ -160,12 +121,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
     void checkHistoryCreateV1Action(FlowEventPayload flowHistory, String flowId) {
         assert flowHistory.action == createAction
         assert flowHistory.histories.action[-1] == createHistoryActionV1
-        checkHistoryCommonStuff(flowHistory, flowId)
-    }
-
-    void checkHistoryCreateV2Action(FlowEventPayload flowHistory, String flowId) {
-        assert flowHistory.action == createAction
-        assert flowHistory.histories.action[-1] == createHistoryActionV2
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 

@@ -31,6 +31,8 @@ public interface NorthboundServiceV2 {
 
     FlowResponseV2 addFlow(FlowRequestV2 request);
 
+    FlowResponseV2 updateFlow(String flowId, FlowRequestV2 request);
+
     FlowResponseV2 deleteFlow(String flowId);
 
     FlowRerouteResponseV2 rerouteFlow(String flowId);
