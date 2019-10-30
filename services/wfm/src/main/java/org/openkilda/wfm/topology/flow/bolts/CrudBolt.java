@@ -61,6 +61,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -128,6 +129,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
     private transient RepositoryFactory repositoryFactory;
 
+    private transient KildaConfigurationRepository kildaConfigurationRepository;
+
     private transient FlowService flowService;
 
     private transient FeatureTogglesService featureTogglesService;
@@ -174,6 +177,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         this.outputCollector = outputCollector;
 
         repositoryFactory = persistenceManager.getRepositoryFactory();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         flowValidator = new FlowValidator(repositoryFactory);
         AvailableNetworkFactory availableNetworkFactory =
                 new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
@@ -308,7 +312,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("PUSH flow: {} :: {}", flowId, message);
             FlowInfoData fid = (FlowInfoData) message.getData();
-            FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload());
+            FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload(),
+                    () -> kildaConfigurationRepository.get().getFlowEncapsulationType());
 
             FlowStatus flowStatus = (fid.getOperation() == FlowOperation.PUSH_PROPAGATE)
                     ? FlowStatus.IN_PROGRESS : FlowStatus.UP;
@@ -421,7 +426,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 throw  new FlowValidationException("Flow flags are not valid, unable to create pinned protected flow",
                         ErrorType.DATA_INVALID);
             }
-            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
+            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload(),
+                    () -> kildaConfigurationRepository.get().getFlowEncapsulationType());
             saveEvent(Event.CREATE, flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
             FlowPair createdFlow = flowService.createFlow(flow.getFlow(),
@@ -605,7 +611,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 throw  new FlowValidationException("Flow flags are not valid, unable to update pinned protected flow",
                         ErrorType.DATA_INVALID);
             }
-            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
+            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload(),
+                    () -> kildaConfigurationRepository.get().getFlowEncapsulationType());
             saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
 
             //TODO: this is extra fetch of the flow entity, must be moved into the service method.

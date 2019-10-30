@@ -312,7 +312,8 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     }
 
     private Flow convertFlow(FlowDto flowDto) {
-        Flow flow = FlowMapper.INSTANCE.map(flowDto).getFlow();
+        Flow flow = FlowMapper.INSTANCE.map(flowDto, () -> org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN)
+                .getFlow();
         flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
 
