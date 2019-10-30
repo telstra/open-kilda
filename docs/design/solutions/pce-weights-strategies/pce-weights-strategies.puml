@@ -4,6 +4,7 @@ title PCE strategies
 participant "PCE Client" as Client
 participant PathComputerFactory
 participant PathComputer
+participant PathFinder
 participant AvailableNetworkFactory
 participant AvailableNetwork
 database Neo4J
@@ -11,18 +12,20 @@ database Neo4J
 activate Client
 
 Client -> PathComputerFactory: getPathComputer
-note right of Client: weight strategy is optional
 
 activate PathComputerFactory
 create PathComputer
-PathComputerFactory -> PathComputer: create with weight strategy
+PathComputerFactory -> PathComputer: create with config
+create PathFinder
+PathComputer -> PathFinder: create with config
+PathFinder -> PathComputer
 PathComputer --> PathComputerFactory
 PathComputerFactory --> Client
 deactivate PathComputerFactory
 
 activate PathComputer
 Client -> PathComputer: getPath
-note right of Client: AvailableNetwork strategy is optional
+note right of Client: with path computation strategy param
 
 PathComputer -> AvailableNetworkFactory: getAvailableNetwork with build strategy
 activate AvailableNetworkFactory
@@ -34,7 +37,11 @@ AvailableNetwork --> AvailableNetworkFactory
 AvailableNetworkFactory --> PathComputer: AvailableNetwork
 deactivate AvailableNetworkFactory
 
-PathComputer -> PathComputer: pathFinder.findPathInNetwork
+PathComputer -> PathFinder: find path in network
+activate PathFinder
+note right of PathComputer: with weight function based on path computation strategy param
+PathFinder -> PathComputer: best found path if any
+deactivate PathFinder
 PathComputer --> Client: computed pathPair
 deactivate PathComputer
 
