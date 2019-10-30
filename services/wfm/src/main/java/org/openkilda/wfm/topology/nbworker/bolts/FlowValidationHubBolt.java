@@ -46,12 +46,17 @@ public class FlowValidationHubBolt extends HubBolt {
     private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
     private transient FlowValidationHubService service;
+    private long flowMeterMinBurstSizeInKbits;
+    private double flowMeterBurstCoefficient;
 
     public FlowValidationHubBolt(Config config, PersistenceManager persistenceManager,
-                                 FlowResourcesConfig flowResourcesConfig) {
+                                 FlowResourcesConfig flowResourcesConfig,
+                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         super(config);
         this.persistenceManager = persistenceManager;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
+        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
     }
 
     @Override
@@ -105,7 +110,7 @@ public class FlowValidationHubBolt extends HubBolt {
         @Override
         public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
             emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, tuple,
-                    new Values(KeyProvider.generateChainedKey(key), commandData));
+                        new Values(KeyProvider.generateChainedKey(key), commandData));
         }
 
         @Override
@@ -121,6 +126,16 @@ public class FlowValidationHubBolt extends HubBolt {
         @Override
         public void endProcessing(String key) {
             cancelCallback(key);
+        }
+
+        @Override
+        public long getFlowMeterMinBurstSizeInKbits() {
+            return flowMeterMinBurstSizeInKbits;
+        }
+
+        @Override
+        public double getFlowMeterBurstCoefficient() {
+            return flowMeterBurstCoefficient;
         }
     }
 }

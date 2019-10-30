@@ -29,6 +29,8 @@ public final class Meter implements Serializable {
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
     public static final int MIN_RATE_IN_KBPS = 64;
 
+    private static final int METER_BURST_SIZE_EQUALS_EPS = 1;
+
     private static final String[] METER_KBPS_FLAGS = {"KBPS", "BURST", "STATS"};
     private static final String[] METER_PKTPS_FLAGS = {"PKTPS", "BURST", "STATS"};
 
@@ -104,5 +106,12 @@ public final class Meter implements Serializable {
 
     public static String[] getMeterPktpsFlags() {
         return METER_PKTPS_FLAGS;
+    }
+
+    /**
+     * Compare burst size.
+     */
+    public static boolean equalsBurstSize(long first, long second) {
+        return Math.abs(first - second) <= METER_BURST_SIZE_EQUALS_EPS;
     }
 }

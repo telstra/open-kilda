@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
@@ -86,7 +87,8 @@ public class SpeakerRequestBolt extends RequestBolt {
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
                 commandMessage.getCorrelationId(), null);
         Values values = new Values(commandMessage.getCorrelationId(), errorMessage);
-        if (commandMessage.getData() instanceof DumpRulesForNbworkerRequest) {
+        if (commandMessage.getData() instanceof DumpRulesForNbworkerRequest
+                || commandMessage.getData() instanceof DumpMetersForNbworkerRequest) {
             getOutput().emit(Stream.NB_WORKER, input, values);
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest
                 || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest
