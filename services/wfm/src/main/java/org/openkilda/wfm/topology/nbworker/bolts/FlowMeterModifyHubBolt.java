@@ -19,14 +19,13 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
+import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
-import org.openkilda.wfm.topology.nbworker.services.FlowValidationHubService;
+import org.openkilda.wfm.topology.nbworker.services.FlowMeterModifyHubService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.task.OutputCollector;
@@ -39,30 +38,22 @@ import org.apache.storm.tuple.Values;
 import java.util.List;
 import java.util.Map;
 
-public class FlowValidationHubBolt extends HubBolt {
-    public static final String ID = "flow.validation.hub";
-    public static final String INCOME_STREAM = "flow.validation.stream";
+public class FlowMeterModifyHubBolt extends HubBolt {
+    public static final String ID = "flow.meter.mod.hub";
+    public static final String INCOME_STREAM = "flow.meter.mod.stream";
 
     private final PersistenceManager persistenceManager;
-    private final FlowResourcesConfig flowResourcesConfig;
-    private transient FlowValidationHubService service;
-    private long flowMeterMinBurstSizeInKbits;
-    private double flowMeterBurstCoefficient;
+    private transient FlowMeterModifyHubService service;
 
-    public FlowValidationHubBolt(Config config, PersistenceManager persistenceManager,
-                                 FlowResourcesConfig flowResourcesConfig,
-                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+    public FlowMeterModifyHubBolt(Config config, PersistenceManager persistenceManager) {
         super(config);
         this.persistenceManager = persistenceManager;
-        this.flowResourcesConfig = flowResourcesConfig;
-        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
-        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        service = new FlowValidationHubService(persistenceManager, flowResourcesConfig);
+        service = new FlowMeterModifyHubService(persistenceManager);
     }
 
     @Override
@@ -70,9 +61,8 @@ public class FlowValidationHubBolt extends HubBolt {
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         CommandData data = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
 
-        if (data instanceof FlowValidationRequest) {
-            service.handleFlowValidationRequest(key, (FlowValidationRequest) data,
-                    new FlowValidationHubCarrierImpl(input));
+        if (data instanceof MeterModifyRequest) {
+            service.handleRequest(key, (MeterModifyRequest) data, new FlowHubCarrierImpl(input));
         } else {
             unhandledInput(input);
         }
@@ -93,49 +83,39 @@ public class FlowValidationHubBolt extends HubBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.FLOW_VALIDATION_WORKER.toString(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.METER_MODIFY_WORKER.toString(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declare(new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE,
                 ResponseSplitterBolt.FIELD_ID_CONTEXT));
     }
 
-    private class FlowValidationHubCarrierImpl implements FlowValidationHubCarrier {
+    private class FlowHubCarrierImpl implements FlowHubCarrier {
         private final Tuple tuple;
 
-        FlowValidationHubCarrierImpl(Tuple tuple) {
+        FlowHubCarrierImpl(Tuple tuple) {
             this.tuple = tuple;
         }
 
         @Override
         public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
-            emitWithContext(StreamType.FLOW_VALIDATION_WORKER.toString(), tuple,
+            emitWithContext(StreamType.METER_MODIFY_WORKER.toString(), tuple,
                         new Values(KeyProvider.generateChainedKey(key), commandData));
         }
 
         @Override
         public void sendToResponseSplitterBolt(String key, List<? extends InfoData> message) {
-            emit(tuple, new Values(message, key));
+            getOutput().emit(tuple, new Values(message, key));
         }
 
         @Override
         public void sendToMessageEncoder(String key, ErrorData errorData) {
-            emit(StreamType.ERROR.toString(), tuple, new Values(errorData, key));
+            getOutput().emit(StreamType.ERROR.toString(), tuple, new Values(errorData, key));
         }
 
         @Override
         public void endProcessing(String key) {
             cancelCallback(key);
-        }
-
-        @Override
-        public long getFlowMeterMinBurstSizeInKbits() {
-            return flowMeterMinBurstSizeInKbits;
-        }
-
-        @Override
-        public double getFlowMeterBurstCoefficient() {
-            return flowMeterBurstCoefficient;
         }
     }
 }

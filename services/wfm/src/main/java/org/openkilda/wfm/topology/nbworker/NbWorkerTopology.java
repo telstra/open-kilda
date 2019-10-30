@@ -27,6 +27,7 @@ import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.FlowMeterModifyHubBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowValidationHubBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.HistoryOperationsBolt;
@@ -82,6 +83,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
+    private static final String VALIDATION_WORKER_BOLT = "validation." + SpeakerWorkerBolt.ID;
+    private static final String METER_MODIFY_WORKER_BOLT = "meter.modify." + SpeakerWorkerBolt.ID;
 
     private static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
 
@@ -101,7 +104,9 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(CoordinatorBolt.ID, new CoordinatorBolt())
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(FlowValidationHubBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
-                .fieldsGrouping(SpeakerWorkerBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+                .fieldsGrouping(VALIDATION_WORKER_BOLT, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(FlowMeterModifyHubBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(METER_MODIFY_WORKER_BOLT, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
 
         KafkaSpout kafkaSpout = buildKafkaSpout(topologyConfig.getKafkaTopoNbTopic(), NB_SPOUT_ID);
         tb.setSpout(NB_SPOUT_ID, kafkaSpout, parallelism);
@@ -115,28 +120,50 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        HubBolt.Config hubConfig = HubBolt.Config.builder()
+
+        HubBolt.Config validationHubConfig = HubBolt.Config.builder()
                 .requestSenderComponent(ROUTER_BOLT_NAME)
-                .workerComponent(SpeakerWorkerBolt.ID)
+                .workerComponent(VALIDATION_WORKER_BOLT)
                 .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
                 .build();
         tb.setBolt(FlowValidationHubBolt.ID,
-                new FlowValidationHubBolt(hubConfig, persistenceManager, flowResourcesConfig,
+                new FlowValidationHubBolt(validationHubConfig, persistenceManager, flowResourcesConfig,
                         topologyConfig.getFlowMeterMinBurstSizeInKbits(),
                         topologyConfig.getFlowMeterBurstCoefficient()))
                 .fieldsGrouping(ROUTER_BOLT_NAME, FlowValidationHubBolt.INCOME_STREAM, FIELDS_KEY)
-                .directGrouping(SpeakerWorkerBolt.ID, FlowValidationHubBolt.INCOME_STREAM)
+                .directGrouping(VALIDATION_WORKER_BOLT, FlowValidationHubBolt.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);
 
-        WorkerBolt.Config speakerWorkerConfig = WorkerBolt.Config.builder()
+        WorkerBolt.Config speakerValidationWorkerConfig = WorkerBolt.Config.builder()
                 .hubComponent(FlowValidationHubBolt.ID)
                 .streamToHub(FlowValidationHubBolt.INCOME_STREAM)
                 .workerSpoutComponent(ROUTER_BOLT_NAME)
                 .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
                 .build();
-        tb.setBolt(SpeakerWorkerBolt.ID, new SpeakerWorkerBolt(speakerWorkerConfig))
+        tb.setBolt(VALIDATION_WORKER_BOLT, new SpeakerWorkerBolt(speakerValidationWorkerConfig))
                 .fieldsGrouping(ROUTER_BOLT_NAME, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
-                .fieldsGrouping(FlowValidationHubBolt.ID, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(FlowValidationHubBolt.ID, StreamType.FLOW_VALIDATION_WORKER.toString(), FIELDS_KEY)
+                .directGrouping(CoordinatorBolt.ID);
+
+        HubBolt.Config meterModifyHubConfig = HubBolt.Config.builder()
+                .requestSenderComponent(ROUTER_BOLT_NAME)
+                .workerComponent(METER_MODIFY_WORKER_BOLT)
+                .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
+                .build();
+        tb.setBolt(FlowMeterModifyHubBolt.ID, new FlowMeterModifyHubBolt(meterModifyHubConfig, persistenceManager))
+                .fieldsGrouping(ROUTER_BOLT_NAME, FlowMeterModifyHubBolt.INCOME_STREAM, FIELDS_KEY)
+                .directGrouping(METER_MODIFY_WORKER_BOLT, FlowMeterModifyHubBolt.INCOME_STREAM)
+                .directGrouping(CoordinatorBolt.ID);
+
+        WorkerBolt.Config speakerMeterModifyWorkerConfig = WorkerBolt.Config.builder()
+                .hubComponent(FlowMeterModifyHubBolt.ID)
+                .streamToHub(FlowMeterModifyHubBolt.INCOME_STREAM)
+                .workerSpoutComponent(ROUTER_BOLT_NAME)
+                .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
+                .build();
+        tb.setBolt(METER_MODIFY_WORKER_BOLT, new SpeakerWorkerBolt(speakerMeterModifyWorkerConfig))
+                .fieldsGrouping(ROUTER_BOLT_NAME, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(FlowMeterModifyHubBolt.ID, StreamType.METER_MODIFY_WORKER.toString(), FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
 
         SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
@@ -176,7 +203,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME)
                 .shuffleGrouping(PATHS_BOLT_NAME)
                 .shuffleGrouping(HISTORY_BOLT_NAME)
-                .shuffleGrouping(FlowValidationHubBolt.ID);
+                .shuffleGrouping(FlowValidationHubBolt.ID)
+                .shuffleGrouping(FlowMeterModifyHubBolt.ID);
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
@@ -194,7 +222,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(FlowValidationHubBolt.ID, StreamType.ERROR.toString());
+                .shuffleGrouping(FlowValidationHubBolt.ID, StreamType.ERROR.toString())
+                .shuffleGrouping(FlowMeterModifyHubBolt.ID, StreamType.ERROR.toString());
 
         DiscoveryEncoderBolt discoveryEncoder = new DiscoveryEncoderBolt();
         tb.setBolt(DISCOVERY_ENCODER_BOLT_NAME, discoveryEncoder, parallelism)
@@ -220,7 +249,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(DISCOVERY_ENCODER_BOLT_NAME);
 
         tb.setBolt(SPEAKER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()))
-                .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_SPEAKER.toString());
+                .shuffleGrouping(VALIDATION_WORKER_BOLT, StreamType.TO_SPEAKER.toString())
+                .shuffleGrouping(METER_MODIFY_WORKER_BOLT, StreamType.TO_SPEAKER.toString());
 
         return tb.createTopology();
     }

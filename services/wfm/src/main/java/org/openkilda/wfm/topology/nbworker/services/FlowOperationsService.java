@@ -77,6 +77,13 @@ public class FlowOperationsService {
     }
 
     /**
+     * Return flow by flow id.
+     */
+    public Flow getFlow(String flowId) throws FlowNotFoundException {
+        return flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+    }
+
+    /**
      * Return all paths for a particular link.
      *
      * @param srcSwitchId source switch id.

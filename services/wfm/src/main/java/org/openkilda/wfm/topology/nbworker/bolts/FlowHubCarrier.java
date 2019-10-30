@@ -13,21 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.info.InfoData;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import java.util.List;
 
-@Value
-@EqualsAndHashCode(callSuper = false)
-public class MeterModifyRequest extends CommandData {
-    @JsonProperty("flow_id")
-    private String flowId;
+public interface FlowHubCarrier {
 
-    public MeterModifyRequest(@JsonProperty("flow_id") String flowId) {
-        this.flowId = flowId;
-    }
+    void sendCommandToSpeakerWorker(String key, CommandData commandData);
+
+    void sendToResponseSplitterBolt(String key, List<? extends InfoData> message);
+
+    void sendToMessageEncoder(String key, ErrorData errorData);
+
+    void endProcessing(String key);
 }
