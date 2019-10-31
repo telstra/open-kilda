@@ -3,10 +3,12 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.history.FlowEventPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -72,10 +74,11 @@ class FlowHistorySpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         then: "History record is created"
-        Long timestampAfterCreate = System.currentTimeSeconds()
-        verifyAll(northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterCreate)) { flowH ->
-            flowH.size() == 1
-            checkHistoryCreateV2Action(flowH[0], flow.flowId)
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            verifyAll(northbound.getFlowHistory(flow.flowId, timestampBefore, System.currentTimeSeconds())) { flowH ->
+                flowH.size() == 1
+                checkHistoryCreateV2Action(flowH[0], flow.flowId)
+            }
         }
 
         when: "Update the created flow"

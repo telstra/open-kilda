@@ -120,7 +120,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         when: "Create a flow"
         def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
