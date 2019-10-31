@@ -60,9 +60,9 @@ public class ValidateIngressRuleAction extends FlowProcessingAction<FlowCreateFs
         String action;
         if (!validator.validate()) {
             stateMachine.getFailedCommands().add(commandId);
-            action = format("Rule is valid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
+            action = format("Rule is invalid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
         } else {
-            action = format("Rule is invalid: switch %s, cookie %s",  expected.getSwitchId(), expected.getCookie());
+            action = format("Rule is valid: switch %s, cookie %s",  expected.getSwitchId(), expected.getCookie());
         }
 
         stateMachine.getPendingCommands().remove(commandId);

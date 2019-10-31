@@ -47,9 +47,9 @@ public class ValidateNonIngressRuleAction extends FlowProcessingAction<FlowCreat
         String action;
         if (!new NonIngressRulesValidator(expected, actual).validate()) {
             stateMachine.getFailedCommands().add(commandId);
-            action = format("Rule is valid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
-        } else {
             action = format("Rule is invalid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
+        } else {
+            action = format("Rule is valid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
         }
 
         stateMachine.getPendingCommands().remove(commandId);
