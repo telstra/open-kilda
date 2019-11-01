@@ -29,7 +29,9 @@ public final class Meter implements Serializable {
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
     public static final int MIN_RATE_IN_KBPS = 64;
 
-    private static final int METER_BURST_SIZE_EQUALS_EPS = 1;
+    private static final int METER_BURST_SIZE_EQUALS_DELTA = 1;
+    private static final double E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01;
+    private static final double E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01;
 
     private static final String[] METER_KBPS_FLAGS = {"KBPS", "BURST", "STATS"};
     private static final String[] METER_PKTPS_FLAGS = {"PKTPS", "BURST", "STATS"};
@@ -109,9 +111,28 @@ public final class Meter implements Serializable {
     }
 
     /**
-     * Compare burst size.
+     * Returns true if the actual and expected rates are equal to each other and false otherwise.
      */
-    public static boolean equalsBurstSize(long first, long second) {
-        return Math.abs(first - second) <= METER_BURST_SIZE_EQUALS_EPS;
+    public static boolean equalsRate(long actual, long expected, boolean isESwitch) {
+        // E-switches have a bug when installing the rate and burst size.
+        // Such switch sets the rate different from the rate that was sent to it.
+        // Therefore, we compare actual and expected values ​​using the delta coefficient.
+        if (isESwitch) {
+            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT;
+        }
+        return actual == expected;
+    }
+
+    /**
+     * Returns true if the actual and expected burst sizes are equal to each other and false otherwise.
+     */
+    public static boolean equalsBurstSize(long actual, long expected, boolean isESwitch) {
+        // E-switches have a bug when installing the rate and burst size.
+        // Such switch sets the burst size different from the burst size that was sent to it.
+        // Therefore, we compare actual and expected values ​​using the delta coefficient.
+        if (isESwitch) {
+            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT;
+        }
+        return Math.abs(actual - expected) <= METER_BURST_SIZE_EQUALS_DELTA;
     }
 }
