@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.model;
 
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
@@ -45,4 +46,5 @@ public class RequestedFlow {
     private boolean periodicPings;
     private Integer maxLatency;
     private FlowEncapsulationType flowEncapsulationType;
+    private PathComputationStrategy pathComputationStrategy;
 }

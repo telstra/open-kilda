@@ -19,7 +19,6 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.WeightFunction;
@@ -84,7 +83,7 @@ public class AvailableNetwork {
     /**
      * Adds diversity weights into {@link AvailableNetwork} based on passed path segments and configuration.
      */
-    public void processDiversitySegments(List<PathSegment> segments, PathComputerConfig config) {
+    public void processDiversitySegments(List<PathSegment> segments) {
         for (PathSegment segment : segments) {
             Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
             Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
@@ -105,10 +104,10 @@ public class AvailableNetwork {
             if (edgeOptional.isPresent()) {
                 Edge edge = edgeOptional.get();
 
-                edge.setDiversityWeight(edge.getDiversityWeight() + config.getDiversityIslWeight());
-                dstNode.setDiversityWeight(dstNode.getDiversityWeight() + config.getDiversitySwitchWeight());
+                edge.increaseDiversityGroupUseCounter();
+                edge.getDestSwitch().increaseDiversityGroupUseCounter();
                 if (segment.getSeqId() == 0) {
-                    srcNode.setDiversityWeight(srcNode.getDiversityWeight() + config.getDiversitySwitchWeight());
+                    edge.getSrcSwitch().increaseDiversityGroupUseCounter();
                 }
             }
         }

@@ -31,6 +31,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -98,7 +99,7 @@ public class FlowMapperTest {
         reverseFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(true, false, false, true));
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
-        FlowPair p = FlowMapper.INSTANCE.map(pair, () -> org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN);
+        FlowPair p = FlowMapper.INSTANCE.map(pair, () -> KildaConfiguration.DEFAULTS);
         assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
         assertDetectConnectedDevices(forwardFlow.getDetectConnectedDevices(), p.forward.getDetectConnectedDevices());
         assertDetectConnectedDevices(reverseFlow.getDetectConnectedDevices(), p.reverse.getDetectConnectedDevices());

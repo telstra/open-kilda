@@ -53,6 +53,7 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.PathComputationStrategy;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -468,6 +469,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         flow.setTransitEncapsulationId(2);
         flow.setState(FlowState.IN_PROGRESS);
         flow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+        flow.setPathComputationStrategy(PathComputationStrategy.COST);
 
         for (int i = 0; i < 2; i++) {
             record = ofsConsumer.pollMessage();

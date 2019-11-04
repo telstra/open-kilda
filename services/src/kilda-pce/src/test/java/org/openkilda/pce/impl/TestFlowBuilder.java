@@ -19,6 +19,7 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 
@@ -42,6 +43,7 @@ public class TestFlowBuilder {
     private long unmaskedCookie = 1;
     private long bandwidth;
     private boolean ignoreBandwidth = false;
+    private PathComputationStrategy pathComputationStrategy = PathComputationStrategy.COST;
 
     public TestFlowBuilder() {
     }
@@ -65,6 +67,7 @@ public class TestFlowBuilder {
                 .bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(pathComputationStrategy)
                 .build();
 
         FlowPath forwardPath =
