@@ -25,9 +25,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -55,9 +53,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
-        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
-        IslRepository islRepository = repositoryFactory.createIslRepository();
-        flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository);
+        flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
 
@@ -67,10 +63,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         String flowId = stateMachine.getFlowId();
         RequestedFlow targetFlow = context.getTargetFlow();
 
-        dashboardLogger.onFlowUpdate(flowId,
-                targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
-                targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
-                targetFlow.getDiverseFlowId(), targetFlow.getBandwidth());
+        dashboardLogger.onFlowUpdate(flowId, targetFlow);
 
         boolean isOperationAllowed = featureTogglesRepository.find()
                 .map(FeatureToggles::getUpdateFlowEnabled).orElse(Boolean.FALSE);

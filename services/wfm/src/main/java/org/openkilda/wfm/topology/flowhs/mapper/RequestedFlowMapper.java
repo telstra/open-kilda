@@ -17,10 +17,14 @@ package org.openkilda.wfm.topology.flowhs.mapper;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 @Mapper
@@ -31,19 +35,17 @@ public abstract class RequestedFlowMapper {
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
      */
-    @Mapping(source = "flowId", target = "flowId")
-    @Mapping(source = "sourceSwitch", target = "srcSwitch")
-    @Mapping(source = "sourcePort", target = "srcPort")
-    @Mapping(source = "sourceVlan", target = "srcVlan")
-    @Mapping(source = "destinationSwitch", target = "destSwitch")
-    @Mapping(source = "destinationPort", target = "destPort")
-    @Mapping(source = "destinationVlan", target = "destVlan")
-    @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
-    @Mapping(target = "pathComputationStrategy",
-            expression = "java(java.util.Optional.ofNullable(request.getPathComputationStrategy())"
-                    + ".map(pcs -> org.openkilda.model.PathComputationStrategy.valueOf(pcs.toUpperCase()))"
-                    + ".orElse(null))")
-    public abstract RequestedFlow toRequestedFlow(FlowRequest request);
+    public RequestedFlow unpackRequest(FlowRequest request) {
+        RequestedFlow flow = toRequestedFlow(request);
+        flow.setFlowEncapsulationType(map(request.getEncapsulationType()));
+        flow.setPathComputationStrategy(mapComputationStrategy(request.getPathComputationStrategy().toUpperCase()));
+
+        mapRequestedFlowSource(request.getSource(), flow);
+        mapRequestedFlowDestination(request.getDestination(), flow);
+        return flow;
+    }
+
+    protected abstract RequestedFlow toRequestedFlow(FlowRequest request);
 
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
@@ -72,4 +74,20 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "flowEncapsulationType", target = "encapsulationType")
     public abstract Flow toFlow(RequestedFlow requestedFlow);
+
+    @Mapping(source = "switchId", target = "srcSwitch")
+    @Mapping(source = "portNumber", target = "srcPort")
+    @Mapping(source = "outerVlanId", target = "srcVlan")
+    @Mapping(source = "innerVlanId", target = "srcInnerVlan")
+    public abstract void mapRequestedFlowSource(FlowEndpoint endpoint, @MappingTarget RequestedFlow target);
+
+    @Mapping(source = "switchId", target = "destSwitch")
+    @Mapping(source = "portNumber", target = "destPort")
+    @Mapping(source = "outerVlanId", target = "destVlan")
+    @Mapping(source = "innerVlanId", target = "destInnerVlan")
+    public abstract void mapRequestedFlowDestination(FlowEndpoint endpoint, @MappingTarget RequestedFlow target);
+
+    public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);
+
+    public abstract PathComputationStrategy mapComputationStrategy(String raw);
 }

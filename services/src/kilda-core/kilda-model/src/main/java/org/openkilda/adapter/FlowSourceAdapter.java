@@ -20,7 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 
 public class FlowSourceAdapter extends FlowSideAdapter {
-    protected FlowSourceAdapter(Flow flow) {
+    public FlowSourceAdapter(Flow flow) {
         super(flow);
     }
 
@@ -28,7 +28,7 @@ public class FlowSourceAdapter extends FlowSideAdapter {
     public FlowEndpoint getEndpoint() {
         DetectConnectedDevices trackConnectedDevices = flow.getDetectConnectedDevices();
         return new FlowEndpoint(
-                flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(), flow.getSrcVlan(),
+                flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan(),
                 trackConnectedDevices.isSrcLldp() || trackConnectedDevices.isSrcArp());
     }
 

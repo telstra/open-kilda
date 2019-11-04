@@ -25,8 +25,8 @@ import java.util.Set;
 
 public class OneSwitchFlowRemoveFlowModFactory extends IngressRemoveFlowModFactory {
     public OneSwitchFlowRemoveFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentBase command, IOFSwitch sw,
+            OfFlowModBuilderFactory.Factory flowModFactoryFactory, IngressFlowSegmentBase command, IOFSwitch sw,
             Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+        super(flowModFactoryFactory, command, sw, features);
     }
 }

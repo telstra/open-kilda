@@ -94,6 +94,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
 
+        when(repositoryFactory.createSharedOfFlowRepository()).thenReturn(sharedOfFlowRepository);
+
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
@@ -479,11 +481,6 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
                 eq(FlowEncapsulationType.TRANSIT_VLAN)))
                 .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
                         TransitVlan.builder().flowId(FLOW_ID).pathId(FORWARD_FLOW_PATH).vlan(101).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(REVERSE_FLOW_PATH), eq(FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(REVERSE_FLOW_PATH).vlan(102).build())
                         .build()));
 
         return flowResources;

@@ -27,6 +27,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
@@ -78,6 +79,18 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         return flowRepository.findById(flowId, fetchStrategy)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
+    }
+
+    protected FlowPathSnapshot getFlowPath(FlowPathSnapshot pathSnapshot) {
+        return pathSnapshot.toBuilder()
+                .path(getFlowPath(pathSnapshot.getPath().getPathId()))
+                .build();
+    }
+
+    protected FlowPathSnapshot getFlowPath(Flow flow, FlowPathSnapshot pathSnapshot) {
+        return pathSnapshot.toBuilder()
+                .path(getFlowPath(flow, pathSnapshot.getPath().getPathId()))
+                .build();
     }
 
     protected FlowPath getFlowPath(Flow flow, PathId pathId) {

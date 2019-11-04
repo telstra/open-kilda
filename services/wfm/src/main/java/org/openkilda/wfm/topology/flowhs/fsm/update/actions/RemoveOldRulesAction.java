@@ -18,9 +18,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -49,15 +49,15 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
         FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(oldEncapsulationType);
 
-        FlowPath oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-        FlowPath oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-        Flow flow = oldPrimaryForward.getFlow();
+        final Flow flow = getFlow(stateMachine.getFlowId());
+        FlowPathSnapshot oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+        FlowPathSnapshot oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAll(
                 stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse));
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
-            FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+            FlowPathSnapshot oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
+            FlowPathSnapshot oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }

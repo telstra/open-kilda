@@ -89,14 +89,14 @@ public class FlowUpdateService {
 
         String eventKey = commandContext.getCorrelationId();
         if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 
         FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
         fsms.put(key, fsm);
 
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.unpackRequest(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
         }

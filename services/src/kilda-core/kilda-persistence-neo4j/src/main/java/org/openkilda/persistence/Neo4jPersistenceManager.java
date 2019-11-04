@@ -26,6 +26,8 @@ import org.openkilda.persistence.converters.MeterIdConverter;
 import org.openkilda.persistence.converters.PathComputationStrategyConverter;
 import org.openkilda.persistence.converters.PathIdConverter;
 import org.openkilda.persistence.converters.PortStatusConverter;
+import org.openkilda.persistence.converters.SharedOfFlowCookieConverter;
+import org.openkilda.persistence.converters.SharedOfFlowTypeConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.converters.SwitchStatusConverter;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -81,6 +83,8 @@ public class Neo4jPersistenceManager implements PersistenceManager {
                             new SimpleConversionCallback(Arrays.asList(
                                     ConnectedDeviceTypeConverter.class,
                                     CookieConverter.class,
+                                    SharedOfFlowCookieConverter.class,
+                                    SharedOfFlowTypeConverter.class,
                                     FlowEncapsulationTypeConverter.class,
                                     FlowPathStatusConverter.class,
                                     FlowStatusConverter.class,

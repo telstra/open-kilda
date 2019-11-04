@@ -32,6 +32,7 @@ public class EgressFlowSegmentRemoveCommandJsonTest extends EgressFlowSegmentCom
 
     @Override
     protected EgressFlowSegmentRequest makeRequest(EgressFlowSegmentRequestFactory blank) {
-        return blank.makeRemoveRequest(commandIdGenerator.generate());
+        return blank.makeRemoveRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

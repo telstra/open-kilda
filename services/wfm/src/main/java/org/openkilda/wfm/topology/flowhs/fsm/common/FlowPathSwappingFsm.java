@@ -19,9 +19,9 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.PathId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -43,21 +43,23 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
 
     protected final String flowId;
 
+    // TODO - ensure usage
     protected FlowResources newPrimaryResources;
     protected FlowResources newProtectedResources;
-    protected PathId newPrimaryForwardPath;
-    protected PathId newPrimaryReversePath;
-    protected PathId newProtectedForwardPath;
-    protected PathId newProtectedReversePath;
+
+    protected FlowPathSnapshot newPrimaryForwardPath;
+    protected FlowPathSnapshot newPrimaryReversePath;
+    protected FlowPathSnapshot newProtectedForwardPath;
+    protected FlowPathSnapshot newProtectedReversePath;
 
     protected final Collection<FlowResources> oldResources = new ArrayList<>();
-    protected PathId oldPrimaryForwardPath;
+    protected FlowPathSnapshot oldPrimaryForwardPath;
     protected FlowPathStatus oldPrimaryForwardPathStatus;
-    protected PathId oldPrimaryReversePath;
+    protected FlowPathSnapshot oldPrimaryReversePath;
     protected FlowPathStatus oldPrimaryReversePathStatus;
-    protected PathId oldProtectedForwardPath;
+    protected FlowPathSnapshot oldProtectedForwardPath;
     protected FlowPathStatus oldProtectedForwardPathStatus;
-    protected PathId oldProtectedReversePath;
+    protected FlowPathSnapshot oldProtectedReversePath;
     protected FlowPathStatus oldProtectedReversePathStatus;
 
     protected final Set<UUID> pendingCommands = new HashSet<>();

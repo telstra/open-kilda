@@ -20,9 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.SpeakerRequestRepeatAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -34,12 +32,10 @@ import java.util.UUID;
 
 @Slf4j
 public class ValidateIngressRulesAction extends
-        HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-    private final SwitchRepository switchRepository;
+        SpeakerRequestRepeatAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final int speakerCommandRetriesLimit;
 
-    public ValidateIngressRulesAction(PersistenceManager persistenceManager, int speakerCommandRetriesLimit) {
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+    public ValidateIngressRulesAction(int speakerCommandRetriesLimit) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
     }
 
@@ -71,7 +67,7 @@ public class ValidateIngressRulesAction extends
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
+                stateMachine.getCarrier().sendSpeakerRequest(makeVerifyRequest(command, commandId));
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

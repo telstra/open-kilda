@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -35,6 +36,8 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.validate.FlowPathReference;
+import org.openkilda.wfm.share.utils.rule.validation.OfCookieUtil;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRuleConverter;
 
@@ -95,6 +98,7 @@ public class FlowValidationService {
     public List<FlowValidationResponse> validateFlow(String flowId, List<SwitchFlowEntries> switchFlowEntries,
                                                      List<SwitchMeterEntries> switchMeterEntries)
             throws FlowNotFoundException, SwitchNotFoundException {
+        final Flow flow = fetchFlow(flowId);
 
         Map<SwitchId, List<SimpleSwitchRule>> switchRules = new HashMap<>();
         int rulesCount = 0;
@@ -116,19 +120,6 @@ public class FlowValidationService {
                     .map(SwitchMeterEntries::getMeterEntries)
                     .map(List::size)
                     .orElse(0);
-        }
-
-        Optional<Flow> foundFlow = flowRepository.findById(flowId);
-        if (!foundFlow.isPresent()) {
-            throw new FlowNotFoundException(flowId);
-        }
-        Flow flow = foundFlow.get();
-
-        if (flow.getForwardPath() == null) {
-            throw new InvalidPathException(flowId, "Forward path was not returned.");
-        }
-        if (flow.getReversePath() == null) {
-            throw new InvalidPathException(flowId, "Reverse path was not returned.");
         }
 
         List<FlowValidationResponse> flowValidationResponse = new ArrayList<>();
@@ -220,37 +211,55 @@ public class FlowValidationService {
     }
 
     private SimpleSwitchRule findMatched(SimpleSwitchRule expected, List<SimpleSwitchRule> actual) {
-
-        //try to match on the cookie
-        SimpleSwitchRule matched = actual.stream()
-                .filter(rule -> rule.getCookie() != 0 && rule.getCookie() == expected.getCookie())
-                .findFirst()
-                .orElse(null);
-
-        //if no cookie match, then try to match on in_port and in_vlan
-        if (matched == null) {
-            matched = actual.stream()
-                    .filter(rule -> rule.getInPort() == expected.getInPort()
-                            && rule.getInVlan() == expected.getInVlan())
-                    .findFirst()
-                    .orElse(null);
+        SimpleSwitchRule match = findMatchByCookie(expected, actual);
+        if (match == null) {
+            match = findMatchByMatch(expected, actual);
+        }
+        if (match == null) {
+            match = findMatchByAction(expected, actual);
         }
 
-        //if cookie or in_port and in_vlan doesn't match, try to match on out_port and out_vlan
-        if (matched == null) {
-            matched = actual.stream()
-                    .filter(rule -> rule.getOutPort() == expected.getOutPort()
-                            && rule.getOutVlan() == expected.getOutVlan())
-                    .findFirst()
-                    .orElse(null);
+        return match;
+    }
+
+    private SimpleSwitchRule findMatchByCookie(SimpleSwitchRule needle, List<SimpleSwitchRule> haystack) {
+        Cookie cookie = new Cookie(needle.getCookie());
+        FlowPathReference needleReference = OfCookieUtil.INSTANCE.makeFlowPathRef(cookie);
+
+        for (SimpleSwitchRule entry : haystack) {
+            FlowPathReference reference = OfCookieUtil.INSTANCE.makeFlowPathRef(new Cookie(entry.getCookie()));
+            if (needleReference.equals(reference)) {
+                return entry;
+            }
         }
-        return matched;
+
+        return null;
+    }
+
+    private SimpleSwitchRule findMatchByMatch(SimpleSwitchRule needle, List<SimpleSwitchRule> haystack) {
+        for (SimpleSwitchRule entry : haystack) {
+            if (entry.getInPort() == needle.getInPort()
+                    && entry.getInVlan() == needle.getInVlan()) {
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    private SimpleSwitchRule findMatchByAction(SimpleSwitchRule needle, List<SimpleSwitchRule> haystack) {
+        for (SimpleSwitchRule entry : haystack) {
+            if (entry.getOutPort() == needle.getOutPort()
+                        && entry.getOutVlan() == needle.getOutVlan()) {
+                return entry;
+            }
+        }
+        return null;
     }
 
     private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched)
             throws SwitchNotFoundException {
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
-        if (matched.getCookie() != expected.getCookie()) {
+        if (! OfCookieUtil.INSTANCE.isSameCookie(matched.getCookie(), expected.getCookie())) {
             discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "cookie",
                     String.valueOf(expected.getCookie()), String.valueOf(matched.getCookie())));
         }
@@ -319,5 +328,18 @@ public class FlowValidationService {
         }
 
         return Meter.equalsBurstSize(actual, expected, isESwitch);
+    }
+
+    private Flow fetchFlow(String flowId) throws FlowNotFoundException {
+        Flow flow = flowRepository.findById(flowId)
+                .orElseThrow(() -> new FlowNotFoundException(flowId));
+        if (flow.getForwardPath() == null) {
+            throw new InvalidPathException(flowId, "Forward path was not returned.");
+        }
+        if (flow.getReversePath() == null) {
+            throw new InvalidPathException(flowId, "Reverse path was not returned.");
+        }
+
+        return flow;
     }
 }

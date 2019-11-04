@@ -13,14 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.exception;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.model.Cookie;
 
-import lombok.Value;
-
-@Value
-public class MeterCacheKey {
-    private SwitchId switchId;
-    private Long meterId;
+public class CookieTypeMismatchException extends Exception {
+    public CookieTypeMismatchException(Cookie cookie, Cookie.CookieType expected) {
+        super(String.format(
+                "Cookie type mismatch - %s expected while actual value is %s (cookie: %s)",
+                expected, cookie.getType(), cookie));
+    }
 }

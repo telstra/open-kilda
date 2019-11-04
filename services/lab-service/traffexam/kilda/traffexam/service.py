@@ -125,7 +125,7 @@ class VLANService(Abstract):
 
         iface = ip.interfaces[ifname].ro
         subject.set_iface(model.NetworkIface(
-                ifname, index=iface.index, vlan_tag=tag))
+                ifname, index=iface.index, vlan=subject, vlan_tag=tag))
 
         return subject
 

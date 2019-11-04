@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.stats.metrics;
 import static org.openkilda.model.Cookie.createCookieForDefaultRule;
 import static org.openkilda.model.MeterId.isMeterIdOfDefaultRule;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
-import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.METER_CACHE_FIELD;
 
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
@@ -26,7 +25,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
-import org.openkilda.wfm.topology.stats.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
+import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
@@ -52,7 +52,7 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
 
         @SuppressWarnings("unchecked")
         Map<MeterCacheKey, CacheFlowEntry> meterCache =
-                (Map<MeterCacheKey, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
+                (Map<MeterCacheKey, CacheFlowEntry>) input.getValueByField(CacheBolt.METER_CACHE_FIELD);
 
         long timestamp = getCommandContext().getCreateTime();
 
@@ -99,7 +99,7 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         } else {
             direction = FlowDirectionHelper.findDirection(cacheEntry.getCookie()).name().toLowerCase();
             flowId = cacheEntry.getFlowId();
-            cookie = cacheEntry.getCookie().toString();
+            cookie = String.valueOf(cacheEntry.getCookie());
         }
 
         Map<String, String> tags = createCommonTags(switchId, meterStats.getMeterId());

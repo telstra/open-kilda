@@ -51,3 +51,5 @@ CREATE INDEX ON :`switch_connected_device` (`mac_address`);
 CREATE INDEX ON :`switch_connected_device` (`type`);
 CREATE INDEX ON :`switch_connected_device` (`chassis_id`);
 CREATE INDEX ON :`switch_connected_device` (`port_id`);
+CREATE CONSTRAINT ON ( shadow_of_flow:shadow_of_flow ) ASSERT shadow_of_flow.entityId IS UNIQUE
+CREATE CONSTRAINT ON ( shadow_of_flow:shadow_of_flow ) ASSERT shadow_of_flow.unique_index IS UNIQUE

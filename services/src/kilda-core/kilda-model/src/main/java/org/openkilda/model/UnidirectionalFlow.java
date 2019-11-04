@@ -66,12 +66,20 @@ public class UnidirectionalFlow implements Serializable {
         return forward ? getFlow().getSrcVlan() : getFlow().getDestVlan();
     }
 
+    public int getSrcInnerVlan() {
+        return forward ? getFlow().getSrcInnerVlan() : getFlow().getDestInnerVlan();
+    }
+
     public int getDestPort() {
         return forward ? getFlow().getDestPort() : getFlow().getSrcPort();
     }
 
     public int getDestVlan() {
         return forward ? getFlow().getDestVlan() : getFlow().getSrcVlan();
+    }
+
+    public int getDestInnerVlan() {
+        return forward ? getFlow().getDestInnerVlan() : getFlow().getSrcInnerVlan();
     }
 
     public long getBandwidth() {

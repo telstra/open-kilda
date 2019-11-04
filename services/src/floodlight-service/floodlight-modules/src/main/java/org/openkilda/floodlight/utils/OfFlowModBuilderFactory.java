@@ -44,10 +44,104 @@ public abstract class OfFlowModBuilderFactory {
         if (tableId != null) {
             builder = setTableId(builder, tableId);
         }
-        return builder.setPriority(basePriority + priorityOffset);
+        return setPriority(builder, priorityOffset);
     }
 
     public abstract OFFlowMod.Builder makeBuilder(OFFactory of);
 
-    protected abstract OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId);
+    public abstract OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId);
+
+    public OFFlowMod.Builder setPriority(OFFlowMod.Builder builder, int priorityOffset) {
+        return builder.setPriority(basePriority + priorityOffset);
+    }
+
+    public static Factory makeFactory() {
+        return new Factory();
+    }
+
+    public static final class Factory {
+        private Integer basePriority;
+        private Boolean multiTable;
+        private ModAction action;
+
+        public Factory basePriority(int basePriority) {
+            this.basePriority = basePriority;
+            return this;
+        }
+
+        public Factory multiTable(boolean isMultiTable) {
+            multiTable = isMultiTable;
+            return this;
+        }
+
+        public Factory actionAdd() {
+            action = ModAction.ADD;
+            return this;
+        }
+
+        public Factory actionDelete() {
+            action = ModAction.DELETE;
+            return this;
+        }
+
+        /**
+         * Produce concrete instance of `OfFlowModBuilderFactory`.
+         */
+        public OfFlowModBuilderFactory make() {
+            ensureMandatoryFieldsSet();
+
+            OfFlowModBuilderFactory result;
+            switch (action) {
+                case ADD:
+                    result = makeAdd();
+                    break;
+                case DELETE:
+                    result = makeDelete();
+                    break;
+                default:
+                    throw new IllegalStateException(String.format("Unsupported flow MOD action \"%s\"", action));
+            }
+            return result;
+        }
+
+        private OfFlowModBuilderFactory makeAdd() {
+            ensureMandatoryFieldsSet(true);
+
+            if (multiTable != null && multiTable) {
+                return new OfFlowModAddMultiTableMessageBuilderFactory(basePriority);
+            } else {
+                return new OfFlowModAddSingleTableMessageBuilderFactory(basePriority);
+            }
+        }
+
+        private OfFlowModBuilderFactory makeDelete() {
+            ensureMandatoryFieldsSet(true);
+
+            if (multiTable != null && multiTable) {
+                return new OfFlowModDelMultiTableMessageBuilderFactory(basePriority);
+            } else {
+                return new OfFlowModDelSingleTableMessageBuilderFactory(basePriority);
+            }
+        }
+
+        private void ensureMandatoryFieldsSet() {
+            ensureMandatoryFieldsSet(false);
+        }
+
+        private void ensureMandatoryFieldsSet(boolean isIgnoreAction) {
+            if (basePriority == null) {
+                throw new IllegalStateException("Base priority is not defined");
+            }
+            if (multiTable == null) {
+                throw new IllegalStateException("MultiTable mode is not defined");
+            }
+            if (! isIgnoreAction && action == null) {
+                throw new IllegalStateException("Flow MOD action is not defined");
+            }
+        }
+    }
+
+    private enum ModAction {
+        ADD, DELETE
+    }
 }

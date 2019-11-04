@@ -82,8 +82,8 @@ public class TestMessageMock implements MessagingChannel {
             new DetectConnectedDevicesPayload(false, false));
     static final FlowEndpointPayload secondFlowEndpoint = new FlowEndpointPayload(SECOND_SWITCH_ID, 2, 2,
             new DetectConnectedDevicesPayload(false, false));
-    static final FlowEndpointV2 flowPayloadEndpoint = new FlowEndpointV2(SWITCH_ID, 1, 1);
-    static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2);
+    static final FlowEndpointV2 flowPayloadEndpoint = new FlowEndpointV2(SWITCH_ID, 1, 1, 0);
+    static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2, 0);
     public static final FlowPayload flow = FlowPayload.builder()
             .id(FLOW_ID)
             .source(flowEndpoint)

@@ -30,6 +30,8 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.wfm.share.model.validate.FlowPathReference;
+import org.openkilda.wfm.share.utils.rule.validation.OfCookieUtil;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -38,6 +40,7 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -108,30 +112,53 @@ public class ValidationServiceImpl implements ValidationService {
 
     private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,
                                                   List<FlowEntry> expectedDefaultRules, SwitchId switchId) {
-        Set<Long> presentCookies = presentRules.stream()
-                .map(FlowEntry::getCookie)
-                .filter(cookie -> !Cookie.isDefaultRule(cookie))
+
+        final Set<Long> properRules = new HashSet<>();
+        final Set<Long> missingRules = new HashSet<>();
+
+        List<OfFlowEntryDescriptor> actualOfFlows = presentRules.stream()
+                .map(OfFlowEntryDescriptor::new)
+                .filter(entry -> ! entry.getCookie().isDefaultRule())
+                .collect(Collectors.toCollection(() -> new ArrayList<>(presentRules.size())));
+        for (long rawCookie : expectedCookies) {
+            Cookie cookie = new Cookie(rawCookie);
+            if (cookie.isDefaultRule()) {
+                // check only flow rules here
+                continue;
+            }
+
+            FlowPathReference expectedPathReference = OfCookieUtil.INSTANCE.makeFlowPathRef(cookie);
+            ListIterator<OfFlowEntryDescriptor> iterator = actualOfFlows.listIterator();
+            boolean isMissing = true;
+            while (iterator.hasNext()) {
+                OfFlowEntryDescriptor entry = iterator.next();
+
+                if (expectedPathReference.equals(entry.getPathReference())) {
+                    iterator.remove();
+                    isMissing = false;
+                    properRules.add(cookie.getValue());
+                    break;
+                }
+            }
+
+            if (isMissing) {
+                missingRules.add(cookie.getValue());
+            }
+        }
+        final Set<Long> excessRules = actualOfFlows.stream()
+                .map(entry -> entry.getCookie().getValue())
                 .collect(Collectors.toSet());
 
-        Set<Long> missingRules = new HashSet<>(expectedCookies);
-        missingRules.removeAll(presentCookies);
         if (!missingRules.isEmpty() && log.isErrorEnabled()) {
             log.error("On switch {} the following rules are missed: {}", switchId,
                     cookiesIntoLogRepresentation(missingRules));
         }
-
-        Set<Long> properRules = new HashSet<>(expectedCookies);
-        properRules.retainAll(presentCookies);
-
-        Set<Long> excessRules = new HashSet<>(presentCookies);
-        excessRules.removeAll(expectedCookies);
         if (!excessRules.isEmpty() && log.isWarnEnabled()) {
             log.warn("On switch {} the following rules are excessive: {}", switchId,
                     cookiesIntoLogRepresentation(excessRules));
         }
 
         Set<Long> misconfiguredRules = new HashSet<>();
-
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);
 
@@ -331,5 +358,18 @@ public class ValidationServiceImpl implements ValidationService {
                 .actual(actual)
                 .expected(expected)
                 .build();
+    }
+
+    @Value
+    private static class OfFlowEntryDescriptor {
+        private Cookie cookie;
+        private FlowPathReference pathReference;
+        private FlowEntry entry;
+
+        OfFlowEntryDescriptor(FlowEntry entry) {
+            this.cookie = new Cookie(entry.getCookie());
+            pathReference = OfCookieUtil.INSTANCE.makeFlowPathRef(cookie);
+            this.entry = entry;
+        }
     }
 }

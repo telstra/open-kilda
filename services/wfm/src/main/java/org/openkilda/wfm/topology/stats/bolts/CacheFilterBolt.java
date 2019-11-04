@@ -36,7 +36,7 @@ import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.stats.MeasurePoint;
+import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;

@@ -24,6 +24,9 @@ import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentVerifyCom
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowRemoveCommand;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowVerifyCommand;
+import org.openkilda.floodlight.command.flow.shared.SharedIngressFlowSegmentOuterVlanMatchInstallCommand;
+import org.openkilda.floodlight.command.flow.shared.SharedIngressFlowSegmentOuterVlanMatchRemoveCommand;
+import org.openkilda.floodlight.command.flow.shared.SharedIngressFlowSegmentOuterVlanMatchVerifyCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentInstallCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentRemoveCommand;
 import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentVerifyCommand;
@@ -79,7 +82,13 @@ import java.util.concurrent.CompletionException;
         @Type(value = EgressFlowSegmentRemoveCommand.class,
                 name = "org.openkilda.floodlight.api.request.EgressFlowSegmentRemoveRequest"),
         @Type(value = EgressFlowSegmentVerifyCommand.class,
-                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentVerifyRequest")
+                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentVerifyRequest"),
+        @Type(value = SharedIngressFlowSegmentOuterVlanMatchInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.SharedIngressFlowSegmentOuterVlanMatchInstallRequest"),
+        @Type(value = SharedIngressFlowSegmentOuterVlanMatchRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.SharedIngressFlowSegmentOuterVlanMatchRemoveRequest"),
+        @Type(value = SharedIngressFlowSegmentOuterVlanMatchVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.SharedIngressFlowSegmentOuterVlanMatchVerifyRequest")
 })
 @Getter
 public abstract class SpeakerCommand<T extends SpeakerCommandReport> {

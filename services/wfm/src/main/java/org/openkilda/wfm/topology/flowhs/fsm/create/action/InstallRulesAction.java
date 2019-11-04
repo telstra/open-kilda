@@ -28,6 +28,7 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 abstract class InstallRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -43,13 +44,17 @@ abstract class InstallRulesAction extends FlowProcessingAction<FlowCreateFsm, St
         Map<UUID, SpeakerCommandObserver> pendingRequests = stateMachine.getPendingCommands();
         List<FlowSegmentRequestFactory> sentCommands = stateMachine.getSentCommands();
         for (FlowSegmentRequestFactory factory : factories) {
-            FlowSegmentRequest request = factory.makeInstallRequest(commandIdGenerator.generate());
+            Optional<? extends FlowSegmentRequest> potentialRequest = factory.makeInstallRequest(
+                    commandIdGenerator.generate());
+            if (! potentialRequest.isPresent()) {
+                continue;
+            }
 
+            FlowSegmentRequest request = potentialRequest.get();
             SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, request);
             commandObserver.start();
 
             sentCommands.add(factory);
-            // TODO ensure no conflicts
             pendingRequests.put(request.getCommandId(), commandObserver);
         }
     }

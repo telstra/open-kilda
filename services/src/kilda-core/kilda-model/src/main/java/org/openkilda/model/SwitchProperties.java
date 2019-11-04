@@ -12,20 +12,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
-/* Copyright 2019 Telstra Open Source
- *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- */
 
 package org.openkilda.model;
 
@@ -59,8 +45,9 @@ import java.util.Set;
 public class SwitchProperties implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static Set<FlowEncapsulationType> DEFAULT_FLOW_ENCAPSULATION_TYPES = Collections.singleton(
+    public static final Set<FlowEncapsulationType> DEFAULT_FLOW_ENCAPSULATION_TYPES = Collections.singleton(
             FlowEncapsulationType.TRANSIT_VLAN);
+
     @Id
     @GeneratedValue
     @Setter(AccessLevel.NONE)
@@ -119,5 +106,14 @@ public class SwitchProperties implements Serializable {
             validateProp(SwitchFeature.NOVIFLOW_COPY_FIELD);
         }
         this.supportedTransitEncapsulation = supportedTransitEncapsulation;
+    }
+
+    /**
+     * Builder object with pre-filled default values.
+     */
+    public static SwitchPropertiesBuilder builder() {
+        return new SwitchPropertiesBuilder()
+                .supportedTransitEncapsulation(DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                .multiTable(false);
     }
 }

@@ -26,9 +26,10 @@ import org.openkilda.model.FlowTransitEncapsulation;
 
 import lombok.Builder;
 
+import java.util.Optional;
 import java.util.UUID;
 
-public class EgressFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
+public class EgressFlowSegmentRequestFactory extends AbstractFlowSegmentRequestFactory {
     private final EgressFlowSegmentRequest requestBlank;
 
     @Builder
@@ -44,18 +45,18 @@ public class EgressFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
     }
 
     @Override
-    public EgressFlowSegmentRequest makeInstallRequest(UUID commandId) {
-        return new EgressFlowSegmentInstallRequest(requestBlank, commandId);
+    public Optional<EgressFlowSegmentRequest> makeInstallRequest(UUID commandId) {
+        return Optional.of(new EgressFlowSegmentInstallRequest(requestBlank, commandId));
     }
 
     @Override
-    public EgressFlowSegmentRequest makeRemoveRequest(UUID commandId) {
-        return new EgressFlowSegmentRemoveRequest(requestBlank, commandId);
+    public Optional<EgressFlowSegmentRequest> makeRemoveRequest(UUID commandId) {
+        return Optional.of(new EgressFlowSegmentRemoveRequest(requestBlank, commandId));
     }
 
     @Override
-    public EgressFlowSegmentRequest makeVerifyRequest(UUID commandId) {
-        return new EgressFlowSegmentVerifyRequest(requestBlank, commandId);
+    public Optional<EgressFlowSegmentRequest> makeVerifyRequest(UUID commandId) {
+        return Optional.of(new EgressFlowSegmentVerifyRequest(requestBlank, commandId));
     }
 
     private static class RequestBlank extends EgressFlowSegmentRequest {

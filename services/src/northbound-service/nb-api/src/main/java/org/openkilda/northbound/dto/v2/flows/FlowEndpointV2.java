@@ -31,4 +31,9 @@ public class FlowEndpointV2 {
     private SwitchId switchId;
     private Integer portNumber;
     private int vlanId;
+    private int innerVlanId;
+
+    public FlowEndpointV2(SwitchId switchId, Integer portNumber, int vlanId) {
+        this(switchId, portNumber, vlanId, 0);
+    }
 }

@@ -17,16 +17,22 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import static org.easymock.EasyMock.expect;
 
+import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.utils.MetadataAdapter;
+import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.IngressSegmentCookie;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMockSupport;
@@ -36,6 +42,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -44,6 +51,7 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -67,10 +75,12 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
     protected static final String flowId = "flow-id-unit-test";
     protected static final Cookie cookie = Cookie.buildForwardCookie(1);
 
-    protected static final FlowEndpoint endpointSingleVlan = new FlowEndpoint(
-            new SwitchId(datapathIdAlpha.getLong()), 10, 100);
     protected static final FlowEndpoint endpointZeroVlan = new FlowEndpoint(
-            new SwitchId(datapathIdAlpha.getLong()), 11, 0);
+            new SwitchId(datapathIdAlpha.getLong()), 10, 0);
+    protected static final FlowEndpoint endpointSingleVlan = new FlowEndpoint(
+            new SwitchId(datapathIdAlpha.getLong()), 11, 100);
+    protected static final FlowEndpoint endpointDoubleVlan = new FlowEndpoint(
+            new SwitchId(datapathIdAlpha.getLong()), 12, 200, 210);
 
     protected static final MeterConfig meterConfig = new MeterConfig(new MeterId(20), 200);
 
@@ -91,6 +101,35 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
     public void tearDown() throws Exception {
         verifyAll();
     }
+
+    // --- makeOuterVlanMatchAndRemoveMessage
+
+    @Test
+    public void makeOuterVlanMatchAndRemoveMessage() {
+        final IngressFlowModFactory factory = makeFactory();
+        final IngressFlowSegmentBase command = factory.getCommand();
+        final FlowEndpoint endpoint = command.getEndpoint();
+        MetadataAdapter.MetadataMatch metadata = MetadataAdapter.INSTANCE.addressOuterVlan(
+                OFVlanVidMatch.ofVlan(command.getEndpoint().getOuterVlanId()));
+        OFFlowAdd expected = of.buildFlowAdd()
+                .setTableId(getTargetPreIngressTableId())
+                .setPriority(FlowSegmentCommand.FLOW_PRIORITY)
+                .setCookie(U64.of(
+                        IngressSegmentCookie.convert(command.getCookie())
+                                .setSubType(IngressSegmentCookie.IngressSegmentSubType.OUTER_VLAN_MATCH_AND_REMOVE)
+                                .getValue()))
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().applyActions(Collections.singletonList(of.actions().popVlan())),
+                        of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()),
+                        of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID))))
+                .build();
+        verifyOfMessageEquals(expected, factory.makeOuterVlanMatchAndRemoveMessage());
+    }
+
+    // --- makeCustomerPortSharedCatchInstallMessage
 
     @Test
     public void makeCustomerPortSharedCatchInstallMessage() {
@@ -131,6 +170,10 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
     }
 
     abstract IngressFlowModFactory makeFactory();
+
+    abstract TableId getTargetPreIngressTableId();
+
+    abstract TableId getTargetIngressTableId();
 
     MeterId getEffectiveMeterId(MeterConfig meterConfig) {
         if (meterConfig != null) {

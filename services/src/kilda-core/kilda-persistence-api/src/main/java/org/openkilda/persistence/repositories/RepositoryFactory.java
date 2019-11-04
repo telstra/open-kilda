@@ -30,6 +30,8 @@ public interface RepositoryFactory {
 
     FlowMeterRepository createFlowMeterRepository();
 
+    SharedOfFlowRepository createSharedOfFlowRepository();
+
     FlowPathRepository createFlowPathRepository();
 
     FlowRepository createFlowRepository();

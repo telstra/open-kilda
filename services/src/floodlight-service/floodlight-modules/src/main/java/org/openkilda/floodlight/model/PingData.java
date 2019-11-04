@@ -16,11 +16,15 @@
 package org.openkilda.floodlight.model;
 
 import org.openkilda.floodlight.error.CorruptedNetworkDataException;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
+import org.openkilda.model.FlowEndpoint;
 
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -28,14 +32,22 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import java.util.UUID;
 
 public class PingData implements ISignPayload {
-    private static String JWT_KEY_PREFIX = "openkilda.ping.";
-
+    @Getter @Setter
     private long sendTime = 0;
+    @Getter @Setter
     private long senderLatency = 0;
 
-    private final Short sourceVlan;
+    @Getter
+    private final int ingressPortNumber;
+    @Getter
+    private final int ingressVlanId;
+    @Getter
+    private final int ingressInnerVlanId;
+    @Getter
     private final DatapathId source;
+    @Getter
     private final DatapathId dest;
+    @Getter
     private final UUID pingId;
 
     /**
@@ -44,18 +56,16 @@ public class PingData implements ISignPayload {
     public static PingData of(DecodedJWT token) throws CorruptedNetworkDataException {
         PingData data;
         try {
-            Integer sourceVlan = token.getClaim(makeJwtKey("sourceVlan")).asInt();
-            DatapathId source = DatapathId.of(token.getClaim(makeJwtKey("source")).asLong());
-            DatapathId dest = DatapathId.of(token.getClaim(makeJwtKey("dest")).asLong());
-            UUID packetId = UUID.fromString(token.getClaim(makeJwtKey("id")).asString());
+            DatapathId ingress = DatapathId.of(token.getClaim(makeIngressDatapathRef()).asLong());
+            int ingressPortNumber = token.getClaim(makeIngressPortRef()).asInt();
+            int ingressVlan = decodeVlanId(token, makeIngressVlanIdRef());
+            int ingressInnerVlan = decodeVlanId(token, makeIngressInnerVlanIdRef());
+            DatapathId egress = DatapathId.of(token.getClaim(makeEgressDatapathRef()).asLong());
+            UUID packetId = UUID.fromString(token.getClaim(makePingIdRef()).asString());
 
-            Short vlanId = null;
-            if (sourceVlan != null) {
-                vlanId = sourceVlan.shortValue();
-            }
-            data = new PingData(vlanId, source, dest, packetId);
-            data.setSenderLatency(token.getClaim(makeJwtKey("senderLatency")).asLong());
-            data.setSendTime(token.getClaim(makeJwtKey("time")).asLong());
+            data = new PingData(ingressPortNumber, ingressVlan, ingressInnerVlan, ingress, egress, packetId);
+            data.setSenderLatency(token.getClaim(makeIngressLatencyRef()).asLong());
+            data.setSendTime(token.getClaim(makeTimestampRef()).asLong());
         } catch (NullPointerException e) {
             throw new CorruptedNetworkDataException(
                     String.format("Corrupted flow verification package (%s)", token));
@@ -68,13 +78,20 @@ public class PingData implements ISignPayload {
      * Build {@link PingData} from {@link Ping} instance.
      */
     public static PingData of(Ping ping) {
-        DatapathId source = DatapathId.of(ping.getSource().getDatapath().toLong());
+        NetworkEndpoint ingress = ping.getSource();
+        DatapathId source = DatapathId.of(ingress.getDatapath().toLong());
         DatapathId dest = DatapathId.of(ping.getDest().getDatapath().toLong());
-        return new PingData(ping.getSourceVlanId(), source, dest, ping.getPingId());
+        return new PingData(
+                ingress.getPortNumber(), ping.getIngressVlanId(), ping.getIngressInnerVlanId(), source, dest,
+                ping.getPingId());
     }
 
-    public PingData(Short sourceVlan, DatapathId source, DatapathId dest, UUID pingId) {
-        this.sourceVlan = sourceVlan;
+    public PingData(
+            int ingressPortNumber, int ingressVlanId, int ingressInnerVlanId, DatapathId source, DatapathId dest,
+            UUID pingId) {
+        this.ingressPortNumber = ingressPortNumber;
+        this.ingressVlanId = ingressVlanId;
+        this.ingressInnerVlanId = ingressInnerVlanId;
         this.source = source;
         this.dest = dest;
         this.pingId = pingId;
@@ -84,16 +101,20 @@ public class PingData implements ISignPayload {
      * Populate data into JWT builder.
      */
     public JWTCreator.Builder toSign(JWTCreator.Builder token) {
-        if (sourceVlan != null) {
-            token.withClaim(makeJwtKey("sourceVlan"), Integer.valueOf(sourceVlan));
+        token.withClaim(makeIngressDatapathRef(), source.getLong());
+        token.withClaim(makeIngressPortRef(), ingressPortNumber);
+        if (FlowEndpoint.isVlanIdSet(ingressVlanId)) {
+            token.withClaim(makeIngressVlanIdRef(), ingressVlanId);
         }
-        token.withClaim(makeJwtKey("source"), source.getLong());
-        token.withClaim(makeJwtKey("dest"), dest.getLong());
-        token.withClaim(makeJwtKey("id"), pingId.toString());
+        if (FlowEndpoint.isVlanIdSet(ingressInnerVlanId)) {
+            token.withClaim(makeIngressInnerVlanIdRef(), ingressInnerVlanId);
+        }
+        token.withClaim(makeEgressDatapathRef(), dest.getLong());
+        token.withClaim(makePingIdRef(), pingId.toString());
 
-        token.withClaim(makeJwtKey("senderLatency"), getSenderLatency());
+        token.withClaim(makeIngressLatencyRef(), getSenderLatency());
         sendTime = System.currentTimeMillis();
-        token.withClaim(makeJwtKey("time"), sendTime);
+        token.withClaim(makeTimestampRef(), sendTime);
 
         return token;
     }
@@ -107,38 +128,6 @@ public class PingData implements ISignPayload {
             latency = -1;
         }
         return new PingMeters(latency, getSenderLatency(), recipientLatency);
-    }
-
-    public long getSendTime() {
-        return sendTime;
-    }
-
-    private void setSendTime(long sendTime) {
-        this.sendTime = sendTime;
-    }
-
-    public long getSenderLatency() {
-        return senderLatency;
-    }
-
-    public void setSenderLatency(long senderLatency) {
-        this.senderLatency = senderLatency;
-    }
-
-    public Short getSourceVlan() {
-        return sourceVlan;
-    }
-
-    public DatapathId getSource() {
-        return source;
-    }
-
-    public DatapathId getDest() {
-        return dest;
-    }
-
-    public UUID getPingId() {
-        return pingId;
     }
 
     @Override
@@ -168,7 +157,47 @@ public class PingData implements ISignPayload {
                 .toHashCode();
     }
 
+    private static int decodeVlanId(DecodedJWT token, String key) {
+        Integer vlanId = token.getClaim(makeIngressInnerVlanIdRef()).asInt();
+        if (vlanId != null) {
+            return vlanId;
+        }
+        return 0;
+    }
+
+    private static String makeIngressDatapathRef() {
+        return makeJwtKey("ingress");
+    }
+
+    private static String makeIngressPortRef() {
+        return makeJwtKey("ingressPortNumber");
+    }
+
+    private static String makeIngressVlanIdRef() {
+        return makeJwtKey("ingressVlanId");
+    }
+
+    private static String makeIngressInnerVlanIdRef() {
+        return makeJwtKey("ingressInnerVlanId");
+    }
+
+    private static String makeEgressDatapathRef() {
+        return makeJwtKey("egress");
+    }
+
+    private static String makePingIdRef() {
+        return makeJwtKey("id");
+    }
+
+    private static String makeIngressLatencyRef() {
+        return makeJwtKey("ingressLatency");
+    }
+
+    private static String makeTimestampRef() {
+        return makeJwtKey("timestamp");
+    }
+
     private static String makeJwtKey(String name) {
-        return JWT_KEY_PREFIX + name;
+        return "openkilda.ping." + name;
     }
 }

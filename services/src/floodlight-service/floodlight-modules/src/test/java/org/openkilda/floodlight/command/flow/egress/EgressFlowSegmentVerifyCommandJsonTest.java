@@ -31,6 +31,7 @@ public class EgressFlowSegmentVerifyCommandJsonTest extends EgressFlowSegmentCom
 
     @Override
     protected EgressFlowSegmentRequest makeRequest(EgressFlowSegmentRequestFactory blank) {
-        return blank.makeVerifyRequest(commandIdGenerator.generate());
+        return blank.makeVerifyRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

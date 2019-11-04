@@ -13,18 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.model;
+package org.openkilda.wfm.topology.stats.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowPathDirection;
 
-@Data
-@Builder
-@AllArgsConstructor
-@EqualsAndHashCode
-public class SpeakerRequestBuildContext {
-    private boolean removeCustomerPortRule;
-    private boolean removeOppositeCustomerPortRule;
+import lombok.Value;
+
+@Value
+public class FlowPathReference {
+    private FlowPathDirection direction;
+    private long effectiveId;
+
+    public FlowPathReference(Long rawCookie) {
+        this(new Cookie(rawCookie));
+    }
+
+    public FlowPathReference(Cookie cookie) {
+        direction = cookie.getFlowPathDirection();
+        effectiveId = cookie.getFlowEffectiveId();
+    }
 }

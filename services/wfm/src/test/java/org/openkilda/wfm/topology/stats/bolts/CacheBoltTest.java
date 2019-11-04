@@ -33,7 +33,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
-import org.openkilda.wfm.topology.stats.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.FlowPathReference;
+import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,15 +49,15 @@ import java.util.UUID;
 @RunWith(MockitoJUnitRunner.class)
 public class CacheBoltTest {
 
-    private static final Long FORWARD_PATH_COOKIE = 1L;
-    private static final Long PROTECTED_FORWARD_PATH_COOKIE = 2L;
-    private static final Long REVERSE_PATH_COOKIE = 3L;
-    private static final Long PROTECTED_REVERSE_PATH_COOKIE = 4L;
+    private static final long FORWARD_PATH_COOKIE = 1L;
+    private static final long PROTECTED_FORWARD_PATH_COOKIE = 2L;
+    private static final long REVERSE_PATH_COOKIE = 3L;
+    private static final long PROTECTED_REVERSE_PATH_COOKIE = 4L;
 
-    private static final Long FORWARD_METER_ID = MeterId.MIN_FLOW_METER_ID + 1L;
-    private static final Long PROTECTED_FORWARD_METER_ID = MeterId.MIN_FLOW_METER_ID + 2L;
-    private static final Long REVERSE_METER_ID = MeterId.MIN_FLOW_METER_ID + 3L;
-    private static final Long PROTECTED_REVERSE_METER_ID = MeterId.MIN_FLOW_METER_ID + 4L;
+    private static final long FORWARD_METER_ID = MeterId.MIN_FLOW_METER_ID + 1L;
+    private static final long PROTECTED_FORWARD_METER_ID = MeterId.MIN_FLOW_METER_ID + 2L;
+    private static final long REVERSE_METER_ID = MeterId.MIN_FLOW_METER_ID + 3L;
+    private static final long PROTECTED_REVERSE_METER_ID = MeterId.MIN_FLOW_METER_ID + 4L;
 
     private static final SwitchId SRC_SWITCH_ID = new SwitchId(1L);
     private static final SwitchId DST_SWITCH_ID = new SwitchId(2L);
@@ -78,17 +79,17 @@ public class CacheBoltTest {
         CacheBolt cacheBolt = new CacheBolt(persistenceManager);
         cacheBolt.init();
 
-        Map<Long, CacheFlowEntry> srcCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataSrcSwitch());
+        Map<FlowPathReference, CacheFlowEntry> flowsCache = cacheBolt.getFlowsMetadataCache();
+        for (long cookie : new long[] {
+                FORWARD_PATH_COOKIE, PROTECTED_FORWARD_PATH_COOKIE,
+                REVERSE_PATH_COOKIE, PROTECTED_REVERSE_PATH_COOKIE}) {
+            FlowPathReference reference = new FlowPathReference(cookie);
+            CacheFlowEntry entry = flowsCache.get(reference);
 
-        Assert.assertEquals(2, srcCache.size());
-        assertCookieCache(flow, srcCache, FORWARD_PATH_COOKIE);
-        assertCookieCache(flow, srcCache, PROTECTED_FORWARD_PATH_COOKIE);
-
-        Map<Long, CacheFlowEntry> dstCache = cacheBolt.createCookieToFlowCache(getFlowStatsDataDstSwitch());
-
-        Assert.assertEquals(2, dstCache.size());
-        assertCookieCache(flow, dstCache, REVERSE_PATH_COOKIE);
-        assertCookieCache(flow, dstCache, PROTECTED_REVERSE_PATH_COOKIE);
+            Assert.assertNotNull(String.format("Missing flow cache entry for cookie %s", cookie), entry);
+            Assert.assertEquals(flow.getFlowId(), entry.getFlowId());
+            Assert.assertEquals(cookie, entry.getCookie());
+        }
     }
 
     @Test
@@ -116,14 +117,8 @@ public class CacheBoltTest {
         assertMeterCache(flow, DST_SWITCH_ID, dstCache, PROTECTED_REVERSE_METER_ID, PROTECTED_REVERSE_PATH_COOKIE);
     }
 
-    private void assertCookieCache(Flow flow, Map<Long, CacheFlowEntry> cookieToFlowCache, Long cookie) {
-        CacheFlowEntry entry = cookieToFlowCache.get(cookie);
-        Assert.assertEquals(flow.getFlowId(), entry.getFlowId());
-        Assert.assertEquals(cookie, entry.getCookie());
-    }
-
     private void assertMeterCache(Flow flow, SwitchId switchId, Map<MeterCacheKey, CacheFlowEntry> cache,
-                                  Long meterId, Long cookie) {
+                                  Long meterId, long cookie) {
         CacheFlowEntry entry = cache.get(new MeterCacheKey(switchId, meterId));
         Assert.assertEquals(flow.getFlowId(), entry.getFlowId());
         Assert.assertEquals(cookie, entry.getCookie());

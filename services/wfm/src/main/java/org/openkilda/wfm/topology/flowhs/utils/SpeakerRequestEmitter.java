@@ -24,7 +24,10 @@ import com.fasterxml.uuid.NoArgGenerator;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public abstract class SpeakerRequestEmitter {
@@ -48,12 +51,38 @@ public abstract class SpeakerRequestEmitter {
             Map<UUID, FlowSegmentRequestFactory> requestsStorage) {
 
         for (FlowSegmentRequestFactory factory : factories) {
-            FlowSegmentRequest request = makeRequest(factory);
-            // TODO ensure no conflicts
+            Optional<? extends FlowSegmentRequest> potentialRequest = makeRequest(factory);
+            if (!potentialRequest.isPresent()) {
+                continue;
+            }
+
+            FlowSegmentRequest request = potentialRequest.get();
             requestsStorage.put(request.getCommandId(), factory);
             carrier.sendSpeakerRequest(request);
         }
     }
 
-    protected abstract FlowSegmentRequest makeRequest(FlowSegmentRequestFactory factory);
+    /**
+     * Emit series of speaker requests reusing already stored commandId.
+     */
+    public Set<UUID> emitBatchKeepingCommandId(
+            FlowGenericCarrier carrier, Map<UUID, FlowSegmentRequestFactory> requestsStorage) {
+        for (Map.Entry<UUID, FlowSegmentRequestFactory> entry : requestsStorage.entrySet()) {
+            Optional<? extends FlowSegmentRequest> potentialRequest = makeRequest(entry.getValue(), entry.getKey());
+            if (! potentialRequest.isPresent()) {
+                continue;
+            }
+
+            carrier.sendSpeakerRequest(potentialRequest.get());
+        }
+
+        return new HashSet<>(requestsStorage.keySet());
+    }
+
+    private Optional<? extends FlowSegmentRequest> makeRequest(FlowSegmentRequestFactory factory)  {
+        return makeRequest(factory, commandIdGenerator.generate());
+    }
+
+    protected abstract Optional<? extends FlowSegmentRequest> makeRequest(
+            FlowSegmentRequestFactory factory, UUID commandId);
 }

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import static java.lang.String.format;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
@@ -25,6 +26,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
@@ -49,6 +51,9 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
+import org.openkilda.wfm.share.model.SharedOfFlowStatus;
+import org.openkilda.wfm.share.service.SharedOfFlowManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -213,17 +218,23 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
         List<FlowSegmentRequestFactory> requestFactories;
 
+        FlowPathSnapshot primaryForward = stateMachine.getForwardPath();
+        FlowPathSnapshot primaryReverse = stateMachine.getReversePath();
+
         // ingress
         requestFactories = stateMachine.getIngressCommands();
-        requestFactories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow));
+        requestFactories.addAll(
+                commandBuilder.buildIngressOnly(commandContext, flow, primaryForward, primaryReverse));
 
         // non ingress
         requestFactories = stateMachine.getNonIngressCommands();
-        requestFactories.addAll(commandBuilder.buildAllExceptIngress(commandContext, flow));
+        requestFactories.addAll(
+                commandBuilder.buildAllExceptIngress(commandContext, flow, primaryForward, primaryReverse));
+
         if (flow.isAllocateProtectedPath()) {
             requestFactories.addAll(commandBuilder.buildAllExceptIngress(
                     commandContext, flow,
-                    flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
+                    stateMachine.getProtectedForwardPath(), stateMachine.getProtectedReversePath()));
         }
     }
 
@@ -249,8 +260,11 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
 
-        fsm.setForwardPathId(forward.getPathId());
-        fsm.setReversePathId(reverse.getPathId());
+        SharedOfFlowManager sharedOfFlowManager = new SharedOfFlowManager(persistenceManager);
+
+        fsm.setForwardPath(makePrimaryFlowPathSnapshot(sharedOfFlowManager, flow, forward, flowResources.getForward()));
+        fsm.setReversePath(makePrimaryFlowPathSnapshot(sharedOfFlowManager, flow, reverse, flowResources.getReverse()));
+
         log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
 
         fsm.getFlowResources().add(flowResources);
@@ -278,14 +292,20 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
                 protectedPath.getForward(), forwardCookie);
         forward.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setProtectedForwardPath(forward);
-        fsm.setProtectedForwardPathId(forward.getPathId());
+        fsm.setProtectedForwardPath(
+                FlowPathSnapshot.builder(forward)
+                        .resources(flowResources.getForward())
+                        .build());
 
         Cookie reverseCookie = Cookie.buildReverseCookie(flowResources.getUnmaskedCookie());
         FlowPath reverse = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
                 protectedPath.getReverse(), reverseCookie);
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setProtectedReversePath(reverse);
-        fsm.setProtectedReversePathId(reverse.getPathId());
+        fsm.setProtectedReversePath(
+                FlowPathSnapshot.builder(reverse)
+                        .resources(flowResources.getReverse())
+                        .build());
 
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
         flowRepository.createOrUpdate(flow);
@@ -313,6 +333,30 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
             islRepository.createOrUpdate(isl);
         });
+    }
+
+    private FlowPathSnapshot makePrimaryFlowPathSnapshot(
+            SharedOfFlowManager sharedOfFlowManager, Flow flow, FlowPath path, FlowResources.PathResources resources) {
+        FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot = FlowPathSnapshot.builder(path).resources(resources);
+        addSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, flow, path);
+        return pathSnapshot.build();
+    }
+
+    private void addSharedOfFlowsReferences(
+            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
+            Flow flow, FlowPath path) {
+        FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
+        addSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, ingressSide, path);
+    }
+
+    private void addSharedOfFlowsReferences(
+            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
+            FlowSideAdapter flowSide, FlowPath path) {
+        if (FlowEndpoint.isVlanIdSet(flowSide.getEndpoint().getOuterVlanId())) {
+            SharedOfFlowStatus sharedStatus = sharedOfFlowManager.bindIngressFlowSegmentOuterVlanMatchFlow(
+                    flowSide.getEndpoint(), path);
+            pathSnapshot.sharedIngressSegmentOuterVlanMatchStatus(sharedStatus);
+        }
     }
 
     private String getGroupId(String flowId) throws FlowNotFoundException {

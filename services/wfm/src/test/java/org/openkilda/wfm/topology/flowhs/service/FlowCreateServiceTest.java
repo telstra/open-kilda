@@ -39,6 +39,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
@@ -148,6 +149,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
 
+        when(repositoryFactory.createSharedOfFlowRepository()).thenReturn(sharedOfFlowRepository);
+
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 GENERIC_RETRIES_LIMIT, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
@@ -167,12 +170,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .build();
         mockFlowCreationInDb(flowId);
         FlowResources flowResources = allocateResources(flowId);
@@ -216,12 +215,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(SRC_SWITCH)
-                .destinationPort(2)
-                .destinationVlan(2)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(SRC_SWITCH, 2, 2))
                 .build();
         mockFlowCreationInDb(flowId);
         FlowResources flowResources = allocateResources(flowId);
@@ -262,12 +257,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .build();
         mockFlowCreationInDb(flowId);
         FlowResources flowResources = allocateResources(flowId);
@@ -322,12 +313,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .build();
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
@@ -388,12 +375,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .build();
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
@@ -450,12 +433,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .build();
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
@@ -505,12 +484,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .pinned(true)
                 .build();
         FlowResources flowResources = allocateResources(flowId);
@@ -553,12 +528,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowRequest flowRequest = FlowRequest.builder()
                 .flowId(flowId)
                 .bandwidth(1000L)
-                .sourceSwitch(SRC_SWITCH)
-                .sourcePort(1)
-                .sourceVlan(1)
-                .destinationSwitch(DST_SWITCH)
-                .destinationPort(3)
-                .destinationVlan(3)
+                .source(new FlowEndpoint(SRC_SWITCH, 1, 1))
+                .destination(new FlowEndpoint(DST_SWITCH, 3, 3))
                 .allocateProtectedPath(true)
                 .build();
         mockFlowCreationInDb(flowId);

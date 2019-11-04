@@ -32,6 +32,7 @@ public class IngressFlowSegmentRemoveCommandJsonTest extends IngressFlowSegmentC
 
     @Override
     protected IngressFlowSegmentRequest makeRequest(IngressFlowSegmentRequestFactory factory) {
-        return factory.makeRemoveRequest(commandIdGenerator.generate());
+        return factory.makeRemoveRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

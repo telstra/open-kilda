@@ -34,6 +34,7 @@ public class IngressFlowSegmentInstallCommandJsonTest extends IngressFlowSegment
 
     @Override
     protected IngressFlowSegmentRequest makeRequest(IngressFlowSegmentRequestFactory factory) {
-        return factory.makeInstallRequest(commandIdGenerator.generate());
+        return factory.makeInstallRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

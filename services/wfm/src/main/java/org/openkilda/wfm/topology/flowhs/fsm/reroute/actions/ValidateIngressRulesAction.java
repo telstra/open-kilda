@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.SpeakerRequestRepeatAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -32,7 +32,7 @@ import java.util.UUID;
 
 @Slf4j
 public class ValidateIngressRulesAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+        SpeakerRequestRepeatAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final int speakerCommandRetriesLimit;
 
     public ValidateIngressRulesAction(int speakerCommandRetriesLimit) {
@@ -69,7 +69,7 @@ public class ValidateIngressRulesAction extends
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command.makeVerifyRequest(commandId));
+                stateMachine.getCarrier().sendSpeakerRequest(makeVerifyRequest(command, commandId));
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

@@ -75,6 +75,8 @@ public abstract class HistoryMapper {
     @Mapping(source = "flow.destPort", target = "destinationPort")
     @Mapping(source = "flow.srcVlan", target = "sourceVlan")
     @Mapping(source = "flow.destVlan", target = "destinationVlan")
+    @Mapping(source = "flow.srcInnerVlan", target = "sourceInnerVlan")
+    @Mapping(source = "flow.destInnerVlan", target = "destinationInnerVlan")
     @Mapping(source = "flow.flowId", target = "flowId")
     @Mapping(source = "flow.bandwidth", target = "bandwidth")
     @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
@@ -99,6 +101,8 @@ public abstract class HistoryMapper {
     @Mapping(source = "flow.destPort", target = "destinationPort")
     @Mapping(source = "flow.srcVlan", target = "sourceVlan")
     @Mapping(source = "flow.destVlan", target = "destinationVlan")
+    @Mapping(source = "flow.srcInnerVlan", target = "sourceInnerVlan")
+    @Mapping(source = "flow.destInnerVlan", target = "destinationInnerVlan")
     @Mapping(source = "flow.flowId", target = "flowId")
     @Mapping(source = "flow.bandwidth", target = "bandwidth")
     @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
@@ -111,7 +115,6 @@ public abstract class HistoryMapper {
     @Mapping(source = "dumpType", target = "dumpType")
     @BeanMapping(ignoreByDefault = true)
     public abstract FlowDumpData map(Flow flow, FlowResources resources, DumpType dumpType);
-
 
     @Mapping(source = "time", target = "timestamp")
     @Mapping(source = "description", target = "details")

@@ -26,9 +26,10 @@ import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
 
+import java.util.Optional;
 import java.util.UUID;
 
-public class TransitFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
+public class TransitFlowSegmentRequestFactory extends AbstractFlowSegmentRequestFactory {
     private final TransitFlowSegmentRequest requestBlank;
 
     @Builder
@@ -44,18 +45,18 @@ public class TransitFlowSegmentRequestFactory extends FlowSegmentRequestFactory 
     }
 
     @Override
-    public TransitFlowSegmentInstallRequest makeInstallRequest(UUID commandId) {
-        return new TransitFlowSegmentInstallRequest(requestBlank, commandId);
+    public Optional<TransitFlowSegmentInstallRequest> makeInstallRequest(UUID commandId) {
+        return Optional.of(new TransitFlowSegmentInstallRequest(requestBlank, commandId));
     }
 
     @Override
-    public TransitFlowSegmentRemoveRequest makeRemoveRequest(UUID commandId) {
-        return new TransitFlowSegmentRemoveRequest(requestBlank, commandId);
+    public Optional<TransitFlowSegmentRemoveRequest> makeRemoveRequest(UUID commandId) {
+        return Optional.of(new TransitFlowSegmentRemoveRequest(requestBlank, commandId));
     }
 
     @Override
-    public TransitFlowSegmentVerifyRequest makeVerifyRequest(UUID commandId) {
-        return new TransitFlowSegmentVerifyRequest(requestBlank, commandId);
+    public Optional<TransitFlowSegmentVerifyRequest> makeVerifyRequest(UUID commandId) {
+        return Optional.of(new TransitFlowSegmentVerifyRequest(requestBlank, commandId));
     }
 
     private static class RequestBlank extends TransitFlowSegmentRequest {
