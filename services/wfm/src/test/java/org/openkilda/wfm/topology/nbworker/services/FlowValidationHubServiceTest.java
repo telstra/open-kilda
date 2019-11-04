@@ -29,6 +29,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowValidationHubCarrier;
 
 import com.google.common.collect.Lists;
@@ -78,7 +79,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
                     assertEquals(flowValidationService
                             .validateFlow(TEST_FLOW_ID_A, getSwitchFlowEntriesWithTransitVlan(),
                             getSwitchMeterEntries()), message);
-                } catch (FlowNotFoundException e) {
+                } catch (FlowNotFoundException | SwitchNotFoundException e) {
                     //tested in the FlowValidationServiceTest
                 }
             }
@@ -104,7 +105,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             }
         }
 
-        buildTransitVlanFlow();
+        buildTransitVlanFlow("");
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new FlowValidationRequest(TEST_FLOW_ID_A),
                 new FlowValidationHubCarrierImpl());
         getSwitchFlowEntriesWithTransitVlan().forEach(switchFlowEntries ->
@@ -161,7 +162,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             }
         }
 
-        buildTransitVlanFlow();
+        buildTransitVlanFlow("");
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new FlowValidationRequest(TEST_FLOW_ID_A),
                 new FlowValidationHubCarrierImpl());
         flowValidationHubService.handleTaskTimeout(TEST_KEY);
@@ -213,7 +214,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             }
         }
 
-        buildTransitVlanFlow();
+        buildTransitVlanFlow("");
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new FlowValidationRequest("test"),
                 new FlowValidationHubCarrierImpl());
 

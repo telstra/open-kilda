@@ -24,6 +24,7 @@ import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,7 +45,7 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
 
     @Test
     public void shouldGetSwitchIdListByFlowId() {
-        buildTransitVlanFlow();
+        buildTransitVlanFlow("");
         List<SwitchId> switchIds = service.getSwitchIdListByFlowId(TEST_FLOW_ID_A);
         assertEquals(4, switchIds.size());
 
@@ -54,18 +55,18 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     }
 
     @Test
-    public void shouldValidateFlowWithTransitVlanEncapsulation() throws FlowNotFoundException {
-        buildTransitVlanFlow();
+    public void shouldValidateFlowWithTransitVlanEncapsulation() throws FlowNotFoundException, SwitchNotFoundException {
+        buildTransitVlanFlow("");
         validateFlow(true);
     }
 
     @Test
-    public void shouldValidateFlowWithVxlanEncapsulation() throws FlowNotFoundException {
+    public void shouldValidateFlowWithVxlanEncapsulation() throws FlowNotFoundException, SwitchNotFoundException {
         buildVxlanFlow();
         validateFlow(false);
     }
 
-    private void validateFlow(boolean isTransitVlan) throws FlowNotFoundException {
+    private void validateFlow(boolean isTransitVlan) throws FlowNotFoundException, SwitchNotFoundException {
         List<SwitchFlowEntries> flowEntries =
                 isTransitVlan ? getSwitchFlowEntriesWithTransitVlan() : getSwitchFlowEntriesWithVxlan();
         List<SwitchMeterEntries> meterEntries = getSwitchMeterEntries();
@@ -125,7 +126,7 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     }
 
     @Test
-    public void shouldValidateOneSwitchFlow() throws FlowNotFoundException {
+    public void shouldValidateOneSwitchFlow() throws FlowNotFoundException, SwitchNotFoundException {
         buildOneSwitchPortFlow();
         List<SwitchFlowEntries> switchEntries = getSwitchFlowEntriesOneSwitchFlow();
         List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesOneSwitchFlow();
@@ -136,7 +137,30 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     }
 
     @Test(expected = FlowNotFoundException.class)
-    public void shouldValidateFlowUsingNotExistingFlow() throws FlowNotFoundException {
+    public void shouldValidateFlowUsingNotExistingFlow() throws FlowNotFoundException, SwitchNotFoundException {
         service.validateFlow("test", new ArrayList<>(), new ArrayList<>());
+    }
+
+    @Test
+    public void shouldValidateFlowWithTransitVlanEncapsulationESwitch()
+            throws FlowNotFoundException, SwitchNotFoundException {
+        buildTransitVlanFlow("E");
+
+        List<SwitchFlowEntries> flowEntries = getSwitchFlowEntriesWithTransitVlan();
+        List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesWithESwitch();
+        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
+        assertEquals(4, result.size());
+        assertEquals(0, result.get(0).getDiscrepancies().size());
+        assertEquals(0, result.get(1).getDiscrepancies().size());
+        assertEquals(0, result.get(2).getDiscrepancies().size());
+        assertEquals(0, result.get(3).getDiscrepancies().size());
+        assertEquals(3, (int) result.get(0).getFlowRulesTotal());
+        assertEquals(3, (int) result.get(1).getFlowRulesTotal());
+        assertEquals(2, (int) result.get(2).getFlowRulesTotal());
+        assertEquals(2, (int) result.get(3).getFlowRulesTotal());
+        assertEquals(10, (int) result.get(0).getSwitchRulesTotal());
+        assertEquals(10, (int) result.get(1).getSwitchRulesTotal());
+        assertEquals(10, (int) result.get(2).getSwitchRulesTotal());
+        assertEquals(10, (int) result.get(3).getSwitchRulesTotal());
     }
 }

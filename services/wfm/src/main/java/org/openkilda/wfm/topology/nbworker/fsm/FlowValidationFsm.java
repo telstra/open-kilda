@@ -39,6 +39,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IllegalFlowStateException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowValidationHubCarrier;
 import org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent;
@@ -184,6 +185,9 @@ public class FlowValidationFsm
             response = service.validateFlow(flowId, receivedRules, receivedMeters);
         } catch (FlowNotFoundException e) {
             log.error("Key: {}; Flow {} not found during flow validation", key, flowId, e);
+            sendException(e.getMessage(), "Flow validation operation in FlowValidationFsm", ErrorType.NOT_FOUND);
+        } catch (SwitchNotFoundException e) {
+            log.error("Key: {}; {}", key, e.getMessage(), e);
             sendException(e.getMessage(), "Flow validation operation in FlowValidationFsm", ErrorType.NOT_FOUND);
         } catch (Exception e) {
             log.error("Key: {}; {}", key, e.getMessage(), e);
