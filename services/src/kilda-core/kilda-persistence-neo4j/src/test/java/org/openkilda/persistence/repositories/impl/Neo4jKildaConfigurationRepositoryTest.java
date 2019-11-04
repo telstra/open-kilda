@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 
@@ -48,9 +49,12 @@ public class Neo4jKildaConfigurationRepositoryTest extends Neo4jBasedTest {
         KildaConfiguration foundKildaConfiguration = kildaConfigurationRepository.get();
         assertEquals(KildaConfiguration.DEFAULTS.getFlowEncapsulationType(),
                 foundKildaConfiguration.getFlowEncapsulationType());
+        assertEquals(KildaConfiguration.DEFAULTS.getPathComputationStrategy(),
+                foundKildaConfiguration.getPathComputationStrategy());
 
         kildaConfiguration = KildaConfiguration.builder()
                 .flowEncapsulationType(FlowEncapsulationType.VXLAN)
+                .pathComputationStrategy(PathComputationStrategy.LATENCY)
                 .build();
         kildaConfigurationRepository.createOrUpdate(kildaConfiguration);
 
@@ -66,6 +70,7 @@ public class Neo4jKildaConfigurationRepositoryTest extends Neo4jBasedTest {
 
         kildaConfiguration = KildaConfiguration.builder()
                 .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
         kildaConfigurationRepository.createOrUpdate(kildaConfiguration);
 

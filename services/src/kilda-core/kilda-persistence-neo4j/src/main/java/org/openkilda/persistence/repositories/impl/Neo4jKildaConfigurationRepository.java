@@ -52,6 +52,8 @@ public class Neo4jKildaConfigurationRepository extends Neo4jGenericRepository<Ki
 
         kildaConfiguration.setFlowEncapsulationType(Optional.ofNullable(
                 firstConfig.getFlowEncapsulationType()).orElse(secondConfig.getFlowEncapsulationType()));
+        kildaConfiguration.setPathComputationStrategy(Optional.ofNullable(
+                firstConfig.getPathComputationStrategy()).orElse(secondConfig.getPathComputationStrategy()));
 
         return kildaConfiguration;
     }

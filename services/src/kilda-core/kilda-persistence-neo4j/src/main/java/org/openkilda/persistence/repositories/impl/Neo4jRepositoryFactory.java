@@ -59,8 +59,6 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
         this.transactionManager = transactionManager;
         this.islConfig = IslConfig.builder()
                 .unstableIslTimeout(Duration.ofSeconds(networkConfig.getIslUnstableTimeoutSec()))
-                .underMaintenanceCostRaise(networkConfig.getIslCostWhenUnderMaintenance())
-                .unstableCostRaise(networkConfig.getIslCostWhenPortDown())
                 .build();
     }
 

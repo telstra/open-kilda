@@ -36,6 +36,7 @@ public class KildaConfiguration {
 
     public static final KildaConfiguration DEFAULTS = KildaConfiguration.builder()
             .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .build();
 
     // Hidden as needed for OGM only.
@@ -49,11 +50,16 @@ public class KildaConfiguration {
     @Convert(graphPropertyType = String.class)
     private FlowEncapsulationType flowEncapsulationType;
 
+    @Property(name = "path_computation_strategy")
+    @Convert(graphPropertyType = String.class)
+    private PathComputationStrategy pathComputationStrategy;
+
     /**
      * Constructor prevents initialization of entityId field.
      */
     @Builder(toBuilder = true)
-    KildaConfiguration(FlowEncapsulationType flowEncapsulationType) {
+    KildaConfiguration(FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy) {
         this.flowEncapsulationType = flowEncapsulationType;
+        this.pathComputationStrategy = pathComputationStrategy;
     }
 }

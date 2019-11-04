@@ -23,9 +23,11 @@ import static org.mockito.ArgumentMatchers.any;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
+import org.openkilda.messaging.payload.flow.PathComputationStrategy;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -71,6 +73,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
             .destinationVlan(200)
             .pinned(false)
             .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .build();
 
     private final FlowDto secondFlow = FlowDto.builder()
@@ -86,6 +89,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
             .destinationVlan(200)
             .pinned(false)
             .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .build();
 
     private final FlowDto thirdFlow = FlowDto.builder()
@@ -101,6 +105,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
             .destinationVlan(200)
             .pinned(false)
             .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .build();
 
     private final FlowDto fourthFlow = FlowDto.builder()
@@ -116,6 +121,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
             .destinationVlan(200)
             .pinned(false)
             .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .build();
 
     private FlowResourcesManager resourcesManager;
@@ -312,8 +318,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     }
 
     private Flow convertFlow(FlowDto flowDto) {
-        Flow flow = FlowMapper.INSTANCE.map(flowDto, () -> org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN)
-                .getFlow();
+        Flow flow = FlowMapper.INSTANCE.map(flowDto, () -> KildaConfiguration.DEFAULTS).getFlow();
         flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
 

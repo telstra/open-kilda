@@ -27,6 +27,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -38,11 +39,10 @@ import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
-import org.openkilda.pce.PathComputerFactory.WeightStrategy;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
+import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
@@ -129,16 +129,6 @@ public class InMemoryPathComputerTest {
                                 @Override
                                 public int getIslUnstableTimeoutSec() {
                                     return 7200;
-                                }
-
-                                @Override
-                                public int getIslCostWhenPortDown() {
-                                    return 10000;
-                                }
-
-                                @Override
-                                public int getIslCostWhenUnderMaintenance() {
-                                    return 10000;
                                 }
                             };
                         } else {
@@ -413,8 +403,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
-                new BestCostAndShortestPathFinder(200,
-                        pathComputerFactory.getWeightFunctionByStrategy(WeightStrategy.COST)));
+                new BestWeightAndShortestPathFinder(200), config);
         PathPair path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
@@ -540,6 +529,7 @@ public class InMemoryPathComputerTest {
                 .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
                 .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair diversePath = pathComputer.getPath(flow);
@@ -564,6 +554,7 @@ public class InMemoryPathComputerTest {
                 .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
                 .destPort(10)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair diversePath = pathComputer.getPath(flow);

@@ -69,7 +69,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
     String flowTopic
 
-    @Value('${isl.cost.when.under.maintenance}')
+    @Value('${pce.isl.cost.when.under.maintenance}')
     int islCostWhenUnderMaintenance
 
     @Value('${isl.unstable.timeout.sec}')
