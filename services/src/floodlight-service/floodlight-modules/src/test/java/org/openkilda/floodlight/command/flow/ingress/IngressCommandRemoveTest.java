@@ -28,10 +28,11 @@ import java.util.concurrent.CompletableFuture;
 abstract class IngressCommandRemoveTest extends IngressCommandTest {
     @Test
     public void noMeterRequested() throws Exception {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, null, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, null, makeMetadata());
 
         switchFeaturesSetup(sw, false);
-        expectMakeOuterVlanOnlyForwardMessage(command, null);
+        expectMakeOuterOnlyVlanForwardMessage(command, null);
+        expectMakeOldForwardingRemoveMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 
@@ -40,12 +41,13 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
 
     @Test
     public void errorNoMeterSupport() throws Exception {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, meterConfig, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
 
         switchFeaturesSetup(sw, false);
         expectMeterDryRun(
                 new UnsupportedSwitchOperationException(dpIdNext, "Switch doesn't support meters (unit-test)"));
-        expectMakeOuterVlanOnlyForwardMessage(command, null);
+        expectMakeOuterOnlyVlanForwardMessage(command, null);
+        expectMakeOldForwardingRemoveMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 
@@ -54,12 +56,13 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
 
     @Test
     public void errorOnMeterManipulation() {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, meterConfig, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
 
         switchFeaturesSetup(sw, true);
         expectMeterDryRun();
         expectMeterRemove(new SwitchErrorResponseException(dpIdNext, "fake fail to remove meter error"));
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
+        expectMakeOuterOnlyVlanForwardMessage(command, meterConfig.getId());
+        expectMakeOldForwardingRemoveMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 
@@ -69,11 +72,12 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
 
     @Test
     public void errorOnFlowMod() {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, meterConfig, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
 
         switchFeaturesSetup(sw, true);
         expectMeterDryRun();
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
+        expectMakeOuterOnlyVlanForwardMessage(command, meterConfig.getId());
+        expectMakeOldForwardingRemoveMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 
@@ -85,24 +89,36 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
         verifyErrorCompletion(result, SwitchOperationException.class);
     }
 
-    protected void processZeroVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeDefaultPortFlowMatchAndForwardMessage(command, meterConfig.getId());
-        executeCommand(command, 1);
+    void testZeroVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeDefaultPortForwardMessage(command, meterConfig.getId());
+        expectMakeOldForwardingRemoveMessage(command);
+        executeCommand(command, 2);
     }
 
-    protected void processOneVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
-        executeCommand(command, 1);
+    void testSingleVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeOuterOnlyVlanForwardMessage(command, meterConfig.getId());
+        expectMakeOldForwardingRemoveMessage(command);
+        executeCommand(command, 2);
     }
 
-    protected void processZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeDefaultPortFlowMatchAndForwardMessage(command, meterConfig.getId());
-        executeCommand(command, 1);
+    void testZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeDefaultPortForwardMessage(command, meterConfig.getId());
+        expectMakeOldForwardingRemoveMessage(command);
+        executeCommand(command, 2);
     }
 
-    protected void processOneVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
-        executeCommand(command, 1);
+    void processSingleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeSingleVlanForwardMessage(command, meterConfig.getId());
+        expectMakeMultiVlanPreForwardMessage(command);
+        expectMakeOldForwardingRemoveMessage(command);
+        executeCommand(command, 3);
+    }
+
+    void processDoubleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeDoubleVlanForwardMessage(command, meterConfig.getId());
+        expectMakeMultiVlanPreForwardMessage(command);
+        expectMakeOldForwardingRemoveMessage(command);
+        executeCommand(command, 3);
     }
 
     @Override

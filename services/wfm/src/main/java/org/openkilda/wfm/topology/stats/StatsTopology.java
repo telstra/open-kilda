@@ -30,7 +30,6 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.TABLE_STATS_ME
 import static org.openkilda.wfm.topology.stats.StatsComponentType.TICK_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
-import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.statsWithCacheFields;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.persistence.PersistenceManager;
@@ -102,19 +101,24 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         // Cache bolt get data from NEO4J on start
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        // FIXME(surabujin): fields grouping is corrupted it include "context" field (why for fields-grouping here?)
         builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.CACHE_DATA.toString(), statsFields);
 
+        // FIXME(surabujin): fields grouping is corrupted it include "message" field (why for fields-grouping here?)
         builder.setBolt(PORT_STATS_METRIC_GEN.name(),
                 new PortMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
+        // FIXME(surabujin): fields grouping is corrupted it include "message" field (why for fields-grouping here?)
         builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(),
                 new MeterConfigMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
+        // FIXME(surabujin): fields grouping is corrupted it include "context" field (why for fields-grouping here?)
         builder.setBolt(SYSTEM_RULE_STATS_METRIC_GEN.name(),
                 new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.SYSTEM_RULE_STATS.toString(), statsFields);
+        // FIXME(surabujin): fields grouping is corrupted it include "context" field (why for fields-grouping here?)
         builder.setBolt(TABLE_STATS_METRIC_GEN.name(),
                 new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.TABLE_STATS.toString(), statsFields);
@@ -122,10 +126,10 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         logger.debug("starting flow_stats_metric_gen");
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
                 new FlowMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
-                .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), statsWithCacheFields);
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.STREAM_FLOW_STATS_ID);
         builder.setBolt(METER_STATS_METRIC_GEN.name(),
                 new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
-                .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.METER_STATS.toString(), statsWithCacheFields);
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.STREAM_METER_STATS_ID);
 
         builder.setBolt(TICK_BOLT.name(), new TickBolt(topologyConfig.getStatisticsRequestInterval()));
 

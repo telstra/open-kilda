@@ -23,7 +23,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.RecoverablePersistenceException;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -45,14 +44,12 @@ import java.util.Optional;
 public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final int transactionRetriesLimit;
     private final SwitchRepository switchRepository;
-    private final IslRepository islRepository;
 
     public UpdateFlowAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
         super(persistenceManager);
         this.transactionRetriesLimit = transactionRetriesLimit;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        islRepository = repositoryFactory.createIslRepository();
     }
 
     @Override
@@ -101,12 +98,14 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         flow.setSrcSwitch(srcSwitch);
         flow.setSrcPort(targetFlow.getSrcPort());
         flow.setSrcVlan(targetFlow.getSrcVlan());
+        flow.setSrcInnerVlan(targetFlow.getSrcInnerVlan());
         Switch destSwitch = switchRepository.findById(targetFlow.getDestSwitch())
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Switch %s not found", targetFlow.getDestSwitch())));
         flow.setDestSwitch(destSwitch);
         flow.setDestPort(targetFlow.getDestPort());
         flow.setDestVlan(targetFlow.getDestVlan());
+        flow.setDestInnerVlan(targetFlow.getDestInnerVlan());
 
         if (targetFlow.getPriority() != null) {
             flow.setPriority(targetFlow.getPriority());

@@ -93,7 +93,7 @@ public class FlowUpdateService {
         FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
         fsms.put(key, fsm);
 
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.unpackRequest(request);
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .targetFlow(requestedFlow)
                 .build();

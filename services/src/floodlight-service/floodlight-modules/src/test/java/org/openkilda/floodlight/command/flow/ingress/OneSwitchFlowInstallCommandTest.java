@@ -30,37 +30,39 @@ import org.junit.Test;
 import java.util.UUID;
 
 public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
-    private static final FlowEndpoint endpointEgressZeroVlan = new FlowEndpoint(
-            endpointIngressZeroVlan.getSwitchId(),
-            IngressCommandInstallTest.endpointEgressZeroVlan.getPortNumber(),
-            IngressCommandInstallTest.endpointEgressZeroVlan.getVlanId());
-    private static final FlowEndpoint endpointEgressOneVlan = new FlowEndpoint(
-            endpointIngressOneVlan.getSwitchId(),
-            IngressCommandInstallTest.endpointEgressOneVlan.getPortNumber(),
-            IngressCommandInstallTest.endpointEgressOneVlan.getVlanId());
-
     @Test
     public void zeroVlanSingleTable() throws Exception {
-        processZeroVlanSingleTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+        testZeroVlanSingleTable(makeCommand(
+                endpointIngressZeroVlan, makeEgressEndpoint(endpointIngressZeroVlan, endpointEgressSingleVlan),
+                meterConfig, makeMetadata(false)));
     }
 
     @Test
-    public void oneVlanSingleTable() throws Exception {
-        processOneVlanSingleTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(false)));
+    public void singleVlanSingleTable() throws Exception {
+        testSingleVlanSingleTable(makeCommand(
+                endpointIngressSingleVlan, makeEgressEndpoint(endpointIngressSingleVlan, endpointEgressZeroVlan),
+                meterConfig, makeMetadata(false)));
     }
 
     @Test
     public void zeroVlanMultiTable() throws Exception {
-        processZeroVlanMultiTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+        testZeroVlanMultiTable(makeCommand(
+                endpointIngressZeroVlan, makeEgressEndpoint(endpointIngressZeroVlan, endpointEgressSingleVlan),
+                meterConfig, makeMetadata(true)));
     }
 
     @Test
-    public void oneVlanMultiTable() throws Exception {
-        processOneVlanMultiTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(true)));
+    public void singleVlanMultiTable() throws Exception {
+        testSingleVlanMultiTable(makeCommand(
+                endpointIngressSingleVlan, makeEgressEndpoint(endpointIngressSingleVlan, endpointEgressZeroVlan),
+                meterConfig, makeMetadata(true)));
+    }
+
+    @Test
+    public void doubleVlanMultiTable() throws Exception {
+        testDoubleVlanMultiTable(makeCommand(
+                endpointIngressDoubleVlan, makeEgressEndpoint(endpointIngressDoubleVlan, endpointEgressSingleVlan),
+                meterConfig, makeMetadata(true)));
     }
 
     @Override
@@ -71,7 +73,7 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
     @Override
     protected OneSwitchFlowInstallCommand makeCommand(
             FlowEndpoint endpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
-        return makeCommand(endpoint, endpointEgressOneVlan, meterConfig, metadata);
+        return makeCommand(endpoint, makeEgressEndpoint(endpoint, endpointEgressSingleVlan), meterConfig, metadata);
     }
 
     protected OneSwitchFlowInstallCommand makeCommand(
@@ -79,6 +81,13 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
         UUID commandId = UUID.randomUUID();
         return new CommandStub(
                 new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig, egressEndpoint);
+    }
+
+    private FlowEndpoint makeEgressEndpoint(FlowEndpoint ingressEndpoint, FlowEndpoint reference) {
+        return new FlowEndpoint(
+                ingressEndpoint.getSwitchId(),
+                reference.getPortNumber(), reference.getOuterVlanId(), reference.getInnerVlanId(),
+                reference.isTrackConnectedDevices());
     }
 
     static class CommandStub extends OneSwitchFlowInstallCommand implements IFlowModFactoryOverride {

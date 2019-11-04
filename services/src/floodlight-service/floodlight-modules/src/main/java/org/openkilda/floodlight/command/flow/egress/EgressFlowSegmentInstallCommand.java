@@ -15,12 +15,11 @@
 
 package org.openkilda.floodlight.command.flow.egress;
 
+import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
-import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -36,18 +35,17 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 @Getter
 public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
     private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModAddMultiTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        } else {
-            return new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        }
+        return OfFlowModBuilderFactory.makeFactory(FlowSegmentCommand.FLOW_PRIORITY)
+                .basePriority(SwitchManager.FLOW_PRIORITY)
+                .actionAdd()
+                .multiTable(isMultiTable)
+                .make();
     }
 
     @JsonCreator
@@ -87,29 +85,17 @@ public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
     }
 
     private List<OFAction> makeVlanTransformActions(OFFactory of) {
-        List<Integer> currentVlanStack = Collections.singletonList(encapsulation.getId());
-        return makeEndpointReEncoding(of, currentVlanStack);
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(
+                of, FlowEndpoint.makeVlanStack(encapsulation.getId()), endpoint.getVlanStack());
     }
 
     private List<OFAction> makeVxLanTransformActions(OFFactory of) {
         List<OFAction> actions = new ArrayList<>();
         actions.add(of.actions().noviflowPopVxlanTunnel());
-
-        List<Integer> currentVlanStack = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(ingressEndpoint.getVlanId())) {
-            currentVlanStack.add(ingressEndpoint.getVlanId());
-        }
-        actions.addAll(makeEndpointReEncoding(of, currentVlanStack));
+        actions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(
+                of, ingressEndpoint.getVlanStack(), endpoint.getVlanStack()));
 
         return actions;
-    }
-
-    private List<OFAction> makeEndpointReEncoding(OFFactory of, List<Integer> currentVlanStack) {
-        List<Integer> desiredVlanStack = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getVlanId())) {
-            desiredVlanStack.add(endpoint.getVlanId());
-        }
-        return OfAdapter.INSTANCE.makeVlanReplaceActions(of, currentVlanStack, desiredVlanStack);
     }
 
     @Override

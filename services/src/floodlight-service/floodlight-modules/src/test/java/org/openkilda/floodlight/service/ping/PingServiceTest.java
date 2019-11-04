@@ -22,17 +22,20 @@ import static org.easymock.EasyMock.expect;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
+import org.openkilda.floodlight.model.PingWiredView;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.junit.Assert;
@@ -40,9 +43,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class PingServiceTest extends EasyMockSupport {
+    private static final DatapathId dpIdAlpha = DatapathId.of(0x0000fffe00000001L);
+    private static final DatapathId dpIdBeta = DatapathId.of(0x0000fffe00000002L);
+
     private PingService pingService = new PingService();
     private ISwitchManager switchManager = new SwitchManager();
     private FloodlightModuleContext moduleContext = new FloodlightModuleContext();
@@ -67,15 +76,30 @@ public class PingServiceTest extends EasyMockSupport {
     }
 
     @Test
-    public void wrapUnwrapCycle() throws Exception {
-        DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
-        DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
-        MacAddress macBeta = MacAddress.of(0xfffe000000000002L);
+    public void wrapUnwrapCycleZeroVlanTags() throws Exception {
+        testWrapUnwrapCycle(new Ping(
+                0, 0,
+                new NetworkEndpoint(new SwitchId(dpIdAlpha.getLong()), 8),
+                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 9)));
+    }
 
-        moduleContext.getServiceImpl(ISwitchManager.class)
-                .dpIdToMac(dpIdBeta);
-        expect(switchManager.dpIdToMac(dpIdBeta)).andReturn(macBeta);
+    @Test
+    public void wrapUnwrapCycleSingleVlanTags() throws Exception {
+        testWrapUnwrapCycle(new Ping(
+                0x100, 0,
+                new NetworkEndpoint(new SwitchId(dpIdAlpha.getLong()), 8),
+                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 9)));
+    }
 
+    @Test
+    public void wrapUnwrapCycleDoubleVlanTags() throws Exception {
+        testWrapUnwrapCycle(new Ping(
+                0x100, 0x200,
+                new NetworkEndpoint(new SwitchId(dpIdAlpha.getLong()), 8),
+                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 9)));
+    }
+
+    private void testWrapUnwrapCycle(Ping ping) throws Exception {
         moduleContext.getServiceImpl(InputService.class)
                 .addTranslator(eq(OFType.PACKET_IN), anyObject(PingInputTranslator.class));
 
@@ -83,16 +107,22 @@ public class PingServiceTest extends EasyMockSupport {
 
         pingService.setup(moduleContext);
 
-        Ping ping = new Ping(
-                (short) 0x100,
-                new NetworkEndpoint(new SwitchId(dpIdAlpha.getLong()), 8),
-                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 9));
+        byte[] payload = new byte[]{0x31, 0x32, 0x33, 0x34, 0x35};
+        byte[] wrapped = pingService.wrapData(ping, payload).serialize();
+        IPacket decoded = new Ethernet().deserialize(wrapped, 0, wrapped.length);
+        Assert.assertTrue(decoded instanceof Ethernet);
+        PingWiredView parsed = pingService.unwrapData(dpIdBeta, (Ethernet) decoded);
 
-        byte[] payload = new byte[]{0, 1, 2, 3, 4};
-        Ethernet wrapped = pingService.wrapData(ping, payload);
-        byte[] unwrapped = pingService.unwrapData(dpIdBeta, wrapped);
+        Assert.assertNotNull(parsed);
+        Assert.assertArrayEquals(payload, parsed.getPayload());
 
-        Assert.assertNotNull(unwrapped);
-        Assert.assertEquals(payload, unwrapped);
+        List<Integer> expectedVlanStack = normalizeVlanStack(ping.getIngressVlanId(), ping.getIngressInnerVlanId());
+        Assert.assertEquals(expectedVlanStack, parsed.getVlanStack());
+    }
+
+    private List<Integer> normalizeVlanStack(Integer... rawStack) {
+        return Arrays.stream(rawStack)
+                .filter(FlowEndpoint::isVlanIdSet)
+                .collect(Collectors.toList());
     }
 }

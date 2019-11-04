@@ -78,6 +78,7 @@ import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation.FlowPathsWithEncapsulationBuilder;
 import org.openkilda.wfm.topology.flow.model.ReroutedFlowPaths;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPathsWithEncapsulation;
+import org.openkilda.wfm.topology.flow.validation.ApiVersionCompatibilityValidator;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -321,7 +322,8 @@ public class FlowService extends BaseFlowService {
      * @param sender the command sender for flow rules deletion.
      * @return the deleted flow.
      */
-    public FlowDto deleteFlow(String flowId, FlowCommandSender sender) throws FlowNotFoundException {
+    public FlowDto deleteFlow(String flowId, FlowCommandSender sender)
+            throws FlowNotFoundException, FlowValidationException {
         dashboardLogger.onFlowDelete(flowId);
 
         RetryPolicy retryPolicy = new RetryPolicy()
@@ -338,6 +340,7 @@ public class FlowService extends BaseFlowService {
                         .orElseThrow(() -> new FlowNotFoundException(flowId));
 
                 Flow flow = flowPathsWithEncapsulation.getFlow();
+                ApiVersionCompatibilityValidator.INSTANCE.enforce(flow);
 
                 log.info("Deleting the flow: {}", flow);
 
@@ -353,8 +356,11 @@ public class FlowService extends BaseFlowService {
                 return flowPathsWithEncapsulation;
             });
         } catch (FailsafeException e) {
-            if (e.getCause() instanceof FlowNotFoundException) {
-                throw (FlowNotFoundException) e.getCause();
+            final Throwable cause = e.getCause();
+            if (cause instanceof FlowNotFoundException) {
+                throw (FlowNotFoundException) cause;
+            } else if (cause instanceof FlowValidationException) {
+                throw (FlowValidationException) cause;
             } else {
                 throw e;
             }
@@ -396,6 +402,7 @@ public class FlowService extends BaseFlowService {
         String flowId = updatingFlow.getFlowId();
         FlowPathsWithEncapsulation currentFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+        ApiVersionCompatibilityValidator.INSTANCE.enforce(currentFlow.getFlow());
 
         if (diverseFlowId == null) {
             updatingFlow.setGroupId(null);
@@ -512,9 +519,10 @@ public class FlowService extends BaseFlowService {
      * @param pathIds the set of path if to reroute.
      * @param sender the command sender for flow rules installation and deletion.
      */
-    public ReroutedFlowPaths rerouteFlow(String flowId, boolean forceToReroute, Set<PathId> pathIds,
-                                         FlowCommandSender sender) throws RecoverableException, UnroutableFlowException,
-            FlowNotFoundException, ResourceAllocationException {
+    public ReroutedFlowPaths rerouteFlow(
+            String flowId, boolean forceToReroute, Set<PathId> pathIds, FlowCommandSender sender)
+            throws UnroutableFlowException, FlowNotFoundException, ResourceAllocationException,
+            FlowValidationException {
         dashboardLogger.onFlowPathReroute(flowId, pathIds, forceToReroute);
 
         RerouteResult result;
@@ -552,23 +560,27 @@ public class FlowService extends BaseFlowService {
     }
 
     private RerouteResult doRerouteWithRetries(String flowId, boolean forceToReroute, Set<PathId> pathIds)
-            throws ResourceAllocationException, FlowNotFoundException, UnroutableFlowException {
+            throws ResourceAllocationException, FlowNotFoundException, UnroutableFlowException,
+            FlowValidationException {
         RerouteResult result = null;
         try {
             result = (RerouteResult) getFailsafe().get(() ->
                     transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
         } catch (FailsafeException e) {
-            unwrapFaisafeException(e);
+            unwrapCrudFaisafeException(e);
         }
         return result;
     }
 
     private RerouteResult doReroute(String flowId, boolean forceToReroute, Set<PathId> pathIds)
-            throws FlowNotFoundException, RecoverableException, UnroutableFlowException, ResourceAllocationException {
+            throws FlowNotFoundException, RecoverableException, UnroutableFlowException, ResourceAllocationException,
+            FlowValidationException {
         FlowPathsWithEncapsulation currentFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         Flow flow = currentFlow.getFlow();
+        ApiVersionCompatibilityValidator.INSTANCE.enforce(flow);
+
         Flow initialFlow = flow.toBuilder().build();
 
         featureTogglesRepository.find().ifPresent(featureToggles ->
@@ -759,6 +771,7 @@ public class FlowService extends BaseFlowService {
                     getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
             Flow flow = currentFlow.getFlow();
+            ApiVersionCompatibilityValidator.INSTANCE.enforce(flow);
 
             dashboardLogger.onFlowPathsSwap(flow);
 

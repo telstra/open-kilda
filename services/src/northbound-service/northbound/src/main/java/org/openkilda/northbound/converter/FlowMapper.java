@@ -34,6 +34,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
@@ -83,11 +84,13 @@ public interface FlowMapper {
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "source",
             expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
+                    + "f.getSourceInnerVlan(), "
                     + "new DetectConnectedDevicesPayload(f.getDetectConnectedDevices().isSrcLldp(), "
                     + "f.getDetectConnectedDevices().isSrcArp())))")
     @Mapping(target = "destination",
             expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan(), new DetectConnectedDevicesPayload("
+                    + "f.getDestinationVlan(), f.getDestinationInnerVlan(),"
+                    + "new DetectConnectedDevicesPayload("
                     + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
@@ -97,10 +100,17 @@ public interface FlowMapper {
     FlowResponsePayload toFlowResponseOutput(FlowDto f);
 
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(new FlowEndpointV2("
+                    + "f.getSourceSwitch(), "
+                    + "f.getSourcePort(), "
+                    + "f.getSourceVlan(), "
+                    + "f.getSourceInnerVlan()))")
     @Mapping(target = "destination",
-            expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+            expression = "java(new FlowEndpointV2("
+                    + "f.getDestinationSwitch(), "
+                    + "f.getDestinationPort(), "
+                    + "f.getDestinationVlan(), "
+                    + "f.getDestinationInnerVlan()))")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
@@ -108,14 +118,11 @@ public interface FlowMapper {
 
     FlowDto toFlowDto(FlowPatchDto flowPatchDto);
 
-    @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(request.getDestination().getSwitchId())")
-    @Mapping(target = "sourcePort", expression = "java(request.getSource().getPortNumber())")
-    @Mapping(target = "destinationPort", expression = "java(request.getDestination().getPortNumber())")
-    @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
-    @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
     FlowRequest toFlowRequest(FlowRequestV2 request);
+
+    @Mapping(target = "outerVlanId", source = "vlanId")
+    FlowEndpoint mapFlowEndpoint(FlowEndpointV2 input);
 
     default FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
         return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
@@ -127,7 +134,6 @@ public interface FlowMapper {
     @Mapping(source = "path", target = "path")
     @Mapping(source = "rerouted", target = "rerouted")
     FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
-
 
     @Mapping(source = "path", target = "path")
     FlowRerouteResponseV2 toRerouteResponseV2(String flowId, PathInfoData path, boolean rerouted);
@@ -146,10 +152,11 @@ public interface FlowMapper {
 
     @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
+                    + "f.getSourceInnerVlan()))")
     @Mapping(target = "destination",
             expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+                    + "f.getDestinationVlan(), f.getDestinationInnerVlan()))")
     SwapFlowPayload toSwapOutput(FlowDto f);
 
     @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")

@@ -34,32 +34,38 @@ import java.util.UUID;
 public class IngressFlowSegmentRemoveCommandTest extends IngressCommandRemoveTest {
     @Test
     public void zeroVlanSingleTable() throws Exception {
-        processZeroVlanSingleTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+        testZeroVlanSingleTable(makeCommand(
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
-    public void oneVlanSingleTable() throws Exception {
-        processOneVlanSingleTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+    public void singleVlanSingleTable() throws Exception {
+        testSingleVlanSingleTable(makeCommand(
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
     public void zeroVlanMultiTable() throws Exception {
-        processZeroVlanMultiTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+        testZeroVlanMultiTable(makeCommand(
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
     }
 
     @Test
-    public void oneVlanMultiTable() throws Exception {
-        processOneVlanMultiTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+    public void singleVlanMultiTable() throws Exception {
+        processSingleVlanMultiTable(makeCommand(
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
+    }
+
+    @Test
+    public void doubleVlanMultiTable() throws Exception {
+        processDoubleVlanMultiTable(makeCommand(
+                endpointIngressDoubleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
     }
 
     @Override
     protected IngressFlowSegmentRemoveCommand makeCommand(
             FlowEndpoint endpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
-        return makeCommand(endpoint, endpointEgressOneVlan, meterConfig, metadata);
+        return makeCommand(endpoint, endpointEgressSingleVlan, meterConfig, metadata);
     }
 
     protected IngressFlowSegmentRemoveCommand makeCommand(

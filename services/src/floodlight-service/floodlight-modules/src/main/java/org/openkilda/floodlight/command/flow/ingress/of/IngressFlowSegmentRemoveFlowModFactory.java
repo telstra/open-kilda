@@ -25,8 +25,8 @@ import java.util.Set;
 
 abstract class IngressFlowSegmentRemoveFlowModFactory extends IngressRemoveFlowModFactory {
     public IngressFlowSegmentRemoveFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentCommand command, IOFSwitch sw,
+            OfFlowModBuilderFactory.Factory flowModFactoryFactory, IngressFlowSegmentCommand command, IOFSwitch sw,
             Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+        super(flowModFactoryFactory, command, sw, features);
     }
 }

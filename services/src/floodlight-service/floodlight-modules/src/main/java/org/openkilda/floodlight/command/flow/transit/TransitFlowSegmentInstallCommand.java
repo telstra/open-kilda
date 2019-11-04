@@ -15,10 +15,9 @@
 
 package org.openkilda.floodlight.command.flow.transit;
 
+import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -37,11 +36,11 @@ import java.util.UUID;
 
 public class TransitFlowSegmentInstallCommand extends TransitFlowSegmentCommand {
     private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModAddMultiTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        } else {
-            return new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        }
+        return OfFlowModBuilderFactory.makeFactory(FlowSegmentCommand.FLOW_PRIORITY)
+                .basePriority(SwitchManager.FLOW_PRIORITY)
+                .actionAdd()
+                .multiTable(isMultiTable)
+                .make();
     }
 
     @JsonCreator

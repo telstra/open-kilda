@@ -44,10 +44,94 @@ public abstract class OfFlowModBuilderFactory {
         if (tableId != null) {
             builder = setTableId(builder, tableId);
         }
-        return builder.setPriority(basePriority + priorityOffset);
+        return setPriority(builder, priorityOffset);
     }
 
     public abstract OFFlowMod.Builder makeBuilder(OFFactory of);
 
-    protected abstract OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId);
+    public abstract OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId);
+
+    public OFFlowMod.Builder setPriority(OFFlowMod.Builder builder, int priorityOffset) {
+        return builder.setPriority(basePriority + priorityOffset);
+    }
+
+    public static Factory makeFactory(int priority) {
+        return new Factory(priority);
+    }
+
+    public static final class Factory {
+        private Integer basePriority;
+
+        private Boolean multiTable;
+        private ModAction action;
+
+        private Factory(int basePriority) {
+            this.basePriority = basePriority;
+        }
+
+        public Factory basePriority(int priority) {
+            basePriority = priority;
+            return this;
+        }
+
+        public Factory multiTable(boolean isMultiTable) {
+            multiTable = isMultiTable;
+            return this;
+        }
+
+        public Factory actionAdd() {
+            action = ModAction.ADD;
+            return this;
+        }
+
+        public Factory actionDelete() {
+            action = ModAction.DELETE;
+            return this;
+        }
+
+        /**
+         * Produce concrete instance of `OfFlowModBuilderFactory`.
+         */
+        public OfFlowModBuilderFactory make() {
+            if (action == null) {
+                throw new IllegalStateException("Flow MOD action is not defined");
+            }
+            if (multiTable == null) {
+                throw new IllegalStateException("MultiTable mode is not defined");
+            }
+
+            OfFlowModBuilderFactory result;
+            switch (action) {
+                case ADD:
+                    result = makeAdd();
+                    break;
+                case DELETE:
+                    result = makeDelete();
+                    break;
+                default:
+                    throw new IllegalStateException(String.format("Unsupported flow MOD action \"%s\"", action));
+            }
+            return result;
+        }
+
+        private OfFlowModBuilderFactory makeAdd() {
+            if (multiTable) {
+                return new OfFlowModAddMultiTableMessageBuilderFactory(basePriority);
+            } else {
+                return new OfFlowModAddSingleTableMessageBuilderFactory(basePriority);
+            }
+        }
+
+        private OfFlowModBuilderFactory makeDelete() {
+            if (multiTable) {
+                return new OfFlowModDelMultiTableMessageBuilderFactory(basePriority);
+            } else {
+                return new OfFlowModDelSingleTableMessageBuilderFactory(basePriority);
+            }
+        }
+    }
+
+    private enum ModAction {
+        ADD, DELETE
+    }
 }

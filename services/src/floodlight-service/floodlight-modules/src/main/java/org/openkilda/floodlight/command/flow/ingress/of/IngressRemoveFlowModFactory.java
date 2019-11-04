@@ -30,13 +30,19 @@ import java.util.Set;
 
 public abstract class IngressRemoveFlowModFactory extends IngressFlowModFactory {
     public IngressRemoveFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentBase command, IOFSwitch sw,
+            OfFlowModBuilderFactory.Factory flowModFactoryFactory, IngressFlowSegmentBase command, IOFSwitch sw,
             Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+        super(flowModFactoryFactory.actionDelete(), command, sw, features);
     }
 
     @Override
-    protected List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+    protected List<OFInstruction> makeOuterVlanMatchMessageInstructions() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<OFInstruction> makeForwardMessageInstructions(
+            OFFactory of, MeterId effectiveMeterId, List<Integer> vlanStack) {
         return Collections.emptyList();
     }
 }

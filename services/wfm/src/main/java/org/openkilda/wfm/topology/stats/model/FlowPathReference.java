@@ -13,14 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.wfm.topology.stats.model;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowPathDirection;
 
 import lombok.Value;
 
 @Value
-public class MeterCacheKey {
-    private SwitchId switchId;
-    private Long meterId;
+public class FlowPathReference {
+    private FlowPathDirection direction;
+    private long effectiveId;
+
+    public FlowPathReference(Long rawCookie) {
+        this(new Cookie(rawCookie));
+    }
+
+    public FlowPathReference(Cookie cookie) {
+        direction = cookie.getFlowPathDirection();
+        effectiveId = cookie.getFlowEffectiveId();
+    }
 }

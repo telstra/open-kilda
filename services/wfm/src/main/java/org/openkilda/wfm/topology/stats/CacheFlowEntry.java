@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.stats;
 
+import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.stats.model.MeasurePoint;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NonNull;
@@ -30,11 +33,11 @@ public class CacheFlowEntry implements Serializable {
     @NonNull
     private String flowId;
 
-    private String ingressSwitch;
-    private String egressSwitch;
-    private Long cookie;
+    private SwitchId ingressSwitch;
+    private SwitchId egressSwitch;
+    private long cookie;
 
-    public CacheFlowEntry(String flowId, Long cookie) {
+    public CacheFlowEntry(String flowId, long cookie) {
         this(flowId, null, null, cookie);
     }
 
@@ -42,14 +45,14 @@ public class CacheFlowEntry implements Serializable {
      * Make "clone" of existing object, replace ingressSwitch or egressSwitch with new value. Switch that must be
      * replaced determined by point argument value.
      */
-    public CacheFlowEntry replaceSwitch(String sw, MeasurePoint point) {
+    public CacheFlowEntry replaceSwitch(SwitchId switchId, MeasurePoint point) {
         CacheFlowEntryBuilder replacement = toBuilder();
         switch (point) {
             case INGRESS:
-                replacement.ingressSwitch(sw);
+                replacement.ingressSwitch(switchId);
                 break;
             case EGRESS:
-                replacement.egressSwitch(sw);
+                replacement.egressSwitch(switchId);
                 break;
             default:
                 throw new IllegalArgumentException(String.format("Unsupported measurement point value %s", point));

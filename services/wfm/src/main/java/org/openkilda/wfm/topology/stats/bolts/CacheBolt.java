@@ -35,37 +35,40 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
-import org.openkilda.wfm.topology.stats.MeasurePoint;
-import org.openkilda.wfm.topology.stats.MeterCacheKey;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
+import org.openkilda.wfm.topology.stats.model.FlowPathReference;
+import org.openkilda.wfm.topology.stats.model.MeasurePoint;
+import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.StatsFlowBatch;
+import org.openkilda.wfm.topology.stats.model.StatsFlowEntry;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.AccessLevel;
+import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 public class CacheBolt extends AbstractBolt {
 
-    public static final String COOKIE_CACHE_FIELD = "cookie_cache";
+    public static final String FIELD_ID_PAYLOAD = "payload";
     public static final String METER_CACHE_FIELD = "meter_cache";
 
-    public static final Fields statsWithCacheFields =
-            new Fields(STATS_FIELD, COOKIE_CACHE_FIELD, METER_CACHE_FIELD, FIELD_ID_CONTEXT);
-    /**
-     * The logger.
-     */
-    private static final Logger logger = LoggerFactory.getLogger(
-            CacheBolt.class);
+    public static final String STREAM_FLOW_STATS_ID = FLOW_STATS.name();
+    public static final Fields STREAM_FLOW_STATS_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_METER_STATS_ID = METER_STATS.name();
+    public static final Fields STREAM_METER_STATS_FIELDS = new Fields(STATS_FIELD, METER_CACHE_FIELD, FIELD_ID_CONTEXT);
 
     /**
      * Path computation instance.
@@ -75,7 +78,10 @@ public class CacheBolt extends AbstractBolt {
     /**
      * Cookie to flow and meter to flow maps.
      */
-    private Map<Long, CacheFlowEntry> cookieToFlow = new HashMap<>();
+    @VisibleForTesting
+    @Getter(AccessLevel.PACKAGE)
+    Map<FlowPathReference, CacheFlowEntry> flowsMetadataCache = new HashMap<>();
+
     private Map<MeterCacheKey, CacheFlowEntry> switchAndMeterToFlow = new HashMap<>();
 
     public CacheBolt(PersistenceManager persistenceManager) {
@@ -89,11 +95,11 @@ public class CacheBolt extends AbstractBolt {
                     .forEach(path -> {
                         CacheFlowEntry entry = new CacheFlowEntry(
                                 path.getFlow().getFlowId(),
-                                path.getSrcSwitch().getSwitchId().toOtsdFormat(),
-                                path.getDestSwitch().getSwitchId().toOtsdFormat(),
+                                path.getSrcSwitch().getSwitchId(), path.getDestSwitch().getSwitchId(),
                                 path.getCookie().getValue());
 
-                        cookieToFlow.put(path.getCookie().getValue(), entry);
+                        FlowPathReference reference = new FlowPathReference(path.getCookie());
+                        flowsMetadataCache.put(reference, entry);
                         if (path.getMeterId() != null) {
                             switchAndMeterToFlow.put(
                                     new MeterCacheKey(
@@ -102,10 +108,11 @@ public class CacheBolt extends AbstractBolt {
                             log.warn("Flow {} has no meter ID", path.getFlow().getFlowId());
                         }
                     });
-            logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
-            logger.info("Stats Cache: Initialized");
+            log.debug(
+                    "cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", flowsMetadataCache, switchAndMeterToFlow);
+            log.info("Stats Cache: Initialized");
         } catch (Exception ex) {
-            logger.error("Error on initFlowCache", ex);
+            log.error("Error on initFlowCache", ex);
         }
     }
 
@@ -147,25 +154,17 @@ public class CacheBolt extends AbstractBolt {
 
     private void handleGetDataFromCache(Tuple tuple) throws PipelineException {
         InfoData data = pullValue(tuple, STATS_FIELD, InfoData.class);
-        Map<Long, CacheFlowEntry> cookieDataCache = null;
-        Map<MeterCacheKey, CacheFlowEntry> meterDataCache = null;
-        String streamId;
 
         if (data instanceof FlowStatsData) {
-            streamId = FLOW_STATS.name();
-            cookieDataCache = createCookieToFlowCache((FlowStatsData) data);
-            logger.debug("execute:cookieDataCache: {}", cookieDataCache);
+            handleFlowStats((FlowStatsData) data);
         } else if (data instanceof MeterStatsData) {
-            streamId = METER_STATS.name();
-            meterDataCache = createSwitchAndMeterToFlowCache((MeterStatsData) data);
-            logger.debug("execute:meterDataCache: {}", meterDataCache);
+            Map<MeterCacheKey, CacheFlowEntry> meterDataCache = createSwitchAndMeterToFlowCache((MeterStatsData) data);
+            Values values = new Values(data, meterDataCache, getCommandContext());
+            getOutput().emit(STREAM_METER_STATS_ID, tuple, values);
         } else {
             unhandledInput(tuple);
             return;
         }
-
-        Values values = new Values(data, cookieDataCache, meterDataCache, getCommandContext());
-        getOutput().emit(streamId, tuple, values);
     }
 
     private void handleUpdateCache(Tuple tuple) {
@@ -183,28 +182,30 @@ public class CacheBolt extends AbstractBolt {
                 updateSwitchMeterFlowCache(cookie, meterId, flow, switchId);
                 break;
             case REMOVE:
-                cookieToFlow.remove(cookie);
+                flowsMetadataCache.remove(new FlowPathReference(cookie));
                 switchAndMeterToFlow.remove(new MeterCacheKey(switchId, meterId));
                 break;
             default:
-                logger.error("invalid command");
+                log.error("invalid cache command: {}", command);
                 break;
         }
 
-        logger.debug("updated cookieToFlow: {}", cookieToFlow);
+        // FIXME(surabujin): I believe this bad idea to log entire cache here (it can be a lot of megabytes)
+        log.debug("updated cookieToFlow: {}", flowsMetadataCache);
     }
 
-    @VisibleForTesting
-    Map<Long, CacheFlowEntry> createCookieToFlowCache(FlowStatsData data) {
-        Map<Long, CacheFlowEntry> cache = new HashMap<>();
+    private void handleFlowStats(FlowStatsData data) {
+        List<StatsFlowEntry> stats = new ArrayList<>();
 
         for (FlowStatsEntry entry : data.getStats()) {
-            if (cookieToFlow.containsKey(entry.getCookie())) {
-                CacheFlowEntry cacheFlowEntry = cookieToFlow.get(entry.getCookie());
-                cache.put(entry.getCookie(), cacheFlowEntry);
-            }
+            FlowPathReference reference = new FlowPathReference(entry.getCookie());
+            StatsFlowEntry statsEntry = new StatsFlowEntry(flowsMetadataCache.get(reference), entry);
+            log.debug("Flow stats entry with added(if any) flow data: {}", statsEntry);
+            stats.add(statsEntry);
         }
-        return cache;
+
+        StatsFlowBatch statsBatch = new StatsFlowBatch(data.getSwitchId(), stats);
+        emit(STREAM_FLOW_STATS_ID, getCurrentTuple(), makeFlowStatsTuple(statsBatch));
     }
 
     @VisibleForTesting
@@ -215,6 +216,7 @@ public class CacheBolt extends AbstractBolt {
             MeterCacheKey key = new MeterCacheKey(data.getSwitchId(), entry.getMeterId());
             if (switchAndMeterToFlow.containsKey(key)) {
                 CacheFlowEntry cacheEntry = switchAndMeterToFlow.get(key);
+                log.debug("Locate meter cache entry: {} => {}", key, cacheEntry);
                 cache.put(key, cacheEntry);
             }
         }
@@ -226,16 +228,16 @@ public class CacheBolt extends AbstractBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(FLOW_STATS.name(), statsWithCacheFields);
-        outputFieldsDeclarer.declareStream(METER_STATS.name(), statsWithCacheFields);
+        outputFieldsDeclarer.declareStream(STREAM_FLOW_STATS_ID, STREAM_FLOW_STATS_FIELDS);
+        outputFieldsDeclarer.declareStream(STREAM_METER_STATS_ID, STREAM_METER_STATS_FIELDS);
     }
 
     private void updateCookieFlowCache(
-            Long cookie, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
-        CacheFlowEntry current = cookieToFlow.getOrDefault(cookie, new CacheFlowEntry(flowId, cookie));
-        CacheFlowEntry replacement = current.replaceSwitch(switchId.toOtsdFormat(), measurePoint);
-        cookieToFlow.put(cookie, replacement);
-
+            Long rawCookie, String flowId, SwitchId switchId, MeasurePoint measurePoint) {
+        FlowPathReference reference = new FlowPathReference(rawCookie);
+        CacheFlowEntry current = flowsMetadataCache.getOrDefault(reference, new CacheFlowEntry(flowId, rawCookie));
+        CacheFlowEntry replacement = current.replaceSwitch(switchId, measurePoint);
+        flowsMetadataCache.put(reference, replacement);
     }
 
     private void updateSwitchMeterFlowCache(Long cookie, Long meterId, String flowId, SwitchId switchId) {
@@ -247,5 +249,9 @@ public class CacheBolt extends AbstractBolt {
         } else {
             switchAndMeterToFlow.put(key, current.replaceCookie(cookie));
         }
+    }
+
+    private Values makeFlowStatsTuple(StatsFlowBatch batch) {
+        return new Values(batch, getCommandContext());
     }
 }

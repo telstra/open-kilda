@@ -377,12 +377,12 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
 
     private FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, Cookie cookie) {
         PathId forwardPathId = new PathId(UUID.randomUUID().toString());
-        TransitVlan forwardVlan = TransitVlan.builder()
+        TransitVlan transitVlan = TransitVlan.builder()
                 .flowId(flow.getFlowId())
                 .pathId(forwardPathId)
                 .vlan(vlanFactory.next())
                 .build();
-        vlanRepository.createOrUpdate(forwardVlan);
+        vlanRepository.createOrUpdate(transitVlan);
         return FlowPath.builder()
                 .flow(flow)
                 .bandwidth(flow.getBandwidth())

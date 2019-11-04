@@ -15,9 +15,9 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -27,6 +27,8 @@ import java.util.Set;
 public class IngressFlowSegmentInstallSingleTableFlowModFactory extends IngressFlowSegmentInstallFlowModFactory {
     public IngressFlowSegmentInstallSingleTableFlowModFactory(
             IngressFlowSegmentCommand command, IOFSwitch sw, Set<SwitchFeature> features) {
-        super(new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY), command, sw, features);
+        super(
+                OfFlowModBuilderFactory.makeFactory(FlowSegmentCommand.FLOW_PRIORITY).multiTable(false),
+                command, sw, features);
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,9 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.exception;
 
-public enum MeasurePoint {
-    INGRESS,
-    EGRESS
+import org.openkilda.model.Cookie;
+
+public class CookieTypeMismatchException extends Exception {
+    public CookieTypeMismatchException(Cookie cookie, Cookie.CookieType expected) {
+        super(String.format(
+                "Cookie type mismatch - %s expected while actual value is %s (cookie: %s)",
+                expected, cookie.getType(), cookie));
+    }
 }

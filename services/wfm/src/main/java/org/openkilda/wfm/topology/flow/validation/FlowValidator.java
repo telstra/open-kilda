@@ -61,6 +61,7 @@ public class FlowValidator {
      * @throws FlowValidationException is thrown if a violation is found.
      */
     public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
+        checkApiVersionCompatibility(flow);
         checkBandwidth(flow);
         checkFlowForIslConflicts(flow);
         checkFlowForEndpointConflicts(flow);
@@ -81,6 +82,10 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(firstFlow, Collections.singleton(secondFlow.getFlowId()));
         checkFlowForEndpointConflicts(secondFlow, Collections.singleton(firstFlow.getFlowId()));
         checkForEqualsEndpoints(firstFlow, secondFlow);
+    }
+
+    private void checkApiVersionCompatibility(Flow flow) throws FlowValidationException {
+        ApiVersionCompatibilityValidator.INSTANCE.enforce(flow);
     }
 
     @VisibleForTesting

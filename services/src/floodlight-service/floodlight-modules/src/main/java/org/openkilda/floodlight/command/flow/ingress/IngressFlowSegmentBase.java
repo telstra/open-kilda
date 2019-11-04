@@ -157,7 +157,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<FlowSegmentReport> planOfFlowsInstall(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = makeIngressModMessages(effectiveMeterId);
+        List<OFFlowMod> ofMessages = makeFlowModMessages(effectiveMeterId);
         List<CompletableFuture<Optional<OFMessage>>> writeResults = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {
             for (OFFlowMod message : ofMessages) {
@@ -169,7 +169,10 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<MeterId> planOfFlowsRemove(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = new ArrayList<>(makeIngressModMessages(effectiveMeterId));
+        List<OFFlowMod> ofMessages = new ArrayList<>(makeFlowModMessages(effectiveMeterId));
+
+        ofMessages.add(flowModFactory.makeOldForwardingRemoveMessage(
+                FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId()) ? 0 : -1));
 
         List<CompletableFuture<?>> requests = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {
@@ -183,7 +186,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<FlowSegmentReport> planOfFlowsVerify(MeterId effectiveMeterId) {
-        return makeVerifyPlan(makeIngressModMessages(effectiveMeterId));
+        return makeVerifyPlan(makeFlowModMessages(effectiveMeterId));
     }
 
     private MeterId handleMeterReport(MeterInstallReport report) {
@@ -209,12 +212,37 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         }
     }
 
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterVlanOnlyForwardMessage(effectiveMeterId));
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        if (metadata.isMultiTable()) {
+            return makeMultiTableFlowModMessages(effectiveMeterId);
         } else {
-            ofMessages.add(flowModFactory.makeDefaultPortFlowMatchAndForwardMessage(effectiveMeterId));
+            return makeSingleTableFlowModMessages(effectiveMeterId);
+        }
+    }
+
+    protected List<OFFlowMod> makeMultiTableFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = new ArrayList<>(2);
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
+                ofMessages.add(flowModFactory.makeDoubleVlanForwardMessage(effectiveMeterId));
+            } else {
+                ofMessages.add(flowModFactory.makeSingleVlanForwardMessage(effectiveMeterId));
+            }
+            // ingress rule should be installed last (if we have more than one rule)
+            ofMessages.add(flowModFactory.makeOuterVlanMatchAndRemoveMessage());
+        } else {
+            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveMeterId));
+        }
+
+        return ofMessages;
+    }
+
+    protected List<OFFlowMod> makeSingleTableFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = new ArrayList<>();
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            ofMessages.add(flowModFactory.makeOuterOnlyVlanForwardMessage(effectiveMeterId));
+        } else {
+            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveMeterId));
         }
         return ofMessages;
     }

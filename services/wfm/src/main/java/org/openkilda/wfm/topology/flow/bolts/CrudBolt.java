@@ -389,7 +389,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) {
-        final String errorType = "Can not delete flow";
+        final String errorType = "Could not delete flow";
 
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.DELETE_FLOW);
@@ -405,6 +405,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FlowValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    e.getType(), errorType, e.getMessage());
         } catch (FeatureTogglesNotEnabledException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for DELETE_FLOW operation.");
@@ -553,6 +556,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FlowValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    e.getType(), errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
             flowService.updateFlowStatus(flowId, FlowStatus.DOWN, request.getPathIds());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),

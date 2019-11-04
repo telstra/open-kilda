@@ -39,10 +39,10 @@ import java.util.concurrent.CompletableFuture;
 abstract class IngressCommandInstallTest extends IngressCommandTest {
     @Test
     public void noMeterRequested() throws Exception {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, null, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, null, makeMetadata());
 
         switchFeaturesSetup(sw, true);
-        expectMakeOuterVlanOnlyForwardMessage(command, null);
+        expectMakeOuterOnlyVlanForwardMessage(command, null);
         expectNoMoreOfMessages();
         replayAll();
 
@@ -55,10 +55,10 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
     @Test
     public void errorNoMeterSupport() throws Exception {
         switchFeaturesSetup(sw, false);
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, meterConfig, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
         expectMeterInstall(
                 new UnsupportedSwitchOperationException(dpIdNext, "Switch doesn't support meters (unit-test)"));
-        expectMakeOuterVlanOnlyForwardMessage(command, null);
+        expectMakeOuterOnlyVlanForwardMessage(command, null);
         expectNoMoreOfMessages();
         replayAll();
 
@@ -77,18 +77,18 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
         reset(session);
         replayAll();
 
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, meterConfig, makeMetadata());
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
         CompletableFuture<FlowSegmentReport> result = command.execute(commandProcessor);
         verifyErrorCompletion(result, SwitchErrorResponseException.class);
     }
 
     @Test
     public void errorOnFlowMod() {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, meterConfig, makeMetadata(false));
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata(false));
 
         switchFeaturesSetup(sw, true);
         expectMeterInstall();
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
+        expectMakeOuterOnlyVlanForwardMessage(command, meterConfig.getId());
         expectNoMoreOfMessages();
         replayAll();
 
@@ -100,26 +100,34 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
         verifyErrorCompletion(result, SwitchOperationException.class);
     }
 
-    protected void processZeroVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeDefaultPortFlowMatchAndForwardMessage(command, meterConfig.getId());
+    void testZeroVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeDefaultPortForwardMessage(command, meterConfig.getId());
         executeCommand(command, 1);
     }
 
-    protected void processOneVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
+    void testSingleVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeOuterOnlyVlanForwardMessage(command, meterConfig.getId());
         executeCommand(command, 1);
     }
 
-    protected void processZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeDefaultPortFlowMatchAndForwardMessage(command, meterConfig.getId());
+    void testZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeDefaultPortForwardMessage(command, meterConfig.getId());
         expectMakeCustomerPortSharedCatchInstallMessage(command);
         executeCommand(command, 2);
     }
 
-    protected void processOneVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeOuterVlanOnlyForwardMessage(command, meterConfig.getId());
+    void testSingleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeSingleVlanForwardMessage(command, meterConfig.getId());
+        expectMakeMultiVlanPreForwardMessage(command);
         expectMakeCustomerPortSharedCatchInstallMessage(command);
-        executeCommand(command, 2);
+        executeCommand(command, 3);
+    }
+
+    void testDoubleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+        expectMakeDoubleVlanForwardMessage(command, meterConfig.getId());
+        expectMakeMultiVlanPreForwardMessage(command);
+        expectMakeCustomerPortSharedCatchInstallMessage(command);
+        executeCommand(command, 3);
     }
 
     private void verifyNoMeterCall(OFFlowAdd request) {

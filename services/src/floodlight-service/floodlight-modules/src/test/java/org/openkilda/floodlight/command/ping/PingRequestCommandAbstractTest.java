@@ -59,10 +59,10 @@ abstract class PingRequestCommandAbstractTest extends PingCommandTest {
 
         moduleContext.addService(IOFSwitchService.class, switchService);
 
-        final DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
-        final DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
-        final DatapathId dpIdGamma = DatapathId.of(0xfffe000000000003L);
-        final DatapathId dpIdDelta = DatapathId.of(0xfffe000000000004L);
+        final DatapathId dpIdAlpha = DatapathId.of(0x0000fffe00000001L);
+        final DatapathId dpIdBeta = DatapathId.of(0x0000fffe00000002L);
+        final DatapathId dpIdGamma = DatapathId.of(0x0000fffe00000003L);
+        final DatapathId dpIdDelta = DatapathId.of(0x0000fffe00000004L);
 
         OFFactory ofFactory = new OFFactoryVer13();
 
@@ -94,7 +94,7 @@ abstract class PingRequestCommandAbstractTest extends PingCommandTest {
 
     protected Ping makePing(IOFSwitch source, IOFSwitch dest) {
         return new Ping(
-                (short) 0x100,
+                (short) 0x100, 0,
                 new NetworkEndpoint(new SwitchId(source.getId().getLong()), 8),
                 new NetworkEndpoint(new SwitchId(dest.getId().getLong()), 9));
     }

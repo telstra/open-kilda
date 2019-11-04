@@ -16,11 +16,13 @@
 package org.openkilda.wfm.topology.flowhs.model;
 
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
 import lombok.Data;
 
+// TODO(surabujin): replace with generic Flow object (and some wrapper responsible for flowhs specific data if required)
 @Data
 @Builder
 public class RequestedFlow {
@@ -29,10 +31,12 @@ public class RequestedFlow {
     private SwitchId srcSwitch;
     private int srcPort;
     private int srcVlan;
+    private int srcInnerVlan;
 
     private SwitchId destSwitch;
     private int destPort;
     private int destVlan;
+    private int destInnerVlan;
 
     private Integer priority;
     private boolean pinned;
@@ -45,4 +49,12 @@ public class RequestedFlow {
     private boolean periodicPings;
     private Integer maxLatency;
     private FlowEncapsulationType flowEncapsulationType;
+
+    public FlowEndpoint getSourceEndpoint() {
+        return new FlowEndpoint(srcSwitch, srcPort, srcVlan, srcInnerVlan);
+    }
+
+    public FlowEndpoint getDestinationEndpoint() {
+        return new FlowEndpoint(destSwitch, destPort, destVlan, destInnerVlan);
+    }
 }

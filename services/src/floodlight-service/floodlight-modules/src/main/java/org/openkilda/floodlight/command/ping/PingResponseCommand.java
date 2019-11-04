@@ -20,9 +20,13 @@ import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.error.CorruptedNetworkDataException;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.model.PingData;
+import org.openkilda.floodlight.model.PingWiredView;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
+import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.SwitchId;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import net.floodlightcontroller.packet.Ethernet;
@@ -73,7 +77,12 @@ public class PingResponseCommand extends PingCommand {
             return null;
         }
 
-        return getPingService().unwrapData(input.getDpId(), ethernetPackage);
+        PingWiredView wiredView = getPingService().unwrapData(input.getDpId(), ethernetPackage);
+        if (wiredView == null) {
+            return null;
+        }
+
+        return wiredView.getPayload();
     }
 
     private PingData decode(byte[] payload) throws CorruptedNetworkDataException {
@@ -95,14 +104,12 @@ public class PingResponseCommand extends PingCommand {
     }
 
     private void logCatch(PingData data, PingMeters meters) {
+        String sourceEndpoint = Ping.formatEndpoint(
+                new SwitchId(data.getSource().getLong()), data.getIngressPortNumber(),
+                FlowEndpoint.makeVlanStack(data.getIngressVlanId(), data.getIngressInnerVlanId()));
         String pingId = String.format("ping{%s}", data.getPingId().toString());
-
-        String source = data.getSource().toString();
-        if (data.getSourceVlan() != null) {
-            source += "-" + data.getSourceVlan().toString();
-        }
         logPing.info(
                 "Catch ping {} ===( {}, latency: {}ms )===> {}",
-                source, pingId, meters.getNetworkLatency(), data.getDest());
+                sourceEndpoint, pingId, meters.getNetworkLatency(), data.getDest());
     }
 }
