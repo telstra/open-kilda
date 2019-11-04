@@ -20,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
+import org.openkilda.messaging.payload.flow.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -27,11 +28,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 @Data
+@EqualsAndHashCode(exclude = {"ignoreBandwidth", "periodicPings", "cookie", "createdTime", "lastUpdated", "meterId",
+        "transitEncapsulationId"})
 public class FlowDto implements Serializable {
     /**
      * Serialization version number constant.
@@ -158,35 +161,39 @@ public class FlowDto implements Serializable {
     @JsonProperty("encapsulation_type")
     private FlowEncapsulationType encapsulationType;
 
+    @JsonProperty("path_computation_strategy")
+    private PathComputationStrategy pathComputationStrategy;
+
     public FlowDto() {
     }
 
     /**
      * Instance constructor.
      *
-     * @param flowId            flow id
-     * @param bandwidth         bandwidth
-     * @param ignoreBandwidth   ignore bandwidth flag
-     * @param periodicPings     enable periodic pings
-     * @param allocateProtectedPath allocate protected flow path.
-     * @param cookie            cookie
-     * @param description       description
-     * @param createdTime       flow created timestamp
-     * @param lastUpdated       last updated timestamp
-     * @param sourceSwitch      source switch
-     * @param destinationSwitch destination switch
-     * @param sourcePort        source port
-     * @param destinationPort   destination port
-     * @param sourceVlan        source vlan id
-     * @param destinationVlan   destination vlan id
-     * @param meterId           meter id
-     * @param transitEncapsulationId       transit vlan id
-     * @param state             flow state
-     * @param maxLatency        max latency
-     * @param priority          flow priority
-     * @param pinned            pinned flag
-     * @param encapsulationType flow encapsulation type
-     * @param detectConnectedDevices detectConnectedDevices flags
+     * @param flowId                    flow id
+     * @param bandwidth                 bandwidth
+     * @param ignoreBandwidth           ignore bandwidth flag
+     * @param periodicPings             enable periodic pings
+     * @param allocateProtectedPath     allocate protected flow path.
+     * @param cookie                    cookie
+     * @param description               description
+     * @param createdTime               flow created timestamp
+     * @param lastUpdated               last updated timestamp
+     * @param sourceSwitch              source switch
+     * @param destinationSwitch         destination switch
+     * @param sourcePort                source port
+     * @param destinationPort           destination port
+     * @param sourceVlan                source vlan id
+     * @param destinationVlan           destination vlan id
+     * @param meterId                   meter id
+     * @param transitEncapsulationId    transit vlan id
+     * @param state                     flow state
+     * @param maxLatency                max latency
+     * @param priority                  flow priority
+     * @param pinned                    pinned flag
+     * @param encapsulationType         flow encapsulation type
+     * @param detectConnectedDevices    detectConnectedDevices flags
+     * @param pathComputationStrategy   path computation strategy
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -213,7 +220,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("priority") Integer priority,
                    @JsonProperty("pinned") boolean pinned,
                    @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
-                   @JsonProperty("detect_connected_devices") DetectConnectedDevicesDto detectConnectedDevices) {
+                   @JsonProperty("detect_connected_devices") DetectConnectedDevicesDto detectConnectedDevices,
+                   @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -238,6 +246,7 @@ public class FlowDto implements Serializable {
         this.pinned = pinned;
         this.encapsulationType = encapsulationType;
         setDetectConnectedDevices(detectConnectedDevices);
+        this.pathComputationStrategy = pathComputationStrategy;
     }
 
     /**
@@ -277,7 +286,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, pinned, null, detectConnectedDevices);
+                null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -305,7 +314,9 @@ public class FlowDto implements Serializable {
                         input.getSource().getDetectConnectedDevices().isLldp(),
                         input.getSource().getDetectConnectedDevices().isArp(),
                         input.getDestination().getDetectConnectedDevices().isLldp(),
-                        input.getDestination().getDetectConnectedDevices().isArp()));
+                        input.getDestination().getDetectConnectedDevices().isArp()),
+                input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
+                        input.getPathComputationStrategy().toUpperCase()) : null);
     }
 
     @JsonIgnore
@@ -379,48 +390,5 @@ public class FlowDto implements Serializable {
         } else {
             this.detectConnectedDevices = detectConnectedDevices;
         }
-    }
-
-    /**
-     * FlowDto to FlowDto comparison.
-     *
-     * <p>Ignore fields:
-     * - ignoreBandwidth
-     * - periodicPings
-     * - cookie
-     * - lastUpdated
-     * - meterId
-     * - transitEncapsulationId
-     * - flowPath
-     * FIXME(surabujin): drop/replace with lombok version (no usage found)
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        FlowDto flow = (FlowDto) object;
-        return Objects.equals(getFlowId(), flow.getFlowId())
-                && getBandwidth() == flow.getBandwidth()
-                && Objects.equals(getDescription(), flow.getDescription())
-                && getState() == flow.getState()
-                && Objects.equals(getSourceSwitch(), flow.getSourceSwitch())
-                && getSourcePort() == flow.getSourcePort()
-                && getSourceVlan() == flow.getSourceVlan()
-                && Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch())
-                && getDestinationPort() == flow.getDestinationPort()
-                && getDestinationVlan() == flow.getDestinationVlan()
-                && Objects.equals(getEncapsulationType(), flow.getEncapsulationType())
-                && Objects.equals(getDetectConnectedDevices(), flow.getDetectConnectedDevices());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(flowId, bandwidth, description, state, sourceSwitch, sourcePort, sourceVlan,
-                destinationSwitch, destinationPort, destinationVlan, encapsulationType, detectConnectedDevices);
     }
 }

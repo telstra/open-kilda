@@ -98,7 +98,7 @@ public class AvailableNetworkFactory {
             flowPaths.forEach(pathId ->
                     flowPathRepository.findById(pathId)
                             .ifPresent(flowPath ->
-                                    network.processDiversitySegments(flowPath.getSegments(), config)));
+                                    network.processDiversitySegments(flowPath.getSegments())));
         }
 
         return network;

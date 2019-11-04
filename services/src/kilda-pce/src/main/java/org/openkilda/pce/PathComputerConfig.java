@@ -40,11 +40,15 @@ public interface PathComputerConfig extends Serializable {
     @Default("100")
     int getDiversitySwitchWeight();
 
-    @Key("strategy")
-    @Default("COST")
-    String getStrategy();
-
     @Key("network.strategy")
     @Default("COST")
     String getNetworkStrategy();
+
+    @Key("isl.cost.when.port.down")
+    @Default("10000")
+    int getUnstableCostRaise();
+
+    @Key("isl.cost.when.under.maintenance")
+    @Default("10000")
+    int getUnderMaintenanceCostRaise();
 }

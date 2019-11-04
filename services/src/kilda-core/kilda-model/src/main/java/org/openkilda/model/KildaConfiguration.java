@@ -37,6 +37,7 @@ public class KildaConfiguration {
     public static final KildaConfiguration DEFAULTS = KildaConfiguration.builder()
             .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
             .useMultiTable(false)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .build();
 
     // Hidden as needed for OGM only.
@@ -53,13 +54,19 @@ public class KildaConfiguration {
     @Property(name = "use_multi_table")
     private Boolean useMultiTable;
 
+    @Property(name = "path_computation_strategy")
+    @Convert(graphPropertyType = String.class)
+    private PathComputationStrategy pathComputationStrategy;
+
     /**
      * Constructor prevents initialization of entityId field.
      */
     @Builder(toBuilder = true)
     KildaConfiguration(FlowEncapsulationType flowEncapsulationType,
-                       Boolean useMultiTable) {
+                       Boolean useMultiTable,
+                       PathComputationStrategy pathComputationStrategy) {
         this.flowEncapsulationType = flowEncapsulationType;
         this.useMultiTable = useMultiTable;
+        this.pathComputationStrategy = pathComputationStrategy;
     }
 }
