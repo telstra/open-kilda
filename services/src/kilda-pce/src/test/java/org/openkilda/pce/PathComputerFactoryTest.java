@@ -18,7 +18,6 @@ package org.openkilda.pce;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import org.openkilda.pce.PathComputerFactory.WeightStrategy;
 import org.openkilda.pce.impl.InMemoryPathComputer;
 
 import org.junit.Test;
@@ -28,14 +27,7 @@ public class PathComputerFactoryTest {
     public void shouldCreateAnInstance() {
         PathComputerFactory factory = new PathComputerFactory(
                 mock(PathComputerConfig.class), mock(AvailableNetworkFactory.class));
-        PathComputer pathComputer = factory.getPathComputer(WeightStrategy.COST);
+        PathComputer pathComputer = factory.getPathComputer();
         assertTrue(pathComputer instanceof InMemoryPathComputer);
-    }
-
-    @Test(expected = UnsupportedOperationException.class)
-    public void shouldNotCreateNonCostPathComputer() {
-        PathComputerFactory factory = new PathComputerFactory(
-                mock(PathComputerConfig.class), mock(AvailableNetworkFactory.class));
-        factory.getPathComputer(WeightStrategy.LATENCY);
     }
 }

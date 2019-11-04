@@ -35,7 +35,8 @@ public interface PathFinder {
      * @return an ordered list that represents the path from start to end, or an empty list if no path found.
      */
     Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
-                                                  SwitchId startSwitchId, SwitchId endSwitchId)
+                                                   SwitchId startSwitchId, SwitchId endSwitchId,
+                                                   WeightFunction weightFunction)
             throws UnroutableFlowException;
 
     /**
@@ -44,12 +45,5 @@ public interface PathFinder {
      * @return an list of N (or less) best paths.
      */
     List<List<Edge>> findNPathsBetweenSwitches(AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId,
-                                               int count) throws UnroutableFlowException;
-
-    /**
-     * Returns weight function for current finder.
-     *
-     * @return the weight function.
-     */
-    WeightFunction getWeightFunction();
+                                               int count, WeightFunction weightFunction) throws UnroutableFlowException;
 }

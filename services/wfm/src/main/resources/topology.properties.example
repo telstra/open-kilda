@@ -26,8 +26,6 @@ kafka.topic.topo.reroute = kilda.topo.reroute
 reroute.throttling.delay.min = 10
 reroute.throttling.delay.max = 600
 
-isl.cost.when.port.down = 10000
-isl.cost.when.under.maintenance = 10000
 isl.unstable.timeout.sec = 3600
 
 port.up.down.throttling.delay.seconds.min = 1
@@ -81,10 +79,11 @@ discovery.db.write.repeats.time.frame = 30
 local = no
 local.execution.time = 300
 
-pce.strategy = COST
 pce.network.strategy = SYMMETRIC_COST
 pce.diversity.isl.weight = 1000
 pce.diversity.switch.weight = 100
+pce.isl.cost.when.port.down = 10000
+pce.isl.cost.when.under.maintenance = 10000
 
 burst.coefficient = 1.05
 min.burst.size.in.kbits = 1024

@@ -73,6 +73,9 @@ public class FlowCreateService {
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
         }
+        if (requestedFlow.getPathComputationStrategy() == null) {
+            requestedFlow.setPathComputationStrategy(kildaConfigurationRepository.get().getPathComputationStrategy());
+        }
         FlowCreateContext context = FlowCreateContext.builder()
                 .targetFlow(requestedFlow)
                 .build();

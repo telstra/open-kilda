@@ -28,7 +28,6 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.ToString;
 
 import java.util.Comparator;
@@ -54,16 +53,10 @@ public class Node {
     private Set<Edge> backupIncomingLinks;
     private Set<Edge> backupOutgoingLinks;
 
-    @Setter
-    private int diversityWeight;
+    private int diversityGroupUseCounter;
 
-    /**
-     * Gets sum of weights, that filling is ruled by AvailableNetwork construction.
-     *
-     * @return the node total static weight.
-     */
-    public long getStaticWeight() {
-        return diversityWeight;
+    public void increaseDiversityGroupUseCounter() {
+        diversityGroupUseCounter++;
     }
 
     /**
@@ -108,7 +101,7 @@ public class Node {
             return edges;
         }
 
-        Comparator<Edge> comparator = comparingLong(e -> e.getFullWeight(weightFunction));
+        Comparator<Edge> comparator = comparingLong(weightFunction::apply);
         comparator = comparator.thenComparing(resolvePortCollisionsFn);
         return edges.stream()
                 .collect(groupingBy(groupingFunction, minBy(comparator)))

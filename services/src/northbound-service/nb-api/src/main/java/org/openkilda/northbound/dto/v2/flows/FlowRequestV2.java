@@ -45,4 +45,5 @@ public class FlowRequestV2 {
     private boolean pinned;
     private boolean allocateProtectedPath;
     private String encapsulationType;
+    private String pathComputationStrategy;
 }

@@ -312,8 +312,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("PUSH flow: {} :: {}", flowId, message);
             FlowInfoData fid = (FlowInfoData) message.getData();
-            FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload(),
-                    () -> kildaConfigurationRepository.get().getFlowEncapsulationType());
+            FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload(), () -> kildaConfigurationRepository.get());
 
             FlowStatus flowStatus = (fid.getOperation() == FlowOperation.PUSH_PROPAGATE)
                     ? FlowStatus.IN_PROGRESS : FlowStatus.UP;
@@ -427,7 +426,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                         ErrorType.DATA_INVALID);
             }
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload(),
-                    () -> kildaConfigurationRepository.get().getFlowEncapsulationType());
+                    () -> kildaConfigurationRepository.get());
             saveEvent(Event.CREATE, flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
             FlowPair createdFlow = flowService.createFlow(flow.getFlow(),
@@ -612,7 +611,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                         ErrorType.DATA_INVALID);
             }
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload(),
-                    () -> kildaConfigurationRepository.get().getFlowEncapsulationType());
+                    () -> kildaConfigurationRepository.get());
             saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
 
             //TODO: this is extra fetch of the flow entity, must be moved into the service method.
