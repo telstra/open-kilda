@@ -15,7 +15,8 @@
 
 package org.openkilda.model;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -24,40 +25,18 @@ import java.time.Instant;
 
 public class IslTest {
     private final IslConfig islConfig = IslConfig.builder()
-            .underMaintenanceCostRaise(1000)
-            .unstableCostRaise(1000)
             .unstableIslTimeout(Duration.ofSeconds(120))
             .build();
 
     @Test
-    public void shouldComputeEffectiveCostAccordingUnderMaintenanceFlag() {
-        int islCost = 700;
-
+    public void shouldComputeIsUnstable() {
         Isl isl = new Isl();
-        isl.setCost(islCost);
         isl.setIslConfig(islConfig);
-        assertEquals(islCost, isl.getEffectiveCost());
-
-        isl.setUnderMaintenance(true);
-        assertEquals(islCost + islConfig.getUnderMaintenanceCostRaise(), isl.getEffectiveCost());
-    }
-
-    @Test
-    public void shouldComputeEffectiveCostAccordingUnstableTime() {
-        int islCost = 700;
-
-        Isl isl = new Isl();
-        isl.setCost(islCost);
-        isl.setIslConfig(islConfig);
-        assertEquals(islCost, isl.getEffectiveCost());
 
         isl.setTimeUnstable(Instant.now().minus(islConfig.getUnstableIslTimeout()));
-        assertEquals(islCost, isl.getEffectiveCost());
+        assertFalse(isl.isUnstable());
 
         isl.setTimeUnstable(Instant.now());
-        assertEquals(islCost + islConfig.getUnstableCostRaise(), isl.getEffectiveCost());
-
-        isl.setTimeUnstable(Instant.now().minus(islConfig.getUnstableIslTimeout().minus(Duration.ofSeconds(1))));
-        assertEquals(islCost + islConfig.getUnstableCostRaise(), isl.getEffectiveCost());
+        assertTrue(isl.isUnstable());
     }
 }

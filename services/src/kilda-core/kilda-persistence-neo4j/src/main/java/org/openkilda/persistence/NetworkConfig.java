@@ -27,12 +27,4 @@ public interface NetworkConfig extends Serializable {
     @Key("isl.unstable.timeout.sec")
     @Default("7200")
     int getIslUnstableTimeoutSec();
-
-    @Key("isl.cost.when.port.down")
-    @Default("10000")
-    int getIslCostWhenPortDown();
-
-    @Key("isl.cost.when.under.maintenance")
-    @Default("10000")
-    int getIslCostWhenUnderMaintenance();
 }

@@ -69,7 +69,7 @@ class FlowHelper {
         Wrappers.retry(3, 0) {
             def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
                     getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, false, generateDescription(),
-                    null, null, null, null, null, null, false, null)
+                    null, null, null, null, null, null, false, null, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -90,7 +90,7 @@ class FlowHelper {
             def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
             def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
             def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false, false,
-                    generateDescription(), null, null, null, null, null, null, false, null)
+                    generateDescription(), null, null, null, null, null, null, false, null, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
