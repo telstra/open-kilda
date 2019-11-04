@@ -42,8 +42,9 @@ antiflap.min=1
 antiflap.warmup=3
 antiflap.cooldown=7
 
-isl.cost.when.port.down=10000
-isl.cost.when.under.maintenance=10000
+pce.isl.cost.when.port.down=10000
+pce.isl.cost.when.under.maintenance=10000
+
 isl.unstable.timeout.sec=15
 
 burst.coefficient=1.05

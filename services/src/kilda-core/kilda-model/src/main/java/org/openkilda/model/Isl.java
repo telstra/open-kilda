@@ -168,22 +168,13 @@ public class Isl implements Serializable {
     }
 
     /**
-     * Get the ISL cost, given the current flags of the ISL.
+     * Return true if ISL is unstable and false otherwise.
      */
-    public int getEffectiveCost() {
+    public boolean isUnstable() {
         if (islConfig == null) {
             throw new IllegalStateException("IslConfig has not initialized.");
         }
 
-        int effectiveCost = cost;
-
-        if (underMaintenance) {
-            effectiveCost += islConfig.getUnderMaintenanceCostRaise();
-        }
-
-        if (timeUnstable != null && timeUnstable.plus(islConfig.getUnstableIslTimeout()).isAfter(Instant.now())) {
-            effectiveCost += islConfig.getUnstableCostRaise();
-        }
-        return effectiveCost;
+        return timeUnstable != null && timeUnstable.plus(islConfig.getUnstableIslTimeout()).isAfter(Instant.now());
     }
 }

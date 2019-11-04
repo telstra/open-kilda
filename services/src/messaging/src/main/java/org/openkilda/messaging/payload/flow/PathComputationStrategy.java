@@ -13,15 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.messaging.payload.flow;
 
-import lombok.Builder;
-import lombok.Data;
-
-import java.time.Duration;
-
-@Data
-@Builder(toBuilder = true)
-public class IslConfig {
-    private Duration unstableIslTimeout;
+/**
+ * Class represents path computation strategy.
+ */
+public enum PathComputationStrategy {
+    COST,
+    LATENCY
 }

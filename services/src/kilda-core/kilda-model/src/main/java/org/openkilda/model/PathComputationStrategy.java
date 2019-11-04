@@ -15,13 +15,10 @@
 
 package org.openkilda.model;
 
-import lombok.Builder;
-import lombok.Data;
-
-import java.time.Duration;
-
-@Data
-@Builder(toBuilder = true)
-public class IslConfig {
-    private Duration unstableIslTimeout;
+/**
+ * Represents path computation strategy.
+ */
+public enum PathComputationStrategy {
+    COST,
+    LATENCY
 }
