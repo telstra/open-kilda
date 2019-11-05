@@ -74,4 +74,13 @@ public class SpeakerWorkerBolt extends WorkerBolt {
         super.declareOutputFields(declarer);
         declarer.declareStream(StreamType.TO_SPEAKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
     }
+
+    @Override
+    protected void unhandledInput(Tuple input) {
+        if (log.isDebugEnabled()) {
+            log.trace("Received a response from {} for non-pending task {}: {}", input.getSourceComponent(),
+                    input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY),
+                    input.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD));
+        }
+    }
 }

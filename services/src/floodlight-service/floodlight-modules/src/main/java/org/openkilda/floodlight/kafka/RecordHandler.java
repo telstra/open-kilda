@@ -1358,7 +1358,7 @@ class RecordHandler implements Runnable {
             producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Meters not supported: {}", switchId);
-            InfoMessage infoMessage = new InfoMessage(new SwitchMeterUnsupported(), timestamp, correlationId);
+            InfoMessage infoMessage = new InfoMessage(new SwitchMeterUnsupported(switchId), timestamp, correlationId);
             producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
         } catch (SwitchNotFoundException e) {
             logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
