@@ -7,6 +7,7 @@ This design is initial proposal for integration of one the Telescope application
 
 It should be possible to add/remove application for the single flow endpoint. From DB perspective  new fields will be 
 added to `Flow` node
+
 2 Applications on source endpoint:  
 
     {
@@ -67,7 +68,7 @@ If you do not specify an endpoint, then the application will be removed for both
 ## Kafka API
 
 ### Messaging
-Command for the new exclusion on flow endpoint
+Command for the new exclusion(special rule that filters  to be mirrored traffic by 5 tuple) on flow endpoint.
     
     {
       "clazz": "org.openkilda.applications.command.CommandMessage",
@@ -162,6 +163,9 @@ Notification of the new flow endpoint to watch:
       "payload": {
           "clazz": "org.openkilda.applications.info.apps.FlowApplicationCreated",
           "flow_id": "string",
+          "forward_tunnel_id": 0,
+          "reverse_tunnel_id": 0,
+          "switch_id": "string",
           "application": "telescope"
       },
       "timestamp": 0,
@@ -175,6 +179,9 @@ Notification of the flow endpoint to stop watch:
       "payload": {
           "clazz": "org.openkilda.applications.info.apps.FlowApplicationRemoved",
           "flow_id": "string",
+          "forward_tunnel_id": 0,
+          "reverse_tunnel_id": 0,
+          "switch_id": "string",
           "application": "telescope"
       },
       "timestamp": 0,
@@ -228,7 +235,15 @@ Flow statistics:
                 "packet_count": 0,
                 "byte_count": 0,
                 "in_port": 0,
-                "out_port": 0
+                "out_port": 0,
+                "match" : {
+                    "src_ip": "string",
+                    "src_port": 0,
+                    "dst_ip": "string"
+                    "dst_port": 0,
+                    "proto": "string",
+                    "eth_type": "string"
+                }
              }
           ]
       },
