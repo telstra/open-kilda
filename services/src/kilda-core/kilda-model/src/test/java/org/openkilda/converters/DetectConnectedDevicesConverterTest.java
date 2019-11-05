@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.converter;
+package org.openkilda.converters;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -22,7 +22,6 @@ import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_LLDP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_LLDP;
 
-import org.openkilda.converters.DetectConnectedDevicesConverter;
 import org.openkilda.model.DetectConnectedDevices;
 
 import org.junit.BeforeClass;

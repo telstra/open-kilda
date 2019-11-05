@@ -13,9 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.converter;
+package org.openkilda.converters;
 
-import org.openkilda.converters.SwitchFeatureConverter;
 import org.openkilda.model.SwitchFeature;
 
 import org.junit.Assert;
