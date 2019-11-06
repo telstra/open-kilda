@@ -79,7 +79,8 @@ export class FlowEditComponent implements OnInit {
       return { label: (k).toString(), value: (k).toString() };
     });
     let flowId: string = this.route.snapshot.paramMap.get("id");
-    var filterFlag = localStorage.getItem('filterFlag');
+    var filterFlag = localStorage.getItem('filterFlag') || 'controller';
+
     this.getFlowDetail(flowId,filterFlag);
   }
 
@@ -92,86 +93,39 @@ export class FlowEditComponent implements OnInit {
   /**Get flow detail via api call */
   getFlowDetail(flowId,filterFlag) {
     this.loaderService.show("Loading Flow Detail");
-    var flow_detail  = null;
-    if(filterFlag == 'controller') {
-        let flowData  = JSON.parse(localStorage.getItem('flows')) || {};
-        let flowList = typeof(flowData.list_data) != 'undefined' ? flowData.list_data: [];
-        if (flowList && flowList.length){
-          flowList.forEach(element => { 
-          if(element.flowid == flowId){
-            flow_detail = element;
-            return;
-          }
-          });
-        }
-      }else{
-        var flowData = JSON.parse(localStorage.getItem('flowsinventory')) || {};
-        let flowList = typeof(flowData.list_data) != 'undefined' ? flowData.list_data: [];
-        if (flowList && flowList.length) {
-          flowList.forEach(element => { 
-          if (element.flowid == flowId) {
-            flow_detail = element;
-            return;
-          }
-          });
-      }
-    }
-    if (flow_detail) {
-      this.flowDetailData = flow_detail;
+    this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
+      flow => {
+        this.flowDetailData = flow;
         this.flowDetail = {
-          flowid: flow_detail.flowid,
-          description: flow_detail.description || "",
-          maximum_bandwidth: flow_detail.maximum_bandwidth || 0,
-          source_switch: flow_detail.source_switch,
-          source_port: flow_detail.src_port.toString(),
-          source_vlan: flow_detail.src_vlan.toString(),
-          target_switch: flow_detail.target_switch,
-          target_port: flow_detail.dst_port.toString(),
-          target_vlan: flow_detail.dst_vlan.toString(),
-          diverse_flowid:( typeof(flow_detail['diverse_with']) && flow_detail['diverse_with'].length > 0 )? flow_detail['diverse_with'][0] : null,
-          allocate_protected_path:flow_detail['allocate_protected_path'] || null,
+          flowid: flow.flowid,
+          description: flow.description || "",
+          maximum_bandwidth: flow.maximum_bandwidth || 0,
+          source_switch: flow.source_switch,
+          source_port: flow.src_port.toString(),
+          source_vlan: flow.src_vlan.toString(),
+          target_switch: flow.target_switch,
+          target_port: flow.dst_port.toString(),
+          target_vlan: flow.dst_vlan.toString(),
+          diverse_flowid:( typeof(flow['diverse_with'])!='undefined' && flow['diverse_with'].length > 0 )? flow['diverse_with'][0] : null,
+          allocate_protected_path:flow['allocate_protected_path'] || null,
         };
-        this.flowId = flow_detail.flowid;
-        this.allocate_protected_path = flow_detail.allocate_protected_path || false;
+        this.flowId = flow.flowid;
         this.flowEditForm.setValue(this.flowDetail);
 
         this.getflowList();
         this.getSwitchList();
         this.getPorts("source_switch" , true);
         this.getPorts("target_switch", true);
-    }else{
-      this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
-        flow => {
-          this.flowDetailData = flow;
-          this.flowDetail = {
-            flowid: flow.flowid,
-            description: flow.description || "",
-            maximum_bandwidth: flow.maximum_bandwidth || 0,
-            source_switch: flow.source_switch,
-            source_port: flow.src_port.toString(),
-            source_vlan: flow.src_vlan.toString(),
-            target_switch: flow.target_switch,
-            target_port: flow.dst_port.toString(),
-            target_vlan: flow.dst_vlan.toString(),
-            diverse_flowid:flow['diverse-flowid'] || null,
-            allocate_protected_path:flow['allocate_protected_path'] || null,
-          };
-          this.flowId = flow.flowid;
-          this.flowEditForm.setValue(this.flowDetail);
-  
-          this.getflowList();
-          this.getSwitchList();
-          this.getPorts("source_switch" , true);
-          this.getPorts("target_switch", true);
-        },
-        error => {
-          var errorMsg =error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No flow found';
-         this.toaster.error(errorMsg, "Error");
-          this.goToBack();
-          this.loaderService.hide();
-        }
-      );
-    }
+      },
+      error => {
+        var errorMsg =error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No flow found';
+       this.toaster.error(errorMsg, "Error");
+        this.goToBack();
+        this.loaderService.hide();
+      }
+    );
+    
+   
     
   }
 

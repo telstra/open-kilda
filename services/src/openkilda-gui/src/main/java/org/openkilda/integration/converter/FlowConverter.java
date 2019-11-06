@@ -76,6 +76,7 @@ public class FlowConverter {
         flowInfo.setDescription(flow.getDescription());
         flowInfo.setStatus(flow.getStatus().toUpperCase());
         flowInfo.setDiverseFlowid(flow.getDiverseFlowId());
+        flowInfo.setDiverseWith(flow.getDiverseWith());
         flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {
