@@ -22,6 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.persistence.PersistenceManager;
@@ -35,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +82,13 @@ public class FlowValidationHubService {
                 fsm.fire(FlowValidationEvent.RULES_RECEIVED, data);
             } else if (data instanceof SwitchMeterEntries) {
                 fsm.fire(FlowValidationEvent.METERS_RECEIVED, data);
+            } else if (data instanceof SwitchMeterUnsupported) {
+                SwitchMeterUnsupported meterUnsupported = (SwitchMeterUnsupported) data;
+                log.info("Key: {}; Meters unsupported for switch '{};", key, meterUnsupported.getSwitchId());
+                fsm.fire(FlowValidationEvent.METERS_RECEIVED, SwitchMeterEntries.builder()
+                        .switchId(meterUnsupported.getSwitchId())
+                        .meterEntries(Collections.emptyList())
+                        .build());
             } else {
                 log.warn("Key: {}; Unhandled message {}", key, message);
             }
