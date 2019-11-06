@@ -23,6 +23,7 @@ import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -30,6 +31,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IllegalFlowStateException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -92,7 +94,7 @@ public class FlowValidationService {
      */
     public List<FlowValidationResponse> validateFlow(String flowId, List<SwitchFlowEntries> switchFlowEntries,
                                                      List<SwitchMeterEntries> switchMeterEntries)
-            throws FlowNotFoundException {
+            throws FlowNotFoundException, SwitchNotFoundException {
 
         Map<SwitchId, List<SimpleSwitchRule>> switchRules = new HashMap<>();
         int rulesCount = 0;
@@ -154,13 +156,15 @@ public class FlowValidationService {
 
     private FlowValidationResponse compare(Map<SwitchId, List<SimpleSwitchRule>> rulesPerSwitch,
                                            List<SimpleSwitchRule> rulesFromDb, String flowId,
-                                           int totalSwitchRules, int metersCount) {
+                                           int totalSwitchRules, int metersCount) throws SwitchNotFoundException {
 
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
         List<Long> pktCounts = new ArrayList<>();
         List<Long> byteCounts = new ArrayList<>();
-        rulesFromDb.forEach(simpleRule -> discrepancies.addAll(
-                findDiscrepancy(simpleRule, rulesPerSwitch.get(simpleRule.getSwitchId()), pktCounts, byteCounts)));
+        for (SimpleSwitchRule simpleRule : rulesFromDb) {
+            discrepancies.addAll(
+                    findDiscrepancy(simpleRule, rulesPerSwitch.get(simpleRule.getSwitchId()), pktCounts, byteCounts));
+        }
         int flowMetersCount = (int) rulesFromDb.stream().filter(rule -> rule.getMeterId() != null).count();
 
         return FlowValidationResponse.builder()
@@ -197,7 +201,8 @@ public class FlowValidationService {
     }
 
     private List<PathDiscrepancyEntity> findDiscrepancy(SimpleSwitchRule expected, List<SimpleSwitchRule> actual,
-                                                        List<Long> pktCounts, List<Long> byteCounts) {
+                                                        List<Long> pktCounts, List<Long> byteCounts)
+            throws SwitchNotFoundException {
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
         SimpleSwitchRule matched = findMatched(expected, actual);
 
@@ -242,7 +247,8 @@ public class FlowValidationService {
         return matched;
     }
 
-    private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched) {
+    private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched)
+            throws SwitchNotFoundException {
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
         if (matched.getCookie() != expected.getCookie()) {
             discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "cookie",
@@ -276,11 +282,17 @@ public class FlowValidationService {
                 discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterId",
                         String.valueOf(expected.getMeterId()), String.valueOf(matched.getMeterId())));
             } else {
-                if (!Objects.equals(matched.getMeterRate(), expected.getMeterRate())) {
+
+                Switch sw = switchRepository.findById(expected.getSwitchId())
+                        .orElseThrow(() -> new SwitchNotFoundException(expected.getSwitchId()));
+                boolean isESwitch =
+                        Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+
+                if (!equalsRate(matched.getMeterRate(), expected.getMeterRate(), isESwitch)) {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterRate",
                             String.valueOf(expected.getMeterRate()), String.valueOf(matched.getMeterRate())));
                 }
-                if (!Objects.equals(matched.getMeterBurstSize(), expected.getMeterBurstSize())) {
+                if (!equalsBurstSize(matched.getMeterBurstSize(), expected.getMeterBurstSize(), isESwitch)) {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterBurstSize",
                             String.valueOf(expected.getMeterBurstSize()), String.valueOf(matched.getMeterBurstSize())));
                 }
@@ -291,5 +303,21 @@ public class FlowValidationService {
             }
         }
         return discrepancies;
+    }
+
+    private boolean equalsRate(Long actual, Long expected, boolean isESwitch) {
+        if (actual == null || expected == null) {
+            return Objects.equals(actual, expected);
+        }
+
+        return Meter.equalsRate(actual, expected, isESwitch);
+    }
+
+    private boolean equalsBurstSize(Long actual, Long expected, boolean isESwitch) {
+        if (actual == null || expected == null) {
+            return Objects.equals(actual, expected);
+        }
+
+        return Meter.equalsBurstSize(actual, expected, isESwitch);
     }
 }

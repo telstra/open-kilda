@@ -76,7 +76,7 @@ public class SimpleSwitchRuleConverter {
                 .meterId(flowPath.getMeterId() != null ? flowPath.getMeterId().getValue() : null)
                 .meterRate(flow.getBandwidth())
                 .meterBurstSize(Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
-                        flowMeterBurstCoefficient, flow.getSrcSwitch().getDescription()))
+                        flowMeterBurstCoefficient, flowPath.getSrcSwitch().getDescription()))
                 .meterFlags(Meter.getMeterKbpsFlags())
                 .build();
 
