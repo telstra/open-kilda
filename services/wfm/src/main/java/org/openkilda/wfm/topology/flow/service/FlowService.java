@@ -171,7 +171,6 @@ public class FlowService extends BaseFlowService {
         try {
             result = (FlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
-                        ensureEncapsulationType(flow);
                         Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
                                 flow.getSrcSwitch().getSwitchId());
                         boolean srcWithMultiTable = false;
@@ -281,7 +280,6 @@ public class FlowService extends BaseFlowService {
             throw new FlowAlreadyExistException(flowId);
         }
 
-        ensureEncapsulationType(flow);
         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
         // Store the flow, use allocated resources for paths.
@@ -420,7 +418,6 @@ public class FlowService extends BaseFlowService {
         try {
             result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
-                        ensureEncapsulationType(updatingFlow);
                         Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
                                 updatingFlow.getSrcSwitch().getSwitchId());
                         boolean srcWithMultiTable = false;
@@ -1011,12 +1008,6 @@ public class FlowService extends BaseFlowService {
                 .latency(segment.getLatency())
                 .build();
 
-    }
-
-    private void ensureEncapsulationType(Flow flow) {
-        if (flow.getEncapsulationType() == null) {
-            flow.setEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
-        }
     }
 
     private Flow buildFlowWithPaths(Flow flow, FlowPathPair flowPathPair, FlowStatus status, Instant timeModify) {

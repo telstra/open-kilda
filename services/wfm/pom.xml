@@ -84,6 +84,11 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
+            <artifactId>kilda-reporting</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
             <artifactId>messaging</artifactId>
             <version>${openkilda-messaging.version}</version>
         </dependency>

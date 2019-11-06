@@ -19,6 +19,8 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
@@ -31,6 +33,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -68,11 +71,16 @@ public class SimpleSwitchRuleConverterTest {
     private static final int FLOW_A_DST_VLAN = 140;
     private static final long FLOW_A_FORWARD_METER_ID = 32L;
     private static final long FLOW_A_FORWARD_COOKIE = Cookie.buildForwardCookie(1L).getValue();
+    private static final long FLOW_A_BANDWIDTH = 10000;
     private static final int FLOW_B_SRC_PORT = 1;
     private static final int FLOW_B_SRC_VLAN = 150;
     private static final int FLOW_B_DST_VLAN = 160;
     private static final long FLOW_B_FORWARD_COOKIE = Cookie.buildForwardCookie(2L).getValue();
     private static final long FLOW_B_FORWARD_METER_ID = 34L;
+    private static final long FLOW_B_BANDWIDTH = 11000;
+
+    private static final long MIN_BURST_SIZE_IN_KBITS = 1024;
+    private static final double BURST_COEFFICIENT = 1.05;
 
     private SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
 
@@ -87,7 +95,9 @@ public class SimpleSwitchRuleConverterTest {
                         .flowId(TEST_FLOW_ID_A)
                         .pathId(FLOW_A_FORWARD_PATH_ID)
                         .vlan(FLOW_A_ENCAP_ID)
-                        .build());
+                        .build(),
+                MIN_BURST_SIZE_IN_KBITS,
+                BURST_COEFFICIENT);
 
         assertEquals(expectedSwitchRules, switchRules);
     }
@@ -103,7 +113,9 @@ public class SimpleSwitchRuleConverterTest {
                         .flowId(TEST_FLOW_ID_A)
                         .pathId(FLOW_A_FORWARD_PATH_ID)
                         .vni(FLOW_A_ENCAP_ID)
-                        .build());
+                        .build(),
+                MIN_BURST_SIZE_IN_KBITS,
+                BURST_COEFFICIENT);
 
         assertEquals(expectedSwitchRules, switchRules);
     }
@@ -114,7 +126,7 @@ public class SimpleSwitchRuleConverterTest {
         List<SimpleSwitchRule> expectedSwitchRules = getSimpleSwitchRuleForOneSwitchFlow();
 
         List<SimpleSwitchRule> switchRules = simpleSwitchRuleConverter.convertFlowPathToSimpleSwitchRules(flow,
-                flow.getForwardPath(), null);
+                flow.getForwardPath(), null, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
 
         assertEquals(expectedSwitchRules, switchRules);
     }
@@ -124,10 +136,12 @@ public class SimpleSwitchRuleConverterTest {
         List<SimpleSwitchRule> expectedSwitchRules = getSimpleSwitchRuleForTransitVlan();
 
         List<SwitchFlowEntries> switchFlowEntries = getSwitchFlowEntriesWithTransitVlan();
+        List<SwitchMeterEntries> switchMeterEntries = getSwitchMeterEntries();
 
         for (int i = 0; i < switchFlowEntries.size(); i++) {
             List<SimpleSwitchRule> switchRules =
-                    simpleSwitchRuleConverter.convertSwitchFlowEntriesToSimpleSwitchRules(switchFlowEntries.get(i));
+                    simpleSwitchRuleConverter.convertSwitchFlowEntriesToSimpleSwitchRules(switchFlowEntries.get(i),
+                            switchMeterEntries.get(i));
             assertThat(switchRules, hasSize(1));
             assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
         }
@@ -138,10 +152,12 @@ public class SimpleSwitchRuleConverterTest {
         List<SimpleSwitchRule> expectedSwitchRules = getSimpleSwitchRuleForVxlan();
 
         List<SwitchFlowEntries> switchFlowEntries = getSwitchFlowEntriesWithVxlan();
+        List<SwitchMeterEntries> switchMeterEntries = getSwitchMeterEntries();
 
         for (int i = 0; i < switchFlowEntries.size(); i++) {
             List<SimpleSwitchRule> switchRules =
-                    simpleSwitchRuleConverter.convertSwitchFlowEntriesToSimpleSwitchRules(switchFlowEntries.get(i));
+                    simpleSwitchRuleConverter.convertSwitchFlowEntriesToSimpleSwitchRules(switchFlowEntries.get(i),
+                            switchMeterEntries.get(i));
             assertThat(switchRules, hasSize(1));
             assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
         }
@@ -154,15 +170,16 @@ public class SimpleSwitchRuleConverterTest {
         List<SwitchFlowEntries> switchFlowEntries = getSwitchFlowEntriesOneSwitchFlow();
 
         List<SimpleSwitchRule> switchRules =
-                simpleSwitchRuleConverter.convertSwitchFlowEntriesToSimpleSwitchRules(switchFlowEntries.get(0));
+                simpleSwitchRuleConverter.convertSwitchFlowEntriesToSimpleSwitchRules(switchFlowEntries.get(0),
+                        getSwitchMeterEntriesOneSwitchFlow());
 
         assertEquals(expectedSwitchRules, switchRules);
     }
 
     private Flow buildFlow(FlowEncapsulationType flowEncapsulationType) {
-        Switch switchA = Switch.builder().switchId(TEST_SWITCH_ID_A).build();
-        Switch switchB = Switch.builder().switchId(TEST_SWITCH_ID_B).build();
-        Switch switchC = Switch.builder().switchId(TEST_SWITCH_ID_C).build();
+        Switch switchA = Switch.builder().switchId(TEST_SWITCH_ID_A).description("").build();
+        Switch switchB = Switch.builder().switchId(TEST_SWITCH_ID_B).description("").build();
+        Switch switchC = Switch.builder().switchId(TEST_SWITCH_ID_C).description("").build();
 
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID_A)
@@ -174,6 +191,7 @@ public class SimpleSwitchRuleConverterTest {
                 .destVlan(FLOW_A_DST_VLAN)
                 .allocateProtectedPath(true)
                 .encapsulationType(flowEncapsulationType)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -187,6 +205,7 @@ public class SimpleSwitchRuleConverterTest {
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
                 .status(FlowPathStatus.ACTIVE)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
                 .build();
@@ -211,7 +230,7 @@ public class SimpleSwitchRuleConverterTest {
     }
 
     private Flow buildOneSwitchPortFlow() {
-        Switch switchD = Switch.builder().switchId(TEST_SWITCH_ID_D).build();
+        Switch switchD = Switch.builder().switchId(TEST_SWITCH_ID_D).description("").build();
 
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID_B)
@@ -222,6 +241,7 @@ public class SimpleSwitchRuleConverterTest {
                 .destPort(FLOW_B_SRC_PORT)
                 .destVlan(FLOW_B_DST_VLAN)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(FLOW_B_BANDWIDTH)
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -235,6 +255,7 @@ public class SimpleSwitchRuleConverterTest {
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
                 .status(FlowPathStatus.ACTIVE)
+                .bandwidth(FLOW_B_BANDWIDTH)
                 .segments(Collections.emptyList())
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -282,7 +303,33 @@ public class SimpleSwitchRuleConverterTest {
         return switchEntries;
     }
 
-    protected List<SwitchFlowEntries> getSwitchFlowEntriesOneSwitchFlow() {
+    private List<SwitchMeterEntries> getSwitchMeterEntries() {
+        List<SwitchMeterEntries> switchMeterEntries = new ArrayList<>();
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_A)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_FORWARD_METER_ID)
+                        .rate(FLOW_A_BANDWIDTH)
+                        .burstSize(Meter
+                                .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                        .flags(Meter.getMeterKbpsFlags())
+                        .build()))
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_B)
+                .meterEntries(Collections.emptyList())
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_C)
+                .meterEntries(Collections.emptyList())
+                .build());
+
+        return switchMeterEntries;
+    }
+
+    private List<SwitchFlowEntries> getSwitchFlowEntriesOneSwitchFlow() {
         List<SwitchFlowEntries> switchEntries = new ArrayList<>();
 
         switchEntries.add(getSwitchFlowEntries(TEST_SWITCH_ID_D,
@@ -290,6 +337,22 @@ public class SimpleSwitchRuleConverterTest {
                         getFlowSetFieldAction(FLOW_B_DST_VLAN), (long) FLOW_B_FORWARD_METER_ID, false)));
 
         return switchEntries;
+    }
+
+    private SwitchMeterEntries getSwitchMeterEntriesOneSwitchFlow() {
+        List<MeterEntry> meterEntries = new ArrayList<>();
+        meterEntries.add(MeterEntry.builder()
+                .meterId(FLOW_B_FORWARD_METER_ID)
+                .rate(FLOW_B_BANDWIDTH)
+                .burstSize(Meter
+                        .calculateBurstSize(FLOW_B_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                .flags(Meter.getMeterKbpsFlags())
+                .build());
+
+        return SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_D)
+                .meterEntries(meterEntries)
+                .build();
     }
 
     private SwitchFlowEntries getSwitchFlowEntries(SwitchId switchId, FlowEntry... flowEntries) {
@@ -339,6 +402,10 @@ public class SimpleSwitchRuleConverterTest {
                 .inVlan(FLOW_A_SRC_VLAN)
                 .outVlan(FLOW_A_ENCAP_ID)
                 .meterId(FLOW_A_FORWARD_METER_ID)
+                .meterRate(FLOW_A_BANDWIDTH)
+                .meterBurstSize(Meter
+                        .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                .meterFlags(Meter.getMeterKbpsFlags())
                 .build());
         simpleSwitchRules.add(SimpleSwitchRule.builder()
                 .switchId(TEST_SWITCH_ID_B)
@@ -368,6 +435,10 @@ public class SimpleSwitchRuleConverterTest {
                 .inVlan(FLOW_A_SRC_VLAN)
                 .tunnelId(FLOW_A_ENCAP_ID)
                 .meterId(FLOW_A_FORWARD_METER_ID)
+                .meterRate(FLOW_A_BANDWIDTH)
+                .meterBurstSize(Meter
+                        .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                .meterFlags(Meter.getMeterKbpsFlags())
                 .build());
         simpleSwitchRules.add(SimpleSwitchRule.builder()
                 .switchId(TEST_SWITCH_ID_B)
@@ -397,6 +468,10 @@ public class SimpleSwitchRuleConverterTest {
                 .inVlan(FLOW_B_SRC_VLAN)
                 .outVlan(FLOW_B_DST_VLAN)
                 .meterId(FLOW_B_FORWARD_METER_ID)
+                .meterRate(FLOW_B_BANDWIDTH)
+                .meterBurstSize(Meter
+                        .calculateBurstSize(FLOW_B_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                .meterFlags(Meter.getMeterKbpsFlags())
                 .build());
         return simpleSwitchRules;
     }

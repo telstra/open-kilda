@@ -67,7 +67,7 @@ public class JsonSerializationTest {
     public void flowValidationDtoTest() throws IOException {
         PathDiscrepancyDto discrepancyDto = new PathDiscrepancyDto("rule", "field", "expected", "actual");
         FlowValidationDto dto = new FlowValidationDto(
-                FLOW_ID, true, singletonList(0L), singletonList(1L), singletonList(discrepancyDto), 10, 11);
+                FLOW_ID, true, singletonList(0L), singletonList(1L), singletonList(discrepancyDto), 10, 11, 2, 4);
         assertEquals(dto, pass(dto, FlowValidationDto.class));
     }
 

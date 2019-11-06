@@ -32,6 +32,7 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
+import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -643,6 +644,19 @@ public class NorthboundServiceImpl implements NorthboundService {
     @Override
     public FlowConnectedDevicesResponse getFlowConnectedDevices(String flowId) {
         return getFlowConnectedDevices(flowId, null);
+    }
+
+    @Override
+    public KildaConfigurationDto getKildaConfiguration() {
+        return restTemplate.exchange("/api/v1/config", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), KildaConfigurationDto.class).getBody();
+    }
+
+    @Override
+    public KildaConfigurationDto updateKildaConfiguration(KildaConfigurationDto configuration) {
+        return restTemplate.exchange("/api/v1/config", HttpMethod.PATCH,
+                new HttpEntity<>(configuration, buildHeadersWithCorrelationId()),
+                KildaConfigurationDto.class).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

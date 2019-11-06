@@ -98,7 +98,7 @@ public class FlowMapperTest {
         reverseFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(true, false, false, true));
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
-        FlowPair p = FlowMapper.INSTANCE.map(pair);
+        FlowPair p = FlowMapper.INSTANCE.map(pair, () -> org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN);
         assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
         assertDetectConnectedDevices(forwardFlow.getDetectConnectedDevices(), p.forward.getDetectConnectedDevices());
         assertDetectConnectedDevices(reverseFlow.getDetectConnectedDevices(), p.reverse.getDetectConnectedDevices());

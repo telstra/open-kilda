@@ -19,7 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.share.utils.AbstractLogWrapper;
+import org.openkilda.reporting.AbstractDashboardLogger;
 
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
+public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
 
     private static final String FLOW_ID = "flow_id";
     private static final String EVENT_TYPE = "event_type";
@@ -54,7 +54,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-dump");
         data.put(EVENT_TYPE, FLOW_READ_EVENT);
-        proceed(Level.INFO, "Dump flows", data);
+        invokeLogger(Level.INFO, "Dump flows", data);
     }
 
     /**
@@ -65,7 +65,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-dump-by-link");
         data.put(EVENT_TYPE, FLOW_READ_EVENT);
-        proceed(Level.INFO, String.format("Dump flows by link %s_%d-%s_%d", srcSwitchId, srcPort,
+        invokeLogger(Level.INFO, String.format("Dump flows by link %s_%d-%s_%d", srcSwitchId, srcPort,
                 dstSwitchId, dstPort), data);
     }
 
@@ -76,7 +76,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-dump-by-endpoint");
         data.put(EVENT_TYPE, FLOW_READ_EVENT);
-        proceed(Level.INFO, String.format("Dump flows by end-point %s_%d", switchId, port), data);
+        invokeLogger(Level.INFO, String.format("Dump flows by end-point %s_%d", switchId, port), data);
     }
 
     /**
@@ -86,7 +86,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-dump-by-switch");
         data.put(EVENT_TYPE, FLOW_READ_EVENT);
-        proceed(Level.INFO, String.format("Dump flows by switch %s", switchId), data);
+        invokeLogger(Level.INFO, String.format("Dump flows by switch %s", switchId), data);
     }
 
     /**
@@ -97,7 +97,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-read");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_READ_EVENT);
-        proceed(Level.INFO, String.format("Read the flow %s", flowId), data);
+        invokeLogger(Level.INFO, String.format("Read the flow %s", flowId), data);
     }
 
     /**
@@ -108,7 +108,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-paths-read");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_READ_EVENT);
-        proceed(Level.INFO, String.format("Read paths of the flow %s", flowId), data);
+        invokeLogger(Level.INFO, String.format("Read paths of the flow %s", flowId), data);
     }
 
     /**
@@ -119,7 +119,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-create");
         data.put(FLOW_ID, flow.getFlowId());
         data.put(EVENT_TYPE, FLOW_CREATE_EVENT);
-        proceed(Level.INFO, String.format("Create the flow: %s", flow), data);
+        invokeLogger(Level.INFO, String.format("Create the flow: %s", flow), data);
     }
 
     /**
@@ -131,7 +131,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-create");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_CREATE_EVENT);
-        proceed(Level.INFO, String.format("Create the flow: %s, source %s_%d_%d, destination %s_%d_%d, "
+        invokeLogger(Level.INFO, String.format("Create the flow: %s, source %s_%d_%d, destination %s_%d_%d, "
                         + "diverse flowId %s, bandwidth %d", flowId, srcSwitch, srcPort, srcVlan,
                 destSwitch, destPort, destVlan, diverseFlowId, bandwidth), data);
     }
@@ -144,7 +144,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-push");
         data.put(FLOW_ID, flow.getFlowId());
         data.put(EVENT_TYPE, FLOW_CREATE_EVENT);
-        proceed(Level.INFO, String.format("Push the flow: %s", flow), data);
+        invokeLogger(Level.INFO, String.format("Push the flow: %s", flow), data);
     }
 
     /**
@@ -156,7 +156,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, STATUS_UPDATE_EVENT);
         data.put("status", status.toString());
-        proceed(Level.INFO, String.format("Update the status of the flow %s to %s", flowId, status), data);
+        invokeLogger(Level.INFO, String.format("Update the status of the flow %s to %s", flowId, status), data);
     }
 
     /**
@@ -167,7 +167,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-update");
         data.put(FLOW_ID, flow.getFlowId());
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
-        proceed(Level.INFO, String.format("Update the flow: %s", flow), data);
+        invokeLogger(Level.INFO, String.format("Update the flow: %s", flow), data);
     }
 
     /**
@@ -178,7 +178,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-patch-update");
         data.put(FLOW_ID, flow.getFlowId());
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
-        proceed(Level.INFO, String.format("Patch update the flow: %s", flow), data);
+        invokeLogger(Level.INFO, String.format("Patch update the flow: %s", flow), data);
     }
 
     /**
@@ -189,7 +189,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-delete");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_DELETE_EVENT);
-        proceed(Level.INFO, String.format("Delete the flow %s", flowId), data);
+        invokeLogger(Level.INFO, String.format("Delete the flow %s", flowId), data);
     }
 
     /**
@@ -200,7 +200,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-endpoint-swap");
         data.put(FLOW_ID, firstFlow.getFlowId());
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
-        proceed(Level.INFO, String.format("Swap end-points for the flows %s / %s", firstFlow, secondFlow), data);
+        invokeLogger(Level.INFO, String.format("Swap end-points for the flows %s / %s", firstFlow, secondFlow), data);
     }
 
     /**
@@ -211,7 +211,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-paths-swap");
         data.put(FLOW_ID, flow.getFlowId());
         data.put(EVENT_TYPE, PATHS_SWAP_EVENT);
-        proceed(Level.INFO, String.format("Swap paths for the flow: %s", flow), data);
+        invokeLogger(Level.INFO, String.format("Swap paths for the flow: %s", flow), data);
     }
 
     /**
@@ -223,7 +223,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_EVENT);
         data.put("forced_reroute", Boolean.toString(forceToReroute));
-        proceed(Level.INFO, String.format("Reroute paths %s of the flow %s", pathIds, flowId), data);
+        invokeLogger(Level.INFO, String.format("Reroute paths %s of the flow %s", pathIds, flowId), data);
     }
 
     /**
@@ -235,7 +235,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
         data.put("reroute-result", "successful");
-        proceed(Level.INFO, String.format("Successful reroute of the flow %s", flowId), data);
+        invokeLogger(Level.INFO, String.format("Successful reroute of the flow %s", flowId), data);
     }
 
     /**
@@ -248,6 +248,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
         data.put("reroute-result", "failed");
         data.put("failure-reason", failureReason);
-        proceed(Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
+        invokeLogger(
+                Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
     }
 }

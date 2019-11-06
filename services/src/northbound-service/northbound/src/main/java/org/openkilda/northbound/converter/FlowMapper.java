@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
+import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
@@ -35,6 +36,7 @@ import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
@@ -157,6 +159,8 @@ public interface FlowMapper {
     @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
     @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
     SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
+
+    FlowValidationDto toFlowValidationDto(FlowValidationResponse response);
 
     /**
      * Convert {@link FlowState} to {@link String}.

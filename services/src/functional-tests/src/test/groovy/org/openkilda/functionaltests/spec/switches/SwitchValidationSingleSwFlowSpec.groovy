@@ -118,6 +118,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
+        def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
+        def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
@@ -155,6 +157,28 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         and: "Created rules are still stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
 
+        and: "Flow validation shows discrepancies"
+        def flowValidateResponse = northbound.validateFlow(flow.id)
+        flowValidateResponse.each { direction ->
+            assert direction.discrepancies.size() == 2
+
+            def rate = direction.discrepancies[0]
+            assert rate.field == "meterRate"
+            assert rate.expectedValue == newBandwidth.toString()
+            assert rate.actualValue == flow.maximumBandwidth.toString()
+
+            def burst = direction.discrepancies[1]
+            assert burst.field == "meterBurstSize"
+            Long newBurstSize = switchHelper.getExpectedBurst(sw.dpId, newBandwidth)
+            verifyBurstSizeIsCorrect(newBurstSize, burst.expectedValue.toLong())
+            verifyBurstSizeIsCorrect(burstSize, burst.actualValue.toLong())
+
+            assert direction.flowRulesTotal == 1
+            assert direction.switchRulesTotal == amountOfRules + 2
+            assert direction.flowMetersTotal == 1
+            assert direction.switchMetersTotal == amountOfMeters + 2
+        }
+
         when: "Restore correct bandwidth via DB"
         database.updateFlowBandwidth(flow.id, flow.maximumBandwidth)
 
@@ -162,6 +186,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def switchValidateInfoRestored = northbound.validateSwitch(sw.dpId)
         switchValidateInfoRestored.meters.proper*.meterId.containsAll(meterIds)
         switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfoRestored, ["missing", "misconfigured", "excess"])
+
+        and: "Flow validation shows no discrepancies"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+            assert direction.asExpected
+        }
 
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)

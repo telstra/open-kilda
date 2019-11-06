@@ -55,10 +55,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
-    private static final int METER_BURST_SIZE_EQUALS_DELTA = 1;
-    private static final double E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01;
-    private static final double E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01;
-
     private FlowPathRepository flowPathRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
@@ -238,8 +234,8 @@ public class ValidationServiceImpl implements ValidationService {
                 continue;
             }
 
-            if (equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
-                    && equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
+            if (Meter.equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
+                    && Meter.equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
                     && Arrays.equals(presentedMeter.getFlags(), expectedMeter.getFlags())) {
 
                 properMeters.add(makeProperMeterEntry(
@@ -351,11 +347,11 @@ public class ValidationServiceImpl implements ValidationService {
         MeterMisconfiguredInfoEntry actual = new MeterMisconfiguredInfoEntry();
         MeterMisconfiguredInfoEntry expected = new MeterMisconfiguredInfoEntry();
 
-        if (!equalsRate(actualMeter.getRate(), expectedMeter.getRate(), isESwitch)) {
+        if (!Meter.equalsRate(actualMeter.getRate(), expectedMeter.getRate(), isESwitch)) {
             actual.setRate(actualMeter.getRate());
             expected.setRate(expectedMeter.getRate());
         }
-        if (!equalsBurstSize(actualMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)) {
+        if (!Meter.equalsBurstSize(actualMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)) {
             actual.setBurstSize(actualMeter.getBurstSize());
             expected.setBurstSize(expectedMeter.getBurstSize());
         }
@@ -378,25 +374,5 @@ public class ValidationServiceImpl implements ValidationService {
 
     private Predicate<FlowPath> filterOutProtectedPathWithSrcEndpoint(SwitchId switchId) {
         return path -> !(path.isProtected() && path.getSrcSwitch().getSwitchId().equals(switchId));
-    }
-
-    private boolean equalsRate(long actual, long expected, boolean isESwitch) {
-        // E-switches have a bug when installing the rate and burst size.
-        // Such switch sets the rate different from the rate that was sent to it.
-        // Therefore, we compare actual and expected values ​​using the delta coefficient.
-        if (isESwitch) {
-            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT;
-        }
-        return actual == expected;
-    }
-
-    private boolean equalsBurstSize(long actual, long expected, boolean isESwitch) {
-        // E-switches have a bug when installing the rate and burst size.
-        // Such switch sets the burst size different from the burst size that was sent to it.
-        // Therefore, we compare actual and expected values ​​using the delta coefficient.
-        if (isESwitch) {
-            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT;
-        }
-        return Math.abs(actual - expected) <= METER_BURST_SIZE_EQUALS_DELTA;
     }
 }

@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.41.0 (06/11/2019)
+ 
+### Features:
+-  [#2243](https://github.com/telstra/open-kilda/pull/2243) Extend flow validation with meter validation. (Issue: [#1249](https://github.com/telstra/open-kilda/issues/1249)) [**floodlight**][**storm-topologies**]
+-  [#2845](https://github.com/telstra/open-kilda/pull/2845) add tests for v1/config API [**tests**]
+
+### Bug Fixes:
+-  [#2887](https://github.com/telstra/open-kilda/pull/2887) Added noviflow virtual switch checks to FeatureDetectorService [**floodlight**]
+-  [#2898](https://github.com/telstra/open-kilda/pull/2898) Fix flow validation for Centec and E switches. [**storm-topologies**]
+-  [#2901](https://github.com/telstra/open-kilda/pull/2901) Fix flow validation for Accton switches. [**floodlight**][**storm-topologies**]
+
+### Improvements:
+-  [#2880](https://github.com/telstra/open-kilda/pull/2880) improve checks for installed rules in vxlanFlowSpec [**tests**]
+-  [#2854](https://github.com/telstra/open-kilda/pull/2854) refactor "System takes isl time_unstable info into account while creating a flow" [**tests**]
+-  [#2663](https://github.com/telstra/open-kilda/pull/2663) Log message if ISL has negative cost (Issue: [#2319](https://github.com/telstra/open-kilda/issues/2319)) [**storm-topologies**]
+-  [#2891](https://github.com/telstra/open-kilda/pull/2891) Increase PortHistorySpec stability [**tests**]
+-  [#2482](https://github.com/telstra/open-kilda/pull/2482) Move flow validation to Nbworker topology. (Issue: [#1442](https://github.com/telstra/open-kilda/issues/1442)) [**floodlight**][**northbound**][**storm-topologies**]
+-  [#2680](https://github.com/telstra/open-kilda/pull/2680) Extend network topology dashboard logger (Issue: [#2659](https://github.com/telstra/open-kilda/issues/2659)) [**floodlight**][**storm-topologies**]
+-  [#2299](https://github.com/telstra/open-kilda/pull/2299) Make meter modify logic using the H&S approach. (Issue: [#2298](https://github.com/telstra/open-kilda/issues/2298)) [**floodlight**][**storm-topologies**]
+-  [#2877](https://github.com/telstra/open-kilda/pull/2877) Fix minor sonar issues [**floodlight**][**storm-topologies**]
+-  [#2846](https://github.com/telstra/open-kilda/pull/2846) add test System does not create a flow when bandwidth is not the same on the ISL [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.40.0...v1.41.0).
+
+### Affected Components:
+flow, nbworker, nb, network, fl, flow-hs
+
+---
+
 ## v1.40.0 (28/10/2019)
 
 ### Features:
