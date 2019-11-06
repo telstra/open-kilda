@@ -13,21 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
-public class MeterModifyRequest extends CommandData {
-    @JsonProperty("flow_id")
-    private String flowId;
+public class DumpMetersForNbworkerRequest extends CommandData {
 
-    public MeterModifyRequest(@JsonProperty("flow_id") String flowId) {
-        this.flowId = flowId;
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
+
+    public DumpMetersForNbworkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
     }
 }

@@ -82,6 +82,7 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
@@ -105,7 +106,6 @@ import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
-import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
@@ -248,6 +248,8 @@ class RecordHandler implements Runnable {
             doDumpMetersRequest(message);
         } else if (data instanceof DumpMetersForSwitchManagerRequest) {
             doDumpMetersForSwitchManagerRequest(message);
+        } else if (data instanceof DumpMetersForNbworkerRequest) {
+            doDumpMetersForNbworkerRequest(message);
         } else if (data instanceof MeterModifyCommandRequest) {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
@@ -1331,6 +1333,12 @@ class RecordHandler implements Runnable {
         dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
     }
 
+    private void doDumpMetersForNbworkerRequest(CommandMessage message) {
+        DumpMetersForNbworkerRequest request = (DumpMetersForNbworkerRequest) message.getData();
+        String replyToTopic = context.getKafkaNbWorkerTopic();
+        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+    }
+
     private void dumpMeters(SwitchId switchId, String correlationId, String replyToTopic, long timestamp) {
         final IKafkaProducerService producerService = getKafkaProducer();
 
@@ -1375,42 +1383,27 @@ class RecordHandler implements Runnable {
         MeterModifyCommandRequest request = (MeterModifyCommandRequest) message.getData();
 
         final IKafkaProducerService producerService = getKafkaProducer();
-        String replyToTopic = context.getKafkaNorthboundTopic();
+        String replyToTopic = context.getKafkaNbWorkerTopic();
 
-        SwitchId fwdSwitchId = request.getFwdSwitchId();
-        SwitchId rvsSwitchId = request.getRvsSwitchId();
+        SwitchId switchId = request.getSwitchId();
 
-        DatapathId fwdDpId = DatapathId.of(fwdSwitchId.toLong());
-        DatapathId rvsDpId = DatapathId.of(rvsSwitchId.toLong());
-        long fwdMeterId = request.getFwdMeterId();
-        long rvsMeterId = request.getRvsMeterId();
+        DatapathId datapathId = DatapathId.of(switchId.toLong());
+        long meterId = request.getMeterId();
 
         ISwitchManager switchManager = context.getSwitchManager();
 
         try {
-            switchManager.modifyMeterForFlow(fwdDpId, fwdMeterId, request.getBandwidth());
-            switchManager.modifyMeterForFlow(rvsDpId, rvsMeterId, request.getBandwidth());
+            switchManager.modifyMeterForFlow(datapathId, meterId, request.getBandwidth());
 
-            MeterEntry fwdMeterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(fwdDpId, fwdMeterId));
-            MeterEntry rvsMeterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(rvsDpId, rvsMeterId));
+            MeterEntry meterEntry = OfMeterConverter.toMeterEntry(switchManager.dumpMeterById(datapathId, meterId));
 
-            SwitchMeterEntries srcMeter = SwitchMeterEntries.builder()
-                    .switchId(fwdSwitchId)
-                    .meterEntries(ImmutableList.of(fwdMeterEntry))
-                    .build();
-
-            SwitchMeterEntries dstMeter = SwitchMeterEntries.builder()
-                    .switchId(rvsSwitchId)
-                    .meterEntries(ImmutableList.of(rvsMeterEntry))
-                    .build();
-
-            FlowMeterEntries response = FlowMeterEntries.builder()
-                    .srcMeter(srcMeter)
-                    .dstMeter(dstMeter)
+            SwitchMeterEntries response = SwitchMeterEntries.builder()
+                    .switchId(switchId)
+                    .meterEntries(ImmutableList.of(meterEntry))
                     .build();
 
             InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(context.getKafkaNorthboundTopic(), infoMessage);
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
         } catch (UnsupportedSwitchOperationException e) {
             String messageString = String.format("Not supported: %s", new SwitchId(e.getDpId().getLong()));
             logger.error(messageString, e);

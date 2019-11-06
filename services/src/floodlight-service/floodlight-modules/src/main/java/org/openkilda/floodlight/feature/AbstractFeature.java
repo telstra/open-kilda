@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.feature;
 
+import static java.util.regex.Pattern.compile;
+
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -25,10 +27,10 @@ import java.util.regex.Pattern;
 public abstract class AbstractFeature {
     protected static final String MANUFACTURER_NICIRA = "Nicira, Inc.";
     protected static final String E_SWITCH_MANUFACTURER_DESCRIPTION = "E";
-    protected static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = Pattern.compile("^WB5\\d{3}-E$");
+    protected static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = compile("^WB5\\d{3}-E$");
+    protected static final Pattern NOVIFLOW_VIRTUAL_SWITCH_HARDWARE_DESCRIPTION_REGEX = compile("^SM5\\d{3}-SM$");
     protected static final String CENTEC_MANUFACTURED = "Centec";
-    protected static final Pattern NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX =
-            Pattern.compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
+    protected static final Pattern NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX = compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
 
     public abstract Optional<SwitchFeature> discover(IOFSwitch sw);
 }

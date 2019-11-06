@@ -237,6 +237,40 @@ misconfigured"
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
+        and: "Flow validation shows discrepancies"
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def totalSwitchRules = 0
+        def totalSwitchMeters = 0
+        involvedSwitches.each { swId ->
+            totalSwitchRules += northbound.getSwitchRules(swId).flowEntries.size()
+            totalSwitchMeters += northbound.getAllMeters(swId).meterEntries.size()
+        }
+        def flowValidateResponse = northbound.validateFlow(flow.id)
+        flowValidateResponse.eachWithIndex { direction, i ->
+            assert direction.discrepancies.size() == 2
+
+            def rate = direction.discrepancies[0]
+            assert rate.field == "meterRate"
+            assert rate.expectedValue == newBandwidth.toString()
+            assert rate.actualValue == flow.maximumBandwidth.toString()
+
+            def burst = direction.discrepancies[1]
+            assert burst.field == "meterBurstSize"
+            // src/dst switches can be different
+            // then as a result burstSize in forward/reverse directions can be different
+            // that's why we use eachWithIndex and why we calculate burstSize for src/dst switches
+            def sw = (i == 0) ? srcSwitch : dstSwitch
+            def switchBurstSize = (i == 0) ? srcSwitchBurstSize : dstSwitchBurstSize
+            Long newBurstSize = switchHelper.getExpectedBurst(sw.dpId, newBandwidth)
+            verifyBurstSizeIsCorrect(newBurstSize, burst.expectedValue.toLong())
+            verifyBurstSizeIsCorrect(switchBurstSize, burst.actualValue.toLong())
+
+            assert direction.flowRulesTotal == 2
+            assert direction.switchRulesTotal == totalSwitchRules
+            assert direction.flowMetersTotal == 1
+            assert direction.switchMetersTotal == totalSwitchMeters
+        }
+
         when: "Restore correct bandwidth via DB"
         database.updateFlowBandwidth(flow.id, flow.maximumBandwidth)
 
@@ -249,6 +283,12 @@ misconfigured"
 
         [srcSwitchValidateInfoRestored, dstSwitchValidateInfoRestored].each {
             switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
+        }
+
+        and: "Flow validation shows no discrepancies"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+            assert direction.asExpected
         }
 
         when: "Delete the flow"

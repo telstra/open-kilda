@@ -40,6 +40,9 @@ public class SimpleSwitchRule {
     private long pktCount;
     private long byteCount;
     private String version;
+    private Long meterRate;
+    private Long meterBurstSize;
+    private String[] meterFlags;
 
     @Override
     public String toString() {

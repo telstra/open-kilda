@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.share.utils.rule.validation;
 
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
@@ -23,6 +24,7 @@ import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.Meter;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 
@@ -44,17 +46,22 @@ public class SimpleSwitchRuleConverter {
      * Convert {@link FlowPath} to list of {@link SimpleSwitchRule}.
      */
     public List<SimpleSwitchRule> convertFlowPathToSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                     EncapsulationId encapsulationId) {
+                                                                     EncapsulationId encapsulationId,
+                                                                     long flowMeterMinBurstSizeInKbits,
+                                                                     double flowMeterBurstCoefficient) {
         List<SimpleSwitchRule> rules = new ArrayList<>();
         if (!flowPath.isProtected()) {
-            rules.add(buildIngressSimpleSwitchRule(flow, flowPath, encapsulationId));
+            rules.add(buildIngressSimpleSwitchRule(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
+                    flowMeterBurstCoefficient));
         }
         rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId));
         return rules;
     }
 
     private SimpleSwitchRule buildIngressSimpleSwitchRule(Flow flow, FlowPath flowPath,
-                                                          EncapsulationId encapsulationId) {
+                                                          EncapsulationId encapsulationId,
+                                                          long flowMeterMinBurstSizeInKbits,
+                                                          double flowMeterBurstCoefficient) {
         boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
@@ -67,6 +74,10 @@ public class SimpleSwitchRuleConverter {
                 .inPort(inPort)
                 .inVlan(inVlan)
                 .meterId(flowPath.getMeterId() != null ? flowPath.getMeterId().getValue() : null)
+                .meterRate(flow.getBandwidth())
+                .meterBurstSize(Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                        flowMeterBurstCoefficient, flow.getSrcSwitch().getDescription()))
+                .meterFlags(Meter.getMeterKbpsFlags())
                 .build();
 
         if (flow.isOneSwitchFlow()) {
@@ -166,19 +177,20 @@ public class SimpleSwitchRuleConverter {
     /**
      * Convert {@link SwitchFlowEntries} to list of {@link SimpleSwitchRule}.
      */
-    public List<SimpleSwitchRule> convertSwitchFlowEntriesToSimpleSwitchRules(SwitchFlowEntries rules) {
+    public List<SimpleSwitchRule> convertSwitchFlowEntriesToSimpleSwitchRules(SwitchFlowEntries rules,
+                                                                              SwitchMeterEntries meters) {
         if (rules == null || rules.getFlowEntries() == null) {
             return Collections.emptyList();
         }
 
         List<SimpleSwitchRule> simpleRules = new ArrayList<>();
         for (FlowEntry flowEntry : rules.getFlowEntries()) {
-            simpleRules.add(buildSimpleSwitchRule(rules.getSwitchId(), flowEntry));
+            simpleRules.add(buildSimpleSwitchRule(rules.getSwitchId(), flowEntry, meters));
         }
         return simpleRules;
     }
 
-    private SimpleSwitchRule buildSimpleSwitchRule(SwitchId switchId, FlowEntry flowEntry) {
+    private SimpleSwitchRule buildSimpleSwitchRule(SwitchId switchId, FlowEntry flowEntry, SwitchMeterEntries meters) {
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
                 .switchId(switchId)
                 .cookie(flowEntry.getCookie())
@@ -216,8 +228,20 @@ public class SimpleSwitchRuleConverter {
                 }
             }
 
-            rule.setMeterId(Optional.ofNullable(flowEntry.getInstructions().getGoToMeter())
-                    .orElse(null));
+            Optional.ofNullable(flowEntry.getInstructions().getGoToMeter())
+                    .ifPresent(meterId -> {
+                        rule.setMeterId(meterId);
+                        if (meters != null && meters.getMeterEntries() != null) {
+                            meters.getMeterEntries().stream()
+                                    .filter(entry -> meterId.equals(entry.getMeterId()))
+                                    .findFirst()
+                                    .ifPresent(entry -> {
+                                        rule.setMeterRate(entry.getRate());
+                                        rule.setMeterBurstSize(entry.getBurstSize());
+                                        rule.setMeterFlags(entry.getFlags());
+                                    });
+                        }
+                    });
         }
 
         return rule;

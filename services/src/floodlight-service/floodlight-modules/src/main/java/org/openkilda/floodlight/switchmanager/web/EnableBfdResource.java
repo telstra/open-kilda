@@ -110,7 +110,7 @@ public class EnableBfdResource extends ServerResource {
         OFActionNoviflowBfdStart bfdStartAction = ofFactory.actions().buildNoviflowBfdStart()
                 .setPortNo(bfdSession.getLogicalPortNumber())
                 .setMyDisc(bfdSession.getDiscriminator())
-                .setInterval(bfdSession.getIntervalMs() * 1000)
+                .setInterval(bfdSession.getIntervalMs() * 1000L)
                 .setMultiplier(bfdSession.getMultiplier())
                 .setKeepAliveTimeout(((short) (bfdSession.isKeepOverDisconnect() ? 1 : 0)))
                 .build();

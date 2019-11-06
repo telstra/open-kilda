@@ -29,5 +29,7 @@ public enum StreamType {
     VALIDATION,
     DISCO,
     ERROR,
-    HISTORY
+    HISTORY,
+    FLOW_VALIDATION_WORKER,
+    METER_MODIFY_WORKER
 }

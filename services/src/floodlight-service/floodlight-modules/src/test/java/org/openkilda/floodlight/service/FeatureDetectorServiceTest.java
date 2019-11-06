@@ -108,6 +108,13 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     }
 
     @Test
+    public void copyFieldOnNoviflowVirtualSwitches() {
+        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "SM5000-SM", OFVersion.OF_13, 2),
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
+                        MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE));
+    }
+
+    @Test
     public void roundTripCentec() {
         discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 2),
                        ImmutableSet.of(METERS, LIMITED_BURST_SIZE, MULTI_TABLE));

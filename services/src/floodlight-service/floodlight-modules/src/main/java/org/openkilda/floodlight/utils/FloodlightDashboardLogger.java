@@ -16,24 +16,21 @@
 package org.openkilda.floodlight.utils;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.model.SwitchId;
+import org.openkilda.reporting.AbstractDashboardLogger;
 
 import net.floodlightcontroller.core.PortChangeType;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
-import org.slf4j.MDC;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class FloodlightDashboardLogger {
-    private static final String FIELD_STATE = "state";
-
-    private final Logger logger;
-
+public class FloodlightDashboardLogger extends AbstractDashboardLogger {
     public FloodlightDashboardLogger(Logger logger) {
-        this.logger = logger;
+        super(logger);
     }
 
     /**
@@ -44,11 +41,18 @@ public class FloodlightDashboardLogger {
      * @param type a port state.
      */
     public void onPortEvent(DatapathId dpId, OFPortDesc portDesc, PortChangeType type) {
-        OFPort port = portDesc.getPortNo();
-        Map<String, String> context = makePortContext(dpId, port);
-        context.put(FIELD_STATE, type.toString());
-
-        proceed(String.format("OF port event (%s-%s - %s): %s", dpId, port, type, portDesc), context);
+        // ensure "correct"(same to other dashboard loggers) event naming
+        switch (type) {
+            case UP:
+                onPortUpDown(dpId, portDesc, "UP");
+                break;
+            case DOWN:
+                onPortUpDown(dpId, portDesc, "DOWN");
+                break;
+            default:
+                // other events are logged only by FL so it's naming have no "correct" definition yet
+                opPortStatusChange(dpId, portDesc, type);
+        }
     }
 
     /**
@@ -59,53 +63,58 @@ public class FloodlightDashboardLogger {
      */
     public void onSwitchEvent(DatapathId dpId, SwitchChangeType state) {
         Map<String, String> context = makeSwitchContext(dpId);
-        context.put(FIELD_STATE, state.toString());
+        populateState(context, state.toString());
 
-        proceed(String.format("OF switch event (%s - %s)", dpId, state), context);
+        invokeLogger(String.format("OF switch event (%s - %s)", dpId, state), context);
     }
 
-    /**
-     * Build and write log message and MDC custom fields.
-     *  @param message a message text.
-     * @param logData a data for MDC custom fields.
-     */
-    protected void proceed(String message, Map<String, String> logData) {
-        Map<String, String> oldValues = MDC.getCopyOfContextMap();
-        logData.forEach(MDC::put);
-        try {
-            logger.info(message);
-        } finally {
-            for (String key : logData.keySet()) {
-                String original = oldValues.get(key);
-                if (original != null) {
-                    MDC.put(key, original);
-                } else {
-                    MDC.remove(key);
-                }
-            }
-        }
+    private void onPortUpDown(DatapathId dpId, OFPortDesc portDesc, String event) {
+        final OFPort ofPort = portDesc.getPortNo();
+        Map<String, String> context = makePortContext(dpId, ofPort);
+        populateState(context, event);
+
+        String switchPort = formatSwitchPort(dpId, ofPort);
+        invokeLogger(String.format("OF port event %s for %s: %s", event, switchPort, portDesc), context);
+    }
+
+    private void opPortStatusChange(DatapathId dpId, OFPortDesc portDesc, PortChangeType type) {
+        OFPort ofPort = portDesc.getPortNo();
+        Map<String, String> context = makePortContext(dpId, ofPort);
+        populateState(context, type.toString());
+
+        String switchPort = formatSwitchPort(dpId, ofPort);
+        invokeLogger(String.format("OF port event %s for %s: %s", type, switchPort, portDesc), context);
+    }
+
+    private void populateState(Map<String, String> context, String event) {
+        context.put("state", event);
     }
 
     private Map<String, String> makeSwitchContext(DatapathId dpId) {
-        return makeContextTemplate(dpId, EventType.SWITCH);
+        return makeContextTemplate(dpId, "switch");
     }
 
-    private Map<String, String> makePortContext(DatapathId dpid, OFPort port) {
-        Map<String, String> data = makeContextTemplate(dpid, EventType.PORT);
-        data.put("port", port.toString());
-        return data;
+    private Map<String, String> makePortContext(DatapathId dpId, OFPort port) {
+        Map<String, String> context = makeContextTemplate(dpId, "port");
+        context.put("port", String.valueOf(port.getPortNumber()));
+        context.put("switch_port", formatSwitchPort(dpId, port));
+        return context;
     }
 
-    private Map<String, String> makeContextTemplate(DatapathId dpId, EventType event) {
-        Map<String, String> data = new HashMap<>();
-        data.put("FLOODLIGHT-DASHBOARD-TAG", "of-dashboard-event");
-        data.put("switch_id", dpId.toString());
-        data.put("event_type", event.toString());
-        return data;
+    private Map<String, String> makeContextTemplate(DatapathId dpId, String eventType) {
+        Map<String, String> context = new HashMap<>();
+
+        // TODO(surabujin): drop `FLOODLIGHT-DASHBOARD-TAG` field after dashboard query switch to the `dashboard` field
+        context.put("FLOODLIGHT-DASHBOARD-TAG", "of-dashboard-event");
+
+        context.put("dashboard", "switch-port-isl");
+        context.put("switch_id", dpId.toString());
+        context.put("event_type", eventType);
+        return context;
     }
 
-    enum EventType {
-        SWITCH,
-        PORT
+    private String formatSwitchPort(DatapathId dpId, OFPort ofPort) {
+        SwitchId swId = new SwitchId(dpId.getLong());
+        return String.format("%s_%d", swId, ofPort.getPortNumber());
     }
 }

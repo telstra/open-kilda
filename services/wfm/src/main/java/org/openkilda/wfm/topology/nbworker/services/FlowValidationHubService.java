@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.persistence.PersistenceManager;
@@ -77,6 +78,8 @@ public class FlowValidationHubService {
             InfoData data = ((InfoMessage) message).getData();
             if (data instanceof SwitchFlowEntries) {
                 fsm.fire(FlowValidationEvent.RULES_RECEIVED, data);
+            } else if (data instanceof SwitchMeterEntries) {
+                fsm.fire(FlowValidationEvent.METERS_RECEIVED, data);
             } else {
                 log.warn("Key: {}; Unhandled message {}", key, message);
             }
@@ -110,7 +113,7 @@ public class FlowValidationHubService {
 
     private void process(FlowValidationFsm fsm) {
         final List<FlowValidationState> stopStates = Arrays.asList(
-                FlowValidationState.RECEIVE_RULES,
+                FlowValidationState.RECEIVE_DATA,
                 FlowValidationState.FINISHED,
                 FlowValidationState.FINISHED_WITH_ERROR
         );

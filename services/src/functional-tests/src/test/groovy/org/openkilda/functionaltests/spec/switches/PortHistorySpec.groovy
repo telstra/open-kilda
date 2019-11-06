@@ -12,6 +12,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -184,6 +185,11 @@ class PortHistorySpec extends HealthCheckSpecification {
         assumeTrue("Unable to find ISL for this test", isl as boolean)
         def timestampBefore = System.currentTimeMillis()
 
+        and: "floodlightRoutePeriodicSync is disabled"
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .floodlightRoutePeriodicSync(false)
+                .build())
+
         when: "Execute port DOWN on the src switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET / 2) {
@@ -227,6 +233,9 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .floodlightRoutePeriodicSync(true)
+                .build())
     }
 
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\

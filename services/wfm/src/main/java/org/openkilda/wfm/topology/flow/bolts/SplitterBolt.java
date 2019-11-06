@@ -27,7 +27,6 @@ import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
-import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.info.InfoData;
@@ -183,14 +182,6 @@ public class SplitterBolt extends BaseRichBolt {
 
                 outputCollector.emit(StreamType.DUMP.toString(), tuple, values);
 
-            } else if (data instanceof MeterModifyRequest) {
-                String flowId = ((MeterModifyRequest) data).getFlowId();
-
-                logger.info("Update meter for flow {}", flowId);
-
-                Values values = new Values(message, flowId);
-                outputCollector.emit(StreamType.METER_MODE.toString(), tuple, values);
-
             } else if (data instanceof DeallocateFlowResourcesRequest) {
                 String flowId = ((DeallocateFlowResourcesRequest) data).getFlowId();
 
@@ -240,7 +231,6 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.PATH_SWAP.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
-        outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.DEALLOCATE_RESOURCES.toString(),
                 FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);

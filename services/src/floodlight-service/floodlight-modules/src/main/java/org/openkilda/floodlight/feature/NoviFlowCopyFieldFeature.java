@@ -44,6 +44,11 @@ public class NoviFlowCopyFieldFeature extends AbstractFeature {
             return empty;
         }
 
+        if (NOVIFLOW_VIRTUAL_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
+                description.getHardwareDescription()).matches()) {
+            return empty;
+        }
+
         if (!description.getManufacturerDescription().toLowerCase().contains(NOVIFLOW_MANUFACTURER_SUFFIX)) {
             return empty;
         }

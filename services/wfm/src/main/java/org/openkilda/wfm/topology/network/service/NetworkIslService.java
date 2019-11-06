@@ -22,14 +22,16 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.network.controller.IslFsm;
-import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmContext;
-import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmEvent;
-import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmState;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmContext;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmEvent;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
@@ -45,10 +47,16 @@ public class NetworkIslService {
     private final NetworkOptions options;
 
     public NetworkIslService(IIslCarrier carrier, PersistenceManager persistenceManager, NetworkOptions options) {
+        this(carrier, persistenceManager, options, NetworkTopologyDashboardLogger.builder());
+    }
+
+    @VisibleForTesting
+    NetworkIslService(IIslCarrier carrier, PersistenceManager persistenceManager, NetworkOptions options,
+                      NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
         this.carrier = carrier;
         this.options = options;
 
-        controllerFactory = IslFsm.factory(persistenceManager);
+        controllerFactory = IslFsm.factory(persistenceManager, dashboardLoggerBuilder);
         controllerExecutor = controllerFactory.produceExecutor();
     }
 

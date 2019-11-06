@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
@@ -110,7 +111,7 @@ public final class RouterUtils {
             } else if (commandData instanceof DumpRulesForNbworkerRequest) {
                 return ((DumpRulesForNbworkerRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
+                return ((MeterModifyCommandRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof GetExpectedDefaultRulesRequest) {
@@ -123,6 +124,8 @@ public final class RouterUtils {
                 return ((ReinstallDefaultFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DumpMetersForNbworkerRequest) {
+                return ((DumpMetersForNbworkerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {
                 return ((DeleterMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof SetupBfdSession) {

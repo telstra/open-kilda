@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.controller;
+package org.openkilda.wfm.topology.network.controller.isl;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
@@ -42,9 +42,9 @@ import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
-import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmContext;
-import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmEvent;
-import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmState;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmContext;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmEvent;
+import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.model.BiIslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslEndpointStatus;
@@ -67,6 +67,9 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
+    private final IslReportFsm reportFsm;
+    private final BfdManager bfdManager;
+
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
     private final FlowPathRepository flowPathRepository;
@@ -76,32 +79,30 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private final RetryPolicy transactionRetryPolicy;
 
-    private final BfdManager bfdManager;
-
     private final BiIslDataHolder<IslEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
 
-    private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
-
-    public static IslFsmFactory factory(PersistenceManager persistenceManager) {
-        return new IslFsmFactory(persistenceManager);
+    public static IslFsmFactory factory(PersistenceManager persistenceManager,
+                                        NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+        return new IslFsmFactory(persistenceManager, dashboardLoggerBuilder);
     }
 
-    public IslFsm(PersistenceManager persistenceManager, BfdManager bfdManager, NetworkOptions options,
-                  IslReference reference) {
+    public IslFsm(PersistenceManager persistenceManager, IslReportFsm reportFsm, BfdManager bfdManager,
+                  NetworkOptions options, IslReference reference) {
+        this.reportFsm = reportFsm;
+        this.bfdManager = bfdManager;
+
+        transactionManager = persistenceManager.getTransactionManager();
+        transactionRetryPolicy = transactionManager.makeRetryPolicyBlank()
+                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
+
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
-
-        transactionManager = persistenceManager.getTransactionManager();
-        transactionRetryPolicy = transactionManager.makeRetryPolicyBlank()
-                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
-
-        this.bfdManager = bfdManager;
 
         endpointStatus = new BiIslDataHolder<>(reference);
         endpointStatus.putBoth(new IslEndpointStatus(IslEndpointStatus.Status.DOWN));
@@ -157,7 +158,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        reportFsm.fire(IslReportFsm.Event.BECOME_DOWN);
+
         saveStatusTransaction();
         sendIslStatusUpdateNotification(context, IslStatus.INACTIVE);
     }
@@ -175,8 +177,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
-        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
+        reportFsm.fire(IslReportFsm.Event.BECOME_UP);
+
         saveAllTransaction();
 
         if (event != IslFsmEvent._HISTORY_UP) {
@@ -189,23 +191,14 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         log.info("ISL {} is no more UP (reason:{})",
                   discoveryFacts.getReference(), context.getDownReason());
 
-        // FIXME(surabujin): extract logging logic into separate(nested) FSM
-        String nextState = "Unknown";
-        if (event == IslFsmEvent.ISL_DOWN) {
-            nextState = IslFsmState.DOWN.toString();
-        } else if (event == IslFsmEvent.ISL_MOVE) {
-            nextState = IslFsmState.MOVED.toString();
-        }
-
-        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), nextState);
-
         updateEndpointStatusByEvent(event, context);
         saveStatusAndSetIslUnstableTimeTransaction(context);
         triggerAffectedFlowReroute(context);
     }
 
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        reportFsm.fire(IslReportFsm.Event.BECOME_MOVED);
+
         saveStatusTransaction();
         sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         bfdManager.disable(context.getOutput());
@@ -623,16 +616,21 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public static class IslFsmFactory {
+        private final IslReportFsm.IslReportFsmFactory reportFsmFactory;
+
         private final PersistenceManager persistenceManager;
         private final StateMachineBuilder<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> builder;
 
-        IslFsmFactory(PersistenceManager persistenceManager) {
+        IslFsmFactory(PersistenceManager persistenceManager,
+                      NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
             this.persistenceManager = persistenceManager;
+            this.reportFsmFactory = IslReportFsm.factory(dashboardLoggerBuilder);
 
             builder = StateMachineBuilderFactory.create(
                     IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
                     // extra parameters
-                    PersistenceManager.class, BfdManager.class, NetworkOptions.class, IslReference.class);
+                    PersistenceManager.class, IslReportFsm.class, BfdManager.class, NetworkOptions.class,
+                    IslReference.class);
 
             String updateEndpointStatusMethod = "updateEndpointStatus";
             String updateAndPersistEndpointStatusMethod = "updateAndPersistEndpointStatus";
@@ -721,7 +719,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
          * Create and properly initialize new {@link IslFsm}.
          */
         public IslFsm produce(BfdManager bfdManager, NetworkOptions options, IslReference reference) {
-            IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, bfdManager, options, reference);
+            IslReportFsm reportFsm = reportFsmFactory.produce(reference);
+            IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, reportFsm, bfdManager, options,
+                                                 reference);
             fsm.start();
             return fsm;
         }

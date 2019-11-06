@@ -34,6 +34,7 @@ import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
@@ -469,6 +470,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
                 .srcSwitch(getOrCreateSwitch(SWITCH_ID_1)).srcPort(1).srcVlan(101)
                 .destSwitch(getOrCreateSwitch(SWITCH_ID_3)).destPort(2).destVlan(102)
                 .bandwidth(BANDWIDTH)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.IN_PROGRESS);
     }
 

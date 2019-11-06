@@ -146,8 +146,8 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(port1, LinkStatus.UP);
         service.updateLinkStatus(port1, LinkStatus.DOWN);
 
-        verify(dashboardLogger).onUpdatePortStatus(port1, LinkStatus.UP);
-        verify(dashboardLogger).onUpdatePortStatus(port1, LinkStatus.DOWN);
+        verify(dashboardLogger).onPortUp(port1);
+        verify(dashboardLogger).onPortDown(port1);
         verifyNoMoreInteractions(dashboardLogger);
 
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
@@ -161,8 +161,8 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(port2, LinkStatus.DOWN);
         service.updateLinkStatus(port2, LinkStatus.UP);
 
-        verify(dashboardLogger).onUpdatePortStatus(port2, LinkStatus.DOWN);
-        verify(dashboardLogger).onUpdatePortStatus(port2, LinkStatus.UP);
+        verify(dashboardLogger).onPortDown(port2);
+        verify(dashboardLogger).onPortUp(port2);
         verifyNoMoreInteractions(dashboardLogger);
 
         verify(carrier).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 2));
@@ -201,8 +201,8 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(endpoint, LinkStatus.UP);
         service.updateLinkStatus(endpoint, LinkStatus.DOWN);
 
-        verify(dashboardLogger).onUpdatePortStatus(endpoint, LinkStatus.UP);
-        verify(dashboardLogger).onUpdatePortStatus(endpoint, LinkStatus.DOWN);
+        verify(dashboardLogger).onPortUp(endpoint);
+        verify(dashboardLogger).onPortDown(endpoint);
         verifyNoMoreInteractions(dashboardLogger);
 
         verify(carrier).enableDiscoveryPoll(endpoint);

@@ -46,12 +46,17 @@ public class FlowValidationHubBolt extends HubBolt {
     private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
     private transient FlowValidationHubService service;
+    private long flowMeterMinBurstSizeInKbits;
+    private double flowMeterBurstCoefficient;
 
     public FlowValidationHubBolt(Config config, PersistenceManager persistenceManager,
-                                 FlowResourcesConfig flowResourcesConfig) {
+                                 FlowResourcesConfig flowResourcesConfig,
+                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         super(config);
         this.persistenceManager = persistenceManager;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
+        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
     }
 
     @Override
@@ -88,7 +93,7 @@ public class FlowValidationHubBolt extends HubBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.FLOW_VALIDATION_WORKER.toString(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declare(new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE,
@@ -104,8 +109,8 @@ public class FlowValidationHubBolt extends HubBolt {
 
         @Override
         public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
-            emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, tuple,
-                    new Values(KeyProvider.generateChainedKey(key), commandData));
+            emitWithContext(StreamType.FLOW_VALIDATION_WORKER.toString(), tuple,
+                        new Values(KeyProvider.generateChainedKey(key), commandData));
         }
 
         @Override
@@ -121,6 +126,16 @@ public class FlowValidationHubBolt extends HubBolt {
         @Override
         public void endProcessing(String key) {
             cancelCallback(key);
+        }
+
+        @Override
+        public long getFlowMeterMinBurstSizeInKbits() {
+            return flowMeterMinBurstSizeInKbits;
+        }
+
+        @Override
+        public double getFlowMeterBurstCoefficient() {
+            return flowMeterBurstCoefficient;
         }
     }
 }
