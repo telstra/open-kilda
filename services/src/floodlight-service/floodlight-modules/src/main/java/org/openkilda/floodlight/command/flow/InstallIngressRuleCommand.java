@@ -141,10 +141,6 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         }
     }
 
-    OFPort getOutputPort() {
-        return OFPort.of(outputPort);
-    }
-
     final OFFlowMod getIntermediateIngressRule(IOFSwitch sw, int port) {
         OFFactory ofFactory = sw.getOFFactory();
         Match match = ofFactory.buildMatch()

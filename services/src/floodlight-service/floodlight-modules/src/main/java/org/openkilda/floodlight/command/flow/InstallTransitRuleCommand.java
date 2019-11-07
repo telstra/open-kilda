@@ -88,7 +88,7 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
         return Collections.singletonList(new MessageWriter(flowMod));
     }
 
-    final OFAction setOutputPort(OFFactory ofFactory) {
+    protected OFAction setOutputPort(OFFactory ofFactory) {
         return setOutputPort(ofFactory, OFPort.of(outputPort));
     }
 
