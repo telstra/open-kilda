@@ -59,8 +59,11 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
     }
 
     @Override
-    OFPort getOutputPort() {
-        return outputPort.equals(inputPort) ? OFPort.IN_PORT : OFPort.of(outputPort);
+    protected OFAction setOutputPort(OFFactory ofFactory) {
+        OFPort port = outputPort.equals(inputPort)
+                ? OFPort.IN_PORT
+                : OFPort.of(outputPort);
+        return setOutputPort(ofFactory, port);
     }
 
     @Override

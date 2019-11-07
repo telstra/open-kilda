@@ -15,65 +15,29 @@
 
 package org.openkilda.floodlight.command.flow;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
-import static org.openkilda.floodlight.test.standard.OutputCommands.ofFactory;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
-import static org.openkilda.model.SwitchFeature.BFD;
-import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.model.SwitchFeature.METERS;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
 import org.openkilda.floodlight.error.SwitchOperationException;
-import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.Sets;
-import net.floodlightcontroller.core.IOFSwitch;
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-import java.util.Set;
 import java.util.UUID;
 
-public class InstallIngressRuleCommandTest {
-
-    private static final String FLOW_ID = "test_flow";
-    private static final SwitchId SWITCH_ID = new SwitchId(1);
+public class InstallIngressRuleCommandTest extends FlowCommandTest {
     private static final SwitchId EGRESS_SWITCH_ID = new SwitchId(2);
-    private IOFSwitch iofSwitch;
-    private FeatureDetectorService featureDetectorService;
     private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
-
-    @Before
-    public void setUp() {
-        iofSwitch = createMock(IOFSwitch.class);
-        featureDetectorService = createMock(FeatureDetectorService.class);
-        Set<SwitchFeature> features = Sets.newHashSet(METERS, BFD, GROUP_PACKET_OUT_CONTROLLER,
-                    NOVIFLOW_COPY_FIELD, RESET_COUNTS_FLAG);
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
-
-        Capture<OFFlowMod> capture = EasyMock.newCapture();
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        replay(iofSwitch);
-        replay(featureDetectorService);
-    }
 
     @Test
     public void testGetCommandsVlanReplace() throws SwitchOperationException {

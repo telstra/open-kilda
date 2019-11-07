@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.41.1 (07/11/2019)
+
+### Bug Fixes:
+-  [#2908](https://github.com/telstra/open-kilda/pull/2908) Fix incorrect output port for single-switch-single-port flows [**floodlight**]
+
+### Affected Components:
+fl
+
+---
+
 ## v1.41.0 (06/11/2019)
  
 ### Features:
