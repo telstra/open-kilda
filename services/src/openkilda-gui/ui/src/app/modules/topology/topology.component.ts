@@ -239,10 +239,13 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadSwitchLinks = () => {
     this.switchService.getSwitchLinks().subscribe(
-      links => {
-         this.graphdata.isl = links;
-        this.topologyService.setLinksData(links);
-        try {
+      links => {     
+        try {    
+         if(links){
+          this.graphdata.isl = links || [];
+          this.topologyService.setLinksData(links);
+         }
+        
           if (this.viewOptions.FLOW_CHECKED) {
             this.loadFlowCount();
           } else {
@@ -261,7 +264,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   loadFlowCount = () => {
     this.flowService.getFlowCount().subscribe(
       flow => {
-        this.graphdata.flow = flow;
+        this.graphdata.flow = flow || [];
         this.initGraph();
       },
       error => {
@@ -928,7 +931,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .append("circle")
       .attr("dy", ".35em")
       .style("font-size", this.graphOptions.nominal_text_size + "px")
-
       .attr("r", function(d, index) {
         let r: any;
         var element = $("#link" + d.index)[0];

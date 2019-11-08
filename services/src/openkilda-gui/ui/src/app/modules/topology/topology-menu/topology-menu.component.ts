@@ -42,7 +42,7 @@ export class TopologyMenuComponent implements OnInit {
   @Input() currentState;
   refreshMenu = "hide";
   showInfoFlag = "hide";
-
+  submenu = '';
   refreshIntervals = [
     { label: "30 SECONDS", value: 30 },
     { label: "45 SECONDS", value: 45 },
@@ -98,6 +98,14 @@ export class TopologyMenuComponent implements OnInit {
     settings.ISL_CHECKED = 1;
     settings.FLOW_CHECKED = 0;
     this.topologyService.setViewOptinos(settings);
+  }
+
+  openSubmenu(id){
+    if(this.submenu == id){
+      this.submenu = '';
+    }else{
+      this.submenu = id;
+    }
   }
 
   showFlow() {
