@@ -54,6 +54,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   height: number;
   graphShow=false;
   min_zoom = 0.15;
+  scaleLimit = 0.05;
   max_zoom = 3;
   zoomLevel = 0.15;
   zoomStep = 0.15;
@@ -181,7 +182,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.zoom = d3
       .zoom()
-      .scaleExtent([this.min_zoom, this.max_zoom])
+      .scaleExtent([this.scaleLimit, this.max_zoom])
       .extent([[0, 0], [this.width, this.height]])
       .on("zoom", () => {
         // this.forceSimulation.stop();
@@ -300,7 +301,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     var linksArr = [];
     if (this.nodes.length < 50) {
       this.min_zoom = 0.5;
-      this.zoom.scaleExtent([this.min_zoom, this.max_zoom]);
+      this.zoom.scaleExtent([this.scaleLimit, this.max_zoom]);
     }
     if (this.links.length > 0) {
       try {
@@ -364,15 +365,15 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sortLinks();
     this.setLinkIndexAndNum();
 
-    this.links.forEach(function(d, index, object) {
-      if (
-        typeof ref.nodes[d.source] === "undefined" ||
-        typeof ref.nodes[d.target] === "undefined"
-      ) {
-        object.splice(index, 1);
-      }
-      ref.linkedByIndex[d.source + "," + d.target] = true;
-    });
+    // this.links.forEach(function(d, index, object) {
+    //   if (
+    //     typeof ref.nodes[d.source] === "undefined" ||
+    //     typeof ref.nodes[d.target] === "undefined"
+    //   ) {
+    //     object.splice(index, 1);
+    //   }
+    //   ref.linkedByIndex[d.source + "," + d.target] = true;
+    // });
    
     this.forceSimulation.nodes(this.nodes);
     this.forceSimulation.force("link", d3.forceLink().links(this.links).distance((d:any)=>{
@@ -1711,7 +1712,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     } else if (direction == -1) {
       this.forceSimulation.stop();
-      if (this.zoomLevel - this.zoomStep >= this.min_zoom) {
+      if (this.zoomLevel - this.zoomStep >= this.scaleLimit) {
         this.svgElement
           .transition()
           .duration(350)
