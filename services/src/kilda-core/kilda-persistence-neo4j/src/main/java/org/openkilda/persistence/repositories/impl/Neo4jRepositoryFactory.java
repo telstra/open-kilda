@@ -31,6 +31,7 @@ import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
@@ -162,6 +163,11 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public ConnectedDeviceRepository createConnectedDeviceRepository() {
         return new Neo4jConnectedDevicesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository() {
+        return new Neo4jSwitchConnectedDevicesRepository(sessionFactory, transactionManager);
     }
 
     @Override
