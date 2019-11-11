@@ -34,4 +34,8 @@ public interface KildaCoreConfig {
     @Key("command-processor-idle-workers-keep-alive-seconds")
     @Default("300")
     long getCommandIdleWorkersKeepAliveSeconds();
+
+    @Key("flow-ping-magic-src-mac-address")
+    @Default("00:26:E1:FF:FF:FE")
+    String getFlowPingMagicSrcMacAddress();
 }

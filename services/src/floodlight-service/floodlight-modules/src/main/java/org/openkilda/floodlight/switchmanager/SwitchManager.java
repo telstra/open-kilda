@@ -46,6 +46,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
+import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
@@ -179,7 +180,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
 
-
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int VERIFICATION_RULE_VXLAN_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
@@ -224,6 +224,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private ConnectModeRequest.Mode connectMode;
     private SwitchManagerConfig config;
+    private KildaCore kildaCore;
 
     private String verificationBcastPacketDst;
 
@@ -269,6 +270,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 IFloodlightProviderService.class,
                 IOFSwitchService.class,
                 IRestApiService.class,
+                KildaCore.class,
                 KafkaUtilityService.class,
                 IKafkaProducerService.class,
                 FeatureDetectorService.class,
@@ -311,6 +313,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         context.getServiceImpl(IFloodlightProviderService.class).addOFMessageListener(OFType.ERROR, this);
         context.getServiceImpl(IRestApiService.class).addRestletRoutable(new SwitchManagerWebRoutable());
+
+        kildaCore = context.getServiceImpl(KildaCore.class);
     }
 
     /**
@@ -1089,19 +1093,22 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSendToController(sw));
 
         actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
-        OFInstructionApplyActions actions = ofFactory.instructions()
-                .applyActions(actionList).createBuilder().build();
+        List<OFInstruction> instructions = new ArrayList<>(2);
+        if (meter != null) {
+            instructions.add(meter);
+        }
+        instructions.add(ofFactory.instructions().applyActions(actionList));
 
-        MacAddress swMac = dpIdToMac(sw.getId());
+        MacAddress srcMac = MacAddress.of(kildaCore.getConfig().getFlowPingMagicSrcMacAddress());
         Builder builder = sw.getOFFactory().buildMatch();
-        builder.setMasked(MatchField.ETH_SRC, swMac, MacAddress.NO_MASK);
+        builder.setMasked(MatchField.ETH_SRC, srcMac, MacAddress.NO_MASK);
+        builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+        builder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
         builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
-        Match match = builder.build();
         return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY, INPUT_TABLE_ID)
-                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
-                .setMatch(match)
+                .setInstructions(instructions)
+                .setMatch(builder.build())
                 .build();
-
     }
 
     /**
@@ -2283,8 +2290,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 builder.setExact(MatchField.UDP_DST, TransportPort.of(DISCOVERY_PACKET_UDP_PORT));
             }
         } else {
+            MacAddress srcMac = MacAddress.of(kildaCore.getConfig().getFlowPingMagicSrcMacAddress());
+            builder.setMasked(MatchField.ETH_SRC, srcMac, MacAddress.NO_MASK);
             builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
-            builder.setMasked(MatchField.ETH_SRC, dstMac, MacAddress.NO_MASK);
         }
         return builder.build();
     }
