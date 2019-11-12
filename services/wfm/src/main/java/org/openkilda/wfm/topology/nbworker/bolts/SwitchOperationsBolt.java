@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import static java.lang.String.format;
+import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
@@ -27,6 +28,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -34,11 +36,15 @@ import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchConnectedDeviceDto;
+import org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchPortConnectedDevicesDto;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
@@ -48,6 +54,7 @@ import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
+import org.openkilda.wfm.share.mappers.ConnectedDeviceMapper;
 import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -61,8 +68,13 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier,
         SwitchOperationsServiceCarrier {
@@ -105,6 +117,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = Collections.singletonList(updateSwitchProperties((UpdateSwitchPropertiesRequest) request));
         } else if (request instanceof GetPortPropertiesRequest) {
             result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
+        }  else if (request instanceof GetSwitchConnectedDevicesRequest) {
+            result = Collections.singletonList(getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -222,6 +236,35 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         } catch (PersistenceException | SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Couldn't get port properties");
         }
+    }
+
+    private SwitchConnectedDevicesResponse getSwitchConnectedDevices(GetSwitchConnectedDevicesRequest request) {
+        Collection<SwitchConnectedDevice> devices;
+        try {
+            devices = switchOperationsService.getSwitchConnectedDevices(request.getSwitchId());
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
+                    "Could not get connected devices for non existent switch");
+        }
+
+
+        Map<Integer, List<SwitchConnectedDevice>> deviceByPort = devices.stream()
+                .filter(device -> request.getSince().isBefore(device.getTimeLastSeen())
+                        || request.getSince().equals(device.getTimeLastSeen()))
+                .collect(Collectors.groupingBy(SwitchConnectedDevice::getPortNumber, Collectors.toList()));
+
+        List<SwitchPortConnectedDevicesDto> ports = new ArrayList<>();
+
+        for (Entry<Integer, List<SwitchConnectedDevice>> entry : deviceByPort.entrySet()) {
+            List<SwitchConnectedDeviceDto> lldpDevices = new ArrayList<>();
+            for (SwitchConnectedDevice device : entry.getValue()) {
+                if (device.getType() == LLDP) {
+                    lldpDevices.add(ConnectedDeviceMapper.INSTANCE.map(device));
+                }
+            }
+            ports.add(new SwitchPortConnectedDevicesDto(entry.getKey(), lldpDevices));
+        }
+        return new SwitchConnectedDevicesResponse(ports);
     }
 
     @Override

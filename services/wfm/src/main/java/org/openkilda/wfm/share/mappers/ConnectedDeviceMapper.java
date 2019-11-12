@@ -16,7 +16,9 @@
 package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
+import org.openkilda.messaging.nbtopology.response.SwitchConnectedDeviceDto;
 import org.openkilda.model.ConnectedDevice;
+import org.openkilda.model.SwitchConnectedDevice;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
@@ -29,4 +31,6 @@ public abstract class ConnectedDeviceMapper {
     public abstract ConnectedDeviceDto map(ConnectedDevice device);
 
     public abstract ConnectedDevice map(ConnectedDeviceDto device);
+
+    public abstract SwitchConnectedDeviceDto map(SwitchConnectedDevice device);
 }

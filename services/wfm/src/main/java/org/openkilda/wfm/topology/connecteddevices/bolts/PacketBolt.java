@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.LldpInfoData;
+import org.openkilda.messaging.info.event.SwitchLldpInfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -52,8 +53,10 @@ public class PacketBolt extends AbstractBolt {
         if (message instanceof InfoMessage) {
             log.debug("Received info message {}", message);
             InfoData data = ((InfoMessage) message).getData();
-            if (data instanceof LldpInfoData) {
-                packetService.handleLldpData((LldpInfoData) data);
+            if (data instanceof SwitchLldpInfoData) {
+                packetService.handleSwitchLldpData((SwitchLldpInfoData) data);
+            } else if (data instanceof LldpInfoData) {
+                packetService.handleFlowLldpData((LldpInfoData) data);
             } else {
                 unhandledInput(input);
             }

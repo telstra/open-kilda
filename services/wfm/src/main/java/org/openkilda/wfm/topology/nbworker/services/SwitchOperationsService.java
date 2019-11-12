@@ -25,6 +25,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
@@ -34,6 +35,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
@@ -59,6 +61,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
     private SwitchRepository switchRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
     private PortPropertiesRepository portPropertiesRepository;
+    private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private TransactionManager transactionManager;
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
@@ -77,6 +80,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.portPropertiesRepository = repositoryFactory.createPortPropertiesRepository();
+        this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.carrier = carrier;
     }
 
@@ -318,5 +322,21 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                                 .orElseThrow(() -> new SwitchNotFoundException(switchId)))
                         .port(port)
                         .build());
+    }
+
+    /**
+     * Get switch connected devices.
+     *
+     * @param switchId target switch id
+     */
+    public Collection<SwitchConnectedDevice> getSwitchConnectedDevices(
+            SwitchId switchId) throws SwitchNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            if (!switchRepository.exists(switchId)) {
+                throw new SwitchNotFoundException(switchId);
+            }
+
+            return switchConnectedDeviceRepository.findBySwitchId(switchId);
+        });
     }
 }
