@@ -103,7 +103,7 @@ local.execution.time = 300
 pce.network.strategy = SYMMETRIC_COST
 pce.diversity.isl.cost = 10000
 pce.diversity.switch.cost = 1000
-pce.isl.cost.when.port.down = 10000
+pce.isl.cost.when.unstable = 10000
 pce.isl.cost.when.under.maintenance = 10000
 
 burst.coefficient = 1.05

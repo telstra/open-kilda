@@ -164,7 +164,7 @@ public class AvailableNetworkTest {
                 weightFunction.apply(network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next()));
 
         assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next()));
+                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()));
         assertEquals(expectedWeight,
                 weightFunction.apply(network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next()));
     }

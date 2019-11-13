@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -202,6 +203,17 @@ public interface FlowMapper {
         }
 
         return encapsulationType.toString().toLowerCase();
+    }
+
+    /**
+     * Convert {@link PathComputationStrategy} to {@link String}.
+     */
+    default String map(PathComputationStrategy pathComputationStrategy) {
+        if (pathComputationStrategy == null) {
+            return null;
+        }
+
+        return pathComputationStrategy.toString().toLowerCase();
     }
 
     /**

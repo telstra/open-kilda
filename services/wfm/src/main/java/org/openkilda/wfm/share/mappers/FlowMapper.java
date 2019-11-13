@@ -226,15 +226,6 @@ public abstract class FlowMapper {
                 encapsulationType.name()) : null;
     }
 
-    /**
-     * Convert {@link PathComputationStrategy} to {@link org.openkilda.messaging.payload.flow.PathComputationStrategy}.
-     */
-    public org.openkilda.messaging.payload.flow.PathComputationStrategy map(
-            PathComputationStrategy pathComputationStrategy) {
-        return pathComputationStrategy != null ? org.openkilda.messaging.payload.flow.PathComputationStrategy.valueOf(
-                pathComputationStrategy.name()) : null;
-    }
-
     private EncapsulationId convertToEncapsulationId(Flow flow, FlowPath flowPath, FlowDto flowDto) {
         FlowEncapsulationType flowEncapsulationType = flow.getEncapsulationType();
         EncapsulationId encapsulationId = null;
