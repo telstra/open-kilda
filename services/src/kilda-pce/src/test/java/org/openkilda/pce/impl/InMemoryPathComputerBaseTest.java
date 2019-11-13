@@ -15,8 +15,8 @@
 
 package org.openkilda.pce.impl;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
@@ -27,7 +27,6 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -70,7 +69,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class InMemoryPathComputerTest {
+public class InMemoryPathComputerBaseTest {
 
     static TestServer testServer;
     static TransactionManager txManager;
@@ -163,206 +162,6 @@ public class InMemoryPathComputerTest {
         ((Neo4jSessionFactory) txManager).getSession().purgeDatabase();
     }
 
-    @Test
-    public void shouldFindPathOverDiamondWithAllActiveLinksByCost()
-            throws UnroutableFlowException, RecoverableException {
-        /*
-         * simple happy path test .. everything has cost
-         */
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20);
-
-        Switch srcSwitch = switchRepository.findById(new SwitchId("00:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("00:04")).get();
-
-        Flow f = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .build();
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
-        assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
-    }
-
-    @Test
-    public void shouldFindPathOverDiamondWithOneActiveRouteByCost()
-            throws UnroutableFlowException, RecoverableException {
-        /*
-         * verifies that iSL in both directions needs to be active
-         */
-        createDiamond(IslStatus.INACTIVE, IslStatus.ACTIVE, 10, 20, "01:", 1);
-
-        Switch srcSwitch = switchRepository.findById(new SwitchId("01:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("01:04")).get();
-
-        Flow f = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .build();
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
-        // ====> only difference is it should now have C as first hop .. since B is inactive
-        assertEquals(new SwitchId("01:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
-    }
-
-    @Test
-    public void shouldFindPathOverTriangleWithOneActiveRouteByCost()
-            throws UnroutableFlowException, RecoverableException {
-        /*
-         * simple happy path test .. but lowest path is inactive
-         */
-        createTriangleTopo(IslStatus.INACTIVE, 5, 20, "02:", 1);
-
-        Switch srcSwitch = switchRepository.findById(new SwitchId("02:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("02:02")).get();
-
-        Flow f = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .build();
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
-        // ====> only difference is it should now have C as first hop .. since B is inactive
-        assertEquals(new SwitchId("02:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
-    }
-
-    @Test
-    public void shouldFindPathOverDiamondWithNoCostOnOneRoute() throws UnroutableFlowException, RecoverableException {
-        /*
-         * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
-         */
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, -1, 2000, "03:", 1);
-
-        Switch srcSwitch = switchRepository.findById(new SwitchId("03:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("03:04")).get();
-
-        Flow f = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .build();
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
-        // ====> Should choose B .. because default cost (700) cheaper than 2000
-        assertEquals(new SwitchId("03:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
-    }
-
-
-    @Test
-    public void shouldFailToFindOverDiamondWithNoActiveRoutes() throws UnroutableFlowException, RecoverableException {
-        /*
-         * simple happy path test .. but pathB has no cost .. but still cheaper than pathC (test the default)
-         */
-        createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 10, 30, "04:", 1);
-
-        Switch srcSwitch = switchRepository.findById(new SwitchId("04:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("04:04")).get();
-
-        Flow f = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .build();
-
-        thrown.expect(UnroutableFlowException.class);
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(f);
-    }
-
-
-    @Test
-    public void shouldFindPathOverDiamondWithAllActiveLinksAndIgnoreBandwidth()
-            throws RecoverableException, UnroutableFlowException {
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "05:", 1);
-
-        Switch srcSwitch1 = switchRepository.findById(new SwitchId("05:01")).get();
-        Switch destSwitch1 = switchRepository.findById(new SwitchId("05:03")).get();
-
-        Flow f1 = new TestFlowBuilder()
-                .srcSwitch(srcSwitch1)
-                .destSwitch(destSwitch1)
-                .bandwidth(0)
-                .ignoreBandwidth(false)
-                .build();
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f1);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
-
-        Switch srcSwitch2 = switchRepository.findById(new SwitchId("05:01")).get();
-        Switch destSwitch2 = switchRepository.findById(new SwitchId("05:04")).get();
-
-        Flow f2 = new TestFlowBuilder()
-                .srcSwitch(srcSwitch2)
-                .destSwitch(destSwitch2)
-                .bandwidth(0)
-                .ignoreBandwidth(false)
-                .build();
-
-        path = pathComputer.getPath(f2);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
-        assertEquals(new SwitchId("05:02"), path.getForward().getSegments().get(0).getDestSwitchId());
-    }
-
-    /**
-     * Create a couple of islands .. try to find a path between them .. validate no path is returned, and that the
-     * function completes in reasonable time ( < 10ms);
-     */
-    @Test
-    public void shouldFailToFindOverIslandsWithAllActiveLinksAndIgnoreBandwidth()
-            throws RecoverableException, UnroutableFlowException {
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "06:", 1);
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "07:", 1);
-
-        Switch srcSwitch1 = switchRepository.findById(new SwitchId("06:01")).get();
-        Switch destSwitch1 = switchRepository.findById(new SwitchId("06:03")).get();
-
-        // THIS ONE SHOULD WORK
-        Flow f1 = new TestFlowBuilder()
-                .srcSwitch(srcSwitch1)
-                .destSwitch(destSwitch1)
-                .bandwidth(0)
-                .ignoreBandwidth(false)
-                .build();
-
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f1);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
-
-        Switch srcSwitch2 = switchRepository.findById(new SwitchId("06:01")).get();
-        Switch destSwitch2 = switchRepository.findById(new SwitchId("07:04")).get();
-
-        // THIS ONE SHOULD FAIL
-        Flow f2 = new TestFlowBuilder()
-                .srcSwitch(srcSwitch2)
-                .destSwitch(destSwitch2)
-                .bandwidth(0)
-                .ignoreBandwidth(false)
-                .build();
-
-        thrown.expect(UnroutableFlowException.class);
-
-        pathComputer.getPath(f2);
-    }
-
     /**
      * See how it works with a large network. It takes a while to create the network .. therefore @Ignore so that it
      * doesn't slow down unit tests.
@@ -379,8 +178,8 @@ public class InMemoryPathComputerTest {
             createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "13:", 4 * i + 1);
         }
         for (int i = 0; i < 49; i++) {
-            String prev = String.format("%02X", 4 * i + 4);
-            String next = String.format("%02X", 4 * i + 5);
+            String prev = format("%02X", 4 * i + 4);
+            String next = format("%02X", 4 * i + 5);
             connectDiamonds(new SwitchId("10:" + prev), new SwitchId("10:" + next), IslStatus.ACTIVE, 20, 50);
             connectDiamonds(new SwitchId("11:" + prev), new SwitchId("11:" + next), IslStatus.ACTIVE, 20, 50);
             connectDiamonds(new SwitchId("12:" + prev), new SwitchId("12:" + next), IslStatus.ACTIVE, 20, 50);
@@ -391,8 +190,8 @@ public class InMemoryPathComputerTest {
         connectDiamonds(new SwitchId("12:99"), new SwitchId("13:22"), IslStatus.ACTIVE, 20, 50);
         connectDiamonds(new SwitchId("13:99"), new SwitchId("10:22"), IslStatus.ACTIVE, 20, 50);
 
-        Switch srcSwitch1 = switchRepository.findById(new SwitchId("10:01")).get();
-        Switch destSwitch1 = switchRepository.findById(new SwitchId("11:03")).get();
+        Switch srcSwitch1 = getSwitchById("10:01");
+        Switch destSwitch1 = getSwitchById("11:03");
 
         // THIS ONE SHOULD WORK
         Flow f1 = new TestFlowBuilder()
@@ -408,8 +207,8 @@ public class InMemoryPathComputerTest {
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
 
-        Switch srcSwitch2 = switchRepository.findById(new SwitchId("08:01")).get();
-        Switch destSwitch2 = switchRepository.findById(new SwitchId("11:04")).get();
+        Switch srcSwitch2 = getSwitchById("08:01");
+        Switch destSwitch2 = getSwitchById("11:04");
 
         // THIS ONE SHOULD FAIL
         Flow f2 = new TestFlowBuilder()
@@ -432,8 +231,8 @@ public class InMemoryPathComputerTest {
     public void verifyConversionToPair() throws UnroutableFlowException, RecoverableException {
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "09:", 1);
 
-        Switch srcSwitch = switchRepository.findById(new SwitchId("09:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("09:04")).get();
+        Switch srcSwitch = getSwitchById("09:01");
+        Switch destSwitch = getSwitchById("09:04");
 
         Flow flow = new TestFlowBuilder()
                 .srcSwitch(srcSwitch)
@@ -466,8 +265,8 @@ public class InMemoryPathComputerTest {
         createLinearTopoWithFlowSegments(10, "A1:", 1, 0L,
                 flowId, bandwidth);
 
-        Switch srcSwitch = switchRepository.findById(new SwitchId("A1:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("A1:03")).get();
+        Switch srcSwitch = getSwitchById("A1:01");
+        Switch destSwitch = getSwitchById("A1:03");
 
         Flow flow = new TestFlowBuilder()
                 .flowId(flowId)
@@ -498,8 +297,8 @@ public class InMemoryPathComputerTest {
         createLinearTopoWithFlowSegments(10, "A1:", 1, 0,
                 flowId, originFlowBandwidth);
 
-        Switch srcSwitch = switchRepository.findById(new SwitchId("A1:01")).get();
-        Switch destSwitch = switchRepository.findById(new SwitchId("A1:03")).get();
+        Switch srcSwitch = getSwitchById("A1:01");
+        Switch destSwitch = getSwitchById("A1:03");
 
         Flow flow = new TestFlowBuilder()
                 .flowId(flowId)
@@ -518,76 +317,7 @@ public class InMemoryPathComputerTest {
         pathComputer.getPath(flow, flow.getFlowPathIds());
     }
 
-    @Test
-    public void shouldFindDiversePath() throws RecoverableException, UnroutableFlowException {
-        createDiamondWithDiversity();
-
-        Flow flow = Flow.builder()
-                .flowId("new-flow")
-                .groupId("diverse")
-                .bandwidth(10)
-                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
-                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .pathComputationStrategy(PathComputationStrategy.COST)
-                .build();
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
-
-        diversePath.getForward().getSegments().forEach(
-                segment -> {
-                    assertNotEquals(new SwitchId("00:0B"), segment.getSrcSwitchId());
-                    assertNotEquals(new SwitchId("00:0B"), segment.getDestSwitchId());
-                });
-    }
-
-    @Test
-    public void shouldFindTheSameDiversePath() throws RecoverableException, UnroutableFlowException {
-        createDiamondWithDiversity();
-
-        Flow flow = Flow.builder()
-                .flowId("new-flow")
-                .groupId("diverse")
-                .bandwidth(10)
-                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
-                .srcPort(10)
-                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
-                .destPort(10)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .pathComputationStrategy(PathComputationStrategy.COST)
-                .build();
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
-
-        FlowPath forwardPath = FlowPath.builder()
-                .pathId(new PathId(UUID.randomUUID().toString()))
-                .srcSwitch(flow.getSrcSwitch())
-                .destSwitch(flow.getDestSwitch())
-                .flow(flow)
-                .bandwidth(flow.getBandwidth())
-                .segments(new ArrayList<>())
-                .build();
-        addPathSegments(forwardPath, diversePath.getForward());
-        flow.setForwardPath(forwardPath);
-
-        FlowPath reversePath = FlowPath.builder()
-                .pathId(new PathId(UUID.randomUUID().toString()))
-                .srcSwitch(flow.getDestSwitch())
-                .destSwitch(flow.getSrcSwitch())
-                .flow(flow)
-                .bandwidth(flow.getBandwidth())
-                .segments(new ArrayList<>())
-                .build();
-        addPathSegments(reversePath, diversePath.getReverse());
-        flow.setReversePath(reversePath);
-
-        flowRepository.createOrUpdate(flow);
-
-        PathPair path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
-        assertEquals(diversePath, path2);
-    }
-
-    private void addPathSegments(FlowPath flowPath, Path path) {
+    void addPathSegments(FlowPath flowPath, Path path) {
         path.getSegments().forEach(segment ->
                 addPathSegment(flowPath, switchRepository.findById(segment.getSrcSwitchId()).get(),
                         switchRepository.findById(segment.getDestSwitchId()).get(),
@@ -599,9 +329,9 @@ public class InMemoryPathComputerTest {
         // A - B - C
         int index = startIndex;
 
-        Switch nodeA = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeB = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeC = createSwitch(switchStart + String.format("%02X", index));
+        Switch nodeA = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeB = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeC = createSwitch(switchStart + format("%02X", index));
 
         createIsl(nodeA, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, linkBw, 5);
         createIsl(nodeB, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, linkBw, 6);
@@ -642,7 +372,7 @@ public class InMemoryPathComputerTest {
 
     // A - B - D    and A-B-D is used in flow group
     //   + C +
-    private void createDiamondWithDiversity() {
+    void createDiamondWithDiversity() {
         Switch nodeA = createSwitch("00:0A");
         Switch nodeB = createSwitch("00:0B");
         Switch nodeC = createSwitch("00:0C");
@@ -700,31 +430,32 @@ public class InMemoryPathComputerTest {
         flowRepository.createOrUpdate(flow);
     }
 
-    private void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost) {
-        createDiamond(pathBstatus, pathCstatus, pathBcost, pathCcost, "00:", 1);
+    void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost,
+                       String switchStart, int startIndex) {
+        createDiamond(pathBstatus, pathCstatus, pathBcost, pathCcost, switchStart, startIndex, 5L, 5L);
     }
 
-    private void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost,
-                               String switchStart, int startIndex) {
+    void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost,
+                       String switchStart, int startIndex, long pathBlatency, long pathClatency) {
         // A - B - D
         //   + C +
         int index = startIndex;
 
-        Switch nodeA = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeB = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeC = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeD = createSwitch(switchStart + String.format("%02X", index));
+        Switch nodeA = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeB = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeC = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeD = createSwitch(switchStart + format("%02X", index));
 
         IslStatus actual = (pathBstatus == IslStatus.ACTIVE) && (pathCstatus == IslStatus.ACTIVE)
                 ? IslStatus.ACTIVE : IslStatus.INACTIVE;
-        createIsl(nodeA, nodeB, pathBstatus, actual, pathBcost, 1000, 5);
-        createIsl(nodeA, nodeC, pathCstatus, actual, pathCcost, 1000, 6);
-        createIsl(nodeB, nodeD, pathBstatus, actual, pathBcost, 1000, 6);
-        createIsl(nodeC, nodeD, pathCstatus, actual, pathCcost, 1000, 5);
-        createIsl(nodeB, nodeA, pathBstatus, actual, pathBcost, 1000, 5);
-        createIsl(nodeC, nodeA, pathCstatus, actual, pathCcost, 1000, 6);
-        createIsl(nodeD, nodeB, pathBstatus, actual, pathBcost, 1000, 6);
-        createIsl(nodeD, nodeC, pathCstatus, actual, pathCcost, 1000, 5);
+        createIsl(nodeA, nodeB, pathBstatus, actual, pathBcost, 1000, 5, pathBlatency);
+        createIsl(nodeA, nodeC, pathCstatus, actual, pathCcost, 1000, 6, pathClatency);
+        createIsl(nodeB, nodeD, pathBstatus, actual, pathBcost, 1000, 6, pathBlatency);
+        createIsl(nodeC, nodeD, pathCstatus, actual, pathCcost, 1000, 5, pathClatency);
+        createIsl(nodeB, nodeA, pathBstatus, actual, pathBcost, 1000, 5, pathBlatency);
+        createIsl(nodeC, nodeA, pathCstatus, actual, pathCcost, 1000, 6, pathClatency);
+        createIsl(nodeD, nodeB, pathBstatus, actual, pathBcost, 1000, 6, pathBlatency);
+        createIsl(nodeD, nodeC, pathCstatus, actual, pathCcost, 1000, 5, pathClatency);
     }
 
     private void connectDiamonds(SwitchId switchA, SwitchId switchB, IslStatus status, int cost, int port) {
@@ -736,22 +467,22 @@ public class InMemoryPathComputerTest {
         createIsl(nodeB, nodeA, status, status, cost, 1000, port);
     }
 
-    private void createTriangleTopo(IslStatus pathABstatus, int pathABcost, int pathCcost,
-                                    String switchStart, int startIndex) {
+    void createTriangleTopo(IslStatus pathABstatus, int pathABcost, int pathCcost,
+                            String switchStart, int startIndex) {
         // A - B
         // + C +
         int index = startIndex;
 
-        Switch nodeA = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeB = createSwitch(switchStart + String.format("%02X", index++));
-        Switch nodeC = createSwitch(switchStart + String.format("%02X", index));
+        Switch nodeA = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeB = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeC = createSwitch(switchStart + format("%02X", index));
 
-        createIsl(nodeA, nodeB, pathABstatus, pathABstatus, pathABcost, 1000, 5);
-        createIsl(nodeB, nodeA, pathABstatus, pathABstatus, pathABcost, 1000, 5);
-        createIsl(nodeA, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 6);
-        createIsl(nodeC, nodeA, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 6);
-        createIsl(nodeC, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 7);
-        createIsl(nodeB, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 7);
+        createIsl(nodeA, nodeB, pathABstatus, pathABstatus, pathABcost, 1000, 5, 1000L);
+        createIsl(nodeB, nodeA, pathABstatus, pathABstatus, pathABcost, 1000, 5, 1000L);
+        createIsl(nodeA, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 6, 100L);
+        createIsl(nodeC, nodeA, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 6, 100L);
+        createIsl(nodeC, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 7, 100L);
+        createIsl(nodeB, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 7, 100L);
     }
 
     private Switch createSwitch(String name) {
@@ -765,8 +496,13 @@ public class InMemoryPathComputerTest {
         return sw;
     }
 
-    private Isl createIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
-                          int cost, long bw, int port) {
+    private void createIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
+                           int cost, long bw, int port) {
+        createIsl(srcSwitch, dstSwitch, status, actual, cost, bw, port, 5L);
+    }
+
+    private void createIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
+                           int cost, long bw, int port, long latency) {
         Isl isl = new Isl();
         isl.setSrcSwitch(srcSwitch);
         isl.setDestSwitch(dstSwitch);
@@ -776,15 +512,14 @@ public class InMemoryPathComputerTest {
             isl.setCost(cost);
         }
         isl.setAvailableBandwidth(bw);
-        isl.setLatency(5);
+        isl.setLatency(latency);
         isl.setSrcPort(port);
         isl.setDestPort(port);
 
         islRepository.createOrUpdate(isl);
-        return isl;
     }
 
-    private FlowPath addPathSegment(FlowPath flowPath, Switch src, Switch dst, int srcPort, int dstPort) {
+    private void addPathSegment(FlowPath flowPath, Switch src, Switch dst, int srcPort, int dstPort) {
         PathSegment ps = new PathSegment();
         ps.setSrcSwitch(src);
         ps.setDestSwitch(dst);
@@ -794,6 +529,10 @@ public class InMemoryPathComputerTest {
         List<PathSegment> segments = new ArrayList<>(flowPath.getSegments());
         segments.add(ps);
         flowPath.setSegments(segments);
-        return flowPath;
+    }
+
+    Switch getSwitchById(String id) {
+        return switchRepository.findById(new SwitchId(id))
+                .orElseThrow(() -> new IllegalArgumentException(format("Switch %s not found", id)));
     }
 }

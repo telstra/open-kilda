@@ -53,8 +53,8 @@ bfd.offset=200
 
 env.hardware.cleanup=false
 
-diversity.isl.weight=10000
-diversity.switch.weight=1000
+diversity.isl.cost=10000
+diversity.switch.cost=1000
 
 grpc.endpoint=http://localhost:8091
 grpc.username=kilda
