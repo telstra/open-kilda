@@ -61,6 +61,22 @@ class SimpleConversionCallback implements ConversionCallback {
     }
 
     @SuppressWarnings("unchecked")
+    SimpleConversionCallback(List<Class<? extends AttributeConverter>> converters) {
+        this.converters = converters.stream()
+                .collect(Collectors.toMap(
+                        converter -> (ParameterizedType) Arrays.stream(converter.getGenericInterfaces())
+                                .filter(type -> type instanceof ParameterizedType)
+                                .filter(type ->
+                                        ((ParameterizedType) type).getRawType().equals(AttributeConverter.class))
+                                .findFirst()
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                        format("The converter %s must implement AttributeConverter interface",
+                                                converter.getSimpleName()))),
+                        converter -> converter
+                ));
+    }
+
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T convert(Class<T> targetType, Object value) {
         if (value == null) {

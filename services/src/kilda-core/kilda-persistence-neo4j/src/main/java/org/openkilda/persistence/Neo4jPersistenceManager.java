@@ -15,11 +15,25 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.persistence.converters.ConnectedDeviceTypeConverter;
+import org.openkilda.persistence.converters.CookieConverter;
+import org.openkilda.persistence.converters.FlowEncapsulationTypeConverter;
+import org.openkilda.persistence.converters.FlowPathStatusConverter;
+import org.openkilda.persistence.converters.FlowStatusConverter;
+import org.openkilda.persistence.converters.IslDownReasonConverter;
+import org.openkilda.persistence.converters.IslStatusConverter;
+import org.openkilda.persistence.converters.MeterIdConverter;
+import org.openkilda.persistence.converters.PathIdConverter;
+import org.openkilda.persistence.converters.PortStatusConverter;
+import org.openkilda.persistence.converters.SwitchIdConverter;
+import org.openkilda.persistence.converters.SwitchStatusConverter;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.impl.Neo4jRepositoryFactory;
 
 import org.neo4j.ogm.config.Configuration.Builder;
 import org.neo4j.ogm.session.SessionFactory;
+
+import java.util.Arrays;
 
 /**
  * Neo4j OGM implementation of {@link PersistenceManager}.
@@ -63,7 +77,19 @@ public class Neo4jPersistenceManager implements PersistenceManager {
                     SessionFactory sessionFactory =
                             new SessionFactory(configBuilder.build(), "org.openkilda.model");
                     sessionFactory.metaData().registerConversionCallback(
-                            new SimpleConversionCallback("org.openkilda.persistence.converters"));
+                            new SimpleConversionCallback(Arrays.asList(
+                                    ConnectedDeviceTypeConverter.class,
+                                    CookieConverter.class,
+                                    FlowEncapsulationTypeConverter.class,
+                                    FlowPathStatusConverter.class,
+                                    FlowStatusConverter.class,
+                                    IslDownReasonConverter.class,
+                                    IslStatusConverter.class,
+                                    MeterIdConverter.class,
+                                    PathIdConverter.class,
+                                    PortStatusConverter.class,
+                                    SwitchIdConverter.class,
+                                    SwitchStatusConverter.class)));
 
                     neo4jTransactionManager = new Neo4jTransactionManager(sessionFactory);
                 }
