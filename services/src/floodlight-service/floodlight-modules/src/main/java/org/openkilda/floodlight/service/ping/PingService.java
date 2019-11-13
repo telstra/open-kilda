@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.service.ping;
 
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
@@ -48,6 +50,7 @@ public class PingService implements IService {
 
     private DataSignature signature = null;
     private ISwitchManager switchManager;
+    private MacAddress magicSourceMacAddress;
 
     /**
      * Initialize internal data structures. Called by module that own this service. Called after all dependencies have
@@ -67,6 +70,9 @@ public class PingService implements IService {
 
         InputService inputService = moduleContext.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, new PingInputTranslator());
+
+        KildaCoreConfig coreConfig = moduleContext.getServiceImpl(KildaCore.class).getConfig();
+        magicSourceMacAddress = MacAddress.of(coreConfig.getFlowPingMagicSrcMacAddress());
     }
 
     /**
@@ -90,7 +96,7 @@ public class PingService implements IService {
         l2.setPayload(l3);
         l2.setEtherType(EthType.IPv4);
 
-        l2.setSourceMACAddress(ping.getDest().getDatapath().toMacAddress());
+        l2.setSourceMACAddress(magicSourceMacAddress);
         l2.setDestinationMACAddress(ping.getDest().getDatapath().toMacAddress());
         if (null != ping.getSourceVlanId()) {
             l2.setVlanID(ping.getSourceVlanId());
