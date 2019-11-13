@@ -51,7 +51,7 @@ class ContentionV2Spec extends BaseSpecification {
         }
 
         cleanup: "Remove flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Parallel flow crud requests properly allocate/deallocate bandwidth resources"() {
@@ -80,7 +80,7 @@ class ContentionV2Spec extends BaseSpecification {
 
         when: "Simultaneously remove all the flows"
         def deleteTasks = flows.collect { flow ->
-            group.task { flowHelper.deleteFlow(flow.flowId) }
+            group.task { flowHelperV2.deleteFlow(flow.flowId) }
         }
         deleteTasks*.join()
 
@@ -134,7 +134,7 @@ class ContentionV2Spec extends BaseSpecification {
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "Cleanup: remove flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 

@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -34,6 +35,7 @@ path. The cost of paths for diverse flows is calculated in real time and consist
 
 Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
 """)
+@Tags([LOW_PRIORITY])
 class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Value('${diversity.isl.weight}')

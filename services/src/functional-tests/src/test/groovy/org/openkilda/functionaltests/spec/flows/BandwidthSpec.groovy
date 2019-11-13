@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -16,6 +17,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
+@Tags([LOW_PRIORITY])
 class BandwidthSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)

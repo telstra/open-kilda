@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.messaging.payload.flow.FlowState
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -20,6 +18,9 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.Message
+import org.openkilda.messaging.command.CommandData
+import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -523,20 +524,33 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
 
         when: "Init creation of a new flow"
-        flowHelperV2.addFlow(flow)
+        northboundV2.addFlow(flow)
 
         and: "Immediately remove the flow"
         northboundV2.deleteFlow(flow.flowId)
 
-        then: "All related switches have no discrepancies in rules"
+        then: "System returns error as being unable to remove in progress flow"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.BAD_REQUEST
+
+        and: "Flow is not removed"
+        northbound.getAllFlows()*.id.contains(flow.flowId)
+
+        and: "Flow eventually gets into UP state"
         Wrappers.wait(WAIT_OFFSET) {
-            switches.each {
-                def rules = northbound.validateSwitchRules(it.dpId)
-                assert rules.excessRules.empty, it
-                assert rules.missingRules.empty, it
-                assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.empty, it
-            }
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
+
+        and: "All related switches have no discrepancies in rules"
+        switches.each {
+            def validation = northbound.validateSwitch(it.dpId)
+            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            assert validation.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+        }
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Unroll
@@ -577,6 +591,48 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                         },
                         errorDescription   : { Isl violatedIsl ->
                             getPortViolationError("create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                        }
+                ]
+        ]
+    }
+
+    @Unroll
+    def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
+        given: "An isl"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assumeTrue("Unable to find required isl", isl as boolean)
+
+        and: "A flow"
+        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to edit port to isl port"
+        northboundV2.updateFlow(flow.flowId, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
+
+        then:
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not update flow"
+        error.errorDescription == data.message(isl)
+
+        and: "Cleanup: delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+
+        where:
+        data << [
+                [
+                        switchType: "source",
+                        port      : "srcPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("update", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                        }
+                ],
+                [
+                        switchType: "destination",
+                        port      : "dstPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
         ]

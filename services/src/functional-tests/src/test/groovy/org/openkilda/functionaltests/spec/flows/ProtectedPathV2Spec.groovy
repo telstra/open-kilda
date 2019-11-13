@@ -283,10 +283,13 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
 
         and: "Init intentional reroute"
-        def rerouteResponse = northbound.rerouteFlow(flow.flowId)
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "Flow is rerouted"
         rerouteResponse.rerouted
+        Wrappers.wait(WAIT_OFFSET) {
+            northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
 
         and: "Path is not changed to protected path"
         def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
@@ -389,7 +392,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         assert flowPathInfo.protectedPath
 
         when: "Init intentional reroute"
-        def rerouteResponse = northbound.rerouteFlow(flow.flowId)
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "Flow is not rerouted"
         !rerouteResponse.rerouted
@@ -1145,7 +1148,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
 
         and: "Init intentional reroute"
-        def rerouteResponse = northbound.rerouteFlow(flow.flowId)
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "Flow should be rerouted"
         rerouteResponse.rerouted

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -16,6 +17,7 @@ import spock.lang.Shared
 
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
+@Tags([LOW_PRIORITY])
 class FlowHistorySpec extends HealthCheckSpecification {
     String createAction = "Flow creating"
     String createHistoryActionV1 = "Created the flow"
