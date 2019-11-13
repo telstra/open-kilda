@@ -29,7 +29,7 @@ public class PathComputationStrategyConverter implements AttributeConverter<Path
         if (value == null) {
             return null;
         }
-        return value.name();
+        return value.name().toLowerCase();
     }
 
     @Override
@@ -37,6 +37,6 @@ public class PathComputationStrategyConverter implements AttributeConverter<Path
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        return PathComputationStrategy.valueOf(value);
+        return PathComputationStrategy.valueOf(value.toUpperCase());
     }
 }

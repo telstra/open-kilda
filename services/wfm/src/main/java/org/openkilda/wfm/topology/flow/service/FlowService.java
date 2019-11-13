@@ -1037,6 +1037,7 @@ public class FlowService extends BaseFlowService {
                 .srcSwitch(switchRepository.reload(flow.getSrcSwitch()))
                 .destSwitch(switchRepository.reload(flow.getDestSwitch()))
                 .encapsulationType(flow.getEncapsulationType())
+                .pathComputationStrategy(flow.getPathComputationStrategy())
                 .timeModify(timeModify)
                 .status(status)
                 .build();

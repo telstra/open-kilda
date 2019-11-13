@@ -46,6 +46,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -61,6 +62,7 @@ import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -132,6 +134,10 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
+
+        KildaConfigurationRepository configurationRepository = mock(KildaConfigurationRepository.class);
+        when(configurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
+        when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(configurationRepository);
 
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
