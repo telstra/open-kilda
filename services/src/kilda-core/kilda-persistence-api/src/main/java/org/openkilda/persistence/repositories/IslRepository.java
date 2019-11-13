@@ -68,6 +68,13 @@ public interface IslRepository extends Repository<Isl> {
     Collection<Isl> findAllActive();
 
     /**
+     * Finds all active ISLs with encapsulation type support.
+     *
+     * @param flowEncapsulationType required encapsulation support
+     */
+    Collection<Isl> findAllActiveByEncapsulationType(FlowEncapsulationType flowEncapsulationType);
+
+    /**
      * Finds all active ISLs, filtering out ISLs that don't have enough available bandwidth.
      *
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
