@@ -23,6 +23,7 @@ import org.openkilda.persistence.converters.FlowStatusConverter;
 import org.openkilda.persistence.converters.IslDownReasonConverter;
 import org.openkilda.persistence.converters.IslStatusConverter;
 import org.openkilda.persistence.converters.MeterIdConverter;
+import org.openkilda.persistence.converters.PathComputationStrategyConverter;
 import org.openkilda.persistence.converters.PathIdConverter;
 import org.openkilda.persistence.converters.PortStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
@@ -86,6 +87,7 @@ public class Neo4jPersistenceManager implements PersistenceManager {
                                     IslDownReasonConverter.class,
                                     IslStatusConverter.class,
                                     MeterIdConverter.class,
+                                    PathComputationStrategyConverter.class,
                                     PathIdConverter.class,
                                     PortStatusConverter.class,
                                     SwitchIdConverter.class,
