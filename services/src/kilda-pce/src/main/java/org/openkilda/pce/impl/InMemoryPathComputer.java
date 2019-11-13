@@ -123,7 +123,7 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     private WeightFunction getWeightFunctionByStrategy(PathComputationStrategy strategy) {
-        switch (strategy) { //NOSONAR
+        switch (strategy) {
             case COST:
                 return edge -> {
                     long total = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
@@ -133,8 +133,21 @@ public class InMemoryPathComputer implements PathComputer {
                     if (edge.isUnstable()) {
                         total += config.getUnstableCostRaise();
                     }
-                    total += edge.getDiversityGroupUseCounter() * config.getDiversityIslWeight()
-                            + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchWeight();
+                    total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
+                            + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+                    return total;
+                };
+            case LATENCY:
+                return edge -> {
+                    long total = edge.getLatency() <= 0 ? config.getDefaultIslLatency() : edge.getLatency();
+                    if (edge.isUnderMaintenance()) {
+                        total += config.getUnderMaintenanceLatencyRaise();
+                    }
+                    if (edge.isUnstable()) {
+                        total += config.getUnstableLatencyRaise();
+                    }
+                    total += edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency()
+                            + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
                     return total;
                 };
             default:

@@ -156,6 +156,13 @@ public class BestWeightAndShortestPathFinderTest {
         return network;
     }
 
+    @Test(expected = UnroutableFlowException.class)
+    public void shouldFailWhenPathIsLongerThenAllowedDepth() throws UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+
+        BestWeightAndShortestPathFinder forward = new BestWeightAndShortestPathFinder(1);
+        forward.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION);
+    }
 
     @Test
     public void shouldReturnTheShortestPath() throws  UnroutableFlowException {
