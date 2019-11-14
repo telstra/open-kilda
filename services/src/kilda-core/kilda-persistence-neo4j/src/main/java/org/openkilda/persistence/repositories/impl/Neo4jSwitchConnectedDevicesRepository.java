@@ -16,16 +16,19 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
+import static org.neo4j.ogm.cypher.ComparisonOperator.EQUALS;
+import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.SWITCH_NAME_PROPERTY_NAME;
 
 import org.openkilda.model.ConnectedDeviceType;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 
-import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -33,7 +36,7 @@ import java.util.Optional;
 public class Neo4jSwitchConnectedDevicesRepository
         extends Neo4jGenericRepository<SwitchConnectedDevice> implements SwitchConnectedDeviceRepository {
 
-    private static final String SWITCH_ID_PROPERTY_NAME = "switch_id";
+    private static final String SWITCH_FIELD = "switchObj";
     private static final String PORT_NUMBER_PROPERTY_NAME = "port_number";
     private static final String VLAN_PROPERTY_NAME = "vlan";
     private static final String TYPE_PROPERTY_NAME = "type";
@@ -47,24 +50,29 @@ public class Neo4jSwitchConnectedDevicesRepository
 
     @Override
     public Collection<SwitchConnectedDevice> findBySwitchId(SwitchId switchId) {
-        Filter switchIdFilter = new Filter(SWITCH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
-        return loadAll(switchIdFilter);
+        Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, EQUALS, switchId.toString());
+        switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
+
+        return loadAll(switchFilter);
     }
 
     @Override
     public Optional<SwitchConnectedDevice> findByUniqueFieldCombination(
             SwitchId switchId, int portNumber, int vlan, String macAddress, ConnectedDeviceType type, String chassisId,
             String portId) {
-        Filter switchIdFilter = new Filter(SWITCH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
-        Filter portNumberFilter = new Filter(PORT_NUMBER_PROPERTY_NAME, ComparisonOperator.EQUALS, portNumber);
-        Filter vlanFilter = new Filter(VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, vlan);
-        Filter macAddressFilter = new Filter(MAC_ADDRESS_PROPERTY_NAME, ComparisonOperator.EQUALS, macAddress);
-        Filter typeFilter = new Filter(TYPE_PROPERTY_NAME, ComparisonOperator.EQUALS, type);
-        Filter chassisIdFilter = new Filter(CHASSIS_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, chassisId);
-        Filter portIdFilter = new Filter(PORT_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, portId);
-        Collection<SwitchConnectedDevice> devices = loadAll(
-                switchIdFilter.and(portNumberFilter).and(vlanFilter).and(macAddressFilter).and(typeFilter)
-                        .and(chassisIdFilter).and(portIdFilter));
+
+        Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, EQUALS, switchId.toString());
+        switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
+
+        Filters filters = new Filters(switchFilter);
+        filters.and(new Filter(PORT_NUMBER_PROPERTY_NAME, EQUALS, portNumber));
+        filters.and(new Filter(VLAN_PROPERTY_NAME, EQUALS, vlan));
+        filters.and(new Filter(MAC_ADDRESS_PROPERTY_NAME, EQUALS, macAddress));
+        filters.and(new Filter(TYPE_PROPERTY_NAME, EQUALS, type));
+        filters.and(new Filter(CHASSIS_ID_PROPERTY_NAME, EQUALS, chassisId));
+        filters.and(new Filter(PORT_ID_PROPERTY_NAME, EQUALS, portId));
+
+        Collection<SwitchConnectedDevice> devices = loadAll(filters);
 
         if (devices.size() > 1) {
             throw new PersistenceException(format("Found more that 1 Connected Device by switch ID '%s', port number "
@@ -77,5 +85,11 @@ public class Neo4jSwitchConnectedDevicesRepository
     @Override
     protected Class<SwitchConnectedDevice> getEntityType() {
         return SwitchConnectedDevice.class;
+    }
+
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        return 1;
     }
 }

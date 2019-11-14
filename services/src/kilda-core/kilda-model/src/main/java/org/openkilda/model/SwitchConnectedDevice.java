@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import static java.lang.String.format;
+import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -25,11 +26,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.ToString;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
@@ -41,8 +44,9 @@ import java.time.Instant;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
+@EqualsAndHashCode(exclude = {"entityId", "switchObj"})
 @NodeEntity(label = "switch_connected_device")
+@ToString(exclude = {"switchObj"})
 public class SwitchConnectedDevice implements Serializable {
     private static final long serialVersionUID = 4191175994460517407L;
 
@@ -53,11 +57,9 @@ public class SwitchConnectedDevice implements Serializable {
     @Getter(AccessLevel.NONE)
     private Long entityId;
 
-    @Index
     @NonNull
-    @Property("switch_id")
-    @Convert(graphPropertyType = String.class)
-    private SwitchId switchId;
+    @Relationship(type = "has", direction = INCOMING)
+    private Switch switchObj;
 
     @Index
     @Property("port_number")
@@ -125,12 +127,12 @@ public class SwitchConnectedDevice implements Serializable {
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
-    public SwitchConnectedDevice(@NonNull SwitchId switchId, int portNumber, int vlan, String flowId,
+    public SwitchConnectedDevice(@NonNull Switch switchObj, int portNumber, int vlan, String flowId,
                                  @NonNull String macAddress, @NonNull ConnectedDeviceType type,
                                  @NonNull String chassisId, @NonNull String portId, Integer ttl, String portDescription,
                                  String systemName, String systemDescription, String systemCapabilities,
                                  String managementAddress, Instant timeFirstSeen, Instant timeLastSeen) {
-        this.switchId = switchId;
+        this.switchObj = switchObj;
         this.portNumber = portNumber;
         this.vlan = vlan;
         this.flowId = flowId;
@@ -149,8 +151,8 @@ public class SwitchConnectedDevice implements Serializable {
         calculateUniqueIndex();
     }
 
-    public void setSwitchId(@NonNull SwitchId switchId) {
-        this.switchId = switchId;
+    public void setSwitch(@NonNull Switch switchObj) {
+        this.switchObj = switchObj;
         calculateUniqueIndex();
     }
 
@@ -186,6 +188,6 @@ public class SwitchConnectedDevice implements Serializable {
 
     private void calculateUniqueIndex() {
         uniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
-                switchId, portNumber, vlan, macAddress, type, chassisId, portId);
+                switchObj.getSwitchId(), portNumber, vlan, macAddress, type, chassisId, portId);
     }
 }

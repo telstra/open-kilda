@@ -45,7 +45,6 @@ CREATE CONSTRAINT ON (`port_properties`:`port_properties`) ASSERT `port_properti
 CREATE CONSTRAINT ON (`port_properties`:`port_properties`) ASSERT `port_properties`.`discriminator` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch_connected_device`:`switch_connected_device`) ASSERT `switch_connected_device`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch_connected_device`:`switch_connected_device`) ASSERT `switch_connected_device`.`unique_index` IS UNIQUE;
-CREATE INDEX ON :`switch_connected_device` (`switch_id`);
 CREATE INDEX ON :`switch_connected_device` (`port_number`);
 CREATE INDEX ON :`switch_connected_device` (`vlan`);
 CREATE INDEX ON :`switch_connected_device` (`mac_address`);

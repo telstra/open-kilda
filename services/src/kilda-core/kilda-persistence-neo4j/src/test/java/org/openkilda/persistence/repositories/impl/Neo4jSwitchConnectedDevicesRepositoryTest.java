@@ -15,19 +15,23 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 
-import com.google.common.collect.Lists;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -57,80 +61,94 @@ public class Neo4jSwitchConnectedDevicesRepositoryTest extends Neo4jBasedTest {
     private static final Instant TIME_FIRST_SEEN = Instant.now().minusSeconds(10);
     private static final Instant TIME_LAST_SEEN = Instant.now();
 
+    private Switch firstSwitch = Switch.builder().switchId(FIRST_SWITCH_ID).build();
+    private Switch secondSwitch = Switch.builder().switchId(SECOND_SWITCH_ID).build();
+
     private SwitchConnectedDevice connectedDeviceA = new SwitchConnectedDevice(
-            FIRST_SWITCH_ID, FIRST_PORT_NUMBER, FIRST_VLAN, FIRST_FLOW_ID, MAC_ADDRESS_1, LLDP, CHASSIS_ID, PORT_ID,
+            firstSwitch, FIRST_PORT_NUMBER, FIRST_VLAN, FIRST_FLOW_ID, MAC_ADDRESS_1, LLDP, CHASSIS_ID, PORT_ID,
             TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN,
             TIME_LAST_SEEN);
     private SwitchConnectedDevice connectedDeviceB = new SwitchConnectedDevice(
-            SECOND_SWITCH_ID, FIRST_PORT_NUMBER, FIRST_VLAN, SECOND_FLOW_ID, MAC_ADDRESS_1, LLDP, CHASSIS_ID,
+            secondSwitch, FIRST_PORT_NUMBER, FIRST_VLAN, SECOND_FLOW_ID, MAC_ADDRESS_1, LLDP, CHASSIS_ID,
             PORT_ID, TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN,
             TIME_LAST_SEEN);
     private SwitchConnectedDevice connectedDeviceC = new SwitchConnectedDevice(
-            SECOND_SWITCH_ID, SECOND_PORT_NUMBER, SECOND_VLAN, null, MAC_ADDRESS_2, ARP, CHASSIS_ID, PORT_ID, TTL,
+            secondSwitch, SECOND_PORT_NUMBER, SECOND_VLAN, null, MAC_ADDRESS_2, ARP, CHASSIS_ID, PORT_ID, TTL,
             PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN,
             TIME_LAST_SEEN);
 
-    private static SwitchConnectedDeviceRepository repository;
+    private static SwitchRepository switchRepository;
+    private static SwitchConnectedDeviceRepository connectedDeviceRepository;
 
     @BeforeClass
-    public static void setUp() {
-        repository = new Neo4jSwitchConnectedDevicesRepository(neo4jSessionFactory, txManager);
+    public static void setUpOnes() {
+        switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
+        connectedDeviceRepository = new Neo4jSwitchConnectedDevicesRepository(neo4jSessionFactory, txManager);
+    }
+
+    @Before
+    public void setUp() {
+        switchRepository.createOrUpdate(firstSwitch);
+        switchRepository.createOrUpdate(secondSwitch);
     }
 
     @Test
     public void createConnectedDeviceTest() {
-        repository.createOrUpdate(connectedDeviceA);
-        Collection<SwitchConnectedDevice> devices = repository.findAll();
+        connectedDeviceRepository.createOrUpdate(connectedDeviceA);
+        Collection<SwitchConnectedDevice> devices = connectedDeviceRepository.findAll();
         assertEquals(connectedDeviceA, devices.iterator().next());
+        assertNotNull(devices.iterator().next().getSwitchObj());
     }
 
     @Test
     public void deleteConnectedDeviceTest() {
-        repository.createOrUpdate(connectedDeviceA);
-        repository.createOrUpdate(connectedDeviceB);
-        assertEquals(2, repository.findAll().size());
+        connectedDeviceRepository.createOrUpdate(connectedDeviceA);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceB);
+        assertEquals(2, connectedDeviceRepository.findAll().size());
 
-        repository.delete(connectedDeviceA);
-        assertEquals(1, repository.findAll().size());
-        assertEquals(connectedDeviceB, repository.findAll().iterator().next());
+        connectedDeviceRepository.delete(connectedDeviceA);
+        assertEquals(1, connectedDeviceRepository.findAll().size());
+        assertEquals(connectedDeviceB, connectedDeviceRepository.findAll().iterator().next());
 
-        repository.delete(connectedDeviceB);
-        assertEquals(0, repository.findAll().size());
+        connectedDeviceRepository.delete(connectedDeviceB);
+        assertEquals(0, connectedDeviceRepository.findAll().size());
     }
 
     @Test
     public void findBySwitchIdTest() {
-        repository.createOrUpdate(connectedDeviceA);
-        repository.createOrUpdate(connectedDeviceB);
-        repository.createOrUpdate(connectedDeviceC);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceA);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceB);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceC);
 
-        Collection<SwitchConnectedDevice> firstSwitchDevices = repository.findBySwitchId(FIRST_SWITCH_ID);
+        Collection<SwitchConnectedDevice> firstSwitchDevices = connectedDeviceRepository
+                .findBySwitchId(FIRST_SWITCH_ID);
         assertEquals(1, firstSwitchDevices.size());
         assertEquals(connectedDeviceA, firstSwitchDevices.iterator().next());
 
-        Collection<SwitchConnectedDevice> secondFlowDevices = repository.findBySwitchId(SECOND_SWITCH_ID);
+        Collection<SwitchConnectedDevice> secondFlowDevices = connectedDeviceRepository
+                .findBySwitchId(SECOND_SWITCH_ID);
         assertEquals(2, secondFlowDevices.size());
-        assertEquals(Lists.newArrayList(connectedDeviceB, connectedDeviceC), secondFlowDevices);
+        assertEquals(newHashSet(connectedDeviceB, connectedDeviceC), newHashSet(secondFlowDevices));
     }
 
     @Test
     public void findByUniqueFields() {
-        repository.createOrUpdate(connectedDeviceA);
-        repository.createOrUpdate(connectedDeviceB);
-        repository.createOrUpdate(connectedDeviceC);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceA);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceB);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceC);
 
         runFindByUniqueFields(connectedDeviceA);
         runFindByUniqueFields(connectedDeviceB);
         runFindByUniqueFields(connectedDeviceC);
 
-        assertFalse(repository.findByUniqueFieldCombination(
+        assertFalse(connectedDeviceRepository.findByUniqueFieldCombination(
                 new SwitchId("999"), 999, 999, "fake", LLDP, CHASSIS_ID, PORT_ID).isPresent());
     }
 
     private void runFindByUniqueFields(SwitchConnectedDevice device) {
-        Optional<SwitchConnectedDevice> foundDevice = repository.findByUniqueFieldCombination(device.getSwitchId(),
-                device.getPortNumber(), device.getVlan(),  device.getMacAddress(), device.getType(),
-                device.getChassisId(), device.getPortId());
+        Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findByUniqueFieldCombination(
+                device.getSwitchObj().getSwitchId(), device.getPortNumber(), device.getVlan(),  device.getMacAddress(),
+                device.getType(), device.getChassisId(), device.getPortId());
 
         assertTrue(foundDevice.isPresent());
         assertEquals(device, foundDevice.get());
@@ -140,7 +158,7 @@ public class Neo4jSwitchConnectedDevicesRepositoryTest extends Neo4jBasedTest {
     public void uniqueIndexTest() {
         SwitchConnectedDevice createdDevice = validateIndexAndUpdate(connectedDeviceA);
 
-        createdDevice.setSwitchId(SECOND_SWITCH_ID);
+        createdDevice.setSwitch(secondSwitch);
         SwitchConnectedDevice updatedSwitchDevice = validateIndexAndUpdate(createdDevice);
 
         updatedSwitchDevice.setPortNumber(SECOND_PORT_NUMBER);
@@ -163,13 +181,14 @@ public class Neo4jSwitchConnectedDevicesRepositoryTest extends Neo4jBasedTest {
     }
 
     private SwitchConnectedDevice validateIndexAndUpdate(SwitchConnectedDevice device) {
-        String expectedIndex = format("%s_%s_%s_%s_%s_%s_%s", device.getSwitchId(), device.getPortNumber(),
-                device.getVlan(), device.getMacAddress(), device.getType(), device.getChassisId(), device.getPortId());
+        String expectedIndex = format("%s_%s_%s_%s_%s_%s_%s", device.getSwitchObj().getSwitchId(),
+                device.getPortNumber(), device.getVlan(), device.getMacAddress(), device.getType(),
+                device.getChassisId(), device.getPortId());
 
         // chack that index was updated after call of set***() method or after constructing
         assertEquals(expectedIndex, device.getUniqueIndex());
-        repository.createOrUpdate(device);
-        SwitchConnectedDevice updatedDevice = repository.findAll().iterator().next();
+        connectedDeviceRepository.createOrUpdate(device);
+        SwitchConnectedDevice updatedDevice = connectedDeviceRepository.findAll().iterator().next();
         assertEquals(expectedIndex, updatedDevice.getUniqueIndex());
         return updatedDevice;
     }
