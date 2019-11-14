@@ -55,6 +55,12 @@ public enum InstallRulesAction {
     // Install  Transit Table Drop rule
     INSTALL_MULTITABLE_TRANSIT_DROP,
 
+    // Install Input table LLDP pre drop rule
+    INSTALL_LLDP_INPUT_PRE_DROP,
+
+    // Install Transit table LLDP rule
+    INSTALL_LLDP_TRANSIT,
+
     // Install all default rules (ie a combination of the above)
     INSTALL_DEFAULTS;
 }

@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.info.event;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -23,26 +23,27 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
 @Data
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-@NoArgsConstructor
 @AllArgsConstructor
-public class LldpInfoData extends InfoData {
+public class SwitchLldpInfoData extends LldpInfoData {
 
     private static final long serialVersionUID = 7963516610743491465L;
 
-    private long cookie;
-    private String macAddress;
-    private String chassisId;
-    private String portId;
-    private Integer ttl;
-    private String portDescription;
-    private String systemName;
-    private String systemDescription;
-    private String systemCapabilities;
-    private String managementAddress;
+    private SwitchId switchId;
+    private int portNumber;
+    private int vlan;
+
+    public SwitchLldpInfoData(SwitchId switchId, int portNumber, int vlan, long cookie, String macAddress,
+                              String chassisId, String portId, Integer ttl, String portDescription, String systemName,
+                              String systemDescription, String systemCapabilities, String managementAddress) {
+        super(cookie, macAddress, chassisId, portId, ttl, portDescription, systemName, systemDescription,
+                systemCapabilities, managementAddress);
+        this.switchId = switchId;
+        this.portNumber = portNumber;
+        this.vlan = vlan;
+    }
 }

@@ -42,6 +42,9 @@ public class SwitchRulesInstallRequest extends CommandData {
     @JsonProperty("multi_table")
     private boolean multiTable = false;
 
+    @JsonProperty("switch_lldp")
+    private boolean switchLldp = false;
+
     @JsonProperty("isl_ports")
     private List<Integer> islPorts = new ArrayList<>();
 
@@ -79,6 +82,10 @@ public class SwitchRulesInstallRequest extends CommandData {
         return multiTable;
     }
 
+    public boolean isSwitchLldp() {
+        return switchLldp;
+    }
+
     public List<Integer> getIslPorts() {
         return islPorts;
     }
@@ -89,6 +96,10 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     public void setMultiTable(boolean multiTable) {
         this.multiTable = multiTable;
+    }
+
+    public void setSwitchLldp(boolean switchLldp) {
+        this.switchLldp = switchLldp;
     }
 
     public void setIslPorts(List<Integer> islPorts) {

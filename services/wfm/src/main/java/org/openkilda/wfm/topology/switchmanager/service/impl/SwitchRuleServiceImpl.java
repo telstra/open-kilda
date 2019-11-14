@@ -56,6 +56,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
+            data.setSwitchLldp(switchProperties.get().isSwitchLldp());
             Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
             List<Integer> flowPorts = new ArrayList<>();
             for (FlowPath flowPath : flowPaths) {
@@ -81,6 +82,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
+            data.setSwitchLldp(switchProperties.get().isSwitchLldp());
             Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
             List<Integer> flowPorts = new ArrayList<>();
             for (FlowPath flowPath : flowPaths) {

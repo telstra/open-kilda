@@ -47,6 +47,9 @@ public class SwitchRulesDeleteRequest extends CommandData {
     @JsonProperty("multi_table")
     private boolean multiTable = false;
 
+    @JsonProperty("switch_lldp")
+    private boolean switchLldp = false;
+
     @JsonProperty("isl_ports")
     private List<Integer> islPorts = new ArrayList<>();
 

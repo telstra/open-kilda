@@ -283,11 +283,21 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                     .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
+            if (!update.isMultiTable() && update.isSwitchLldp()) {
+                throw new IllegalSwitchPropertiesException(
+                        String.format("Illegal switch properties combination for switch %s. 'switchLldp' property "
+                                + "can be set to 'true' only if 'multiTable' property is 'true'.", switchId));
+            }
+
             final boolean previousMultiTableFlag = switchProperties.isMultiTable();
+            final boolean previousLldpFlag = switchProperties.isSwitchLldp();
+
             switchProperties.setMultiTable(update.isMultiTable());
+            switchProperties.setSwitchLldp(update.isSwitchLldp());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
+
             switchPropertiesRepository.createOrUpdate(switchProperties);
-            if (previousMultiTableFlag != update.isMultiTable()) {
+            if (previousMultiTableFlag != update.isMultiTable() || previousLldpFlag != update.isSwitchLldp()) {
                 carrier.requestSwitchSync(switchId);
             }
 
