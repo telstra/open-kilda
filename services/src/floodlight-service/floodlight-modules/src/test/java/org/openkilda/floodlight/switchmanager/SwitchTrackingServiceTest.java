@@ -361,9 +361,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
             }
         }).anyTimes();
 
-        producerService.enableGuaranteedOrder(eq(KAFKA_ISL_DISCOVERY_TOPIC));
-        producerService.disableGuaranteedOrder(eq(KAFKA_ISL_DISCOVERY_TOPIC));
-
         replayAll();
 
         String correlationId = "unit-test-correlation-id";

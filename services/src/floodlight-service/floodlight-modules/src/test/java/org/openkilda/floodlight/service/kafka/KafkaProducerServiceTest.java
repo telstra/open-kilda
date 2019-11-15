@@ -34,7 +34,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.easymock.Capture;
-import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.easymock.IAnswer;
@@ -44,7 +43,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -81,63 +79,6 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
             partitionsForResult.add(new PartitionInfo(p.topic(), p.partition(), null, null, null));
         }
         expect(kafkaProducer.partitionsFor(TOPIC)).andReturn(partitionsForResult).anyTimes();
-    }
-
-    @Test
-    public void partitionSpreading() throws Exception {
-        RecordMetadata[] sendResults = new RecordMetadata[]{
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[1], -1L, 0L, System.currentTimeMillis(), 0, 0, 0),
-                new RecordMetadata(partitions[0], -1L, 0L, System.currentTimeMillis(), 0, 0, 0)
-        };
-
-        Integer[] expectedPartitions = new Integer[] {
-                null, null, null, 0, null, null, null, 1, null};
-        Assert.assertEquals(sendResults.length, expectedPartitions.length);
-
-        Capture<ProducerRecord<String, String>> sendArguments = Capture.newInstance(CaptureType.ALL);
-        setupSendCapture(sendArguments, sendResults);
-
-        replay(kafkaProducer);
-
-        InfoMessage payload = makePayload();
-
-        subject.sendMessageAndTrack(TOPIC, payload);
-        subject.sendMessageAndTrack(TOPIC, payload);
-        subject.enableGuaranteedOrder(TOPIC);
-        try {
-            subject.sendMessageAndTrack(TOPIC, payload);
-            subject.sendMessageAndTrack(TOPIC, payload);
-        } finally {
-            subject.disableGuaranteedOrder(TOPIC, 0L);
-        }
-        subject.sendMessageAndTrack(TOPIC, payload);
-        subject.sendMessageAndTrack(TOPIC, payload);
-        subject.enableGuaranteedOrder(TOPIC);
-        try {
-            subject.sendMessageAndTrack(TOPIC, payload);
-            subject.sendMessageAndTrack(TOPIC, payload);
-        } finally {
-            subject.disableGuaranteedOrder(TOPIC, 0L);
-        }
-        subject.sendMessageAndTrack(TOPIC, payload);
-
-        verify(kafkaProducer);
-
-        List<ProducerRecord<String, String>> values = sendArguments.getValues();
-        for (int i = 0; i < values.size(); i++) {
-            ProducerRecord<String, String> record = values.get(i);
-            Integer partition = expectedPartitions[i];
-            Assert.assertEquals(String.format(
-                    "%d: Invalid partition argument for message \"%s\" - %s", i, record.value(), record.partition()),
-                    partition, record.partition());
-        }
     }
 
     @Test
