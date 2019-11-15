@@ -113,8 +113,8 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
     }
 
-    protected void buildTransitVlanFlow() {
-        buildFlow(FlowEncapsulationType.TRANSIT_VLAN);
+    protected void buildTransitVlanFlow(String endpointSwitchManufacturer) {
+        buildFlow(FlowEncapsulationType.TRANSIT_VLAN, endpointSwitchManufacturer);
 
         TransitVlan transitVlan = TransitVlan.builder()
                 .flowId(TEST_FLOW_ID_A)
@@ -132,7 +132,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     }
 
     protected void buildVxlanFlow() {
-        buildFlow(FlowEncapsulationType.VXLAN);
+        buildFlow(FlowEncapsulationType.VXLAN, "");
 
         Vxlan vxlan = Vxlan.builder()
                 .flowId(TEST_FLOW_ID_A)
@@ -149,8 +149,9 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         vxlanRepository.createOrUpdate(vxlanProtected);
     }
 
-    protected void buildFlow(FlowEncapsulationType flowEncapsulationType) {
+    protected void buildFlow(FlowEncapsulationType flowEncapsulationType, String endpointSwitchManufacturer) {
         Switch switchA = Switch.builder().switchId(TEST_SWITCH_ID_A).description("").build();
+        switchA.setOfDescriptionManufacturer(endpointSwitchManufacturer);
         switchRepository.createOrUpdate(switchA);
         Switch switchB = Switch.builder().switchId(TEST_SWITCH_ID_B).description("").build();
         switchRepository.createOrUpdate(switchB);
@@ -541,6 +542,41 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                         .burstSize(Meter.calculateBurstSize(FLOW_A_BANDWIDTH + delta, MIN_BURST_SIZE_IN_KBITS,
                                 BURST_COEFFICIENT, ""))
                         .flags(new String[]{"PKTPS", "BURST", "STATS"})
+                        .build()))
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_B)
+                .meterEntries(Collections.emptyList())
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_C)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_REVERSE_METER_ID)
+                        .rate(FLOW_A_BANDWIDTH)
+                        .burstSize(Meter
+                                .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                        .flags(Meter.getMeterKbpsFlags())
+                        .build()))
+                .build());
+
+        return switchMeterEntries;
+    }
+
+    protected List<SwitchMeterEntries> getSwitchMeterEntriesWithESwitch() {
+        long rateESwitch = FLOW_A_BANDWIDTH + (long) (FLOW_A_BANDWIDTH * 0.01) - 1;
+        long burstSize = (long) (FLOW_A_BANDWIDTH * 1.05);
+        long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
+
+        List<SwitchMeterEntries> switchMeterEntries = new ArrayList<>();
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_A)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_FORWARD_METER_ID)
+                        .rate(rateESwitch)
+                        .burstSize(burstSizeESwitch)
+                        .flags(Meter.getMeterKbpsFlags())
                         .build()))
                 .build());
 

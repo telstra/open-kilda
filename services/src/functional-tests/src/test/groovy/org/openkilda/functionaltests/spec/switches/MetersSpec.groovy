@@ -213,6 +213,9 @@ on a #switchType switch"() {
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
 
+        and: "Flow validation shows no discrepancies in meters"
+        northbound.validateFlow(flow.id).each { assert it.asExpected }
+
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
@@ -388,6 +391,9 @@ meters in flow rules at all (#data.flowType flow)"() {
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
 
+        and: "Flow validation shows no discrepancies in meters"
+        northbound.validateFlow(flow.id).each { assert it.asExpected }
+
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
@@ -442,6 +448,9 @@ meters in flow rules at all (#data.flowType flow)"() {
         metersValidation.excess.empty
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
+
+        and: "Flow validation shows no discrepancies in meters"
+        northbound.validateFlow(flow.id).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -500,6 +509,9 @@ meters in flow rules at all (#data.flowType flow)"() {
         metersValidation.excess.empty
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
+
+        and: "Flow validation shows no discrepancies in meters"
+        northbound.validateFlow(flow.id).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)

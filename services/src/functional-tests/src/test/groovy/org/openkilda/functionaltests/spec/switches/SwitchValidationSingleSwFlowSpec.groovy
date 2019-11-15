@@ -120,7 +120,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         when: "Create a flow"
         def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -513,7 +513,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id, true)
 
         then: "Switch validation returns empty sections"
         with(northbound.validateSwitch(sw.dpId)) {

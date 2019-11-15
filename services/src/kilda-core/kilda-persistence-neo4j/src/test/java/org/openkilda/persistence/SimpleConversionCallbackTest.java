@@ -18,17 +18,19 @@ package org.openkilda.persistence;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.converters.SwitchIdConverter;
 
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class SimpleConversionCallbackTest {
     @Test
     public void shouldConvertEntityToGraph() throws IOException {
         // given
         SimpleConversionCallback conversionCallback =
-                new SimpleConversionCallback("org.openkilda.persistence.converters");
+                new SimpleConversionCallback(Arrays.asList(SwitchIdConverter.class));
         SwitchId entity = new SwitchId(0);
 
         // when
@@ -43,7 +45,7 @@ public class SimpleConversionCallbackTest {
     public void shouldConvertGraphToEntity() throws IOException {
         // given
         SimpleConversionCallback conversionCallback =
-                new SimpleConversionCallback("org.openkilda.persistence.converters");
+                new SimpleConversionCallback(Arrays.asList(SwitchIdConverter.class));
         SwitchId entity = new SwitchId(0);
         String graphObject = entity.toString();
 

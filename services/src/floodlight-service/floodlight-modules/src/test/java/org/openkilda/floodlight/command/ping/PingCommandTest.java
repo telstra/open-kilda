@@ -22,7 +22,10 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.newCapture;
 
 import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.AbstractCommandTest;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.ping.PingService;
@@ -44,11 +47,20 @@ public abstract class PingCommandTest extends AbstractCommandTest {
     @Mock
     protected PingService pingService;
 
+    @Mock
+    protected KildaCore kildaCore;
+
     @Override
     @Before
     public void setUp() throws Exception {
         super.setUp();
 
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(
+                moduleContext, KildaCore.class);
+        KildaCoreConfig coreConfig = provider.getConfiguration(KildaCoreConfig.class);
+        expect(kildaCore.getConfig()).andStubReturn(coreConfig);
+
+        moduleContext.addService(KildaCore.class, kildaCore);
         moduleContext.addService(IKafkaProducerService.class, producerService);
         moduleContext.addService(PingService.class, pingService);
 

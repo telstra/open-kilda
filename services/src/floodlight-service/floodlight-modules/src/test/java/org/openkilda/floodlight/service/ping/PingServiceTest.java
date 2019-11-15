@@ -19,6 +19,9 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
 
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -30,6 +33,7 @@ import org.openkilda.model.SwitchId;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.Ethernet;
+import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,6 +52,14 @@ public class PingServiceTest extends EasyMockSupport {
     public void setUp() {
         injectMocks(this);
 
+        KildaCore kildaCore = EasyMock.createMock(KildaCore.class);
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(
+                moduleContext, KildaCore.class);
+        KildaCoreConfig coreConfig = provider.getConfiguration(KildaCoreConfig.class);
+        expect(kildaCore.getConfig()).andStubReturn(coreConfig);
+        EasyMock.replay(kildaCore);
+
+        moduleContext.addService(KildaCore.class, kildaCore);
         moduleContext.addService(IOFSwitchService.class, createMock(IOFSwitchService.class));
         moduleContext.addService(InputService.class, createMock(InputService.class));
         moduleContext.addService(ISwitchManager.class, createMock(ISwitchManager.class));

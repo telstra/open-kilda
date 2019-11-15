@@ -15,5 +15,22 @@
 
 package org.openkilda.messaging.info.meter;
 
+import org.openkilda.model.SwitchId;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder
 public class SwitchMeterUnsupported extends SwitchMeterData {
+
+    @JsonProperty(value = "switch_id")
+    private SwitchId switchId;
+
+    @JsonCreator
+    public SwitchMeterUnsupported(@JsonProperty(value = "switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }

@@ -924,6 +924,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Ignore("unstable") //TODO: fix test ASAP
     @Tags(LOW_PRIORITY)
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"

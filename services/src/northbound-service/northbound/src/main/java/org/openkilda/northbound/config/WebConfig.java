@@ -20,6 +20,7 @@ import org.openkilda.northbound.utils.ExtraAuthInterceptor;
 import org.openkilda.northbound.utils.async.CompletableFutureReturnValueHandler;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -44,6 +45,9 @@ import javax.annotation.PostConstruct;
 @PropertySource({"classpath:northbound.properties"})
 public class WebConfig extends WebMvcConfigurerAdapter {
 
+    @Value("${web.request.asyncTimeout}")
+    private Long asyncTimeout;
+
     @Autowired
     private RequestMappingHandlerAdapter requestMappingHandlerAdapter;
 
@@ -60,6 +64,7 @@ public class WebConfig extends WebMvcConfigurerAdapter {
         defaultHandlers.add(0, futureHandler);
 
         requestMappingHandlerAdapter.setReturnValueHandlers(defaultHandlers);
+        requestMappingHandlerAdapter.setAsyncRequestTimeout(asyncTimeout);
     }
 
     @Override
