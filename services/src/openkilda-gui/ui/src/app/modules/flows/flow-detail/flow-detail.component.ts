@@ -116,10 +116,9 @@ export class FlowDetailComponent implements OnInit {
   }
   ngOnInit() {
     this.titleService.setTitle("OPEN KILDA - View Flow")
-    //let flowId: string = this.route.snapshot.paramMap.get("id");
     this.route.params.subscribe(params => {
       this.loadStatsGraph = false;
-      var filterFlag = localStorage.getItem("filterFlag");
+      var filterFlag = localStorage.getItem("filterFlag") || 'controller';
       this.controllerFilter = filterFlag == 'controller';
       if(!localStorage.getItem("haslinkStoreSetting")){
         let query = {_:new Date().getTime()};
@@ -128,15 +127,15 @@ export class FlowDetailComponent implements OnInit {
             localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
             localStorage.setItem('haslinkStoreSetting',"1");
             this.storeLinkSetting = true;
-            this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
+            this.getFlowDetail(params['id'],filterFlag);
           }else{
-            this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
+            this.getFlowDetail(params['id'],filterFlag);
           }
         },(err)=>{
-          this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
+          this.getFlowDetail(params['id'],filterFlag);
         });
       }else{
-        this.getFlowDetail(params['id'],filterFlag);// reset and set based on new parameter this time
+        this.getFlowDetail(params['id'],filterFlag);
       }
       
       this.sourceCheckedValue = false;

@@ -124,9 +124,6 @@ export class FlowEditComponent implements OnInit {
         this.loaderService.hide();
       }
     );
-    
-   
-    
   }
 
   /** Get switches list via api call */

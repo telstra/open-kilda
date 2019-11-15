@@ -98,14 +98,14 @@ export class FlowpathService {
     d.py += d3.event.dy;
     d.x += d3.event.dx;
     d.y += d3.event.dy;
-    this.tick( this.graphLinkArr['forwardDiverse'],this.graphNodeArr['forwardDiverse'],this.graphPortArrSource['forwardDiverse'],this.graphPortArrTarget['forwardDiverse'],this.linksSource['forwardDiverse'],this.linkNum['forwardDiverse'],this.svgElementArr['forwardDiverse'],[]);
+    this.tick( this.graphLinkArr['forwardDiverse'],this.graphNodeArr['forwardDiverse'],this.graphPortArrSource['forwardDiverse'],this.graphPortArrTarget['forwardDiverse'],this.linksSource['forwardDiverse'],this.linkNum['forwardDiverse']);
   };
 
   dragEndForward = (d: any, i) => {
     var simulation = this.simulationArr['forwardDiverse'];
     if (!d3.event.active) simulation.alphaTarget(0);
     d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
-    this.tick( this.graphLinkArr['forwardDiverse'],this.graphNodeArr['forwardDiverse'],this.graphPortArrSource['forwardDiverse'],this.graphPortArrTarget['forwardDiverse'],this.linksSource['forwardDiverse'],this.linkNum['forwardDiverse'],this.svgElementArr['forwardDiverse'],[]);
+    this.tick( this.graphLinkArr['forwardDiverse'],this.graphNodeArr['forwardDiverse'],this.graphPortArrSource['forwardDiverse'],this.graphPortArrTarget['forwardDiverse'],this.linksSource['forwardDiverse'],this.linkNum['forwardDiverse']);
   };
   // for reverse
   dragStartReverse = () => {
@@ -120,14 +120,14 @@ export class FlowpathService {
     d.py += d3.event.dy;
     d.x += d3.event.dx;
     d.y += d3.event.dy;
-    this.tick( this.graphLinkArr['reverseDiverse'],this.graphNodeArr['reverseDiverse'],this.graphPortArrSource['reverseDiverse'],this.graphPortArrTarget['reverseDiverse'],this.linksSource['reverseDiverse'],this.linkNum['reverseDiverse'],this.svgElementArr['reverseDiverse'],[]);
+    this.tick( this.graphLinkArr['reverseDiverse'],this.graphNodeArr['reverseDiverse'],this.graphPortArrSource['reverseDiverse'],this.graphPortArrTarget['reverseDiverse'],this.linksSource['reverseDiverse'],this.linkNum['reverseDiverse']);
   };
 
   dragEndReverse = (d: any, i) => {
     var simulation = this.simulationArr['reverseDiverse'];
     if (!d3.event.active) simulation.alphaTarget(0);
     d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
-    this.tick( this.graphLinkArr['reverseDiverse'],this.graphNodeArr['reverseDiverse'],this.graphPortArrSource['reverseDiverse'],this.graphPortArrTarget['reverseDiverse'],this.linksSource['reverseDiverse'],this.linkNum['reverseDiverse'],this.svgElementArr['reverseDiverse'],[]);
+    this.tick( this.graphLinkArr['reverseDiverse'],this.graphNodeArr['reverseDiverse'],this.graphPortArrSource['reverseDiverse'],this.graphPortArrTarget['reverseDiverse'],this.linksSource['reverseDiverse'],this.linkNum['reverseDiverse']);
   };
   initSimulation(nodes,links,svgElement,graphWrapper,type,positions,hoverTextID,showValueID,hideValueID){
     this.svgElementArr[type] = svgElement;
@@ -144,6 +144,7 @@ export class FlowpathService {
               for (var j = 0, len1 = row.length; j < len1; j++) {
                 var key = row[j].source.switch_id+ "_" + row[j].target.switch_id;
                 var key1 = row[j].target.switch_id + "_" + row[j].source.switch_id;
+         
                 var prcessKey = ( linksSourceArr && typeof linksSourceArr[key] !== "undefined") ? key:key1;
                 if (typeof linksSourceArr[prcessKey] !== "undefined") {
                   linksSourceArr[prcessKey].push(row[j]);
@@ -213,14 +214,13 @@ export class FlowpathService {
         return distance; 
       }).strength(0.1));
       forceSimulation.stop();
-      var graphNode = this.graphNodeArr[type] =this.insertNodes(graphNodeGroup,nodes,type,size,hoverTextID,showValueID);
-      var graphLink = this.graphLinkArr[type] =  this.insertLinks(graphWrapper,graphLinkGroup,processedlinks,type,hoverTextID,showValueID,hideValueID,linksSourceArr);
-       var graphPortSource =this.graphPortArrSource[type] =  this.insertSourcePorts(graphWrapper,processedlinks,type,hoverTextID,showValueID,hideValueID);
-       var graphPortTarget =this.graphPortArrTarget[type] =  this.insertTargetPorts(graphWrapper,processedlinks,type,hoverTextID,showValueID,hideValueID);
+      var graphNode = this.graphNodeArr[type] =this.insertNodes(graphNodeGroup,nodes,type);
+      var graphLink = this.graphLinkArr[type] =  this.insertLinks(graphWrapper,graphLinkGroup,processedlinks,type,hoverTextID,showValueID,hideValueID);
+       var graphPortSource =this.graphPortArrSource[type] =  this.insertSourcePorts(processedlinks,type,hoverTextID,showValueID,hideValueID);
+       var graphPortTarget =this.graphPortArrTarget[type] =  this.insertTargetPorts(processedlinks,type,hoverTextID,showValueID,hideValueID);
     
       forceSimulation.on("tick", () => {  
-      //this.repositionNodes(graphNode,positions);
-      this.tick(graphLink,graphNode,graphPortSource,graphPortTarget,linksSourceArr,mLinkNum,svgElement,positions);
+      this.tick(graphLink,graphNode,graphPortSource,graphPortTarget,linksSourceArr,mLinkNum);
       
       });
       if(type == 'forwardDiverse'){
@@ -246,17 +246,7 @@ export class FlowpathService {
     this.simulationArr[type] = forceSimulation;
   }
 
-  repositionNodes = (graphNode,positions) => {
-    graphNode.attr("transform", function(d: any) {
-        try {
-          d.x = positions[d.switch_id][0];
-          d.y = positions[d.switch_id][1];
-        } catch (e) {}
-        if (typeof(d.x) != 'undefined' && typeof(d.y)!='undefined'){
-          return "translate(" + d.x + "," + d.y + ")";
-        }
-      });
-  };
+ 
 
   zoomFit = (g,svgElement,zoomLevel,zoom,nodes,type) => {
     var bounds = g.node().getBBox();
@@ -268,13 +258,15 @@ export class FlowpathService {
     var midX = (bounds.x + width) / 2,
       midY = (bounds.y + height) / 2;
     if (width == 0 || height == 0) return;
+   
     if(nodes.length > 10){
       var scale = 0.50;
+      var translate = [(fullWidth/2  - scale * midX)/scale, (fullHeight/2  - scale * midY)/scale];
     }else{
-        var scale = 1.30;
+      var scale = (zoomLevel || 1.30) / Math.max(width / fullWidth, height / fullHeight);
+      var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
     }
-    //var scale = 0.75;//zoomLevel / Math.max(width / fullWidth, height / fullHeight);
-    var translate = [(fullWidth/2  - scale * midX)/scale, (fullHeight/2  - scale * midY)/scale];
+  
     let newtranformation = d3.zoomIdentity
       .scale(scale)
      .translate(translate[0], translate[1]); 
@@ -335,92 +327,10 @@ export class FlowpathService {
    return links;
   }
 
-  
-  generatePositionForNodes(element,nodes){
-    var positions = [];
-     var yValue =  element[0].clientTop;
-     var xValue = element[0].clientLeft; 
-      if(yValue == 0){
-          yValue = 100;
-      }
-      if(xValue == 0){
-          xValue = 100;
-      }
-      var traversedFlow = [];
-     var maxLimit = element[0].clientWidth;
-     var reverseXvalue = element[0].clientWidth;
-     var reverseYvalue = element[0].clientTop + 200;
-     for(var i = 0; i < nodes.length; i++){
-      var selectedFlow = nodes[i].flow;
-      if(traversedFlow.indexOf(selectedFlow) == -1){
-        traversedFlow.push(selectedFlow);
-        if(i > 0 ){
-          yValue = yValue + 100;
-          xValue = 100;//(element[0].clientLeft == 0) ? (100 * i) / 2 : element[0].clientLeft;
-        }
-        
-      }
-      positions[nodes[i].switch_id] = [];
-     if(xValue < maxLimit){
-        positions[nodes[i].switch_id][0] = xValue ;
-        positions[nodes[i].switch_id][1] = yValue;
-        xValue = xValue + 250;
-      }
-      else if(xValue >= maxLimit && reverseXvalue > 100){
-         positions[nodes[i].switch_id][0] = reverseXvalue;
-         positions[nodes[i].switch_id][1] = reverseYvalue;
-         reverseXvalue = reverseXvalue - 250;
-      }else{ 
-         yValue =  reverseYvalue + 100;
-         xValue = element[0].clientLeft; 
-         maxLimit = element[0].clientWidth;
-         reverseXvalue = element[0].clientWidth;
-         reverseYvalue = yValue + 100;
-         positions[nodes[i].switch_id][0] = xValue ;
-         positions[nodes[i].switch_id][1] = yValue;
-         xValue = xValue + 250;
-      }
-      
-    } 
-    return positions;
-  }
-  getTypeOfLink(linksSourceArr,d){
-              var ref = this;
-              var islCount = 0;
-              var matchedIndex = 1;
-              var key = d.source.switch_id + "_" + d.target.switch_id;
-              var key1 =  d.target.switch_id + "_" + d.source.switch_id;
-              var processKey = ( linksSourceArr && typeof linksSourceArr[key] !== "undefined") ? key:key1;
-              if (
-                linksSourceArr &&
-                typeof linksSourceArr[processKey] !== "undefined"
-              ) {
-                islCount = linksSourceArr[processKey].length;
-              }
-              
-              if (islCount > 1) {
-                linksSourceArr[processKey].map(function(o, i) {
-                  if (ref.isObjEquivalent(o, d)) {
-                    matchedIndex = i + 1;
-                    return;
-                  }
-                });
-              }
-        if(islCount > 1){
-            if(matchedIndex % 2 == 0){
-              return 1;
-            }else{
-              return 2;
-            }
-        }else{
-          return 0;
-        }
-  }
-
-  insertLinks(graphWrapper,graphLinkGroup,links,type,hoverTextID,showValueID,hideValueID,linksSourceArr){
+ 
+  insertLinks(graphWrapper,graphLinkGroup,links,type,hoverTextID,showValueID,hideValueID){
     var ref = this;
     let graphLinksData = graphLinkGroup.selectAll("path.link").data(links);
-    let linkText = graphLinkGroup.selectAll("text").data(links);
      let graphNewLink = graphLinksData
       .enter()
       .append("path")
@@ -467,7 +377,6 @@ export class FlowpathService {
         }
         
       }).on('mouseout',function(d,index){
-        var element = document.getElementById("link" + index);
         $('#'+type+'_link' + index).removeClass('overlay');
         $("#"+hoverTextID).css("display", "none");
       }).on('click',function(d){
@@ -486,8 +395,7 @@ export class FlowpathService {
      return  graphNewLink.merge(graphLinksData);
   }
 
-  insertTargetPorts(graphWrapper,links,type,hoverTextID,showValueID,hideValueID){
-    var ref = this;
+  insertTargetPorts(links,type,hoverTextID,showValueID,hideValueID){
     let linkText = this.graphportGroupTarget[type].selectAll("circle").data(links);
     let linkCircleTextTarget = linkText
                         .enter()
@@ -551,8 +459,7 @@ export class FlowpathService {
       return linkCircleTextTarget.merge(linkText);
   }
 
-  insertSourcePorts(graphWrapper,links,type,hoverTextID,showValueID,hideValueID){
-    var ref = this;
+  insertSourcePorts(links,type,hoverTextID,showValueID,hideValueID){
     let linkText = this.graphportGroupSource[type].selectAll("circle").data(links);
     let linkCircleTextSource = linkText
                         .enter()
@@ -615,7 +522,7 @@ export class FlowpathService {
       
       return linkCircleTextSource.merge(linkText);
   }
-  insertNodes(graphNodeGroup,nodes,type,size,hoverTextID,showValueID){
+  insertNodes(graphNodeGroup,nodes,type){
     let ref = this;
     let graphNodesData = graphNodeGroup.selectAll("g.node").data(nodes,d=>d.switch_id);
     let graphNodeElement :any;
@@ -657,30 +564,6 @@ export class FlowpathService {
                       .on('click',function(d){
                           ref.loadSwitchDetail(d.switch_id);
                       });
-      //  let text = graphNodeElement
-      //                 .append("text")
-      //                 .attr("dy",function(d){
-      //                     return ".35em";
-      //                 })
-      //                 .style("font-size",(d) =>{
-      //                   return 12 + "px";
-      //                 }).style('fill',function(d){ return '#000'; })
-      //                 .attr("class", function(d){
-      //                   var switchcls = d.switch_id.split(":").join("_");
-      //                   return type+"_text switchname " +type+"_textcircle_"+d.flow+" swtxt_"+switchcls;
-      //                 })
-      //                 .attr("dx", function(d) {
-      //                   var splitVal = d.switch_name.split(":");
-      //                   if(splitVal.length > 1){
-      //                     return -15;
-      //                   }else{
-      //                     return 0;
-      //                   }
-                       
-      //                 })
-      //                .text(function(d) {
-      //                  return (typeof(d.switch_name)!='undefined') ? d.switch_name : d.switch_id;
-      //                });
         let images = graphNodeElement
                       .append("svg:image")
                       .attr("xlink:href", function(d) {
@@ -752,9 +635,9 @@ export class FlowpathService {
     return mLinkNum;
   }
 
-  tick(graphLink,graphNode,graphPortSource,graphPortTarget,linksSourceArr,mLinkNum,svgElement,positions){
+  tick(graphLink,graphNode,graphPortSource,graphPortTarget,linksSourceArr,mLinkNum){
     var ref = this;
-    graphLink.attr("d", d => {
+      graphLink.attr("d", d => {
       var islCount = 0;
       var matchedIndex = 1;
       var key = d.source.switch_id + "_" + d.target.switch_id;
@@ -765,6 +648,7 @@ export class FlowpathService {
         typeof linksSourceArr[processKey] !== "undefined"
       ) {
         islCount = linksSourceArr[processKey].length;
+       
       }
       
       if (islCount > 1) {
@@ -774,6 +658,10 @@ export class FlowpathService {
             return;
           }
         });
+      }
+      var processKeyValues = processKey.split("_");
+      if(processKeyValues[0] == d.target.switch_id && processKeyValues[1] == d.source.switch_id){
+          matchedIndex = matchedIndex + 1;
       }
       var x1 = d.source.x,
         y1 = d.source.y,
@@ -835,8 +723,8 @@ export class FlowpathService {
               "," +
               d.source.y
             );
-          } else {    
-            return (
+          } else {     
+              return (
               "M" +
               d.source.x +
               "," +
@@ -871,10 +759,29 @@ export class FlowpathService {
     graphPortSource.attr('transform',function(d){
        var yvalue = (d.source.y + d.target.y) / 2;
        var xvalue = (d.source.x + d.target.x) / 2;
-      var points = ref.getCornerPoint(d.source.x,d.source.y,d.target.x,d.target.y);
+       var points = ref.getCornerPoint(d.source.x,d.source.y,d.target.x,d.target.y);
         if(typeof(points) !='undefined' && points.length){
            xvalue = points[0]; 
            yvalue = points[1];
+        }
+        var key = d.source.switch_id + "_" + d.target.switch_id;
+        var key1 =  d.target.switch_id + "_" + d.source.switch_id;
+        var processKey = ( linksSourceArr && typeof linksSourceArr[key] !== "undefined") ? key:key1;
+        var processKeyValues = processKey.split("_");
+        var linkArr = linksSourceArr[processKey];
+        if(linkArr && linkArr.length > 1){
+          
+        }
+        console.log('d',d);
+        for(var i = 0; i < linkArr.length; i++){
+          if(d.source.switch_id  === linkArr[i].source.switch_id && d.target.switch_id  === linkArr[i].target.switch_id){
+            console.log('direct');
+          }else if(d.source.switch_id  === linkArr[i].target.switch_id && d.target.switch_id  === linkArr[i].source.switch_id){
+            console.log('opposite')
+          }
+        }
+        if(processKeyValues[0] == d.target.switch_id && processKeyValues[1] == d.source.switch_id){
+          return "translate(" + (xvalue + 10) + "," + (yvalue-10) + ")";
         }
        return "translate(" + xvalue + "," + yvalue + ")";
  

@@ -136,7 +136,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
      }
      var svgElement = d3.select('#svgForwardPath');
      var element =$('#forwardPathWrapper');
-     var positions = [];//this.flowpathService.generatePositionForNodes(element,nodes);
+     var positions = [];
      this.forwardPathLoader= true;
       this.loadforwardPath = true;
      this.flowpathService.initSimulation(nodes,links,svgElement,"forwardPathWrapper",'forwardDiverse',positions,"diversepath-hover-txt","forward_flow_value","reverse_flow_value")
@@ -200,7 +200,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
      var element =$('#reversePathWrapper');
      this.reversePathLoader = true;
       this.loadreversePath = true;
-       var positions = [];//this.flowpathService.generatePositionForNodes(element,nodes);
+       var positions = [];
        this.flowpathService.initSimulation(nodes,links,svgElement,"reversePathWrapper",'reverseDiverse',positions,"diversepath-hover-txt","reverse_flow_value","forward_flow_value")
        this.flowpathService.reversepathLoadedChange.subscribe((value:any)=>{
         this.reversePathLoader = value;
