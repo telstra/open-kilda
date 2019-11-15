@@ -29,6 +29,7 @@ export class FlowSearchComponent implements OnInit {
     if (this.flowSearchForm.invalid) {
       return;
     }
+    localStorage.setItem("filterFlag",'controller');
     this.router.navigate([
       "/flows/details/" + this.flowSearchForm.controls.flowID.value
     ]);

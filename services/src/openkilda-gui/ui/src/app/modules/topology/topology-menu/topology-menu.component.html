@@ -22,13 +22,18 @@
 
     <i class="icon-flows" aria-hidden="true"></i>
   </span>
+  <div class="import-export-setting d-inline-block" ngbDropdown placement="bottom-right" >
+    <span  id="dropdownBasic1" ngbDropdownToggle><i class="icon-import-export-setting" aria-hidden="true"></i></span>
+    <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+      <button (click)="exportSetting()" class="dropdown-item export-setting">
+          <i class="icon-export-setting" aria-hidden="true"></i>  &nbsp; Export
+      </button>
+      <button class="dropdown-item import-setting"  (click)="importSettingModal()">
+        <i class="icon-import-setting" aria-hidden="true"></i>  &nbsp; Import
+      </button>
+     </div>
+  </div>
   
-  <span class="export-setting" (click)="exportSetting()" ngbPopover="Export Topology Setting" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave">
-      <i class="icon-export-setting" aria-hidden="true"></i>
-  </span>
-  <span class="import-setting" ngbPopover="Import Topology Setting" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" (click)="importSettingModal()">
-      <i class="icon-import-setting" aria-hidden="true"></i>
-  </span>
 
   <span (clickOutside)="onClickedOutside($event,'refreshMenu')" ngbPopover="Refresh" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave"
     class="refresh_toggle custom-icon" (click)="toggleRefreshMenu()">
