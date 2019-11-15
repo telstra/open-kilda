@@ -147,11 +147,8 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.id in linkFlows*.id) }
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
+        topology.getBusyPortsForSwitch(switchPair.src).each { port ->
+            antiflap.portDown(switchPair.src.dpId, port)
         }
 
         then: "All flows go to 'Down' status"
@@ -180,7 +177,9 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.id in linkFlows*.id) }
 
         when: "Bring ports up"
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
+        topology.getBusyPortsForSwitch(switchPair.src).each { port ->
+            antiflap.portUp(switchPair.src.dpId, port)
+        }
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + PATH_INSTALLATION_TIME) {

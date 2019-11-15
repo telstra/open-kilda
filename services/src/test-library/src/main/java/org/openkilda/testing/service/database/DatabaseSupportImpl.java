@@ -40,6 +40,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
@@ -77,6 +78,7 @@ public class DatabaseSupportImpl implements Database {
     private final FlowPathRepository flowPathRepository;
     private final FlowPairRepository flowPairRepository;
     private final TransitVlanRepository transitVlanRepository;
+    private final SwitchConnectedDeviceRepository switchDevicesRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
@@ -87,6 +89,7 @@ public class DatabaseSupportImpl implements Database {
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
+        switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
     }
 
     /**
@@ -281,6 +284,11 @@ public class DatabaseSupportImpl implements Database {
             deserializedResults.add(new PathInfoData(0, path));
         }
         return deserializedResults;
+    }
+
+    @Override
+    public void removeConnectedDevices(SwitchId sw) {
+        switchDevicesRepository.findBySwitchId(sw).forEach(switchDevicesRepository::delete);
     }
 
     /**

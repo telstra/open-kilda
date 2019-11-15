@@ -23,6 +23,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +75,22 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public FlowRerouteResponseV2 rerouteFlow(String flowId) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}/reroute", HttpMethod.POST,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), FlowRerouteResponseV2.class, flowId).getBody();
+    }
+
+    @Override
+    public SwitchConnectedDevicesResponse getConnectedDevices(SwitchId switchId) {
+        return getConnectedDevices(switchId, null);
+    }
+
+    @Override
+    public SwitchConnectedDevicesResponse getConnectedDevices(SwitchId switchId, Date since) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/devices");
+        if (since != null) {
+            uriBuilder.queryParam("since", dateFormat.format(since));
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchConnectedDevicesResponse.class,
+                switchId).getBody();
     }
 
     @Override

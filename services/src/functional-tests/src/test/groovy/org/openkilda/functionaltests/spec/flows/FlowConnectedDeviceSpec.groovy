@@ -16,6 +16,7 @@ import org.openkilda.functionaltests.extension.tags.Tag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -29,6 +30,7 @@ import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.LldpData
@@ -40,6 +42,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -396,6 +399,187 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         device && device.close()
     }
 
+    @Tidy
+    def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
+        given: "A switch with devices feature turned off"
+        def sw = topology.activeTraffGens[0].switchConnected
+        assert !northbound.getSwitchProperties(sw.dpId).switchLldp
+
+        when: "Device sends an lldp packet into a free switch port"
+        def lldpData = LldpData.buildRandom()
+        def deviceVlan = 666
+        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), deviceVlan)
+        device.sendLldp(lldpData)
+
+        then: "No devices are detected for the switch"
+        northboundV2.getConnectedDevices(sw.dpId).ports.empty
+
+        when: "Flow is created on a target switch with devices feature 'on'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def flow = flowHelper.randomFlow(sw, dst).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, false)
+            it.source.vlanId = deviceVlan
+        }
+        flowHelper.addFlow(flow)
+
+        and: "Device sends an lldp packet into a flow port on that switch (with a correct flow vlan)"
+        device.sendLldp(lldpData)
+
+        then: "Device is registered as a flow device"
+        Wrappers.wait(WAIT_OFFSET) {
+            with(northbound.getFlowConnectedDevices(flow.id)) {
+                it.source.lldp.size() == 1
+                verifyEquals(it.source.lldp.first(), lldpData)
+            }
+        }
+
+        and: "Device is still NOT registered per-switch"
+        northboundV2.getConnectedDevices(sw.dpId).ports.empty
+
+        cleanup: "Remove created flow and device"
+        flow && northbound.deleteFlow(flow.id)
+        device && device.close()
+    }
+
+    @Ignore("not yet implemented")
+    def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
+        given: "A switch with devices feature turned on"
+        def tg = topology.activeTraffGens[0]
+        def sw = tg.switchConnected
+        def initialProps = northbound.getSwitchProperties(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, northbound.getSwitchProperties(sw.dpId).tap {
+            it.multiTable = true
+            it.switchLldp = true
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def flow = flowHelper.randomFlow(sw, dst).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(false, false)
+        }
+        flowHelper.addFlow(flow)
+
+        when: "Device sends an lldp packet into a flow port"
+        def lldpData = LldpData.buildRandom()
+        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), flow.source.vlanId).withCloseable {
+            it.sendLldp(lldpData)
+        }
+
+        then: "Device is registered per-switch"
+        Wrappers.wait(WAIT_OFFSET) {
+            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+                it.size() == 1
+                it[0].portNumber == tg.switchPort
+                it[0].lldp.first().vlan == flow.source.vlanId
+                it[0].lldp.first().flowId == null //questionable. May want to link this to a flow
+                verifyEquals(it[0].lldp.first(), lldpData)
+            }
+        }
+
+        then: "Device is NOT registered as a flow device"
+        northbound.getFlowConnectedDevices(flow.id).source.lldp.empty
+
+        cleanup: "Remove created flow and registered devices, revert switch props"
+        northbound.deleteFlow(flow.id)
+        database.removeConnectedDevices(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps)
+    }
+
+    def "Able to detected devices on free switch port (no flow or isl)"() {
+        given: "A switch with devices feature turned on"
+        def tg = topology.activeTraffGens[0]
+        def sw = tg.switchConnected
+        def initialProps = northbound.getSwitchProperties(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, northbound.getSwitchProperties(sw.dpId).tap {
+            it.multiTable = true
+            it.switchLldp = true
+        })
+
+        when: "Device sends an lldp packet into a free port"
+        def lldpData = LldpData.buildRandom()
+        def vlan = 123
+        new ConnectedDevice(traffExamProvider.get(), tg, vlan).withCloseable {
+            it.sendLldp(lldpData)
+        }
+
+        then: "Corresponding device is detected on a switch port"
+        Wrappers.wait(WAIT_OFFSET) {
+            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+                it.size() == 1
+                it[0].portNumber == tg.switchPort
+                it[0].lldp.first().vlan == vlan
+                verifyEquals(it[0].lldp.first(), lldpData)
+            }
+        }
+
+        cleanup: "Turn off devices prop, remove connected devices"
+        database.removeConnectedDevices(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps)
+    }
+
+    @Ignore("not yet implemented")
+    def "Able to detect device both per flow and per switch at the same time"() {
+        given: "A switch with devices feature turned on"
+        def tg = topology.activeTraffGens[0]
+        def sw = tg.switchConnected
+        def initialProps = northbound.getSwitchProperties(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, northbound.getSwitchProperties(sw.dpId).tap {
+            it.multiTable = true
+            it.switchLldp = true
+        })
+
+        and: "A single-sw flow with lldp device feature 'on'"
+        def flow = flowHelper.randomFlow(sw, sw).tap {
+            it.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, false)
+        }
+        flowHelper.addFlow(flow)
+
+        when: "Device sends an lldp packet into a flow port"
+        def lldpData = LldpData.buildRandom()
+        new ConnectedDevice(traffExamProvider.get(), tg, flow.source.vlanId).withCloseable {
+            it.sendLldp(lldpData)
+        }
+
+        then: "Corresponding device is detected on a switch port with reference to corresponding flow"
+        Wrappers.wait(WAIT_OFFSET) {
+            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+                it.size() == 1
+                it[0].portNumber == tg.switchPort
+                it[0].lldp.first().flowId == flow.id
+                it[0].lldp.first().vlan == flow.source.vlanId
+                verifyEquals(it[0].lldp.first(), lldpData)
+            }
+        }
+
+        then: "Device is also visible as a flow device"
+        Wrappers.wait(WAIT_OFFSET) {
+            with(northbound.getFlowConnectedDevices(flow.id)) {
+                it.source.lldp.size() == 1
+                verifyEquals(it.source.lldp.first(), lldpData)
+            }
+        }
+
+        cleanup: "Turn off devices prop, remove connected devices, remove flow"
+        flowHelper.deleteFlow(flow.id)
+        database.removeConnectedDevices(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps)
+    }
+
+    def "System forbids to turn on 'connected devices per switch' on a single-table-mode switch"() {
+        when: "Try to change switch props so that connected devices are 'on' but switch is in a single-table mode"
+        def sw = topology.activeSwitches.first()
+        northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
+            it.multiTable = false
+            it.switchLldp = true
+        })
+
+        then: "Bad request error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.BAD_REQUEST
+        e.responseBodyAsString.to(MessageError).errorMessage == "Illegal switch properties combination for switch " +
+                "$sw.dpId. 'switchLldp' property can be set to 'true' only if 'multiTable' property is 'true'."
+    }
+
     /**
      * Returns a potential flow for creation according to passed params.
      * Note that for 'oneSwitch' it will return a single-port single-switch flow. There is no ability to obtain
@@ -581,6 +765,15 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
     }
 
     def verifyEquals(ConnectedDeviceDto device, LldpData lldp) {
+        assert device.macAddress == lldp.macAddress
+        assert device.chassisId == "Mac Addr: $lldp.chassisId" //for now TG sends it as hardcoded 'mac address' subtype
+        assert device.portId == "Locally Assigned: $lldp.portNumber" //subtype also hardcoded for now on traffgen side
+        assert device.ttl == lldp.timeToLive
+        //other non-mandatory lldp fields are out of scope for now. Most likely they are not properly parsed
+        return true
+    }
+
+    def verifyEquals(SwitchConnectedDeviceDto device, LldpData lldp) {
         assert device.macAddress == lldp.macAddress
         assert device.chassisId == "Mac Addr: $lldp.chassisId" //for now TG sends it as hardcoded 'mac address' subtype
         assert device.portId == "Locally Assigned: $lldp.portNumber" //subtype also hardcoded for now on traffgen side
