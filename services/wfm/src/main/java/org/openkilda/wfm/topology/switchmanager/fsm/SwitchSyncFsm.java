@@ -191,9 +191,6 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void computeRemoveRules(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
         removeFlowRules = new ArrayList<>(validationResult.getValidateRulesResult().getExcessRules());
-        // We must reinstall the default rules
-        // because the deletion of the default rule also removes the proper default rule.
-        removeFlowRules.removeIf(Cookie::isDefaultRule);
 
         if (request.isRemoveExcess() && !removeFlowRules.isEmpty()) {
             log.info("Key: {}, compute remove rules", key);
@@ -267,11 +264,6 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         List<Long> reinstallRules = validateRulesResult.getMisconfiguredRules().stream()
                 .filter(Cookie::isDefaultRule)
                 .collect(Collectors.toList());
-        if (request.isRemoveExcess()) {
-            validateRulesResult.getExcessRules().stream()
-                    .filter(Cookie::isDefaultRule)
-                    .forEach(reinstallRules::add);
-        }
         return reinstallRules;
     }
 

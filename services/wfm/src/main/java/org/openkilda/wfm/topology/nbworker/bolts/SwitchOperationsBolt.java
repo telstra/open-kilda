@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -46,7 +47,9 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
+import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
+import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsServiceCarrier;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -56,7 +59,8 @@ import org.apache.storm.tuple.Values;
 import java.util.Collections;
 import java.util.List;
 
-public class SwitchOperationsBolt extends PersistenceOperationsBolt {
+public class SwitchOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier,
+        SwitchOperationsServiceCarrier {
     private transient SwitchOperationsService switchOperationsService;
     private transient FlowOperationsService flowOperationsService;
 
@@ -72,7 +76,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void init() {
         this.switchOperationsService =
-                new SwitchOperationsService(repositoryFactory, transactionManager);
+                new SwitchOperationsService(repositoryFactory, transactionManager, this);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
 
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
@@ -197,6 +201,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
         }
         return new SwitchPropertiesResponse(updated);
+
     }
 
     private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {
@@ -210,6 +215,18 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
+    public void requestSwitchSync(SwitchId switchId) {
+        SwitchValidateRequest data = SwitchValidateRequest.builder()
+                .switchId(switchId)
+                .performSync(true)
+                .processMeters(true)
+                .removeExcess(true)
+                .build();
+        getOutput().emit(StreamType.TO_SWITCH_MANAGER.toString(), getCurrentTuple(),
+                new Values(data, getCorrelationId()));
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(StreamType.REROUTE.toString(),
@@ -217,6 +234,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         declarer.declareStream(StreamType.FLOWHS.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.TO_SWITCH_MANAGER.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

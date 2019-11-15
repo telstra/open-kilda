@@ -18,7 +18,9 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
@@ -33,10 +35,14 @@ public class MessageEncoder extends KafkaEncoder {
     protected void handleInput(Tuple input) throws Exception {
         MessageData payload = pullPayload(input);
         try {
-            Message message = wrap(pullContext(input), payload);
+            CommandContext commandContext = pullContext(input);
+            Message message = wrap(commandContext, payload);
 
             if (payload instanceof FlowRerouteRequest) {
                 getOutput().emit(input.getSourceStreamId(), input, new Values(message));
+            } else if (payload instanceof SwitchValidateRequest) {
+                getOutput().emit(input.getSourceStreamId(), input,
+                        new Values(commandContext.getCorrelationId(), message));
             } else if (payload instanceof ErrorData) {
                 getOutput().emit(StreamType.ERROR.toString(), input, new Values(null, message));
             }
@@ -50,6 +56,7 @@ public class MessageEncoder extends KafkaEncoder {
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
         outputManager.declareStream(StreamType.FLOWHS.toString(), new Fields("message"));
         outputManager.declareStream(StreamType.REROUTE.toString(), new Fields("message"));
+        outputManager.declareStream(StreamType.TO_SWITCH_MANAGER.toString(), STREAM_FIELDS);
         outputManager.declareStream(StreamType.ERROR.toString(), STREAM_FIELDS);
     }
 }

@@ -497,6 +497,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         def allRules = northbound.getSwitchRules(switchId).flowEntries
         assert allRules.count { it.tableId == 1 } == getExpectedLldpRulesCount(flow, source)
 
+
         validateRules(allRules, path.cookie, path.lldpResources, lldpEnabled, false)
 
         if (flow.allocateProtectedPath) {

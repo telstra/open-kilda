@@ -25,6 +25,7 @@ public enum StreamType {
     KILDA_CONFIG,
     NOTIFICATION,
     TO_SPEAKER,
+    TO_SWITCH_MANAGER,
     PATHS,
     VALIDATION,
     DISCO,

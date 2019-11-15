@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
+    private SwitchOperationsServiceCarrier carrier;
     private SwitchRepository switchRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
     private PortPropertiesRepository portPropertiesRepository;
@@ -61,7 +62,8 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
     private FlowPathRepository flowPathRepository;
 
     public SwitchOperationsService(RepositoryFactory repositoryFactory,
-                                   TransactionManager transactionManager) {
+                                   TransactionManager transactionManager,
+                                   SwitchOperationsServiceCarrier carrier) {
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.transactionManager = transactionManager;
         this.linkOperationsService
@@ -71,6 +73,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.portPropertiesRepository = repositoryFactory.createPortPropertiesRepository();
+        this.carrier = carrier;
     }
 
     /**
@@ -270,11 +273,13 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             }
 
             SwitchProperties sf = foundSwitchProperties.get();
-
+            final boolean previousMultiTableFlag = sf.isMultiTable();
             sf.setMultiTable(update.isMultiTable());
             sf.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
-
             switchPropertiesRepository.createOrUpdate(sf);
+            if (previousMultiTableFlag != update.isMultiTable()) {
+                carrier.requestSwitchSync(switchId);
+            }
 
 
             return SwitchPropertiesMapper.INSTANCE.map(sf);
