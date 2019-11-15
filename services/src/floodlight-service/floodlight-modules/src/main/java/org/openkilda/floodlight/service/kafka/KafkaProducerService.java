@@ -50,34 +50,6 @@ public class KafkaProducerService implements IKafkaProducerService {
         producer = moduleContext.getServiceImpl(KafkaUtilityService.class).makeProducer();
     }
 
-    /**
-     * Enable guaranteed message order for topic.
-     */
-    public synchronized void enableGuaranteedOrder(String topic) {
-        logger.debug("Enable predictable order for topic {}", topic);
-        AbstractWorker worker = getWorker(topic);
-        workersMap.put(topic, new OrderAwareWorker(worker));
-    }
-
-    /**
-     * Disable guaranteed message order for topic.
-     */
-    public synchronized void disableGuaranteedOrder(String topic) {
-        logger.debug(
-                "Disable predictable order for topic {} (due to effect of transition period some future messages will "
-                + "be forced to have predictable order)", topic);
-        getWorker(topic).deactivate(1000);
-    }
-
-    /**
-     * Disable guaranteed message order for topic, with defined transition period.
-     */
-    public synchronized void disableGuaranteedOrder(String topic, long transitionPeriod) {
-        logger.debug(
-                "Disable predictable order for topic {} (transition period {} ms)", topic, transitionPeriod);
-        getWorker(topic).deactivate(transitionPeriod);
-    }
-
     public void sendMessageAndTrack(String topic, Message message) {
         produce(encode(topic, message), new SendStatusCallback(this, topic, message));
     }

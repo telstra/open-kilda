@@ -20,12 +20,6 @@ import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 
 public interface IKafkaProducerService extends IService {
-    void enableGuaranteedOrder(String topic);
-
-    void disableGuaranteedOrder(String topic);
-
-    void disableGuaranteedOrder(String topic, long transitionPeriod);
-
     void sendMessageAndTrack(String topic, Message message);
 
     void sendMessageAndTrack(String topic, String key, Message message);
