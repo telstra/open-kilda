@@ -51,6 +51,7 @@ public class Neo4jKildaConfigurationRepositoryTest extends Neo4jBasedTest {
 
         kildaConfiguration = KildaConfiguration.builder()
                 .flowEncapsulationType(FlowEncapsulationType.VXLAN)
+                .useMultiTable(false)
                 .build();
         kildaConfigurationRepository.createOrUpdate(kildaConfiguration);
 
@@ -66,6 +67,7 @@ public class Neo4jKildaConfigurationRepositoryTest extends Neo4jBasedTest {
 
         kildaConfiguration = KildaConfiguration.builder()
                 .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .useMultiTable(false)
                 .build();
         kildaConfigurationRepository.createOrUpdate(kildaConfiguration);
 

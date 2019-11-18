@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.swmanager;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;

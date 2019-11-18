@@ -53,6 +53,9 @@ public class Neo4jKildaConfigurationRepository extends Neo4jGenericRepository<Ki
         kildaConfiguration.setFlowEncapsulationType(Optional.ofNullable(
                 firstConfig.getFlowEncapsulationType()).orElse(secondConfig.getFlowEncapsulationType()));
 
+        kildaConfiguration.setUseMultiTable(Optional.ofNullable(
+                firstConfig.getUseMultiTable()).orElse(secondConfig.getUseMultiTable()));
+
         return kildaConfiguration;
     }
 

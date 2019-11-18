@@ -33,8 +33,13 @@ public class KildaConfigurationDto implements Serializable {
     @JsonProperty("flow_encapsulation_type")
     private String flowEncapsulationType;
 
+    @JsonProperty("use_multi_table")
+    private Boolean useMultiTable;
+
     @JsonCreator
-    public KildaConfigurationDto(@JsonProperty("flow_encapsulation_type") String flowEncapsulationType) {
+    public KildaConfigurationDto(@JsonProperty("flow_encapsulation_type") String flowEncapsulationType,
+                                 @JsonProperty("use_multi_table") Boolean useMultiTable) {
         this.flowEncapsulationType = flowEncapsulationType;
+        this.useMultiTable = useMultiTable;
     }
 }

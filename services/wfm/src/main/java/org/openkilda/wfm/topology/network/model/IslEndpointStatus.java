@@ -17,16 +17,18 @@ package org.openkilda.wfm.topology.network.model;
 
 import org.openkilda.model.IslDownReason;
 
+import lombok.Data;
 import lombok.Getter;
-import lombok.Value;
 
-@Value
+@Data
 public class IslEndpointStatus {
     @Getter
     private Status status;
 
     @Getter
     private IslDownReason downReason;
+
+    private boolean hasIslRules;
 
     public IslEndpointStatus(Status status) {
         this(status, null);
@@ -35,6 +37,7 @@ public class IslEndpointStatus {
     public IslEndpointStatus(Status status, IslDownReason downReason) {
         this.status = status;
         this.downReason = downReason;
+
     }
 
     public enum Status {

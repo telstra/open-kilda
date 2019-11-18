@@ -48,6 +48,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -85,6 +86,7 @@ public class SwitchValidateFsm
     private SwitchProperties switchProperties;
     private List<Integer> islPorts;
     private List<Integer> flowPorts;
+    private boolean hasMultiTableFlows;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
     private List<FlowEntry> expectedDefaultFlowEntries;
@@ -101,7 +103,8 @@ public class SwitchValidateFsm
         this.processMeters = request.isProcessMeters();
         this.switchId = request.getSwitchId();
         this.flowPorts = new ArrayList<>();
-        Collection<FlowPath> flowPaths = repositoryFactory.createFlowPathRepository().findBySrcSwitch(switchId);
+        FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
+        Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
         for (FlowPath flowPath : flowPaths) {
             if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
                 flowPorts.add(flowPath.getFlow().getSrcPort());
@@ -109,6 +112,9 @@ public class SwitchValidateFsm
                 flowPorts.add(flowPath.getFlow().getDestPort());
             }
         }
+
+        hasMultiTableFlows = !flowPathRepository.findBySegmentSwitchWithMultiTable(switchId, true).isEmpty();
+
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
         IslRepository islRepository = repositoryFactory.createIslRepository();
@@ -185,7 +191,7 @@ public class SwitchValidateFsm
         log.info("Key: {}, sending requests to get switch rules and meters", key);
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
-        boolean multiTable = switchProperties.isMultiTable();
+        boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
 
         carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, islPorts,
                 flowPorts));

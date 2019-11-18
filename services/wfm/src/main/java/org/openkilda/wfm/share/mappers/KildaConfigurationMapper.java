@@ -37,9 +37,11 @@ public abstract class KildaConfigurationMapper {
         if (kildaConfiguration == null) {
             return null;
         }
-
+        String flowEncapsulationType = kildaConfiguration.getFlowEncapsulationType() == null ? null :
+                kildaConfiguration.getFlowEncapsulationType().name().toLowerCase();
         return KildaConfigurationDto.builder()
-                .flowEncapsulationType(kildaConfiguration.getFlowEncapsulationType().name().toLowerCase())
+                .flowEncapsulationType(flowEncapsulationType)
+                .useMultiTable(kildaConfiguration.getUseMultiTable())
                 .build();
     }
 
@@ -50,10 +52,12 @@ public abstract class KildaConfigurationMapper {
         if (kildaConfigurationDto == null) {
             return null;
         }
-
+        String flowEncapsulationType = kildaConfigurationDto.getFlowEncapsulationType();
         return KildaConfiguration.builder()
                 .flowEncapsulationType(
-                        FlowEncapsulationType.valueOf(kildaConfigurationDto.getFlowEncapsulationType().toUpperCase()))
+                        flowEncapsulationType == null ? null
+                                : FlowEncapsulationType.valueOf(flowEncapsulationType.toUpperCase()))
+                .useMultiTable(kildaConfigurationDto.getUseMultiTable())
                 .build();
     }
 }
