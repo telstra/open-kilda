@@ -112,7 +112,8 @@ public interface SwitchMapper {
     SwitchPropertiesDto map(org.openkilda.messaging.model.SwitchPropertiesDto entry);
 
     @Mapping(target = "supportedTransitEncapsulation",
-            expression = "java(entry.getSupportedTransitEncapsulation().stream()"
+            expression = "java(entry.getSupportedTransitEncapsulation() == null ? null : "
+                    + "entry.getSupportedTransitEncapsulation().stream()"
                     + ".map(e-> org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(e.toUpperCase()))"
                     + ".collect(java.util.stream.Collectors.toSet()))")
     org.openkilda.messaging.model.SwitchPropertiesDto map(SwitchPropertiesDto entry);

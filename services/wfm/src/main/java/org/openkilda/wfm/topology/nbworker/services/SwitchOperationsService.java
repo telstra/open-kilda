@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static org.apache.commons.collections4.CollectionUtils.isEmpty;
+
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.model.Flow;
@@ -34,9 +36,11 @@ import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -252,10 +256,13 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      * Get switch properties.
      *
      * @param switchId target switch id
+     *
+     * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
      */
     public SwitchPropertiesDto getSwitchProperties(SwitchId switchId) {
         Optional<SwitchProperties> result = switchPropertiesRepository.findBySwitchId(switchId);
-        return result.map(SwitchPropertiesMapper.INSTANCE::map).orElse(null);
+        return result.map(SwitchPropertiesMapper.INSTANCE::map)
+                .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
     }
 
     /**
@@ -263,26 +270,28 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      *
      * @param switchId target switch id
      * @param switchPropertiesDto switch properties
+     *
+     * @throws IllegalSwitchPropertiesException if switch properties are incorrect
+     * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
      */
     public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchPropertiesDto) {
+        if (isEmpty(switchPropertiesDto.getSupportedTransitEncapsulation())) {
+            throw new IllegalSwitchPropertiesException("Supported transit encapsulations should not be null or empty");
+        }
         SwitchProperties update = SwitchPropertiesMapper.INSTANCE.map(switchPropertiesDto);
         return transactionManager.doInTransaction(() -> {
-            Optional<SwitchProperties> foundSwitchProperties = switchPropertiesRepository.findBySwitchId(switchId);
-            if (!(foundSwitchProperties.isPresent())) {
-                return null;
-            }
+            SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
+                    .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
-            SwitchProperties sf = foundSwitchProperties.get();
-            final boolean previousMultiTableFlag = sf.isMultiTable();
-            sf.setMultiTable(update.isMultiTable());
-            sf.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
-            switchPropertiesRepository.createOrUpdate(sf);
+            final boolean previousMultiTableFlag = switchProperties.isMultiTable();
+            switchProperties.setMultiTable(update.isMultiTable());
+            switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
+            switchPropertiesRepository.createOrUpdate(switchProperties);
             if (previousMultiTableFlag != update.isMultiTable()) {
                 carrier.requestSwitchSync(switchId);
             }
 
-
-            return SwitchPropertiesMapper.INSTANCE.map(sf);
+            return SwitchPropertiesMapper.INSTANCE.map(switchProperties);
         });
     }
 
