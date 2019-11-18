@@ -143,6 +143,10 @@ class FlowHelper {
      * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
      */
     FlowPayload deleteFlow(String flowId) {
+        deleteFlow(flowId, false)
+    }
+
+    FlowPayload deleteFlow(String flowId, boolean verifyMeters) {
         def flowEntry = db.getFlow(flowId)
 
         log.debug("Deleting flow '$flowId'")
@@ -150,6 +154,9 @@ class FlowHelper {
 
         checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
 
+        if(verifyMeters && !flowEntry.ignoreBandwidth) {
+            checkMetersOnSwitches(flowEntry, (RULES_DELETION_TIME / 2).toInteger(), false)
+        }
         return response
     }
 
@@ -325,6 +332,31 @@ class FlowHelper {
                         if (exc.rawStatusCode == 404) {
                             log.warn("Switch '$sw' was not found when checking rules after flow "
                                     + (rulesPresent ? "creation" : "deletion"))
+                        } else {
+                            throw exc
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks flow meters presence (or absence) on source and destination switches.
+     */
+    private void checkMetersOnSwitches(Flow flowEntry, int timeout, boolean metersPresent) {
+        def meters = [flowEntry.forwardPath.meterId.value, flowEntry.reversePath.meterId.value]
+        def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
+        withPool {
+            switches.eachParallel { sw ->
+                Wrappers.wait(timeout) {
+                    try {
+                        def result = northbound.getAllMeters(sw).meterEntries*.meterId
+                        assert metersPresent ? result.containsAll(meters) : !result.any { it in metersPresent }, sw
+                    } catch (HttpClientErrorException exc) {
+                        if (exc.rawStatusCode == 404) {
+                            log.warn("Switch '$sw' was not found when checking meters after flow "
+                                    + (metersPresent ? "creation" : "deletion"))
                         } else {
                             throw exc
                         }

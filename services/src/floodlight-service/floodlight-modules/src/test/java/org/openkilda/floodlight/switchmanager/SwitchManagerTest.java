@@ -72,7 +72,10 @@ import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.OFFactoryVer12Mock;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
@@ -95,6 +98,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -128,6 +132,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -195,6 +200,24 @@ public class SwitchManagerTest {
         expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
         replay(pathVerificationService);
 
+        KildaCore kildaCore = EasyMock.createMock(KildaCore.class);
+        FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(
+                context, KildaCore.class);
+        KildaCoreConfig coreConfig = provider.getConfiguration(KildaCoreConfig.class);
+        expect(kildaCore.getConfig()).andStubReturn(coreConfig);
+        EasyMock.replay(kildaCore);
+        context.addService(KildaCore.class, kildaCore);
+
+        SwitchTrackingService switchTracking = createMock(SwitchTrackingService.class);
+        switchTracking.setup(context);
+        replay(switchTracking);
+        context.addService(SwitchTrackingService.class, switchTracking);
+
+        IFloodlightProviderService floodlightProvider = createMock(IFloodlightProviderService.class);
+        floodlightProvider.addOFMessageListener(EasyMock.eq(OFType.ERROR), EasyMock.anyObject(SwitchManager.class));
+        replay(floodlightProvider);
+        context.addService(IFloodlightProviderService.class, floodlightProvider);
+
         context.addService(IRestApiService.class, restApiService);
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(FeatureDetectorService.class, featureDetectorService);
@@ -202,6 +225,7 @@ public class SwitchManagerTest {
 
         switchManager = new SwitchManager();
         switchManager.init(context);
+        switchManager.startUp(context);
     }
 
     @Test

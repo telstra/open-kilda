@@ -49,7 +49,6 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -69,6 +68,7 @@ import java.util.HashSet;
 
 public interface OutputCommands {
     String VERIFICATION_BCAST_PACKET_DST = "00:26:E1:FF:FF:FF";
+    MacAddress FLOW_PING_MAGIC_SRC_MAC_ADDRESS = MacAddress.of("00:26:E1:FF:FF:FE");
 
     OFFactory ofFactory = new OFFactoryMock();
 
@@ -549,8 +549,8 @@ public interface OutputCommands {
 
     default OFFlowAdd installVerificationUnicastRule(DatapathId defaultDpId) {
         Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_SRC, FLOW_PING_MAGIC_SRC_MAC_ADDRESS)
                 .setExact(MatchField.ETH_DST, MacAddress.of(defaultDpId))
-                .setExact(MatchField.ETH_SRC, MacAddress.of(defaultDpId))
                 .build();
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(Cookie.VERIFICATION_UNICAST_RULE_COOKIE))
@@ -658,10 +658,12 @@ public interface OutputCommands {
      * @return expected OFFlowAdd instance.
      */
     default OFFlowAdd installUnicastVerificationRuleVxlan(DatapathId dpid) {
-        Builder builder = ofFactory.buildMatch();
-        builder.setMasked(MatchField.ETH_SRC, MacAddress.of(dpid), MacAddress.NO_MASK);
-        builder.setExact(MatchField.UDP_SRC, TransportPort.of(4500));
-        Match match = builder.build();
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.ETH_SRC, FLOW_PING_MAGIC_SRC_MAC_ADDRESS, MacAddress.NO_MASK)
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_SRC, TransportPort.of(4500))
+                .build();
 
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE))

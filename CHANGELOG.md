@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.41.2 (14/11/2019)
+
+### Bug Fixes:
+-  [#2919](https://github.com/telstra/open-kilda/pull/2919) Fix flow ping ethernet header [**floodlight**]
+
+### Improvements:
+-  [#2915](https://github.com/telstra/open-kilda/pull/2915) Make http async timeout for NB configurable [**northbound**]
+-  [#2922](https://github.com/telstra/open-kilda/pull/2922) Fix OOM in Neo4jPersistenceManager caused by ClassGraph [**storm-topologies**]
+-  [#2896](https://github.com/telstra/open-kilda/pull/2896) Add stability hotfixes and temporary ignore some tests [**tests**]
+-  [#2899](https://github.com/telstra/open-kilda/pull/2899) Fix/security issues lodash [**gui**]
+-  [#2902](https://github.com/telstra/open-kilda/pull/2902) Renamed org.openkilda.converter package [**floodlight**]
+
+### Other changes:
+-  [#2895](https://github.com/telstra/open-kilda/pull/2895) Update design doc for PCE (Issue: [#2894](https://github.com/telstra/open-kilda/issues/2894)) [**docs**]
+-  [#2870](https://github.com/telstra/open-kilda/pull/2870) Remove outdated code [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.41.1...v1.41.2).
+
+### Affected Components:
+nb, nbworker, swmanager, fl, flow-hs, network, reroute, flow, gui
+
+---
+
 ## v1.41.1 (07/11/2019)
 
 ### Bug Fixes:

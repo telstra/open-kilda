@@ -41,13 +41,14 @@ import java.util.Map;
  * This module is a container for all base kilda services. The main mark of such service - lack of dependencies on other
  * kilda services. I.e. they have dependencies only on base FL services.
  */
-public class KildaCore implements IFloodlightModule {
+public class KildaCore implements IFloodlightModule, IFloodlightService {
     private KildaCoreConfig config;
     private final CommandContextFactory commandContextFactory = new CommandContextFactory();
     private final Map<Class<? extends IFloodlightService>, IFloodlightService> services;
 
     public KildaCore() {
         services = ImmutableMap.<Class<? extends IFloodlightService>, IFloodlightService>builder()
+                .put(KildaCore.class, this)
                 .put(CommandProcessorService.class, new CommandProcessorService(this, commandContextFactory))
                 .put(InputService.class, new InputService(commandContextFactory))
                 .put(SessionService.class, new SessionService())
