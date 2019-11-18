@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
@@ -46,6 +48,9 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         cleanup: "Restore init switch properties on the switch"
         northbound.updateSwitchProperties(sw.dpId, initSwitchProperties)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
     }
 
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
@@ -111,5 +116,9 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         cleanup: "Restore switch property on the switch"
         northbound.updateSwitchProperties(switchPair.src.dpId, initSwitchProperties)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie.sort() ==
+                    switchPair.src.defaultCookies.sort()
+        }
     }
 }
