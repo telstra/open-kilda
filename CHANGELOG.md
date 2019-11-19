@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.42.0 (19/11/2019)
+
+### Features:
+-  [#2843](https://github.com/telstra/open-kilda/pull/2843) Isl rules for switch [**tests**] 
+
+### Improvements:
+-  [#2930](https://github.com/telstra/open-kilda/pull/2930) improve SwitchPropertiesSpec [**tests**]
+
+### Other changes:
+-  [#2913](https://github.com/telstra/open-kilda/pull/2913) Adding improvement in topology  screen to icon menu (Issue: [#2912](https://github.com/telstra/open-kilda/issues/2912)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.41.2...v1.42.0).
+
+### Affected Components:
+gui, neo4j
+
+### Upgrade notes:
+
+Consider using the following migration scripts to update db:
+
+- [1.17 migration-script.xml](https://github.com/telstra/open-kilda/blob/develop/services/neo4j/migrations/1.17-config-multi-table/1-config-add-multi-table-flag.xml)
+
+In case of issues these rollback scripts should be executed:
+
+- [1.17 rollback.cql](https://github.com/telstra/open-kilda/blob/develop/services/neo4j/migrations/1.17-config-multi-table/rollback.cql)
+
+---
+
 ## v1.41.1 (07/11/2019)
 
 ### Bug Fixes:
