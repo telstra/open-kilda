@@ -26,12 +26,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ProcessNotRevertedResourcesAction extends
+public class HandleNotDeallocatedResourcesAction extends
         HistoryRecordingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         stateMachine.getFlowResources().forEach(resource ->
-                stateMachine.saveErrorToHistory("Failed to revert flow resources",
-                        format("Failed to revert the resources: %s", resource)));
+                stateMachine.saveErrorToHistory("Failed to deallocate resources",
+                        format("Failed to deallocate resources: %s", resource)));
     }
 }

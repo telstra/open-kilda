@@ -61,7 +61,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 flowPathRepository.updateStatus(oldReverse.getPathId(), FlowPathStatus.IN_PROGRESS);
 
                 FlowResources oldResources = getResources(flow, oldForward, oldReverse);
-                stateMachine.addOldResources(oldResources);
+                stateMachine.getOldResources().add(oldResources);
 
                 PathId newForward = stateMachine.getNewPrimaryForwardPath();
                 flow.setForwardPath(newForward);
@@ -88,7 +88,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 flowPathRepository.updateStatus(oldReverse.getPathId(), FlowPathStatus.IN_PROGRESS);
 
                 FlowResources oldResources = getResources(flow, oldForward, oldReverse);
-                stateMachine.addOldResources(oldResources);
+                stateMachine.getOldResources().add(oldResources);
 
                 PathId newForward = stateMachine.getNewProtectedForwardPath();
                 flow.setProtectedForwardPath(newForward);

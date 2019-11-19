@@ -69,7 +69,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             pathIds.remove(forward.getPathId());
             pathIds.remove(reverse.getPathId());
 
-            stateMachine.addFlowResources(buildResources(flow, forward, reverse));
+            stateMachine.getFlowResources().add(buildResources(flow, forward, reverse));
 
             commands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, forward, reverse));
@@ -83,7 +83,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             pathIds.remove(protectedForward.getPathId());
             pathIds.remove(protectedReverse.getPathId());
 
-            stateMachine.addFlowResources(buildResources(flow, protectedForward, protectedReverse));
+            stateMachine.getFlowResources().add(buildResources(flow, protectedForward, protectedReverse));
 
             commands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, protectedForward, protectedReverse));
@@ -99,7 +99,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                     processed.add(pathId);
                     processed.add(reversePathId);
 
-                    stateMachine.addFlowResources(buildResources(flow, path.get(), reversePath.get()));
+                    stateMachine.getFlowResources().add(buildResources(flow, path.get(), reversePath.get()));
 
                     commands.addAll(commandBuilder.createRemoveNonIngressRules(
                             stateMachine.getCommandContext(), flow, path.get(), reversePath.get()));
@@ -114,14 +114,14 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             flow.getPath(pathId).ifPresent(path -> log.warn("Failed to remove path {}", path));
         }
 
-        stateMachine.setRemoveCommands(commands.stream()
+        stateMachine.getRemoveCommands().putAll(commands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.setPendingCommands(commandIds);
+        stateMachine.getPendingCommands().addAll(commandIds);
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }

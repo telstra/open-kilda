@@ -40,14 +40,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.DumpIngressRulesActio
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.DumpNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.FlowValidateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ProcessNotRevertedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedValidationResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
@@ -180,11 +180,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     }
 
     @Override
-    public void fireNoPathFound(String errorReason) {
-        fireError(Event.PATH_NOT_FOUND, errorReason);
-    }
-
-    @Override
     public void sendResponse(Message message) {
         carrier.sendNorthboundResponse(message);
     }
@@ -242,7 +237,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         SKIP_NON_INGRESS_RULES_INSTALL,
 
         TIMEOUT,
-        PATH_NOT_FOUND,
         RETRY,
         ERROR
     }
@@ -317,7 +311,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.internalTransition()
                     .within(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedResponseAction(persistenceManager));
+                    .perform(new OnReceivedValidationResponseAction(persistenceManager));
             builder.internalTransition()
                     .within(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.RULE_RECEIVED)
@@ -344,7 +338,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.internalTransition()
                     .within(State.VALIDATING_INGRESS_RULES)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedResponseAction(persistenceManager));
+                    .perform(new OnReceivedValidationResponseAction(persistenceManager));
             builder.internalTransition()
                     .within(State.VALIDATING_INGRESS_RULES)
                     .on(Event.RULE_RECEIVED)
@@ -422,7 +416,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .from(State.RESOURCES_DE_ALLOCATED)
                     .toAmong(State._FAILED, State._FAILED)
                     .onEach(Event.ERROR, Event.TIMEOUT)
-                    .perform(new ProcessNotRevertedResourcesAction());
+                    .perform(new HandleNotDeallocatedResourcesAction());
 
             builder.transition()
                     .from(State.RESOURCES_DE_ALLOCATED)

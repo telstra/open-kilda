@@ -94,8 +94,12 @@ public class AllocateProtectedResourcesAction extends
 
             stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
         } else {
-            boolean newPathFound = isNotSamePath(potentialPath, flow.getProtectedForwardPath(),
-                    flow.getProtectedReversePath());
+            FlowPathPair oldPaths = FlowPathPair.builder()
+                    .forward(flow.getProtectedForwardPath())
+                    .reverse(flow.getProtectedReversePath())
+                    .build();
+
+            boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
             if (newPathFound || stateMachine.isRecreateIfSamePath()) {
                 if (!newPathFound) {
                     log.debug("Found the same protected path for flow {}. Proceed with recreating it", flowId);
@@ -106,16 +110,12 @@ public class AllocateProtectedResourcesAction extends
                 log.debug("Resources have been allocated: {}", flowResources);
                 stateMachine.setNewProtectedResources(flowResources);
 
-                FlowPathPair oldPaths = FlowPathPair.builder()
-                        .forward(flow.getProtectedForwardPath())
-                        .reverse(flow.getProtectedReversePath())
-                        .build();
                 FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
                 log.debug("New protected path has been created: {}", newPaths);
                 stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
                 stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());
 
-                saveActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
+                saveAllocationActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
             } else {
                 stateMachine.saveActionToHistory("Found the same protected path. Skipped creating of it");
             }

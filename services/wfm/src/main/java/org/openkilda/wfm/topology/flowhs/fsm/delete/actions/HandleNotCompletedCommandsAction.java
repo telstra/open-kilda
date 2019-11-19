@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -27,33 +26,26 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashSet;
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotRemovedRulesAction extends
+public class HandleNotCompletedCommandsAction extends
         HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getFailedCommands().isEmpty()) {
             for (UUID commandId : stateMachine.getPendingCommands()) {
-                RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
-                if (nonDeletedRule != null) {
-                    stateMachine.saveErrorToHistory("Failed to remove rule",
-                            format("Failed to remove the rule: commandId %s, switch %s, cookie %s", commandId,
-                                    nonDeletedRule.getSwitchId(), nonDeletedRule.getCookie()));
+                RemoveRule notCompletedCommand = stateMachine.getRemoveCommands().get(commandId);
+                if (notCompletedCommand != null) {
+                    stateMachine.saveErrorToHistory("Command is not finished yet",
+                            format("Completing the removal operation although the command may not be finished yet: "
+                                            + "commandId %s, switch %s, cookie %s", commandId,
+                                    notCompletedCommand.getSwitchId(), notCompletedCommand.getCookie()));
                 }
-            }
-
-            for (UUID commandId : stateMachine.getFailedCommands().keySet()) {
-                FlowErrorResponse errorResponse = stateMachine.getFailedCommands().get(commandId);
-                stateMachine.saveErrorToHistory("Failed to remove rule",
-                        format("Failed to remove the rule: commandId %s, switch %s. Error %s", commandId,
-                                errorResponse.getSwitchId(), errorResponse));
             }
         }
 
-        log.info("Canceling all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.setPendingCommands(new HashSet<>());
+        log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
+        stateMachine.getPendingCommands().clear();
     }
 }

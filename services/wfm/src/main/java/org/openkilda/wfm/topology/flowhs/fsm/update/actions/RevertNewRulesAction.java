@@ -68,7 +68,7 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        stateMachine.setIngressCommands(installCommands.stream()
+        stateMachine.getIngressCommands().putAll(installCommands.stream()
                 .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
 
         Collection<RemoveRule> removeCommands = new ArrayList<>();
@@ -88,15 +88,17 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
-        stateMachine.setRemoveCommands(removeCommands.stream()
+        stateMachine.getRemoveCommands().putAll(removeCommands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = Stream.concat(installCommands.stream(), removeCommands.stream())
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.setPendingCommands(commandIds);
+        stateMachine.getPendingCommands().addAll(commandIds);
+        stateMachine.getRetriedCommands().clear();
 
-        stateMachine.saveActionToHistory("Commands for removing new rules have been sent");
+        stateMachine.saveActionToHistory(
+                "Commands for removing new rules and re-installing original ingress rule have been sent");
     }
 }

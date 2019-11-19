@@ -151,6 +151,9 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
         if (lastHistoryEntryTime == null || lastHistoryEntryTime.isBefore(now)) {
             lastHistoryEntryTime = now;
         } else {
+            // To maintain the ordering of history records, each next record must be at least 1 ms later
+            // than the previous one. In a case of subsequent calls that receive the same value of Instant.now(),
+            // we have to manually increment the timestamp by adding 1 ms.
             lastHistoryEntryTime = lastHistoryEntryTime.plusMillis(1);
         }
         return lastHistoryEntryTime;

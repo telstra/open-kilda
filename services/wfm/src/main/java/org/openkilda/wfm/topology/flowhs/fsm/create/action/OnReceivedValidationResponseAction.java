@@ -30,8 +30,9 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnReceivedResponseAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-    public OnReceivedResponseAction(PersistenceManager persistenceManager) {
+public class OnReceivedValidationResponseAction extends
+        FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+    public OnReceivedValidationResponseAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 

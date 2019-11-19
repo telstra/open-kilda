@@ -63,7 +63,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
             FlowEncapsulationType oldFlowEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
             FlowResources oldPrimaryResources = getResources(oldPrimaryForward, oldPrimaryReverse,
                     oldFlowEncapsulationType);
-            stateMachine.addOldResources(oldPrimaryResources);
+            stateMachine.getOldResources().add(oldPrimaryResources);
 
             PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
             flow.setForwardPath(newPrimaryForward);
@@ -95,7 +95,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
             if (oldProtectedForward != null || oldProtectedReverse != null) {
                 FlowResources oldProtectedResources = getResources(oldProtectedForward, oldProtectedReverse,
                         oldFlowEncapsulationType);
-                stateMachine.addOldResources(oldProtectedResources);
+                stateMachine.getOldResources().add(oldProtectedResources);
             }
 
             PathId newProtectedForward = stateMachine.getNewProtectedForwardPath();

@@ -66,6 +66,12 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
         Filter beforeFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.LESS_THAN_EQUAL, timeTo);
         Filter afterFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.GREATER_THAN_EQUAL, timeFrom);
         Filters filters = new Filters(flowIdFilter).and(beforeFilter).and(afterFilter);
+
+        // FIXME: due to the way how the timestamp field is stored in Neo4j (as ISO formatted string),
+        // we have to duplicate filtering and sorting logic here to fix improper handling of dates with
+        // milliseconds equals to 0.
+        // For such dates the Instant to string formatter cuts the millisecond part off, so alphabetical ordering
+        // on the Neo4j side gives wrong results.
         return getSession().loadAll(getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME),
                 getDepthLoadEntity(getDefaultFetchStrategy())).stream()
                 .filter(event -> timeTo == null || event.getTimestamp().compareTo(timeTo) <= 0)

@@ -26,6 +26,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -86,16 +87,20 @@ public class RevertResourceAllocationAction extends
 
             if (newPrimaryForward != null && newPrimaryReverse != null) {
                 log.debug("Removing the new primary paths {} / {}", newPrimaryForward, newPrimaryReverse);
-                deleteFlowPaths(newPrimaryForward, newPrimaryReverse);
+                FlowPathPair pathsToDelete = FlowPathPair.builder()
+                        .forward(newPrimaryForward).reverse(newPrimaryReverse).build();
+                deleteFlowPaths(pathsToDelete);
 
-                saveActionWithDumpToHistory(stateMachine, flow, newPrimaryForward, newPrimaryReverse);
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
             }
 
             if (newProtectedForward != null && newProtectedReverse != null) {
                 log.debug("Removing the new protected paths {} / {}", newProtectedForward, newProtectedReverse);
-                deleteFlowPaths(newProtectedForward, newProtectedReverse);
+                FlowPathPair pathsToDelete = FlowPathPair.builder()
+                        .forward(newProtectedForward).reverse(newProtectedReverse).build();
+                deleteFlowPaths(pathsToDelete);
 
-                saveActionWithDumpToHistory(stateMachine, flow, newProtectedForward, newProtectedReverse);
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
             }
         });
 

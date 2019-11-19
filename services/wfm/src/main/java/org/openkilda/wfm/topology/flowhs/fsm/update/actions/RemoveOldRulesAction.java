@@ -70,14 +70,15 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        stateMachine.setRemoveCommands(commands.stream()
+        stateMachine.getRemoveCommands().putAll(commands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.setPendingCommands(commandIds);
+        stateMachine.getPendingCommands().addAll(commandIds);
+        stateMachine.getRetriedCommands().clear();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }

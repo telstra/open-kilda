@@ -59,9 +59,14 @@ public class AllocatePrimaryResourcesAction extends
             flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
         }
 
+        FlowPathPair oldPaths = FlowPathPair.builder()
+                .forward(flow.getForwardPath())
+                .reverse(flow.getReversePath())
+                .build();
+
         log.debug("Finding a new primary path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
-        boolean newPathFound = isNotSamePath(potentialPath, flow.getForwardPath(), flow.getReversePath());
+        boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
         if (newPathFound || stateMachine.isRecreateIfSamePath()) {
             if (!newPathFound) {
                 log.debug("Found the same primary path for flow {}. Proceed with recreating it", flowId);
@@ -72,16 +77,12 @@ public class AllocatePrimaryResourcesAction extends
             log.debug("Resources have been allocated: {}", flowResources);
             stateMachine.setNewPrimaryResources(flowResources);
 
-            FlowPathPair oldPaths = FlowPathPair.builder()
-                    .forward(flow.getForwardPath())
-                    .reverse(flow.getReversePath())
-                    .build();
             FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
             log.debug("New primary path has been created: {}", newPaths);
             stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
             stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
 
-            saveActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
+            saveAllocationActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
         } else {
             stateMachine.saveActionToHistory("Found the same primary path. Skipped creating of it");
         }

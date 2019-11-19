@@ -35,8 +35,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -56,7 +56,7 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId newProtectedForwardPath;
     protected PathId newProtectedReversePath;
 
-    protected Collection<FlowResources> oldResources;
+    protected final Collection<FlowResources> oldResources = new ArrayList<>();
     protected PathId oldPrimaryForwardPath;
     protected FlowPathStatus oldPrimaryForwardPathStatus;
     protected PathId oldPrimaryReversePath;
@@ -66,27 +66,20 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId oldProtectedReversePath;
     protected FlowPathStatus oldProtectedReversePathStatus;
 
-    protected Set<UUID> pendingCommands = Collections.emptySet();
-    protected Map<UUID, Integer> retriedCommands = new HashMap<>();
-    protected Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
-    protected Map<UUID, FlowResponse> failedValidationResponses = new HashMap<>();
+    protected final Set<UUID> pendingCommands = new HashSet<>();
+    protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
+    protected final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
+    protected final Map<UUID, FlowResponse> failedValidationResponses = new HashMap<>();
 
-    protected Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
-    protected Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
-    protected Map<UUID, RemoveRule> removeCommands = new HashMap<>();
+    protected final Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
+    protected final Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
+    protected final Map<UUID, RemoveRule> removeCommands = new HashMap<>();
 
     protected String errorReason;
 
     public FlowPathSwappingFsm(CommandContext commandContext, String flowId) {
         super(commandContext);
         this.flowId = flowId;
-    }
-
-    public void addOldResources(FlowResources resources) {
-        if (oldResources == null) {
-            oldResources = new ArrayList<>();
-        }
-        oldResources.add(resources);
     }
 
     public InstallFlowRule getInstallCommand(UUID commandId) {
@@ -114,4 +107,7 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
         }
         return cookie;
     }
+
+
+    public abstract void fireNoPathFound(String errorReason);
 }

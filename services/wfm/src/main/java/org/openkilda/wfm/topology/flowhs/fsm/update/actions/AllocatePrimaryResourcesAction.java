@@ -72,7 +72,7 @@ public class AllocatePrimaryResourcesAction extends
         stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
         stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
 
-        saveActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
+        saveAllocationActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
     }
 
     @Override

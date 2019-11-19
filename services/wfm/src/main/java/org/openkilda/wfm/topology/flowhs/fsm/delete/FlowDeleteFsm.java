@@ -20,9 +20,6 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -35,9 +32,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.CompleteFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.DeallocateResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotRemovedPathsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.HandleNotRemovedRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnErrorResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.OnFinishedWithErrorAction;
@@ -56,28 +53,28 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Getter
-@Setter
 @Slf4j
 public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Event, FlowDeleteContext> {
 
     private final FlowDeleteHubCarrier carrier;
     private final String flowId;
 
+    @Setter
     private FlowStatus originalFlowStatus;
-    private Collection<FlowResources> flowResources;
+    private final Collection<FlowResources> flowResources = new ArrayList<>();
 
-    private Set<UUID> pendingCommands = Collections.emptySet();
-    private Map<UUID, Integer> retriedCommands = new HashMap<>();
-    private Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
+    private final Set<UUID> pendingCommands = new HashSet<>();
+    private final Map<UUID, Integer> retriedCommands = new HashMap<>();
+    private final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
 
-    private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
+    private final Map<UUID, RemoveRule> removeCommands = new HashMap<>();
 
     private String errorReason;
 
@@ -85,87 +82,6 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         super(commandContext);
         this.carrier = carrier;
         this.flowId = flowId;
-    }
-
-    private static StateMachineBuilder<FlowDeleteFsm, State, Event, FlowDeleteContext> builder(
-            PersistenceManager persistenceManager, FlowResourcesManager resourcesManager,
-            int transactionRetriesLimit, int speakerCommandRetriesLimit) {
-        StateMachineBuilder<FlowDeleteFsm, State, Event, FlowDeleteContext> builder =
-                StateMachineBuilderFactory.create(FlowDeleteFsm.class, State.class, Event.class,
-                        FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class);
-
-        FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
-
-        builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
-                .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
-        builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
-
-        builder.transition().from(State.FLOW_VALIDATED).to(State.REMOVING_RULES).on(Event.NEXT)
-                .perform(new RemoveRulesAction(persistenceManager, resourcesManager));
-        builder.transitions().from(State.FLOW_VALIDATED)
-                .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.internalTransition().within(State.REMOVING_RULES).on(Event.RESPONSE_RECEIVED)
-                .perform(new OnReceivedResponseAction());
-        builder.internalTransition().within(State.REMOVING_RULES).on(Event.ERROR_RECEIVED)
-                .perform(new OnErrorResponseAction(speakerCommandRetriesLimit));
-        builder.transition().from(State.REMOVING_RULES).to(State.RULES_REMOVED)
-                .on(Event.RULES_REMOVED);
-        builder.transition().from(State.REMOVING_RULES).to(State.REVERTING_FLOW_STATUS)
-                .on(Event.ERROR)
-                .perform(new HandleNotRemovedRulesAction());
-
-        builder.transition().from(State.RULES_REMOVED).to(State.PATHS_REMOVED).on(Event.NEXT)
-                .perform(new CompleteFlowPathRemovalAction(persistenceManager, transactionRetriesLimit));
-
-        builder.transition().from(State.PATHS_REMOVED).to(State.DEALLOCATING_RESOURCES)
-                .on(Event.NEXT);
-        builder.transition().from(State.PATHS_REMOVED).to(State.DEALLOCATING_RESOURCES)
-                .on(Event.ERROR)
-                .perform(new HandleNotRemovedPathsAction(persistenceManager));
-
-        builder.transition().from(State.DEALLOCATING_RESOURCES).to(State.RESOURCES_DEALLOCATED).on(Event.NEXT)
-                .perform(new DeallocateResourcesAction(persistenceManager, resourcesManager));
-
-        builder.transition().from(State.RESOURCES_DEALLOCATED).to(State.REMOVING_FLOW).on(Event.NEXT);
-        builder.transition().from(State.RESOURCES_DEALLOCATED).to(State.REMOVING_FLOW)
-                .on(Event.ERROR)
-                .perform(new HandleNotDeallocatedResourcesAction());
-
-        builder.transition().from(State.REMOVING_FLOW).to(State.FLOW_REMOVED).on(Event.NEXT)
-                .perform(new RemoveFlowAction(persistenceManager, transactionRetriesLimit));
-
-        builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED).on(Event.NEXT);
-        builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
-
-        builder.transitions().from(State.REVERTING_FLOW_STATUS)
-                .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
-                .onEach(Event.NEXT, Event.ERROR)
-                .perform(new RevertFlowStatusAction(persistenceManager));
-
-        builder.defineFinalState(State.FINISHED)
-                .addEntryAction(new OnFinishedAction(dashboardLogger));
-        builder.defineFinalState(State.FINISHED_WITH_ERROR)
-                .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
-
-        return builder;
-    }
-
-    @Override
-    protected void afterTransitionCausedException(State fromState, State toState, Event event,
-                                                  FlowDeleteContext context) {
-        String errorMessage = getLastException().getMessage();
-        if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
-            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not delete flow", errorMessage);
-            Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
-                    getCommandContext().getCorrelationId());
-            carrier.sendNorthboundResponse(message);
-        }
-
-        fireError(errorMessage);
-
-        super.afterTransitionCausedException(fromState, toState, event, context);
     }
 
     @Override
@@ -188,42 +104,6 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         fire(errorEvent);
     }
 
-    @Override
-    public void fireNoPathFound(String errorReason) {
-        throw new UnsupportedOperationException("Invalid for delete FSM");
-    }
-
-    @Override
-    public void sendResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
-    }
-
-    public static FlowDeleteFsm newInstance(CommandContext commandContext, FlowDeleteHubCarrier carrier,
-                                            PersistenceManager persistenceManager,
-                                            FlowResourcesManager resourcesManager,
-                                            int transactionRetriesLimit, int speakerCommandRetriesLimit,
-                                            String flowId) {
-        return newInstance(State.INITIALIZED, commandContext, carrier, persistenceManager, resourcesManager,
-                transactionRetriesLimit, speakerCommandRetriesLimit, flowId);
-    }
-
-    public static FlowDeleteFsm newInstance(State state, CommandContext commandContext,
-                                            FlowDeleteHubCarrier carrier,
-                                            PersistenceManager persistenceManager,
-                                            FlowResourcesManager resourcesManager,
-                                            int transactionRetriesLimit, int speakerCommandRetriesLimit,
-                                            String flowId) {
-        return builder(persistenceManager, resourcesManager, transactionRetriesLimit, speakerCommandRetriesLimit)
-                .newStateMachine(state, commandContext, carrier, flowId);
-    }
-
-    public void addFlowResources(FlowResources resources) {
-        if (flowResources == null) {
-            flowResources = new ArrayList<>();
-        }
-        flowResources.add(resources);
-    }
-
     public Cookie getCookieForCommand(UUID commandId) {
         Cookie cookie;
         if (removeCommands.containsKey(commandId)) {
@@ -233,6 +113,84 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
             throw new IllegalStateException(format("Failed to find remove rule command with id %s", commandId));
         }
         return cookie;
+    }
+
+    @Override
+    public void sendResponse(Message message) {
+        carrier.sendNorthboundResponse(message);
+    }
+
+    public static class Factory {
+        private final StateMachineBuilder<FlowDeleteFsm, State, Event, FlowDeleteContext> builder;
+        private final FlowDeleteHubCarrier carrier;
+
+        public Factory(FlowDeleteHubCarrier carrier, PersistenceManager persistenceManager,
+                       FlowResourcesManager resourcesManager,
+                       int transactionRetriesLimit, int speakerCommandRetriesLimit) {
+            this.carrier = carrier;
+
+            builder = StateMachineBuilderFactory.create(FlowDeleteFsm.class, State.class, Event.class,
+                    FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class);
+
+            FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
+            builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
+                    .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
+            builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
+
+            builder.transition().from(State.FLOW_VALIDATED).to(State.REMOVING_RULES).on(Event.NEXT)
+                    .perform(new RemoveRulesAction(persistenceManager, resourcesManager));
+            builder.transitions().from(State.FLOW_VALIDATED)
+                    .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.internalTransition().within(State.REMOVING_RULES).on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedResponseAction());
+            builder.internalTransition().within(State.REMOVING_RULES).on(Event.ERROR_RECEIVED)
+                    .perform(new OnErrorResponseAction(speakerCommandRetriesLimit));
+            builder.transition().from(State.REMOVING_RULES).to(State.RULES_REMOVED)
+                    .on(Event.RULES_REMOVED);
+            builder.transition().from(State.REMOVING_RULES).to(State.REVERTING_FLOW_STATUS)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotCompletedCommandsAction());
+
+            builder.transition().from(State.RULES_REMOVED).to(State.PATHS_REMOVED).on(Event.NEXT)
+                    .perform(new CompleteFlowPathRemovalAction(persistenceManager, transactionRetriesLimit));
+
+            builder.transition().from(State.PATHS_REMOVED).to(State.DEALLOCATING_RESOURCES)
+                    .on(Event.NEXT);
+            builder.transition().from(State.PATHS_REMOVED).to(State.DEALLOCATING_RESOURCES)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotRemovedPathsAction(persistenceManager));
+
+            builder.transition().from(State.DEALLOCATING_RESOURCES).to(State.RESOURCES_DEALLOCATED).on(Event.NEXT)
+                    .perform(new DeallocateResourcesAction(persistenceManager, resourcesManager));
+
+            builder.transition().from(State.RESOURCES_DEALLOCATED).to(State.REMOVING_FLOW).on(Event.NEXT);
+            builder.transition().from(State.RESOURCES_DEALLOCATED).to(State.REMOVING_FLOW)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotDeallocatedResourcesAction());
+
+            builder.transition().from(State.REMOVING_FLOW).to(State.FLOW_REMOVED).on(Event.NEXT)
+                    .perform(new RemoveFlowAction(persistenceManager, transactionRetriesLimit));
+
+            builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED).on(Event.NEXT);
+            builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+
+            builder.transitions().from(State.REVERTING_FLOW_STATUS)
+                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .onEach(Event.NEXT, Event.ERROR)
+                    .perform(new RevertFlowStatusAction(persistenceManager));
+
+            builder.defineFinalState(State.FINISHED)
+                    .addEntryAction(new OnFinishedAction(dashboardLogger));
+            builder.defineFinalState(State.FINISHED_WITH_ERROR)
+                    .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
+        }
+
+        public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId) {
+            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        }
     }
 
     public enum State {

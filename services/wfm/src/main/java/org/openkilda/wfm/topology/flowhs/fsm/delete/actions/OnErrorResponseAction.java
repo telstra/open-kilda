@@ -50,7 +50,7 @@ public class OnErrorResponseAction extends HistoryRecordingAction<FlowDeleteFsm,
         UUID failedCommandId = response.getCommandId();
         RemoveRule failedCommand = stateMachine.getRemoveCommands().get(failedCommandId);
         if (!stateMachine.getPendingCommands().contains(failedCommandId) || failedCommand == null) {
-            log.warn("Received a response for unexpected command: {}", response);
+            log.info("Received a response for unexpected command: {}", response);
             return;
         }
 

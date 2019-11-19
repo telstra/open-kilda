@@ -20,6 +20,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -50,40 +51,45 @@ public class CompleteFlowPathRemovalAction extends
                 .retryOn(ClientException.class)
                 .withMaxRetries(transactionRetriesLimit);
 
-        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
-            Flow flow = getFlow(stateMachine.getFlowId());
-            FlowPath[] paths = flow.getPaths().stream().filter(Objects::nonNull).toArray(FlowPath[]::new);
+        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> removeFlowPaths(stateMachine));
+    }
 
-            flowPathRepository.lockInvolvedSwitches(paths);
+    private void removeFlowPaths(FlowDeleteFsm stateMachine) {
+        Flow flow = getFlow(stateMachine.getFlowId());
+        FlowPath[] paths = flow.getPaths().stream().filter(Objects::nonNull).toArray(FlowPath[]::new);
 
-            for (FlowPath path : paths) {
-                if (path.isForward()) {
-                    // Try to remove as paired first
-                    try {
-                        PathId oppositePathId = flow.getOppositePathId(path.getPathId());
-                        if (oppositePathId != null) {
-                            Optional<FlowPath> oppositePath = flow.getPath(oppositePathId);
-                            if (oppositePath.isPresent()) {
-                                log.debug("Removing the flow paths {} / {}", path.getPathId(), oppositePathId);
-                                deleteFlowPaths(path, oppositePath.get());
-                                saveActionWithDumpToHistory(stateMachine, flow, path, oppositePath.get());
-                                continue;
-                            }
+        flowPathRepository.lockInvolvedSwitches(paths);
+
+        for (FlowPath path : paths) {
+            if (path.isForward()) {
+                // Try to remove as paired first
+                try {
+                    PathId oppositePathId = flow.getOppositePathId(path.getPathId());
+                    if (oppositePathId != null) {
+                        Optional<FlowPath> oppositePath = flow.getPath(oppositePathId);
+                        if (oppositePath.isPresent()) {
+                            log.debug("Removing the flow paths {} / {}", path.getPathId(), oppositePathId);
+                            FlowPathPair pathsToDelete =
+                                    FlowPathPair.builder().forward(path).reverse(oppositePath.get()).build();
+                            deleteFlowPaths(pathsToDelete);
+                            saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
+                            continue;
                         }
-                    } catch (IllegalArgumentException ex) {
-                        log.warn("No opposite path found for the path {}", path, ex);
                     }
-                }
-
-                // We might already removed it as an opposite path
-                if (flowPathRepository.findById(path.getPathId()).isPresent()) {
-                    log.debug("Removing the flow path (which doesn't have an opposite path: {}", path);
-                    flowPathRepository.delete(path);
-                    updateIslsForFlowPath(path);
-                    // TODO: History dumps require paired paths, fix it to support any (without opposite one).
-                    saveActionWithDumpToHistory(stateMachine, flow, path, path);
+                } catch (IllegalArgumentException ex) {
+                    log.warn("No opposite path found for the path {}", path, ex);
                 }
             }
-        });
+
+            // We might already removed it as an opposite path
+            if (flowPathRepository.findById(path.getPathId()).isPresent()) {
+                log.debug("Removing the flow path (which doesn't have an opposite path: {}", path);
+                flowPathRepository.delete(path);
+                updateIslsForFlowPath(path);
+                // TODO: History dumps require paired paths, fix it to support any (without opposite one).
+                FlowPathPair pathsToDelete = FlowPathPair.builder().forward(path).reverse(path).build();
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
+            }
+        }
     }
 }

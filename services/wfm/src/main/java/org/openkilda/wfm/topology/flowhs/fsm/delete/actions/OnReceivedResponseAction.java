@@ -43,7 +43,7 @@ public class OnReceivedResponseAction extends
 
         UUID commandId = response.getCommandId();
         if (!stateMachine.getPendingCommands().remove(commandId)) {
-            log.warn("Received a response for unexpected command: {}", response);
+            log.info("Received a response for unexpected command: {}", response);
             return;
         }
 

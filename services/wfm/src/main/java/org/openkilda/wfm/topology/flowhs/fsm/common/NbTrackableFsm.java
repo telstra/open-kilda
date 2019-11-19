@@ -28,6 +28,4 @@ public abstract class NbTrackableFsm<T extends StateMachine<T, S, E, C>, S, E, C
     }
 
     public abstract void sendResponse(Message message);
-
-    public abstract void fireNoPathFound(String errorReason);
 }

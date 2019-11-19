@@ -37,7 +37,9 @@ import java.util.Map;
 public class FlowDeleteService {
     @VisibleForTesting
     final Map<String, FlowDeleteFsm> fsms = new HashMap<>();
-    private final FsmExecutor<FlowDeleteFsm, State, Event, FlowDeleteContext> controllerExecutor
+
+    private final FlowDeleteFsm.Factory fsmFactory;
+    private final FsmExecutor<FlowDeleteFsm, State, Event, FlowDeleteContext> fsmExecutor
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowDeleteHubCarrier carrier;
@@ -56,6 +58,8 @@ public class FlowDeleteService {
         this.flowResourcesManager = flowResourcesManager;
         this.transactionRetriesLimit = transactionRetriesLimit;
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        fsmFactory = new FlowDeleteFsm.Factory(carrier, persistenceManager, flowResourcesManager,
+                transactionRetriesLimit, speakerCommandRetriesLimit);
     }
 
     /**
@@ -78,11 +82,10 @@ public class FlowDeleteService {
             return;
         }
 
-        FlowDeleteFsm fsm = FlowDeleteFsm.newInstance(commandContext, carrier, persistenceManager,
-                flowResourcesManager, transactionRetriesLimit, speakerCommandRetriesLimit, flowId);
+        FlowDeleteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
 
-        controllerExecutor.fire(fsm, Event.NEXT, FlowDeleteContext.builder().build());
+        fsmExecutor.fire(fsm, Event.NEXT, FlowDeleteContext.builder().build());
 
         removeIfFinished(fsm, key);
     }
@@ -105,9 +108,9 @@ public class FlowDeleteService {
                 .build();
 
         if (flowResponse instanceof FlowErrorResponse) {
-            controllerExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
+            fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
         } else {
-            controllerExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
         }
 
         removeIfFinished(fsm, key);
@@ -126,7 +129,7 @@ public class FlowDeleteService {
             return;
         }
 
-        controllerExecutor.fire(fsm, Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
 
         removeIfFinished(fsm, key);
     }

@@ -43,7 +43,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
 import lombok.SneakyThrows;
@@ -57,7 +57,7 @@ import java.util.Optional;
  * A base for action classes that allocate resources for flow paths.
  */
 @Slf4j
-public abstract class BaseResourceAllocationAction<T extends NbTrackableFsm<T, S, E, C>, S, E, C> extends
+public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C> extends
         NbTrackableAction<T, S, E, C> {
     protected final int transactionRetriesLimit;
     protected final SwitchRepository switchRepository;
@@ -152,9 +152,9 @@ public abstract class BaseResourceAllocationAction<T extends NbTrackableFsm<T, S
         }
     }
 
-    protected boolean isNotSamePath(PathPair pathPair, FlowPath forwardPath, FlowPath reversePath) {
-        return !flowPathBuilder.isSamePath(pathPair.getForward(), forwardPath)
-                || !flowPathBuilder.isSamePath(pathPair.getReverse(), reversePath);
+    protected boolean isNotSamePath(PathPair pathPair, FlowPathPair flowPathPair) {
+        return !flowPathBuilder.isSamePath(pathPair.getForward(), flowPathPair.getForward())
+                || !flowPathBuilder.isSamePath(pathPair.getReverse(), flowPathPair.getReverse());
     }
 
     protected FlowPathPair createFlowPathPair(Flow flow, FlowPathPair pathsToReuseBandwidth,
@@ -219,8 +219,8 @@ public abstract class BaseResourceAllocationAction<T extends NbTrackableFsm<T, S
         }
     }
 
-    protected void saveActionWithDumpsToHistory(T stateMachine, Flow flow, String pathType,
-                                                FlowPathPair newFlowPaths) {
+    protected void saveAllocationActionWithDumpsToHistory(T stateMachine, Flow flow, String pathType,
+                                                          FlowPathPair newFlowPaths) {
         FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow, newFlowPaths.getForward(), newFlowPaths.getReverse(),
                 DumpType.STATE_AFTER);
         stateMachine.saveActionWithDumpToHistory(

@@ -23,13 +23,11 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.util.HashSet;
-
 @Slf4j
-public class CancelPendingCommandsAction extends AnonymousAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class AbandonPendingCommandsAction extends AnonymousAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void execute(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        log.debug("Canceling all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.setPendingCommands(new HashSet<>());
+        log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
+        stateMachine.getPendingCommands().clear();
     }
 }

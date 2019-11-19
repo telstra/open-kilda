@@ -39,10 +39,11 @@ import java.util.Map;
 
 @Slf4j
 public class FlowUpdateService {
-
     @VisibleForTesting
     final Map<String, FlowUpdateFsm> fsms = new HashMap<>();
-    private final FsmExecutor<FlowUpdateFsm, State, Event, FlowUpdateContext> controllerExecutor
+
+    private final FlowUpdateFsm.Factory fsmFactory;
+    private final FsmExecutor<FlowUpdateFsm, State, Event, FlowUpdateContext> fsmExecutor
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowUpdateHubCarrier carrier;
@@ -63,6 +64,8 @@ public class FlowUpdateService {
         this.flowResourcesManager = flowResourcesManager;
         this.transactionRetriesLimit = transactionRetriesLimit;
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        fsmFactory = new FlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                transactionRetriesLimit, speakerCommandRetriesLimit);
     }
 
     /**
@@ -85,16 +88,14 @@ public class FlowUpdateService {
             return;
         }
 
-        FlowUpdateFsm fsm = FlowUpdateFsm.newInstance(commandContext, carrier, persistenceManager,
-                pathComputer, flowResourcesManager, transactionRetriesLimit, speakerCommandRetriesLimit,
-                request.getFlowId());
+        FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
         fsms.put(key, fsm);
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .targetFlow(requestedFlow)
                 .build();
-        controllerExecutor.fire(fsm, Event.NEXT, context);
+        fsmExecutor.fire(fsm, Event.NEXT, context);
 
         removeIfFinished(fsm, key);
     }
@@ -117,9 +118,9 @@ public class FlowUpdateService {
                 .build();
 
         if (flowResponse instanceof FlowErrorResponse) {
-            controllerExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
+            fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
         } else {
-            controllerExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
         }
 
         removeIfFinished(fsm, key);
@@ -138,7 +139,7 @@ public class FlowUpdateService {
             return;
         }
 
-        controllerExecutor.fire(fsm, Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
 
         removeIfFinished(fsm, key);
     }

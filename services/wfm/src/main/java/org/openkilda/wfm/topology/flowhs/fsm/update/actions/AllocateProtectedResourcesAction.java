@@ -97,7 +97,7 @@ public class AllocateProtectedResourcesAction extends
             stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
             stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());
 
-            saveActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
+            saveAllocationActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
         }
     }
 

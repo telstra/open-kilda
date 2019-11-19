@@ -27,31 +27,33 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashSet;
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotRemovedRulesAction extends
+public class HandleNotCompletedCommandsAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getFailedCommands().isEmpty()) {
             for (UUID commandId : stateMachine.getPendingCommands()) {
-                RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
-                if (nonDeletedRule != null) {
-                    stateMachine.saveErrorToHistory("Failed to delete rule",
-                            format("Failed to delete the rule: commandId %s, switch %s, rule %s",
-                                    commandId, nonDeletedRule.getSwitchId(), nonDeletedRule));
+                RemoveRule removeCommand = stateMachine.getRemoveCommands().get(commandId);
+                if (removeCommand != null) {
+                    stateMachine.saveErrorToHistory("Command is not finished yet",
+                            format("Completing the update operation although the remove command may not be "
+                                            + "finished yet: commandId %s, switch %s, cookie %s", commandId,
+                                    removeCommand.getSwitchId(), removeCommand.getCookie()));
                 } else {
                     InstallIngressRule ingressRule = stateMachine.getIngressCommands().get(commandId);
-                    stateMachine.saveErrorToHistory("Failed to reinstall ingress rule",
-                            format("Failed to install the ingress rule: commandId %s, switch %s, rule %s",
-                                    commandId, ingressRule.getSwitchId(), ingressRule));
+                    stateMachine.saveErrorToHistory("Command is not finished yet",
+                            format("Completing the update operation although the install command may not be "
+                                            + "finished yet: commandId %s, switch %s, rule %s", commandId,
+                                    ingressRule.getSwitchId(), ingressRule));
+
                 }
             }
         }
 
-        log.debug("Canceling all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.setPendingCommands(new HashSet<>());
+        log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
+        stateMachine.getPendingCommands().clear();
     }
 }

@@ -38,10 +38,11 @@ import java.util.Set;
 
 @Slf4j
 public class FlowRerouteService {
-
     @VisibleForTesting
     final Map<String, FlowRerouteFsm> fsms = new HashMap<>();
-    private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> controllerExecutor
+
+    private final FlowRerouteFsm.Factory fsmFactory;
+    private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> fsmExecutor
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowRerouteHubCarrier carrier;
@@ -62,6 +63,8 @@ public class FlowRerouteService {
         this.flowResourcesManager = flowResourcesManager;
         this.transactionRetriesLimit = transactionRetriesLimit;
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                transactionRetriesLimit, speakerCommandRetriesLimit);
     }
 
     /**
@@ -88,8 +91,7 @@ public class FlowRerouteService {
             return;
         }
 
-        FlowRerouteFsm fsm = FlowRerouteFsm.newInstance(commandContext, carrier, persistenceManager,
-                pathComputer, flowResourcesManager, transactionRetriesLimit, speakerCommandRetriesLimit, flowId);
+        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()
@@ -98,7 +100,7 @@ public class FlowRerouteService {
                 .forceReroute(forceReroute)
                 .rerouteReason(rerouteReason)
                 .build();
-        controllerExecutor.fire(fsm, Event.NEXT, context);
+        fsmExecutor.fire(fsm, Event.NEXT, context);
 
         removeIfFinished(fsm, key);
     }
@@ -121,9 +123,9 @@ public class FlowRerouteService {
                 .build();
 
         if (flowResponse instanceof FlowErrorResponse) {
-            controllerExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
+            fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
         } else {
-            controllerExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
         }
 
         removeIfFinished(fsm, key);
@@ -142,7 +144,7 @@ public class FlowRerouteService {
             return;
         }
 
-        controllerExecutor.fire(fsm, Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
 
         removeIfFinished(fsm, key);
     }

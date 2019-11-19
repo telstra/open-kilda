@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -26,15 +25,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
-
 @Slf4j
 public class HandleNotDeallocatedResourcesAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        Collection<FlowResources> oldResources = stateMachine.getOldResources();
-        oldResources.forEach(flowResources ->
+        stateMachine.getOldResources().forEach(flowResources ->
                 stateMachine.saveErrorToHistory("Failed to deallocate resources",
                         format("Failed to deallocate resources: %s", flowResources)));
     }

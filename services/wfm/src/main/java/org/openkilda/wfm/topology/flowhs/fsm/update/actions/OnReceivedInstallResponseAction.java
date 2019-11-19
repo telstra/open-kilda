@@ -20,7 +20,6 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.InstallFlowRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.model.Cookie;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -46,18 +45,16 @@ public class OnReceivedInstallResponseAction extends
         UUID commandId = response.getCommandId();
         InstallFlowRule command = stateMachine.getInstallCommand(commandId);
         if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
-            log.warn("Received a response for unexpected command: {}", response);
+            log.info("Received a response for unexpected command: {}", response);
             return;
         }
-
-        Cookie cookie = stateMachine.getCookieForCommand(commandId);
 
         if (response.isSuccess()) {
             stateMachine.getPendingCommands().remove(commandId);
 
             stateMachine.saveActionToHistory("Rule was installed",
                     format("The rule was installed: switch %s, cookie %s",
-                            response.getSwitchId(), cookie));
+                            response.getSwitchId(), command.getCookie()));
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
@@ -68,7 +65,7 @@ public class OnReceivedInstallResponseAction extends
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
                                 + "Retrying (attempt %d)",
-                        commandId, errorResponse.getSwitchId(), cookie, errorResponse, retries));
+                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
                 stateMachine.getCarrier().sendSpeakerRequest(command);
             } else {
@@ -76,7 +73,7 @@ public class OnReceivedInstallResponseAction extends
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
-                        commandId, errorResponse.getSwitchId(), cookie, errorResponse));
+                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
                 stateMachine.getFailedCommands().put(commandId, errorResponse);
             }

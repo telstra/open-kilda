@@ -55,8 +55,7 @@ public final class SpeakerCommandFsm extends WithCommandContextFsm<SpeakerComman
                 log.debug("About to retry execution of the command {}", flowResponse);
                 fire(Event.RETRY);
             } else {
-                log.info("Failed to execute the flow command {}", flowResponse);
-                fire(Event.ERROR);
+                fireError(flowResponse.toString());
             }
         }
     }
@@ -73,6 +72,7 @@ public final class SpeakerCommandFsm extends WithCommandContextFsm<SpeakerComman
 
     @Override
     public void fireError(String errorReason) {
+        log.info("Failed to execute the flow command {}", errorReason);
         fire(Event.ERROR);
     }
 

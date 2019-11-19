@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -26,15 +25,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
-
 @Slf4j
 public class HandleNotDeallocatedResourcesAction extends
         HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
-        Collection<FlowResources> flowResources = stateMachine.getFlowResources();
-        flowResources.forEach(resources ->
+        stateMachine.getFlowResources().forEach(resources ->
                 stateMachine.saveErrorToHistory("Failed to deallocate resources",
                         format("Failed to deallocate resources: %s", resources)));
     }

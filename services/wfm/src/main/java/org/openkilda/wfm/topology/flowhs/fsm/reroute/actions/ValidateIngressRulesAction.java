@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.Switch;
@@ -39,46 +40,65 @@ import java.util.UUID;
 public class ValidateIngressRulesAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final SwitchRepository switchRepository;
+    private final int speakerCommandRetriesLimit;
 
-    public ValidateIngressRulesAction(PersistenceManager persistenceManager) {
+    public ValidateIngressRulesAction(PersistenceManager persistenceManager, int speakerCommandRetriesLimit) {
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        stateMachine.getPendingCommands().remove(commandId);
-
-        InstallIngressRule expected = stateMachine.getIngressCommands().get(commandId);
-        if (expected == null) {
-            throw new IllegalStateException(format("Failed to find ingress command with id %s", commandId));
+        InstallIngressRule command = stateMachine.getIngressCommands().get(commandId);
+        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+            log.info("Received a response for unexpected command: {}", response);
+            return;
         }
 
         if (response.isSuccess()) {
-            Switch switchObj = switchRepository.findById(expected.getSwitchId())
-                    .orElseThrow(() -> new IllegalStateException(format("Failed to find switch %s",
-                            expected.getSwitchId())));
+            stateMachine.getPendingCommands().remove(commandId);
 
-            RulesValidator validator = new IngressRulesValidator(expected, (FlowRuleResponse) response,
+            Switch switchObj = switchRepository.findById(command.getSwitchId())
+                    .orElseThrow(() -> new IllegalStateException(format("Failed to find switch %s",
+                            command.getSwitchId())));
+
+            RulesValidator validator = new IngressRulesValidator(command, (FlowRuleResponse) response,
                     switchObj.getFeatures());
             if (validator.validate()) {
                 stateMachine.saveActionToHistory("Rule was validated",
                         format("The ingress rule has been validated successfully: switch %s, cookie %s",
-                                expected.getSwitchId(), expected.getCookie()));
+                                command.getSwitchId(), command.getCookie()));
             } else {
                 stateMachine.saveErrorToHistory("Rule is missing or invalid",
                         format("The ingress rule is missing or invalid: switch %s, cookie %s",
-                                expected.getSwitchId(), expected.getCookie()));
+                                command.getSwitchId(), command.getCookie()));
 
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }
         } else {
-            stateMachine.saveErrorToHistory("Rule validation failed",
-                    format("Failed to validate the ingress rule: switch %s, cookie %s",
-                            expected.getSwitchId(), expected.getCookie()));
+            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            stateMachine.getFailedValidationResponses().put(commandId, response);
+            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            if (retries < speakerCommandRetriesLimit) {
+                stateMachine.getRetriedCommands().put(commandId, ++retries);
+
+                stateMachine.saveErrorToHistory("Rule validation failed", format(
+                        "Failed to validate the ingress rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                + "Retrying (attempt %d)",
+                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
+
+                stateMachine.getCarrier().sendSpeakerRequest(command);
+            } else {
+                stateMachine.getPendingCommands().remove(commandId);
+
+                stateMachine.saveErrorToHistory("Rule validation failed",
+                        format("Failed to validate the ingress rule: commandId %s, switch %s, cookie %s. Error %s",
+                                commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
+
+                stateMachine.getFailedValidationResponses().put(commandId, response);
+            }
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {
@@ -86,8 +106,9 @@ public class ValidateIngressRulesAction extends
                 log.debug("Ingress rules have been validated for flow {}", stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_VALIDATED);
             } else {
-                stateMachine.saveErrorToHistory(
-                        "Found missing rules or received error response(s) on validation commands");
+                stateMachine.saveErrorToHistory(format(
+                        "Found missing rules or received error response(s) on %d validation commands",
+                        stateMachine.getFailedValidationResponses().size()));
                 stateMachine.fire(Event.MISSING_RULE_FOUND);
             }
         }

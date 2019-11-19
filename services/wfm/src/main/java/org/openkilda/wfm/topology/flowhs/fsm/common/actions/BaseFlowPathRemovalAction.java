@@ -25,6 +25,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
 import lombok.extern.slf4j.Slf4j;
@@ -43,11 +44,11 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
-    protected void deleteFlowPaths(FlowPath forwardPath, FlowPath reversePath) {
-        flowPathRepository.delete(forwardPath);
-        flowPathRepository.delete(reversePath);
+    protected void deleteFlowPaths(FlowPathPair pathPair) {
+        flowPathRepository.delete(pathPair.getForward());
+        flowPathRepository.delete(pathPair.getReverse());
 
-        updateIslsForFlowPath(forwardPath, reversePath);
+        updateIslsForFlowPath(pathPair.getForward(), pathPair.getReverse());
     }
 
     protected void updateIslsForFlowPath(FlowPath... paths) {
@@ -64,16 +65,17 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
     private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort) {
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
                 dstSwitch, dstPort);
-        log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
+        log.debug("Updating ISL {}_{} - {}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
                 usedBandwidth);
         islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
     }
 
-    protected void saveActionWithDumpToHistory(T stateMachine, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, forwardPath, reversePath, DumpType.STATE_BEFORE);
+    protected void saveRemovalActionWithDumpToHistory(T stateMachine, Flow flow, FlowPathPair pathPair) {
+        FlowDumpData flowDumpData =
+                HistoryMapper.INSTANCE.map(flow, pathPair.getForward(), pathPair.getReverse(), DumpType.STATE_BEFORE);
         stateMachine.saveActionWithDumpToHistory(
                 "Flow paths were removed",
-                format("The flow paths %s / %s were removed", forwardPath.getPathId(), reversePath.getPathId()),
+                format("The flow paths %s / %s were removed", pathPair.getForwardPathId(), pathPair.getReversePathId()),
                 flowDumpData);
     }
 }

@@ -19,6 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -49,39 +50,44 @@ public class CompleteFlowPathRemovalAction extends
                 .retryOn(ClientException.class)
                 .withMaxRetries(transactionRetriesLimit);
 
-        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
-            Flow flow = getFlow(stateMachine.getFlowId());
+        persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> removeFlowPaths(stateMachine));
+    }
 
-            FlowPath oldPrimaryForward = null;
-            FlowPath oldPrimaryReverse = null;
-            if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-                oldPrimaryForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-                oldPrimaryReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
-            }
-            FlowPath oldProtectedForward = null;
-            FlowPath oldProtectedReverse = null;
-            if (stateMachine.getOldProtectedForwardPath() != null
-                    && stateMachine.getOldProtectedReversePath() != null) {
-                oldProtectedForward = getFlowPath(flow, stateMachine.getOldProtectedForwardPath());
-                oldProtectedReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
-            }
+    private void removeFlowPaths(FlowRerouteFsm stateMachine) {
+        Flow flow = getFlow(stateMachine.getFlowId());
 
-            flowPathRepository.lockInvolvedSwitches(Stream.of(oldPrimaryForward, oldPrimaryReverse,
-                    oldProtectedForward, oldProtectedReverse).filter(Objects::nonNull).toArray(FlowPath[]::new));
+        FlowPath oldPrimaryForward = null;
+        FlowPath oldPrimaryReverse = null;
+        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
+            oldPrimaryForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+            oldPrimaryReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+        }
+        FlowPath oldProtectedForward = null;
+        FlowPath oldProtectedReverse = null;
+        if (stateMachine.getOldProtectedForwardPath() != null
+                && stateMachine.getOldProtectedReversePath() != null) {
+            oldProtectedForward = getFlowPath(flow, stateMachine.getOldProtectedForwardPath());
+            oldProtectedReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
+        }
 
-            if (oldPrimaryForward != null && oldPrimaryReverse != null) {
-                log.debug("Completing removal of the flow path {} / {}", oldPrimaryForward, oldPrimaryReverse);
-                deleteFlowPaths(oldPrimaryForward, oldPrimaryReverse);
+        flowPathRepository.lockInvolvedSwitches(Stream.of(oldPrimaryForward, oldPrimaryReverse,
+                oldProtectedForward, oldProtectedReverse).filter(Objects::nonNull).toArray(FlowPath[]::new));
 
-                saveActionWithDumpToHistory(stateMachine, flow, oldPrimaryForward, oldPrimaryReverse);
-            }
+        if (oldPrimaryForward != null && oldPrimaryReverse != null) {
+            log.debug("Completing removal of the flow path {} / {}", oldPrimaryForward, oldPrimaryReverse);
+            FlowPathPair pathsToDelete =
+                    FlowPathPair.builder().forward(oldPrimaryForward).reverse(oldPrimaryReverse).build();
+            deleteFlowPaths(pathsToDelete);
+            saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
+        }
 
-            if (oldProtectedForward != null && oldProtectedReverse != null) {
-                log.debug("Completing removal of the flow path {} / {}", oldProtectedForward, oldProtectedReverse);
-                deleteFlowPaths(oldProtectedForward, oldProtectedReverse);
-
-                saveActionWithDumpToHistory(stateMachine, flow, oldProtectedForward, oldProtectedReverse);
-            }
-        });
+        if (oldProtectedForward != null && oldProtectedReverse != null) {
+            log.debug("Completing removal of the flow path {} / {}", oldProtectedForward, oldProtectedReverse);
+            FlowPathPair pathsToDelete =
+                    FlowPathPair.builder().forward(oldProtectedForward).reverse(oldProtectedReverse).build();
+            deleteFlowPaths(pathsToDelete);
+            saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
+        }
     }
 }
+
