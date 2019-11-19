@@ -76,8 +76,7 @@ class SwitchHelper {
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                     MULTITABLE_TRANSIT_DROP_COOKIE]
             northbound.getLinks(sw.dpId, null, null, null).each {
-                if (swProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString()
-                        .toLowerCase())) {
+                if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
                     multiTableRules.add(Cookie.encodeIslVxlanEgress(it.source.portNo))
                     multiTableRules.add(Cookie.encodeIslVxlanTransit(it.source.portNo))
                 }
