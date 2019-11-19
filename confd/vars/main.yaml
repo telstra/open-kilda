@@ -153,3 +153,8 @@ kilda_grpc_remote_log_server_port: 321
 kilda_latency_update_interval: 300
 kilda_latency_update_time_range: 600
 kilda_latency_discovery_interval_multiplier: 3
+
+
+kilda_storm_disruptor_wait_timeout: 1000
+kilda_storm_disruptor_batch_timeout: 10
+kilda_storm_spout_wait_sleep_timeout: 100

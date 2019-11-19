@@ -47,6 +47,7 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
+import org.apache.storm.spout.SleepSpoutWaitStrategy;
 import org.apache.storm.thrift.TException;
 import org.apache.storm.tuple.Fields;
 import org.kohsuke.args4j.CmdLineException;
@@ -174,6 +175,16 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         Config stormConfig = new Config();
 
         stormConfig.setNumWorkers(topologyConfig.getWorkers());
+        if (topologyConfig.getDisruptorWaitTimeout() != null) {
+            stormConfig.put(Config.TOPOLOGY_DISRUPTOR_WAIT_TIMEOUT_MILLIS, topologyConfig.getDisruptorWaitTimeout());
+        }
+        if (topologyConfig.getDisruptorBatchTimeout() != null) {
+            stormConfig.put(Config.TOPOLOGY_DISRUPTOR_BATCH_TIMEOUT_MILLIS, topologyConfig.getDisruptorBatchTimeout());
+        }
+        if (topologyConfig.getSpoutWaitSleepTime() != null) {
+            stormConfig.put(Config.TOPOLOGY_SPOUT_WAIT_STRATEGY, SleepSpoutWaitStrategy.class.getName());
+            stormConfig.put(Config.TOPOLOGY_SLEEP_SPOUT_WAIT_STRATEGY_TIME_MS, topologyConfig.getSpoutWaitSleepTime());
+        }
         if (topologyConfig.getUseLocalCluster()) {
             stormConfig.setMaxTaskParallelism(topologyConfig.getParallelism());
         }
