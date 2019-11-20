@@ -31,6 +31,7 @@ package org.openkilda.model;
 
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -81,5 +82,38 @@ public class SwitchProperties implements Serializable {
         this.switchObj = switchObj;
         this.supportedTransitEncapsulation = supportedTransitEncapsulation;
         this.multiTable = multiTable;
+    }
+
+    @VisibleForTesting
+    boolean validateProp(SwitchFeature feature) {
+        if (!switchObj.getFeatures().contains(feature)) {
+            String message = String.format("Switch %s doesn't support requested feature %s", switchObj.getSwitchId(),
+                    feature);
+            throw new IllegalArgumentException(message);
+        }
+        return true;
+    }
+
+    /**
+     * Sets multi-table flag. Validates it against supported features under the hood.
+     * @param multiTable target flag
+     */
+    public void setMultiTable(boolean multiTable) {
+        if (multiTable) {
+            validateProp(SwitchFeature.MULTI_TABLE);
+        }
+        this.multiTable = multiTable;
+    }
+
+    /**
+     * Sets allowed transit encapsulations. Validates it against supported features under the hood.
+     * @param supportedTransitEncapsulation target supported transit encapsulations.
+     */
+    public void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation) {
+        if (supportedTransitEncapsulation != null
+                && supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN)) {
+            validateProp(SwitchFeature.NOVIFLOW_COPY_FIELD);
+        }
+        this.supportedTransitEncapsulation = supportedTransitEncapsulation;
     }
 }

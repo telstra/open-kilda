@@ -207,6 +207,9 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         } catch (IllegalSwitchPropertiesException e) {
             throw new MessageException(ErrorType.PARAMETERS_INVALID, e.getMessage(),
                     "Failed to update switch properties.");
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.PARAMETERS_INVALID, "Failed to update switch properties.",
+                    e.getMessage());
         }
     }
 

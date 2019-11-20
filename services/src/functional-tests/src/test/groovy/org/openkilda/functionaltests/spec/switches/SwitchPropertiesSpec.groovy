@@ -28,10 +28,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         when: "Update switch properties"
         SwitchPropertiesDto switchProperties = new SwitchPropertiesDto()
         def newMultiTable = !initSwitchProperties.multiTable
-        def newTransitEncapsulation = (initSwitchProperties.supportedTransitEncapsulation.size() == 1) ?
-                [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(),
-                 FlowEncapsulationType.VXLAN.toString().toLowerCase()].sort() :
-                [FlowEncapsulationType.VXLAN.toString().toLowerCase()]
+        def newTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase()]
         switchProperties.multiTable = newMultiTable
         switchProperties.supportedTransitEncapsulation = newTransitEncapsulation
         def updateSwPropertiesResponse = northbound.updateSwitchProperties(sw.dpId, switchProperties)
@@ -109,7 +106,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         and: "Disable TRANSIT_VLAN encapsulation on the src switch"
         def newSwitchProperties = new SwitchPropertiesDto()
-        newSwitchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+        newSwitchProperties.supportedTransitEncapsulation = []
         northbound.updateSwitchProperties(switchPair.src.dpId, newSwitchProperties)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie.sort() ==
