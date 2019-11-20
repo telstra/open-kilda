@@ -109,7 +109,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
         def examFlow1 = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 5)
+                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 8)
         withPool {
             [examFlow1.forward, examFlow1.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -171,7 +171,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Both flows allow traffic"
         def examFlow2 = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow2), 1000, 5)
+                .buildBidirectionalExam(flowHelperV2.toV1(flow2), 1000, 8)
         withPool {
             [examFlow1.forward, examFlow1.reverse, examFlow2.forward, examFlow2.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -1225,7 +1225,8 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     void checkDefaultRulesOnSwitch(Switch sw){
-        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+        // sometimes it takes too much time on jenkins(up to 17 seconds)
+        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET, 1) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
     }
