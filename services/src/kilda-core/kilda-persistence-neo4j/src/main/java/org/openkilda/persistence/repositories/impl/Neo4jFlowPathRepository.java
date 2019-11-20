@@ -207,6 +207,28 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<FlowPath> findBySegmentSwitchWithMultiTable(SwitchId switchId, boolean multiTable) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId),
+                "multi_table", multiTable);
+
+        Set<String> pathIds = new HashSet<>();
+        queryForStrings("MATCH (ps_src:switch)-[:source]-(ps:path_segment)-[:destination]-(ps_dst:switch) "
+                + "WHERE (ps_src.name = $switch_id  AND ps.src_with_multi_table = $multi_table) "
+                + "OR (ps_dst.name = $switch_id  AND ps.dst_with_multi_table = $multi_table) "
+                + "MATCH (fp:flow_path)-[:owns]-(ps)"
+                + "RETURN fp.path_id as path_id", parameters, "path_id").forEach(pathIds::add);
+
+        if (pathIds.isEmpty()) {
+            return emptyList();
+        }
+
+        Filter pathIdsFilter = new Filter(PATH_ID_PROPERTY_NAME, new InOperatorWithNoConverterComparison(pathIds));
+
+        return loadAll(pathIdsFilter);
+    }
+
+    @Override
     public Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
                                                     SwitchId dstSwitchId, int dstPort) {
         Map<String, Object> parameters = ImmutableMap.of(

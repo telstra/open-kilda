@@ -171,18 +171,18 @@ public class FlowService extends BaseFlowService {
         try {
             result = (FlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
-                        Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                        Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
                                 flow.getSrcSwitch().getSwitchId());
                         boolean srcWithMultiTable = false;
-                        if (srcSwitchFeatures.isPresent()) {
-                            srcWithMultiTable = srcSwitchFeatures.get().isMultiTable();
+                        if (srcSwitchProperties.isPresent()) {
+                            srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
                         }
                         flow.setSrcWithMultiTable(srcWithMultiTable);
-                        Optional<SwitchProperties> destSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                        Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
                                 flow.getDestSwitch().getSwitchId());
                         boolean destWithMultiTable = false;
-                        if (destSwitchFeatures.isPresent()) {
-                            destWithMultiTable = destSwitchFeatures.get().isMultiTable();
+                        if (destSwitchProperties.isPresent()) {
+                            destWithMultiTable = destSwitchProperties.get().isMultiTable();
                         }
                         flow.setDestWithMultiTable(destWithMultiTable);
                         // TODO: the strategy is defined either per flow or system-wide.
@@ -418,18 +418,18 @@ public class FlowService extends BaseFlowService {
         try {
             result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
-                        Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                        Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
                                 updatingFlow.getSrcSwitch().getSwitchId());
                         boolean srcWithMultiTable = false;
-                        if (srcSwitchFeatures.isPresent()) {
-                            srcWithMultiTable = srcSwitchFeatures.get().isMultiTable();
+                        if (srcSwitchProperties.isPresent()) {
+                            srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
                         }
                         updatingFlow.setSrcWithMultiTable(srcWithMultiTable);
-                        Optional<SwitchProperties> destSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+                        Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
                                 updatingFlow.getDestSwitch().getSwitchId());
                         boolean destWithMultiTable = false;
-                        if (destSwitchFeatures.isPresent()) {
-                            destWithMultiTable = destSwitchFeatures.get().isMultiTable();
+                        if (destSwitchProperties.isPresent()) {
+                            destWithMultiTable = destSwitchProperties.get().isMultiTable();
                         }
                         updatingFlow.setDestWithMultiTable(destWithMultiTable);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -627,6 +627,28 @@ public class FlowService extends BaseFlowService {
                 FlowPath newForwardPath = newFlowPathPair.getForward();
                 FlowPath newReversePath = newFlowPathPair.getReverse();
                 createPaths(newForwardPath, newReversePath);
+                Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
+                        flow.getSrcSwitch().getSwitchId());
+                boolean srcWithMultiTable = false;
+                if (srcSwitchProperties.isPresent()) {
+                    srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
+                }
+
+                flow.setSrcWithMultiTable(srcWithMultiTable);
+
+                if (flow.isOneSwitchFlow()) {
+                    flow.setDestWithMultiTable(srcWithMultiTable);
+                } else {
+                    Optional<SwitchProperties> dstSwitchProperties = switchPropertiesRepository.findBySwitchId(
+                            flow.getDestSwitch().getSwitchId());
+                    boolean dstWithMultiTable = false;
+                    if (dstSwitchProperties.isPresent()) {
+                        dstWithMultiTable = dstSwitchProperties.get().isMultiTable();
+                    }
+                    flow.setDestWithMultiTable(dstWithMultiTable);
+                }
+
+
 
                 flow.setStatus(FlowStatus.IN_PROGRESS);
                 flow.setTimeModify(timestamp);
@@ -984,17 +1006,17 @@ public class FlowService extends BaseFlowService {
     }
 
     private PathSegment buildPathSegment(Segment segment) {
-        Optional<SwitchProperties> srcSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+        Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
                 segment.getSrcSwitchId());
         boolean srcWithMultiTable = false;
-        if (srcSwitchFeatures.isPresent()) {
-            srcWithMultiTable = srcSwitchFeatures.get().isMultiTable();
+        if (srcSwitchProperties.isPresent()) {
+            srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
         }
-        Optional<SwitchProperties> destSwitchFeatures = switchPropertiesRepository.findBySwitchId(
+        Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
                 segment.getDestSwitchId());
         boolean destWithMultiTable = false;
-        if (destSwitchFeatures.isPresent()) {
-            destWithMultiTable = destSwitchFeatures.get().isMultiTable();
+        if (destSwitchProperties.isPresent()) {
+            destWithMultiTable = destSwitchProperties.get().isMultiTable();
         }
         return PathSegment.builder()
                 .srcSwitch(switchRepository.reload(Switch.builder()
@@ -1259,9 +1281,13 @@ public class FlowService extends BaseFlowService {
         List<CommandGroup> commandGroups = new ArrayList<>();
 
         if (pathsToRemove.getForwardPath() != null) {
+            // NOTE: replacing flow object in flow path to deal with old data here
+            pathsToRemove.getForwardPath().setFlow(pathsToRemove.getFlow());
             commandGroups.addAll(createRemoveRulesGroups(pathsToRemove.getForward(), true));
         }
         if (pathsToRemove.getReversePath() != null) {
+            // NOTE: replacing flow object in flow path to deal with old data here
+            pathsToRemove.getReversePath().setFlow(pathsToRemove.getFlow());
             commandGroups.addAll(createRemoveRulesGroups(pathsToRemove.getReverse(), true));
         }
 

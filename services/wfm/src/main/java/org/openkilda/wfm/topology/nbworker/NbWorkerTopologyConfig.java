@@ -51,6 +51,10 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getSpeakerTopic();
     }
 
+    default String getKafkaSwitchManagerTopic() {
+        return  getKafkaTopics().getTopoSwitchManagerNbWorkerTopic();
+    }
+
     @Key("nbworker.operation.timeout.seconds")
     @Default("10")
     @Description("The timeout for performing async operations")

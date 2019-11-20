@@ -200,6 +200,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.network.swmanager_request.priv")
     String getTopoSwitchManagerNetworkTopic();
 
+    @Key("topo.switch.manager.nbworker")
+    @Default("kilda.nbworker.swmanager_request.priv")
+    String getTopoSwitchManagerNbWorkerTopic();
+
     @Key("topo.switch.manager")
     @Default("kilda.topo.switch.manager.storm")
     String getTopoSwitchManagerTopic();
