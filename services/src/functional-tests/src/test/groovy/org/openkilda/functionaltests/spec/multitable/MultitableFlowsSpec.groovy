@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -20,6 +21,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchFeature
@@ -35,6 +37,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.See
 
 import javax.inject.Provider
@@ -1143,6 +1146,74 @@ mode with existing flows and hold flows of different table-mode types"() {
         !isFlowDeleted && flowHelper.deleteFlow(flow.flowId)
         revertSwitchesToInitState(involvedSwitches, initSwProps)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2932")
+    @Tags(TOPOLOGY_DEPENDENT)
+    def "System does not allow ot enable the multiTable mode on an unsupported switch"(){
+        given: "Unsupported switch"
+        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.MULTI_TABLE) }
+        assumeTrue("Unable to find required switch", sw as boolean)
+
+        when: "Try to enable the multiTable mode on the switch"
+        northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
+            it.multiTable = true
+        })
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        //TODO(andriidovhan) fix error message when 2932 is fixed
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch doesn't support multiTable"
+    }
+
+    @Tags(TOPOLOGY_DEPENDENT)
+    @Ignore("wait until knockout switch is fixed for staging")
+    def "System connects a new switch with disabled multiTable mode when the switch does not support that mode"() {
+        given: "Unsupported switch"
+        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.MULTI_TABLE) }
+        assumeTrue("Unable to find required switch", sw as boolean)
+
+        and: "Multi table is enabled in the kilda configuration"
+        def initConf = northbound.getKildaConfiguration()
+        !initConf.useMultiTable && northbound.updateKildaConfiguration(northbound.getKildaConfiguration().tap {
+            it.useMultiTable = true
+        })
+        def isls = topology.getRelatedIsls(sw)
+        assert !northbound.getSwitchProperties(sw.dpId).multiTable
+
+        when: "Disconnect the switch and remove it from DB. Pretend this switch never existed"
+        lockKeeper.knockoutSwitch(sw)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
+        }
+        isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        northbound.deleteSwitch(sw.dpId, false)
+
+        and: "New switch connects"
+        lockKeeper.reviveSwitch(sw)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            def allIsls = northbound.getAllLinks()
+            isls.each {
+                assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
+            }
+        }
+
+        then: "Switch is added with disabled multiTable mode"
+        !northbound.getSwitchProperties(sw.dpId).multiTable
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                rules.findAll { it.instructions.goToTable }.empty
+                rules.findAll { it.tableId }.empty
+            }
+        }
+
+        and: "Cleanup: Revert system to origin state"
+        !initConf.useMultiTable && northbound.updateKildaConfiguration(initConf)
     }
 
     void checkDefaultRulesOnSwitches(List<Switch> switches){
