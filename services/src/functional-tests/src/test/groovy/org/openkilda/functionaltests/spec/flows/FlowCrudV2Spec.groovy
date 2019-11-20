@@ -558,6 +558,21 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    def "Unable to create a flow with invalid encapsulation type"() {
+        given: "A flow with invalid encapsulation type"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.setEncapsulationType("fake")
+
+        when: "Try to create a flow"
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorDescription == "Can not parse arguments of the create flow request"
+    }
+
 	def "Unable to update a flow with invalid encapsulation type"() {
 		given: "A flow with invalid encapsulation type"
 		def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

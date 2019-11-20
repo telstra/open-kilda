@@ -170,7 +170,7 @@ public class FlowServiceImpl implements FlowService {
         try {
             payload = new FlowCreateRequest(new FlowDto(input), input.getDiverseFlowId());
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage());
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the create flow request");
         }
@@ -188,8 +188,19 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowResponseV2> createFlow(FlowRequestV2 request) {
         logger.info("Processing flow creation: {}", request);
 
-        CommandMessage command = new CommandMessage(flowMapper.toFlowCreateRequest(request),
-                System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+        final String correlationId = RequestCorrelationId.getId();
+        FlowRequest flowRequest;
+
+        try {
+            flowRequest = flowMapper.toFlowCreateRequest(request);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the create flow request");
+        }
+
+        CommandMessage command = new CommandMessage(flowRequest,
+                System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(FlowResponse.class::cast)
@@ -220,7 +231,7 @@ public class FlowServiceImpl implements FlowService {
         try {
             payload = new FlowUpdateRequest(new FlowDto(input), input.getDiverseFlowId());
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage());
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the update flow request");
         }
