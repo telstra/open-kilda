@@ -715,7 +715,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.id)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -746,7 +746,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.id)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
