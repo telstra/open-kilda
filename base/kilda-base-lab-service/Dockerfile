@@ -30,5 +30,17 @@ RUN apt update \
         iputils-ping \
         openvswitch-switch \
         openvswitch-common \
+        gcc \
+        build-essential \
+        automake \
     && pip3 install setuptools wheel tox \
+    && cd /root \
+    && curl  https://www.openvswitch.org/releases/openvswitch-2.12.0.tar.gz -o openvswitch-2.12.0.tar.gz \
+    && tar -xvf openvswitch-2.12.0.tar.gz \
+    && cd  openvswitch-2.12.0 \
+    && cp ofproto/ofproto-dpif.h ofproto/ofproto-dpif.h.original \
+    && sed  -i  's/enum { N_TABLES = 255 };/enum { N_TABLES = 11 };/' ofproto/ofproto-dpif.h \
+    && ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
+    && make \
+    && make install \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
