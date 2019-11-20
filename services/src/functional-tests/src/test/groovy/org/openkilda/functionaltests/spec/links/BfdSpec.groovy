@@ -11,6 +11,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 
@@ -19,6 +20,7 @@ import spock.lang.See
 Main purpose is to detect ISL failure on switch level, which should be times faster than a regular 
 controller-involved discovery mechanism""")
 @Tags([HARDWARE])
+@Ignore("Temporary disabled because of problems with bfd")
 class BfdSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES])
     def "Able to create a valid BFD session between two Noviflow switches"() {

@@ -330,9 +330,17 @@ public class LinkServiceImpl implements LinkService {
 
     @Override
     public CompletableFuture<List<LinkDto>> updateLinkEnableBfd(LinkEnableBfdDto link) {
-
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Update enable bfd link request processing");
+
+        if (true) {
+            // TODO: will be removed after fixing problems with bfd sessions.
+            // IMPORTANT: after removing of next line you must remove @Ignore annotation from BfdSpec func test
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    "Changing of 'enable_bfd' flag is disabled for now. Will be enabled in one of next releases.",
+                    "Changing of 'enable_bfd' flag is disabled.");
+        }
+
         UpdateLinkEnableBfdRequest data = null;
         try {
             data = new UpdateLinkEnableBfdRequest(
