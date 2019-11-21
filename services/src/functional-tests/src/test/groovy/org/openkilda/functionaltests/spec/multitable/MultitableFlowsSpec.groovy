@@ -204,6 +204,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2947")
     def "Single-switch flow rules are (re)installed according to switch property while rerouting,syncing,updating"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -236,9 +237,22 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         when: "Update switch properties(multi_table: false) on the switch"
+        def defaultMultiTableSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+            Cookie.isDefaultRule(it.cookie)
+        }
         northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
 
-        then: "Flow rules are still in multi table mode"
+        then: "Default switch rules are still in multi table mode"
+        Wrappers.timedLoop(RULES_INSTALLATION_TIME / 3) {
+            with(northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                Cookie.isDefaultRule(it.cookie)
+            }) { rules ->
+                rules.size() == defaultMultiTableSwRules.size()
+                rules*.tableId.unique().sort() == defaultMultiTableSwRules*.tableId.unique().sort()
+            }
+        }
+
+        and: "Flow rules are still in multi table mode"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
