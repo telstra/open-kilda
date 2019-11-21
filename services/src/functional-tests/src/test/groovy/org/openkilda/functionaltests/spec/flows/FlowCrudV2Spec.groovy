@@ -29,6 +29,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -42,6 +43,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -917,6 +919,30 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "Cleanup: Delete the flows"
         [vlanFlow, defaultFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2904")
+    def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
+        given: "Two active switches"
+        def swPair = topologyHelper.getNeighboringSwitchPair().find {
+            [it.src, it.dst].any {
+                !northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
+                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
+                )
+            }
+        }
+
+        when: "Create a flow with not supported encapsulation type on the switches"
+        def flow = flowHelperV2.randomFlow(swPair)
+        flow.ignoreBandwidth = true
+        flow.maximumBandwidth = 0
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelperV2.addFlow(flow)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        //TODO(andriidovhan) check error message when the issue is fixed
     }
 
     @Shared
