@@ -21,7 +21,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -36,7 +36,6 @@ import java.util.List;
 
 @Slf4j
 public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
     private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
@@ -61,7 +60,7 @@ public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreat
         }
 
         if (commands.isEmpty()) {
-            log.debug("No need to install non ingress rules for one switch flow");
+            stateMachine.saveActionToHistory("No need to install non ingress rules");
         } else {
             commands.forEach(command -> {
                 stateMachine.getNonIngressCommands().put(command.getCommandId(), command);
@@ -71,9 +70,7 @@ public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreat
 
             });
 
-            log.debug("Commands for installing non ingress rules have been sent");
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                    "Install non ingress commands have been sent.");
+            stateMachine.saveActionToHistory("Commands for installing non ingress rules have been sent");
         }
     }
 }

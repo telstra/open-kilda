@@ -30,7 +30,9 @@ import org.neo4j.ogm.cypher.query.SortOrder;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> implements FlowEventRepository {
     private static final String TASK_ID_PROPERTY_NAME = "task_id";
@@ -64,9 +66,18 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
         Filter beforeFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.LESS_THAN_EQUAL, timeTo);
         Filter afterFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.GREATER_THAN_EQUAL, timeFrom);
         Filters filters = new Filters(flowIdFilter).and(beforeFilter).and(afterFilter);
-        return getSession()
-                .loadAll(getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME),
-                        getDepthLoadEntity(getDefaultFetchStrategy()));
+
+        // FIXME: due to the way how the timestamp field is stored in Neo4j (as ISO formatted string),
+        // we have to duplicate filtering and sorting logic here to fix improper handling of dates with
+        // milliseconds equals to 0.
+        // For such dates the Instant to string formatter cuts the millisecond part off, so alphabetical ordering
+        // on the Neo4j side gives wrong results.
+        return getSession().loadAll(getEntityType(), filters, new SortOrder(TIMESTAMP_PROPERTY_NAME),
+                getDepthLoadEntity(getDefaultFetchStrategy())).stream()
+                .filter(event -> timeTo == null || event.getTimestamp().compareTo(timeTo) <= 0)
+                .filter(event -> timeFrom == null || event.getTimestamp().compareTo(timeFrom) >= 0)
+                .sorted(Comparator.comparing(FlowEvent::getTimestamp))
+                .collect(Collectors.toList());
     }
 
     @Override

@@ -19,7 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -42,8 +42,7 @@ public class RevertFlowStatusAction extends FlowProcessingAction<FlowDeleteFsm, 
 
             flowRepository.updateStatus(flowId, originalStatus);
 
-            saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
-                    format("Revert the flow status to %s.", originalStatus));
+            stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalStatus));
         }
     }
 }

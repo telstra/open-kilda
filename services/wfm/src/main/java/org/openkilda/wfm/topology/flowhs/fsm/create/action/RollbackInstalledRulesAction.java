@@ -15,12 +15,14 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -40,7 +42,6 @@ import java.util.UUID;
 
 @Slf4j
 public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
     private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
@@ -83,6 +84,7 @@ public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreat
 
         stateMachine.setRemoveCommands(commandPerId);
 
-        log.debug("Commands to rollback installed rules have been sent. Total amount: {}", removeCommands.size());
+        stateMachine.saveActionToHistory(
+                format("Commands to rollback installed rules have been sent. Total amount: %s", removeCommands.size()));
     }
 }

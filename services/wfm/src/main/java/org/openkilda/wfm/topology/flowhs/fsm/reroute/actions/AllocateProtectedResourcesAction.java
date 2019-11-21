@@ -15,10 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -33,32 +31,33 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class AllocateProtectedResourcesAction extends BaseResourceAllocationAction {
-    public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, PathComputer pathComputer,
-                                            FlowResourcesManager resourcesManager,
+public class AllocateProtectedResourcesAction extends
+        BaseResourceAllocationAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+    public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+                                            PathComputer pathComputer, FlowResourcesManager resourcesManager,
                                             FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, pathComputer, resourcesManager, dashboardLogger);
+        super(persistenceManager, transactionRetriesLimit, pathComputer, resourcesManager, dashboardLogger);
     }
 
     @Override
-    protected boolean isAllocationRequired(FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected boolean isAllocationRequired(FlowRerouteFsm stateMachine) {
         return stateMachine.isRerouteProtected();
     }
 
     @Override
-    protected void allocate(FlowRerouteContext context, FlowRerouteFsm stateMachine)
+    protected void allocate(FlowRerouteFsm stateMachine)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         String flowId = stateMachine.getFlowId();
-        Flow flow = flowRepository.findById(flowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        "Could not create a new path", format("Flow %s not found", flowId)));
+        Flow flow = getFlow(flowId);
 
         FlowPath primaryForwardPath = flow.getPath(stateMachine.getNewPrimaryForwardPath())
                 .orElse(flow.getForwardPath());
@@ -78,9 +77,6 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
                 flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
                         || flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
-            log.warn("Can't find non overlapping new protected path for flow {}. Skip creating it.",
-                    flow.getFlowId());
-
             // Update the status here as no reroute is going to be performed for the protected.
             FlowPath protectedForwardPath = flow.getProtectedForwardPath();
             flowPathRepository.updateStatus(protectedForwardPath.getPathId(), FlowPathStatus.INACTIVE);
@@ -93,13 +89,20 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
                 flowRepository.updateStatus(flowId, flowStatus);
             }
+            stateMachine.setNewFlowStatus(flowStatus);
             stateMachine.setOriginalFlowStatus(null);
+
+            stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
         } else {
-            boolean newPathFound = isNotSamePath(potentialPath, flow.getProtectedForwardPath(),
-                    flow.getProtectedReversePath());
+            FlowPathPair oldPaths = FlowPathPair.builder()
+                    .forward(flow.getProtectedForwardPath())
+                    .reverse(flow.getProtectedReversePath())
+                    .build();
+
+            boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
             if (newPathFound || stateMachine.isRecreateIfSamePath()) {
                 if (!newPathFound) {
-                    log.debug("Found the same protected path for flow {}. Proceed with recreating it.", flowId);
+                    log.debug("Found the same protected path for flow {}. Proceed with recreating it", flowId);
                 }
 
                 log.debug("Allocating resources for a new protected path of flow {}", flowId);
@@ -107,26 +110,27 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
                 log.debug("Resources have been allocated: {}", flowResources);
                 stateMachine.setNewProtectedResources(flowResources);
 
-                FlowPathPair paths = createFlowPathPair(flow, potentialPath, flowResources);
-                log.debug("New protected path has been created: {}", paths);
-                stateMachine.setNewProtectedForwardPath(paths.getForward().getPathId());
-                stateMachine.setNewProtectedReversePath(paths.getReverse().getPathId());
+                FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
+                log.debug("New protected path has been created: {}", newPaths);
+                stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
+                stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());
 
-                FlowPathPair oldPaths = FlowPathPair.builder()
-                        .forward(flow.getForwardPath())
-                        .reverse(flow.getReversePath())
-                        .build();
-                saveHistory(stateMachine, flow, oldPaths, paths);
+                saveAllocationActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
             } else {
-                log.debug("Found the same protected path for flow {}. Skip creating of it.", flowId);
+                stateMachine.saveActionToHistory("Found the same protected path. Skipped creating of it");
             }
         }
     }
 
     @Override
-    protected void onFailure(FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void onFailure(FlowRerouteFsm stateMachine) {
         stateMachine.setNewProtectedResources(null);
         stateMachine.setNewProtectedForwardPath(null);
         stateMachine.setNewProtectedReversePath(null);
+    }
+
+    @Override
+    protected String getGenericErrorMessage() {
+        return "Could not reroute flow";
     }
 }

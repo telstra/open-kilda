@@ -22,7 +22,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -40,20 +40,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class RemoveOldRulesAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public RemoveOldRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-
         commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowEncapsulationType encapsulationType = stateMachine.getOriginalEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
@@ -62,7 +58,6 @@ public class RemoveOldRulesAction extends
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-
             Flow flow = oldForward.getFlow();
             commands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
@@ -73,26 +68,21 @@ public class RemoveOldRulesAction extends
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-
             Flow flow = oldForward.getFlow();
             commands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
-            commands.addAll(commandBuilder.createRemoveIngressRules(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        stateMachine.setRemoveCommands(commands.stream()
+        stateMachine.getRemoveCommands().putAll(commands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.setPendingCommands(commandIds);
+        stateMachine.getPendingCommands().addAll(commandIds);
+        stateMachine.getRetriedCommands().clear();
 
-        log.debug("Commands for removing rules have been sent for the flow {}", stateMachine.getFlowId());
-
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                "Remove commands for old rules have been sent.");
+        stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }
 }

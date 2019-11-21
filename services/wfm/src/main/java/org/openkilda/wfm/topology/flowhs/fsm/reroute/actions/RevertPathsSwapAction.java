@@ -23,9 +23,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -33,19 +31,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
-
 @Slf4j
-public class RevertPathsSwapAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     public RevertPathsSwapAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
@@ -105,16 +98,7 @@ public class RevertPathsSwapAction extends
     }
 
     private void saveHistory(FlowRerouteFsm stateMachine, String flowId, PathId forwardPath, PathId reversePath) {
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow was updated with new paths")
-                        .time(Instant.now())
-                        .description(format("Flow %s was updated with paths %s/%s", flowId,
-                                forwardPath, reversePath))
-                        .flowId(flowId)
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
+        stateMachine.saveActionToHistory("Flow was reverted to old paths",
+                format("The flow %s was updated with paths %s / %s", flowId, forwardPath, reversePath));
     }
 }

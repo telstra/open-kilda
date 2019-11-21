@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -33,7 +33,6 @@ import java.util.UUID;
 
 @Slf4j
 public class ValidateNonIngressRuleAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
     public ValidateNonIngressRuleAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
@@ -43,26 +42,28 @@ public class ValidateNonIngressRuleAction extends FlowProcessingAction<FlowCreat
         UUID commandId = context.getSpeakerFlowResponse().getCommandId();
 
         InstallTransitRule expected = stateMachine.getNonIngressCommands().get(commandId);
-        FlowRuleResponse actual = (FlowRuleResponse) context.getSpeakerFlowResponse();
-        String action;
-        if (!new NonIngressRulesValidator(expected, actual).validate()) {
-            stateMachine.getFailedCommands().add(commandId);
-            action = format("Rule is valid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
+        FlowRuleResponse response = (FlowRuleResponse) context.getSpeakerFlowResponse();
+        if (new NonIngressRulesValidator(expected, response).validate()) {
+            stateMachine.saveActionToHistory("Rule was validated",
+                    format("The non ingress rule has been validated successfully: switch %s, cookie %s",
+                            expected.getSwitchId(), expected.getCookie()));
         } else {
-            action = format("Rule is invalid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
+            stateMachine.saveErrorToHistory("Rule is missing or invalid",
+                    format("Non ingress rule is missing or invalid: switch %s, cookie %s",
+                            expected.getSwitchId(), expected.getCookie()));
+            stateMachine.getFailedValidationResponses().put(commandId, response);
         }
 
         stateMachine.getPendingCommands().remove(commandId);
         if (stateMachine.getPendingCommands().isEmpty()) {
-            log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
-            saveHistory(stateMachine, expected, action);
-            stateMachine.fire(Event.NEXT);
+            if (stateMachine.getFailedValidationResponses().isEmpty()) {
+                log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
+                stateMachine.fire(Event.NEXT);
+            } else {
+                String errorMessage = "Found missing rules or received error response(s) on validation commands";
+                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.fireError(errorMessage);
+            }
         }
-    }
-
-    private void saveHistory(FlowCreateFsm stateMachine, InstallTransitRule expected, String action) {
-        String description = format("Non ingress rule validation is completed: switch %s, cookie %s",
-                expected.getSwitchId().toString(), expected.getCookie());
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), action, description);
     }
 }

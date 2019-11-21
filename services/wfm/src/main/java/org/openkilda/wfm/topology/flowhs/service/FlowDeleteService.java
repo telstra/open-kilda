@@ -104,7 +104,7 @@ public class FlowDeleteService {
         }
 
         FlowDeleteContext context = FlowDeleteContext.builder()
-                .flowResponse(flowResponse)
+                .speakerFlowResponse(flowResponse)
                 .build();
 
         if (flowResponse instanceof FlowErrorResponse) {
@@ -135,8 +135,7 @@ public class FlowDeleteService {
     }
 
     private void removeIfFinished(FlowDeleteFsm fsm, String key) {
-        if (fsm.getCurrentState() == State.FINISHED
-                || fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+        if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsms.remove(key);
 

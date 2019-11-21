@@ -46,7 +46,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.RecoverablePersistenceException;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
@@ -86,12 +85,10 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
         IslRepository islRepository = mock(IslRepository.class);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-
-        FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
-        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
         FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);

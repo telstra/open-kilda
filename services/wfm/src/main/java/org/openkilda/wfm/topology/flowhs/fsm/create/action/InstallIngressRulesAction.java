@@ -20,7 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -35,7 +35,6 @@ import java.util.List;
 
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
     private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
@@ -61,8 +60,6 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFs
             stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
         });
 
-        log.debug("Commands for installing ingress rules have been sent");
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                "Install ingress commands have been sent.");
+        stateMachine.saveActionToHistory("Commands for installing ingress rules have been sent");
     }
 }

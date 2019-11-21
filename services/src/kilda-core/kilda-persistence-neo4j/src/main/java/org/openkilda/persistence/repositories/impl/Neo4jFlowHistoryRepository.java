@@ -24,6 +24,8 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.query.SortOrder;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 public class Neo4jFlowHistoryRepository extends Neo4jGenericRepository<FlowHistory> implements FlowHistoryRepository {
     private static final String TASK_ID_PROPERTY_NAME = "task_id";
@@ -36,7 +38,9 @@ public class Neo4jFlowHistoryRepository extends Neo4jGenericRepository<FlowHisto
     @Override
     public Collection<FlowHistory> findByTaskId(String taskId) {
         Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
-        return loadAll(taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), getDefaultFetchStrategy());
+        return loadAll(taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), getDefaultFetchStrategy()).stream()
+                .sorted(Comparator.comparing(FlowHistory::getTimestamp))
+                .collect(Collectors.toList());
     }
 
     @Override

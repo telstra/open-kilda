@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.Cookie;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -30,12 +31,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedResponseAction extends RuleProcessingAction {
+public class OnReceivedResponseAction extends
+        HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowDeleteContext context,
-                           FlowDeleteFsm stateMachine) {
-        FlowResponse response = context.getFlowResponse();
+    protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         if (!response.isSuccess() || response instanceof FlowErrorResponse) {
             throw new IllegalArgumentException(
                     format("Invoked %s for an error response: %s", this.getClass(), response));
@@ -43,22 +43,23 @@ public class OnReceivedResponseAction extends RuleProcessingAction {
 
         UUID commandId = response.getCommandId();
         if (!stateMachine.getPendingCommands().remove(commandId)) {
-            log.warn("Received a response for unexpected command: {}", response);
+            log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
-        Cookie cookie = getCookieForCommand(stateMachine, commandId);
-        String message = format("The rule was deleted: switch %s, cookie %s", response.getSwitchId(), cookie);
-        log.debug(message);
-        sendHistoryUpdate(stateMachine, "Rule was deleted", message);
+        Cookie cookie = stateMachine.getCookieForCommand(commandId);
+        stateMachine.saveActionToHistory("Rule was deleted",
+                format("The rule was deleted: switch %s, cookie %s", response.getSwitchId(), cookie));
 
         if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getErrorResponses().isEmpty()) {
+            if (stateMachine.getFailedCommands().isEmpty()) {
                 log.debug("Received responses for all pending remove commands of the flow {}",
                         stateMachine.getFlowId());
             } else {
-                log.warn(format("Received error response(s) for %d remove commands",
-                        stateMachine.getErrorResponses().size()));
+                String errorMessage = format("Received error response(s) for %d remove commands",
+                        stateMachine.getFailedCommands().size());
+                stateMachine.saveErrorToHistory(errorMessage);
+
             }
             stateMachine.fire(Event.RULES_REMOVED);
         }

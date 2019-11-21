@@ -22,12 +22,13 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -43,45 +44,39 @@ import java.util.Optional;
 
 @Slf4j
 public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-    private static final String ERROR_MESSAGE = "Could not create flow";
-
-    private final FlowValidator flowValidator;
-    private final FlowRepository flowRepository;
     private final FeatureTogglesRepository featureTogglesRepository;
+    private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public FlowValidateAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
-        FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        super(persistenceManager);
 
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
+        IslRepository islRepository = repositoryFactory.createIslRepository();
         this.flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository);
-        this.flowRepository = flowRepository;
-        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         this.dashboardLogger = dashboardLogger;
     }
 
     @Override
-    protected Optional<Message> perform(State from, State to, Event event, FlowCreateContext context,
-                                        FlowCreateFsm stateMachine) throws FlowProcessingException {
-        boolean isOperationAllowed = featureTogglesRepository.find()
-                .map(FeatureToggles::getCreateFlowEnabled)
-                .orElse(Boolean.FALSE);
-
-        if (!isOperationAllowed) {
-            log.warn("Flow create feature is disabled");
-            throw new FlowProcessingException(ErrorType.NOT_ALLOWED,
-                    getGenericErrorMessage(), "Flow create feature is disabled");
-        }
-
+    protected Optional<Message> performWithResponse(State from, State to, Event event, FlowCreateContext context,
+                                                    FlowCreateFsm stateMachine) throws FlowProcessingException {
         RequestedFlow request = context.getTargetFlow();
         dashboardLogger.onFlowCreate(request.getFlowId(),
                 request.getSrcSwitch(), request.getSrcPort(), request.getSrcVlan(),
                 request.getDestSwitch(), request.getDestPort(), request.getDestVlan(),
                 request.getDiverseFlowId(), request.getBandwidth());
 
+        boolean isOperationAllowed = featureTogglesRepository.find()
+                .map(FeatureToggles::getCreateFlowEnabled)
+                .orElse(Boolean.FALSE);
+        if (!isOperationAllowed) {
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED,
+                    getGenericErrorMessage(), "Flow create feature is disabled");
+        }
+
         if (flowRepository.exists(request.getFlowId())) {
-            log.debug("Cannot create flow: flow id {} already in use", request.getFlowId());
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS, getGenericErrorMessage(),
                     format("Flow %s already exists", request.getFlowId()));
         }
@@ -89,17 +84,24 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
         try {
             flowValidator.validate(request);
         } catch (InvalidFlowException e) {
-            log.debug("Flow validation error: {}", e.getMessage());
-            throw new FlowProcessingException(e.getType(), getGenericErrorMessage(), e.getMessage());
+            throw new FlowProcessingException(e.getType(), getGenericErrorMessage(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            log.debug("Flow validation error: {}", e.getMessage());
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, getGenericErrorMessage(), e.getMessage());
+            throw new FlowProcessingException(ErrorType.DATA_INVALID, getGenericErrorMessage(), e.getMessage(), e);
         }
+
+        if (event != Event.RETRY) {
+            stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.CREATE);
+        } else {
+            // no need to save a new event into DB, it should already exist there.
+            stateMachine.saveActionToHistory("Flow was validated successfully");
+        }
+
+
         return Optional.empty();
     }
 
     @Override
     protected String getGenericErrorMessage() {
-        return ERROR_MESSAGE;
+        return "Could not create flow";
     }
 }

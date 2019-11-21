@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flow.model;
 
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,4 +30,12 @@ import lombok.ToString;
 public class FlowPathPair {
     private final FlowPath forward;
     private final FlowPath reverse;
+
+    public PathId getForwardPathId() {
+        return forward != null ? forward.getPathId() : null;
+    }
+
+    public PathId getReversePathId() {
+        return reverse != null ? reverse.getPathId() : null;
+    }
 }

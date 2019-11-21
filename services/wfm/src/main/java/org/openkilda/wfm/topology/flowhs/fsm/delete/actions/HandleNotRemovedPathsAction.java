@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -40,6 +42,6 @@ public class HandleNotRemovedPathsAction extends
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
         FlowPath[] paths = flow.getPaths().stream().filter(Objects::nonNull).toArray(FlowPath[]::new);
-        log.warn("Failed to remove paths {}", paths);
+        stateMachine.saveErrorToHistory("Failed to remove paths", format("Failed to remove paths: %s", paths));
     }
 }

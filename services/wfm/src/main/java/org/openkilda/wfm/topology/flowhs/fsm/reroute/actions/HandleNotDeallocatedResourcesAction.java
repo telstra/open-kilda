@@ -15,23 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.wfm.share.flow.resources.FlowResources;
+import static java.lang.String.format;
+
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
-
-import java.util.Collection;
 
 @Slf4j
-public class HandleNotDeallocatedResourcesAction
-        extends AnonymousAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
-
+public class HandleNotDeallocatedResourcesAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
-    public void execute(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                        FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Collection<FlowResources> oldResources = stateMachine.getOldResources();
-        oldResources.forEach(flowResources -> log.warn("Failed to deallocate resources: {}", flowResources));
+    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        stateMachine.getOldResources().forEach(flowResources ->
+                stateMachine.saveErrorToHistory("Failed to deallocate resources",
+                        format("Failed to deallocate resources: %s", flowResources)));
     }
 }
