@@ -16,6 +16,8 @@ import org.openkilda.model.SwitchId
 import spock.lang.Ignore
 import spock.lang.Unroll
 
+import java.time.Instant
+
 class FlowPriorityRerouteSpec extends HealthCheckSpecification {
     //TODO: new H&S reroute consists of multiple steps and can't guarantee that the last step is performed in the same
     // order as the first ones. Revise and fix the test appropriately.
@@ -65,7 +67,7 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         // for a flow with protected path we use a little bit different logic for rerouting then for simple flow
         // that's why we use WAIT_OFFSET here
         Wrappers.wait(WAIT_OFFSET) {
-            assert flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
+            assert flows.sort { it.priority }*.id == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
         }
 
         and: "Cleanup: revert system to original state"
@@ -124,7 +126,7 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
 
         and: "Reroute procedure was done based on the priority field"
         Wrappers.wait(WAIT_OFFSET) {
-            flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
+            assert flows.sort { it.priority }*.id == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
         }
         and: "Cleanup: revert system to original state"
         flows.each { flowHelper.deleteFlow(it.id) }

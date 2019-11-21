@@ -47,6 +47,7 @@ import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
+import java.time.Instant
 import javax.inject.Provider
 
 @Slf4j
@@ -655,7 +656,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.flowId)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -679,7 +680,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.flowId)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)

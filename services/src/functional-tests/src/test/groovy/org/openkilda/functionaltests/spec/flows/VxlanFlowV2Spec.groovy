@@ -31,6 +31,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
 
+import java.time.Instant
 import javax.inject.Provider
 
 @Narrative("""This spec checks basic functionality(simple flow(rules, ping, traffic, validate), pinned flow,
@@ -198,7 +199,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.flowId)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
