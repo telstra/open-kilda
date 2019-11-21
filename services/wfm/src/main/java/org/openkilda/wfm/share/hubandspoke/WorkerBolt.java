@@ -144,10 +144,6 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         return this.pullKey(getCurrentTuple());
     }
 
-    protected String pullKey(Tuple tuple) throws PipelineException {
-        return pullValue(tuple, MessageKafkaTranslator.FIELD_ID_KEY, String.class);
-    }
-
     @Override
     protected void init() {
         super.init();

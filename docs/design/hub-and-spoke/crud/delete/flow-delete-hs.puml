@@ -3,79 +3,74 @@ title Hub And Spoke Flow Delete
 
 actor User
 boundary "NB v2" as NB
-participant FlowManager << Hub >>
+participant FlowDeleteHub << Hub >>
 participant DAO
 participant ResourcePool
 participant CommandBuilder
 database DAO
 participant History
 participant SpeakerWorker
-participant RulesValidator
-participant RuleManager
 
 User -> NB : Delete request
 
 activate NB
-NB -> FlowManager : Delete flow
-activate FlowManager
-FlowManager -> History : Flow Deletion Started "FLOW X: Initialized"
-FlowManager -> DAO : Get flow from DB
-FlowManager <- DAO : Requested flow
-alt Is flow found?
-    NB <- FlowManager : Requested flow doesn't exist
+NB -> FlowDeleteHub : Delete flow
+activate FlowDeleteHub
+FlowDeleteHub -> FlowDeleteHub : Start flow deletion workflow
+
+FlowDeleteHub -> History : Flow deletion started
+FlowDeleteHub -> DAO : Get flow from DB
+FlowDeleteHub <- DAO : Requested flow
+alt The flow exists and not in PROGRESS state
+    NB <- FlowDeleteHub : The flow with details
+    User <- NB : Flow deletion response
+else The flow not found
+    NB <- FlowDeleteHub : Requested flow doesn't exist
     User <- NB : Flow deletion error
 end
 
-FlowManager -> FlowManager : Start Flow Deletion Workflow
+FlowDeleteHub -> History : Flow validated
 
-FlowManager -> ResourcePool : Deallocate resources
-activate ResourcePool
-ResourcePool -> DAO : Release used cookies, vlans
-deactivate ResourcePool
-
-FlowManager -> DAO : Remove flow
-FlowManager -> DAO : Remove flow segments
-FlowManager -> DAO : Update ISLs' available bw
-
-FlowManager -> History : Flow Creation is in progress "FLOW X: Deleted from DB"
-
-FlowManager -> CommandBuilder : Create Switch Rules
-CommandBuilder -> CommandBuilder : Build commands
-note right : Two groups of commands is created: \nRemove ingress and remove egress/transit rules
-
-FlowManager <- CommandBuilder: Flow deletion commands
-loop in commands
-    FlowManager -> SpeakerWorker : Delete a rule
+loop For each flow path
+    FlowDeleteHub -> CommandBuilder : Get delete commands for path rules
+    CommandBuilder -> CommandBuilder : Build commands: remove ingress \nand egress/transit rules
+    FlowDeleteHub <- CommandBuilder: Rule deletion commands
 end
-deactivate FlowManager
 
-loop for each response
-    alt Rule deleted successfully
-        FlowManager <- SpeakerWorker : A rule has been deleted from switch A
-        activate FlowManager
-        FlowManager -> FlowManager : Mark corresponding rule as removed
-    else Rule is not deleted (timeout, error occurred)
-        FlowManager -> RuleManager : Store rule that should be deleted
-        note right : RuleManager is not in the scope of Flow Remove, \nbut it remembers not deleted rules (because of switch's \nunavailability) and once switch comes back online \nthese rules should be deleted
-        FlowManager -> History : Failed to delete rule N
+loop For each in commands
+    FlowDeleteHub -> SpeakerWorker : Send a delete command
+end
+
+deactivate FlowDeleteHub
+
+loop For each response
+    FlowDeleteHub <- SpeakerWorker : A command response
+    activate FlowDeleteHub
+    alt The rule is deleted successfully
+        FlowDeleteHub -> FlowDeleteHub : Mark corresponding rule as removed
+    else The rule is not deleted (timeout, error occurred)
+        alt Retry attemps is not exhausted
+            FlowDeleteHub -> SpeakerWorker : Retry a delete command
+        else
+            FlowDeleteHub -> History : Failed to delete the rule
+        end
     end
-end
-deactivate FlowManager
-
-loop for each validation result
-    FlowManager <- RulesValidator : Validation result
-    activate FlowManager
-    alt Rule is absent on a switch
-        FlowManager -> ResourcePool : Release used meter for switch A
-        ResourcePool -> DAO : Removed used meter for switch A
-        FlowManager -> History : N of M rules are removed
-    else Failed to delete a rule
-        FlowManager -> RuleManager : Store a rule that should be deleted
-        FlowManager -> History : Failed to delete rule N
-    end
+    deactivate FlowDeleteHub
 end
 
-FlowManager -> History : FLOW X is REMOVED
-deactivate FlowManager
+alt Received responses for all commands
+    FlowDeleteHub -> FlowDeleteHub
+    activate FlowDeleteHub
+    FlowDeleteHub -> History : Rules removed
+
+    FlowDeleteHub -> DAO : Remove flow path and segments
+    FlowDeleteHub -> DAO : Update ISLs' available bw
+    FlowDeleteHub -> ResourcePool : Deallocate resources
+    ResourcePool -> DAO : Release used cookies, vlans
+    FlowDeleteHub -> DAO : Remove flow
+
+    FlowDeleteHub -> History : Flow deleted
+    deactivate FlowDeleteHub
+end
 
 @enduml

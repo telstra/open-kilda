@@ -1188,7 +1188,10 @@ public class FlowService extends BaseFlowService {
         } else {
             FlowEncapsulationType encapType = flowPath.getFlow().getEncapsulationType();
             PathId forwardPathId = flowPath.getPathId();
-            PathId reversePathId = flow.getOppositePathId(flowPath.getPathId());
+            PathId reversePathId = flow.getOppositePathId(flowPath.getPathId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            format("Flow %s does not have reverse path for %s", flow.getFlowId(),
+                                    flowPath.getPathId())));
             encapResources = flowResourcesManager.getEncapsulationResources(forwardPathId, reversePathId, encapType)
                     .orElseThrow(() ->
                             new ResourceNotAvailableException(format("Failed to find resources for flow path %s",

@@ -80,16 +80,16 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
-        currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        FlowRerouteRequest request = (FlowRerouteRequest) input.getValueByField(FIELD_ID_PAYLOAD);
+        currentKey = pullKey(input);
+        FlowRerouteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowRerouteRequest.class);
         service.handleRequest(currentKey, pullContext(input), request.getFlowId(), request.getPathIds());
     }
 
     @Override
-    protected void onWorkerResponse(Tuple input) {
-        String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+    protected void onWorkerResponse(Tuple input) throws PipelineException {
+        String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        FlowResponse flowResponse = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
+        FlowResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, FlowResponse.class);
         service.handleAsyncResponse(currentKey, flowResponse);
     }
 
