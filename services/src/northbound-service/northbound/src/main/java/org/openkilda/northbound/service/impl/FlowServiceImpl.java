@@ -172,7 +172,7 @@ public class FlowServiceImpl implements FlowService {
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
-                    e.getMessage(), "Can not parse arguments when create flow request");
+                    e.getMessage(), "Can not parse arguments of the create flow request");
         }
 
         CommandMessage request = new CommandMessage(
@@ -222,7 +222,7 @@ public class FlowServiceImpl implements FlowService {
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
-                    e.getMessage(), "Can not parse arguments when update flow request");
+                    e.getMessage(), "Can not parse arguments of the update flow request");
         }
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -237,9 +237,19 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowResponseV2> updateFlow(FlowRequestV2 request) {
         logger.info("Processing flow update: {}", request);
 
-        FlowRequest updateRequest = flowMapper.toFlowRequest(request).toBuilder().type(Type.UPDATE).build();
+        final String correlationId = RequestCorrelationId.getId();
+        FlowRequest updateRequest;
+
+        try {
+            updateRequest = flowMapper.toFlowRequest(request).toBuilder().type(Type.UPDATE).build();
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the update flow request");
+        }
+
         CommandMessage command = new CommandMessage(updateRequest,
-                System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+                System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(FlowResponse.class::cast)

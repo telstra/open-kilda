@@ -38,10 +38,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destinationSwitch", target = "destSwitch")
     @Mapping(source = "destinationPort", target = "destPort")
     @Mapping(source = "destinationVlan", target = "destVlan")
-    @Mapping(target = "flowEncapsulationType",
-            expression = "java(java.util.Optional.ofNullable(request.getEncapsulationType())"
-                    + ".map(v -> org.openkilda.model.FlowEncapsulationType.valueOf(v.toUpperCase()))"
-                    + ".orElse(null))")
+    @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     @Mapping(target = "pathComputationStrategy",
             expression = "java(java.util.Optional.ofNullable(request.getPathComputationStrategy())"
                     + ".map(pcs -> org.openkilda.model.PathComputationStrategy.valueOf(pcs.toUpperCase()))"
