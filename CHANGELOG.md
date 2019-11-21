@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.42.1 (21/11/2019)
+
+### Improvements:
+-  [#2939](https://github.com/telstra/open-kilda/pull/2939) Temporary disable changing of `enable_bfd` flag [**northbound**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.42.0...v1.42.1).
+
+### Affected Components:
+nb
+
+---
+
 ## v1.42.0 (19/11/2019)
 
 ### Features:
