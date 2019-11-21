@@ -558,6 +558,26 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+	def "Unable to update a flow with invalid encapsulation type"() {
+		given: "A flow with invalid encapsulation type"
+		def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+		def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+		flowHelperV2.addFlow(flow)
+
+		when: "Try to update the flow (faked encapsulation type)"
+		def flowInfo = northbound.getFlow(flow.flowId)
+		northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = "fake" }))
+
+		then: "Flow is not updated"
+		def exc = thrown(HttpClientErrorException)
+		exc.rawStatusCode == 400
+		exc.responseBodyAsString.to(MessageError).errorDescription \
+				== "Can not parse arguments of the update flow request"
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+	}
+
     @Unroll
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"

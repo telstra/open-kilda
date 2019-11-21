@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -61,7 +62,7 @@ public class FlowRequest extends CommandData {
     Integer priority;
     boolean pinned;
     String diverseFlowId;
-    String encapsulationType;
+    FlowEncapsulationType encapsulationType;
     Type type;
 
     public enum Type {

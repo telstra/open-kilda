@@ -205,6 +205,17 @@ public interface FlowMapper {
     }
 
     /**
+     * Convert {@link String} to {@link FlowEncapsulationType}.
+     */
+    default FlowEncapsulationType map(String encapsulationType) {
+        if (encapsulationType == null) {
+            return null;
+        }
+
+        return FlowEncapsulationType.valueOf(encapsulationType.toUpperCase());
+    }
+
+    /**
      * Translate Java's error code(enum) into human readable string.
      */
     default String getPingError(Ping.Errors error) {
