@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.42.1 (21/11/2019)
+
+### Improvements:
+-  [#2939](https://github.com/telstra/open-kilda/pull/2939) Temporary disable changing of `enable_bfd` flag [**northbound**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.42.0...v1.42.1).
+
+### Affected Components:
+nb
+
+---
+
 ## v1.42.0 (19/11/2019)
 
 ### Features:
@@ -25,6 +37,29 @@ Consider using the following migration scripts to update db:
 In case of issues these rollback scripts should be executed:
 
 - [1.17 rollback.cql](https://github.com/telstra/open-kilda/blob/develop/services/neo4j/migrations/1.17-config-multi-table/rollback.cql)
+
+---
+
+## v1.41.2 (14/11/2019)
+
+### Bug Fixes:
+-  [#2919](https://github.com/telstra/open-kilda/pull/2919) Fix flow ping ethernet header [**floodlight**]
+
+### Improvements:
+-  [#2915](https://github.com/telstra/open-kilda/pull/2915) Make http async timeout for NB configurable [**northbound**]
+-  [#2922](https://github.com/telstra/open-kilda/pull/2922) Fix OOM in Neo4jPersistenceManager caused by ClassGraph [**storm-topologies**]
+-  [#2896](https://github.com/telstra/open-kilda/pull/2896) Add stability hotfixes and temporary ignore some tests [**tests**]
+-  [#2899](https://github.com/telstra/open-kilda/pull/2899) Fix/security issues lodash [**gui**]
+-  [#2902](https://github.com/telstra/open-kilda/pull/2902) Renamed org.openkilda.converter package [**floodlight**]
+
+### Other changes:
+-  [#2895](https://github.com/telstra/open-kilda/pull/2895) Update design doc for PCE (Issue: [#2894](https://github.com/telstra/open-kilda/issues/2894)) [**docs**]
+-  [#2870](https://github.com/telstra/open-kilda/pull/2870) Remove outdated code [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.41.1...v1.41.2).
+
+### Affected Components:
+nb, nbworker, swmanager, fl, flow-hs, network, reroute, flow, gui
 
 ---
 
