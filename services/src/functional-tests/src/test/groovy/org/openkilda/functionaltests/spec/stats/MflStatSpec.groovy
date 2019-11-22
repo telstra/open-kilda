@@ -218,6 +218,6 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 }

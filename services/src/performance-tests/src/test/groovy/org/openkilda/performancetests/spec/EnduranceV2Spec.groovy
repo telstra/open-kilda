@@ -22,6 +22,8 @@ import org.openkilda.testing.tools.SoftAssertions
 import groovy.util.logging.Slf4j
 import org.junit.Assume
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpStatusCodeException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -44,6 +46,13 @@ class EnduranceV2Spec extends BaseSpecification {
     def r = new Random()
     @Shared
     List<Isl> brokenIsls = Collections.synchronizedList(new ArrayList<Isl>())
+
+
+    @Override
+    def setupOnce() {
+        northbound.getAllFlows().each { northbound.deleteFlow(it.id) }
+        topoHelper.purgeTopology()
+    }
 
     /**
      * Deploy topology and create certain amount of flows in the system. Define amount of events to happen during the
@@ -91,25 +100,22 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         then: "All Up flows are pingable"
         def pingVerifications = new SoftAssertions()
         def allFlows = northbound.getAllFlows()
-        allFlows.findAll { it.status == FlowState.UP.toString() }.every { flow ->
+        allFlows.findAll { it.status == FlowState.UP.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
                 def ping = northbound.pingFlow(flow.id, new PingInput())
                 assert ping.forward.pingSuccess
                 assert ping.reverse.pingSuccess
             }
-            true
         }
 
         and: "All Down flows are NOT pingable"
-        allFlows.findAll { it.status == FlowState.DOWN.toString() }.every { flow ->
+        allFlows.findAll { it.status == FlowState.DOWN.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
                 def ping = northbound.pingFlow(flow.id, new PingInput())
                 assert !ping.forward.pingSuccess
                 assert !ping.reverse.pingSuccess
             }
-            true
         }
-        pingVerifications.verify()
 
         and: "There are no rule discrepancies on switches"
         Wrappers.wait(60 + preset.switchesAmount) {
@@ -124,9 +130,10 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
             }
             soft.verify()
         }
+        pingVerifications.verify()
 
         cleanup: "delete flows and purge topology"
-        flows.each { northbound.deleteFlow(it.flowId) }
+        flows.each { northboundV2.deleteFlow(it.flowId) }
         topology && topoHelper.purgeTopology(topo)
 
         where:
@@ -148,18 +155,21 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
                         pauseBetweenEvents: 1, //seconds
                 ]
         ]
+        //define payload generating method that will be called each time flow creation is issued
         makeFlowPayload = {
             def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
-            flow.maximumBandwidth = 500000
+            flow.maximumBandwidth = 5000
             return flow
         }
+        //'dice' below defines events and their chances to appear
         dice = new Dice([
                 new Face(name: "delete flow", chance: 19, event: { deleteFlow() }),
-                new Face(name: "create flow", chance: 19, event: { createFlow(makeFlowPayload(), true) }),
-                new Face(name: "blink isl", chance: 22, event: { blinkIsl() }),
+                new Face(name: "update flow", chance: 0, event: { updateFlow() }),
+                new Face(name: "create flow", chance: 20, event: { createFlow(makeFlowPayload(), true) }),
+                new Face(name: "blink isl", chance: 23, event: { blinkIsl() }),
                 new Face(name: "idle", chance: 0, event: { TimeUnit.SECONDS.sleep(3) }),
-                new Face(name: "manual reroute 25% of flows", chance: 12, event: { massReroute() }),
-                new Face(name: "break isl", chance: 28, event: { breakIsl() })
+                new Face(name: "manual reroute 25% of flows", chance: 28, event: { massReroute() }),
+                new Face(name: "break isl", chance: 10, event: { breakIsl() })
         ])
         debugText = preset.debug ? " (debug mode)" : ""
     }
@@ -183,10 +193,29 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
     }
 
     def deleteFlow() {
-        def flowToDelete = flows.remove(r.nextInt(flows.size()))
+        def flowToDelete = flows[r.nextInt(flows.size())]
         log.info "deleting flow $flowToDelete.flowId"
-        Wrappers.silent { northbound.deleteFlow(flowToDelete.flowId) }
+        try {
+            northboundV2.deleteFlow(flowToDelete.flowId)
+        } catch (HttpStatusCodeException e) {
+            if (e.statusCode == HttpStatus.NOT_FOUND) {
+                //flow already removed, do nothing
+            } else {
+                log.error("", e)
+                return null
+            }
+        }
+        flows.remove(flowToDelete)
         return flowToDelete
+    }
+
+    def updateFlow() {
+        def flowToUpdate = flows[r.nextInt(flows.size())]
+        log.info "updating flow $flowToUpdate.flowId"
+        Wrappers.silent {
+            northboundV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.maximumBandwidth = r.nextInt(10000) })
+        }
+        return flowToUpdate
     }
 
     def blinkIsl() {

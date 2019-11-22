@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -32,6 +33,7 @@ flow with protected path, default flow) for a flow with VXLAN encapsulation.
 
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
+@Tags([LOW_PRIORITY])
 class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
