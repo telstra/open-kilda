@@ -1,15 +1,23 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("""
@@ -111,5 +119,167 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
         then: "Able to delete flows"
         [flow, newFlow].each { flowHelperV2.deleteFlow(it.flowId) }
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2955")
+    def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
+feature toogle"() {
+        given: "A switch pair which supports transit_vlan and vxlan encapsulation types"
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every {
+                northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
+                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
+                )
+            } && it.paths.size() >= 2
+        }
+        assumeTrue("Unable to find required switches in topology", swPair as boolean)
+
+        and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
+        def initFeatureToggle = northbound.getFeatureToggles()
+        !initFeatureToggle.flowsRerouteUsingDefaultEncapType && northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteUsingDefaultEncapType(true).build())
+
+        and: "A flow with default encapsulation"
+        def initKildaConfig = northbound.getKildaConfiguration()
+        def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = null }
+        flowHelperV2.addFlow(flow)
+        assert northbound.getFlow(flow.flowId).encapsulationType == initKildaConfig.flowEncapsulationType
+
+        when: "Update default flow encapsulation type in kilda configuration"
+        def newFlowEncapsulationType = initKildaConfig.flowEncapsulationType == "transit_vlan" ?
+                FlowEncapsulationType.VXLAN : FlowEncapsulationType.TRANSIT_VLAN
+        northbound.updateKildaConfiguration(new KildaConfigurationDto(flowEncapsulationType: newFlowEncapsulationType))
+
+        and: "Init a flow reroute by breaking current path"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def islToBreak = pathHelper.getInvolvedIsls(currentPath).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(antiflapMin + 2) {
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
+        }
+
+        then: "Flow is rerouted"
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != currentPath
+        }
+
+        and: "Encapsulation type is changed according to kilda configuration"
+        northbound.getFlow(flow.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
+
+        when: "Update default flow encapsulation type in kilda configuration"
+        northbound.updateKildaConfiguration(
+                new KildaConfigurationDto(flowEncapsulationType: initKildaConfig.flowEncapsulationType))
+
+        and: "Disable the 'flows_reroute_using_default_encap_type' feature toggle"
+        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteUsingDefaultEncapType(false).build())
+
+        and: "Restore previous path"
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(antiflapMin + 2) {
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+        }
+
+        and: "Init a flow reroute by breaking a new current path"
+        def newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def newIslToBreak = pathHelper.getInvolvedIsls(newCurrentPath).first()
+        antiflap.portDown(newIslToBreak.srcSwitch.dpId, newIslToBreak.srcPort)
+        Wrappers.wait(antiflapMin + 2) {
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
+        }
+
+        then: "Flow is rerouted"
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != newCurrentPath
+        }
+
+        and: "Encapsulation type is not changed according to kilda configuration"
+        northbound.getFlow(flow.flowId).encapsulationType != initKildaConfig.flowEncapsulationType
+
+        and: "Cleanup: Revert system to origin state"
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
+        flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2955")
+    def "Flow encapsulation type is not changed while syncing/auto rerouting/updating according to \
+'flows_reroute_using_default_encap_type' if switch does't support new type of encapsulation"() {
+        given: "A switch which supports only transit_vlan encapsulation type"
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every {
+                !northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
+                        FlowEncapsulationType.VXLAN.toString().toLowerCase()
+                )
+            } && it.paths.size() >= 2
+        }
+        assumeTrue("Unable to find required switches in topology", swPair as boolean)
+
+        and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
+        def initFeatureToggle = northbound.getFeatureToggles()
+        !initFeatureToggle.flowsRerouteUsingDefaultEncapType && northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteUsingDefaultEncapType(true).build())
+
+        and: "A flow with transit_vlan encapsulation"
+        def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = FlowEncapsulationType.TRANSIT_VLAN }
+        flowHelperV2.addFlow(flow)
+
+        when: "Set vxlan as default flow encapsulation type in kilda configuration if it is not set"
+        def initGlobalConfig = northbound.getKildaConfiguration()
+        def vxlanEncapsulationType = FlowEncapsulationType.VXLAN
+        (initGlobalConfig.flowEncapsulationType == vxlanEncapsulationType.toString().toLowerCase()) ?:
+                northbound.updateKildaConfiguration(
+                        new KildaConfigurationDto(flowEncapsulationType: vxlanEncapsulationType)
+                )
+
+        and: "Init a flow reroute by breaking current path"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def islToBreak = pathHelper.getInvolvedIsls(currentPath).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(antiflapMin + 2) {
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
+        }
+
+        then: "Flow is rerouted"
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != currentPath
+        }
+
+        and: "Encapsulation type is NOT changed according to kilda configuration"
+        northbound.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
+
+        and: "Flow is in UP state"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+
+        when: "Update the flow"
+        northboundV2.updateFlow(flow.flowId, flow.tap { it.description = description + " updated" })
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northbound.getFlow(flow.flowId).description == flow.description
+        }
+
+        then: "Encapsulation type is NOT changed according to kilda configuration"
+        northbound.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
+
+        and: "Flow is in UP state"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+
+        when: "Synchronize the flow"
+        with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
+
+        then: "Encapsulation type is NOT changed according to kilda configuration"
+        northbound.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
+
+        and: "Flow is in UP state"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+
+        and: "Cleanup: Revert system to origin state"
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
+        (initGlobalConfig.flowEncapsulationType == vxlanEncapsulationType.toString().toLowerCase()) ?:
+                northbound.updateKildaConfiguration(initGlobalConfig)
+        Wrappers.wait(antiflapMin + 2) {
+            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+        }
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 }
