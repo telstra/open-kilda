@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete;
 
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.unmodifiableMap;
+
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.Message;
@@ -43,6 +46,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.ValidateFlowAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -61,29 +65,22 @@ import java.util.UUID;
 public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Event, FlowDeleteContext> {
 
     private final FlowDeleteHubCarrier carrier;
-    private final String flowId;
 
     @Setter
     private FlowStatus originalFlowStatus;
     private final Collection<FlowResources> flowResources = new ArrayList<>();
 
-    private final Set<UUID> pendingCommands = new HashSet<>();
+    @NonNull
+    private Set<UUID> pendingCommands = new HashSet<>();
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();
     private final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
 
-    private final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
-
-    private String errorReason;
+    @NonNull
+    private Map<UUID, FlowSegmentRequestFactory> removeCommands = emptyMap();
 
     public FlowDeleteFsm(CommandContext commandContext, FlowDeleteHubCarrier carrier, String flowId) {
-        super(commandContext);
+        super(commandContext, flowId);
         this.carrier = carrier;
-        this.flowId = flowId;
-    }
-
-    @Override
-    public void fireNext(FlowDeleteContext context) {
-        fire(Event.NEXT, context);
     }
 
     @Override
@@ -91,14 +88,24 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         fireError(Event.ERROR, errorReason);
     }
 
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
+    public void setRemoveCommands(@NonNull Map<UUID, FlowSegmentRequestFactory> removeCommands) {
+        this.removeCommands = unmodifiableMap(removeCommands);
+    }
 
-        fire(errorEvent);
+    public void setPendingCommands(@NonNull Set<UUID> pendingCommands) {
+        this.pendingCommands = new HashSet<>(pendingCommands);
+    }
+
+    public boolean removePendingCommand(UUID commandId) {
+        return pendingCommands.remove(commandId);
+    }
+
+    public void resetPendingCommands() {
+        pendingCommands.clear();
+    }
+
+    public void resetFlowResources() {
+        flowResources.clear();
     }
 
     @Override

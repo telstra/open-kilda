@@ -13,22 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class DeallocateResourcesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class DeallocateResourcesAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C>
+        extends FlowProcessingAction<T, S, E, C> {
     private final FlowResourcesManager resourcesManager;
 
     public DeallocateResourcesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
@@ -37,7 +34,7 @@ public class DeallocateResourcesAction extends FlowProcessingAction<FlowRerouteF
     }
 
     @Override
-    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    public void perform(S from, S to, E event, C context, T stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() ->
                 stateMachine.getOldResources().forEach(flowResources -> {
                     resourcesManager.deallocatePathResources(flowResources);
@@ -46,5 +43,7 @@ public class DeallocateResourcesAction extends FlowProcessingAction<FlowRerouteF
                             format("The flow resources for %s / %s were deallocated",
                                     flowResources.getForward().getPathId(), flowResources.getReverse().getPathId()));
                 }));
+
+        stateMachine.resetOldResources();
     }
 }

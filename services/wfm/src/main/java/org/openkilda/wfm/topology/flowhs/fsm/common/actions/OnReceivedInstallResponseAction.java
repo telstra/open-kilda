@@ -13,44 +13,44 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends
-        HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class OnReceivedInstallResponseAction<T extends FlowInstallingFsm<T, S, E, C>, S, E, C extends FlowContext>
+        extends HistoryRecordingAction<T, S, E, C> {
     private final int speakerCommandRetriesLimit;
+    private final E completeEvent;
 
-    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
+    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit, @NonNull E completeEvent) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        this.completeEvent = completeEvent;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getInstallCommand(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+        if (!stateMachine.isPendingCommand(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             stateMachine.saveActionToHistory("Rule was installed",
                     format("The rule was installed: switch %s, cookie %s",
@@ -58,9 +58,9 @@ public class OnReceivedInstallResponseAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
@@ -69,21 +69,21 @@ public class OnReceivedInstallResponseAction extends
 
                 stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
-                stateMachine.getFailedCommands().put(commandId, errorResponse);
+                stateMachine.addFailedCommand(commandId, errorResponse);
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getFailedCommands().isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
+            if (!stateMachine.hasFailedCommands()) {
                 log.debug("Received responses for all pending install commands of the flow {}",
                         stateMachine.getFlowId());
-                stateMachine.fire(Event.RULES_INSTALLED);
+                stateMachine.fire(completeEvent);
             } else {
                 String errorMessage = format("Received error response(s) for %d install commands",
                         stateMachine.getFailedCommands().size());

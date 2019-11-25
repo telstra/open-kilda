@@ -19,10 +19,9 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 
 import lombok.Getter;
-import org.squirrelframework.foundation.fsm.StateMachine;
 
 @Getter
-public abstract class WithCommandContextFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+public abstract class WithCommandContextFsm<T extends AbstractBaseFsm<T, S, E, C>, S, E, C>
         extends AbstractBaseFsm<T, S, E, C> {
 
     private final CommandContext commandContext;
@@ -30,8 +29,4 @@ public abstract class WithCommandContextFsm<T extends StateMachine<T, S, E, C>, 
     public WithCommandContextFsm(CommandContext commandContext) {
         this.commandContext = commandContext;
     }
-
-    public abstract void fireNext(C context);
-
-    public abstract void fireError(String errorReason);
 }

@@ -16,6 +16,7 @@
 package org.openkilda.pce;
 
 import lombok.Builder;
+import lombok.NonNull;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -25,7 +26,9 @@ import java.io.Serializable;
 public class PathPair implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    @NonNull
     public final Path forward;
 
+    @NonNull
     public final Path reverse;
 }

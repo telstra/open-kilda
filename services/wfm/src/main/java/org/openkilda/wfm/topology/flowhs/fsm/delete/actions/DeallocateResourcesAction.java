@@ -51,5 +51,7 @@ public class DeallocateResourcesAction extends FlowProcessingAction<FlowDeleteFs
                             format("The flow resources for %s / %s were deallocated",
                                     resources.getForward().getPathId(), resources.getReverse().getPathId()));
                 }));
+
+        stateMachine.resetFlowResources();
     }
 }

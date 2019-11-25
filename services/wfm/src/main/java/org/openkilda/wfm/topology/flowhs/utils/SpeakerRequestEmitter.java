@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.utils;
 
+import static java.util.Collections.unmodifiableMap;
+
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
@@ -33,19 +35,9 @@ public abstract class SpeakerRequestEmitter {
     /**
      * Emit series of speaker requests produced from proposed series of request factories.
      */
-    public HashMap<UUID, FlowSegmentRequestFactory> emitBatch(
+    public Map<UUID, FlowSegmentRequestFactory> emitBatch(
             FlowGenericCarrier carrier, Collection<FlowSegmentRequestFactory> factories) {
-        final HashMap<UUID, FlowSegmentRequestFactory> requestsStorage = new HashMap<>();
-        emitBatch(carrier, factories, requestsStorage);
-        return requestsStorage;
-    }
-
-    /**
-     * Emit series of speaker requests produced from proposed series of request factories.
-     */
-    public void emitBatch(
-            FlowGenericCarrier carrier, Collection<FlowSegmentRequestFactory> factories,
-            Map<UUID, FlowSegmentRequestFactory> requestsStorage) {
+        Map<UUID, FlowSegmentRequestFactory> requestsStorage = new HashMap<>();
 
         for (FlowSegmentRequestFactory factory : factories) {
             FlowSegmentRequest request = makeRequest(factory);
@@ -53,6 +45,8 @@ public abstract class SpeakerRequestEmitter {
             requestsStorage.put(request.getCommandId(), factory);
             carrier.sendSpeakerRequest(request);
         }
+
+        return unmodifiableMap(requestsStorage);
     }
 
     protected abstract FlowSegmentRequest makeRequest(FlowSegmentRequestFactory factory);

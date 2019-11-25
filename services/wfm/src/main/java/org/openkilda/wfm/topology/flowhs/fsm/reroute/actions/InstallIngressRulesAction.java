@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import static java.util.Collections.emptyMap;
+
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -29,12 +30,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,8 +50,7 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowRerouteF
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
                 ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
@@ -66,19 +66,20 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowRerouteF
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 
-        Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getIngressCommands();
-        for (FlowSegmentRequestFactory factory : requestFactories) {
-            FlowSegmentRequest request = factory.makeInstallRequest(commandIdGenerator.generate());
-            requestsStorage.put(request.getCommandId(), factory);
-            stateMachine.getCarrier().sendSpeakerRequest(request);
-        }
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.resetFailedCommandsAndRetries();
 
         if (requestFactories.isEmpty()) {
+            stateMachine.setIngressCommands(emptyMap());
+            stateMachine.resetPendingCommands();
+
             stateMachine.saveActionToHistory("No need to install ingress rules");
             stateMachine.fire(Event.INGRESS_IS_SKIPPED);
         } else {
+            Map<UUID, FlowSegmentRequestFactory> sentInstallRequests =
+                    SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(stateMachine.getCarrier(), requestFactories);
+            stateMachine.setIngressCommands(sentInstallRequests);
+            stateMachine.setPendingCommands(sentInstallRequests.keySet());
+
             stateMachine.saveActionToHistory("Commands for installing ingress rules have been sent");
         }
     }

@@ -101,8 +101,8 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
 
         if (!pathsToReroute.isEmpty()) {
             throw new FlowProcessingException(ErrorType.NOT_FOUND, format("Path(s) %s was not found in flow %s",
-                            pathsToReroute.stream().map(PathId::toString).collect(Collectors.joining(",")),
-                            flowId));
+                    pathsToReroute.stream().map(PathId::toString).collect(Collectors.joining(",")),
+                    flowId));
         }
 
         stateMachine.setReroutePrimary(reroutePrimary);

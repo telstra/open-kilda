@@ -27,6 +27,11 @@ public interface FlowCommandBuilder {
             CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath);
 
     /**
+     * Build install commands for ingress, transit(if needed) and egress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path);
+
+    /**
      * Build install commands for transit(if needed) and egress rules for active forward and reverse paths.
      */
     List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow);
@@ -38,6 +43,11 @@ public interface FlowCommandBuilder {
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
 
     /**
+     * Build install commands for transit(if needed) and egress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow, FlowPath path);
+
+    /**
      * Build install commands for ingress rules for active forward and reverse paths.
      */
     List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow);
@@ -47,4 +57,9 @@ public interface FlowCommandBuilder {
      */
     List<FlowSegmentRequestFactory> buildIngressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+
+    /**
+     * Build install commands for ingress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow, FlowPath path);
 }

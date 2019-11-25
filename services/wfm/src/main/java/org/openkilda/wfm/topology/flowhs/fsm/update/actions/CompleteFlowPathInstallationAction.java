@@ -38,6 +38,10 @@ public class CompleteFlowPathInstallationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
+            if (!stateMachine.hasNewPrimaryPaths()) {
+                throw new IllegalStateException("There're no new primary paths allocated");
+            }
+
             PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
             PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
 
@@ -48,8 +52,7 @@ public class CompleteFlowPathInstallationAction extends
             stateMachine.saveActionToHistory("Flow paths were installed",
                     format("The flow paths %s / %s were installed", newPrimaryForward, newPrimaryReverse));
 
-            if (stateMachine.getNewProtectedForwardPath() != null
-                    && stateMachine.getNewProtectedReversePath() != null) {
+            if (stateMachine.hasNewProtectedPaths()) {
                 PathId newForward = stateMachine.getNewProtectedForwardPath();
                 PathId newReverse = stateMachine.getNewProtectedReversePath();
 
