@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tag
@@ -307,6 +308,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         ]
     }
 
+    @Tidy
     def "Able to handle 'timeLastSeen' field when receive repeating packets from the same device"() {
         given: "Flow that detects connected devices"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
@@ -344,6 +346,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         device && device.close()
     }
 
+    @Tidy
     def "Able to detect different devices on the same port"() {
         given: "Flow that detects connected devices"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
