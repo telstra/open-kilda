@@ -134,7 +134,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
 
         cleanup: "delete flows and purge topology"
         flows.each { northboundV2.deleteFlow(it.flowId) }
-        topology && topoHelper.purgeTopology(topo)
+        topology && topoHelper.purgeTopology(topology)
 
         where:
         preset << [
@@ -158,18 +158,18 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         //define payload generating method that will be called each time flow creation is issued
         makeFlowPayload = {
             def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
-            flow.maximumBandwidth = 5000
+            flow.maximumBandwidth = 500000
             return flow
         }
         //'dice' below defines events and their chances to appear
         dice = new Dice([
                 new Face(name: "delete flow", chance: 19, event: { deleteFlow() }),
                 new Face(name: "update flow", chance: 0, event: { updateFlow() }),
-                new Face(name: "create flow", chance: 20, event: { createFlow(makeFlowPayload(), true) }),
-                new Face(name: "blink isl", chance: 23, event: { blinkIsl() }),
+                new Face(name: "create flow", chance: 19, event: { createFlow(makeFlowPayload(), true) }),
+                new Face(name: "blink isl", chance: 22, event: { blinkIsl() }),
                 new Face(name: "idle", chance: 0, event: { TimeUnit.SECONDS.sleep(3) }),
-                new Face(name: "manual reroute 25% of flows", chance: 28, event: { massReroute() }),
-                new Face(name: "break isl", chance: 10, event: { breakIsl() })
+                new Face(name: "manual reroute 25% of flows", chance: 12, event: { massReroute() }),
+                new Face(name: "break isl", chance: 28, event: { breakIsl() })
         ])
         debugText = preset.debug ? " (debug mode)" : ""
     }

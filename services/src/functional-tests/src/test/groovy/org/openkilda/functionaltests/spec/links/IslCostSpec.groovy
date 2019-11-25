@@ -25,8 +25,8 @@ import java.time.Instant
 @Tags([LOW_PRIORITY])
 class IslCostSpec extends HealthCheckSpecification {
 
-    @Value('${isl.cost.when.under.maintenance}')
-    int islCostWhenUnderMaintenance
+    @Value('${pce.isl.cost.when.unstable}')
+    int islUnstableCost
 
     @Value('${isl.unstable.timeout.sec}')
     int islUnstableTimeoutSec
@@ -47,7 +47,7 @@ class IslCostSpec extends HealthCheckSpecification {
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "ISL status becomes 'FAILED'"
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == FAILED }
 
         and: "Cost of forward and reverse ISLs after bringing port down is increased"
         def isls = northbound.getAllLinks()
@@ -60,7 +60,7 @@ class IslCostSpec extends HealthCheckSpecification {
         and: "Bring port up on the source switch and reset costs"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(isl).get().state == DISCOVERED
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
@@ -91,8 +91,8 @@ class IslCostSpec extends HealthCheckSpecification {
         then: "Status of forward and reverse ISLs becomes 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().state == FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
         }
 
         and: "Cost of forward and reverse ISLs after failing connection is not increased"
@@ -107,8 +107,8 @@ class IslCostSpec extends HealthCheckSpecification {
         lockKeeper.addFlows(rulesToRemove)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
         }
 
         cleanup:
@@ -131,7 +131,7 @@ class IslCostSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
             def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.FAILED }
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == FAILED }
         }
 
         and: "Activate the switch"
@@ -139,7 +139,7 @@ class IslCostSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
         }
 
         then: "ISL cost is not increased"
@@ -187,7 +187,7 @@ class IslCostSpec extends HealthCheckSpecification {
         def involvedIslsInUnstablePath = pathHelper.getInvolvedIsls(firstPath)
         def costOfUnstablePath = involvedIslsInUnstablePath.sum {
             northbound.getLink(it).cost ?: 700
-        } + islCostWhenUnderMaintenance
+        } + islUnstableCost
         def involvedIslsInStablePath = pathHelper.getInvolvedIsls(secondPath)
         def costOfStablePath = involvedIslsInStablePath.sum { northbound.getLink(it).cost ?: 700 }
         // result after performing 'if' condition: costOfStablePath - costOfUnstablePath = 1
