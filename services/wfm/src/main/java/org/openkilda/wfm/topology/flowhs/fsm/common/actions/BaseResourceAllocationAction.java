@@ -101,7 +101,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             allocateInTransaction(stateMachine);
 
             return Optional.empty();
-        } catch (UnroutableFlowException  ex) {
+        } catch (UnroutableFlowException ex) {
             String errorMessage = format("Not enough bandwidth or no path found. %s", ex.getMessage());
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
@@ -184,7 +184,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     }
 
     protected boolean isNotSamePath(PathPair pathPair, FlowPathPair flowPathPair) {
-        return !flowPathBuilder.isSamePath(pathPair.getForward(), flowPathPair.getForward())
+        return flowPathPair.getForward() == null
+                || !flowPathBuilder.isSamePath(pathPair.getForward(), flowPathPair.getForward())
+                || flowPathPair.getReverse() == null
                 || !flowPathBuilder.isSamePath(pathPair.getReverse(), flowPathPair.getReverse());
     }
 

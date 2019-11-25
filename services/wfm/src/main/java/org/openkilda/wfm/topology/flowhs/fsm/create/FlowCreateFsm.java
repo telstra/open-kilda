@@ -75,7 +75,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
 
     private final FlowCreateHubCarrier carrier;
 
-    private final String flowId;
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;
     private PathId reversePathId;
@@ -94,11 +93,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     private int remainRetries;
     private boolean timedOut;
 
-    private String errorReason;
-
     private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
-        super(commandContext);
-        this.flowId = flowId;
+        super(commandContext, flowId);
         this.carrier = carrier;
         this.remainRetries = config.getFlowCreationRetriesLimit();
     }
@@ -149,7 +145,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         fireError(errorMessage);
     }
 
-    @Override
     public void fireNext(FlowCreateContext context) {
         fire(Event.NEXT, context);
     }
@@ -157,16 +152,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     @Override
     public void fireError(String errorReason) {
         fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-
-        fire(errorEvent);
     }
 
     @Override

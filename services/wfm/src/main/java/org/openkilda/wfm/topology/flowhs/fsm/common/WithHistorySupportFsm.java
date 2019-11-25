@@ -22,11 +22,9 @@ import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-import org.squirrelframework.foundation.fsm.StateMachine;
-
 import java.time.Instant;
 
-public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+public abstract class WithHistorySupportFsm<T extends WithCommandContextFsm<T, S, E, C>, S, E, C>
         extends WithCommandContextFsm<T, S, E, C> {
 
     private Instant lastHistoryEntryTime;
@@ -38,6 +36,8 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
     public abstract String getFlowId();
 
     public abstract FlowGenericCarrier getCarrier();
+
+    public abstract void fireError(String errorReason);
 
     /**
      * Add a history record on the action.

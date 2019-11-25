@@ -64,7 +64,7 @@ public class OnErrorResponseAction extends HistoryRecordingAction<FlowDeleteFsm,
 
             stateMachine.getCarrier().sendSpeakerRequest(failedCommand.makeRemoveRequest(failedCommandId));
         } else {
-            stateMachine.getPendingCommands().remove(failedCommandId);
+            stateMachine.removePendingCommand(failedCommandId);
 
             stateMachine.saveErrorToHistory("Failed to remove rule",
                     format("Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s",

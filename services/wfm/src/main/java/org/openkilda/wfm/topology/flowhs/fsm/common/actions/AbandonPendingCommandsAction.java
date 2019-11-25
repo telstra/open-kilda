@@ -13,21 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class AbandonPendingCommandsAction extends AnonymousAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class AbandonPendingCommandsAction<T extends FlowInstallingFsm<T, S, E, C>, S, E, C>
+        extends AnonymousAction<T, S, E, C> {
     @Override
-    public void execute(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
+    public void execute(S from, S to, E event, C context, T stateMachine) {
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.getPendingCommands().clear();
+        stateMachine.resetPendingCommands();
     }
 }

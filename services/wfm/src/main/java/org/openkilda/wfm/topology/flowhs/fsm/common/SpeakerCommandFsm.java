@@ -56,7 +56,8 @@ public final class SpeakerCommandFsm
                 log.debug("About to retry execution of the command {}", response);
                 fire(Event.RETRY);
             } else {
-                fireError(response.toString());
+                log.error("Failed to execute the flow command {}", response);
+                fire(Event.ERROR);
             }
         }
     }
@@ -64,17 +65,6 @@ public final class SpeakerCommandFsm
     protected void sendCommand(State from, State to, Event event, SpeakerFlowSegmentResponse response) {
         log.debug("Sending a flow command {} to a speaker", request);
         carrier.sendSpeakerRequest(request);
-    }
-
-    @Override
-    public void fireNext(SpeakerFlowSegmentResponse context) {
-        fire(Event.NEXT);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        log.info("Failed to execute the flow command {}", errorReason);
-        fire(Event.ERROR);
     }
 
     public static Builder getBuilder(FlowCreateHubCarrier carrier, int retriesLimit) {

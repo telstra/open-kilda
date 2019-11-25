@@ -78,11 +78,8 @@ public class CompleteFlowPathRemovalAction extends
                     saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
                 } else {
                     log.debug("Removing the flow path {}", pathId);
-                    flowPathRepository.delete(path);
-                    updateIslsForFlowPath(path);
-                    // TODO: History dumps require paired paths, fix it to support any (without opposite one).
-                    FlowPathPair pathsToDelete = FlowPathPair.builder().forward(path).reverse(path).build();
-                    saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
+                    deleteFlowPath(path);
+                    saveRemovalActionWithDumpToHistory(stateMachine, flow, path);
                 }
             }
         }

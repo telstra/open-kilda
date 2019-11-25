@@ -54,7 +54,7 @@ public class PostResourceAllocationAction extends
         String flowId = stateMachine.getFlowId();
 
         FlowPath newForwardPath = null;
-        if (stateMachine.getNewPrimaryForwardPath() != null) {
+        if (stateMachine.hasNewPrimaryPaths()) {
             newForwardPath = getFlowPath(stateMachine.getNewPrimaryForwardPath());
         }
 
@@ -65,11 +65,9 @@ public class PostResourceAllocationAction extends
             Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             currentForwardId = flow.getForwardPathId();
         }
-        FlowPath currentForwardPath = getFlowPath(currentForwardId);
+        FlowPath currentForwardPath = currentForwardId != null ? getFlowPath(currentForwardId) : null;
 
-        if (stateMachine.getNewPrimaryForwardPath() == null && stateMachine.getNewPrimaryReversePath() == null
-                && stateMachine.getNewProtectedForwardPath() == null
-                && stateMachine.getNewProtectedReversePath() == null) {
+        if (!stateMachine.hasNewPrimaryPaths() && !stateMachine.hasNewProtectedPaths()) {
             stateMachine.fireRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
         }
 
@@ -79,7 +77,7 @@ public class PostResourceAllocationAction extends
 
     private Message buildRerouteResponseMessage(FlowPath currentForward, FlowPath newForward,
                                                 CommandContext commandContext) {
-        PathInfoData currentPath = FlowPathMapper.INSTANCE.map(currentForward);
+        PathInfoData currentPath = currentForward != null ? FlowPathMapper.INSTANCE.map(currentForward) : null;
         PathInfoData resultPath = Optional.ofNullable(newForward)
                 .map(FlowPathMapper.INSTANCE::map)
                 .orElse(currentPath);

@@ -83,7 +83,6 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
     private void updateFlow(Flow flow, RequestedFlow targetFlow, FlowUpdateFsm stateMachine) {
         RequestedFlow originalFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
         stateMachine.setOriginalFlow(originalFlow);
-
         stateMachine.setOriginalFlowGroup(flow.getGroupId());
         if (targetFlow.getDiverseFlowId() != null) {
             flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
