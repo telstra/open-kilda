@@ -48,27 +48,15 @@ public class AvailableNetworkFactory {
     }
 
     /**
-     * Gets a {@link AvailableNetwork}, built with specified strategy.
+     * Gets a {@link AvailableNetwork}.
      *
-     * @param flow                        the flow, for which {@link AvailableNetwork} is constructing.
-     * @param reuseResourcesForPaths      reuse resources already allocated by {@param reuseResourcesForPaths} paths.
+     * @param flow                      the flow, for which {@link AvailableNetwork} is constructing.
+     * @param reusePathsResources       reuse resources already allocated by {@param reusePathsResources} paths.
      * @return {@link AvailableNetwork} instance.
      */
-    public AvailableNetwork getAvailableNetwork(Flow flow, List<PathId> reuseResourcesForPaths)
+    public AvailableNetwork getAvailableNetwork(Flow flow, List<PathId> reusePathsResources)
             throws RecoverableException {
-        return getAvailableNetwork(flow, reuseResourcesForPaths, BuildStrategy.from(config.getNetworkStrategy()));
-    }
-
-    /**
-     * Gets a {@link AvailableNetwork}, built with specified buildStrategy.
-     *
-     * @param flow                        the flow, for which {@link AvailableNetwork} is constructing.
-     * @param reusePathsResources         reuse resources already allocated by paths.
-     * @param buildStrategy               the {@link AvailableNetwork} building buildStrategy.
-     * @return {@link AvailableNetwork} instance
-     */
-    public AvailableNetwork getAvailableNetwork(
-            Flow flow, List<PathId> reusePathsResources, BuildStrategy buildStrategy) throws RecoverableException {
+        BuildStrategy buildStrategy = BuildStrategy.from(config.getNetworkStrategy());
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
@@ -106,15 +94,16 @@ public class AvailableNetworkFactory {
 
     private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {
         if (buildStrategy == BuildStrategy.COST) {
-            Collection<Isl> isls = flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType());
+            Collection<Isl> isls = flow.isIgnoreBandwidth()
+                    ? islRepository.findAllActiveByEncapsulationType(flow.getEncapsulationType())
+                    : islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType());
             validateIslsCost(isls);
             return isls;
-
         } else if (buildStrategy == BuildStrategy.SYMMETRIC_COST) {
-            Collection<Isl> isls = flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth(),
-                            flow.getEncapsulationType());
+            Collection<Isl> isls = flow.isIgnoreBandwidth()
+                    ? islRepository.findAllActiveByEncapsulationType(flow.getEncapsulationType())
+                    : islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth(),
+                    flow.getEncapsulationType());
             validateIslsCost(isls);
             return isls;
         } else {
