@@ -44,8 +44,10 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
@@ -187,24 +189,25 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     }
 
     private SwitchPropertiesResponse getSwitchProperties(GetSwitchPropertiesRequest request) {
-        SwitchPropertiesDto found = switchOperationsService.getSwitchProperties(request.getSwitchId());
-        if (found == null) {
-            String message = format("Failed to found properties for switch '%s'.",
-                    request.getSwitchId());
-            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
+        try {
+            SwitchPropertiesDto found = switchOperationsService.getSwitchProperties(request.getSwitchId());
+            return new SwitchPropertiesResponse(found);
+        } catch (SwitchPropertiesNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Failed to get switch properties.");
         }
-        return new SwitchPropertiesResponse(found);
     }
 
     private SwitchPropertiesResponse updateSwitchProperties(UpdateSwitchPropertiesRequest request) {
-        SwitchPropertiesDto updated = switchOperationsService.updateSwitchProperties(request.getSwitchId(),
-                request.getSwitchProperties());
-        if (updated == null) {
-            String message = format("Failed to update switch properties for switch '%s'", request.getSwitchId());
-            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
+        try {
+            SwitchPropertiesDto updated = switchOperationsService.updateSwitchProperties(request.getSwitchId(),
+                    request.getSwitchProperties());
+            return new SwitchPropertiesResponse(updated);
+        } catch (SwitchPropertiesNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Failed to update switch properties.");
+        } catch (IllegalSwitchPropertiesException e) {
+            throw new MessageException(ErrorType.PARAMETERS_INVALID, e.getMessage(),
+                    "Failed to update switch properties.");
         }
-        return new SwitchPropertiesResponse(updated);
-
     }
 
     private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {
