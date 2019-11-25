@@ -295,6 +295,13 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Check whether the forward path is set.
+     */
+    public final boolean hasForwardPath() {
+        return getForwardPathId() != null;
+    }
+
+    /**
      * Add a path and set it as the protected forward.
      */
     public final void setProtectedForwardPath(FlowPath forwardPath) {
@@ -326,6 +333,13 @@ public class Flow implements Serializable {
         }
 
         return getPath(getProtectedForwardPathId()).orElse(null);
+    }
+
+    /**
+     * Check whether the protected forward path is set.
+     */
+    public final boolean hasProtectedForwardPath() {
+        return getProtectedForwardPathId() != null;
     }
 
     /**
@@ -391,6 +405,13 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Check whether the reverse path is set.
+     */
+    public final boolean hasReversePath() {
+        return getReversePathId() != null;
+    }
+
+    /**
      * Add a path and set it as the protected reverse.
      */
     public final void setProtectedReversePath(FlowPath reversePath) {
@@ -411,6 +432,13 @@ public class Flow implements Serializable {
         }
 
         this.protectedReversePathId = pathId;
+    }
+
+    /**
+     * Check whether the protected reverse path is set.
+     */
+    public final boolean hasProtectedReversePath() {
+        return getProtectedReversePathId() != null;
     }
 
     /**
@@ -520,9 +548,11 @@ public class Flow implements Serializable {
         FlowPathStatus protectedFlowPrioritizedPathsStatus = getProtectedFlowPrioritizedPathsStatus();
 
         // Calculate the combined flow status.
-        if (protectedFlowPrioritizedPathsStatus != null
-                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
-                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
+        if (mainFlowPrioritizedPathsStatus == null) {
+            return FlowStatus.DOWN;
+        } else if (mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE
+                && protectedFlowPrioritizedPathsStatus != null
+                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE) {
             return FlowStatus.DEGRADED;
         } else {
             switch (mainFlowPrioritizedPathsStatus) {

@@ -44,6 +44,12 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
+    protected void deleteFlowPath(FlowPath flowPath) {
+        flowPathRepository.delete(flowPath);
+
+        updateIslsForFlowPath(flowPath);
+    }
+
     protected void deleteFlowPaths(FlowPathPair pathPair) {
         flowPathRepository.delete(pathPair.getForward());
         flowPathRepository.delete(pathPair.getReverse());
@@ -68,6 +74,13 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
         log.debug("Updating ISL {}_{} - {}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
                 usedBandwidth);
         islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
+    }
+
+    protected void saveRemovalActionWithDumpToHistory(T stateMachine, Flow flow, FlowPath flowPath) {
+        // TODO: History dumps require paired paths, fix it to support any (without opposite one).
+        FlowPathPair pathsToDelete = FlowPathPair.builder().forward(flowPath).reverse(flowPath).build();
+
+        saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
     }
 
     protected void saveRemovalActionWithDumpToHistory(T stateMachine, Flow flow, FlowPathPair pathPair) {

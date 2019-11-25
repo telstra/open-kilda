@@ -64,21 +64,21 @@ public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowUpdat
         commands.addAll(commandBuilder.createInstallNonIngressRules(
                 stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
 
-        if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
+        if (stateMachine.hasNewProtectedPaths()) {
             FlowPath newProtectedForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newProtectedReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             commands.addAll(commandBuilder.createInstallNonIngressRules(
                     stateMachine.getCommandContext(), flow, newProtectedForward, newProtectedReverse));
         }
 
-        stateMachine.getNonIngressCommands().putAll(commands.stream()
+        stateMachine.addToNonIngressCommands(commands.stream()
                 .collect(Collectors.toMap(InstallTransitRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        stateMachine.addToPendingCommands(commandIds);
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install non ingress rules");

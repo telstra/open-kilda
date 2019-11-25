@@ -42,9 +42,8 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
-
         FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
+            String flowId = stateMachine.getFlowId();
             Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             FlowStatus flowStatus = flow.computeFlowStatus();
             if (flowStatus != flow.getStatus()) {

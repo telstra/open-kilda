@@ -53,7 +53,7 @@ public class OnReceivedRemoveOrRevertResponseAction extends
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             if (removeCommand != null) {
                 stateMachine.saveActionToHistory("Rule was deleted",
@@ -67,9 +67,9 @@ public class OnReceivedRemoveOrRevertResponseAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 if (removeCommand != null) {
                     stateMachine.saveErrorToHistory("Failed to remove rule", format(
@@ -87,7 +87,7 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                     stateMachine.getCarrier().sendSpeakerRequest(installCommand);
                 }
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 if (removeCommand != null) {
                     stateMachine.saveErrorToHistory("Failed to remove rule", format(
@@ -98,11 +98,11 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                             "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
                             commandId, errorResponse.getSwitchId(), installCommand.getCookie(), errorResponse));
                 }
-                stateMachine.getFailedCommands().put(commandId, errorResponse);
+                stateMachine.addFailedCommand(commandId, errorResponse);
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
             if (stateMachine.getFailedCommands().isEmpty()) {
                 log.debug("Received responses for all pending remove / re-install commands of the flow {}",
                         stateMachine.getFlowId());

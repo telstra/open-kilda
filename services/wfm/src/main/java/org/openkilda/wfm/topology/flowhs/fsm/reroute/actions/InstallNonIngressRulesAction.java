@@ -60,27 +60,27 @@ public class InstallNonIngressRulesAction extends
 
         Collection<InstallTransitRule> commands = new ArrayList<>();
 
-        if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
+        if (stateMachine.hasNewPrimaryPaths()) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
             commands.addAll(commandBuilder.createInstallNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
-        if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
+        if (stateMachine.hasNewProtectedPaths()) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             commands.addAll(commandBuilder.createInstallNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
-        stateMachine.getNonIngressCommands().putAll(commands.stream()
+        stateMachine.addToNonIngressCommands(commands.stream()
                 .collect(Collectors.toMap(InstallTransitRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        stateMachine.addToPendingCommands(commandIds);
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install non ingress rules");

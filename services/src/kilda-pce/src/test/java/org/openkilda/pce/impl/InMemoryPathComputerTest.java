@@ -294,6 +294,47 @@ public class InMemoryPathComputerTest {
         pathComputer.getPath(f);
     }
 
+    @Test
+    public void shouldFailToFindWithInactiveSrcSwitch() throws UnroutableFlowException, RecoverableException {
+        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 30, "14:", 1);
+
+        Switch srcSwitch = switchRepository.findById(new SwitchId("14:01")).get();
+        srcSwitch.setStatus(SwitchStatus.INACTIVE);
+        switchRepository.createOrUpdate(srcSwitch);
+        Switch destSwitch = switchRepository.findById(new SwitchId("14:04")).get();
+
+        Flow f = new TestFlowBuilder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .bandwidth(100)
+                .build();
+
+        thrown.expect(UnroutableFlowException.class);
+
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        pathComputer.getPath(f);
+    }
+
+    @Test
+    public void shouldFailToFindWithInactiveDestSwitch() throws UnroutableFlowException, RecoverableException {
+        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 30, "14:", 1);
+
+        Switch srcSwitch = switchRepository.findById(new SwitchId("14:01")).get();
+        Switch destSwitch = switchRepository.findById(new SwitchId("14:04")).get();
+        destSwitch.setStatus(SwitchStatus.INACTIVE);
+        switchRepository.createOrUpdate(destSwitch);
+
+        Flow f = new TestFlowBuilder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .bandwidth(100)
+                .build();
+
+        thrown.expect(UnroutableFlowException.class);
+
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        pathComputer.getPath(f);
+    }
 
     @Test
     public void shouldFindPathOverDiamondWithAllActiveLinksAndIgnoreBandwidth()

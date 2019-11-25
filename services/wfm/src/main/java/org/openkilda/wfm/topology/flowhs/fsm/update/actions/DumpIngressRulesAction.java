@@ -39,10 +39,10 @@ public class DumpIngressRulesAction extends HistoryRecordingAction<FlowUpdateFsm
 
         dumpFlowRules.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 
-        stateMachine.getPendingCommands().addAll(dumpFlowRules.stream()
+        stateMachine.addToPendingCommands(dumpFlowRules.stream()
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet()));
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.resetAllCommandRetries();
 
         stateMachine.saveActionToHistory("Started validation of installed ingress rules");
     }

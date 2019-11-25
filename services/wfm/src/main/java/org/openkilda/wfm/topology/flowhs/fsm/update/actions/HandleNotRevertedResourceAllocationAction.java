@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -31,16 +30,14 @@ public class HandleNotRevertedResourceAllocationAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
-        if (newPrimaryResources != null) {
+        if (stateMachine.hasNewPrimaryResources()) {
             stateMachine.saveErrorToHistory("Failed to revert resource allocation",
-                    format("Failed to revert resource allocation: %s", newPrimaryResources));
+                    format("Failed to revert resource allocation: %s", stateMachine.getNewPrimaryResources()));
         }
 
-        FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
-        if (newProtectedResources != null) {
+        if (stateMachine.hasNewProtectedResources()) {
             stateMachine.saveErrorToHistory("Failed to revert resource allocation",
-                    format("Failed to revert resource allocation: %s", newProtectedResources));
+                    format("Failed to revert resource allocation: %s", stateMachine.getNewProtectedResources()));
         }
     }
 }

@@ -54,30 +54,28 @@ public class RevertResourceAllocationAction extends
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
-            FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
-            if (newPrimaryResources != null) {
+            if (stateMachine.hasNewPrimaryResources()) {
+                FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
                 resourcesManager.deallocatePathResources(newPrimaryResources);
                 saveHistory(stateMachine, flow, newPrimaryResources);
             }
 
-            FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
-            if (newProtectedResources != null) {
+            if (stateMachine.hasNewProtectedResources()) {
+                FlowResources newProtectedResources = stateMachine.getNewProtectedResources();
                 resourcesManager.deallocatePathResources(newProtectedResources);
                 saveHistory(stateMachine, flow, newProtectedResources);
             }
 
             FlowPath newPrimaryForward = null;
             FlowPath newPrimaryReverse = null;
-            if (stateMachine.getNewPrimaryForwardPath() != null
-                    && stateMachine.getNewPrimaryReversePath() != null) {
+            if (stateMachine.hasNewPrimaryPaths()) {
                 newPrimaryForward = getFlowPath(stateMachine.getNewPrimaryForwardPath());
                 newPrimaryReverse = getFlowPath(stateMachine.getNewPrimaryReversePath());
             }
 
             FlowPath newProtectedForward = null;
             FlowPath newProtectedReverse = null;
-            if (stateMachine.getNewProtectedForwardPath() != null
-                    && stateMachine.getNewProtectedReversePath() != null) {
+            if (stateMachine.hasNewProtectedPaths()) {
                 newProtectedForward = getFlowPath(stateMachine.getNewProtectedForwardPath());
                 newProtectedReverse = getFlowPath(stateMachine.getNewProtectedReversePath());
             }
@@ -85,7 +83,7 @@ public class RevertResourceAllocationAction extends
             flowPathRepository.lockInvolvedSwitches(Stream.of(newPrimaryForward, newPrimaryReverse,
                     newProtectedForward, newProtectedReverse).filter(Objects::nonNull).toArray(FlowPath[]::new));
 
-            if (newPrimaryForward != null && newPrimaryReverse != null) {
+            if (stateMachine.hasNewPrimaryPaths()) {
                 log.debug("Removing the new primary paths {} / {}", newPrimaryForward, newPrimaryReverse);
                 FlowPathPair pathsToDelete = FlowPathPair.builder()
                         .forward(newPrimaryForward).reverse(newPrimaryReverse).build();
@@ -94,7 +92,7 @@ public class RevertResourceAllocationAction extends
                 saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
             }
 
-            if (newProtectedForward != null && newProtectedReverse != null) {
+            if (stateMachine.hasNewProtectedPaths()) {
                 log.debug("Removing the new protected paths {} / {}", newProtectedForward, newProtectedReverse);
                 FlowPathPair pathsToDelete = FlowPathPair.builder()
                         .forward(newProtectedForward).reverse(newProtectedReverse).build();
@@ -104,12 +102,8 @@ public class RevertResourceAllocationAction extends
             }
         });
 
-        stateMachine.setNewPrimaryResources(null);
-        stateMachine.setNewPrimaryForwardPath(null);
-        stateMachine.setNewPrimaryReversePath(null);
-        stateMachine.setNewProtectedResources(null);
-        stateMachine.setNewProtectedForwardPath(null);
-        stateMachine.setNewProtectedReversePath(null);
+        stateMachine.resetNewPrimaryPathsAndResources();
+        stateMachine.resetNewProtectedPathsAndResources();
     }
 
     private void saveHistory(FlowUpdateFsm stateMachine, Flow flow, FlowResources resources) {

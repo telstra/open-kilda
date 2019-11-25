@@ -28,6 +28,6 @@ public class AbandonPendingCommandsAction extends AnonymousAction<FlowRerouteFsm
     @Override
     public void execute(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.getPendingCommands().clear();
+        stateMachine.resetPendingCommands();
     }
 }

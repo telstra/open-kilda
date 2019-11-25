@@ -53,7 +53,7 @@ public class ValidateNonIngressRulesAction extends
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             RulesValidator validator = new NonIngressRulesValidator(command, (FlowRuleResponse) response);
             if (validator.validate()) {
@@ -70,9 +70,9 @@ public class ValidateNonIngressRulesAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
                         "Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s. "
@@ -81,7 +81,7 @@ public class ValidateNonIngressRulesAction extends
 
                 stateMachine.getCarrier().sendSpeakerRequest(command);
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 stateMachine.saveErrorToHistory("Rule validation failed",
                         format("Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s",
@@ -91,7 +91,7 @@ public class ValidateNonIngressRulesAction extends
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
             if (stateMachine.getFailedValidationResponses().isEmpty()) {
                 log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_VALIDATED);

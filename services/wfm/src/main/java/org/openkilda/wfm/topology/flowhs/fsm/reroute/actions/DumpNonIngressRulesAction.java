@@ -52,8 +52,8 @@ public class DumpNonIngressRulesAction extends
             Set<UUID> commandIds = dumpFlowRules.stream()
                     .map(SpeakerFlowRequest::getCommandId)
                     .collect(Collectors.toSet());
-            stateMachine.getPendingCommands().addAll(commandIds);
-            stateMachine.getRetriedCommands().clear();
+            stateMachine.addToPendingCommands(commandIds);
+            stateMachine.resetAllCommandRetries();
 
             stateMachine.saveActionToHistory("Started validation of installed non ingress rules");
         }

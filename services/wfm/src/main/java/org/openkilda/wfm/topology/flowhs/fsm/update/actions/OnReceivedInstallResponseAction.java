@@ -50,7 +50,7 @@ public class OnReceivedInstallResponseAction extends
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             stateMachine.saveActionToHistory("Rule was installed",
                     format("The rule was installed: switch %s, cookie %s",
@@ -58,9 +58,9 @@ public class OnReceivedInstallResponseAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
@@ -69,17 +69,17 @@ public class OnReceivedInstallResponseAction extends
 
                 stateMachine.getCarrier().sendSpeakerRequest(command);
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
-                stateMachine.getFailedCommands().put(commandId, errorResponse);
+                stateMachine.addFailedCommand(commandId, errorResponse);
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
             if (stateMachine.getFailedCommands().isEmpty()) {
                 log.debug("Received responses for all pending install commands of the flow {}",
                         stateMachine.getFlowId());

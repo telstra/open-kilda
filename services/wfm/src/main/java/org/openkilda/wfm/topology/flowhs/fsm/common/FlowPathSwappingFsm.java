@@ -89,4 +89,110 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     }
 
     public abstract void fireNoPathFound(String errorReason);
+
+    public boolean hasNewPrimaryResources() {
+        return newPrimaryResources != null;
+    }
+
+    public boolean hasNewPrimaryPaths() {
+        return newPrimaryForwardPath != null && newPrimaryReversePath != null;
+    }
+
+    public void resetNewPrimaryPathsAndResources() {
+        newPrimaryResources = null;
+        newPrimaryForwardPath = null;
+        newPrimaryReversePath = null;
+    }
+
+    public boolean hasNewProtectedResources() {
+        return newProtectedResources != null;
+    }
+
+    public boolean hasNewProtectedPaths() {
+        return newProtectedForwardPath != null && newProtectedReversePath != null;
+    }
+
+    public void resetNewProtectedPathsAndResources() {
+        newProtectedResources = null;
+        newProtectedForwardPath = null;
+        newProtectedReversePath = null;
+    }
+
+    public boolean hasOldPrimaryForwardPath() {
+        return oldPrimaryForwardPath != null;
+    }
+
+    public boolean hasOldPrimaryReversePath() {
+        return oldPrimaryReversePath != null;
+    }
+
+    public boolean hasOldProtectedForwardPath() {
+        return oldProtectedForwardPath != null;
+    }
+
+    public boolean hasOldProtectedReversePath() {
+        return oldProtectedReversePath != null;
+    }
+
+    public void resetOldPrimaryPaths() {
+        oldPrimaryForwardPath = null;
+        oldPrimaryReversePath = null;
+    }
+
+    public void resetOldProtectedPaths() {
+        oldProtectedForwardPath = null;
+        oldProtectedReversePath = null;
+    }
+
+    public void addOldResources(FlowResources resources) {
+        oldResources.add(resources);
+    }
+
+    public void resetOldResources() {
+        oldResources.clear();
+    }
+
+    public boolean hasPendingCommands() {
+        return !pendingCommands.isEmpty();
+    }
+
+    public void addToPendingCommands(Collection<UUID> commandIds) {
+        pendingCommands.addAll(commandIds);
+    }
+
+    public void removePendingCommand(UUID commandId) {
+        pendingCommands.remove(commandId);
+    }
+
+    public void resetPendingCommands() {
+        pendingCommands.clear();
+    }
+
+    public void addToIngressCommands(Map<UUID, InstallIngressRule> commands) {
+        ingressCommands.putAll(commands);
+    }
+
+    public void addToNonIngressCommands(Map<UUID, InstallTransitRule> commands) {
+        nonIngressCommands.putAll(commands);
+    }
+
+    public void addToRemoveCommands(Map<UUID, RemoveRule> commands) {
+        removeCommands.putAll(commands);
+    }
+
+    public void addFailedCommand(UUID commandId, FlowErrorResponse errorResponse) {
+        failedCommands.put(commandId, errorResponse);
+    }
+
+    public void setCommandRetries(UUID commandId, int retryAttempts) {
+        retriedCommands.put(commandId, retryAttempts);
+    }
+
+    public int getCommandRetries(UUID commandId) {
+        return retriedCommands.getOrDefault(commandId, 0);
+    }
+
+    public void resetAllCommandRetries() {
+        retriedCommands.clear();
+    }
 }

@@ -330,7 +330,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
-                    .perform(new RevertFlowStatusAction(persistenceManager));
+                    .perform(new RevertFlowStatusAction(persistenceManager, dashboardLogger));
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));

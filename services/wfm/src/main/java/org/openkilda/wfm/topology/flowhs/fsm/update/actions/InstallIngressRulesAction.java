@@ -65,15 +65,15 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFs
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 
-        stateMachine.getIngressCommands().putAll(commands.stream()
+        stateMachine.addToIngressCommands(commands.stream()
                 .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = commands.stream()
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.addToPendingCommands(commandIds);
+        stateMachine.resetAllCommandRetries();
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install ingress rules");

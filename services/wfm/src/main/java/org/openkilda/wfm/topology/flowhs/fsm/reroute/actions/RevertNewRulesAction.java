@@ -61,19 +61,19 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
         Collection<InstallIngressRule> installCommands = new ArrayList<>();
 
         // Reinstall old ingress rules that may be overridden by new ingress.
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
+        if (stateMachine.hasOldPrimaryForwardPath() && stateMachine.hasOldPrimaryReversePath()) {
             FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
             FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
             installCommands.addAll(commandBuilder.createInstallIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        stateMachine.getIngressCommands().putAll(installCommands.stream()
+        stateMachine.addToIngressCommands(installCommands.stream()
                 .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
 
         Collection<RemoveRule> removeCommands = new ArrayList<>();
 
-        if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
+        if (stateMachine.hasNewPrimaryPaths()) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
             removeCommands.addAll(commandBuilder.createRemoveNonIngressRules(
@@ -81,22 +81,22 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
             removeCommands.addAll(commandBuilder.createRemoveIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
-        if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
+        if (stateMachine.hasNewProtectedPaths()) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             removeCommands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
-        stateMachine.getRemoveCommands().putAll(removeCommands.stream()
+        stateMachine.addToRemoveCommands(removeCommands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
         Set<UUID> commandIds = Stream.concat(installCommands.stream(), removeCommands.stream())
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.addToPendingCommands(commandIds);
+        stateMachine.resetAllCommandRetries();
 
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
