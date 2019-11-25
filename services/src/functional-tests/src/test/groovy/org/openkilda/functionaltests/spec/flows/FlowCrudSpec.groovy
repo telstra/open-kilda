@@ -172,7 +172,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         description  : "same switch-port but vlans on src and dst are swapped",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
-                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch)
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                it.source.vlanId == it.destination.vlanId && it.destination.vlanId--
+                            }
                             def flow2 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
                                 it.source.portNumber = flow1.source.portNumber
                                 it.source.vlanId = flow1.destination.vlanId
