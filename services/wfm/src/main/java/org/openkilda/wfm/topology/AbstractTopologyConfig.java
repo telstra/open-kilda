@@ -41,6 +41,15 @@ public interface AbstractTopologyConfig {
     @Key("workers")
     int getWorkers();
 
+    @Key("disruptor.wait.timeout")
+    Integer getDisruptorWaitTimeout();
+
+    @Key("disruptor.batch.timeout")
+    Integer getDisruptorBatchTimeout();
+
+    @Key("spout.wait.sleep.time")
+    Integer getSpoutWaitSleepTime();
+
     @IgnoreKey
     KafkaTopicsConfig getKafkaTopics();
 

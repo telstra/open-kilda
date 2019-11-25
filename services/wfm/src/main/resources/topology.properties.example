@@ -1,7 +1,20 @@
 environment.naming.prefix = 
 
+parallelism.new = 2
 parallelism = 1
 workers = 1
+
+#######
+# Storm-specific topology configuration.
+#
+# Configure timeout milliseconds used for disruptor queue wait strategy. Can be used to tradeoff latency vs. CPU usage.
+# disruptor.wait.timeout = 1000
+#
+# The maximum age in milliseconds a batch can be before being sent to the next thread.
+# disruptor.batch.timeout = 10
+#
+# The amount of milliseconds a spout should sleep when emits no tuples.
+# spout.wait.sleep.time = 100
 
 kafka.hosts = kafka.pendev:9092
 kafka.partitions.default = 1
@@ -23,16 +36,17 @@ kafka.topic.topo.eng = kilda.topo.eng
 kafka.topic.topo.nbworker = kilda.topo.nb
 kafka.topic.topo.reroute = kilda.topo.reroute
 
-reroute.throttling.delay.min = 10
-reroute.throttling.delay.max = 600
+reroute.throttling.delay.min = 3
+reroute.throttling.delay.max = 15
 
 isl.cost.when.port.down = 10000
 isl.cost.when.under.maintenance = 10000
-isl.unstable.timeout.sec = 3600
+isl.unstable.timeout.sec = 7200
 
 port.up.down.throttling.delay.seconds.min = 1
 port.up.down.throttling.delay.seconds.warm.up = 5
-port.up.down.throttling.delay.seconds.cool.down = 5
+port.up.down.throttling.delay.seconds.cool.down = 10
+port.antiflap.stats.dumping.interval.seconds = 60
 
 bfd.port.offset = 200
 
@@ -78,16 +92,44 @@ discovery.db.write.repeats.time.frame = 30
 #flow.ping.fail.delay = 45
 #flow.ping.fail.reset = 1800
 
+# multi-FL
+floodlight.alive.timeout = 10
+floodlight.alive.interval = 2
+floodlight.request.timeout = 180
+message.blacklist.timeout = 180
+floodlight.regions = 1
+
 local = no
 local.execution.time = 300
 
 pce.strategy = COST
 pce.network.strategy = SYMMETRIC_COST
-pce.diversity.isl.weight = 1000
-pce.diversity.switch.weight = 100
+pce.diversity.isl.weight = 10000
+pce.diversity.switch.weight = 1000
 
 burst.coefficient = 1.05
 min.burst.size.in.kbits = 1024
 
 statsrouter.timeout = 100
 statsrouter.request.interval = 60
+
+# round trip latency
+latency.update.interval = 300
+latency.update.time.range = 600
+latency.discovery.interval.multiplier = 3
+
+# flow(H&S) topology
+flow.hub.transaction.retries = 3
+flow.create.hub.timeout.seconds = 30
+flow.create.speaker.timeout.seconds = 10
+flow.create.speaker.command.retries = 3
+flow.create.hub.retries = 3
+flow.update.hub.timeout.seconds = 30
+flow.update.speaker.timeout.seconds = 10
+flow.update.speaker.command.retries = 3
+flow.reroute.hub.timeout.seconds = 30
+flow.reroute.speaker.timeout.seconds = 10
+flow.reroute.speaker.command.retries = 3
+flow.delete.hub.timeout.seconds = 30
+flow.delete.speaker.timeout.seconds = 10
+flow.delete.speaker.command.retries = 3
