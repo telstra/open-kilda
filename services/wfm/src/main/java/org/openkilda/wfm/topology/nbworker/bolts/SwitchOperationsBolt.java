@@ -49,6 +49,7 @@ import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.PortMapper;
+import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
@@ -229,7 +230,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                 .removeExcess(true)
                 .build();
         getOutput().emit(StreamType.TO_SWITCH_MANAGER.toString(), getCurrentTuple(),
-                new Values(data, getCorrelationId()));
+                new Values(data, KeyProvider.generateChainedKey(getCorrelationId())));
     }
 
     @Override
