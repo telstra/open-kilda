@@ -79,7 +79,6 @@ public class RouterService {
                 routerMessageSender.emitRegionNotification(new SwitchMapping(switchId, region));
             }
         }
-        routerMessageSender.emitControllerMessage(message);
     }
 
     /**

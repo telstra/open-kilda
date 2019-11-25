@@ -86,7 +86,6 @@ public class RouterServiceTest {
 
         verify(carrier).emitRegionNotification(Mockito.eq(new SwitchMapping(switchId, REGION_ONE)));
         verify(carrier).emitNetworkDumpRequest(REGION_ONE);
-        verify(carrier).emitControllerMessage(Mockito.eq(message));
         verifyNoMoreInteractions(carrier);
     }
 
@@ -106,7 +105,6 @@ public class RouterServiceTest {
         verify(speakerTracker).updateSwitchRegion(switchId, REGION_ONE);
         verifyNoMoreInteractions(speakerTracker);
 
-        verify(carrier).emitControllerMessage(Mockito.eq(message));
         verifyNoMoreInteractions(carrier);
     }
 

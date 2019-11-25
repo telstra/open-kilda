@@ -15,24 +15,22 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.messaging.AliveResponse;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-@Slf4j
-public class ReplyBolt extends AbstractBolt {
+public class DiscoReplyBolt extends ReplyBolt {
 
-    protected String outputStream;
-
-    public ReplyBolt(String outputStream) {
-        this.outputStream = outputStream;
+    public DiscoReplyBolt(String outputStream) {
+        super(outputStream);
     }
 
     @Override
@@ -40,13 +38,18 @@ public class ReplyBolt extends AbstractBolt {
         String key = input.getStringByField(AbstractTopology.KEY_FIELD);
         Object message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
         Values values = new Values(key, message);
+        getOutput().emit(Stream.DISCO_REPLY, values);
+        if (message instanceof InfoMessage && ((InfoMessage) message).getData() instanceof AliveResponse) {
+            return;
+        }
         getOutput().emit(outputStream, input, values);
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
-                                   FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+                FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         outputFieldsDeclarer.declareStream(outputStream, fields);
+        outputFieldsDeclarer.declareStream(Stream.DISCO_REPLY, fields);
     }
 }
