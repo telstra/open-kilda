@@ -13,64 +13,45 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
-import static org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.REROUTE_RETRY_LIMIT;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.Flow;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class OnReceivedInstallResponseAction<T extends FlowInstallingFsm<T, S, E, C>, S, E, C extends FlowContext>
+        extends HistoryRecordingAction<T, S, E, C> {
     private final int speakerCommandRetriesLimit;
-    private FlowRepository flowRepository;
-    private FlowRerouteHubCarrier carrier;
+    private final E completeEvent;
 
-    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
-
-    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
+    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit, @NonNull E completeEvent) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        this.completeEvent = completeEvent;
     }
 
-    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit, PersistenceManager persistenceManager,
-                                           FlowRerouteHubCarrier carrier) {
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.carrier = carrier;
-    }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getInstallCommand(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+        if (!stateMachine.isPendingCommand(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             stateMachine.saveActionToHistory("Rule was installed",
                     format("The rule was installed: switch %s, cookie %s",
@@ -78,9 +59,9 @@ public class OnReceivedInstallResponseAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
@@ -89,48 +70,31 @@ public class OnReceivedInstallResponseAction extends
 
                 stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 stateMachine.saveErrorToHistory("Failed to install rule", format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
-                stateMachine.getFailedCommands().put(commandId, errorResponse);
+                stateMachine.addFailedCommand(commandId, errorResponse);
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
-            Collection<FlowErrorResponse> failedCommands
-                    = stateMachine.getFailedCommands().values();
-            if (failedCommands.isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
+            if (!stateMachine.hasFailedCommands()) {
                 log.debug("Received responses for all pending install commands of the flow {}",
                         stateMachine.getFlowId());
-                stateMachine.fire(Event.RULES_INSTALLED);
+                stateMachine.fire(completeEvent);
             } else {
-                String flowId = stateMachine.getFlowId();
-                Flow flow = flowRepository.findById(flowId)
-                        .orElseThrow(() -> new IllegalStateException(format("Flow %s not found", flowId)));
-                boolean isTerminatingSwitchFailed = failedCommands.stream()
-                        .anyMatch(errorResponse -> errorResponse.getSwitchId().equals(flow.getSrcSwitch().getSwitchId())
-                                || errorResponse.getSwitchId().equals(flow.getDestSwitch().getSwitchId()));
-                int rerouteCounter = stateMachine.getRerouteCounter();
-                if (!isTerminatingSwitchFailed && rerouteCounter < REROUTE_RETRY_LIMIT) {
-                    rerouteCounter += 1;
-                    String newReason = format("%s: retry #%d", stateMachine.getRerouteReason(), rerouteCounter);
-                    FlowRerouteFact flowRerouteFact = new FlowRerouteFact(commandIdGenerator.generate().toString(),
-                            stateMachine.getCommandContext().fork(format("retry #%d", rerouteCounter)),
-                            stateMachine.getFlowId(), stateMachine.getAffectedIsls(), stateMachine.isForceReroute(),
-                            stateMachine.isEffectivelyDown(), newReason, rerouteCounter);
-                    carrier.injectRetry(flowRerouteFact);
-                    stateMachine.saveActionToHistory("Inject reroute retry",
-                            format("Reroute counter %d", rerouteCounter));
-                }
-
-                String errorMessage = format("Received error response(s) for %d install commands",
-                        failedCommands.size());
-                stateMachine.saveErrorToHistory(errorMessage);
-                stateMachine.fireError(errorMessage);
+                onCompleteWithFailedCommands(stateMachine);
             }
         }
+    }
+
+    protected void onCompleteWithFailedCommands(T stateMachine) {
+        String errorMessage = format("Received error response(s) for %d install commands",
+                stateMachine.getFailedCommands().size());
+        stateMachine.saveErrorToHistory(errorMessage);
+        stateMachine.fireError(errorMessage);
     }
 }

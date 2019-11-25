@@ -13,53 +13,53 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotCompletedCommandsAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class HandleNotCompletedCommandsAction<T extends FlowInstallingFsm<T, S, E, C>, S, E, C>
+        extends HistoryRecordingAction<T, S, E, C> {
+    private final String fsmOperationName;
+
+    public HandleNotCompletedCommandsAction(@NonNull String fsmOperationName) {
+        this.fsmOperationName = fsmOperationName;
+    }
+
     @Override
-    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowSegmentRequestFactory requestFactory;
+    public void perform(S from, S to, E event, C context, T stateMachine) {
         for (UUID commandId : stateMachine.getPendingCommands()) {
-            requestFactory = stateMachine.getRemoveCommands().get(commandId);
-            if (requestFactory != null) {
-                stateMachine.saveErrorToHistory(
-                        "Command is not finished yet",
-                        format("Completing the reroute operation although the remove command may not be "
-                                       + "finished yet: commandId %s, switch %s, cookie %s",
-                               commandId, requestFactory.getSwitchId(), requestFactory.getCookie()));
+            FlowSegmentRequestFactory removeRequest = stateMachine.getRemoveCommands().get(commandId);
+            if (removeRequest != null) {
+                stateMachine.saveErrorToHistory("Command is not finished yet",
+                        format("Completing the %s operation although the remove command may not be "
+                                        + "finished yet: commandId %s, switch %s, cookie %s", fsmOperationName,
+                                commandId, removeRequest.getSwitchId(), removeRequest.getCookie()));
             } else {
-                requestFactory = stateMachine.getIngressCommands().get(commandId);
-                stateMachine.saveErrorToHistory(
-                        "Command is not finished yet",
-                        format("Completing the reroute operation although the install command may not be "
-                                       + "finished yet: commandId %s, switch %s, cookie %s",
-                               commandId, requestFactory.getSwitchId(), requestFactory.getCookie()));
+                FlowSegmentRequestFactory installRequest = stateMachine.getInstallCommand(commandId);
+                if (installRequest != null) {
+                    stateMachine.saveErrorToHistory("Command is not finished yet",
+                            format("Completing the %s operation although the install command may not be "
+                                            + "finished yet: commandId %s, switch %s, cookie %s", fsmOperationName,
+                                    commandId, installRequest.getSwitchId(), installRequest.getCookie()));
+                } else {
+                    stateMachine.saveErrorToHistory("Command is not finished yet",
+                            format("Completing the %s operation although the command may not be "
+                                            + "finished yet: commandId %s", fsmOperationName,
+                                    commandId));
+                }
             }
         }
 
-        for (FlowErrorResponse errorResponse : stateMachine.getFailedCommands().values()) {
-            log.warn(
-                    "Receive error response from {} for command {}: {}",
-                    errorResponse.getSwitchId(), errorResponse.getCommandId(), errorResponse);
-        }
-
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
-        stateMachine.getPendingCommands().clear();
+        stateMachine.resetPendingCommands();
     }
 }

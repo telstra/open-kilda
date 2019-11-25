@@ -13,28 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    public RevertFlowStatusAction(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+public class RevertFlowStatusAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C>
+        extends UpdateFlowStatusAction<T, S, E, C> {
+    public RevertFlowStatusAction(PersistenceManager persistenceManager,
+                                  FlowOperationsDashboardLogger dashboardLogger) {
+        super(persistenceManager, dashboardLogger);
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         String flowId = stateMachine.getFlowId();
         FlowStatus originalStatus = stateMachine.getOriginalFlowStatus();
         if (originalStatus != null) {
@@ -43,6 +42,8 @@ public class RevertFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm,
             flowRepository.updateStatus(flowId, originalStatus);
 
             stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalStatus));
+        } else {
+            super.perform(from, to, event, context, stateMachine);
         }
     }
 }

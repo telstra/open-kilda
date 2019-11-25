@@ -13,46 +13,47 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedRemoveOrRevertResponseAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class OnReceivedRemoveOrRevertResponseAction
+        <T extends FlowInstallingFsm<T, S, E, C>, S, E, C extends FlowContext>
+        extends HistoryRecordingAction<T, S, E, C> {
     private final int speakerCommandRetriesLimit;
+    private final E completeEvent;
 
-    public OnReceivedRemoveOrRevertResponseAction(int speakerCommandRetriesLimit) {
+    public OnReceivedRemoveOrRevertResponseAction(int speakerCommandRetriesLimit, @NonNull E completeEvent) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        this.completeEvent = completeEvent;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommands().get(commandId);
         FlowSegmentRequestFactory installCommand = stateMachine.getInstallCommand(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId)
+        if (!stateMachine.isPendingCommand(commandId)
                 || (removeCommand == null && installCommand == null)) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
             if (removeCommand != null) {
                 stateMachine.saveActionToHistory("Rule was deleted",
@@ -66,9 +67,9 @@ public class OnReceivedRemoveOrRevertResponseAction extends
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 if (removeCommand != null) {
                     stateMachine.saveErrorToHistory("Failed to remove rule", format(
@@ -86,7 +87,7 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                     stateMachine.getCarrier().sendSpeakerRequest(installCommand.makeInstallRequest(commandId));
                 }
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 if (removeCommand != null) {
                     stateMachine.saveErrorToHistory("Failed to remove rule", format(
@@ -97,21 +98,25 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                             "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
                             commandId, errorResponse.getSwitchId(), installCommand.getCookie(), errorResponse));
                 }
-                stateMachine.getFailedCommands().put(commandId, errorResponse);
+                stateMachine.addFailedCommand(commandId, errorResponse);
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getFailedCommands().isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
+            if (!stateMachine.hasFailedCommands()) {
                 log.debug("Received responses for all pending remove / re-install commands of the flow {}",
                         stateMachine.getFlowId());
-                stateMachine.fire(Event.RULES_REMOVED);
+                stateMachine.fire(completeEvent);
             } else {
-                String errorMessage = format("Received error response(s) for %d remove / re-install commands",
-                        stateMachine.getFailedCommands().size());
-                stateMachine.saveErrorToHistory(errorMessage);
-                stateMachine.fireError(errorMessage);
+                onCompleteWithFailedCommands(stateMachine);
             }
         }
+    }
+
+    protected void onCompleteWithFailedCommands(T stateMachine) {
+        String errorMessage = format("Received error response(s) for %d remove / re-install commands",
+                stateMachine.getFailedCommands().size());
+        stateMachine.saveErrorToHistory(errorMessage);
+        stateMachine.fireError(errorMessage);
     }
 }

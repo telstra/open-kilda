@@ -18,13 +18,11 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
 
-import org.squirrelframework.foundation.fsm.StateMachine;
-
-public abstract class NbTrackableFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+public abstract class NbTrackableFsm<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
         extends FlowProcessingFsm<T, S, E, C> {
 
-    public NbTrackableFsm(CommandContext commandContext) {
-        super(commandContext);
+    public NbTrackableFsm(CommandContext commandContext, String flowId) {
+        super(commandContext, flowId);
     }
 
     public abstract void sendResponse(Message message);

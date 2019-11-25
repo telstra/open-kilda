@@ -13,74 +13,97 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class RemoveOldRulesAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C>
+        extends FlowProcessingAction<T, S, E, C> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
+    private final E skipEvent;
 
-    public RemoveOldRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    public RemoveOldRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager,
+                                E skipEvent) {
         super(persistenceManager);
         commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        this.skipEvent = skipEvent;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    public void perform(S from, S to, E event, C context, T stateMachine) {
         FlowEncapsulationType encapsulationType = stateMachine.getOriginalEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
-        Collection<FlowSegmentRequestFactory> factories = new ArrayList<>();
+        Collection<FlowSegmentRequestFactory> requestFactories = new ArrayList<>();
 
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
+        if (stateMachine.hasOldPrimaryForwardPath()) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+            Flow flow = oldForward.getFlow();
+
+            if (stateMachine.hasOldPrimaryReversePath()) {
+                FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
+                requestFactories.addAll(commandBuilder.buildAll(
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            } else {
+                requestFactories.addAll(commandBuilder.buildAll(
+                        stateMachine.getCommandContext(), flow, oldForward));
+
+            }
+        } else if (stateMachine.hasOldPrimaryReversePath()) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-            Flow flow = oldForward.getFlow();
-            factories.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            Flow flow = oldReverse.getFlow();
+            requestFactories.addAll(commandBuilder.buildAll(
+                    stateMachine.getCommandContext(), flow, oldReverse));
         }
 
-        if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
+        if (stateMachine.hasOldProtectedForwardPath()) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             Flow flow = oldForward.getFlow();
-            factories.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+
+            if (stateMachine.hasOldProtectedReversePath()) {
+                FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+                requestFactories.addAll(commandBuilder.buildAllExceptIngress(
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            } else {
+                requestFactories.addAll(commandBuilder.buildAllExceptIngress(
+                        stateMachine.getCommandContext(), flow, oldForward));
+            }
+        } else if (stateMachine.hasOldProtectedReversePath()) {
+            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+            Flow flow = oldReverse.getFlow();
+            requestFactories.addAll(commandBuilder.buildAllExceptIngress(
+                    stateMachine.getCommandContext(), flow, oldReverse));
         }
 
-        Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getRemoveCommands();
-        for (FlowSegmentRequestFactory factory : factories) {
-            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
-            // TODO ensure no conflicts
-            requestsStorage.put(request.getCommandId(), factory);
-            stateMachine.getCarrier().sendSpeakerRequest(request);
+        Map<UUID, FlowSegmentRequestFactory> sentRemoveRequests =
+                SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(stateMachine.getCarrier(), requestFactories);
+        stateMachine.setRemoveCommands(sentRemoveRequests);
+        stateMachine.setPendingCommands(sentRemoveRequests.keySet());
+        stateMachine.resetFailedCommandsAndRetries();
+
+        if (requestFactories.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to remove old rules");
+
+            stateMachine.fire(skipEvent);
+        } else {
+            stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
         }
-
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
-        stateMachine.getRetriedCommands().clear();
-
-        stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }
 }

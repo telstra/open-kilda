@@ -17,12 +17,28 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import org.openkilda.wfm.CommandContext;
 
-import org.squirrelframework.foundation.fsm.StateMachine;
+import lombok.Getter;
 
-public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+@Getter
+public abstract class FlowProcessingFsm<T extends WithHistorySupportFsm<T, S, E, C>, S, E, C>
         extends WithHistorySupportFsm<T, S, E, C> {
 
-    public FlowProcessingFsm(CommandContext commandContext) {
+    protected final String flowId;
+
+    protected String errorReason;
+
+    public FlowProcessingFsm(CommandContext commandContext, String flowId) {
         super(commandContext);
+        this.flowId = flowId;
+    }
+
+    protected void fireError(E errorEvent, String errorReason) {
+        if (this.errorReason != null) {
+            log.error("Subsequent error fired: " + errorReason);
+        } else {
+            this.errorReason = errorReason;
+        }
+
+        fire(errorEvent);
     }
 }

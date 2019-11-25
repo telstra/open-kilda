@@ -32,8 +32,9 @@ import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
@@ -46,26 +47,29 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFs
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
         RequestedFlow requestedFlow = stateMachine.getTargetFlow();
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(requestedFlow.getFlowEncapsulationType());
 
+        // primary path
+        if (!stateMachine.hasNewPrimaryPaths()) {
+            throw new IllegalStateException("There're no new primary paths allocated");
+        }
         FlowPath newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
         FlowPath newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(
-                commandBuilder.buildIngressOnly(
-                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
+        Collection<FlowSegmentRequestFactory> requestFactories = commandBuilder.buildIngressOnly(
+                stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse);
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 
-        SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
-                stateMachine.getCarrier(), commands, stateMachine.getIngressCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getIngressCommands().keySet());
-        stateMachine.getRetriedCommands().clear();
+        Map<UUID, FlowSegmentRequestFactory> sentInstallRequests =
+                SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(stateMachine.getCarrier(), requestFactories);
+        stateMachine.setIngressCommands(sentInstallRequests);
+        stateMachine.setPendingCommands(sentInstallRequests.keySet());
+        stateMachine.resetFailedCommandsAndRetries();
 
-        if (commands.isEmpty()) {
+        if (sentInstallRequests.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install ingress rules");
             stateMachine.fire(Event.INGRESS_IS_SKIPPED);
         } else {

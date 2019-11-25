@@ -20,7 +20,6 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -31,11 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowOperationsDashboardLogger dashboardLogger;
-
-    public OnNoPathFoundAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
+    public OnNoPathFoundAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -44,34 +40,38 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
         log.debug("Setting the flow status of {} to down", flowId);
 
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
-            flowRepository.updateStatus(flowId, FlowStatus.DOWN);
             stateMachine.setOriginalFlowStatus(null);
             stateMachine.setNewFlowStatus(FlowStatus.DOWN);
 
             Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
-            if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
-                    && stateMachine.getNewPrimaryReversePath() == null) {
-                if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
+            if (stateMachine.isReroutePrimary() && !stateMachine.hasNewPrimaryPaths()) {
+                if (!flow.hasForwardPath() && !flow.hasReversePath()) {
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have main paths", flowId);
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getForwardPathId(), flow.getReversePathId());
-                    flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
-                    flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                    if (flow.hasForwardPath()) {
+                        flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
+                    }
+                    if (flow.hasReversePath()) {
+                        flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                    }
                 }
             }
 
-            if (stateMachine.isRerouteProtected() && stateMachine.getNewProtectedForwardPath() == null
-                    && stateMachine.getNewProtectedReversePath() == null) {
-                if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
+            if (stateMachine.isRerouteProtected() && !stateMachine.hasNewProtectedPaths()) {
+                if (!flow.hasProtectedForwardPath() && !flow.hasProtectedReversePath()) {
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
                             flowId);
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
-                    flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
-                    flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                    if (flow.hasProtectedForwardPath()) {
+                        flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
+                    }
+                    if (flow.hasProtectedReversePath()) {
+                        flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                    }
                 }
             }
         });

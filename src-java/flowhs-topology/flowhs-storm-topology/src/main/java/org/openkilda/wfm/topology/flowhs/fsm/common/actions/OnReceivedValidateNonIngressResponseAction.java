@@ -13,71 +13,57 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
-import static org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.REROUTE_RETRY_LIMIT;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.Flow;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
 import java.util.UUID;
 
 @Slf4j
-public class ValidateNonIngressRulesAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class OnReceivedValidateNonIngressResponseAction
+        <T extends FlowInstallingFsm<T, S, E, C>, S, E, C extends FlowContext>
+        extends HistoryRecordingAction<T, S, E, C> {
     private final int speakerCommandRetriesLimit;
-    private FlowRepository flowRepository;
-    private FlowRerouteHubCarrier carrier;
+    private final E completeEvent;
+    private final E missingRuleEvent;
 
-    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
-
-    public ValidateNonIngressRulesAction(int speakerCommandRetriesLimit, PersistenceManager persistenceManager,
-                                         FlowRerouteHubCarrier carrier) {
+    public OnReceivedValidateNonIngressResponseAction(int speakerCommandRetriesLimit,
+                                                      E completeEvent, E missingRuleEvent) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.carrier = carrier;
+        this.completeEvent = completeEvent;
+        this.missingRuleEvent = missingRuleEvent;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getNonIngressCommands().get(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+        if (!stateMachine.isPendingCommand(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
-
+            stateMachine.removePendingCommand(commandId);
             stateMachine.saveActionToHistory("Rule was validated",
                     format("The non ingress rule has been validated successfully: switch %s, cookie %s",
                             command.getSwitchId(), command.getCookie()));
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
+            int retries = stateMachine.getCommandRetries(commandId);
             if (retries < speakerCommandRetriesLimit
                     && errorResponse.getErrorCode() != FlowErrorResponse.ErrorCode.MISSING_OF_FLOWS) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
+                stateMachine.setCommandRetries(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
                         "Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s. "
@@ -86,47 +72,30 @@ public class ValidateNonIngressRulesAction extends
 
                 stateMachine.getCarrier().sendSpeakerRequest(command.makeVerifyRequest(commandId));
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
                 stateMachine.saveErrorToHistory("Rule validation failed",
                         format("Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s",
                                 commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
-                stateMachine.getFailedValidationResponses().put(commandId, response);
+                stateMachine.addFailedValidationResponse(commandId, response);
             }
         }
 
-        if (stateMachine.getPendingCommands().isEmpty()) {
-            Collection<SpeakerFlowSegmentResponse> failedValidationResponses
-                    = stateMachine.getFailedValidationResponses().values();
-            if (failedValidationResponses.isEmpty()) {
+        if (!stateMachine.hasPendingCommands()) {
+            if (!stateMachine.hasFailedValidationResponses()) {
                 log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
-                stateMachine.fire(Event.RULES_VALIDATED);
+                stateMachine.fire(completeEvent);
             } else {
-                String flowId = stateMachine.getFlowId();
-                Flow flow = flowRepository.findById(flowId)
-                        .orElseThrow(() -> new IllegalStateException(format("Flow %s not found", flowId)));
-                boolean isTerminatingSwitchFailed = failedValidationResponses.stream()
-                        .anyMatch(errorResponse -> errorResponse.getSwitchId().equals(flow.getSrcSwitch().getSwitchId())
-                                || errorResponse.getSwitchId().equals(flow.getDestSwitch().getSwitchId()));
-                int rerouteCounter = stateMachine.getRerouteCounter();
-                if (!isTerminatingSwitchFailed && rerouteCounter < REROUTE_RETRY_LIMIT) {
-                    rerouteCounter += 1;
-                    String newReason = format("%s: retry #%d", stateMachine.getRerouteReason(), rerouteCounter);
-                    FlowRerouteFact flowRerouteFact = new FlowRerouteFact(commandIdGenerator.generate().toString(),
-                            stateMachine.getCommandContext().fork(format("retry #%d", rerouteCounter)),
-                            stateMachine.getFlowId(), stateMachine.getAffectedIsls(), stateMachine.isForceReroute(),
-                            stateMachine.isEffectivelyDown(), newReason, rerouteCounter);
-                    carrier.injectRetry(flowRerouteFact);
-                    stateMachine.saveActionToHistory("Inject reroute retry",
-                            format("Reroute counter %d", rerouteCounter));
-                }
-
-                stateMachine.saveErrorToHistory(format(
-                        "Found missing rules or received error response(s) on %d validation commands",
-                        failedValidationResponses.size()));
-                stateMachine.fire(Event.MISSING_RULE_FOUND);
+                onCompleteWithFailedCommands(stateMachine);
             }
         }
+    }
+
+    protected void onCompleteWithFailedCommands(T stateMachine) {
+        stateMachine.saveErrorToHistory(format(
+                "Found missing rules or received error response(s) on %d validation commands",
+                stateMachine.getFailedValidationResponses().size()));
+        stateMachine.fire(missingRuleEvent);
     }
 }

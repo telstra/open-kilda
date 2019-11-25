@@ -15,10 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -29,27 +28,14 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
 @Getter
 @Setter
 @Slf4j
-public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, S, E, C>
-        extends NbTrackableFsm<T, S, E, C> {
+public abstract class FlowPathSwappingFsm<T extends FlowInstallingFsm<T, S, E, C>, S, E, C>
+        extends FlowInstallingFsm<T, S, E, C> {
 
-    protected final String flowId;
-
-    protected FlowResources newPrimaryResources;
-    protected FlowResources newProtectedResources;
-    protected PathId newPrimaryForwardPath;
-    protected PathId newPrimaryReversePath;
-    protected PathId newProtectedForwardPath;
-    protected PathId newProtectedReversePath;
-
+    private FlowStatus originalFlowStatus;
     protected final Collection<FlowResources> oldResources = new ArrayList<>();
     protected PathId oldPrimaryForwardPath;
     protected FlowPathStatus oldPrimaryForwardPathStatus;
@@ -60,29 +46,43 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId oldProtectedReversePath;
     protected FlowPathStatus oldProtectedReversePathStatus;
 
-    protected final Set<UUID> pendingCommands = new HashSet<>();
-    protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
-    protected final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
-    protected final Map<UUID, SpeakerFlowSegmentResponse> failedValidationResponses = new HashMap<>();
-
-    protected final Map<UUID, FlowSegmentRequestFactory> ingressCommands = new HashMap<>();
-    protected final Map<UUID, FlowSegmentRequestFactory> nonIngressCommands = new HashMap<>();
-    protected final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
-
-    protected String errorReason;
-
     public FlowPathSwappingFsm(CommandContext commandContext, String flowId) {
-        super(commandContext);
-        this.flowId = flowId;
+        super(commandContext, flowId);
     }
 
-    public FlowSegmentRequestFactory getInstallCommand(UUID commandId) {
-        FlowSegmentRequestFactory requestFactory = nonIngressCommands.get(commandId);
-        if (requestFactory == null) {
-            requestFactory = ingressCommands.get(commandId);
-        }
-        return requestFactory;
+    public boolean hasOldPrimaryForwardPath() {
+        return oldPrimaryForwardPath != null;
     }
 
-    public abstract void fireNoPathFound(String errorReason);
+    public boolean hasOldPrimaryReversePath() {
+        return oldPrimaryReversePath != null;
+    }
+
+    public boolean hasOldProtectedForwardPath() {
+        return oldProtectedForwardPath != null;
+    }
+
+    public boolean hasOldProtectedReversePath() {
+        return oldProtectedReversePath != null;
+    }
+
+    public void resetOldPrimaryPaths() {
+        oldPrimaryForwardPath = null;
+        oldPrimaryReversePath = null;
+    }
+
+    public void resetOldProtectedPaths() {
+        oldProtectedForwardPath = null;
+        oldProtectedReversePath = null;
+    }
+
+    public void addOldResources(FlowResources resources) {
+        oldResources.add(resources);
+    }
+
+    public void resetOldResources() {
+        oldResources.clear();
+    }
+
+    public abstract FlowEncapsulationType getOriginalEncapsulationType();
 }

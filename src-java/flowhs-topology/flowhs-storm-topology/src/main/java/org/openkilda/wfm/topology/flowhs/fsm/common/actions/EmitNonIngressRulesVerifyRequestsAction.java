@@ -13,52 +13,49 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import static java.util.Collections.emptyMap;
+
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerVerifySegmentEmitter;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-public class EmitNonIngressRulesVerifyRequestsAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
+public class EmitNonIngressRulesVerifyRequestsAction<T extends FlowInstallingFsm<T, S, E, C>, S, E, C>
+        extends HistoryRecordingAction<T, S, E, C> {
+    private final E skipEvent;
+
+    public EmitNonIngressRulesVerifyRequestsAction(@NonNull E skipEvent) {
+        this.skipEvent = skipEvent;
+    }
 
     @Override
-    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getNonIngressCommands();
-        List<FlowSegmentRequestFactory> requestFactories = new ArrayList<>(requestsStorage.values());
-        requestsStorage.clear();
+    public void perform(S from, S to, E event, C context, T stateMachine) {
+        Collection<FlowSegmentRequestFactory> requestFactories = stateMachine.getNonIngressCommands().values();
+        stateMachine.resetFailedCommandsAndRetries();
 
         if (requestFactories.isEmpty()) {
+            stateMachine.setNonIngressCommands(emptyMap());
+            stateMachine.resetPendingCommands();
+
             stateMachine.saveActionToHistory("No need to validate non ingress rules");
 
-            stateMachine.fire(Event.RULES_VALIDATED);
+            stateMachine.fire(skipEvent);
         } else {
-            for (FlowSegmentRequestFactory factory : requestFactories) {
-                FlowSegmentRequest request = factory.makeVerifyRequest(commandIdGenerator.generate());
-                // TODO ensure no conflicts
-                requestsStorage.put(request.getCommandId(), factory);
-                stateMachine.getCarrier().sendSpeakerRequest(request);
-            }
+            Map<UUID, FlowSegmentRequestFactory> sentNonIngressRequests =
+                    SpeakerVerifySegmentEmitter.INSTANCE.emitBatch(stateMachine.getCarrier(), requestFactories);
+            stateMachine.setNonIngressCommands(sentNonIngressRequests);
+            stateMachine.setPendingCommands(sentNonIngressRequests.keySet());
 
             stateMachine.saveActionToHistory("Started validation of installed non ingress rules");
         }
-
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
     }
 }

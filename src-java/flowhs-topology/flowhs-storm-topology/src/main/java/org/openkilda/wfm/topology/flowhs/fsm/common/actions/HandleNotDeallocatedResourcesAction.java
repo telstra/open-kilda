@@ -13,23 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class HandleNotDeallocatedResourcesAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class HandleNotDeallocatedResourcesAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C>
+        extends HistoryRecordingAction<T, S, E, C> {
     @Override
-    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    public void perform(S from, S to, E event, C context, T stateMachine) {
         stateMachine.getOldResources().forEach(flowResources ->
                 stateMachine.saveErrorToHistory("Failed to deallocate resources",
                         format("Failed to deallocate resources: %s", flowResources)));

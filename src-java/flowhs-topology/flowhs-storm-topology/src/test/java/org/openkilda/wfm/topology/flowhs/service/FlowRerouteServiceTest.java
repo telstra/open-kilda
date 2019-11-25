@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
@@ -97,6 +98,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private static final PathId OLD_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse_old");
     private static final PathId NEW_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_forward_new");
     private static final PathId NEW_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse_new");
+    private static final PathId OLD_PROTECTED_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_protected_forward_old");
+    private static final PathId OLD_PROTECTED_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_protected_reverse_old");
+    private static final PathId NEW_PROTECTED_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_protected_forward_new");
+    private static final PathId NEW_PROTECTED_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_protected_reverse_new");
 
     @Mock
     private FlowRerouteHubCarrier carrier;
@@ -153,7 +158,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         currentRequestKey = "test-key";
 
-        for (SwitchId id : new SwitchId[] {SWITCH_1, SWITCH_2, SWITCH_3}) {
+        for (SwitchId id : new SwitchId[]{SWITCH_1, SWITCH_2, SWITCH_3}) {
             Switch entry = makeSwitch(id);
             swMap.put(id, entry);
             when(switchRepository.findById(eq(id))).thenReturn(Optional.of(entry));
@@ -261,7 +266,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldSkipRerouteIfNoNewPathFound()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
+        when(pathComputer.getPath(any(), any()))
+                .thenReturn(build2SwitchPathPair(flow.getSrcPort(), flow.getDestPort()));
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
@@ -441,20 +447,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         }).when(flowRepository).createOrUpdate(argThat(
                 hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH))));
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
-        }
+        handleRequestsWithSuccessResponses();
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -482,20 +475,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
             throw new RuntimeException("A persistence error");
         }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
-        }
+        handleRequestsWithSuccessResponses();
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -519,10 +499,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .when(flowPathRepository).delete(argThat(
                 hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH))));
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse("test_key", request);
-        }
+        handleRequestsWithSuccessResponses();
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -547,20 +524,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 hasProperty("forward",
                         hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH)))));
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
-        }
+        handleRequestsWithSuccessResponses();
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -584,10 +548,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse("test_key", request);
-        }
+        handleRequestsWithSuccessResponses();
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -747,19 +708,97 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
     }
 
+    @Test
+    public void shouldSuccessfullyRerouteFlowWithProtectedPaths()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = buildFlowWithProtectedPaths();
+        flow.setStatus(FlowStatus.DOWN);
+
+        when(pathComputer.getPath(any(), any()))
+                .thenReturn(build2SwitchPathPair(2, 3))
+                .thenReturn(build3SwitchPathPair(2, 3));
+        buildFlowResources();
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
+
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+
+        handleRequestsWithSuccessResponses();
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+        assertEquals(NEW_PROTECTED_FORWARD_FLOW_PATH, flow.getProtectedForwardPathId());
+        assertEquals(NEW_PROTECTED_REVERSE_FLOW_PATH, flow.getProtectedReversePathId());
+    }
+
+    @Test
+    public void shouldCompleteRerouteFlowWithOverlappedProtectedPaths()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = buildFlowWithProtectedPaths();
+        flow.setStatus(FlowStatus.DOWN);
+
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        buildFlowResources();
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
+
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+
+        handleRequestsWithSuccessResponses();
+
+        assertEquals(FlowStatus.DEGRADED, flow.getStatus());
+        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+        assertEquals(OLD_PROTECTED_FORWARD_FLOW_PATH, flow.getProtectedForwardPathId());
+        assertEquals(OLD_PROTECTED_REVERSE_FLOW_PATH, flow.getProtectedReversePathId());
+    }
+
+    @Test
+    public void shouldSuccessfullyRerouteFlowWithoutOldPaths()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = buildFlowWithoutPaths(SWITCH_1, SWITCH_2);
+        flow.setStatus(FlowStatus.DOWN);
+
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        buildFlowResources();
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
+
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+
+        handleRequestsWithSuccessResponses();
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    private void handleRequestsWithSuccessResponses() {
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (request.isVerifyRequest()) {
+                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
+            } else {
+                produceAsyncResponse("test_key", request);
+            }
+        }
+    }
+
     protected void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
         rerouteService.handleAsyncResponse(key, buildSpeakerResponse(flowRequest));
     }
 
     private Flow build2SwitchFlow() {
-        Switch src = swMap.get(SWITCH_1);
-        Switch dst = swMap.get(SWITCH_2);
-
-        Flow flow = Flow.builder().flowId(FLOW_ID)
-                .srcSwitch(src).destSwitch(dst)
-                .status(FlowStatus.UP)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .build();
+        Flow flow = buildFlowWithoutPaths(SWITCH_1, SWITCH_2);
+        Switch src = flow.getSrcSwitch();
+        Switch dst = flow.getDestSwitch();
 
         FlowPath oldForwardPath = FlowPath.builder()
                 .pathId(OLD_FORWARD_FLOW_PATH)
@@ -791,8 +830,110 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .build()));
         flow.setReversePath(oldReversePath);
 
-        when(flowRepository.findById(eq(flow.getFlowId()))).thenReturn(Optional.of(flow));
-        when(flowRepository.findById(eq(flow.getFlowId()), any())).thenReturn(Optional.of(flow));
+        return flow;
+    }
+
+    private Flow buildFlowWithProtectedPaths() {
+        Flow flow = buildFlowWithoutPaths(SWITCH_1, SWITCH_2);
+        flow.setAllocateProtectedPath(true);
+        Switch src = flow.getSrcSwitch();
+        Switch intermediate = swMap.get(SWITCH_3);
+        Switch dst = flow.getDestSwitch();
+
+        FlowPath oldForwardPath = FlowPath.builder()
+                .pathId(OLD_FORWARD_FLOW_PATH)
+                .flow(flow)
+                .cookie(Cookie.buildForwardCookie(2))
+                .srcSwitch(src).destSwitch(dst)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        oldForwardPath.setSegments(Collections.singletonList(PathSegment.builder()
+                .srcSwitch(src)
+                .srcPort(1)
+                .destSwitch(dst)
+                .destPort(2)
+                .build()));
+        flow.setForwardPath(oldForwardPath);
+
+        FlowPath oldReversePath = FlowPath.builder()
+                .pathId(OLD_REVERSE_FLOW_PATH)
+                .flow(flow)
+                .cookie(Cookie.buildReverseCookie(2))
+                .srcSwitch(dst).destSwitch(src)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        oldReversePath.setSegments(Collections.singletonList(PathSegment.builder()
+                .srcSwitch(dst)
+                .srcPort(2)
+                .destSwitch(src)
+                .destPort(1)
+                .build()));
+        flow.setReversePath(oldReversePath);
+
+        FlowPath oldProtectedForwardPath = FlowPath.builder()
+                .pathId(OLD_PROTECTED_FORWARD_FLOW_PATH)
+                .flow(flow)
+                .cookie(Cookie.buildForwardCookie(3))
+                .srcSwitch(src).destSwitch(dst)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        oldProtectedForwardPath.setSegments(asList(
+                PathSegment.builder()
+                        .srcSwitch(src)
+                        .srcPort(1)
+                        .destSwitch(intermediate)
+                        .destPort(3)
+                        .build(),
+                PathSegment.builder()
+                        .srcSwitch(intermediate)
+                        .srcPort(4)
+                        .destSwitch(dst)
+                        .destPort(2)
+                        .build()
+        ));
+        flow.setProtectedForwardPath(oldProtectedForwardPath);
+
+        FlowPath oldProtectedReversePath = FlowPath.builder()
+                .pathId(OLD_PROTECTED_REVERSE_FLOW_PATH)
+                .flow(flow)
+                .cookie(Cookie.buildReverseCookie(3))
+                .srcSwitch(dst).destSwitch(src)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        oldProtectedReversePath.setSegments(asList(
+                PathSegment.builder()
+                        .srcSwitch(dst)
+                        .srcPort(2)
+                        .destSwitch(intermediate)
+                        .destPort(4)
+                        .build(),
+                PathSegment.builder()
+                        .srcSwitch(intermediate)
+                        .srcPort(3)
+                        .destSwitch(src)
+                        .destPort(1)
+                        .build()
+        ));
+        flow.setProtectedReversePath(oldProtectedReversePath);
+
+        return flow;
+    }
+
+    private Flow buildFlowWithoutPaths(SwitchId srcSwitchId, SwitchId destSwitchId) {
+        Switch src = swMap.get(srcSwitchId);
+        Switch dst = swMap.get(destSwitchId);
+
+        Flow flow = Flow.builder().flowId(FLOW_ID)
+                .srcSwitch(src)
+                .srcPort(1)
+                .destSwitch(dst)
+                .destPort(2)
+                .status(FlowStatus.UP)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
+
+        when(flowRepository.findById(any())).thenReturn(Optional.of(flow));
+        when(flowRepository.findById(any(), any())).thenReturn(Optional.of(flow));
 
         doAnswer(invocation -> {
             FlowStatus status = invocation.getArgument(1);
@@ -876,8 +1017,14 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private FlowResources buildFlowResources() throws ResourceAllocationException {
         FlowResources original = makeFlowResources(FLOW_ID, OLD_FORWARD_FLOW_PATH, OLD_REVERSE_FLOW_PATH);
         FlowResources target = makeFlowResources(FLOW_ID, NEW_FORWARD_FLOW_PATH, NEW_REVERSE_FLOW_PATH, original);
+        FlowResources oldProtectedPathResources = makeFlowResources(FLOW_ID, OLD_PROTECTED_FORWARD_FLOW_PATH,
+                OLD_PROTECTED_REVERSE_FLOW_PATH, target);
+        FlowResources protectedPathResources = makeFlowResources(FLOW_ID, NEW_PROTECTED_FORWARD_FLOW_PATH,
+                NEW_PROTECTED_REVERSE_FLOW_PATH, oldProtectedPathResources);
 
-        when(flowResourcesManager.allocateFlowResources(any())).thenReturn(target);
+        when(flowResourcesManager.allocateFlowResources(any()))
+                .thenReturn(target)
+                .thenReturn(protectedPathResources);
 
         return target;
     }
@@ -895,19 +1042,19 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         FlowResources resources = FlowResources.builder()
                 .unmaskedCookie(extractLastAllocatedCookie(lastAllocated).getValue())
                 .forward(PathResources.builder()
-                                 .pathId(forward)
-                                 .meterId(allocateForwardMeterId(lastAllocated))
-                                 .encapsulationResources(
-                                         makeTransitVlanResources(flowId, forward,
-                                                                  allocateForwardTransitVlanId(lastAllocated)))
-                                 .build())
+                        .pathId(forward)
+                        .meterId(allocateForwardMeterId(lastAllocated))
+                        .encapsulationResources(
+                                makeTransitVlanResources(flowId, forward,
+                                        allocateForwardTransitVlanId(lastAllocated)))
+                        .build())
                 .reverse(PathResources.builder()
-                                 .pathId(reverse)
-                                 .meterId(allocateReverseMeterId(lastAllocated))
-                                 .encapsulationResources(
-                                         makeTransitVlanResources(flowId, reverse,
-                                                                  allocateReverseTransitVlanId(lastAllocated)))
-                                 .build())
+                        .pathId(reverse)
+                        .meterId(allocateReverseMeterId(lastAllocated))
+                        .encapsulationResources(
+                                makeTransitVlanResources(flowId, reverse,
+                                        allocateReverseTransitVlanId(lastAllocated)))
+                        .build())
                 .build();
 
         when(flowResourcesManager.getEncapsulationResources(

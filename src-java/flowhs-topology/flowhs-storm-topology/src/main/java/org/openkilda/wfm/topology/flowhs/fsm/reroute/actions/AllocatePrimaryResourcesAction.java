@@ -92,9 +92,7 @@ public class AllocatePrimaryResourcesAction extends
 
     @Override
     protected void onFailure(FlowRerouteFsm stateMachine) {
-        stateMachine.setNewPrimaryResources(null);
-        stateMachine.setNewPrimaryForwardPath(null);
-        stateMachine.setNewPrimaryReversePath(null);
+        stateMachine.resetNewPrimaryPathsAndResources();
     }
 
     @Override

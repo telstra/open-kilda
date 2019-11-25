@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
+import static java.util.Collections.emptyMap;
+
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -34,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 public class InstallNonIngressRulesAction
@@ -48,35 +52,42 @@ public class InstallNonIngressRulesAction
     @Override
     protected void perform(State from, State to,
                            Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
         RequestedFlow requestedFlow = stateMachine.getTargetFlow();
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(requestedFlow.getFlowEncapsulationType());
 
         // primary path
+        if (!stateMachine.hasNewPrimaryPaths()) {
+            throw new IllegalStateException("There're no new primary paths allocated");
+        }
         FlowPath newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
         FlowPath newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAllExceptIngress(
+        Collection<FlowSegmentRequestFactory> requestFactories = new ArrayList<>(commandBuilder.buildAllExceptIngress(
                 stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
 
         // protected path
-        if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
+        if (stateMachine.hasNewProtectedPaths()) {
             FlowPath newProtectedForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newProtectedReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            commands.addAll(commandBuilder.buildAllExceptIngress(
+            requestFactories.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newProtectedForward, newProtectedReverse));
         }
 
-        // emitting
-        SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
-                stateMachine.getCarrier(), commands, stateMachine.getNonIngressCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getNonIngressCommands().keySet());
+        stateMachine.resetFailedCommandsAndRetries();
 
-        if (commands.isEmpty()) {
+        if (requestFactories.isEmpty()) {
+            stateMachine.setNonIngressCommands(emptyMap());
+            stateMachine.resetPendingCommands();
+
             stateMachine.saveActionToHistory("No need to install non ingress rules");
             stateMachine.fire(Event.RULES_INSTALLED);
         } else {
+            Map<UUID, FlowSegmentRequestFactory> sentInstallRequests =
+                    SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(stateMachine.getCarrier(), requestFactories);
+            stateMachine.setNonIngressCommands(sentInstallRequests);
+            stateMachine.setPendingCommands(sentInstallRequests.keySet());
+
             stateMachine.saveActionToHistory("Commands for installing non ingress rules have been sent");
         }
     }

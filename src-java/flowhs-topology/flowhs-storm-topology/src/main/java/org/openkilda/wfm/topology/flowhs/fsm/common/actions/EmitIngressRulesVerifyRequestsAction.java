@@ -13,43 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowInstallingFsm;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerVerifySegmentEmitter;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-public class EmitIngressRulesVerifyRequestsAction
-        extends HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
-
+public class EmitIngressRulesVerifyRequestsAction<T extends FlowInstallingFsm<T, S, E, C>, S, E, C>
+        extends HistoryRecordingAction<T, S, E, C> {
     @Override
-    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getIngressCommands();
-        List<FlowSegmentRequestFactory> requestFactories = new ArrayList<>(requestsStorage.values());
-        requestsStorage.clear();
-        for (FlowSegmentRequestFactory factory : requestFactories) {
-            FlowSegmentRequest request = factory.makeVerifyRequest(commandIdGenerator.generate());
-            // TODO ensure no conflicts
-            requestsStorage.put(request.getCommandId(), factory);
-            stateMachine.getCarrier().sendSpeakerRequest(request);
-        }
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
+    public void perform(S from, S to, E event, C context, T stateMachine) {
+        Collection<FlowSegmentRequestFactory> requestFactories = stateMachine.getIngressCommands().values();
+        Map<UUID, FlowSegmentRequestFactory> sentVerifyRequests =
+                SpeakerVerifySegmentEmitter.INSTANCE.emitBatch(stateMachine.getCarrier(), requestFactories);
+        stateMachine.setIngressCommands(sentVerifyRequests);
+        stateMachine.setPendingCommands(sentVerifyRequests.keySet());
+        stateMachine.resetFailedCommandsAndRetries();
 
         stateMachine.saveActionToHistory("Started validation of installed ingress rules");
     }
