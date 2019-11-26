@@ -65,7 +65,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.id)
 
         cleanup:
         flOut && lockKeeper.reviveFloodlight()

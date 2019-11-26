@@ -7,7 +7,6 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -56,7 +55,7 @@ class ContentionV2Spec extends BaseSpecification {
 
     def "Parallel flow crud requests properly allocate/deallocate bandwidth resources"() {
         when: "Create multiple flows on the same ISLs concurrently"
-        def flowsAmount = 6
+        def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
         List<FlowRequestV2> flows = []
         flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false , flows) }
@@ -85,10 +84,12 @@ class ContentionV2Spec extends BaseSpecification {
         deleteTasks*.join()
 
         then: "Available bandwidth on all related isls is reverted back to normal"
-        relatedIsls.each {
-            verifyAll(northbound.getLink(it)) {
-                availableBandwidth == maxBandwidth
-                maxBandwidth == speed
+        Wrappers.wait(3) {
+            relatedIsls.each {
+                verifyAll(northbound.getLink(it)) {
+                    availableBandwidth == maxBandwidth
+                    maxBandwidth == speed
+                }
             }
         }
     }
