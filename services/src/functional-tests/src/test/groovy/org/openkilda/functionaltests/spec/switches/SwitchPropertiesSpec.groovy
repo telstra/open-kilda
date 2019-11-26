@@ -1,12 +1,16 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import org.springframework.http.HttpStatus
@@ -18,9 +22,12 @@ and deleted once switch is deleted.
 Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
 Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
 class SwitchPropertiesSpec extends HealthCheckSpecification {
+
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to manipulate with switch properties"() {
-        given: "A switch with switch feature on it"
-        def sw = topology.activeSwitches.first()
+        given: "A switch that supports VXLAN"
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        assumeTrue("Wasn't able to find vxlan-enabled switch", sw as boolean)
         def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
         assert initSwitchProperties.multiTable != null
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
@@ -28,13 +35,13 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         when: "Update switch properties"
         SwitchPropertiesDto switchProperties = new SwitchPropertiesDto()
         def newMultiTable = !initSwitchProperties.multiTable
-        def newTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase()]
+        def newTransitEncapsulation = (initSwitchProperties.supportedTransitEncapsulation.size() == 1) ?
+                [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(),
+                 FlowEncapsulationType.VXLAN.toString().toLowerCase()].sort() :
+                [FlowEncapsulationType.VXLAN.toString().toLowerCase()]
         switchProperties.multiTable = newMultiTable
         switchProperties.supportedTransitEncapsulation = newTransitEncapsulation
-        def updateSwPropertiesResponse = northbound.updateSwitchProperties(sw.dpId, switchProperties)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-        }
+        def updateSwPropertiesResponse = SwitchHelper.updateSwitchProperties(sw, switchProperties)
 
         then: "Correct response is returned"
         updateSwPropertiesResponse.multiTable == newMultiTable
@@ -47,10 +54,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore init switch properties on the switch"
-        northbound.updateSwitchProperties(sw.dpId, initSwitchProperties)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-        }
+        SwitchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
 
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
@@ -97,38 +101,25 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         null                          | "Supported transit encapsulations should not be null or empty"
     }
 
-    def "Unable to create a transit_vlan flow in case switch property doesn't support this type of encapsulation"() {
-        given: "A switch pair"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+    @Tidy
+    def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
+        given: "Switch that does not support VXLAN feature"
+        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        assumeTrue("There is no non-vxlan switch in the topology", sw as boolean)
 
-        and: "Switch properties on the src switch"
-        def initSwitchProperties = northbound.getSwitchProperties(switchPair.src.dpId)
+        when: "Try to turn on VXLAN encap type on that switch"
+        def initProps = northbound.getSwitchProperties(sw.dpId)
+        northbound.updateSwitchProperties(sw.dpId, initProps.jacksonCopy().tap {
+            it.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+        })
 
-        and: "Disable TRANSIT_VLAN encapsulation on the src switch"
-        def newSwitchProperties = new SwitchPropertiesDto()
-        newSwitchProperties.supportedTransitEncapsulation = []
-        northbound.updateSwitchProperties(switchPair.src.dpId, newSwitchProperties)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie.sort() ==
-                    switchPair.src.defaultCookies.sort()
-        }
+        then: "Error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.BAD_REQUEST
+        e.responseBodyAsString.to(MessageError).errorDescription ==
+                "Switch $sw.dpId doesn't support requested feature NOVIFLOW_COPY_FIELD"
 
-        when: "Try to create a flow with TRANSIT_VLAN encapsulation"
-        def flow = flowHelper.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-        flowHelper.addFlow(flow)
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains(
-                "Could not create flow: Not enough bandwidth found or path not found.")
-
-        cleanup: "Restore switch property on the switch"
-        northbound.updateSwitchProperties(switchPair.src.dpId, initSwitchProperties)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie.sort() ==
-                    switchPair.src.defaultCookies.sort()
-        }
+        cleanup:
+        !e && SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 }
