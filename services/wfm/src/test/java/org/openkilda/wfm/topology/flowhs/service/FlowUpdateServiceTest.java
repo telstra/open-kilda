@@ -84,6 +84,8 @@ import java.util.Optional;
 @RunWith(MockitoJUnitRunner.class)
 public class FlowUpdateServiceTest extends AbstractFlowTest {
     private static final int TRANSACTION_RETRIES_LIMIT = 3;
+    private static final int PATH_ALLOCATION_RETRIES_LIMIT = 3;
+    private static final int PATH_ALLOCATION_RETRY_DELAY = 0;
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 0;
     private static final String FLOW_ID = "TEST_FLOW";
     private static final SwitchId SWITCH_1 = new SwitchId(1);
@@ -99,6 +101,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     private FlowUpdateHubCarrier carrier;
     @Mock
     private CommandContext commandContext;
+
+    private FlowUpdateService updateService;
 
     @Before
     public void setUp() {
@@ -136,6 +140,10 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
+
+        updateService = new FlowUpdateService(carrier, persistenceManager,
+                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
+                PATH_ALLOCATION_RETRIES_LIMIT, PATH_ALLOCATION_RETRY_DELAY, SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 
     @Test
@@ -144,9 +152,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenThrow(new UnroutableFlowException("No path found"));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -182,9 +187,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(flowResourcesManager.allocateFlowResources(any()))
                 .thenThrow(new ResourceAllocationException("No resources"));
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -219,9 +221,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         buildFlowResources();
         doThrow(new RuntimeException("Must fail")).when(flowPathRepository).lockInvolvedSwitches(any(), any());
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -252,9 +251,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -306,9 +302,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -352,9 +345,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -407,9 +397,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -453,9 +440,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -518,9 +502,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -574,9 +555,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -625,9 +603,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -681,9 +656,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_3, 11, SWITCH_4, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -730,9 +702,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
