@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import spock.lang.Narrative
@@ -342,7 +343,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags([HARDWARE, SMOKE])
     def "Flow is not rerouted when one of the flow ports goes down"() {
         given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
+        def (FlowRequestV2 flow, List<List<PathNode>> allFlowPaths) = intermediateSwitchFlow(1, true)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -350,21 +351,21 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Bring the flow port down on the source switch"
-        antiflap.portDown(flow.source.datapath, flow.source.portNumber)
+        antiflap.portDown(flow.source.switchId, flow.source.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         when: "Bring the flow port down on the destination switch"
-        antiflap.portDown(flow.destination.datapath, flow.destination.portNumber)
+        antiflap.portDown(flow.destination.switchId, flow.destination.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         and: "Bring flow ports up and delete the flow"
-        ["source", "destination"].each { antiflap.portUp(flow."$it".datapath, flow."$it".portNumber) }
+        ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
