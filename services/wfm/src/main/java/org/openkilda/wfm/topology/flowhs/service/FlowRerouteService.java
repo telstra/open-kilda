@@ -55,7 +55,8 @@ public class FlowRerouteService {
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
-                              int transactionRetriesLimit, int speakerCommandRetriesLimit) {
+                              int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                              int speakerCommandRetriesLimit) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
         flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
@@ -64,7 +65,8 @@ public class FlowRerouteService {
         this.transactionRetriesLimit = transactionRetriesLimit;
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                transactionRetriesLimit, speakerCommandRetriesLimit);
+                transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                speakerCommandRetriesLimit);
     }
 
     /**
