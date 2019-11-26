@@ -19,8 +19,8 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
-public class IslMoveCommand extends IslCommand {
-    public IslMoveCommand(Endpoint endpoint, IslReference reference) {
+public class IslPossibleMoveCommand extends IslCommand {
+    public IslPossibleMoveCommand(Endpoint endpoint, IslReference reference) {
         super(endpoint, reference);
     }
 

@@ -291,6 +291,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         topology.setBolt(IslHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(UniIslHandler.BOLT_ID, islGrouping)
                 .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_ISL_ID, islGrouping)
+                .allGrouping(UniIslHandler.BOLT_ID, UniIslHandler.STREAM_BCAST_ID)
                 .directGrouping(SpeakerRulesWorker.BOLT_ID, SpeakerRulesWorker.STREAM_HUB_ID);
     }
 

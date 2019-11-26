@@ -94,6 +94,20 @@ public class IslReference {
         return source.getDatapath().equals(dest.getDatapath());
     }
 
+    /**
+     *  Returns endpoint that belongs to both references.
+     * @param that reference
+     * @return same endpoint
+     */
+    public Endpoint getSameEndpoint(IslReference that) {
+        if (source.equals(that.source) || source.equals(that.dest)) {
+            return source;
+        } else if (dest.equals(that.dest) || dest.equals(that.source)) {
+            return dest;
+        }
+        return null;
+    }
+
     @Override
     public String toString() {
         return String.format("%s <===> %s", source, dest);

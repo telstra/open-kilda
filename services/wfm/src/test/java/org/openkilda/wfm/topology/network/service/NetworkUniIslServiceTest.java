@@ -189,7 +189,7 @@ public class NetworkUniIslServiceTest {
 
         System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslMove(endpoint1, IslReference.of(islAtoB));
+        verify(carrier).notifyIslPossibleMove(endpoint1, IslReference.of(islAtoB));
         verify(carrier).notifyIslUp(endpoint1, IslReference.of(islAtoB3), new IslDataHolder(islAtoB2));
         verify(carrier).notifyIslUp(endpoint2, IslReference.of(islAtoB2), new IslDataHolder(islAtoB2));
 
@@ -228,7 +228,7 @@ public class NetworkUniIslServiceTest {
         //System.out.println(mockingDetails(carrier).printInvocations());
 
         verify(carrier).notifyIslUp(endpoint1, IslReference.of(islA1toB1), new IslDataHolder(islA1toB1));
-        verify(carrier).notifyIslMove(endpoint1, IslReference.of(islA1toB1));
+        verify(carrier).notifyIslPossibleMove(endpoint1, IslReference.of(islA1toB1));
         verify(carrier).notifyIslUp(endpoint1, IslReference.of(islA1toB3), new IslDataHolder(islA1toB3));
     }
 
@@ -411,7 +411,7 @@ public class NetworkUniIslServiceTest {
         Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
         service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
 
-        verify(carrier).notifyIslMove(endpointAlpha1, new IslReference(endpointAlpha1, endpointBeta3));
+        verify(carrier).notifyIslPossibleMove(endpointAlpha1, new IslReference(endpointAlpha1, endpointBeta3));
         verifyNoMoreInteractions(carrier);
 
         reset(carrier);
@@ -450,7 +450,7 @@ public class NetworkUniIslServiceTest {
         // discovery (self-loop)
         Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
         service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
-        verify(carrier).notifyIslMove(endpointAlpha1, reference);
+        verify(carrier).notifyIslPossibleMove(endpointAlpha1, reference);
         verifyNoMoreInteractions(carrier);
         reset(carrier);
 

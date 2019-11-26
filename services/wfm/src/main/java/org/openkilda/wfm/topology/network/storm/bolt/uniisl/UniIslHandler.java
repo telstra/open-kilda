@@ -29,7 +29,7 @@ import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDownCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslMoveCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslPossibleMoveCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslSetupFromHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
@@ -44,6 +44,7 @@ import org.apache.storm.tuple.Values;
 public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     public static final String BOLT_ID = ComponentId.UNI_ISL_HANDLER.toString();
 
+    public static final String STREAM_BCAST_ID = "notification";
     public static final String FIELD_ID_ISL_SOURCE = SpeakerRouter.FIELD_ID_ISL_SOURCE;
     public static final String FIELD_ID_ISL_DEST = SpeakerRouter.FIELD_ID_ISL_DEST;
     public static final String FIELD_ID_COMMAND = SpeakerRouter.FIELD_ID_COMMAND;
@@ -85,6 +86,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
+        streamManager.declareStream(STREAM_BCAST_ID, STREAM_FIELDS);
         // TODO
     }
 
@@ -104,8 +106,8 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     }
 
     @Override
-    public void notifyIslMove(Endpoint endpoint, IslReference reference) {
-        emit(getCurrentTuple(), makeDefaultTuple(new IslMoveCommand(endpoint, reference)));
+    public void notifyIslPossibleMove(Endpoint endpoint, IslReference reference) {
+        emit(STREAM_BCAST_ID, getCurrentTuple(), makeDefaultTuple(new IslPossibleMoveCommand(endpoint, reference)));
     }
 
     private Values makeDefaultTuple(IslCommand command) {

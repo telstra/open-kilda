@@ -37,7 +37,11 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class NetworkIslService {
@@ -111,9 +115,16 @@ public class NetworkIslService {
      */
     public void islMove(Endpoint endpoint, IslReference reference) {
         log.debug("ISL service receive MOVED(FAIL) notification for {} (on {})", reference, endpoint);
-        IslFsm islFsm = locateController(reference).fsm;
-        IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
-        controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
+        Set<IslController> affectedControllers = new HashSet<>();
+        affectedControllers.addAll(locateControllersByEndpoint(reference.getSource()));
+        affectedControllers.addAll(locateControllersByEndpoint(reference.getDest()));
+        for (IslController controller : affectedControllers) {
+            IslFsm islFsm = controller.fsm;
+            Endpoint targetEndpoint = islFsm.getDiscoveryFacts().getReference().getSameEndpoint(reference);
+            IslFsmContext context = IslFsmContext.builder(carrier, targetEndpoint).build();
+            controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
+        }
+
     }
 
     /**
@@ -229,6 +240,14 @@ public class NetworkIslService {
             throw new IllegalStateException(String.format("ISL FSM for %s already exist (it's state is %s)",
                                                           reference, islController.fsm.getCurrentState()));
         }
+    }
+
+    private List<IslController> locateControllersByEndpoint(Endpoint endpoint) {
+        List<IslController> affectedControllers = controller.entrySet()
+                .stream()
+                .filter(e -> e.getKey().getSource().equals(endpoint) || e.getKey().getDest().equals(endpoint))
+                .map(e -> e.getValue()).collect(Collectors.toList());
+        return affectedControllers;
     }
 
     private IslController locateController(IslReference reference) {

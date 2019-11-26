@@ -29,6 +29,6 @@ public interface IUniIslCarrier {
 
     void notifyIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason);
 
-    void notifyIslMove(Endpoint endpoint, IslReference reference);
+    void notifyIslPossibleMove(Endpoint endpoint, IslReference reference);
 
 }

@@ -118,6 +118,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         this.options = options;
     }
 
+    public DiscoveryFacts getDiscoveryFacts() {
+        return discoveryFacts;
+    }
+
     // -- FSM actions --
 
     public void handleHistory(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -850,9 +854,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             builder.transition()
                     .from(IslFsmState.MOVED).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
                     .callMethod(updateEndpointStatusMethod);
-            builder.internalTransition()
-                    .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_DOWN)
-                    .callMethod(updateAndPersistEndpointStatusMethod);
             builder.internalTransition()
                     .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_REMOVE)
                     .callMethod("removeAttempt");

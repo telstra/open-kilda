@@ -85,11 +85,12 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
     }
 
     public void handleMoved(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
-        if (!islReference.isIncomplete()) {
-            emitIslMove(context);
-        } else {
-            log.debug("Do not emit ISL move for incomplete ISL reference {}", islReference);
+        IslReference reference = islReference;
+        if (islReference.isIncomplete()) {
+            reference = IslReference.of(context.getDiscoveryEvent());
+            log.debug("Replacing reference {} with discovery event payload link {}", reference, islReference);
         }
+        emitIslMove(context, reference);
     }
 
     public void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
@@ -121,8 +122,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         context.getOutput().notifyIslDown(endpoint, islReference, reason);
     }
 
-    private void emitIslMove(UniIslFsmContext context) {
-        context.getOutput().notifyIslMove(endpoint, islReference);
+    private void emitIslMove(UniIslFsmContext context, IslReference reference) {
+        context.getOutput().notifyIslPossibleMove(endpoint, reference);
     }
 
     private IslDownReason mapDownReason(UniIslFsmEvent event) {

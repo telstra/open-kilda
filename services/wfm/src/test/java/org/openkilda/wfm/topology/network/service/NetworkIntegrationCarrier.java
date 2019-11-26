@@ -205,7 +205,7 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void notifyIslMove(Endpoint endpoint, IslReference reference) {
+    public void notifyIslPossibleMove(Endpoint endpoint, IslReference reference) {
         islService.islMove(endpoint, reference);
     }
 

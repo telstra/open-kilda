@@ -26,6 +26,50 @@ class IslReplugSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    def "ISL status changes to MOVED when replugging ISL into another switch in case of partial discovery"() {
+        given: "A connected a-switch link"
+        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
+        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
+
+        and: "A non-connected a-switch link"
+        def notConnectedIsl = topology.notConnectedIsls.find {
+            it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
+        }
+        assumeTrue("Wasn't able to find enough of required a-switch links", notConnectedIsl.asBoolean())
+
+        when: "Replug one end of the connected link to the not connected one"
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+        lockKeeper.removeFlows([newIsl.aswitch])
+
+        then: "Replugged ISL status changes to MOVED"
+        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
+
+        and: "New ISL becomes FAILED"
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], FAILED)
+
+        when: "Restore back disco for replugged isl"
+        lockKeeper.addFlows([newIsl.aswitch])
+
+        then: "New ISL becomes FAILED"
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+
+        when: "Replug the link back where it was"
+        islUtils.replug(newIsl, true, isl, false)
+
+        then: "Original ISL becomes DISCOVERED again"
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+
+        and: "Replugged ISL status changes to MOVED"
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+
+        and: "MOVED ISL can be deleted"
+        assert northbound.deleteLink(islUtils.toLinkParameters(newIsl)).size() == 2
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !islUtils.getIslInfo(newIsl).isPresent()
+            assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
+        }
+    }
+
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
