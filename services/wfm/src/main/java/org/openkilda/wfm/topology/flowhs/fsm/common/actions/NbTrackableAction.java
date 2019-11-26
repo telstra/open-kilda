@@ -40,23 +40,20 @@ public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C>, S,
 
     @Override
     protected final void perform(S from, S to, E event, C context, T stateMachine) {
-        Optional<Message> message = Optional.empty();
         try {
-            message = performWithResponse(from, to, event, context, stateMachine);
-        } catch (FlowProcessingException ex) {
-            String errorMessage = format("%s. %s", ex.getErrorMessage(), ex.getErrorDescription());
-            stateMachine.saveActionToHistory(errorMessage);
-            message = Optional.of(buildErrorMessage(stateMachine, ex.getErrorType(), ex.getErrorMessage(),
-                    ex.getErrorDescription()));
-            stateMachine.fireError(errorMessage);
+            performWithResponse(from, to, event, context, stateMachine).ifPresent(stateMachine::sendResponse);
         } catch (Exception ex) {
-            String errorMessage = format("%s. %s", getGenericErrorMessage(), ex.getMessage());
+            String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
-            message = Optional.of(buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), ex.getMessage()));
             stateMachine.fireError(errorMessage);
-        } finally {
-            message.ifPresent(stateMachine::sendResponse);
+
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            if (ex instanceof FlowProcessingException) {
+                errorType = ((FlowProcessingException) ex).getErrorType();
+            }
+
+            stateMachine.sendResponse(buildErrorMessage(stateMachine, errorType,
+                    getGenericErrorMessage(), ex.getMessage()));
         }
     }
 
@@ -68,4 +65,10 @@ public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C>, S,
         ErrorData error = new ErrorData(errorType, errorMessage, errorDescription);
         return new ErrorMessage(error, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }
+
+    /**
+     * Returns a message for generic error that may happen during action execution.
+     * The message is being returned as the execution result.
+     */
+    protected abstract String getGenericErrorMessage();
 }

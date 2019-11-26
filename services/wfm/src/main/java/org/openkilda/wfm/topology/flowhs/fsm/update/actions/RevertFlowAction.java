@@ -61,13 +61,13 @@ public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State,
         RequestedFlow originalFlow = stateMachine.getOriginalFlow();
 
         Switch srcSwitch = switchRepository.findById(originalFlow.getSrcSwitch())
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Switch %s not found", originalFlow.getSrcSwitch())));
         flow.setSrcSwitch(srcSwitch);
         flow.setSrcPort(originalFlow.getSrcPort());
         flow.setSrcVlan(originalFlow.getSrcVlan());
         Switch destSwitch = switchRepository.findById(originalFlow.getDestSwitch())
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Switch %s not found", originalFlow.getDestSwitch())));
         flow.setDestSwitch(destSwitch);
         flow.setDestPort(originalFlow.getDestPort());

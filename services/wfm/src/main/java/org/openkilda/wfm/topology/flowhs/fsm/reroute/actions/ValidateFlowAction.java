@@ -70,7 +70,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        getGenericErrorMessage(), format("Flow %s is in progress now", flowId));
+                        format("Flow %s is in progress now", flowId));
             }
 
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
@@ -100,17 +100,16 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 | pathsToReroute.remove(flow.getProtectedReversePathId()));
 
         if (!pathsToReroute.isEmpty()) {
-            throw new FlowProcessingException(ErrorType.NOT_FOUND,
-                    getGenericErrorMessage(), format("Path(s) %s was not found in flow %s",
-                    pathsToReroute.stream().map(PathId::toString).collect(Collectors.joining(",")),
-                    flowId));
+            throw new FlowProcessingException(ErrorType.NOT_FOUND, format("Path(s) %s was not found in flow %s",
+                            pathsToReroute.stream().map(PathId::toString).collect(Collectors.joining(",")),
+                            flowId));
         }
 
         stateMachine.setReroutePrimary(reroutePrimary);
         stateMachine.setRerouteProtected(rerouteProtected);
 
         if (stateMachine.isRerouteProtected() && flow.isPinned()) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID, getGenericErrorMessage(),
+            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                     format("Flow %s is pinned, fail to reroute its protected paths", flowId));
         }
 
