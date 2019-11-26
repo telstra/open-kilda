@@ -73,8 +73,7 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
     protected void saveRemovalActionWithDumpToHistory(T stateMachine, Flow flow, FlowPathPair pathPair) {
         FlowDumpData flowDumpData =
                 HistoryMapper.INSTANCE.map(flow, pathPair.getForward(), pathPair.getReverse(), DumpType.STATE_BEFORE);
-        stateMachine.saveActionWithDumpToHistory(
-                "Flow paths were removed",
+        stateMachine.saveActionWithDumpToHistory("Flow paths were removed",
                 format("The flow paths %s / %s were removed", pathPair.getForwardPathId(), pathPair.getReversePathId()),
                 flowDumpData);
     }

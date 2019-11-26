@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.wfm.topology.flowhs.fsm.common.WithHistorySupportFsm;
 
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +30,7 @@ public abstract class HistoryRecordingAction<T extends WithHistorySupportFsm<T, 
         try {
             perform(from, to, event, context, stateMachine);
         } catch (Exception ex) {
-            String errorMessage = "Processing failure: " + ex.getMessage();
+            String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
         }

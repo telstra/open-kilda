@@ -46,7 +46,7 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             String flowId = stateMachine.getFlowId();
             if (!flowRepository.exists(flowId)) {
-                throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                throw new FlowProcessingException(ErrorType.NOT_FOUND,
                         "Couldn't complete flow creation. The flow was deleted");
             }
 

@@ -51,7 +51,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         try {
             perform(from, to, event, context, stateMachine);
         } catch (Exception ex) {
-            String errorMessage = format("%s. %s", getGenericErrorMessage(), ex.getMessage());
+            String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
         }
@@ -61,33 +61,25 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected Flow getFlow(String flowId) {
         return flowRepository.findById(flowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
     }
 
     protected Flow getFlow(String flowId, FetchStrategy fetchStrategy) {
         return flowRepository.findById(flowId, fetchStrategy)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
     }
 
     protected FlowPath getFlowPath(Flow flow, PathId pathId) {
         return flow.getPath(pathId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow path %s not found", pathId)));
     }
 
     protected FlowPath getFlowPath(PathId pathId) {
         return flowPathRepository.findById(pathId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow path %s not found", pathId)));
-    }
-
-    /**
-     * Returns a message for generic error that may happen during action execution.
-     * The message is being returned as the execution result.
-     */
-    protected String getGenericErrorMessage() {
-        return "Failed to process flow request";
     }
 }

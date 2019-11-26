@@ -97,13 +97,13 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
 
         Switch srcSwitch = switchRepository.findById(targetFlow.getSrcSwitch())
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        getGenericErrorMessage(), format("Switch %s not found", targetFlow.getSrcSwitch())));
+                        format("Switch %s not found", targetFlow.getSrcSwitch())));
         flow.setSrcSwitch(srcSwitch);
         flow.setSrcPort(targetFlow.getSrcPort());
         flow.setSrcVlan(targetFlow.getSrcVlan());
         Switch destSwitch = switchRepository.findById(targetFlow.getDestSwitch())
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        getGenericErrorMessage(), format("Switch %s not found", targetFlow.getDestSwitch())));
+                        format("Switch %s not found", targetFlow.getDestSwitch())));
         flow.setDestSwitch(destSwitch);
         flow.setDestPort(targetFlow.getDestPort());
         flow.setDestVlan(targetFlow.getDestVlan());
@@ -133,6 +133,12 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         log.debug("Getting flow group for flow with id {}", flowId);
         return flowRepository.getOrCreateFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        getGenericErrorMessage(), format("Flow %s not found", flowId)));
+                        format("Flow %s not found", flowId)));
+    }
+
+
+    @Override
+    protected String getGenericErrorMessage() {
+        return "Could not update flow";
     }
 }

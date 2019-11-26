@@ -23,22 +23,16 @@ import lombok.Getter;
 public class FlowProcessingException extends RuntimeException {
 
     private final ErrorType errorType;
-    private final String errorMessage;
-    private final String errorDescription;
 
-    public FlowProcessingException(ErrorType errorType, String errorMessage, String errorDescription) {
+    public FlowProcessingException(ErrorType errorType, String errorMessage) {
         super(errorMessage);
 
         this.errorType = errorType;
-        this.errorMessage = errorMessage;
-        this.errorDescription = errorDescription;
     }
 
-    public FlowProcessingException(ErrorType errorType, String errorMessage, String errorDescription, Throwable cause) {
+    public FlowProcessingException(ErrorType errorType, String errorMessage, Throwable cause) {
         super(errorMessage, cause);
 
         this.errorType = errorType;
-        this.errorMessage = errorMessage;
-        this.errorDescription = errorDescription;
     }
 }
