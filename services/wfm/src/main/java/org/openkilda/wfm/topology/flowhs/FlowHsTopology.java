@@ -138,6 +138,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         FlowUpdateConfig config = FlowUpdateConfig.flowUpdateBuilder()
                 .transactionRetriesLimit(topologyConfig.getHubTransactionRetries())
+                .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
+                .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
                 .speakerCommandRetriesLimit(topologyConfig.getUpdateSpeakerCommandRetries())
                 .autoAck(true)
                 .timeoutMs(hubTimeout)
@@ -161,6 +163,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         FlowRerouteConfig config = FlowRerouteConfig.flowRerouteBuilder()
                 .transactionRetriesLimit(topologyConfig.getHubTransactionRetries())
+                .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
+                .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
                 .speakerCommandRetriesLimit(topologyConfig.getRerouteSpeakerCommandRetries())
                 .autoAck(true)
                 .timeoutMs(hubTimeout)

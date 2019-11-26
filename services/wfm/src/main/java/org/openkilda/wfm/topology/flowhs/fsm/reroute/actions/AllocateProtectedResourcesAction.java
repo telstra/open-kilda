@@ -43,9 +43,11 @@ import lombok.extern.slf4j.Slf4j;
 public class AllocateProtectedResourcesAction extends
         BaseResourceAllocationAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+                                            int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                             PathComputer pathComputer, FlowResourcesManager resourcesManager,
                                             FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, transactionRetriesLimit, pathComputer, resourcesManager, dashboardLogger);
+        super(persistenceManager, transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                pathComputer, resourcesManager, dashboardLogger);
     }
 
     @Override
