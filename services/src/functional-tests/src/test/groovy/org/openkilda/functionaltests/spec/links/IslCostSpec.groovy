@@ -64,6 +64,9 @@ class IslCostSpec extends HealthCheckSpecification {
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
+        cleanup:
+        database.resetCosts()
+
         where:
         isl                                                                                    | description
         getTopology().islsForActiveSwitches.find { !it.aswitch }                               | "a direct"
@@ -107,6 +110,9 @@ class IslCostSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
+
+        cleanup:
+        database.resetCosts()
     }
 
     @Tags(VIRTUAL)
@@ -140,6 +146,9 @@ class IslCostSpec extends HealthCheckSpecification {
         swIsls.each { isl ->
             assert islUtils.getIslInfo(isl).get().cost == swIslsCostMap[isl]
         }
+
+        cleanup:
+        database.resetCosts()
     }
 
     def "System takes isl time_unstable info into account while creating a flow"() {
