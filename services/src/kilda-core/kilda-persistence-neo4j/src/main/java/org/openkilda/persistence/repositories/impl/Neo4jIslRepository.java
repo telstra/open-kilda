@@ -184,6 +184,24 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Collection<Isl> findAllActiveByEncapsulationType(FlowEncapsulationType flowEncapsulationType) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE),
+                "supported_transit_encapsulation",
+                flowEncapsulationTypeConverter.toGraphProperty(flowEncapsulationType));
+
+        String query = "MATCH (src_properties:switch_properties)<-[:has]-(src:switch)-[link:isl]->"
+                + "(dst:switch)-[:has]->(dst_properties:switch_properties) "
+                + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
+                + "AND $supported_transit_encapsulation IN src_properties.supported_transit_encapsulation "
+                + "AND $supported_transit_encapsulation IN dst_properties.supported_transit_encapsulation "
+                + "RETURN src, link, dst";
+
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
+    }
+
+    @Override
     public Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth,
                                                             FlowEncapsulationType flowEncapsulationType) {
         Map<String, Object> parameters = ImmutableMap.of(

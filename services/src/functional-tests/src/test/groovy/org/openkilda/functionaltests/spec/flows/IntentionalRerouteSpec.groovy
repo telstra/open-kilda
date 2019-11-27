@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -23,6 +24,7 @@ import spock.lang.Narrative
 import javax.inject.Provider
 
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
+@Tags([LOW_PRIORITY])
 class IntentionalRerouteSpec extends HealthCheckSpecification {
 
     @Autowired

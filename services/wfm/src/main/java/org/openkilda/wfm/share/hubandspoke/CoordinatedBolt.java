@@ -43,11 +43,15 @@ abstract class CoordinatedBolt extends AbstractBolt {
     @Override
     protected void dispatch(Tuple input) throws Exception {
         if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {
-            String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+            String key = pullKey(input);
             onTimeout(key, input);
         } else {
             super.dispatch(input);
         }
+    }
+
+    protected String pullKey(Tuple tuple) throws PipelineException {
+        return pullValue(tuple, MessageKafkaTranslator.FIELD_ID_KEY, String.class);
     }
 
     @Override

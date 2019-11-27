@@ -75,26 +75,28 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
         service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getFlowCreationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
+                config.getFlowCreationRetriesLimit(), config.getTransactionRetriesLimit(),
+                config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
-        currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        FlowRequest payload = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
+        currentKey = pullKey(input);
+        FlowRequest payload = pullValue(input, FIELD_ID_PAYLOAD, FlowRequest.class);
         service.handleRequest(currentKey, pullContext(input), payload);
     }
 
     @Override
-    protected void onWorkerResponse(Tuple input) {
-        String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+    protected void onWorkerResponse(Tuple input) throws PipelineException {
+        String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        FlowResponse flowResponse = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
+        FlowResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, FlowResponse.class);
         service.handleAsyncResponse(currentKey, flowResponse);
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
         service.handleTimeout(key);
     }
 
@@ -133,13 +135,16 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     @Getter
     public static class FlowCreateConfig extends Config {
         private int flowCreationRetriesLimit;
+        private int transactionRetriesLimit;
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowCreateBuilder", builderClassName = "flowCreateBuild")
         public FlowCreateConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
-                                int flowCreationRetriesLimit, int speakerCommandRetriesLimit) {
+                                int flowCreationRetriesLimit, int transactionRetriesLimit,
+                                int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, timeoutMs, autoAck);
             this.flowCreationRetriesLimit = flowCreationRetriesLimit;
+            this.transactionRetriesLimit = transactionRetriesLimit;
             this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         }
     }

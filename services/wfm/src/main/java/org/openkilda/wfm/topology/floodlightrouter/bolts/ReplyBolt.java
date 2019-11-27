@@ -29,7 +29,7 @@ import org.apache.storm.tuple.Values;
 @Slf4j
 public class ReplyBolt extends AbstractBolt {
 
-    private String outputStream;
+    protected String outputStream;
 
     public ReplyBolt(String outputStream) {
         this.outputStream = outputStream;

@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -36,48 +38,69 @@ import java.util.Set;
 
 @Slf4j
 public class FlowRerouteService {
-
     @VisibleForTesting
     final Map<String, FlowRerouteFsm> fsms = new HashMap<>();
-    private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> controllerExecutor
-            = new FsmExecutor<>(FlowRerouteFsm.Event.NEXT);
+
+    private final FlowRerouteFsm.Factory fsmFactory;
+    private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> fsmExecutor
+            = new FsmExecutor<>(Event.NEXT);
 
     private final FlowRerouteHubCarrier carrier;
     private final PersistenceManager persistenceManager;
+    private final FlowEventRepository flowEventRepository;
     private final PathComputer pathComputer;
     private final FlowResourcesManager flowResourcesManager;
+    private final int transactionRetriesLimit;
+    private final int speakerCommandRetriesLimit;
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
-                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager) {
+                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+                              int transactionRetriesLimit, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
+        flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
         this.pathComputer = pathComputer;
         this.flowResourcesManager = flowResourcesManager;
+        this.transactionRetriesLimit = transactionRetriesLimit;
+        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                transactionRetriesLimit, speakerCommandRetriesLimit);
     }
 
     /**
      * Handles request for flow reroute.
      *
-     * @param key            command identifier.
-     * @param flowId         the flow to reroute.
+     * @param key command identifier.
+     * @param flowId the flow to reroute.
      * @param pathsToReroute the flow paths to reroute.
+     * @param forceReroute indicates that reroute must re-install paths even if they're the same.
+     * @param rerouteReason the reroute for auto-initiated reroute
      */
-    public void handleRequest(String key, CommandContext commandContext, String flowId, Set<PathId> pathsToReroute) {
-        log.debug("Handling flow reroute request with key {}", key);
+    public void handleRequest(String key, CommandContext commandContext, String flowId, Set<PathId> pathsToReroute,
+                              boolean forceReroute, String rerouteReason) {
+        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, flowId);
 
         if (fsms.containsKey(key)) {
-            log.error("Attempt to create fsm with key {}, while there's another active fsm with the same key.", key);
+            log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
             return;
         }
 
-        FlowRerouteFsm fsm = FlowRerouteFsm.newInstance(commandContext, carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+        String eventKey = commandContext.getCorrelationId();
+        if (flowEventRepository.existsByTaskId(eventKey)) {
+            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            return;
+        }
+
+        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
 
-        controllerExecutor.fire(fsm, FlowRerouteFsm.Event.NEXT, FlowRerouteContext.builder()
+        FlowRerouteContext context = FlowRerouteContext.builder()
                 .flowId(flowId)
                 .pathsToReroute(pathsToReroute)
-                .build());
+                .forceReroute(forceReroute)
+                .rerouteReason(rerouteReason)
+                .build();
+        fsmExecutor.fire(fsm, Event.NEXT, context);
 
         removeIfFinished(fsm, key);
     }
@@ -88,16 +111,22 @@ public class FlowRerouteService {
      * @param key command identifier.
      */
     public void handleAsyncResponse(String key, FlowResponse flowResponse) {
-        log.debug("Received command completion message {}", flowResponse);
+        log.debug("Received flow command response {}", flowResponse);
         FlowRerouteFsm fsm = fsms.get(key);
         if (fsm == null) {
-            log.warn("Failed to find fsm: received response with key {} for non pending fsm", key);
+            log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
             return;
         }
 
-        controllerExecutor.fire(fsm, FlowRerouteFsm.Event.COMMAND_EXECUTED, FlowRerouteContext.builder()
-                .flowResponse(flowResponse)
-                .build());
+        FlowRerouteContext context = FlowRerouteContext.builder()
+                .speakerFlowResponse(flowResponse)
+                .build();
+
+        if (flowResponse instanceof FlowErrorResponse) {
+            fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
+        } else {
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        }
 
         removeIfFinished(fsm, key);
     }
@@ -111,18 +140,17 @@ public class FlowRerouteService {
         log.debug("Handling timeout for {}", key);
         FlowRerouteFsm fsm = fsms.get(key);
         if (fsm == null) {
-            log.warn("Failed to find fsm: timeout event for non pending fsm with key {}", key);
+            log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
             return;
         }
 
-        controllerExecutor.fire(fsm, FlowRerouteFsm.Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
 
         removeIfFinished(fsm, key);
     }
 
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {
-        if (fsm.getCurrentState() == FlowRerouteFsm.State.FINISHED
-                || fsm.getCurrentState() == FlowRerouteFsm.State.FINISHED_WITH_ERROR) {
+        if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsms.remove(key);
 

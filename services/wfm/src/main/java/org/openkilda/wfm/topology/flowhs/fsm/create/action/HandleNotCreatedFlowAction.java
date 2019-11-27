@@ -19,17 +19,17 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class HandleNotCreatedFlowAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
+public class HandleNotCreatedFlowAction extends
+        HistoryRecordingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     private final FlowRepository flowRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
@@ -40,12 +40,11 @@ public class HandleNotCreatedFlowAction extends AnonymousAction<FlowCreateFsm, S
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+    public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        log.warn("Failed to create flow {}", flowId);
-
         dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
         flowRepository.updateStatus(flowId, FlowStatus.DOWN);
+        stateMachine.saveActionToHistory("Failed to create the flow", stateMachine.getErrorReason());
         stateMachine.fire(Event.NEXT);
     }
 }

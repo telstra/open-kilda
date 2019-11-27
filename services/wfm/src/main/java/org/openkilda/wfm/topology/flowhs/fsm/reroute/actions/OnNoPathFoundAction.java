@@ -21,7 +21,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -30,26 +30,24 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnNoPathFoundAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public OnNoPathFoundAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
-
         this.dashboardLogger = dashboardLogger;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        log.debug("Set the flow status of {} to down.", flowId);
+        log.debug("Setting the flow status of {} to down", flowId);
 
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
             flowRepository.updateStatus(flowId, FlowStatus.DOWN);
             stateMachine.setOriginalFlowStatus(null);
+            stateMachine.setNewFlowStatus(FlowStatus.DOWN);
 
             Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
@@ -57,7 +55,7 @@ public class OnNoPathFoundAction extends
                 if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have main paths", flowId);
                 } else {
-                    log.debug("Set the flow path status of {}/{} to inactive.",
+                    log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getForwardPathId(), flow.getReversePathId());
                     flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
                     flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
@@ -70,7 +68,7 @@ public class OnNoPathFoundAction extends
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
                             flowId);
                 } else {
-                    log.debug("Set the flow path status of {}/{} to inactive.",
+                    log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
                     flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
                     flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
@@ -78,7 +76,6 @@ public class OnNoPathFoundAction extends
             }
         });
 
-        saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
-                "Set the flow status to down.");
+        stateMachine.saveActionToHistory("The flow status was set to down");
     }
 }

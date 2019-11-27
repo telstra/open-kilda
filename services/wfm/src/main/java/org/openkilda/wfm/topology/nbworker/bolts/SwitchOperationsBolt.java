@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
@@ -42,8 +44,10 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.PortMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
@@ -142,7 +146,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             flowOperationsService.groupFlowIdWithPathIdsForRerouting(
                     flowOperationsService.getFlowPathsForSwitch(switchId)
             ).forEach((flowId, pathIds) -> {
-                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds,
+                        format("evacuated due to switch maintenance %s", switchId));
                 CommandContext forkedContext = getCommandContext().fork(flowId);
                 getOutput().emit(
                         flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
@@ -166,10 +171,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                 }
                 return switchOperationsService.deleteSwitch(switchId, force);
             } catch (SwitchNotFoundException e) {
-                String message = String.format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
+                String message = format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
                 throw new MessageException(ErrorType.NOT_FOUND, message, "Switch is not found.");
             } catch (IllegalSwitchStateException e) {
-                String message = String.format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
+                String message = format("Could not delete switch '%s': '%s'", switchId, e.getMessage());
                 throw new MessageException(ErrorType.REQUEST_INVALID, message, "Switch is in illegal state");
             }
         });
@@ -184,24 +189,25 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     }
 
     private SwitchPropertiesResponse getSwitchProperties(GetSwitchPropertiesRequest request) {
-        SwitchPropertiesDto found = switchOperationsService.getSwitchProperties(request.getSwitchId());
-        if (found == null) {
-            String message = String.format("Failed to found properties for switch '%s'.",
-                    request.getSwitchId());
-            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
+        try {
+            SwitchPropertiesDto found = switchOperationsService.getSwitchProperties(request.getSwitchId());
+            return new SwitchPropertiesResponse(found);
+        } catch (SwitchPropertiesNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Failed to get switch properties.");
         }
-        return new SwitchPropertiesResponse(found);
     }
 
     private SwitchPropertiesResponse updateSwitchProperties(UpdateSwitchPropertiesRequest request) {
-        SwitchPropertiesDto updated = switchOperationsService.updateSwitchProperties(request.getSwitchId(),
-                request.getSwitchProperties());
-        if (updated == null) {
-            String message = String.format("Failed to update switch properties for switch '%s'", request.getSwitchId());
-            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
+        try {
+            SwitchPropertiesDto updated = switchOperationsService.updateSwitchProperties(request.getSwitchId(),
+                    request.getSwitchProperties());
+            return new SwitchPropertiesResponse(updated);
+        } catch (SwitchPropertiesNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Failed to update switch properties.");
+        } catch (IllegalSwitchPropertiesException e) {
+            throw new MessageException(ErrorType.PARAMETERS_INVALID, e.getMessage(),
+                    "Failed to update switch properties.");
         }
-        return new SwitchPropertiesResponse(updated);
-
     }
 
     private PortPropertiesPayload getPortProperties(GetPortPropertiesRequest request) {

@@ -35,6 +35,9 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         switchProperties.multiTable = newMultiTable
         switchProperties.supportedTransitEncapsulation = newTransitEncapsulation
         def updateSwPropertiesResponse = northbound.updateSwitchProperties(sw.dpId, switchProperties)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
 
         then: "Correct response is returned"
         updateSwPropertiesResponse.multiTable == newMultiTable
@@ -61,7 +64,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
         e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Failed to found properties for switch '$NON_EXISTENT_SWITCH_ID'."
+                "Switch properties for switch id '$NON_EXISTENT_SWITCH_ID' not found."
 
         when: "Try to update switch properties info for non-existing switch"
         def switchProperties = new SwitchPropertiesDto()
@@ -73,7 +76,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.NOT_FOUND
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Failed to update switch properties for switch '$NON_EXISTENT_SWITCH_ID'"
+                "Switch properties for switch id '$NON_EXISTENT_SWITCH_ID' not found."
     }
 
     def "Informative error is returned when trying to update switch properties with incorrect information"() {
@@ -82,13 +85,19 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         when: "Try to update switch properties info for non-existing switch"
         def switchProperties = new SwitchPropertiesDto()
-        switchProperties.supportedTransitEncapsulation = ["test"]
+        switchProperties.supportedTransitEncapsulation = supportedTransitEncapsulation
         northbound.updateSwitchProperties(sw.dpId, switchProperties)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Unable to parse request payload"
+        exc.responseBodyAsString.to(MessageError).errorMessage == errorMessage
+
+        where:
+        supportedTransitEncapsulation | errorMessage
+        ["test"]                      | "Unable to parse request payload"
+        []                            | "Supported transit encapsulations should not be null or empty"
+        null                          | "Supported transit encapsulations should not be null or empty"
     }
 
     def "Unable to create a transit_vlan flow in case switch property doesn't support this type of encapsulation"() {
@@ -102,6 +111,10 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def newSwitchProperties = new SwitchPropertiesDto()
         newSwitchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
         northbound.updateSwitchProperties(switchPair.src.dpId, newSwitchProperties)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie.sort() ==
+                    switchPair.src.defaultCookies.sort()
+        }
 
         when: "Try to create a flow with TRANSIT_VLAN encapsulation"
         def flow = flowHelper.randomFlow(switchPair)

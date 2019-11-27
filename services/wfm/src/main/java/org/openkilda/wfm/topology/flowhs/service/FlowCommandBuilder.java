@@ -89,6 +89,16 @@ public interface FlowCommandBuilder {
                                                  FlowPath forwardPath, FlowPath reversePath);
 
     /**
+     * Build remove commands for transit(if needed) and egress rules deletion for provided path.
+     *
+     * @param context     command context.
+     * @param flow        flow data which defines only endpoints for rules to be removed.
+     * @param path        flow path which defines path segments for rules to be removed.
+     * @return list of the remove commands.
+     */
+    List<RemoveRule> createRemoveNonIngressRules(CommandContext context, Flow flow, FlowPath path);
+
+    /**
      * Build remove commands for ingress rules for active forward and reverse paths.
      *
      * @param context command context.
@@ -98,7 +108,7 @@ public interface FlowCommandBuilder {
     List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow);
 
     /**
-     * Build remove commands for ingress rules for active forward and reverse paths.
+     * Build remove commands for ingress rules for provided paths.
      *
      * @param context     command context.
      * @param flow        flow data which defines only endpoints for rules to be removed.
@@ -108,4 +118,14 @@ public interface FlowCommandBuilder {
      */
     List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow,
                                               FlowPath forwardPath, FlowPath reversePath);
+
+    /**
+     * Build remove commands for ingress rules for provided path.
+     *
+     * @param context     command context.
+     * @param flow        flow data which defines only endpoints for rules to be removed.
+     * @param path        flow path which defines path segments for rules to be removed.
+     * @return list of the remove commands.
+     */
+    List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow, FlowPath path);
 }

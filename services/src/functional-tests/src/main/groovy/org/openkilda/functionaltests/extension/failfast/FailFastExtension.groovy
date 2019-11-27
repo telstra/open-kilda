@@ -32,7 +32,7 @@ class FailFastExtension extends AbstractGlobalExtension {
                 try {
                     invocation.proceed()
                 } catch(Throwable t) {
-                    if(!(t in AssumptionViolatedException)) {
+                    if(!(t in AssumptionViolatedException) && !invocation.feature.featureMethod.getAnnotation(Tidy)) {
                         failedTest = invocation.iteration.name
                     }
                     throw t

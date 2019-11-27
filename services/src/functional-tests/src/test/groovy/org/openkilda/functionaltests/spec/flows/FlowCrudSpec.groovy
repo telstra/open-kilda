@@ -61,6 +61,7 @@ import javax.inject.Provider
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-delete-full.png"])
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
+@Tags([LOW_PRIORITY])
 class FlowCrudSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -68,12 +69,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
     String flowTopic
-
-    @Value('${isl.cost.when.under.maintenance}')
-    int islCostWhenUnderMaintenance
-
-    @Value('${isl.unstable.timeout.sec}')
-    int islUnstableTimeoutSec
 
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -177,7 +172,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         description  : "same switch-port but vlans on src and dst are swapped",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
-                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch)
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                it.source.vlanId == it.destination.vlanId && it.destination.vlanId--
+                            }
                             def flow2 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
                                 it.source.portNumber = flow1.source.portNumber
                                 it.source.vlanId = flow1.destination.vlanId
@@ -542,7 +539,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
-    def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
+    def "Removing flow while it is still in progress of being created should not cause rule discrepancies"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -715,7 +712,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.id)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -746,7 +743,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.id)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -835,93 +832,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Cleanup: Delete the flows and excess meters"
         flows.each { flowHelper.deleteFlow(it) }
-    }
-
-    def "System takes isl time_unstable info into account while creating a flow"() {
-        given: "Two active neighboring switches with two parallel links"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
-
-        and: "Two possible paths for further manipulation with them"
-        def firstPath = switchPair.paths.min { it.size() }
-        def secondPath = switchPair.paths.findAll { it != firstPath }.min { it.size() }
-        def altPaths = switchPair.paths.findAll { it != firstPath && it != secondPath }
-
-        and: "All alternative paths are unavailable (bring ports down on the srcSwitch)"
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
-
-        and: "First path is unstable (due to bringing port down/up)"
-        // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
-        def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == FAILED }
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
-
-        and: "Cost of stable path more preferable than the cost of unstable path"
-        def involvedIslsInUnstablePath = pathHelper.getInvolvedIsls(firstPath)
-        def costOfUnstablePath = involvedIslsInUnstablePath.sum {
-            northbound.getLink(it).cost ?: 700
-        } + islCostWhenUnderMaintenance
-        def involvedIslsInStablePath = pathHelper.getInvolvedIsls(secondPath)
-        def costOfStablePath = involvedIslsInStablePath.sum { northbound.getLink(it).cost ?: 700 }
-        // result after performing 'if' condition: costOfStablePath - costOfUnstablePath = 1
-        if ((costOfUnstablePath - costOfStablePath) > 0) {
-            def islToUpdate = involvedIslsInStablePath[0]
-            def currentCostOfIsl = northbound.getLink(islToUpdate).cost
-            def newCost = ((costOfUnstablePath - costOfStablePath - 1) + currentCostOfIsl).toString()
-            northbound.updateLinkProps([islUtils.toLinkProps(islToUpdate, ["cost": newCost])])
-        } else {
-            def islToUpdate = involvedIslsInUnstablePath[0]
-            def currentCostOfIsl = northbound.getLink(islToUpdate).cost
-            def newCost = ((costOfStablePath - costOfUnstablePath + 1) + currentCostOfIsl).toString()
-            northbound.updateLinkProps([islUtils.toLinkProps(islToUpdate, ["cost": newCost])])
-        }
-
-        when: "Create a flow"
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
-
-        then: "Flow is created on the stable path(secondPath)"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-           assert PathHelper.convert(northbound.getFlowPath(flow.id)) == secondPath
-        }
-
-        when: "Mark first path as stable(update the 'time_unstable' field in db)"
-        def newTimeUnstable = Instant.now() - (islUnstableTimeoutSec + WAIT_OFFSET)
-        [islToBreak, islToBreak.reversed].each { database.updateIslTimeUnstable(it, newTimeUnstable) }
-
-        and: "Reroute the flow"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            with(northbound.rerouteFlow(flow.id)) {
-                it.rerouted
-            }
-        }
-
-        then: "Flow is rerouted"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert PathHelper.convert(northbound.getFlowPath(flow.id)) == firstPath
-        }
-
-        and: "Restore topology, delete the flow and reset costs"
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelper.deleteFlow(flow.id)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != FAILED }
-        }
-        database.resetCosts()
     }
 
     @Ignore("unstable") //TODO: fix test ASAP

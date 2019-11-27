@@ -16,16 +16,16 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
-@See(["https://github.com/telstra/open-kilda/blob/issue/port-history-stats/docs/design/network-discovery/port-FSM.png",
-        "https://github.com/telstra/open-kilda/blob/issue/port-history-stats/docs/design/network-discovery/AF-FSM.png"])
+@See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
+        "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
 class PortHistorySpec extends HealthCheckSpecification {
     @Autowired
@@ -180,7 +180,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("unstable") //TODO: fix test ASAP
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "A direct link"
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
@@ -220,14 +219,17 @@ class PortHistorySpec extends HealthCheckSpecification {
         then: "Antiflap statistic is available in port history"
         Wrappers.wait(antiflapDumpingInterval * 0.1 + WAIT_OFFSET) {
             Long timestampAfterStat = System.currentTimeMillis()
-            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterStat)) {
-                it.size() == 3 // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS
-                def antiflapStat = it[-1]
+            def soft = new SoftAssertions()
+            with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
+                    timestampBefore, timestampAfterStat)) { history ->
+                soft.checkSucceeds { history.size() == 3 } // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS
+                def antiflapStat = history[-1]
                 checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
                         PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS)
-                count == antiflapStat.downCount
-                count == antiflapStat.upCount
+                soft.checkSucceeds { antiflapStat.downCount == antiflapStat.upCount }
+                soft.checkSucceeds { Math.abs(count - antiflapStat.upCount) <= 1 }
             }
+            soft.verify()
         }
 
         and: "Cleanup: revert system to original state"

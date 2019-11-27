@@ -17,12 +17,15 @@ package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static java.lang.String.format;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.wfm.AbstractBolt;
@@ -63,6 +66,9 @@ public class RouterBolt extends AbstractBolt {
                 case CREATE:
                     emitWithContext(ROUTER_TO_FLOW_CREATE_HUB.name(), input, values);
                     break;
+                case UPDATE:
+                    emitWithContext(ROUTER_TO_FLOW_UPDATE_HUB.name(), input, values);
+                    break;
                 default:
                     throw new UnsupportedOperationException(format("Flow operation %s is not supported",
                             request.getType()));
@@ -73,6 +79,12 @@ public class RouterBolt extends AbstractBolt {
                     rerouteRequest.getPathIds(), key, input.getMessageId());
             Values values = new Values(key, rerouteRequest.getFlowId(), data);
             emitWithContext(ROUTER_TO_FLOW_REROUTE_HUB.name(), input, values);
+        } else if (data instanceof FlowDeleteRequest) {
+            FlowDeleteRequest deleteRequest = (FlowDeleteRequest) data;
+            log.debug("Received a delete request {} with key {}. MessageId {}", deleteRequest.getFlowId(),
+                    key, input.getMessageId());
+            Values values = new Values(key, deleteRequest.getFlowId(), data);
+            emitWithContext(ROUTER_TO_FLOW_DELETE_HUB.name(), input, values);
         } else {
             unhandledInput(input);
         }
@@ -81,6 +93,8 @@ public class RouterBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(ROUTER_TO_FLOW_CREATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_FLOW_UPDATE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_REROUTE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_FLOW_DELETE_HUB.name(), STREAM_FIELDS);
     }
 }

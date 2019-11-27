@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -24,13 +25,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class DumpIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class DumpIngressRulesAction extends HistoryRecordingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
 
     public DumpIngressRulesAction(SpeakerCommandFsm.Builder speakerCommandFsmBuilder) {
@@ -38,9 +38,7 @@ public class DumpIngressRulesAction extends AnonymousAction<FlowCreateFsm, State
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        log.debug("Started validation of installed ingress rules for the flow {}", stateMachine.getFlowId());
-
+    public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         List<GetInstalledRule> dumpFlowRules = stateMachine.getIngressCommands().values()
                 .stream()
                 .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
@@ -52,5 +50,7 @@ public class DumpIngressRulesAction extends AnonymousAction<FlowCreateFsm, State
             commandObserver.start();
             stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
         });
+
+        stateMachine.saveActionToHistory("Started validation of installed ingress rules");
     }
 }

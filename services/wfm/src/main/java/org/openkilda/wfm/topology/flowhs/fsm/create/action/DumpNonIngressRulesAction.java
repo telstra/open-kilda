@@ -16,8 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
+import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.Builder;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -25,34 +26,39 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class DumpNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
+public class DumpNonIngressRulesAction extends HistoryRecordingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
 
-    public DumpNonIngressRulesAction(Builder speakerCommandFsmBuilder) {
+    public DumpNonIngressRulesAction(SpeakerCommandFsm.Builder speakerCommandFsmBuilder) {
         this.speakerCommandFsmBuilder = speakerCommandFsmBuilder;
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        log.debug("Started validation of installed non ingress rules for the flow {}", stateMachine.getFlowId());
+    public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        Map<UUID, InstallTransitRule> nonIngressCommands = stateMachine.getNonIngressCommands();
+        if (nonIngressCommands.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to validate non ingress rules");
+        } else {
+            List<GetInstalledRule> dumpFlowRules = nonIngressCommands.values()
+                    .stream()
+                    .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
+                            command.getFlowId(), command.getSwitchId(), command.getCookie(), false))
+                    .collect(Collectors.toList());
 
-        List<GetInstalledRule> dumpFlowRules = stateMachine.getNonIngressCommands().values()
-                .stream()
-                .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
-                        command.getFlowId(), command.getSwitchId(), command.getCookie(), false))
-                .collect(Collectors.toList());
+            dumpFlowRules.forEach(command -> {
+                SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
+                commandObserver.start();
+                stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
+            });
 
-        dumpFlowRules.forEach(command -> {
-            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
-            commandObserver.start();
-            stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
-        });
+            stateMachine.saveActionToHistory("Started validation of installed non ingress rules");
+        }
     }
 }

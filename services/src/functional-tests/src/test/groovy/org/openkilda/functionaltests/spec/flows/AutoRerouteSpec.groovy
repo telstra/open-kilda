@@ -27,6 +27,7 @@ import spock.lang.Unroll
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
+@Tags([LOW_PRIORITY])
 class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)

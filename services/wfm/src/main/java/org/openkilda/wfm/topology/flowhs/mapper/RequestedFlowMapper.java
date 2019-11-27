@@ -38,11 +38,27 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destinationSwitch", target = "destSwitch")
     @Mapping(source = "destinationPort", target = "destPort")
     @Mapping(source = "destinationVlan", target = "destVlan")
-    @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
+    @Mapping(target = "flowEncapsulationType",
+            expression = "java(java.util.Optional.ofNullable(request.getEncapsulationType())"
+                    + ".map(v -> org.openkilda.model.FlowEncapsulationType.valueOf(v.toUpperCase()))"
+                    + ".orElse(null))")
     public abstract RequestedFlow toRequestedFlow(FlowRequest request);
 
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
+     */
+    @Mapping(source = "flowId", target = "flowId")
+    @Mapping(target = "srcSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(source = "srcPort", target = "srcPort")
+    @Mapping(source = "srcVlan", target = "srcVlan")
+    @Mapping(target = "destSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(source = "destPort", target = "destPort")
+    @Mapping(source = "destVlan", target = "destVlan")
+    @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
+    public abstract RequestedFlow toRequestedFlow(Flow flow);
+
+    /**
+     * Convert {@link RequestedFlow} to {@link Flow}.
      */
     @Mapping(source = "flowId", target = "flowId")
     @Mapping(target = "srcSwitch",
@@ -55,5 +71,4 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "flowEncapsulationType", target = "encapsulationType")
     public abstract Flow toFlow(RequestedFlow requestedFlow);
-
 }

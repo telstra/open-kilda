@@ -139,11 +139,8 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         commandContext = new CommandContext(message);
 
         switch (sourceComponent) {
-            case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
+            case ComponentType.KILDA_TOPO_DISCO_REPLY_BOLT:
                 routerService.processSpeakerDiscoResponse(this, message);
-                break;
-            case ComponentType.SPEAKER_DISCO_KAFKA_SPOUT:
-                routerService.processDiscoSpeakerRequest(this, message);
                 break;
             default:
                 logger.error("Unknown input stream handled: {}", sourceComponent);

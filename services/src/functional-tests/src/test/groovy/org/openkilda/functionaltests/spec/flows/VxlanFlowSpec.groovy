@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -24,6 +25,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
 
+import java.time.Instant
 import javax.inject.Provider
 
 @Narrative("""This spec checks basic functionality(simple flow(rules, ping, traffic, validate), pinned flow,
@@ -31,6 +33,7 @@ flow with protected path, default flow) for a flow with VXLAN encapsulation.
 
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
+@Tags([LOW_PRIORITY])
 class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
@@ -188,7 +191,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         then: "The pinned option is disabled"
         def newFlowInfo = northbound.getFlow(flow.id)
         !newFlowInfo.pinned
-        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
         and: "Cleanup: Delete the flow"
         Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }

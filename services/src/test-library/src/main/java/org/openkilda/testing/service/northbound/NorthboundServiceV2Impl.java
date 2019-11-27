@@ -58,6 +58,19 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     }
 
     @Override
+    public FlowResponseV2 updateFlow(String flowId, FlowRequestV2 request) {
+        HttpEntity<FlowRequestV2> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.PUT, httpEntity, FlowResponseV2.class,
+                flowId).getBody();
+    }
+
+    @Override
+    public FlowResponseV2 deleteFlow(String flowId) {
+        return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId).getBody();
+    }
+
+    @Override
     public FlowRerouteResponseV2 rerouteFlow(String flowId) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}/reroute", HttpMethod.POST,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), FlowRerouteResponseV2.class, flowId).getBody();

@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.43.0 (27/11/2019)
+
+### Features:
+-  [#2892](https://github.com/telstra/open-kilda/pull/2892) Implement H&S update (Issue: [#2869](https://github.com/telstra/open-kilda/issues/2869)) [**storm-topologies**]
+-  [#2869](https://github.com/telstra/open-kilda/pull/2869) Implement H&S delete [**storm-topologies**]
+
+### Bug Fixes:
+-  [#2923](https://github.com/telstra/open-kilda/pull/2923) PCE bug fix (Issue: [#2904](https://github.com/telstra/open-kilda/issues/2904)) [**storm-topologies**]
+-  [#2931](https://github.com/telstra/open-kilda/pull/2931) Fix stability of SwitchPropertiesSpec [**tests**]
+-  [#2936](https://github.com/telstra/open-kilda/pull/2936) Improve switch properties validation (Issue: [#2889](https://github.com/telstra/open-kilda/issues/2889)) [**northbound**][**storm-topologies**]
+
+### Improvements:
+-  [#2944](https://github.com/telstra/open-kilda/pull/2944) Allow some tests to be marked as those with perfect cleanup (Issue: [#2943](https://github.com/telstra/open-kilda/issues/2943)) [**tests**]
+-  [#2950](https://github.com/telstra/open-kilda/pull/2950) minor improve in flowCrud specs [**tests**]
+-  [#2953](https://github.com/telstra/open-kilda/pull/2953) improve swapEndpointSpec [**tests**]
+-  [#2959](https://github.com/telstra/open-kilda/pull/2959) Added envs for regions and roles for FL log files in JSON [**configuration**]
+-  [#2903](https://github.com/telstra/open-kilda/pull/2903) check that system doesn't ignore encapsulationType when ignoreBandwidth=true [**tests**]
+-  [#2909](https://github.com/telstra/open-kilda/pull/2909) FloodlightRouter parallelism tune [**storm-topologies**]
+-  [#2920](https://github.com/telstra/open-kilda/pull/2920) Mark v1 specs that have v2 alternative as low priority [**tests**]
+-  [#2872](https://github.com/telstra/open-kilda/pull/2872) improve portHistoryspec [**tests**]
+-  [#2940](https://github.com/telstra/open-kilda/pull/2940) improve checking of the lastUpdated field [**tests**]
+-  [#2942](https://github.com/telstra/open-kilda/pull/2942) Define disruptor configuration for local environment [**configuration**][**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.42.1...v1.43.0).
+
+### Affected Components:
+swmanager, reroute, flow-hs, ping, connected, nbworker, router, nb, flow, network
+
+---
+
 ## v1.42.1 (21/11/2019)
 
 ### Improvements:

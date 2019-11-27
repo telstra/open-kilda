@@ -37,6 +37,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowHsSpeakerTopic();
     }
 
+    @Key("flow.hub.transaction.retries")
+    @Default("3")
+    int getHubTransactionRetries();
+
     @Key("flow.create.hub.timeout.seconds")
     @Default("30")
     int getCreateHubTimeoutSeconds();
@@ -45,13 +49,25 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("10")
     int getCreateSpeakerTimeoutSeconds();
 
+    @Key("flow.create.speaker.command.retries")
+    @Default("3")
+    int getCreateSpeakerCommandRetries();
+
     @Key("flow.create.hub.retries")
     @Default("3")
     int getCreateHubRetries();
 
-    @Key("flow.create.speaker.command.retries")
+    @Key("flow.update.hub.timeout.seconds")
+    @Default("30")
+    int getUpdateHubTimeoutSeconds();
+
+    @Key("flow.update.speaker.timeout.seconds")
+    @Default("10")
+    int getUpdateSpeakerTimeoutSeconds();
+
+    @Key("flow.update.speaker.command.retries")
     @Default("3")
-    int getCreateHubSpeakerCommandRetries();
+    int getUpdateSpeakerCommandRetries();
 
     @Key("flow.reroute.hub.timeout.seconds")
     @Default("30")
@@ -60,4 +76,20 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.reroute.speaker.timeout.seconds")
     @Default("10")
     int getRerouteSpeakerTimeoutSeconds();
+
+    @Key("flow.reroute.speaker.command.retries")
+    @Default("3")
+    int getRerouteSpeakerCommandRetries();
+
+    @Key("flow.delete.hub.timeout.seconds")
+    @Default("30")
+    int getDeleteHubTimeoutSeconds();
+
+    @Key("flow.delete.speaker.timeout.seconds")
+    @Default("10")
+    int getDeleteSpeakerTimeoutSeconds();
+
+    @Key("flow.delete.speaker.command.retries")
+    @Default("3")
+    int getDeleteSpeakerCommandRetries();
 }

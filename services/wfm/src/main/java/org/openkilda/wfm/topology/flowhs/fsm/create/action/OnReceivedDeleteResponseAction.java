@@ -30,7 +30,6 @@ import java.util.UUID;
 
 @Slf4j
 public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAction {
-
     public OnReceivedDeleteResponseAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
@@ -46,21 +45,14 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
 
         RemoveRule rule = stateMachine.getRemoveCommands().get(commandId);
         if (response.isSuccess()) {
-            log.debug("Received response after deletion {} from the switch {}", rule.getCookie(), rule.getSwitchId());
-            String description = format("Rule %s was deleted from the switch %s", rule.getCookie(), rule.getSwitchId());
-
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule deleted",
-                    description);
+            stateMachine.saveActionToHistory("Rule was deleted",
+                    format("The rule was deleted: switch %s, cookie %s", rule.getSwitchId(), rule.getCookie()));
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-            log.error(format("Failed to delete rule with id %s, on the switch %s: %s", errorResponse.getCommandId(),
-                    errorResponse.getSwitchId(), errorResponse.getDescription()));
-
-            String description = format("Failed to delete rule with id %s, on the switch %s: %s. Description: %s",
-                    errorResponse.getCommandId(), errorResponse.getSwitchId(), errorResponse.getErrorCode(),
-                    errorResponse.getDescription());
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                    "Failed to delete rule", description);
+            stateMachine.getFailedCommands().put(errorResponse.getCommandId(), errorResponse);
+            stateMachine.saveErrorToHistory("Failed to delete rule",
+                    format("Failed to delete the rule: commandId %s, switch %s. Error: %s",
+                            errorResponse.getCommandId(), errorResponse.getSwitchId(), errorResponse));
         }
     }
 }

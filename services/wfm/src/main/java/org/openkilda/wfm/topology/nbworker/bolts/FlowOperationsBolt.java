@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -156,7 +157,9 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
         flowOperationsService.groupFlowIdWithPathIdsForRerouting(paths)
                 .forEach((flowId, pathIds) -> {
-                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds,
+                            format("initiated via Northbound, reroute all flows that go over the link %s_%d - %s_%d",
+                                    srcSwitch, srcPort, dstSwitch, dstPort));
                     CommandContext forkedContext = getCommandContext().fork(flowId);
                     getOutput().emit(
                             flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),

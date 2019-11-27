@@ -40,11 +40,15 @@ import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.Builder;
+import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier {
+
+    private final FlowRerouteConfig config;
     private final PersistenceManager persistenceManager;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -52,16 +56,11 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     private transient FlowRerouteService service;
     private String currentKey;
 
-    public FlowRerouteHubBolt(String routerBoltId, String workerBoltId, int timeoutMs, boolean autoAck,
-                              PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                              FlowResourcesConfig flowResourcesConfig) {
-        super(HubBolt.Config.builder()
-                .requestSenderComponent(routerBoltId)
-                .workerComponent(workerBoltId)
-                .timeoutMs(timeoutMs)
-                .autoAck(autoAck)
-                .build());
+    public FlowRerouteHubBolt(FlowRerouteConfig config, PersistenceManager persistenceManager,
+                              PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+        super(config);
 
+        this.config = config;
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
@@ -75,21 +74,23 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowRerouteService(this, persistenceManager, pathComputer, resourcesManager);
+        service = new FlowRerouteService(this, persistenceManager, pathComputer, resourcesManager,
+                config.getTransactionRetriesLimit(), config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
-        currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        FlowRerouteRequest request = (FlowRerouteRequest) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleRequest(currentKey, pullContext(input), request.getFlowId(), request.getPathIds());
+        currentKey = pullKey(input);
+        FlowRerouteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowRerouteRequest.class);
+        service.handleRequest(currentKey, pullContext(input), request.getFlowId(), request.getPathIds(),
+                request.isForce(), request.getReason());
     }
 
     @Override
-    protected void onWorkerResponse(Tuple input) {
-        String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+    protected void onWorkerResponse(Tuple input) throws PipelineException {
+        String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        FlowResponse flowResponse = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
+        FlowResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, FlowResponse.class);
         service.handleAsyncResponse(currentKey, flowResponse);
     }
 
@@ -100,17 +101,9 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        super.declareOutputFields(declarer);
-
-        declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
-    }
-
-    @Override
     public void sendSpeakerRequest(SpeakerFlowRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
+
         Values values = new Values(commandKey, command);
         emitWithContext(HUB_TO_SPEAKER_WORKER.name(), getCurrentTuple(), values);
     }
@@ -128,5 +121,28 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     @Override
     public void cancelTimeoutCallback(String key) {
         cancelCallback(key);
+    }
+
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        super.declareOutputFields(declarer);
+
+        declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
+    }
+
+    @Getter
+    public static class FlowRerouteConfig extends Config {
+        private int transactionRetriesLimit;
+        private int speakerCommandRetriesLimit;
+
+        @Builder(builderMethodName = "flowRerouteBuilder", builderClassName = "flowRerouteBuild")
+        public FlowRerouteConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
+                                 int transactionRetriesLimit, int speakerCommandRetriesLimit) {
+            super(requestSenderComponent, workerComponent, timeoutMs, autoAck);
+            this.transactionRetriesLimit = transactionRetriesLimit;
+            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        }
     }
 }

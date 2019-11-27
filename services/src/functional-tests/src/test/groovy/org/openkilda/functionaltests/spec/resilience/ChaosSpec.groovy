@@ -9,10 +9,10 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
@@ -34,10 +34,10 @@ class ChaosSpec extends HealthCheckSpecification {
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
         def flowsAmount = topology.activeSwitches.size() * 15
-        List<FlowPayload> flows = []
+        List<FlowRequestV2> flows = []
         flowsAmount.times {
-            def flow = flowHelper.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
-            northbound.addFlow(flow)
+            def flow = flowHelperV2.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
+            northboundV2.addFlow(flow)
             flows << flow
         }
 
@@ -61,14 +61,14 @@ class ChaosSpec extends HealthCheckSpecification {
 
         Wrappers.wait(PATH_INSTALLATION_TIME * 3 + flowsAmount) {
             flows.each { flow ->
-                assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-                northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
-                bothDirectionsHaveSamePath(northbound.getFlowPath(flow.id))
+                assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+                northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+                bothDirectionsHaveSamePath(northbound.getFlowPath(flow.flowId))
             }
         }
 
         and: "Cleanup: remove flows and reset costs"
-        flows.each { northbound.deleteFlow(it.id) }
+        flows.each { northboundV2.deleteFlow(it.flowId) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         Wrappers.wait(WAIT_OFFSET + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 
@@ -19,7 +20,7 @@ creation of new flows via Northbound API. This spec verifies that Feature Toggle
 /*Note that the 'flowReroute' toggle is tested under AutoRerouteSpec#"Flow goes to 'Down' status when an intermediate
 switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
-@Tags(SMOKE)
+@Tags([SMOKE, LOW_PRIORITY])
 class FeatureTogglesSpec extends HealthCheckSpecification {
     @Tags(VIRTUAL)
     //TODO (andriidovhan) remove VIRTUAL tag and add new message when Issue 2797 is fixed

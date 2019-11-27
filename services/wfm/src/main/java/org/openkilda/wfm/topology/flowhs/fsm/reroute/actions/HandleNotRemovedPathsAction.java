@@ -15,27 +15,29 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import static java.lang.String.format;
+
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class HandleNotRemovedPathsAction
-        extends AnonymousAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
-
+public class HandleNotRemovedPathsAction extends
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
-    public void execute(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                        FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            log.warn("Failed to remove paths {}/{}", stateMachine.getOldPrimaryForwardPath(),
-                    stateMachine.getOldPrimaryReversePath());
+            stateMachine.saveErrorToHistory(format("Failed to remove paths %s / %s",
+                    stateMachine.getOldPrimaryForwardPath(), stateMachine.getOldPrimaryReversePath()));
         }
         if (stateMachine.getOldProtectedForwardPath() != null
                 && stateMachine.getOldProtectedReversePath() != null) {
-            log.warn("Failed to remove paths {}/{}", stateMachine.getOldProtectedForwardPath(),
-                    stateMachine.getOldProtectedReversePath());
+            stateMachine.saveErrorToHistory(format("Failed to remove paths %s / %s",
+                    stateMachine.getOldProtectedForwardPath(), stateMachine.getOldProtectedReversePath()));
         }
     }
 }

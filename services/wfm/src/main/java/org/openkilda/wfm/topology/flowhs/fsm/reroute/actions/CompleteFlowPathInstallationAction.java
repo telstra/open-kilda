@@ -20,9 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -30,29 +28,26 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
-
 @Slf4j
 public class CompleteFlowPathInstallationAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
     public CompleteFlowPathInstallationAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
                 PathId newForward = stateMachine.getNewPrimaryForwardPath();
                 PathId newReverse = stateMachine.getNewPrimaryReversePath();
 
-                log.debug("Completing installation of the flow path {} / {}", newForward, newReverse);
+                log.debug("Completing installation of the flow primary path {} / {}", newForward, newReverse);
                 flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
                 flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
 
-                saveHistory(stateMachine, stateMachine.getFlowId(), newForward, newReverse);
+                stateMachine.saveActionToHistory("Flow paths were installed",
+                        format("The flow paths %s / %s were installed", newForward, newReverse));
             }
 
             if (stateMachine.getNewProtectedForwardPath() != null
@@ -60,26 +55,13 @@ public class CompleteFlowPathInstallationAction extends
                 PathId newForward = stateMachine.getNewProtectedForwardPath();
                 PathId newReverse = stateMachine.getNewProtectedReversePath();
 
-                log.debug("Completing installation of the flow path {} / {}", newForward, newReverse);
+                log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
                 flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
                 flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
 
-                saveHistory(stateMachine, stateMachine.getFlowId(), newForward, newReverse);
+                stateMachine.saveActionToHistory("Flow paths were installed",
+                        format("The flow paths %s / %s were installed", newForward, newReverse));
             }
         });
-    }
-
-    private void saveHistory(FlowRerouteFsm stateMachine, String flowId, PathId forwardPath, PathId reversePath) {
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow paths were installed")
-                        .time(Instant.now())
-                        .description(format("Flow paths %s/%s were installed",
-                                forwardPath, reversePath))
-                        .flowId(flowId)
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

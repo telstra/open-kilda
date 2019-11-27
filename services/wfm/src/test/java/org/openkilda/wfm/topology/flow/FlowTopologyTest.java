@@ -724,15 +724,15 @@ public class FlowTopologyTest extends AbstractStormTest {
 
     private FlowDto deleteFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Delete flow");
-        FlowDto payload = new FlowDto();
-        payload.setFlowId(flowId);
-        FlowDeleteRequest commandData = new FlowDeleteRequest(payload);
+        FlowDeleteRequest commandData = new FlowDeleteRequest(flowId);
         CommandMessage message = new CommandMessage(commandData, 0, "delete-flow", Destination.WFM);
 
         //sendNorthboundMessage(message);
         //sendTopologyEngineMessage(message);
         sendFlowMessage(message);
 
+        FlowDto payload = new FlowDto();
+        payload.setFlowId(flowId);
         return payload;
     }
 

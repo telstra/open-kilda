@@ -18,11 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -30,46 +27,24 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
-import java.util.Collection;
-
 @Slf4j
-public class DeallocateResourcesAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
+public class DeallocateResourcesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowResourcesManager resourcesManager;
 
-    public DeallocateResourcesAction(PersistenceManager persistenceManager,
-                                     FlowResourcesManager resourcesManager) {
+    public DeallocateResourcesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.resourcesManager = resourcesManager;
     }
 
     @Override
-    public void perform(State from, State to,
-                        Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Collection<FlowResources> oldResources = stateMachine.getOldResources();
+    public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() ->
-                oldResources.forEach(flowResources -> {
+                stateMachine.getOldResources().forEach(flowResources -> {
                     resourcesManager.deallocatePathResources(flowResources);
 
-                    log.debug("Resources has been de-allocated: {}", flowResources);
-
-                    saveHistory(flowResources, stateMachine);
+                    stateMachine.saveActionToHistory("Flow resources were deallocated",
+                            format("The flow resources for %s / %s were deallocated",
+                                    flowResources.getForward().getPathId(), flowResources.getReverse().getPathId()));
                 }));
-    }
-
-    private void saveHistory(FlowResources resources, FlowRerouteFsm stateMachine) {
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow resources were deallocated")
-                        .time(Instant.now())
-                        .description(format("Flow resources for %s/%s were deallocated",
-                                resources.getForward().getPathId(), resources.getReverse().getPathId()))
-                        .flowId(stateMachine.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

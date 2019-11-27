@@ -26,12 +26,14 @@ public final class ComponentType {
     public static final String KILDA_ISL_LATENCY_REPLY_BOLT = "KILDA_ISL_LATENCY_REPLY_BOLT";
     public static final String KILDA_CONNECTED_DEVICES_REPLY_BOLT = "KILDA_CONNECTED_DEVICES_REPLY_BOLT";
     public static final String KILDA_NB_WORKER_REPLY_BOLT = "KILDA_NB_WORKER_REPLY_BOLT";
+    public static final String KILDA_TOPO_DISCO_REPLY_BOLT = "KILDA_TOPO_DISCO_REPLY_BOLT";
     public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
 
 
     public static final String SPEAKER_FLOW_REQUEST_BOLT = "KILDA_FLOW_REQUEST_BOLT";
     public static final String SPEAKER_PING_REQUEST_BOLT = "SPEAKER_PING_REQUEST_BOLT";
     public static final String SPEAKER_REQUEST_BOLT = "SPEAKER_REQUEST_BOLT";
+    public static final String SPEAKER_DISCO_REQUEST_BOLT = "SPEAKER_DISCO_REQUEST_BOLT";
 
 
     public static final String SPEAKER_KAFKA_SPOUT = "ROUTER_SPEAKER_KAFKA_SPOUT";

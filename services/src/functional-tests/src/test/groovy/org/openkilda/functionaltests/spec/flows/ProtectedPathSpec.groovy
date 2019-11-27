@@ -29,6 +29,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
 
+import java.time.Instant
 import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
@@ -45,6 +46,7 @@ System can start to use protected path in two case:
 A flow has the status degraded in case when the main path is up and the protected path is down.
 
 Main and protected paths can't use the same link.""")
+@Tags([LOW_PRIORITY])
 class ProtectedPathSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -117,7 +119,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
 
-        currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
+        Instant.parse(currentLastUpdate) < Instant.parse(northbound.getFlow(flow.id).lastUpdated)
 
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
@@ -754,7 +756,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         newCurrentProtectedPath != currentProtectedPath
         newCurrentProtectedPath == currentPath
 
-        currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
+        Instant.parse(currentLastUpdate) < Instant.parse(northbound.getFlow(flow.id).lastUpdated)
 
         and: "New meter is created on the src and dst switches"
         def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)

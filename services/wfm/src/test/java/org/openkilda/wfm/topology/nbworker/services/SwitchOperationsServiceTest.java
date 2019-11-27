@@ -18,21 +18,29 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
+import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.Collections;
+
 public class SwitchOperationsServiceTest extends Neo4jBasedTest {
     private static SwitchRepository switchRepository;
+    private static SwitchPropertiesRepository switchPropertiesRepository;
     private static PortPropertiesRepository portPropertiesRepository;
     private static SwitchOperationsService switchOperationsService;
 
@@ -42,6 +50,7 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
+        switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         portPropertiesRepository = repositoryFactory.createPortPropertiesRepository();
 
         SwitchOperationsServiceCarrier carrier = new SwitchOperationsServiceCarrier() {
@@ -77,5 +86,19 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
         switchOperationsService.deleteSwitch(TEST_SWITCH_ID, false);
         assertFalse(switchRepository.findById(TEST_SWITCH_ID).isPresent());
         assertTrue(portPropertiesRepository.findAll().isEmpty());
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateSupportedEncapsulationTypeWhenUpdatingSwitchProperties() {
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        switchRepository.createOrUpdate(sw);
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(sw)
+                .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
+                .multiTable(false)
+                .build();
+        switchPropertiesRepository.createOrUpdate(switchProperties);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, new SwitchPropertiesDto());
     }
 }

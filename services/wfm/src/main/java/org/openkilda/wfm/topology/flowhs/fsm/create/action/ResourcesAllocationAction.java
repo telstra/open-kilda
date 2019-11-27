@@ -35,9 +35,6 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -47,13 +44,12 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.history.model.FlowEventData;
-import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -69,42 +65,35 @@ import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.v1.exceptions.TransientException;
 
-import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
 public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
-    private static String ERROR_MESSAGE = "Could not create flow";
-    private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
-
     private final PathComputer pathComputer;
-    private final TransactionManager transactionManager;
+    private final int transactionRetriesLimit;
     private final FlowResourcesManager resourcesManager;
-    private final FlowRepository flowRepository;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
-    private final FlowPathRepository flowPathRepository;
     private final FlowPathBuilder flowPathBuilder;
     private final SwitchPropertiesRepository switchPropertiesRepository;
 
     public ResourcesAllocationAction(PathComputer pathComputer, PersistenceManager persistenceManager,
-                                     FlowResourcesManager resourcesManager) {
+                                     int transactionRetriesLimit, FlowResourcesManager resourcesManager) {
+        super(persistenceManager);
+
         this.pathComputer = pathComputer;
-        this.transactionManager = persistenceManager.getTransactionManager();
+        this.transactionRetriesLimit = transactionRetriesLimit;
         this.resourcesManager = resourcesManager;
-        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
-        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
 
         this.flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
     }
 
     @Override
-    protected Optional<Message> perform(State from, State to, Event event, FlowCreateContext context,
-                                        FlowCreateFsm stateMachine) throws FlowProcessingException {
+    protected Optional<Message> performWithResponse(State from, State to, Event event, FlowCreateContext context,
+                                                    FlowCreateFsm stateMachine) throws FlowProcessingException {
         log.debug("Allocation resources has been started");
 
         Optional<Flow> optionalFlow = getFlow(context, stateMachine.getFlowId());
@@ -118,28 +107,26 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             getFlowGroupFromContext(context).ifPresent(flow::setGroupId);
             createFlowWithPaths(stateMachine, flow);
         } catch (UnroutableFlowException e) {
-            String message = "Not enough bandwidth found or path not found : " + e.getMessage();
-            log.debug("{}: {}", getGenericErrorMessage(), message);
-            throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(), message);
-        } catch (ResourceAllocationException e) {
-            log.error("{}: Failed to allocate flow resources", getGenericErrorMessage(), e);
-            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, getGenericErrorMessage(), e.getMessage());
-        } catch (FlowNotFoundException e) {
-            log.debug("{}: {}", getGenericErrorMessage(), e.getMessage());
             throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
-                    "Can't find the diverse flow: " + e.getMessage());
+                    "Not enough bandwidth or no path found. " + e.getMessage(), e);
+        } catch (ResourceAllocationException e) {
+            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, getGenericErrorMessage(),
+                    "Failed to allocate flow resources. " + e.getMessage(), e);
+        } catch (FlowNotFoundException e) {
+            throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                    "Couldn't find the diverse flow. " + e.getMessage(), e);
         } catch (FlowAlreadyExistException e) {
-            log.info(e.getMessage(), e);
             if (!stateMachine.retryIfAllowed()) {
-                throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, getGenericErrorMessage(), e.getMessage());
+                throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, getGenericErrorMessage(),
+                        e.getMessage(), e);
             } else {
                 // we have retried the operation, no need to respond.
+                log.debug(e.getMessage(), e);
                 return Optional.empty();
             }
         }
 
-        boolean isRetry = event == Event.RETRY;
-        saveHistory(flow, stateMachine, isRetry);
+        saveHistory(stateMachine, flow);
         if (flow.isOneSwitchFlow()) {
             stateMachine.fire(Event.SKIP_NON_INGRESS_RULES_INSTALL);
         } else {
@@ -187,10 +174,10 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
                     .retryOn(RecoverableException.class)
                     .retryOn(ResourceAllocationException.class)
                     .retryOn(TransientException.class)
-                    .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
+                    .withMaxRetries(transactionRetriesLimit))
                     .onRetry(e -> log.warn("Retrying transaction for resource allocation finished with exception", e))
                     .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e))
-                    .run(() -> transactionManager.doInTransaction(() -> {
+                    .run(() -> persistenceManager.getTransactionManager().doInTransaction(() -> {
                         allocateMainPath(fsm, flow);
                         if (flow.isAllocateProtectedPath()) {
                             allocateProtectedPath(fsm, flow);
@@ -306,28 +293,26 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
                 .orElseThrow(() -> new FlowNotFoundException(flowId));
     }
 
-    private void saveHistory(Flow flow, FlowCreateFsm stateMachine, boolean isRetry) {
-        FlowHistoryHolder.FlowHistoryHolderBuilder historyBuilder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Resources allocated")
-                        .time(Instant.now())
-                        .flowId(flow.getFlowId())
-                        .build());
-        if (!isRetry) {
-            // no need to save a new event into DB, it should already exist there.
-            historyBuilder = historyBuilder.flowEventData(FlowEventData.builder()
-                    .initiator(Initiator.NB)
-                    .flowId(flow.getFlowId())
-                    .event(FlowEventData.Event.CREATE)
-                    .time(Instant.now())
-                    .build());
+    private void saveHistory(FlowCreateFsm stateMachine, Flow flow) {
+        FlowDumpData primaryPathsDumpData =
+                HistoryMapper.INSTANCE.map(flow, flow.getForwardPath(), flow.getReversePath(), DumpType.STATE_AFTER);
+        stateMachine.saveActionWithDumpToHistory("New primary paths were created",
+                format("The flow paths were created (with allocated resources): %s / %s",
+                        flow.getForwardPathId(), flow.getReversePathId()),
+                primaryPathsDumpData);
+
+        if (flow.isAllocateProtectedPath()) {
+            FlowDumpData protectedPathsDumpData = HistoryMapper.INSTANCE.map(flow, flow.getProtectedForwardPath(),
+                    flow.getProtectedReversePath(), DumpType.STATE_AFTER);
+            stateMachine.saveActionWithDumpToHistory("New protected paths were created",
+                    format("The flow paths were created (with allocated resources): %s / %s",
+                            flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()),
+                    protectedPathsDumpData);
         }
-        stateMachine.getCarrier().sendHistoryUpdate(historyBuilder.build());
     }
 
     @Override
     protected String getGenericErrorMessage() {
-        return ERROR_MESSAGE;
+        return "Could not create flow";
     }
 }

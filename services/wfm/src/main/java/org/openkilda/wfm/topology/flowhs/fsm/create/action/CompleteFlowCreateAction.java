@@ -15,14 +15,15 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.model.Flow;
+import static java.lang.String.format;
+
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -30,28 +31,25 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Optional;
-
 @Slf4j
 public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
-    private final FlowRepository flowRepository;
-    private final FlowPathRepository flowPathRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public CompleteFlowCreateAction(PersistenceManager persistenceManager,
                                     FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
-        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.dashboardLogger = dashboardLogger;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
-        Optional<Flow> optionalFlow = flowRepository.findById(flowId);
-        if (optionalFlow.isPresent()) {
+        persistenceManager.getTransactionManager().doInTransaction(() -> {
+            String flowId = stateMachine.getFlowId();
+            if (!flowRepository.exists(flowId)) {
+                throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+                        "Couldn't complete flow creation. The flow was deleted");
+            }
+
             flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.ACTIVE);
             flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.ACTIVE);
             if (stateMachine.getProtectedForwardPathId() != null && stateMachine.getProtectedReversePathId() != null) {
@@ -59,13 +57,9 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
                 flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.ACTIVE);
             }
 
-            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
             flowRepository.updateStatus(flowId, FlowStatus.UP);
-            log.info("Flow {} successfully created", stateMachine.getFlowId());
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Created successfully");
-        } else {
-            log.debug("Cannot complete flow {} creation: it was deleted", flowId);
-        }
+            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
+            stateMachine.saveActionToHistory(format("The flow status was set to %s", FlowStatus.UP));
+        });
     }
-
 }

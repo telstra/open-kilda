@@ -58,13 +58,9 @@ public class SpeakerStatus {
     }
 
     private void reportRemoteOffset(Duration remoteOffset) {
-        String message = String.format("Time offset between SPEAKER and router is %s (region %s)", remoteOffset,
-                                       region);
-        if (remoteOffsetWarn.compareTo(remoteOffset) < 0) {
-            log.warn(message);
-        } else if (remoteOffsetInfo.compareTo(remoteOffset) < 0) {
-            log.info(message);
-        } else {
+        if (log.isDebugEnabled()) {
+            String message = String.format("Time offset between SPEAKER and router is %s (region %s)", remoteOffset,
+                                           region);
             log.debug(message);
         }
     }

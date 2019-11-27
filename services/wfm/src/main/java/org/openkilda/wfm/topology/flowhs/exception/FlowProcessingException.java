@@ -34,7 +34,11 @@ public class FlowProcessingException extends RuntimeException {
         this.errorDescription = errorDescription;
     }
 
-    public FlowProcessingException(String errorMessage) {
-        this(ErrorType.INTERNAL_ERROR, errorMessage, errorMessage);
+    public FlowProcessingException(ErrorType errorType, String errorMessage, String errorDescription, Throwable cause) {
+        super(errorMessage, cause);
+
+        this.errorType = errorType;
+        this.errorMessage = errorMessage;
+        this.errorDescription = errorDescription;
     }
 }

@@ -15,103 +15,32 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.PAYLOAD;
-
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.model.FlowDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.Value;
 
 /**
  * Represents delete flow northbound request.
  */
-@JsonSerialize
+@Value
+@EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "command",
-        PAYLOAD})
 public class FlowDeleteRequest extends CommandData {
     /**
      * Serialization version number constant.
      */
     private static final long serialVersionUID = 1L;
 
-    /**
-     * The request payload.
-     */
-    @JsonProperty(PAYLOAD)
-    protected FlowDto payload;
+    @JsonProperty("flow_id")
+    private String flowId;
 
-    /**
-     * Instance constructor.
-     *
-     * @param payload request payload
-     * @throws IllegalArgumentException if payload is null
-     */
     @JsonCreator
-    public FlowDeleteRequest(@JsonProperty(PAYLOAD) FlowDto payload) {
-        setPayload(payload);
-    }
-
-    /**
-     * Returns request payload.
-     *
-     * @return request payload
-     */
-    public FlowDto getPayload() {
-        return payload;
-    }
-
-    /**
-     * Sets request payload.
-     *
-     * @param payload request payload
-     */
-    public void setPayload(FlowDto payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("need to set payload");
-        }
-        this.payload = payload;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(PAYLOAD, payload)
-                .toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(payload);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        FlowDeleteRequest that = (FlowDeleteRequest) object;
-        return Objects.equals(getPayload(), that.getPayload());
+    public FlowDeleteRequest(@JsonProperty("flow_id") @NonNull String flowId) {
+        this.flowId = flowId;
     }
 }
