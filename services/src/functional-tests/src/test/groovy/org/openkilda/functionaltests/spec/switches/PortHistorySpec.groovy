@@ -207,14 +207,14 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         when: "Generate antiflap statistic"
         def count = 0
-        Wrappers.timedLoop(antiflapDumpingInterval * 0.9) {
+        Wrappers.timedLoop(antiflapDumpingInterval - antiflapCooldown + 1) {
             northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
             northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
             count += 1
         }
 
         then: "Antiflap statistic is available in port history"
-        Wrappers.wait(WAIT_OFFSET + antiflapDumpingInterval * 0.1) {
+        Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
             new SoftAssertions().with {
                 def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
                         timestampBefore, System.currentTimeMillis())

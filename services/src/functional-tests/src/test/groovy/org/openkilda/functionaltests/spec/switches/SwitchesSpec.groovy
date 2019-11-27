@@ -124,19 +124,14 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse4.size() == 1
         getSwitchFlowsResponse4[0].id == protectedFlow.id
 
-        when: "All alternative paths are unavailable (bring ports down on the srcSwitch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != pathHelper.convert(northbound.getFlowPath(protectedFlow.id)) }.unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
+        when: "Bring down all ports on src switch to make flow DOWN"
+        topology.getBusyPortsForSwitch(switchPair.src).each {
+            antiflap.portDown(switchPair.src.dpId, it)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
+            }.size() == topology.getBusyPortsForSwitch(switchPair.src).size() * 2
         }
 
         and: "Get all flows going through the src switch"
@@ -148,7 +143,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse5*.id.sort() == [protectedFlow.id, singleFlow.id].sort()
 
         and: "Cleanup: Delete the flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        topology.getBusyPortsForSwitch(switchPair.src).each { antiflap.portUp(switchPair.src.dpId, it) }
         [protectedFlow, singleFlow].each { flowHelper.deleteFlow(it.id) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
