@@ -100,7 +100,7 @@ message.blacklist.timeout = 180
 floodlight.regions = 1
 
 local = no
-local.execution.time = 300
+local.execution.time = 3000
 
 pce.strategy = COST
 pce.network.strategy = SYMMETRIC_COST
