@@ -60,7 +60,6 @@ import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -84,6 +83,8 @@ import java.util.Optional;
 @RunWith(MockitoJUnitRunner.class)
 public class FlowUpdateServiceTest extends AbstractFlowTest {
     private static final int TRANSACTION_RETRIES_LIMIT = 3;
+    private static final int PATH_ALLOCATION_RETRIES_LIMIT = 10;
+    private static final int PATH_ALLOCATION_RETRY_DELAY = 0;
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 0;
     private static final String FLOW_ID = "TEST_FLOW";
     private static final SwitchId SWITCH_1 = new SwitchId(1);
@@ -100,6 +101,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     @Mock
     private CommandContext commandContext;
 
+    private FlowUpdateService updateService;
+
     @Before
     public void setUp() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
@@ -108,7 +111,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
-        IslRepository islRepository = mock(IslRepository.class);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
 
         SwitchRepository switchRepository = mock(SwitchRepository.class);
@@ -136,6 +138,10 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
+
+        updateService = new FlowUpdateService(carrier, persistenceManager,
+                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
+                PATH_ALLOCATION_RETRIES_LIMIT, PATH_ALLOCATION_RETRY_DELAY, SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 
     @Test
@@ -144,9 +150,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenThrow(new UnroutableFlowException("No path found"));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -175,15 +178,75 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
+    public void shouldFailRerouteFlowIfRecoverableException()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow();
+        when(pathComputer.getPath(any(), any())).thenThrow(new RecoverableException("PCE error"));
+        buildFlowResources();
+
+        FlowRequest request = FlowRequest.builder()
+                .flowId(FLOW_ID)
+                .bandwidth(1000L)
+                .sourceSwitch(SWITCH_1)
+                .sourcePort(11)
+                .sourceVlan(101)
+                .destinationSwitch(SWITCH_3)
+                .destinationPort(12)
+                .destinationVlan(102)
+                .build();
+
+        updateService.handleRequest("test_key", commandContext, request);
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).getPath(any(), any());
+        verify(flowResourcesManager, never()).allocateFlowResources(any());
+        verify(carrier, never()).sendSpeakerRequest(any());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+    }
+
+    @Test
+    public void shouldFailRerouteFlowIfMultipleOverprovisionBandwidth()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow();
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
+        buildFlowResources();
+
+        when(islRepository.updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong()))
+                .thenThrow(ResourceAllocationException.class);
+
+        FlowRequest request = FlowRequest.builder()
+                .flowId(FLOW_ID)
+                .bandwidth(1000L)
+                .sourceSwitch(SWITCH_1)
+                .sourcePort(11)
+                .sourceVlan(101)
+                .destinationSwitch(SWITCH_3)
+                .destinationPort(12)
+                .destinationVlan(102)
+                .build();
+
+        updateService.handleRequest("test_key", commandContext, request);
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).getPath(any(), any());
+        verify(islRepository, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
+                .updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong());
+        verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).allocateFlowResources(any());
+        verify(carrier, never()).sendSpeakerRequest(any());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+    }
+
+    @Test
     public void shouldFailUpdateFlowIfNoResourcesAvailable()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         when(flowResourcesManager.allocateFlowResources(any()))
                 .thenThrow(new ResourceAllocationException("No resources"));
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -205,8 +268,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(2, flow.getDestPort());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(4)).getPath(any(), any());
-        verify(flowResourcesManager, times(4)).allocateFlowResources(any());
+        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).getPath(any(), any());
+        verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).allocateFlowResources(any());
         verify(carrier, never()).sendSpeakerRequest(any());
         verify(carrier, times(1)).sendNorthboundResponse(any());
     }
@@ -218,9 +281,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
         doThrow(new RuntimeException("Must fail")).when(flowPathRepository).lockInvolvedSwitches(any(), any());
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -252,9 +312,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -306,9 +363,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -352,9 +406,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -407,9 +458,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -453,9 +501,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -518,9 +563,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -574,9 +616,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -625,9 +664,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_1, 11, SWITCH_3, 12));
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
@@ -681,9 +717,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(SWITCH_3, 11, SWITCH_4, 12));
         buildFlowResources();
 
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
@@ -730,9 +763,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
         buildFlowResources();
-
-        FlowUpdateService updateService = new FlowUpdateService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
 
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)

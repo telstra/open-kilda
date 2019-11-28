@@ -120,6 +120,8 @@ latency.discovery.interval.multiplier = 3
 
 # flow(H&S) topology
 flow.hub.transaction.retries = 3
+flow.path.allocation.retries = 10
+flow.path.allocation.retry.delay = 50
 flow.create.hub.timeout.seconds = 30
 flow.create.speaker.timeout.seconds = 10
 flow.create.speaker.command.retries = 3

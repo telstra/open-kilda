@@ -36,6 +36,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import lombok.SneakyThrows;
@@ -64,6 +65,8 @@ public abstract class AbstractFlowTest {
     FlowResourcesManager flowResourcesManager;
     @Mock
     FeatureTogglesRepository featureTogglesRepository;
+    @Mock
+    IslRepository islRepository;
 
     final Queue<SpeakerFlowRequest> requests = new ArrayDeque<>();
     final Map<SwitchId, Map<Cookie, InstallFlowRule>> installedRules = new HashMap<>();
