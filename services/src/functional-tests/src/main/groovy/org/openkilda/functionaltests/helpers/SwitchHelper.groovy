@@ -7,7 +7,6 @@ import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COO
 import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
-import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
@@ -175,12 +174,20 @@ class SwitchHelper {
 
     /**
      * Verifies that specified sections in the validation response are empty.
-     * NOTE: will filter out default rules
+     * NOTE: will filter out default rules, except default flow rules(multiTable flow)
+     * Default flow rules for the system looks like as a simple default rule.
+     * Based on that you have to use extra filter to detect these rules in missing/excess/misconfigured sections.
      */
     static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess"]) {
-        sections.each {
-            assert switchValidateInfo.rules."$it".findAll { !Cookie.isDefaultRule(it) }.empty
+        sections.each { String section ->
+            if(section == "proper") {
+                assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.empty
+            } else {
+                assert switchValidateInfo.rules."$section".findAll { cookie ->
+                    Cookie.isIngressRulePassThrough(cookie) || !Cookie.isDefaultRule(cookie)
+                }.empty
+            }
         }
     }
 }

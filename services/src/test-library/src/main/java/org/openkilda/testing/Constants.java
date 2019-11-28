@@ -32,6 +32,12 @@ public final class Constants {
     public static final Integer STATS_LOGGING_TIMEOUT = 70;
     public static final SwitchId NON_EXISTENT_SWITCH_ID = new SwitchId("de:ad:be:ef:de:ad:be:ef");
     public static final String NON_EXISTENT_FLOW_ID = "non-existent-" + UUID.randomUUID().toString();
+    public static final Integer SINGLE_TABLE_ID = 0;
+    public static final Integer INGRESS_RULE_MULTI_TABLE_ID = 2;
+    public static final Integer EGRESS_RULE_MULTI_TABLE_ID = 4;
+    public static final Integer TRANSIT_RULE_MULTI_TABLE_ID = 6;
+    public static final Integer LLDP_RULE_SINGLE_TABLE_ID = 1;
+    public static final Integer LLDP_RULE_MULTI_TABLE_ID = 3;
 
     private Constants() {
         throw new UnsupportedOperationException();
