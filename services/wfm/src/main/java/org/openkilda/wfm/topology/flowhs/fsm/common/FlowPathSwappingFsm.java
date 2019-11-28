@@ -89,4 +89,14 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     }
 
     public abstract void fireNoPathFound(String errorReason);
+
+    public void setPendingCommands(Collection<UUID> commandIds) {
+        pendingCommands.clear();
+        pendingCommands.addAll(commandIds);
+    }
+
+    public void resetFailedCommandsAndRetries() {
+        retriedCommands.clear();
+        failedCommands.clear();
+    }
 }

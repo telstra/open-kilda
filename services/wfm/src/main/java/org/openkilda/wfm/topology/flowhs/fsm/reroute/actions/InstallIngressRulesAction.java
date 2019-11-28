@@ -75,8 +75,8 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowRerouteF
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.setPendingCommands(commandIds);
+        stateMachine.resetFailedCommandsAndRetries();
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install ingress rules");

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
@@ -76,7 +77,10 @@ public class ValidateNonIngressRulesAction extends
                                 + "Retrying (attempt %d)",
                         commandId, response.getSwitchId(), command.getCookie(), response, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command);
+                GetInstalledRule dumpFlowRule = new GetInstalledRule(command.getMessageContext(),
+                        command.getCommandId(), command.getFlowId(), command.getSwitchId(), command.getCookie(), false);
+
+                stateMachine.getCarrier().sendSpeakerRequest(dumpFlowRule);
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

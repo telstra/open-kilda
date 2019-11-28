@@ -26,6 +26,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,10 +41,11 @@ public class DumpIngressRulesAction extends HistoryRecordingAction<FlowUpdateFsm
 
         dumpFlowRules.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 
-        stateMachine.getPendingCommands().addAll(dumpFlowRules.stream()
+        Set<UUID> commandIds = dumpFlowRules.stream()
                 .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet()));
-        stateMachine.getRetriedCommands().clear();
+                .collect(Collectors.toSet());
+        stateMachine.setPendingCommands(commandIds);
+        stateMachine.resetFailedCommandsAndRetries();
 
         stateMachine.saveActionToHistory("Started validation of installed ingress rules");
     }

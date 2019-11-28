@@ -80,7 +80,8 @@ public class InstallNonIngressRulesAction extends
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        stateMachine.setPendingCommands(commandIds);
+        stateMachine.resetFailedCommandsAndRetries();
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install non ingress rules");

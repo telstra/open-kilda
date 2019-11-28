@@ -80,8 +80,8 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.setPendingCommands(commandIds);
+        stateMachine.resetFailedCommandsAndRetries();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }

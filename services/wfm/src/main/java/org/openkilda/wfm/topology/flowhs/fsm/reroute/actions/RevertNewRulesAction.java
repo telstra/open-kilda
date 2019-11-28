@@ -95,8 +95,8 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
-        stateMachine.getRetriedCommands().clear();
+        stateMachine.setPendingCommands(commandIds);
+        stateMachine.resetFailedCommandsAndRetries();
 
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
