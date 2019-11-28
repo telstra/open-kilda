@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import lombok.Data;
+
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -55,7 +57,14 @@ public class Flow {
     
     @JsonProperty("diverse-flowid")
     private String diverseFlowId;
-
+    
+    @JsonProperty("allocate_protected_path")
+    private boolean allocateProtectedPath;
+    
+    @JsonProperty("diverse_with")
+    private List<String> diverseWith;
+    
+    
     public String getId() {
         return id;
     }

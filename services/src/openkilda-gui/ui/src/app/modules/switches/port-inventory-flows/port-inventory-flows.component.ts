@@ -5,6 +5,7 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import { SwitchService } from 'src/app/common/services/switch.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 declare var jQuery: any;
 
 @Component({
@@ -24,7 +25,7 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges
   customerid : boolean = false;
   flowid : boolean = false;
   bandwidth : boolean = false;
-  constructor(private renderer:Renderer2,private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService) { }
+  constructor(private renderer:Renderer2,private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService,private router: Router) { }
 
   
   ngOnInit() { 
@@ -132,6 +133,9 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges
                .draw();
      });
  }
+ showFlow(flowObj){
+  this.router.navigate(['/flows/details/'+flowObj['flow-id']]);
+}
   descrepancyString(row){
     let text = [];
     if(row.hasOwnProperty('controller-flow')){

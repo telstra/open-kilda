@@ -88,6 +88,7 @@ import { ImportTopologySettingComponent } from './modules/topology/import-topolo
 import { ExportTopologySettingComponent } from './modules/topology/export-topology-setting/export-topology-setting.component';
 import { IslmaintenancemodalComponent } from './common/components/islmaintenancemodal/islmaintenancemodal.component';
 import { SwitchFlowsComponent } from './modules/switches/switch-flows/switch-flows.component';
+import { NetworkpathComponent } from './modules/networkpath/networkpath.component';
 import { PortFlowsComponent } from './modules/switches/port-flows/port-flows.component';
 import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-flows/port-inventory-flows.component';
 
@@ -164,6 +165,7 @@ import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-f
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
     SwitchFlowsComponent,
+    NetworkpathComponent,
     PortFlowsComponent,
     PortInventoryFlowsComponent,
   ],

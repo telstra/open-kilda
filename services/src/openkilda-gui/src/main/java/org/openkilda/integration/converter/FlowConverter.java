@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -72,9 +72,11 @@ public class FlowConverter {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
+        flowInfo.setAllocateProtectedPath(flow.isAllocateProtectedPath());
         flowInfo.setDescription(flow.getDescription());
         flowInfo.setStatus(flow.getStatus().toUpperCase());
         flowInfo.setDiverseFlowid(flow.getDiverseFlowId());
+        flowInfo.setDiverseWith(flow.getDiverseWith());
         flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {

@@ -30,7 +30,7 @@
       </tr>
     </thead>
     <tbody >
-      <tr   *ngFor="let row of data; let i = index" class="flowDataRow">
+      <tr   *ngFor="let row of data; let i = index" (click)="showFlow(row)" class="flowDataRow">
           <td class="divTableCell" title="{{row['flow-id'] ? row['company-name'] : '-'}}" >
             {{row['company-name'] ? row['company-name'] : '-'}}
           </td>

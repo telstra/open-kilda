@@ -10,7 +10,7 @@ import { CommonService } from '../../services/common.service';
 export class SidebarComponent implements OnInit {
 
   currentUrl :any = '';
-
+  activeSubmenu :any = '';
   constructor(private router: Router, public commonService: CommonService) {
     this.router.events.subscribe((_:NavigationEnd) => {
       this.currentUrl = router.url
@@ -48,6 +48,15 @@ export class SidebarComponent implements OnInit {
 
   urlmatch(url){
      return this.currentUrl.includes(url);
+  }
+
+  toggleSubmenu(id){
+    if(this.activeSubmenu == id){
+      this.activeSubmenu = '';
+    }else{
+      this.activeSubmenu = id;
+    }
+    
   }
 
   closeSidebar() {
