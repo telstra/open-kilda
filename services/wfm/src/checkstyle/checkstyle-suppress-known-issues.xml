@@ -15,8 +15,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="29" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="54" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="66" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/cache/CacheTopology.java" lines="129" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/event/OFEventWfmTopologyConfig.java" lines="26" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="104" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="41" checks="AbbreviationAsWordInName"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="41" checks="AbbreviationAsWordInName"/>
@@ -47,6 +45,4 @@
     <suppress files="src/test/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopologyTest.java" lines="43" checks="AbbreviationAsWordInName"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaConsumer.java" lines="58" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/topology/TestKafkaProducer.java" lines="37" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/wfm/WhateverTest.java" lines="31" checks="HideUtilityClassConstructor"/>
-    <suppress files="src/test/java/org/openkilda/wfm/WhateverTest.java" lines="33" checks="JavadocMethod"/>
 </suppressions>

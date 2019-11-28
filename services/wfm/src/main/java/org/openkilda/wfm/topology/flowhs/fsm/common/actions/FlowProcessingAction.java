@@ -29,12 +29,17 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
 public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
+
+    protected final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
+
     protected final PersistenceManager persistenceManager;
     protected final FlowRepository flowRepository;
     protected final FlowPathRepository flowPathRepository;

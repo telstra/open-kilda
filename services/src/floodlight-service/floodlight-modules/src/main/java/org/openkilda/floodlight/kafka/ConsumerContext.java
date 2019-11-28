@@ -16,9 +16,9 @@
 package org.openkilda.floodlight.kafka;
 
 import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
-import org.openkilda.floodlight.statistics.IStatisticsService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -27,15 +27,15 @@ public class ConsumerContext {
     private final FloodlightModuleContext moduleContext;
     private final IPathVerificationService pathVerificationService;
     private final ISwitchManager switchManager;
-    private final IStatisticsService statisticsService;
     private final KafkaChannel kafkaChannel;
+    private final SpeakerCommandProcessor commandProcessor;
 
     public ConsumerContext(FloodlightModuleContext moduleContext) {
         this.moduleContext = moduleContext;
         this.pathVerificationService = moduleContext.getServiceImpl(IPathVerificationService.class);
         this.switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
-        this.statisticsService  = moduleContext.getServiceImpl(IStatisticsService.class);
         kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
+        commandProcessor = new SpeakerCommandProcessor(moduleContext);
     }
 
     public String getRegion() {
@@ -54,16 +54,12 @@ public class ConsumerContext {
         return switchManager;
     }
 
-    public IStatisticsService getStatisticsService() {
-        return statisticsService;
+    public SpeakerCommandProcessor getCommandProcessor() {
+        return commandProcessor;
     }
 
     public String getKafkaFlowTopic() {
         return kafkaChannel.getFlowTopic();
-    }
-
-    public String getKafkaFlowHsWorkerTopic() {
-        return kafkaChannel.getSpeakerFlowHsTopic();
     }
 
     public String getKafkaTopoDiscoTopic() {

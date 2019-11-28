@@ -15,61 +15,32 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.model.Flow;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
-import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
 @Slf4j
-public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-    private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
-    private final FlowCommandBuilderFactory commandBuilderFactory;
-
+public class InstallNonIngressRulesAction extends InstallRulesAction {
     public InstallNonIngressRulesAction(SpeakerCommandFsm.Builder fsmBuilder,
-                                        PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
-        super(persistenceManager);
-
-        this.speakerCommandFsmBuilder = fsmBuilder;
-        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+                                        PersistenceManager persistenceManager) {
+        super(persistenceManager, fsmBuilder);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        CommandContext commandContext = stateMachine.getCommandContext();
-        Flow flow = getFlow(stateMachine.getFlowId());
-        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
-        List<InstallTransitRule> commands =
-                commandBuilder.createInstallNonIngressRules(commandContext, flow);
-        if (flow.isAllocateProtectedPath()) {
-            commands.addAll(commandBuilder.createInstallNonIngressRules(commandContext, flow,
-                    flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
-        }
-
-        if (commands.isEmpty()) {
+        List<FlowSegmentRequestFactory> requestFactories = stateMachine.getNonIngressCommands();
+        if (requestFactories.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install non ingress rules");
         } else {
-            commands.forEach(command -> {
-                stateMachine.getNonIngressCommands().put(command.getCommandId(), command);
-                SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
-                commandObserver.start();
-                stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
-
-            });
-
+            emitInstallRequests(stateMachine, requestFactories);
             stateMachine.saveActionToHistory("Commands for installing non ingress rules have been sent");
         }
     }

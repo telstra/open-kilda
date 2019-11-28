@@ -15,12 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete;
 
-import static java.lang.String.format;
-
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.Message;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -74,7 +71,7 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();
     private final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
 
-    private final Map<UUID, RemoveRule> removeCommands = new HashMap<>();
+    private final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
 
     private String errorReason;
 
@@ -102,17 +99,6 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         }
 
         fire(errorEvent);
-    }
-
-    public Cookie getCookieForCommand(UUID commandId) {
-        Cookie cookie;
-        if (removeCommands.containsKey(commandId)) {
-            RemoveRule removeRule = removeCommands.get(commandId);
-            cookie = removeRule.getCookie();
-        } else {
-            throw new IllegalStateException(format("Failed to find remove rule command with id %s", commandId));
-        }
-        return cookie;
     }
 
     @Override
