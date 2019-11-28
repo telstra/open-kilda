@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.Switch;
@@ -57,7 +56,7 @@ public class ValidateIngressRulesAction extends
             return;
         }
 
-        if (response.isSuccess()) {
+        if (response.isSuccess() && response instanceof FlowRuleResponse) {
             stateMachine.getPendingCommands().remove(commandId);
 
             Switch switchObj = switchRepository.findById(command.getSwitchId())
@@ -78,8 +77,6 @@ public class ValidateIngressRulesAction extends
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-
             int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
             if (retries < speakerCommandRetriesLimit) {
                 stateMachine.getRetriedCommands().put(commandId, ++retries);
@@ -87,7 +84,7 @@ public class ValidateIngressRulesAction extends
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
                         "Failed to validate the ingress rule: commandId %s, switch %s, cookie %s. Error %s. "
                                 + "Retrying (attempt %d)",
-                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
+                        commandId, response.getSwitchId(), command.getCookie(), response, retries));
 
                 stateMachine.getCarrier().sendSpeakerRequest(command);
             } else {
@@ -95,7 +92,7 @@ public class ValidateIngressRulesAction extends
 
                 stateMachine.saveErrorToHistory("Rule validation failed",
                         format("Failed to validate the ingress rule: commandId %s, switch %s, cookie %s. Error %s",
-                                commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
+                                commandId, response.getSwitchId(), command.getCookie(), response));
 
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }

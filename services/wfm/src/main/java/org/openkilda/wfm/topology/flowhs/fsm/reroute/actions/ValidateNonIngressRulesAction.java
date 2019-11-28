@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
@@ -52,7 +51,7 @@ public class ValidateNonIngressRulesAction extends
             return;
         }
 
-        if (response.isSuccess()) {
+        if (response.isSuccess() && response instanceof FlowRuleResponse) {
             stateMachine.getPendingCommands().remove(commandId);
 
             RulesValidator validator = new NonIngressRulesValidator(command, (FlowRuleResponse) response);
@@ -68,8 +67,6 @@ public class ValidateNonIngressRulesAction extends
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-
             int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
             if (retries < speakerCommandRetriesLimit) {
                 stateMachine.getRetriedCommands().put(commandId, ++retries);
@@ -77,7 +74,7 @@ public class ValidateNonIngressRulesAction extends
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
                         "Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s. "
                                 + "Retrying (attempt %d)",
-                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
+                        commandId, response.getSwitchId(), command.getCookie(), response, retries));
 
                 stateMachine.getCarrier().sendSpeakerRequest(command);
             } else {
@@ -85,7 +82,7 @@ public class ValidateNonIngressRulesAction extends
 
                 stateMachine.saveErrorToHistory("Rule validation failed",
                         format("Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s",
-                                commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
+                                commandId, response.getSwitchId(), command.getCookie(), response));
 
                 stateMachine.getFailedValidationResponses().put(commandId, response);
             }

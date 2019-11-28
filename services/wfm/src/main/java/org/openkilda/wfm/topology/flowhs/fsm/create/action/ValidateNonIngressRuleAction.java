@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
+import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -42,18 +43,24 @@ public class ValidateNonIngressRuleAction extends FlowProcessingAction<FlowCreat
         UUID commandId = context.getSpeakerFlowResponse().getCommandId();
 
         InstallTransitRule expected = stateMachine.getNonIngressCommands().get(commandId);
-        FlowRuleResponse response = (FlowRuleResponse) context.getSpeakerFlowResponse();
-        if (new NonIngressRulesValidator(expected, response).validate()) {
-            stateMachine.saveActionToHistory("Rule was validated",
-                    format("The non ingress rule has been validated successfully: switch %s, cookie %s",
-                            expected.getSwitchId(), expected.getCookie()));
+        FlowResponse response = context.getSpeakerFlowResponse();
+        if (response.isSuccess() && response instanceof FlowRuleResponse) {
+            if (new NonIngressRulesValidator(expected, (FlowRuleResponse) response).validate()) {
+                stateMachine.saveActionToHistory("Rule was validated",
+                        format("The non ingress rule has been validated successfully: switch %s, cookie %s",
+                                expected.getSwitchId(), expected.getCookie()));
+            } else {
+                stateMachine.saveErrorToHistory("Rule is missing or invalid",
+                        format("Non ingress rule is missing or invalid: switch %s, cookie %s",
+                                expected.getSwitchId(), expected.getCookie()));
+                stateMachine.getFailedValidationResponses().put(commandId, response);
+            }
         } else {
-            stateMachine.saveErrorToHistory("Rule is missing or invalid",
-                    format("Non ingress rule is missing or invalid: switch %s, cookie %s",
-                            expected.getSwitchId(), expected.getCookie()));
+            stateMachine.saveErrorToHistory("Rule validation failed",
+                    format("Failed to validate non ingress rule: commandId %s, switch %s, cookie %s. Error %s",
+                            commandId, response.getSwitchId(), expected.getCookie(), response));
             stateMachine.getFailedValidationResponses().put(commandId, response);
         }
-
         stateMachine.getPendingCommands().remove(commandId);
         if (stateMachine.getPendingCommands().isEmpty()) {
             if (stateMachine.getFailedValidationResponses().isEmpty()) {
