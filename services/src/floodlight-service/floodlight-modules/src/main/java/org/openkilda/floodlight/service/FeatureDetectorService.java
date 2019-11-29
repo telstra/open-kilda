@@ -28,6 +28,7 @@ import org.openkilda.floodlight.feature.MaxBurstCoefficientLimitationFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.MultiTableFeature;
 import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
+import org.openkilda.floodlight.feature.NoviFlowPushPopVxlanFeature;
 import org.openkilda.floodlight.feature.PktpsFlagFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -79,6 +80,7 @@ public class FeatureDetectorService implements IService {
                 new MatchUdpPortFeature(),
                 new MaxBurstCoefficientLimitationFeature(),
                 new MultiTableFeature(),
-                new InaccurateSetVlanVidAction());
+                new InaccurateSetVlanVidAction(),
+                new NoviFlowPushPopVxlanFeature());
     }
 }

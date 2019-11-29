@@ -64,7 +64,6 @@ public interface RepositoryFactory {
 
     SwitchPropertiesRepository createSwitchPropertiesRepository();
 
-    ConnectedDeviceRepository createConnectedDeviceRepository();
 
     SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository();
 

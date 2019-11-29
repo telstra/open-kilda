@@ -29,7 +29,7 @@ import net.floodlightcontroller.packet.LLDPTLV;
 import org.junit.Test;
 
 public class LldpPacketTest {
-    private byte[] packet = new byte[]{
+    public static final byte[] packet = new byte[]{
             0x02, 0x07,                                                       // chassis ID type, len
             0x04,                                                             // chassis ID sub type (Mac address)
             (byte) 0xAE, 0x59, 0x21, 0x13, 0x41, 0x36,                        // Mac address

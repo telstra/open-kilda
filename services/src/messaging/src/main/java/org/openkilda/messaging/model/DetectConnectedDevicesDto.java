@@ -34,4 +34,7 @@ public class DetectConnectedDevicesDto implements Serializable {
     boolean srcArp;
     boolean dstLldp;
     boolean dstArp;
+
+    boolean srcSwitchLldp;
+    boolean dstSwitchLldp;
 }

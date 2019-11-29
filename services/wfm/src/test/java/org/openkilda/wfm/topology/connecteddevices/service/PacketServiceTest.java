@@ -20,14 +20,12 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
-import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.messaging.info.event.SwitchLldpInfoData;
-import org.openkilda.model.ConnectedDevice;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowCookie;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -41,7 +39,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public class PacketServiceTest extends Neo4jBasedTest {
-    public static final int COOKIE = 1;
+    public static final long COOKIE = Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
     public static final String MAC_ADDRESS_1 = "00:00:00:00:00:01";
     public static final String MAC_ADDRESS_2 = "00:00:00:00:00:02";
     public static final String CHASSIS_ID_1 = "00:00:00:00:00:03";
@@ -68,7 +66,6 @@ public class PacketServiceTest extends Neo4jBasedTest {
     public static final int TTL_1 = 120;
     public static final int TTL_2 = 240;
 
-    private static ConnectedDeviceRepository connectedDeviceRepository;
     private static SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private static SwitchRepository switchRepository;
     private static FlowCookieRepository flowCookieRepository;
@@ -76,7 +73,6 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUpOnce() {
-        connectedDeviceRepository = persistenceManager.getRepositoryFactory().createConnectedDeviceRepository();
         switchConnectedDeviceRepository = persistenceManager.getRepositoryFactory()
                 .createSwitchConnectedDeviceRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
@@ -93,9 +89,9 @@ public class PacketServiceTest extends Neo4jBasedTest {
     @Test
     public void testHandleLldpDataSameTimeOnCreate() {
         flowCookieRepository.createOrUpdate(new FlowCookie(FLOW_ID, COOKIE));
-        LldpInfoData data = createLldpInfoData(COOKIE);
-        packetService.handleFlowLldpData(data);
-        Collection<ConnectedDevice> devices = connectedDeviceRepository.findAll();
+        SwitchLldpInfoData data = createSwitchLldpInfoData();
+        packetService.handleSwitchLldpData(data);
+        Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, devices.size());
         assertEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
     }
@@ -103,15 +99,14 @@ public class PacketServiceTest extends Neo4jBasedTest {
     @Test
     public void testHandleLldpDataDifferentTimeOnUpdate() throws InterruptedException {
         flowCookieRepository.createOrUpdate(new FlowCookie(FLOW_ID, COOKIE));
-        LldpInfoData data = createLldpInfoData(COOKIE);
         // create
-        packetService.handleFlowLldpData(data);
+        packetService.handleSwitchLldpData(createSwitchLldpInfoData());
 
         Thread.sleep(10);
         // update
-        packetService.handleFlowLldpData(data);
+        packetService.handleSwitchLldpData(createSwitchLldpInfoData());
 
-        Collection<ConnectedDevice> devices = connectedDeviceRepository.findAll();
+        Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, devices.size());
         assertNotEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
     }
@@ -167,42 +162,42 @@ public class PacketServiceTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentPortDescription() {
+    public void testHandleSwitchLldpDataUpdateDifferentPortDescription() throws InterruptedException {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
         updatedData.setPortDescription(PORT_DESCRIPTION_2);
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentManagementAddress() {
+    public void testHandleSwitchLldpDataUpdateDifferentManagementAddress() throws InterruptedException {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
         updatedData.setManagementAddress(MANAGEMENT_ADDRESS_2);
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentSystemName() {
+    public void testHandleSwitchLldpDataUpdateDifferentSystemName() throws InterruptedException {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
         updatedData.setSystemName(SYSTEM_NAME_2);
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentSystemDescription() {
+    public void testHandleSwitchLldpDataUpdateDifferentSystemDescription() throws InterruptedException {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
         updatedData.setSystemDescription(SYSTEM_DESCRIPTION_2);
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentSystemCapabilities() {
+    public void testHandleSwitchLldpDataUpdateDifferentSystemCapabilities() throws InterruptedException {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
         updatedData.setSystemCapabilities(CAPABILITIES_2);
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentTtl() {
+    public void testHandleSwitchLldpDataUpdateDifferentTtl() throws InterruptedException {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
         updatedData.setTtl(TTL_2);
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
@@ -221,7 +216,9 @@ public class PacketServiceTest extends Neo4jBasedTest {
         assertSwitchConnectedDeviceExistInDatabase(updatedData);
     }
 
-    private void runHandleSwitchLldpWithUpdatedDevice(SwitchLldpInfoData updatedData) {
+    private void runHandleSwitchLldpWithUpdatedDevice(SwitchLldpInfoData updatedData) throws InterruptedException {
+        // Need to have a different timestamp in 'data' and 'updatedData' messages.
+        Thread.sleep(1);
         SwitchLldpInfoData data = createSwitchLldpInfoData();
         packetService.handleSwitchLldpData(data);
         Collection<SwitchConnectedDevice> oldDevices = switchConnectedDeviceRepository.findAll();
@@ -262,11 +259,6 @@ public class PacketServiceTest extends Neo4jBasedTest {
         assertEquals(data.getTtl(), device.getTtl());
     }
 
-
-    private LldpInfoData createLldpInfoData(long cookie) {
-        return new LldpInfoData(cookie, MAC_ADDRESS_1, CHASSIS_ID_1, PORT_ID_1, TTL_1, PORT_DESCRIPTION_1,
-                SYSTEM_NAME_1, SYSTEM_DESCRIPTION_1, CAPABILITIES_1, MANAGEMENT_ADDRESS_1);
-    }
 
     private SwitchLldpInfoData createSwitchLldpInfoData() {
         return new SwitchLldpInfoData(SWITCH_ID_1, PORT_NUMBER_1, VLAN_1, COOKIE, MAC_ADDRESS_1, CHASSIS_ID_1,

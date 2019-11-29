@@ -25,7 +25,11 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
@@ -75,7 +79,6 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
-import org.openkilda.messaging.command.flow.InstallLldpFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
@@ -151,6 +154,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -205,8 +209,6 @@ class RecordHandler implements Runnable {
             doDiscoverPathCommand(data);
         } else if (data instanceof InstallIngressFlow) {
             doProcessIngressFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallLldpFlow) {
-            doProcessInstallLldpFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallEgressFlow) {
             doProcessEgressFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof InstallTransitFlow) {
@@ -377,6 +379,9 @@ class RecordHandler implements Runnable {
         if (command.isMultiTable()) {
             context.getSwitchManager().installIntermediateIngressRule(dpid, command.getInputPort());
         }
+        if (command.isEnableLldp()) {
+            context.getSwitchManager().installLldpInputCustomerFlow(dpid, command.getInputPort());
+        }
         context.getSwitchManager().installIngressFlow(
                 dpid,
                 DatapathId.of(command.getEgressSwitchId().toLong()),
@@ -389,34 +394,6 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanType(),
                 meterId,
                 command.getTransitEncapsulationType(),
-                command.isEnableLldp(),
-                command.isMultiTable());
-    }
-
-    private void doProcessInstallLldpFlow(final CommandMessage message, String replyToTopic,
-                                          Destination replyDestination) throws FlowCommandException {
-        InstallLldpFlow command = (InstallLldpFlow) message.getData();
-        logger.info("Installing LLDP flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
-
-        try {
-            installLldpFlow(command);
-            message.setDestination(replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.CREATION_FAILURE, e);
-        }
-    }
-
-    private void installLldpFlow(InstallLldpFlow command) throws SwitchOperationException {
-        logger.debug("Installing LLDP flow: {}", command);
-        context.getSwitchManager().installLldpIngressFlow(
-                DatapathId.of(command.getSwitchId().toLong()),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getEncapsulationId(),
-                command.getMeterId(),
-                command.getEncapsulationType(),
                 command.isMultiTable());
     }
 
@@ -536,14 +513,17 @@ class RecordHandler implements Runnable {
                     command.getSwitchId(), command.getCookie());
 
         }
+        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
         if (command.isMultiTable()) {
-            context.getSwitchManager().installIntermediateIngressRule(DatapathId.of(command.getSwitchId().toLong()),
-                    command.getInputPort());
+            context.getSwitchManager().installIntermediateIngressRule(dpid, command.getInputPort());
+        }
+        if (command.isEnableLldp()) {
+            context.getSwitchManager().installLldpInputCustomerFlow(dpid, command.getInputPort());
         }
 
         OutputVlanType directOutputVlanType = command.getOutputVlanType();
         context.getSwitchManager().installOneSwitchFlow(
-                DatapathId.of(command.getSwitchId().toLong()),
+                dpid,
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -552,7 +532,6 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanId(),
                 directOutputVlanType,
                 meterId,
-                command.isEnableLldp(),
                 command.isMultiTable());
 
     }
@@ -694,6 +673,14 @@ class RecordHandler implements Runnable {
                     MULTITABLE_TRANSIT_DROP_COOKIE);
         } else if (cookie == LLDP_INPUT_PRE_DROP_COOKIE) {
             return switchManager.installLldpInputPreDropFlow(dpid);
+        } else if (cookie == LLDP_INGRESS_COOKIE) {
+            return switchManager.installLldpIngressFlow(dpid);
+        } else if (cookie == LLDP_POST_INGRESS_COOKIE) {
+            return switchManager.installLldpPostIngressFlow(dpid);
+        } else if (cookie == LLDP_POST_INGRESS_VXLAN_COOKIE) {
+            return switchManager.installLldpPostIngressVxlanFlow(dpid);
+        } else if (cookie == LLDP_POST_INGRESS_ONE_SWITCH_COOKIE) {
+            return switchManager.installLldpPostIngressOneSwitchFlow(dpid);
         } else if (cookie == LLDP_TRANSIT_COOKIE) {
             return switchManager.installLldpTransitFlow(dpid);
         } else if (Cookie.isIngressRulePassThrough(cookie)) {
@@ -708,6 +695,9 @@ class RecordHandler implements Runnable {
         } else if (Cookie.isIslVxlanEgress(cookie)) {
             long port = Cookie.getValueFromIntermediateCookie(cookie);
             return switchManager.installEgressIslVxlanRule(dpid, (int) port);
+        } else if (Cookie.isLldpInputCustomer(cookie)) {
+            long port = Cookie.getValueFromIntermediateCookie(cookie);
+            return switchManager.installLldpInputCustomerFlow(dpid, (int) port);
         } else {
             logger.warn("Skipping the installation of unexpected default switch rule {} for switch {}",
                     Long.toHexString(cookie), switchId);
@@ -716,14 +706,17 @@ class RecordHandler implements Runnable {
     }
 
     private List<Long> processDeleteFlow(RemoveFlow command, DatapathId dpid) throws SwitchOperationException {
-        ISwitchManager switchManager = context.getSwitchManager();
         logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
 
         if (command.isCleanUpIngress()) {
             context.getSwitchManager().removeIntermediateIngressRule(dpid, command.getCriteria().getInPort());
         }
+        if (command.isCleanUpIngressLldp()) {
+            context.getSwitchManager().removeLldpInputCustomerFlow(dpid, command.getCriteria().getInPort());
+        }
         DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
                 .orElseGet(() -> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
+        ISwitchManager switchManager = context.getSwitchManager();
         List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, command.isMultiTable(),
                 command.getRuleType(), criteria);
         if (cookiesOfRemovedRules.isEmpty()) {
@@ -811,6 +804,18 @@ class RecordHandler implements Runnable {
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_INPUT_PRE_DROP) {
                 switchManager.installLldpInputPreDropFlow(dpid);
                 installedRules.add(LLDP_INPUT_PRE_DROP_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_LLDP_INGRESS) {
+                switchManager.installLldpIngressFlow(dpid);
+                installedRules.add(LLDP_INGRESS_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS) {
+                switchManager.installLldpPostIngressFlow(dpid);
+                installedRules.add(LLDP_POST_INGRESS_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS_VXLAN) {
+                switchManager.installLldpPostIngressVxlanFlow(dpid);
+                installedRules.add(LLDP_POST_INGRESS_VXLAN_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS_ONE_SWITCH) {
+                switchManager.installLldpPostIngressOneSwitchFlow(dpid);
+                installedRules.add(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_TRANSIT) {
                 switchManager.installLldpTransitFlow(dpid);
                 installedRules.add(LLDP_TRANSIT_COOKIE);
@@ -836,11 +841,20 @@ class RecordHandler implements Runnable {
                             MULTITABLE_EGRESS_PASS_THROUGH_COOKIE));
                     installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                             MULTITABLE_TRANSIT_DROP_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            LLDP_POST_INGRESS_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            LLDP_POST_INGRESS_VXLAN_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
                     for (int port : request.getIslPorts()) {
                         installedRules.addAll(switchManager.installMultitableEndpointIslRules(dpid, port));
                     }
                     for (int port : request.getFlowPorts()) {
                         installedRules.add(switchManager.installIntermediateIngressRule(dpid, port));
+                    }
+                    for (Integer port : request.getFlowLldpPorts()) {
+                        installedRules.add(switchManager.installLldpInputCustomerFlow(dpid, port));
                     }
 
                     if (request.isSwitchLldp()) {
@@ -848,11 +862,14 @@ class RecordHandler implements Runnable {
                                 LLDP_INPUT_PRE_DROP_COOKIE));
                         installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                                 LLDP_TRANSIT_COOKIE));
+                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                                LLDP_INGRESS_COOKIE));
                     }
                 }
             }
 
-            SwitchRulesResponse response = new SwitchRulesResponse(installedRules);
+            SwitchRulesResponse response = new SwitchRulesResponse(
+                    installedRules.stream().filter(Objects::nonNull).collect(Collectors.toList()));
             InfoMessage infoMessage = new InfoMessage(response,
                     System.currentTimeMillis(), message.getCorrelationId());
             producerService.sendMessageAndTrack(replyToTopic, record.key(), infoMessage);
@@ -940,6 +957,22 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(LLDP_INPUT_PRE_DROP_COOKIE).build();
                         break;
+                    case REMOVE_LLDP_INGRESS:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(LLDP_INGRESS_COOKIE).build();
+                        break;
+                    case REMOVE_LLDP_POST_INGRESS:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(LLDP_POST_INGRESS_COOKIE).build();
+                        break;
+                    case REMOVE_LLDP_POST_INGRESS_VXLAN:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(LLDP_POST_INGRESS_VXLAN_COOKIE).build();
+                        break;
+                    case REMOVE_LLDP_POST_INGRESS_ONE_SWITCH:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).build();
+                        break;
                     case REMOVE_LLDP_TRANSIT:
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(LLDP_TRANSIT_COOKIE).build();
@@ -956,7 +989,8 @@ class RecordHandler implements Runnable {
                 // The cases when we delete the default rules.
                 if (deleteAction.defaultRulesToBeRemoved()) {
                     removedRules.addAll(switchManager.deleteDefaultRules(dpid, request.getIslPorts(),
-                            request.getFlowPorts(), request.isMultiTable(), request.isSwitchLldp()));
+                            request.getFlowPorts(), request.getFlowLldpPorts(), request.isMultiTable(),
+                            request.isSwitchLldp()));
                 }
             }
 
@@ -979,6 +1013,9 @@ class RecordHandler implements Runnable {
                             MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
                     processInstallDefaultFlowByCookie(request.getSwitchId(),
                             MULTITABLE_TRANSIT_DROP_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_VXLAN_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
                     for (int port : request.getIslPorts()) {
                         switchManager.installMultitableEndpointIslRules(dpid, port);
                     }
@@ -986,10 +1023,14 @@ class RecordHandler implements Runnable {
                     for (int port : request.getFlowPorts()) {
                         switchManager.installIntermediateIngressRule(dpid, port);
                     }
+                    for (Integer port : request.getFlowLldpPorts()) {
+                        switchManager.installLldpInputCustomerFlow(dpid, port);
+                    }
 
                     if (request.isSwitchLldp()) {
                         processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_INPUT_PRE_DROP_COOKIE);
                         processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_TRANSIT_COOKIE);
+                        processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_INGRESS_COOKIE);
                     }
                 }
             }
@@ -1049,6 +1090,7 @@ class RecordHandler implements Runnable {
         boolean switchLldp = request.isSwitchLldp();
         List<Integer> islPorts = request.getIslPorts();
         List<Integer> flowPorts = request.getFlowPorts();
+        Set<Integer> flowLldpPorts = request.getFlowLldpPorts();
 
         try {
             logger.debug("Loading expected default rules for switch {}", switchId);
@@ -1062,6 +1104,9 @@ class RecordHandler implements Runnable {
                 }
                 for (int port : flowPorts) {
                     defaultRules.add(context.getSwitchManager().buildIntermediateIngressRule(dpid, port));
+                }
+                for (Integer port : flowLldpPorts) {
+                    defaultRules.add(context.getSwitchManager().buildLldpInputCustomerFlow(dpid, port));
                 }
             }
             List<FlowEntry> flows = defaultRules.stream()
@@ -1175,8 +1220,6 @@ class RecordHandler implements Runnable {
             processInstallDefaultFlowByCookie(command.getSwitchId(), command.getCookie());
         } else if (command instanceof InstallIngressFlow) {
             installIngressFlow((InstallIngressFlow) command);
-        } else if (command instanceof InstallLldpFlow) {
-            installLldpFlow((InstallLldpFlow) command);
         } else if (command instanceof InstallEgressFlow) {
             installEgressFlow((InstallEgressFlow) command);
         } else if (command instanceof InstallTransitFlow) {

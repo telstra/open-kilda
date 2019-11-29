@@ -28,4 +28,6 @@ public interface SwitchConnectedDeviceRepository extends Repository<SwitchConnec
     Optional<SwitchConnectedDevice> findByUniqueFieldCombination(
             SwitchId switchId, int portNumber, int vlan, String macAddress, ConnectedDeviceType type, String chassisId,
             String portId);
+
+    Collection<SwitchConnectedDevice> findByFlowId(String flowId);
 }

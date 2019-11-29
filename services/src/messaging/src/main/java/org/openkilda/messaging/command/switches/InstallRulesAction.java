@@ -58,6 +58,18 @@ public enum InstallRulesAction {
     // Install Input table LLDP pre drop rule
     INSTALL_LLDP_INPUT_PRE_DROP,
 
+    // Install Ingress Table LLDP rule
+    INSTALL_LLDP_INGRESS,
+
+    // Install Post Ingress Table LLDP rule
+    INSTALL_LLDP_POST_INGRESS,
+
+    // Install Post Ingress Table LLDP vxlan rule
+    INSTALL_LLDP_POST_INGRESS_VXLAN,
+
+    // Install Post Ingress Table LLDP one switch rule
+    INSTALL_LLDP_POST_INGRESS_ONE_SWITCH,
+
     // Install Transit table LLDP rule
     INSTALL_LLDP_TRANSIT,
 

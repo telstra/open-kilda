@@ -25,8 +25,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -55,6 +57,9 @@ public class SwitchRulesDeleteRequest extends CommandData {
 
     @JsonProperty("flow_ports")
     private List<Integer> flowPorts = new ArrayList<>();
+
+    @JsonProperty("flow_lldp_ports")
+    private Set<Integer> flowLldpPorts = new HashSet<>();
 
     /**
      * Constructs a delete switch rules request.

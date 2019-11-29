@@ -65,15 +65,15 @@ public class Neo4jSwitchConnectedDevicesRepositoryTest extends Neo4jBasedTest {
     private Switch secondSwitch = Switch.builder().switchId(SECOND_SWITCH_ID).build();
 
     private SwitchConnectedDevice connectedDeviceA = new SwitchConnectedDevice(
-            firstSwitch, FIRST_PORT_NUMBER, FIRST_VLAN, FIRST_FLOW_ID, MAC_ADDRESS_1, LLDP, CHASSIS_ID, PORT_ID,
+            firstSwitch, FIRST_PORT_NUMBER, FIRST_VLAN, FIRST_FLOW_ID, true, MAC_ADDRESS_1, LLDP, CHASSIS_ID, PORT_ID,
             TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN,
             TIME_LAST_SEEN);
     private SwitchConnectedDevice connectedDeviceB = new SwitchConnectedDevice(
-            secondSwitch, FIRST_PORT_NUMBER, FIRST_VLAN, SECOND_FLOW_ID, MAC_ADDRESS_1, LLDP, CHASSIS_ID,
+            secondSwitch, FIRST_PORT_NUMBER, FIRST_VLAN, SECOND_FLOW_ID, false, MAC_ADDRESS_1, LLDP, CHASSIS_ID,
             PORT_ID, TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN,
             TIME_LAST_SEEN);
     private SwitchConnectedDevice connectedDeviceC = new SwitchConnectedDevice(
-            secondSwitch, SECOND_PORT_NUMBER, SECOND_VLAN, null, MAC_ADDRESS_2, ARP, CHASSIS_ID, PORT_ID, TTL,
+            secondSwitch, SECOND_PORT_NUMBER, SECOND_VLAN, null, null, MAC_ADDRESS_2, ARP, CHASSIS_ID, PORT_ID, TTL,
             PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS, TIME_FIRST_SEEN,
             TIME_LAST_SEEN);
 
@@ -129,6 +129,21 @@ public class Neo4jSwitchConnectedDevicesRepositoryTest extends Neo4jBasedTest {
                 .findBySwitchId(SECOND_SWITCH_ID);
         assertEquals(2, secondFlowDevices.size());
         assertEquals(newHashSet(connectedDeviceB, connectedDeviceC), newHashSet(secondFlowDevices));
+    }
+
+    @Test
+    public void findByFlowIdTest() {
+        connectedDeviceRepository.createOrUpdate(connectedDeviceA);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceB);
+        connectedDeviceRepository.createOrUpdate(connectedDeviceC);
+
+        Collection<SwitchConnectedDevice> firstDevice = connectedDeviceRepository.findByFlowId(FIRST_FLOW_ID);
+        assertEquals(1, firstDevice.size());
+        assertEquals(connectedDeviceA, firstDevice.iterator().next());
+
+        Collection<SwitchConnectedDevice> secondDevice = connectedDeviceRepository.findByFlowId(SECOND_FLOW_ID);
+        assertEquals(1, secondDevice.size());
+        assertEquals(connectedDeviceB, secondDevice.iterator().next());
     }
 
     @Test

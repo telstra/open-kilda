@@ -63,6 +63,10 @@ public class RemoveFlow extends BaseFlow {
     @JsonProperty("clean_up_ingress")
     private boolean cleanUpIngress;
 
+    @JsonProperty("clean_up_ingress_lldp")
+    private boolean cleanUpIngressLldp;
+
+
     /**
      * Instance constructor.
      *
@@ -73,6 +77,8 @@ public class RemoveFlow extends BaseFlow {
      * @param meterId meter id
      * @param criteria criteria to strictly match a rule.
      * @param ruleType type of flow
+     * @param cleanUpIngress remove customer port ingress rule
+     * @param cleanUpIngressLldp remove customer port ingress LLDP rule
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
@@ -85,7 +91,8 @@ public class RemoveFlow extends BaseFlow {
                       @JsonProperty("criteria") DeleteRulesCriteria criteria,
                       @JsonProperty("multi_table") boolean multiTable,
                       @JsonProperty("rule_type") RuleType ruleType,
-                      @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+                      @JsonProperty("clean_up_ingress") boolean cleanUpIngress,
+                      @JsonProperty("clean_up_ingress_lldp") boolean cleanUpIngressLldp) {
         super(transactionId, flowId, cookie, switchId);
 
         if (meterId != null && meterId <= 0L) {
@@ -96,5 +103,6 @@ public class RemoveFlow extends BaseFlow {
         this.criteria = criteria;
         this.ruleType = ruleType;
         this.cleanUpIngress = cleanUpIngress;
+        this.cleanUpIngressLldp = cleanUpIngressLldp;
     }
 }

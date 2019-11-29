@@ -28,7 +28,11 @@ import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
@@ -40,10 +44,15 @@ import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
+import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
+import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_MASK;
+import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_VALUE;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -72,6 +81,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.Metadata;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
@@ -132,6 +142,7 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -144,6 +155,7 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
@@ -198,6 +210,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     public static final int LLDP_INPUT_PRE_DROP_PRIORITY = MINIMAL_POSITIVE_PRIORITY + 1;
     public static final int LLDP_TRANSIT_ISL_PRIORITY = FLOW_PRIORITY - 1;
+    public static final int LLDP_INPUT_CUSTOMER_PRIORITY = FLOW_PRIORITY - 1;
+    public static final int LLDP_INGRESS_PRIORITY = MINIMAL_POSITIVE_PRIORITY + 1;
+    public static final int LLDP_POST_INGRESS_PRIORITY = FLOW_PRIORITY - 2;
+    public static final int LLDP_POST_INGRESS_VXLAN_PRIORITY = FLOW_PRIORITY - 1;
+    public static final int LLDP_POST_INGRESS_ONE_SWITCH_PRIORITY = FLOW_PRIORITY;
 
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
@@ -420,8 +437,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public long installIngressFlow(DatapathId dpid, DatapathId dstDpid, String flowId, Long cookie, int inputPort,
                                    int outputPort, int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType,
-                                   long meterId, FlowEncapsulationType encapsulationType,
-                                   boolean enableLldp, boolean multiTable)
+                                   long meterId, FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException {
         List<OFAction> actionList = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
@@ -446,8 +462,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         int flowPriority = getFlowPriority(inputVlanId);
 
-        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, enableLldp,
-                multiTable);
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, multiTable);
 
         // build FLOW_MOD command with meter
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
@@ -463,8 +478,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private List<OFInstruction> createIngressFlowInstructions(
-            OFFactory ofFactory, OFInstructionMeter meter, OFInstructionApplyActions actions, boolean enableLldp,
-            boolean multiTable) {
+            OFFactory ofFactory, OFInstructionMeter meter, OFInstructionApplyActions actions, boolean multiTable) {
         List<OFInstruction> instructions = new ArrayList<>();
 
         if (meter != null) {
@@ -473,57 +487,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         instructions.add(actions);
 
-        if (enableLldp) {
-            int tableId = TABLE_1;
-            if (multiTable) {
-                tableId = POST_INGRESS_TABLE_ID;
-            }
-            instructions.add(ofFactory.instructions().gotoTable(TableId.of(tableId)));
+        if (multiTable) {
+            instructions.add(ofFactory.instructions().gotoTable(TableId.of(POST_INGRESS_TABLE_ID)));
         }
 
         return instructions;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public long installLldpIngressFlow(DatapathId dpid, Long cookie, int inputPort, int tunnelId,
-                                       long meterId, FlowEncapsulationType encapsulationType, boolean multiTable)
-            throws SwitchNotFoundException, OfInstallException {
-
-        ArrayList<OFAction> actionList = new ArrayList<>();
-        IOFSwitch sw = lookupSwitch(dpid);
-
-        OFFactory ofFactory = sw.getOFFactory();
-
-        if (tunnelId != 0) { // in case of one switch flow tunnel id can be 0 (full port)
-            if (encapsulationType == FlowEncapsulationType.TRANSIT_VLAN) {
-                actionList.add(actionPopVlan(ofFactory));
-            } else if (encapsulationType == FlowEncapsulationType.VXLAN) {
-                actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
-            }
-        }
-
-        actionList.add(actionSendToController(sw));
-
-        Match match = getLldpMatch(ofFactory, inputPort, tunnelId, encapsulationType);
-
-        OFInstructionMeter meter = installMeterForLldpRule(sw, meterId, actionList);
-
-        OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
-
-        int flowPriority = getFlowPriority(tunnelId);
-
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
-                multiTable ? POST_INGRESS_TABLE_ID : TABLE_1)
-                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
-                .setMatch(match);
-
-        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
-        }
-        return pushFlow(sw, "--InstallLldpIngressFlow--", builder.build());
     }
 
     /**
@@ -593,7 +561,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public long installOneSwitchFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                                      int inputVlanId, int outputVlanId, OutputVlanType outputVlanType, long meterId,
-                                     boolean enableLldp, boolean multiTable) throws SwitchOperationException {
+                                     boolean multiTable) throws SwitchOperationException {
         // TODO: As per other locations, how different is this to IngressFlow? Why separate code path?
         //          As with any set of tests, the more we test the same code path, the better.
         //          Based on brief glance, this looks 90% the same as IngressFlow.
@@ -620,8 +588,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 null);
 
         int flowPriority = getFlowPriority(inputVlanId);
-        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, enableLldp,
-                multiTable);
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, multiTable);
+
+        if (multiTable) {
+            // to distinguish LLDP packets in one switch flow and in common flow
+            OFInstructionWriteMetadata writeMetadata = ofFactory.instructions().buildWriteMetadata()
+                    .setMetadata(U64.of(METADATA_ONE_SWITCH_FLOW_VALUE))
+                    .setMetadataMask(U64.of(METADATA_ONE_SWITCH_FLOW_MASK)).build();
+            instructions.add(writeMetadata);
+        }
 
         // build FLOW_MOD command with meter
 
@@ -660,9 +635,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     TRANSIT_TABLE_ID, EGRESS_TABLE_ID)).ifPresent((flows::add));
             Optional.ofNullable(buildTablePassThroughDefaultRule(ofFactory, MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE,
                     INGRESS_TABLE_ID, PRE_INGRESS_TABLE_ID)).ifPresent((flows::add));
+            addLldpPostIngressFlow(flows, sw);
+            addLldpPostIngressVxlanFlow(flows, sw);
+            addLldpPostIngressOneSwitchFlow(flows, sw);
+
             if (switchLldp) {
                 addLldpTransitFlow(flows, sw);
                 addLldpInputPreDropFlow(flows, sw);
+                addLldpIngressFlow(flows, sw);
             }
         }
         ArrayList<OFAction> actionListBroadcastRule = prepareActionListForBroadcastRule(sw);
@@ -698,6 +678,30 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         ArrayList<OFAction> actionList = new ArrayList<>();
         OFInstructionMeter meter = buildMeterInstructionForLldpIngressPreDropFlow(sw, actionList);
         Optional.ofNullable(buildLldpInputPreDropRule(sw, meter, actionList)).ifPresent((flows::add));
+    }
+
+    private void addLldpIngressFlow(List<OFFlowMod> flows, IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForLldpIngressFlow(sw, actionList);
+        Optional.ofNullable(buildLldpIngressFlow(sw, meter, actionList)).ifPresent((flows::add));
+    }
+
+    private void addLldpPostIngressFlow(List<OFFlowMod> flows, IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForLldpPostIngressFlow(sw, actionList);
+        Optional.ofNullable(buildLldpPostIngressFlow(sw, meter, actionList)).ifPresent((flows::add));
+    }
+
+    private void addLldpPostIngressVxlanFlow(List<OFFlowMod> flows, IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForLldpPostIngressVxlanFlow(sw, actionList);
+        Optional.ofNullable(buildLldpPostIngressVxlanFlow(sw, meter, actionList)).ifPresent((flows::add));
+    }
+
+    private void addLldpPostIngressOneSwitchFlow(List<OFFlowMod> flows, IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForLldpPostIngressOneSwitchFlow(sw, actionList);
+        Optional.ofNullable(buildLldpPostIngressOneSwitchFlow(sw, meter, actionList)).ifPresent((flows::add));
     }
 
     @Override
@@ -753,6 +757,30 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             IOFSwitch sw, ArrayList<OFAction> actionList) {
         return buildMeterInstruction(
                 createMeterIdForDefaultRule(Cookie.LLDP_INPUT_PRE_DROP_COOKIE).getValue(), sw, actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForLldpIngressFlow(
+            IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(
+                createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).getValue(), sw, actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForLldpPostIngressFlow(
+            IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(
+                createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue(), sw, actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForLldpPostIngressVxlanFlow(
+            IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(
+                createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE).getValue(), sw, actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForLldpPostIngressOneSwitchFlow(
+            IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(
+                createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue(), sw, actionList);
     }
 
     /**
@@ -1059,7 +1087,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
-                                         List<Integer> flowPorts, boolean multiTable,
+                                         List<Integer> flowPorts, Set<Integer> flowLldpPorts, boolean multiTable,
                                          boolean switchLldp) throws SwitchOperationException {
 
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -1067,7 +1095,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE);
+                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
+                LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
         if (multiTable) {
             for (int islPort : islPorts) {
                 deletedRules.addAll(removeMultitableEndpointIslRules(dpid, islPort));
@@ -1076,6 +1106,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             for (int flowPort: flowPorts) {
                 deletedRules.add(removeIntermediateIngressRule(dpid, flowPort));
             }
+
+            for (int flowLldpPort : flowLldpPorts) {
+                deletedRules.add(removeLldpInputCustomerFlow(dpid, flowLldpPort));
+            }
         }
 
 
@@ -1083,9 +1117,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue());
+
             if (switchLldp) {
                 deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE).getValue());
                 deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE).getValue());
+                deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).getValue());
             }
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
@@ -1729,6 +1768,26 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
+    public long removeLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException {
+        long cookie = Cookie.encodeLldpInputCustomer(port);
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+
+        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
+        builder.setCookie(U64.of(cookie));
+        builder.setCookieMask(U64.NO_MASK);
+
+        builder.setMatch(buildInPortMatch(port, ofFactory));
+
+        builder.setInstructions(ImmutableList.of(goToTable));
+        builder.setPriority(LLDP_INPUT_CUSTOMER_PRIORITY);
+
+        removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
+        return cookie;
+    }
+
+    @Override
     public OFFlowMod buildIntermediateIngressRule(DatapathId dpid, int port) throws SwitchNotFoundException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
@@ -1739,6 +1798,170 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, INPUT_TABLE_ID)
                 .setMatch(match)
                 .setInstructions(ImmutableList.of(goToTable)).build();
+    }
+
+    @Override
+    public long installLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFlowMod flowMod = buildLldpInputCustomerFlow(dpid, port);
+        String flowName = "--Customer Port LLDP input rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    @Override
+    public OFFlowMod buildLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
+                .setExact(MatchField.ETH_TYPE, EthType.LLDP)
+                .build();
+
+        OFInstructionWriteMetadata writeMetadata = ofFactory.instructions().buildWriteMetadata()
+                .setMetadata(U64.of(METADATA_LLDP_VALUE))
+                .setMetadataMask(U64.of(METADATA_LLDP_MASK)).build();
+
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        return prepareFlowModBuilder(
+                ofFactory, Cookie.encodeLldpInputCustomer(port),
+                LLDP_INPUT_CUSTOMER_PRIORITY, INPUT_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(goToTable, writeMetadata)).build();
+    }
+
+    @Override
+    public long installLldpIngressFlow(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = installMeterForLldpRule(
+                sw, MeterId.createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).getValue(), actionList);
+        OFFlowMod flowMod = buildLldpIngressFlow(sw, meter, actionList);
+
+        String flowName = "--LLDP ingress rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    private OFFlowMod buildLldpIngressFlow(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(METADATA_LLDP_VALUE),
+                        OFMetadata.ofRaw(METADATA_LLDP_MASK))
+                .build();
+
+        actionList.add(actionSendToController(sw));
+        OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
+
+        return prepareFlowModBuilder(ofFactory, LLDP_INGRESS_COOKIE, LLDP_INGRESS_PRIORITY, INGRESS_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .build();
+    }
+
+    @Override
+    public long installLldpPostIngressFlow(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = installMeterForLldpRule(
+                sw, MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue(), actionList);
+        OFFlowMod flowMod = buildLldpPostIngressFlow(sw, meter, actionList);
+
+        String flowName = "--LLDP post ingress rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    private OFFlowMod buildLldpPostIngressFlow(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(METADATA_LLDP_VALUE),
+                        OFMetadata.ofRaw(METADATA_LLDP_MASK))
+                .build();
+
+        actionList.add(actionSendToController(sw));
+        OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
+
+        return prepareFlowModBuilder(ofFactory, LLDP_POST_INGRESS_COOKIE,
+                LLDP_POST_INGRESS_PRIORITY, POST_INGRESS_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .build();
+    }
+
+    @Override
+    public Long installLldpPostIngressVxlanFlow(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = installMeterForLldpRule(
+                sw, MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE).getValue(), actionList);
+        OFFlowMod flowMod = buildLldpPostIngressVxlanFlow(sw, meter, actionList);
+        if (flowMod == null) {
+            logger.debug("Skip installation of LLDP post ingress vxlan flow for switch {}", dpid);
+            return null;
+        }
+
+        String flowName = "--LLDP post ingress vxlan rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    private OFFlowMod buildLldpPostIngressVxlanFlow(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
+        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            return null;
+        }
+
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(METADATA_LLDP_VALUE),
+                        OFMetadata.ofRaw(METADATA_LLDP_MASK))
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
+                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
+                .build();
+
+        actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        actionList.add(actionSendToController(sw));
+        OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
+
+        return prepareFlowModBuilder(ofFactory, LLDP_POST_INGRESS_VXLAN_COOKIE,
+                LLDP_POST_INGRESS_VXLAN_PRIORITY, POST_INGRESS_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .build();
+    }
+
+    @Override
+    public long installLldpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = installMeterForLldpRule(
+                sw, MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue(), actionList);
+        OFFlowMod flowMod = buildLldpPostIngressOneSwitchFlow(sw, meter, actionList);
+
+        String flowName = "--LLDP post ingress one switch rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    private OFFlowMod buildLldpPostIngressOneSwitchFlow(
+            IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = ofFactory.buildMatch()
+                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(Metadata.getOneSwitchFlowLldpValue()),
+                        OFMetadata.ofRaw(Metadata.getOneSwitchFlowLldpMask()))
+                .build();
+
+        actionList.add(actionSendToController(sw));
+        OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
+
+        return prepareFlowModBuilder(ofFactory, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
+                LLDP_POST_INGRESS_ONE_SWITCH_PRIORITY, POST_INGRESS_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .build();
     }
 
     @Override

@@ -123,17 +123,7 @@ public class FlowResourcesManager {
             reverse.meterId(meterPool.allocate(flow.getDestSwitch(), flow.getFlowId(), reversePathId));
         }
 
-        Long lldpCookie = null;
-        if (flow.getDetectConnectedDevices().isSrcLldp() || flow.getDetectConnectedDevices().isDstLldp()) {
-            lldpCookie = cookiePool.allocate(flow.getFlowId());
 
-            if (flow.getDetectConnectedDevices().isSrcLldp()) {
-                forward.lldpMeterId(meterPool.allocate(flow.getSrcSwitch(), flow.getFlowId(), forwardPathId));
-            }
-            if (flow.getDetectConnectedDevices().isDstLldp()) {
-                reverse.lldpMeterId(meterPool.allocate(flow.getDestSwitch(), flow.getFlowId(), reversePathId));
-            }
-        }
 
         if (!flow.isOneSwitchFlow()) {
             EncapsulationResourcesProvider encapsulationResourcesProvider =
@@ -147,7 +137,6 @@ public class FlowResourcesManager {
 
         return FlowResources.builder()
                 .unmaskedCookie(cookiePool.allocate(flow.getFlowId()))
-                .unmaskedLldpCookie(lldpCookie)
                 .forward(forward.build())
                 .reverse(reverse.build())
                 .build();
@@ -171,15 +160,11 @@ public class FlowResourcesManager {
      * <p/>
      * Shared resources are to be deallocated with no usage checks.
      */
-    public void deallocatePathResources(PathId pathId, long unmaskedCookie, Long unmaskedLldpCookie,
-                                        FlowEncapsulationType encapsulationType) {
+    public void deallocatePathResources(PathId pathId, long unmaskedCookie, FlowEncapsulationType encapsulationType) {
         log.debug("Deallocate flow resources for path {}, cookie: {}.", pathId, unmaskedCookie);
 
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(unmaskedCookie);
-            if (unmaskedLldpCookie != null) {
-                cookiePool.deallocate(unmaskedLldpCookie);
-            }
             meterPool.deallocate(pathId);
 
             EncapsulationResourcesProvider encapsulationResourcesProvider =
@@ -198,9 +183,6 @@ public class FlowResourcesManager {
 
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(resources.getUnmaskedCookie());
-            if (resources.getUnmaskedLldpCookie() != null) {
-                cookiePool.deallocate(resources.getUnmaskedLldpCookie());
-            }
 
             meterPool.deallocate(resources.getForward().getPathId(), resources.getReverse().getPathId());
 

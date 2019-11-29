@@ -40,18 +40,22 @@ public class DetectConnectedDevicesConverterTest {
 
     @Test
     public void toGraphPropertyTest() {
-        runToGraphPropertyTest(true, true, true, true);
-        runToGraphPropertyTest(false, false, false, false);
-        runToGraphPropertyTest(false, true, true, false);
-        runToGraphPropertyTest(false, false, true, true);
+        runToGraphPropertyTest(true, true, true, true, true, true);
+        runToGraphPropertyTest(false, false, false, false, false, true);
+        runToGraphPropertyTest(false, true, true, false, true, false);
+        runToGraphPropertyTest(false, false, true, true, false, false);
     }
 
-    private void runToGraphPropertyTest(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp) {
-        DetectConnectedDevices value = new DetectConnectedDevices(srcLldp, srcArp, dstLldp, dstArp);
+    private void runToGraphPropertyTest(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp,
+                                        Boolean srcSwitchLldp, Boolean dstSwitchLldp) {
+        DetectConnectedDevices value = new DetectConnectedDevices(
+                srcLldp, srcArp, dstLldp, dstArp, srcSwitchLldp, dstSwitchLldp);
         Map<String, ?> properties = converter.toGraphProperties(value);
         assertEquals(srcLldp, properties.get(SRC_LLDP));
         assertEquals(srcArp, properties.get(SRC_ARP));
         assertEquals(dstLldp, properties.get(DST_LLDP));
+        assertEquals(dstArp, properties.get(DST_ARP));
+        assertEquals(dstArp, properties.get(DST_ARP));
         assertEquals(dstArp, properties.get(DST_ARP));
     }
 

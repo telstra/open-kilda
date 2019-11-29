@@ -72,6 +72,9 @@ public class SwitchConnectedDevice implements Serializable {
     @Property("flow_id")
     private String flowId;
 
+    @Property("source")
+    private Boolean source;
+
     @Index
     @NonNull
     @Property("mac_address")
@@ -127,7 +130,7 @@ public class SwitchConnectedDevice implements Serializable {
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
-    public SwitchConnectedDevice(@NonNull Switch switchObj, int portNumber, int vlan, String flowId,
+    public SwitchConnectedDevice(@NonNull Switch switchObj, int portNumber, int vlan, String flowId, Boolean source,
                                  @NonNull String macAddress, @NonNull ConnectedDeviceType type,
                                  @NonNull String chassisId, @NonNull String portId, Integer ttl, String portDescription,
                                  String systemName, String systemDescription, String systemCapabilities,
@@ -136,6 +139,7 @@ public class SwitchConnectedDevice implements Serializable {
         this.portNumber = portNumber;
         this.vlan = vlan;
         this.flowId = flowId;
+        this.source = source;
         this.macAddress = macAddress;
         this.type = type;
         this.chassisId = chassisId;
