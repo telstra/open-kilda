@@ -19,6 +19,7 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@Ignore("https://github.com/telstra/open-kilda/issues/2971")
 class QinQFlowSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -287,7 +288,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("is not implemented yet")
     @Unroll
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:srcInnerVlanId, dst:dstInnerVlanId)"() {
@@ -303,20 +303,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        //TODO(andriidovhan) add error message
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Invalid request payload"
 
         where:
-        srcInnerVlanId | dstInnerVlanId | errorMsg
-        4096           | 10             | ""
-        10             | -1             | ""
+        srcInnerVlanId | dstInnerVlanId
+        4096           | 10
+        10             | -1
     }
 
-    @Ignore("is not implemented yet")
     def "System doesn't allow to create/update/delete a QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -332,8 +327,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def eCreate = thrown(HttpClientErrorException)
         eCreate.rawStatusCode == 400
-        //TODO(andriidovhan) add error message
-        eCreate.responseBodyAsString.to(MessageError).errorMessage == "Could not create the flow"
+        eCreate.responseBodyAsString.to(MessageError).errorMessage.contains("Could not create flow")
 
         when: "Create a QinQ flow via APIv2"
         def flowV2 = flowHelperV2.randomFlow(swP)
@@ -347,8 +341,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def eUpdate = thrown(HttpClientErrorException)
         eUpdate.rawStatusCode == 400
-        //TODO(andriidovhan) add error message
-        eUpdate.responseBodyAsString.to(MessageError).errorMessage == "Could not update the flow"
+        eUpdate.responseBodyAsString.to(MessageError).errorMessage.contains("Could not update flow")
 
         when: "Try to delete the flow via APIv1"
         northbound.deleteFlow(flowV2.flowId)
@@ -356,8 +349,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def eDelete = thrown(HttpClientErrorException)
         eDelete.rawStatusCode == 400
-        //TODO(andriidovhan) add error message
-        eDelete.responseBodyAsString.to(MessageError).errorMessage == "Could not delete flow"
+        eDelete.responseBodyAsString.to(MessageError).errorMessage.contains("Could not delete flow")
 
         cleanup:
         flowV2 && flowHelperV2.deleteFlow(flowV2.flowId)
