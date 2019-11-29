@@ -219,6 +219,17 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowBySwitchEndpointWithMultiTable() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setSrcWithMultiTable(true);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithMultiTableSupport(TEST_SWITCH_A_ID);
+        Set<String> foundFlowIds = foundFlows.stream().map(foundFlow -> flow.getFlowId()).collect(Collectors.toSet());
+        assertThat(foundFlowIds, Matchers.hasSize(1));
+    }
+
+    @Test
     public void shouldFindDownFlowIdsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);

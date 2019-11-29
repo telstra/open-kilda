@@ -49,6 +49,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -104,6 +105,7 @@ public class SwitchValidateFsm
         this.switchId = request.getSwitchId();
         this.flowPorts = new ArrayList<>();
         FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
+        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
         Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
         for (FlowPath flowPath : flowPaths) {
             if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
@@ -113,7 +115,8 @@ public class SwitchValidateFsm
             }
         }
 
-        hasMultiTableFlows = !flowPathRepository.findBySegmentSwitchWithMultiTable(switchId, true).isEmpty();
+        hasMultiTableFlows = !flowPathRepository.findBySegmentSwitchWithMultiTable(switchId, true).isEmpty()
+                             || !flowRepository.findByEndpointSwitchWithMultiTableSupport(switchId).isEmpty();
 
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
