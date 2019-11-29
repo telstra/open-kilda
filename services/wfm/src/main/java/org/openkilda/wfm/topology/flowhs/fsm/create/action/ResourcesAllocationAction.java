@@ -115,18 +115,17 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             createFlowWithPaths(stateMachine, flow);
             createSpeakerRequestFactories(stateMachine, flow);
         } catch (UnroutableFlowException e) {
-            throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+            throw new FlowProcessingException(ErrorType.NOT_FOUND,
                     "Not enough bandwidth or no path found. " + e.getMessage(), e);
         } catch (ResourceAllocationException e) {
-            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, getGenericErrorMessage(),
+            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
                     "Failed to allocate flow resources. " + e.getMessage(), e);
         } catch (FlowNotFoundException e) {
-            throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
+            throw new FlowProcessingException(ErrorType.NOT_FOUND,
                     "Couldn't find the diverse flow. " + e.getMessage(), e);
         } catch (FlowAlreadyExistException e) {
             if (!stateMachine.retryIfAllowed()) {
-                throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, getGenericErrorMessage(),
-                        e.getMessage(), e);
+                throw new FlowProcessingException(ErrorType.INTERNAL_ERROR, e.getMessage(), e);
             } else {
                 // we have retried the operation, no need to respond.
                 log.debug(e.getMessage(), e);

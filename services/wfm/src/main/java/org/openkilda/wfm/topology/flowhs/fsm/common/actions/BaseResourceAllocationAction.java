@@ -255,8 +255,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                                                           FlowPathPair newFlowPaths) {
         FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow, newFlowPaths.getForward(), newFlowPaths.getReverse(),
                 DumpType.STATE_AFTER);
-        stateMachine.saveActionWithDumpToHistory(
-                format("New %s paths were created", pathType),
+        stateMachine.saveActionWithDumpToHistory(format("New %s paths were created", pathType),
                 format("The flow paths %s / %s were created (with allocated resources)",
                         newFlowPaths.getForward().getPathId(), newFlowPaths.getReverse().getPathId()),
                 dumpData);

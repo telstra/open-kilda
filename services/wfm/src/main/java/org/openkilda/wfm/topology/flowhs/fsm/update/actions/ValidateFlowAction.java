@@ -75,8 +75,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         boolean isOperationAllowed = featureTogglesRepository.find()
                 .map(FeatureToggles::getUpdateFlowEnabled).orElse(Boolean.FALSE);
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, getGenericErrorMessage(),
-                    "Flow update feature is disabled");
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
         }
 
         stateMachine.setTargetFlow(targetFlow);
@@ -84,14 +83,14 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         try {
             flowValidator.validate(targetFlow);
         } catch (InvalidFlowException e) {
-            throw new FlowProcessingException(e.getType(), getGenericErrorMessage(), e.getMessage(), e);
+            throw new FlowProcessingException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, getGenericErrorMessage(), e.getMessage(), e);
+            throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
         if (targetFlow.getDiverseFlowId() != null
                 && targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, getGenericErrorMessage(),
+            throw new FlowProcessingException(ErrorType.DATA_INVALID,
                     "Couldn't add one-switch flow into diverse group");
         }
 
@@ -99,7 +98,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
             if (targetFlow.getDiverseFlowId() != null) {
                 Flow diverseFlow = getFlow(targetFlow.getDiverseFlowId());
                 if (diverseFlow.isOneSwitchFlow()) {
-                    throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID, getGenericErrorMessage(),
+                    throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
                             "Couldn't create diverse group with one-switch flow");
                 }
             }
@@ -107,7 +106,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
             Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        getGenericErrorMessage(), format("Flow %s is in progress now", flowId));
+                        format("Flow %s is in progress now", flowId));
             }
 
             // Keep it, just in case we have to revert it.
