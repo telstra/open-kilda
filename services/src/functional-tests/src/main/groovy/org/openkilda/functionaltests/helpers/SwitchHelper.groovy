@@ -1,6 +1,10 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
@@ -78,7 +82,10 @@ class SwitchHelper {
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                    MULTITABLE_TRANSIT_DROP_COOKIE]
+                    MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE]
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+                multiTableRules.add(LLDP_POST_INGRESS_VXLAN_COOKIE)
+            }
             northbound.getLinks(sw.dpId, null, null, null).each {
                 if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
                     multiTableRules.add(Cookie.encodeIslVxlanEgress(it.source.portNo))
@@ -89,14 +96,20 @@ class SwitchHelper {
             northbound.getSwitchFlows(sw.dpId).each {
                 if (it.source.datapath.equals(sw.dpId)) {
                     multiTableRules.add(Cookie.encodeIngressRulePassThrough(it.source.portId))
+                    if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
+                        switchLldpRules.add(Cookie.encodeLldpInputCustomer(it.source.portId))
+                    }
                 }
                 if (it.destination.datapath.equals(sw.dpId)) {
                     multiTableRules.add(Cookie.encodeIngressRulePassThrough(it.destination.portId))
+                    if (swProps.switchLldp || it.destination.detectConnectedDevices.lldp) {
+                        switchLldpRules.add(Cookie.encodeLldpInputCustomer(it.destination.portId))
+                    }
                 }
             }
         }
         if (swProps.switchLldp) {
-            switchLldpRules = [LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE]
+            switchLldpRules.addAll([LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE])
         }
         if (sw.noviflow && !sw.wb5164) {
             return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -147,7 +160,15 @@ class SwitchHelper {
     static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
         def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
         Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            def actualHexCookie = []
+            for (long cookie : northbound.getSwitchRules(sw.dpId).flowEntries*.cookie) {
+                actualHexCookie.add(Cookie.decode(cookie).toString())
+            }
+            def expectedHexCookie = []
+            for (long cookie : sw.defaultCookies) {
+                expectedHexCookie.add(Cookie.decode(cookie).toString())
+            }
+            assert actualHexCookie.sort() == expectedHexCookie.sort()
         }
         return response
     }

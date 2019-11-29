@@ -25,7 +25,6 @@ import lombok.Value;
 @Builder
 public class FlowResources {
     private final long unmaskedCookie;
-    private final Long unmaskedLldpCookie;
     private final PathResources forward;
     private final PathResources reverse;
 
@@ -34,7 +33,6 @@ public class FlowResources {
     public static class PathResources {
         private final PathId pathId;
         private final MeterId meterId;
-        private final MeterId lldpMeterId;
         private final EncapsulationResources encapsulationResources;
     }
 }

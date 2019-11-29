@@ -59,7 +59,8 @@ public class TestFlowBuilder {
     private FlowStatus status = FlowStatus.UP;
     private Integer maxLatency = null;
     private Integer priority = null;
-    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(false, false, false, false);
+    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
+            false, false, false, false, false, false);
     private FlowEncapsulationType encapsulationType;
 
     public TestFlowBuilder() {

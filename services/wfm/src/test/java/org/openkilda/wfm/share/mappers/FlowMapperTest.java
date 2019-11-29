@@ -69,7 +69,7 @@ public class FlowMapperTest {
         forwardFlow.setIgnoreBandwidth(true);
         forwardFlow.setPeriodicPings(true);
         forwardFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
-        forwardFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(false, true, true, false));
+        forwardFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(false, true, true, false, false, false));
 
         PathInfoData reversePathInfoData = new PathInfoData();
         reversePathInfoData.setLatency(1L);
@@ -95,7 +95,7 @@ public class FlowMapperTest {
         reverseFlow.setIgnoreBandwidth(true);
         reverseFlow.setPeriodicPings(true);
         reverseFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
-        reverseFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(true, false, false, true));
+        reverseFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(true, false, false, true, false, false));
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
         FlowPair p = FlowMapper.INSTANCE.map(pair, () -> org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN);

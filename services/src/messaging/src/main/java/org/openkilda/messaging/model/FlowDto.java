@@ -123,7 +123,7 @@ public class FlowDto implements Serializable {
 
     @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesDto detectConnectedDevices
-            = new DetectConnectedDevicesDto(false, false, false, false);
+            = new DetectConnectedDevicesDto(false, false, false, false, false, false);
 
     /**
      * Flow source meter id.
@@ -305,7 +305,7 @@ public class FlowDto implements Serializable {
                         input.getSource().getDetectConnectedDevices().isLldp(),
                         input.getSource().getDetectConnectedDevices().isArp(),
                         input.getDestination().getDetectConnectedDevices().isLldp(),
-                        input.getDestination().getDetectConnectedDevices().isArp()));
+                        input.getDestination().getDetectConnectedDevices().isArp(), false, false));
     }
 
     @JsonIgnore
@@ -375,7 +375,7 @@ public class FlowDto implements Serializable {
      */
     public void setDetectConnectedDevices(DetectConnectedDevicesDto detectConnectedDevices) {
         if (detectConnectedDevices == null) {
-            this.detectConnectedDevices = new DetectConnectedDevicesDto(false, false, false, false);
+            this.detectConnectedDevices = new DetectConnectedDevicesDto(false, false, false, false, false, false);
         } else {
             this.detectConnectedDevices = detectConnectedDevices;
         }

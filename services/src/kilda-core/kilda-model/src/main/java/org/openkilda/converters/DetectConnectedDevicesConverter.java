@@ -28,6 +28,8 @@ public class DetectConnectedDevicesConverter implements CompositeAttributeConver
     public static final String SRC_ARP = "detect_src_arp_connected_devices";
     public static final String DST_LLDP = "detect_dst_lldp_connected_devices";
     public static final String DST_ARP = "detect_dst_arp_connected_devices";
+    public static final String SRC_SWITCH_LLDP = "src_lldp_switch_connected_devices";
+    public static final String DST_SWITCH_LLDP = "dst_lldp_switch_connected_devices";
 
     @Override
     public Map<String, ?> toGraphProperties(DetectConnectedDevices value) {
@@ -37,6 +39,8 @@ public class DetectConnectedDevicesConverter implements CompositeAttributeConver
             properties.put(SRC_ARP, value.isSrcArp());
             properties.put(DST_LLDP, value.isDstLldp());
             properties.put(DST_ARP, value.isDstArp());
+            properties.put(SRC_SWITCH_LLDP, value.isSrcSwitchLldp());
+            properties.put(DST_SWITCH_LLDP, value.isDstSwitchLldp());
         }
         return properties;
     }
@@ -46,8 +50,10 @@ public class DetectConnectedDevicesConverter implements CompositeAttributeConver
         boolean srcLldp = getPropertyValue(SRC_LLDP, properties);
         boolean srcArp = getPropertyValue(SRC_ARP, properties);
         boolean dstLldp = getPropertyValue(DST_LLDP, properties);
-        boolean dsrArp = getPropertyValue(DST_ARP, properties);
-        return new DetectConnectedDevices(srcLldp, srcArp, dstLldp, dsrArp);
+        boolean dstArp = getPropertyValue(DST_ARP, properties);
+        boolean srcSwitchLldp = getPropertyValue(SRC_SWITCH_LLDP, properties);
+        boolean dstSwitchLldp = getPropertyValue(DST_SWITCH_LLDP, properties);
+        return new DetectConnectedDevices(srcLldp, srcArp, dstLldp, dstArp, srcSwitchLldp, dstSwitchLldp);
     }
 
     private boolean getPropertyValue(String property, Map<String, ?> properties) {

@@ -73,11 +73,15 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long MULTITABLE_TRANSIT_DROP_COOKIE             = 0x0CL | DEFAULT_RULE_FLAG;
     public static final long LLDP_INPUT_PRE_DROP_COOKIE                 = 0x0DL | DEFAULT_RULE_FLAG;
     public static final long LLDP_TRANSIT_COOKIE                        = 0x0EL | DEFAULT_RULE_FLAG;
+    public static final long LLDP_INGRESS_COOKIE                        = 0x0FL | DEFAULT_RULE_FLAG;
+    public static final long LLDP_POST_INGRESS_COOKIE                   = 0x10L | DEFAULT_RULE_FLAG;
+    public static final long LLDP_POST_INGRESS_VXLAN_COOKIE             = 0x11L | DEFAULT_RULE_FLAG;
+    public static final long LLDP_POST_INGRESS_ONE_SWITCH_COOKIE        = 0x12L | DEFAULT_RULE_FLAG;
 
     // 9 bits cookie type "field"
     public static final long TYPE_MASK                               = 0x1FF0_0000_0000_0000L;
     public static final long FLOW_COOKIE_TYPE                        = 0x0000_0000_0000_0000L;
-    public static final long LLDP_FLOW_COOKIE_TYPE                   = 0x0010_0000_0000_0000L;
+    public static final long LLDP_INPUT_CUSTOMER_TYPE                = 0x0010_0000_0000_0000L;
     public static final long MULTITABLE_ISL_VLAN_EGRESS_RULES_TYPE   = 0x0020_0000_0000_0000L;
     public static final long MULTITABLE_ISL_VXLAN_EGRESS_RULES_TYPE  = 0x0030_0000_0000_0000L;
     public static final long MULTITABLE_ISL_VXLAN_TRANSIT_RULES_TYPE = 0x0040_0000_0000_0000L;
@@ -123,15 +127,8 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         return port | Cookie.MULTITABLE_INGRESS_RULES_TYPE | Cookie.DEFAULT_RULE_FLAG;
     }
 
-    /**
-     * Creates masked cookie for LLDP rule.
-     */
-    public static Cookie buildLldpCookie(Long unmaskedCookie, boolean forward) {
-        if (unmaskedCookie == null) {
-            return null;
-        }
-        long directionMask = forward ? FLOW_PATH_FORWARD_FLAG : FLOW_PATH_REVERSE_FLAG;
-        return new Cookie(unmaskedCookie | Cookie.LLDP_FLOW_COOKIE_TYPE | directionMask);
+    public static long encodeLldpInputCustomer(int port) {
+        return port | Cookie.LLDP_INPUT_CUSTOMER_TYPE | Cookie.DEFAULT_RULE_FLAG;
     }
 
     /**
@@ -191,11 +188,8 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         return (TYPE_MASK & value) == FLOW_COOKIE_TYPE;
     }
 
-    /**
-     * Checks whether the cookie corresponds to the LLDP flow.
-     */
-    public static boolean isFlowLldp(long value) {
-        return (TYPE_MASK & value) == LLDP_FLOW_COOKIE_TYPE;
+    public static boolean isLldpInputCustomer(long value) {
+        return (TYPE_MASK & value) == LLDP_INPUT_CUSTOMER_TYPE;
     }
 
     public static boolean isIslVlanEgress(long value) {

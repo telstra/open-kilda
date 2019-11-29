@@ -37,6 +37,7 @@ public class Neo4jSwitchConnectedDevicesRepository
         extends Neo4jGenericRepository<SwitchConnectedDevice> implements SwitchConnectedDeviceRepository {
 
     private static final String SWITCH_FIELD = "switchObj";
+    private static final String FLOW_ID_PROPERTY_NAME = "flow_id";
     private static final String PORT_NUMBER_PROPERTY_NAME = "port_number";
     private static final String VLAN_PROPERTY_NAME = "vlan";
     private static final String TYPE_PROPERTY_NAME = "type";
@@ -54,6 +55,11 @@ public class Neo4jSwitchConnectedDevicesRepository
         switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
 
         return loadAll(switchFilter);
+    }
+
+    @Override
+    public Collection<SwitchConnectedDevice> findByFlowId(String flowId) {
+        return loadAll(new Filter(FLOW_ID_PROPERTY_NAME, EQUALS, flowId));
     }
 
     @Override

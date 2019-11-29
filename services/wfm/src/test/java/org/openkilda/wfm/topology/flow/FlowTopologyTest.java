@@ -746,7 +746,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowDto flowPayload =
                 new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 10, 20,
                         new SwitchId("ff:01"), 10, 20, false,
-                        new DetectConnectedDevicesDto(false, false, false, false));
+                        new DetectConnectedDevicesDto(false, false, false, false, false, false));
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -810,7 +810,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowDto flowPayload =
                 new FlowDto(flowId, 10000, true, "", new SwitchId("ff:00"), 10, 20,
                         new SwitchId("ff:01"), 10, 20, false,
-                        new DetectConnectedDevicesDto(false, false, false, false));
+                        new DetectConnectedDevicesDto(false, false, false, false, false, false));
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
         //sendNorthboundMessage(message);

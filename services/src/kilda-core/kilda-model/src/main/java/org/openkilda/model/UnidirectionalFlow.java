@@ -126,7 +126,9 @@ public class UnidirectionalFlow implements Serializable {
                     getFlow().getDetectConnectedDevices().isDstLldp(),
                     getFlow().getDetectConnectedDevices().isDstArp(),
                     getFlow().getDetectConnectedDevices().isSrcLldp(),
-                    getFlow().getDetectConnectedDevices().isSrcArp());
+                    getFlow().getDetectConnectedDevices().isSrcArp(),
+                    getFlow().getDetectConnectedDevices().isSrcSwitchLldp(),
+                    getFlow().getDetectConnectedDevices().isDstSwitchLldp());
         }
     }
 

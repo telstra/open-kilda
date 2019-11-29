@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.stats;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper.Direction;
 
 import org.junit.Rule;
@@ -27,8 +26,6 @@ import org.junit.rules.ExpectedException;
 public class FlowDirectionHelperTest {
     private static final long FORWARD_COOKIE = 0x4000000000000001L;
     private static final long REVERSE_COOKIE = 0x2000000000000001L;
-    private static final long FORWARD_LLDP_COOKIE = Cookie.buildLldpCookie(1L, true).getValue();
-    private static final long REVERSE_LLDP_COOKIE = Cookie.buildLldpCookie(1L, false).getValue();
     private static final long BAD_COOKIE =     0x6000000000000001L;
 
     @Rule
@@ -38,8 +35,6 @@ public class FlowDirectionHelperTest {
     public void findDirectionTest() throws Exception {
         assertEquals(Direction.FORWARD, FlowDirectionHelper.findDirection(FORWARD_COOKIE));
         assertEquals(Direction.REVERSE, FlowDirectionHelper.findDirection(REVERSE_COOKIE));
-        assertEquals(Direction.FORWARD, FlowDirectionHelper.findDirection(FORWARD_LLDP_COOKIE));
-        assertEquals(Direction.REVERSE, FlowDirectionHelper.findDirection(REVERSE_LLDP_COOKIE));
 
         thrown.expect(FlowCookieException.class);
         FlowDirectionHelper.findDirection(BAD_COOKIE);
