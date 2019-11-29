@@ -219,7 +219,7 @@ class FlowHelperV2 {
     }
 
     static FlowEndpointPayload toV1(FlowEndpointV2 ep) {
-        new FlowEndpointPayload(ep.switchId, ep.portNumber, ep.vlanId, new DetectConnectedDevicesPayload(false, false))
+        new FlowEndpointPayload(ep.switchId, ep.portNumber, ep.vlanId, ep.getInnerVlanId(), new DetectConnectedDevicesPayload(false, false))
     }
 
     static FlowRequestV2 toV2(FlowPayload flow) {

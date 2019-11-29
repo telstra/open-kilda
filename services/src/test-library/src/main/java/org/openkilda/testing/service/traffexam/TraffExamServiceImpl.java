@@ -61,6 +61,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
@@ -191,11 +192,11 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         ExamResources resources = null;
         List<HostResource> supplied = new ArrayList<>(4);
         try {
-            Address sourceAddress = new Address(subnet.address(1), subnet.getPrefix(), exam.getSourceVlan());
+            Address sourceAddress = new Address(subnet.address(1), subnet.getPrefix(), exam.getSourceVlans());
             sourceAddress = assignAddress(exam.getSource(), sourceAddress);
             supplied.add(sourceAddress);
 
-            Address destAddress = new Address(subnet.address(2), subnet.getPrefix(), exam.getDestVlan());
+            Address destAddress = new Address(subnet.address(2), subnet.getPrefix(), exam.getDestVlans());
             destAddress = assignAddress(exam.getDest(), destAddress);
             supplied.add(destAddress);
 
@@ -348,7 +349,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         } catch (Inet4ValueException e) {
             throw new OperationalException("Unable to allocate subnet for exam. There is no more addresses available.");
         }
-        return assignAddress(host, new Address(subnet.address(1), subnet.getPrefix(), new Vlan(vlan)));
+        return assignAddress(host, new Address(subnet.address(1), subnet.getPrefix(),
+                Collections.singletonList(new Vlan(vlan))));
     }
 
     private Address assignAddress(Host host, Address payload) {

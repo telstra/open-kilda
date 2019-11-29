@@ -24,17 +24,19 @@ import lombok.Value;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.InputMismatchException;
+import java.util.List;
 import java.util.UUID;
 
 @Value
 public class Address extends HostResource {
 
     @JsonSerialize(using = VlanJsonSerializer.class)
-    private Vlan vlan;
+    @JsonDeserialize(using = VlanJsonDeserializer.class)
+    private List<Vlan> vlan;
     private Inet4Address address;
     private int prefix;
 
-    public Address(Inet4Address address, int prefix, Vlan vlan) {
+    public Address(Inet4Address address, int prefix, List<Vlan> vlan) {
         super(null);
         this.address = address;
         this.prefix = prefix;
@@ -46,8 +48,7 @@ public class Address extends HostResource {
             @JsonProperty("idnr") UUID id,
             @JsonProperty("address") String address,
             @JsonProperty("prefix") int prefix,
-            @JsonProperty("vlan")
-            @JsonDeserialize(using = VlanJsonDeserializer.class) Vlan vlan) {
+            @JsonProperty("vlan") List<Vlan> vlan) {
         super(id);
 
         try {

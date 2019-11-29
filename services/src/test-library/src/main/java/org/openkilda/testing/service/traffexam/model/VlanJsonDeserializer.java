@@ -21,16 +21,22 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class VlanJsonDeserializer extends JsonDeserializer<Vlan> {
+public class VlanJsonDeserializer extends JsonDeserializer<List<Vlan>> {
 
     @Override
-    public Vlan deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+    public List<Vlan> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
             throws IOException, JsonProcessingException {
-        Integer value = jsonParser.readValueAs(Integer.class);
-        Vlan result = null;
+        int[] value = jsonParser.readValueAs(int[].class);
+        List<Vlan> result = new ArrayList<Vlan>();
         if (value != null) {
-            result = new Vlan(value);
+            int i;
+            for (i = 0; i < value.length; i++) {
+                Vlan vlan = new Vlan(value[i]);
+                result.add(vlan);
+            }
         }
         return result;
     }

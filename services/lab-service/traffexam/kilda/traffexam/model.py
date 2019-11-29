@@ -207,8 +207,8 @@ class VLAN(Abstract):
 
     def __init__(self, tag, **fields):
         super().__init__(**fields)
-        if isinstance(tag, collections.Sequence) and len(tag) == 1:
-            tag = tag[0]
+        if not isinstance(tag, collections.Sequence):
+            tag = [tag]
         self.tag = tag
 
     def set_iface(self, iface):

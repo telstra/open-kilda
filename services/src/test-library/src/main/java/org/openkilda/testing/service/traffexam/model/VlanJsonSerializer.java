@@ -20,16 +20,18 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 
 import java.io.IOException;
+import java.util.List;
 
-public class VlanJsonSerializer extends JsonSerializer<Vlan> {
+public class VlanJsonSerializer extends JsonSerializer<List<Vlan>> {
 
     @Override
-    public void serialize(Vlan vlan, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+    public void serialize(List<Vlan> vlan, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
             throws IOException {
         if (vlan == null) {
             jsonGenerator.writeNull();
         } else {
-            jsonGenerator.writeNumber(vlan.getVlanTag());
+            int[] numbers = vlan.stream().mapToInt(Vlan::getVlanTag).filter(x -> x != 0).toArray();
+            jsonGenerator.writeArray(numbers, 0, numbers.length);
         }
     }
 }
