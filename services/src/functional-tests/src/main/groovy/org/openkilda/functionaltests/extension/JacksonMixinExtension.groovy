@@ -93,4 +93,11 @@ class JacksonMixinExtension {
     static <T> T to(StringReader delegate, Class<T> clazz) {
         to(delegate.text, clazz)
     }
+
+    /**
+     * Deep copy of an object using Jackson mapper serialization/deserialization.
+     */
+    static <T> T jacksonCopy(T delegate) {
+        delegate.toJson().to(delegate.class)
+    }
 }

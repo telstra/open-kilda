@@ -10,7 +10,9 @@ import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
+import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -132,7 +134,19 @@ class SwitchHelper {
         northbound.activeSwitches.find { it.switchId == sw }.description
     }
 
-     /**
+    /**
+     * The same as direct northbound call, but additionally waits that default rules are indeed reinstalled according
+     * to config
+     */
+    static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
+        def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
+        Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
+        return response
+    }
+
+    /**
      * This method calculates expected burst for different types of switches. The common burst equals to
      * `rate * burstCoefficient`. There are couple exceptions though:<br>
      * <b>Noviflow</b>: Does not use our common burst coefficient and overrides it with its own coefficient (see static

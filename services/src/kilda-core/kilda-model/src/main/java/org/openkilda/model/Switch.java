@@ -119,6 +119,17 @@ public class Switch implements Serializable {
         this.underMaintenance = underMaintenance;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
+        setFeatures(features);
+    }
+
+    /**
+     * Set features for the switch.
+     * @param features target features
+     */
+    public void setFeatures(Set<SwitchFeature> features) {
+        if (features == null) {
+            features = new HashSet<>();
+        }
         this.features = features;
     }
 
