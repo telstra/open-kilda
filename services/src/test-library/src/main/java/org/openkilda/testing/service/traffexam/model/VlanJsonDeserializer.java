@@ -32,8 +32,7 @@ public class VlanJsonDeserializer extends JsonDeserializer<List<Vlan>> {
         int[] value = jsonParser.readValueAs(int[].class);
         List<Vlan> result = new ArrayList<Vlan>();
         if (value != null) {
-            int i;
-            for (i = 0; i < value.length; i++) {
+            for (int i = 0; i < value.length; i++) {
                 Vlan vlan = new Vlan(value[i]);
                 result.add(vlan);
             }
