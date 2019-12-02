@@ -8,7 +8,7 @@
 			</li>
 		
 			<li  id="topology-menu-id" style="cursor:pointer;">
-					<a title="Network" (click)="toggleSubmenu('network-submenu')"><i class="fa fa-cubes" aria-hidden="true"></i><span class="home-Topology toggleText">Network</span><i [ngClass]="{'fa-angle-right':activeSubmenu != 'network-submenu','fa-angle-down':activeSubmenu == 'network-submenu'}" class="fa fa-fw"></i></a>
+					<a title="Network" (click)="toggleSubmenu('network-submenu')"><i class="fa fa-cubes" aria-hidden="true"></i><span class="home-Topology toggleText">Network</span><i [ngClass]="{'fa-angle-down':activeSubmenu != 'network-submenu','fa-angle-up':activeSubmenu == 'network-submenu'}" class="fa fa-fw" style="float:right; margin-top:15px;"></i></a>
 					<ul id="network-submenu" [ngClass] = "{'show':activeSubmenu == 'network-submenu','hide':activeSubmenu != 'network-submenu'}" class="submenu">
 						<li *ngIf="commonService.hasPermission('menu_topology')" [class.active]="currentUrl == '/topology'">
 							<a title="Topology" routerLink="/topology"> <i class="icon-topology" aria-hidden="true"></i><span class="home-Topology toggleText">Topology</span></a>
@@ -29,7 +29,7 @@
 				<a (click)="toggleSubmenu('')" title="Switches" routerLink="/switches"> <i class="icon-switch" aria-hidden="true"></i><span class="home-flows toggleText">Switches</span></a>
 			</li>
 			<li id="usermanagement-menu-id" style="cursor:pointer;">
-					<a title="Users" (click)="toggleSubmenu('user-submenu')"><i class="fa fa-users" aria-hidden="true"></i><span class="home-Topology toggleText">Users</span><i [ngClass]="{'fa-angle-right':activeSubmenu != 'user-submenu','fa-angle-down':activeSubmenu == 'user-submenu'}"  class="fa fa-fw"></i></a>
+					<a title="Users" (click)="toggleSubmenu('user-submenu')"><i class="fa fa-users" aria-hidden="true"></i><span class="home-Topology toggleText">Users</span><i [ngClass]="{'fa-angle-down':activeSubmenu != 'user-submenu','fa-angle-up':activeSubmenu == 'user-submenu'}"  class="fa fa-fw" style="float:right; margin-top:15px;"></i></a>
 					<ul id="user-submenu" [ngClass] = "{'show':activeSubmenu == 'user-submenu','hide':activeSubmenu != 'user-submenu'}" class="submenu">
 							<li *ngIf="commonService.hasPermission('menu_user_management')" id="usermanagement-menu-id" [class.active]="currentUrl == '/usermanagement'">
 								<a title="User Management" routerLink='/usermanagement'> 
