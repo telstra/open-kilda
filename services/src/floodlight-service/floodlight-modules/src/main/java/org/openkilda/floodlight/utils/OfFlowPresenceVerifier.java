@@ -99,7 +99,7 @@ public class OfFlowPresenceVerifier {
                     iter.remove();
                     break;
                 } else {
-                    log.debug("On {} mismatch {} vs {}", swId, tableEntry, expectedEntry);
+                    log.debug("On {} mismatch {} vs expected {}", swId, tableEntry, expectedEntry);
                 }
             }
         } else {
