@@ -71,7 +71,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void metersOf12() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_12, 1),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
@@ -128,7 +128,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     public void roundTripActon() {
         discoveryCheck(makeSwitchMock("Sonus Networks Inc, 4 Technology Park Dr, Westford, MA 01886, USA",
                 "8.1.0.14", "VX3048", OFVersion.OF_12, 2),
-                ImmutableSet.of(RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT, MULTI_TABLE));
+                ImmutableSet.of(PKTPS_FLAG, MATCH_UDP_PORT, MULTI_TABLE));
     }
 
     @Test

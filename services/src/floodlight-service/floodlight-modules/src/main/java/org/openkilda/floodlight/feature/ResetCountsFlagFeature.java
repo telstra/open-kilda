@@ -21,12 +21,20 @@ import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.commons.lang3.StringUtils;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 
 import java.util.Optional;
 
 public class ResetCountsFlagFeature extends AbstractFeature {
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {
+        // TODO(surabujin) recheck and fix detection or feature handling
+        if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_12) <= 0) {
+            // acton switches do not report RESET_COUNT flags into flows stats response, we can suppose it
+            // do not support (or do not keep it in flow record).
+            return Optional.empty();
+        }
+
         if (StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), CENTEC_MANUFACTURED)) {
             return Optional.empty();
         } else {
