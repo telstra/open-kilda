@@ -92,7 +92,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow1Path == switchPair.paths.first()
 
         when: "Create another flow. One path is shorter but available bandwidth is not enough, another path is longer"
-        def flow2 = flowHelper.randomFlow(switchPair)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1])
         flow2.maximumBandwidth = 101
         flowHelper.addFlow(flow2)
 

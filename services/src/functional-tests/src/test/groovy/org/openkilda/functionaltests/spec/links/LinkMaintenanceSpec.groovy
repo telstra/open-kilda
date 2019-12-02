@@ -52,7 +52,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(switchPair)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1])
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -100,7 +100,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(switchPair)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1])
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 

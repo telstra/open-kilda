@@ -57,7 +57,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         northbound.getKildaConfiguration().flowEncapsulationType == newFlowEncapsulationType.toString().toLowerCase()
 
         when: "Create a flow without encapsulation type"
-        def flow2 = flowHelperV2.randomFlow(switchPair)
+        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
         flow2.encapsulationType = null
         northboundV2.addFlow(flow2)
 
