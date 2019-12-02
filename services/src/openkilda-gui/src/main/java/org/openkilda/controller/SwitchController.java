@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -324,5 +324,25 @@ public class SwitchController {
             @RequestBody final SwitchInfo switchInfo) {
         activityLogger.log(ActivityType.SWITCH_MAINTENANCE, switchId);
         return serviceSwitch.updateMaintenanceStatus(switchId, switchInfo);
+    }
+    
+    /**
+     * Delete Switch.
+     *
+     * @param switchId the switch id
+     * @param force the force delete
+     * @return the SwitchInfo
+     */
+    @RequestMapping(value = "/{switchId}", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.SW_SWITCH_DELETE })
+    public @ResponseBody SwitchInfo deleteSwitch(@PathVariable final String switchId,
+            @RequestParam(name = "force", required = false) boolean force) {
+        //        Long userId = null;
+        //        if (serverContext.getRequestContext() != null) {
+        //            userId = serverContext.getRequestContext().getUserId();
+        //        }
+        activityLogger.log(ActivityType.DELETE_SWITCH, switchId);
+        return serviceSwitch.deleteSwitch(switchId, force);
     }
 }

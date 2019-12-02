@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -155,6 +155,7 @@ public abstract class IConstants {
                 + "/bandwidth?src_switch={src_switch}&src_port={src_port}&"
                 + "dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_NETWORK_PATH = "/network/paths?src_switch={src_switch}&dst_switch={dst_switch}";
+        public static final String DELETE_SWITCH = GET_SWITCHES + "/{switch_id}?force={force}";
     }
     
     public final class OpenTsDbUrl {
@@ -267,6 +268,8 @@ public abstract class IConstants {
         public static final String FW_FLOW_CONTRACT = "fw_flow_contract";
         
         public static final String SW_SWITCH_INVENTORY = "sw_switch_inventory";
+
+        public static final String SW_SWITCH_DELETE = "sw_switch_delete";
         
     }
 
