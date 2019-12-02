@@ -49,6 +49,8 @@ public interface Database {
 
     boolean updateIslTimeUnstable(Isl isl, Instant newTimeUnstable);
 
+    Instant getIslTimeUnstable(Isl isl);
+
     // Switches
 
     Switch getSwitch(SwitchId switchId);
