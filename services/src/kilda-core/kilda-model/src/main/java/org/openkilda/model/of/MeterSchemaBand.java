@@ -25,6 +25,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 public class MeterSchemaBand {
     private static final float INACCURATE_RATE_DEVIATION = 0.01f;
     private static final float INACCURATE_BURST_DEVIATION = 0.01f;
+    private static final long ACCURATE_BURST_DEVIATION = 1;
 
     private final int type;
 
@@ -53,9 +54,8 @@ public class MeterSchemaBand {
                     && inaccurateEquals(rate, that.rate, INACCURATE_RATE_DEVIATION)
                     && inaccurateEquals(burstSize, that.burstSize, INACCURATE_BURST_DEVIATION);
         } else {
-            return equals.append(rate, that.rate)
-                    .append(burstSize, that.burstSize)
-                    .isEquals();
+            return equals.append(rate, that.rate).isEquals()
+                    && inaccurateEquals(burstSize, that.burstSize, ACCURATE_BURST_DEVIATION);
         }
     }
 
@@ -66,6 +66,16 @@ public class MeterSchemaBand {
                 .append(rate)
                 .append(burstSize)
                 .toHashCode();
+    }
+
+    private boolean inaccurateEquals(long left, long right, long deviation) {
+        long diff;
+        if (left < right) {
+            diff = right - left;
+        } else {
+            diff = left - right;
+        }
+        return diff <= deviation;
     }
 
     private boolean inaccurateEquals(long left, long right, float deviation) {
