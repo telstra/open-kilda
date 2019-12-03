@@ -109,30 +109,30 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
     @Tags(VIRTUAL)
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
         given: "A flow going through a switch"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Deactivate the switch"
-        def swToDeactivate = topology.switches.find { it.dpId == flow.source.datapath }
+        def swToDeactivate = topology.switches.find { it.dpId == flow.source.switchId }
         lockKeeper.knockoutSwitch(swToDeactivate)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == flow.source.datapath } }
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == flow.source.switchId } }
 
         and: "Try to delete the switch"
-        northbound.deleteSwitch(flow.source.datapath, false)
+        northbound.deleteSwitch(flow.source.switchId, false)
 
         then: "Got 400 BadRequest error because the switch has the flow assigned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '${flow.source.datapath}' has 1 assigned flows: \\[${flow.id}\\].*")
+        exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
 
         and: "Cleanup: activate the switch back and remove the flow"
         lockKeeper.reviveSwitch(swToDeactivate)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == flow.source.datapath } }
-        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == flow.source.switchId } }
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowType        | flow
-        "single-switch" | getFlowHelper().singleSwitchFlow(getTopology().getActiveSwitches()[0])
-        "casual"        | getFlowHelper().randomFlow(*getTopology().getActiveSwitches()[0..1])
+        "single-switch" | getFlowHelperV2().singleSwitchFlow(getTopology().getActiveSwitches()[0])
+        "casual"        | getFlowHelperV2().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
     @Tags(VIRTUAL)

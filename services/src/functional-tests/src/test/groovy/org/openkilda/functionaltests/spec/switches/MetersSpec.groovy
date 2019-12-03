@@ -60,7 +60,7 @@ class MetersSpec extends HealthCheckSpecification {
         def defaultMeters = northbound.getAllMeters(sw.dpId)
 
         when: "A flow is created and its meter is deleted"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
         def meterToDelete = northbound.getAllMeters(sw.dpId).meterEntries.find {
             !defaultMeters.meterEntries*.meterId.contains(it.meterId)
         }.meterId
@@ -71,7 +71,7 @@ class MetersSpec extends HealthCheckSpecification {
         !northbound.getAllMeters(sw.dpId).meterEntries.find { it.meterId == meterToDelete }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Check if no excessive meters are installed on the switch"
         Wrappers.wait(WAIT_OFFSET) {
@@ -191,9 +191,9 @@ on a #switchType switch"() {
         assert defaultMeters
 
         and: "Create a single-switch flow"
-        def flow = flowHelper.singleSwitchFlow(sw)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.ignoreBandwidth = ignoreBandwidth
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "New meters should appear after flow setup"
         def newMeters = northbound.getAllMeters(sw.dpId)
@@ -214,10 +214,10 @@ on a #switchType switch"() {
         metersValidation.misconfigured.empty
 
         and: "Flow validation shows no discrepancies in meters"
-        northbound.validateFlow(flow.id).each { assert it.asExpected }
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "New meters should disappear from the switch"
         Wrappers.wait(WAIT_OFFSET) {
@@ -251,10 +251,10 @@ on a #switchType switch"() {
         assert defaultMeters
 
         and: "Create a single-switch flow with maximum_bandwidth=0"
-        def flow = flowHelper.singleSwitchFlow(sw)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.maximumBandwidth = 0
         flow.ignoreBandwidth = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Ony default meters should be present on the switch and new meters should not appear after flow setup"
         def newMeters = northbound.getAllMeters(sw.dpId)
@@ -262,7 +262,7 @@ on a #switchType switch"() {
         newMeterEntries.empty
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -279,18 +279,18 @@ meters in flow rules at all (#data.flowType flow)"() {
         assumeTrue("Unable to find required switch pair in topology", data.switchPair != null)
 
         when: "Create a flow between given switches"
-        def flow = flowHelper.randomFlow(data.switchPair)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(data.switchPair)
+        flowHelperV2.addFlow(flow)
 
         then: "The source and destination switches have only one meter in the flow's ingress rule"
-        def srcSwFlowMeters = northbound.getAllMeters(flow.source.datapath).meterEntries.findAll(flowMeters)
-        def dstSwFlowMeters = northbound.getAllMeters(flow.destination.datapath).meterEntries.findAll(flowMeters)
+        def srcSwFlowMeters = northbound.getAllMeters(flow.source.switchId).meterEntries.findAll(flowMeters)
+        def dstSwFlowMeters = northbound.getAllMeters(flow.destination.switchId).meterEntries.findAll(flowMeters)
 
         srcSwFlowMeters.size() == 1
         dstSwFlowMeters.size() == 1
 
-        def srcSwitchRules = northbound.getSwitchRules(flow.source.datapath).flowEntries
-        def dstSwitchRules = northbound.getSwitchRules(flow.destination.datapath).flowEntries
+        def srcSwitchRules = northbound.getSwitchRules(flow.source.switchId).flowEntries
+        def dstSwitchRules = northbound.getSwitchRules(flow.destination.switchId).flowEntries
         def srcSwFlowIngressRule = filterRules(srcSwitchRules, flow.source.portNumber, flow.source.vlanId, null)[0]
         def dstSwFlowIngressRule = filterRules(dstSwitchRules, flow.destination.portNumber, flow.destination.vlanId,
                 null)[0]
@@ -306,14 +306,14 @@ meters in flow rules at all (#data.flowType flow)"() {
         !dstSwFlowEgressRule.instructions.goToMeter
 
         and: "Intermediate switches don't have meters in flow rules at all"
-        pathHelper.getInvolvedSwitches(flow.id)[1..-2].findAll { it.ofVersion != "OF_12" }.each { sw ->
+        pathHelper.getInvolvedSwitches(flow.flowId)[1..-2].findAll { it.ofVersion != "OF_12" }.each { sw ->
             assert northbound.getAllMeters(sw.dpId).meterEntries.findAll(flowMeters).empty
             def flowRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }
             flowRules.each { assert !it.instructions.goToMeter }
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -363,14 +363,13 @@ meters in flow rules at all (#data.flowType flow)"() {
 
         def sw = switches.first()
         def defaultMeters = northbound.getAllMeters(sw.dpId)
-        def flowPayload = flowHelper.singleSwitchFlow(sw)
-        flowPayload.setMaximumBandwidth(100)
-        def flow = flowHelper.addFlow(flowPayload)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.setMaximumBandwidth(100)
+        flowHelperV2.addFlow(flow)
 
         when: "Update flow bandwidth to #flowRate kbps"
-        flow = northbound.getFlow(flow.id)
         flow.setMaximumBandwidth(flowRate)
-        flowHelper.updateFlow(flow.id, flow)
+        flowHelperV2.updateFlow(flow.flowId, flow)
 
         then: "New meters should be installed on the switch"
         def newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
@@ -392,10 +391,10 @@ meters in flow rules at all (#data.flowType flow)"() {
         metersValidation.misconfigured.empty
 
         and: "Flow validation shows no discrepancies in meters"
-        northbound.validateFlow(flow.id).each { assert it.asExpected }
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [flowRate, data] << [
@@ -420,14 +419,13 @@ meters in flow rules at all (#data.flowType flow)"() {
         def sw = switches.first()
         def expectedBurstSize = switchHelper.getExpectedBurst(sw.dpId, flowRate)
         def defaultMeters = northbound.getAllMeters(sw.dpId)
-        def flowPayload = flowHelper.singleSwitchFlow(sw)
-        flowPayload.setMaximumBandwidth(100)
-        def flow = flowHelper.addFlow(flowPayload)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.setMaximumBandwidth(100)
+        flowHelperV2.addFlow(flow)
 
         when: "Update flow bandwidth to #flowRate kbps"
-        flow = northbound.getFlow(flow.id)
         flow.setMaximumBandwidth(flowRate)
-        northbound.updateFlow(flow.id, flow)
+        flowHelperV2.updateFlow(flow.flowId, flow)
 
         then: "Meters with updated rate should be installed on the switch"
         def newMeters = null
@@ -450,10 +448,10 @@ meters in flow rules at all (#data.flowType flow)"() {
         metersValidation.misconfigured.empty
 
         and: "Flow validation shows no discrepancies in meters"
-        northbound.validateFlow(flow.id).each { assert it.asExpected }
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [
@@ -476,14 +474,13 @@ meters in flow rules at all (#data.flowType flow)"() {
 
         def sw = switches.first()
         def defaultMeters = northbound.getAllMeters(sw.dpId)
-        def flowPayload = flowHelper.singleSwitchFlow(sw)
-        flowPayload.setMaximumBandwidth(100)
-        def flow = flowHelper.addFlow(flowPayload)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.setMaximumBandwidth(100)
+        flowHelperV2.addFlow(flow)
 
         when: "Update flow bandwidth to #flowRate kbps"
-        flow = northbound.getFlow(flow.id)
         flow.setMaximumBandwidth(flowRate)
-        flowHelper.updateFlow(flow.id, flow)
+        flowHelperV2.updateFlow(flow.flowId, flow)
 
         then: "New meters should be installed on the switch"
         def newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
@@ -511,10 +508,10 @@ meters in flow rules at all (#data.flowType flow)"() {
         metersValidation.misconfigured.empty
 
         and: "Flow validation shows no discrepancies in meters"
-        northbound.validateFlow(flow.id).each { assert it.asExpected }
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
@@ -529,13 +526,13 @@ meters in flow rules at all (#data.flowType flow)"() {
         def (Switch src, Switch dst) = data.switches[0..1]
 
         and: "A flow with custom meter rate and burst, that differ from defaults"
-        def flow = flowHelper.randomFlow(src, dst)
+        def flow = flowHelperV2.randomFlow(src, dst)
         flow.maximumBandwidth = 1000
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
         /*at this point meters are set for given flow. Now update flow bandwidth directly via DB, so that existing meter
         rate and burst is no longer correspond to the flow bandwidth*/
         def newBandwidth = 2000
-        database.updateFlowBandwidth(flow.id, newBandwidth)
+        database.updateFlowBandwidth(flow.flowId, newBandwidth)
         //at this point existing meters do not correspond with the flow
         //now save some original data for further comparison before resetting meters
         Map<SwitchId, SwitchFlowEntries> originalRules = [src.dpId, dst.dpId].collectEntries {
@@ -546,7 +543,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         }
 
         when: "Ask system to reset meters for the flow"
-        def response = northbound.resetMeters(flow.id)
+        def response = northbound.resetMeters(flow.flowId)
 
         then: "Response contains correct info about new meter values"
         [response.srcMeter, response.dstMeter].each { switchMeterEntries ->
@@ -590,7 +587,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         }
 
         and: "Cleanup: delete flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -626,21 +623,21 @@ meters in flow rules at all (#data.flowType flow)"() {
         def src = availableSwitches[0]
         def dst = availableSwitches[1]
 
-        def flow = flowHelper.randomFlow(src, dst)
+        def flow = flowHelperV2.randomFlow(src, dst)
         flow.ignoreBandwidth = true
         flow.maximumBandwidth = 0
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Resetting meter burst and rate to default"
-        northbound.resetMeters(flow.id)
+        northbound.resetMeters(flow.flowId)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.id' is unmetered"
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.flowId' is unmetered"
 
         then: "Delete the created flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Memoized

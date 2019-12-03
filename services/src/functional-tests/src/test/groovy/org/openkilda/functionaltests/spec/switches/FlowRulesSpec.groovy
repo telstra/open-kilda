@@ -32,6 +32,8 @@ import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
@@ -64,8 +66,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([VIRTUAL, SMOKE])
     def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
         given: "A switch with proper flow rules installed (including default) and not connected to the controller"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -88,7 +90,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Unroll
@@ -98,8 +100,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "A switch with some flow rules installed"
         assumeTrue("Multi table should be disabled on the src switch",
                 !northbound.getSwitchProperties(srcSwitch.dpId).multiTable)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         when: "Delete rules from the switch"
         def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
@@ -112,7 +114,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Install default rules if necessary"
         if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
@@ -164,8 +166,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         given: "A switch with some flow rules installed"
         assumeTrue("Multi table should be enabled on the src switch",
                 northbound.getSwitchProperties(srcSwitch.dpId).multiTable)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         when: "Delete rules from the switch"
         def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
@@ -192,7 +194,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Install default rules if necessary"
         if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
@@ -241,8 +243,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
         given: "A switch with some flow rules installed"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
@@ -266,7 +268,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [[description : "cookie",
@@ -288,8 +290,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         //TODO(ylobankov): Remove this code once the issue #1701 is resolved.
         assumeTrue("Test is skipped because of the issue #1701", data.description != "priority")
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
@@ -309,7 +311,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         northbound.getSwitchRules(data.switch.dpId).flowEntries.size() == data.defaultRules.size() + flowRulesCount
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [[description : "cookie",
@@ -330,7 +332,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inPort/)
     def "Able to delete switch rules by inPort/inVlan/outPort"() {
         given: "A switch with some flow rules installed"
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
         def expectedRemovedRules = 1
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
@@ -356,7 +358,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flow << [buildFlow()] * 4
@@ -403,8 +405,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inVlan/)
     def "Attempt to delete switch rules by supplying non-existing inPort/inVlan/outPort leaves all rules intact"() {
         given: "A switch with some flow rules installed"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
@@ -425,7 +427,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         northbound.getSwitchRules(data.switch.dpId).flowEntries.size() == data.defaultRules.size() + flowRulesCount
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [[description      : "inPort",
@@ -475,13 +477,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
         switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
 
         and: "Create a transit-switch flow going through these switches"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flow.ignoreBandwidth = maximumBandwidth ? false : true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
@@ -516,7 +518,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
@@ -552,12 +554,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "Create a flow with protected path"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
-        flowHelper.verifyRulesOnProtectedFlow(flow.id)
-        def flowPathInfo = northbound.getFlowPath(flow.id)
+        flowHelper.verifyRulesOnProtectedFlow(flow.flowId)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
         def mainFlowPath = flowPathInfo.forwardPath
         def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
         def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
@@ -612,7 +614,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES])
@@ -627,12 +629,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
 
         and: "Create a flow going through these switches"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
         def flowCookiesMap = [srcSwitch, dstSwitch].collectEntries { [it, getFlowRules(it)*.cookie] }
 
         when: "Ping the flow"
-        def response = northbound.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
 
         then: "Operation is successful"
         response.forward.pingSuccess
@@ -643,15 +645,15 @@ class FlowRulesSpec extends HealthCheckSpecification {
         checkTrafficCountersInRules(flow.destination, true)
 
         when: "Break the flow ISL (bring switch port down) to cause flow rerouting"
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         // Switches may have parallel links, so we need to get involved ISLs.
         def islToFail = pathHelper.getInvolvedIsls(flowPath).first()
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            assert PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
             [srcSwitch, dstSwitch].each { sw -> getFlowRules(sw).each { assert !(it.cookie in flowCookiesMap[sw]) } }
         }
 
@@ -661,7 +663,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -678,13 +680,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create a flow with vxlan encapsulation"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
-        def flowInfoFromDb = database.getFlow(flow.id)
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def transitSwitchIds = involvedSwitches[-1..-2]
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
@@ -752,7 +754,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: delete the flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     void compareRules(actualRules, expectedRules) {
@@ -763,8 +765,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 .ignoring("durationSeconds"))
     }
 
-    FlowPayload buildFlow() {
-        flowHelper.randomFlow(srcSwitch, dstSwitch)
+    FlowRequestV2 buildFlow() {
+        flowHelperV2.randomFlow(srcSwitch, dstSwitch)
     }
 
     List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
@@ -781,8 +783,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         return rules
     }
 
-    void checkTrafficCountersInRules(FlowEndpointPayload flowEndpoint, isTrafficThroughIngressRuleExpected) {
-        def rules = northbound.getSwitchRules(flowEndpoint.datapath).flowEntries
+    void checkTrafficCountersInRules(FlowEndpointV2 flowEndpoint, isTrafficThroughIngressRuleExpected) {
+        def rules = northbound.getSwitchRules(flowEndpoint.switchId).flowEntries
         def ingressRule = filterRules(rules, flowEndpoint.portNumber, flowEndpoint.vlanId, null)[0]
         def egressRule = filterRules(rules, null, null, flowEndpoint.portNumber).find {
             it.instructions.applyActions.fieldAction.fieldValue == flowEndpoint.vlanId.toString()

@@ -42,15 +42,15 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         when: "Ping the flow"
         def beforePingTime = new Date()
         def unicastCounterBefore = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
             it.cookie == DefaultRule.VERIFICATION_UNICAST_RULE.cookie
         }.byteCount
-        def response = northbound.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
 
         then: "Ping is successful"
         response.forward.pingSuccess
@@ -72,7 +72,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         statsData.values().last().toLong() > unicastCounterBefore
 
         cleanup: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -83,13 +83,13 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with no vlan"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.source.vlanId = 0
         flow.destination.vlanId = 0
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Ping the flow"
-        def response = northbound.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
 
         then: "Ping is successful"
         response.forward.pingSuccess
@@ -101,7 +101,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.reverse.error
 
         cleanup: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -125,10 +125,10 @@ class FlowPingSpec extends HealthCheckSpecification {
         //make a-switch path the most preferable
         allPaths.findAll { it != aswitchPath }.each { pathHelper.makePathMorePreferable(aswitchPath, it) }
         //build a flow
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
-        expectedPingResult.flowId = flow.id
-        assert aswitchPath == pathHelper.convert(northbound.getFlowPath(flow.id))
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
+        expectedPingResult.flowId = flow.flowId
+        assert aswitchPath == pathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         when: "Break the flow by removing rules from a-switch"
         def islToBreak = pathHelper.getInvolvedIsls(aswitchPath).find { it.aswitch }
@@ -138,7 +138,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         lockKeeper.removeFlows(rulesToRemove)
 
         and: "Ping the flow"
-        def response = northbound.pingFlow(flow.id, data.pingInput)
+        def response = northbound.pingFlow(flow.flowId, data.pingInput)
 
         then: "Ping response properly shows that certain direction is unpingable"
         expect response, sameBeanAs(expectedPingResult)
@@ -146,7 +146,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         cleanup: "Restore rules, costs and remove the flow"
         rulesToRemove && lockKeeper.addFlows(rulesToRemove)
-        flow && flowHelper.deleteFlow(flow.id)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
@@ -205,11 +205,11 @@ class FlowPingSpec extends HealthCheckSpecification {
         given: "A single-switch flow"
         def sw = topology.activeSwitches.find { !it.centec && it.ofVersion != "OF_12" }
         assert sw
-        def flow = flowHelper.singleSwitchFlow(sw)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(flow)
 
         when: "Ping the flow"
-        def response = northbound.pingFlow(flow.id, new PingInput())
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
 
         then: "The flow is pingable"
         response.forward.pingSuccess
@@ -221,7 +221,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.reverse.error
 
         cleanup: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy

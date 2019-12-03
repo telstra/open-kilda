@@ -70,13 +70,13 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
                 assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
+        def flow1 = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow1)
+        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
 
-        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1])
-        flowHelper.addFlow(flow2)
-        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
+        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
+        flowHelperV2.addFlow(flow2)
+        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
 
         assert flow1Path == flow2Path
 
@@ -85,8 +85,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         northbound.setSwitchMaintenance(sw.dpId, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
-        PathHelper.convert(northbound.getFlowPath(flow1.id)) == flow1Path
-        PathHelper.convert(northbound.getFlowPath(flow2.id)) == flow2Path
+        PathHelper.convert(northbound.getFlowPath(flow1.flowId)) == flow1Path
+        PathHelper.convert(northbound.getFlowPath(flow2.flowId)) == flow2Path
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
         northbound.setSwitchMaintenance(sw.dpId, true, true)
@@ -94,10 +94,10 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         then: "Flows are evacuated (rerouted)"
         def flow1PathUpdated, flow2PathUpdated
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            [flow1, flow2].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
+            [flow1, flow2].each { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
 
-            flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
-            flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
+            flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
+            flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
 
             assert flow1PathUpdated != flow1Path
             assert flow2PathUpdated != flow2Path
@@ -108,7 +108,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !(sw in pathHelper.getInvolvedSwitches(flow2PathUpdated))
 
         and: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
     }
 
@@ -182,8 +182,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId was not found"
 
         when: "Try to create a flow, using the switch"
-        def flow = flowHelper.randomFlow(sw, topology.activeSwitches.last())
-        northbound.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(sw, topology.activeSwitches.last())
+        northboundV2.addFlow(flow)
 
         then: "An error is received (404 code)"
         exc = thrown(HttpClientErrorException)

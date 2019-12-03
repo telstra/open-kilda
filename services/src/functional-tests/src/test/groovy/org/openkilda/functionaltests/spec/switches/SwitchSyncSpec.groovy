@@ -70,11 +70,11 @@ class SwitchSyncSpec extends BaseSpecification {
                 it.dst.ofVersion != "OF_12" } ?: assumeTrue("No suiting switches found", false)
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
 
         and: "Drop all rules an meters from related switches (both default and non-default)"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)
@@ -134,7 +134,7 @@ class SwitchSyncSpec extends BaseSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to synchronize switch (delete excess rules and meters)"() {
@@ -147,11 +147,11 @@ class SwitchSyncSpec extends BaseSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         and: "Reproduce situation when switches have excess rules and meters"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)
@@ -169,18 +169,18 @@ class SwitchSyncSpec extends BaseSpecification {
                 northbound.getAllMeters(dstSwitch.dpId).meterEntries*.meterId)[0]
 
         producer.send(new ProducerRecord(flowTopic, srcSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.id, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
                         false)).toJson()))
         involvedSwitches[1..-2].each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
-                    new InstallTransitFlow(UUID.randomUUID(), flow.id, excessRuleCookie, transitSw.dpId, 1, 2, 1,
+                    new InstallTransitFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, transitSw.dpId, 1, 2, 1,
                             FlowEncapsulationType.TRANSIT_VLAN, false))
                     .toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, dstSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.id, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
                         false)).toJson()))
@@ -222,7 +222,7 @@ class SwitchSyncSpec extends BaseSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(HARDWARE)
@@ -235,13 +235,13 @@ class SwitchSyncSpec extends BaseSpecification {
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create a flow with vxlan encapsulation"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules and meters"
-        def flowInfoFromDb = database.getFlow(flow.id)
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def transitSwitchIds = involvedSwitches[-1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -323,7 +323,7 @@ class SwitchSyncSpec extends BaseSpecification {
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     private static Message buildMessage(final CommandData data) {

@@ -28,8 +28,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
-        def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flowHelperV2.addFlow(flow)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         lockKeeper.knockoutSwitch(isl.srcSwitch)
@@ -57,14 +57,14 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         //depends whether there are alt paths available
         and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.id)))
+            def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
-            assert pathChanged || northbound.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert pathChanged || northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
         }
 
         and: "Cleanup: restore connection, remove the flow"
         lockKeeper.addFlows([isl.aswitch])
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -76,7 +76,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
 
         when: "Start creating a flow between these switches"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelperv.randomFlow(srcSwitch, dstSwitch)
         def addFlow = new Thread({ northbound.addFlow(flow) })
         addFlow.start()
 

@@ -61,22 +61,22 @@ class SwitchesSpec extends HealthCheckSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "A protected flow"
-        def protectedFlow = flowHelper.randomFlow(switchPair)
+        def protectedFlow = flowHelperV2.randomFlow(switchPair)
         protectedFlow.allocateProtectedPath = true
-        flowHelper.addFlow(protectedFlow)
+        flowHelperV2.addFlow(protectedFlow)
 
         and: "A single switch flow"
         def allowedPorts = topology.getAllowedPortsForSwitch(switchPair.src).findAll {
-            it != protectedFlow.source.portId
+            it != protectedFlow.source.portNumber
         }
         def r = new Random()
-        def singleFlow = flowHelper.singleSwitchFlow(switchPair.src)
+        def singleFlow = flowHelperV2.singleSwitchFlow(switchPair.src)
         singleFlow.source.portNumber = allowedPorts[r.nextInt(allowedPorts.size())]
         singleFlow.destination.portNumber = allowedPorts[r.nextInt(allowedPorts.size())]
-        flowHelper.addFlow(singleFlow)
+        flowHelperV2.addFlow(singleFlow)
 
         when: "Get all flows going through the involved switches"
-        def flowPathInfo = northbound.getFlowPath(protectedFlow.id)
+        def flowPathInfo = northbound.getFlowPath(protectedFlow.flowId)
         def mainPath = pathHelper.convert(flowPathInfo)
         def protectedPath = pathHelper.convert(flowPathInfo.protectedPath)
 
@@ -86,13 +86,13 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "The created flows are in the response list from the src switch"
         def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
-        switchFlowsResponseSrcSwitch*.id.sort() == [protectedFlow.id, singleFlow.id].sort()
+        switchFlowsResponseSrcSwitch*.id.sort() == [protectedFlow.flowId, singleFlow.flowId].sort()
 
         and: "Only the protectedFlow is in the response list from the involved switch(except the src switch)"
         involvedSwitchIds.findAll { it != switchPair.src.dpId }.each { switchId ->
             def getSwitchFlowsResponse = northbound.getSwitchFlows(switchId)
             assert getSwitchFlowsResponse.size() == 1
-            assert getSwitchFlowsResponse[0].id == protectedFlow.id
+            assert getSwitchFlowsResponse[0].id == protectedFlow.flowId
         }
 
         when: "Get all flows going through the src switch based on the port of the main path"
@@ -100,21 +100,21 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse1.size() == 1
-        getSwitchFlowsResponse1[0].id == protectedFlow.id
+        getSwitchFlowsResponse1[0].id == protectedFlow.flowId
 
         when: "Get all flows going through the src switch based on the port of the protected path"
         def getSwitchFlowsResponse2 = northbound.getSwitchFlows(switchPair.src.dpId, protectedPath[0].portNo)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse2.size() == 1
-        getSwitchFlowsResponse2[0].id == protectedFlow.id
+        getSwitchFlowsResponse2[0].id == protectedFlow.flowId
 
         when: "Get all flows going through the src switch based on the dstPort of the single switch flow"
         def getSwitchFlowsResponse3 = northbound.getSwitchFlows(switchPair.src.dpId, singleFlow.destination.portNumber)
 
         then: "Only the single switch flow is in the response list"
         getSwitchFlowsResponse3.size() == 1
-        getSwitchFlowsResponse3[0].id == singleFlow.id
+        getSwitchFlowsResponse3[0].id == singleFlow.flowId
 
         when: "Get all flows going through the dst switch based on the dstPort of the protected flow"
         def getSwitchFlowsResponse4 = northbound.getSwitchFlows(switchPair.dst.dpId,
@@ -122,7 +122,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse4.size() == 1
-        getSwitchFlowsResponse4[0].id == protectedFlow.id
+        getSwitchFlowsResponse4[0].id == protectedFlow.flowId
 
         when: "Bring down all ports on src switch to make flow DOWN"
         topology.getBusyPortsForSwitch(switchPair.src).each {
@@ -135,16 +135,16 @@ class SwitchesSpec extends HealthCheckSpecification {
         }
 
         and: "Get all flows going through the src switch"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(protectedFlow.id).status == FlowState.DOWN }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN }
         def getSwitchFlowsResponse5 = northbound.getSwitchFlows(switchPair.src.dpId)
 
         then: "The created flows are in the response list"
         getSwitchFlowsResponse5.size() == 2
-        getSwitchFlowsResponse5*.id.sort() == [protectedFlow.id, singleFlow.id].sort()
+        getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId].sort()
 
         and: "Cleanup: Delete the flows"
         topology.getBusyPortsForSwitch(switchPair.src).each { antiflap.portUp(switchPair.src.dpId, it) }
-        [protectedFlow, singleFlow].each { flowHelper.deleteFlow(it.id) }
+        [protectedFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -168,12 +168,12 @@ class SwitchesSpec extends HealthCheckSpecification {
                 assumeTrue("No suiting switches found", false)
 
         and: "A simple flow"
-        def simpleFlow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(simpleFlow)
+        def simpleFlow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(simpleFlow)
 
         and: "A single switch flow"
-        def singleFlow = flowHelper.singleSwitchFlow(switchPair.src)
-        flowHelper.addFlow(singleFlow)
+        def singleFlow = flowHelperV2.singleSwitchFlow(switchPair.src)
+        flowHelperV2.addFlow(singleFlow)
 
         when: "Deactivate the src switch"
         def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
@@ -186,13 +186,13 @@ class SwitchesSpec extends HealthCheckSpecification {
         def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
 
         then: "The created flows are in the response list from the deactivated src switch"
-        switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.id, singleFlow.id].sort()
+        switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
 
         and: "Cleanup: Revive the src switch and delete the flows"
         lockKeeper.reviveSwitch(switchToDisconnect)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }
-        [simpleFlow, singleFlow].each { flowHelper.deleteFlow(it.id) }
+        [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 }
