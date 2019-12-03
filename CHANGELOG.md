@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.43.1 (03/12/2019)
+
+### Bug Fixes:
+-  [#2974](https://github.com/telstra/open-kilda/pull/2974) Handles reroute failures caused by over-provisioning  (Issue: [#2925](https://github.com/telstra/open-kilda/issues/2925)) 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.43.0...v1.43.1).
+
+### Affected Components:
+flow-hs
+
+---
+
 ## v1.43.0 (27/11/2019)
 
 ### Features:
