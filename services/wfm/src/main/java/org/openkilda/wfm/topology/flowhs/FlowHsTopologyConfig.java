@@ -41,6 +41,14 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("3")
     int getHubTransactionRetries();
 
+    @Key("flow.path.allocation.retries")
+    @Default("10")
+    int getPathAllocationRetriesLimit();
+
+    @Key("flow.path.allocation.retry.delay")
+    @Default("50")
+    int getPathAllocationRetryDelay();
+
     @Key("flow.create.hub.timeout.seconds")
     @Default("30")
     int getCreateHubTimeoutSeconds();

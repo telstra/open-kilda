@@ -48,10 +48,12 @@ import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A base for action classes that allocate resources for flow paths.
@@ -60,6 +62,8 @@ import java.util.Optional;
 public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C> extends
         NbTrackableAction<T, S, E, C> {
     protected final int transactionRetriesLimit;
+    protected final int pathAllocationRetriesLimit;
+    protected final int pathAllocationRetryDelay;
     protected final SwitchRepository switchRepository;
     protected final IslRepository islRepository;
     protected final PathComputer pathComputer;
@@ -68,10 +72,13 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected final FlowOperationsDashboardLogger dashboardLogger;
 
     public BaseResourceAllocationAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+                                        int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                         PathComputer pathComputer, FlowResourcesManager resourcesManager,
                                         FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.transactionRetriesLimit = transactionRetriesLimit;
+        this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
+        this.pathAllocationRetryDelay = pathAllocationRetryDelay;
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -94,12 +101,19 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             allocateInTransaction(stateMachine);
 
             return Optional.empty();
-        } catch (UnroutableFlowException | RecoverableException ex) {
+        } catch (UnroutableFlowException  ex) {
             String errorMessage = format("Not enough bandwidth or no path found. %s", ex.getMessage());
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
             return Optional.of(buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
+                    getGenericErrorMessage(), errorMessage));
+        } catch (RecoverableException ex) {
+            String errorMessage = format("Failed to find a path. %s", ex.getMessage());
+            stateMachine.saveActionToHistory(errorMessage);
+            stateMachine.fireError(errorMessage);
+
+            return Optional.of(buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
                     getGenericErrorMessage(), errorMessage));
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate flow resources. %s", ex.getMessage());
@@ -133,14 +147,19 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     @SneakyThrows
     private void allocateInTransaction(T stateMachine) throws RecoverableException, UnroutableFlowException,
             ResourceAllocationException {
-        RetryPolicy retryPolicy = new RetryPolicy()
+        RetryPolicy pathAllocationRetryPolicy = new RetryPolicy()
                 .retryOn(RecoverableException.class)
                 .retryOn(ResourceAllocationException.class)
-                .retryOn(RecoverablePersistenceException.class)
-                .withMaxRetries(transactionRetriesLimit);
+                .withMaxRetries(pathAllocationRetriesLimit);
+        if (pathAllocationRetryDelay > 0) {
+            pathAllocationRetryPolicy.withDelay(pathAllocationRetryDelay, TimeUnit.MILLISECONDS);
+        }
 
         try {
-            persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> allocate(stateMachine));
+            Failsafe.with(pathAllocationRetryPolicy)
+                    .onRetry(e -> log.warn("Retrying path allocation as finished with exception", e))
+                    .onRetriesExceeded(e -> log.warn("No more retry attempt for path allocation, final failure", e))
+                    .run(() -> doAllocateInTransaction(stateMachine));
         } catch (Exception ex) {
             onFailure(stateMachine);
 
@@ -149,6 +168,18 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             } else {
                 throw ex;
             }
+        }
+    }
+
+    @SneakyThrows
+    private void doAllocateInTransaction(T stateMachine) {
+        RetryPolicy txRetryPolicy = new RetryPolicy()
+                .retryOn(RecoverablePersistenceException.class)
+                .withMaxRetries(transactionRetriesLimit);
+        try {
+            persistenceManager.getTransactionManager().doInTransaction(txRetryPolicy, () -> allocate(stateMachine));
+        } catch (FailsafeException ex) {
+            throw ex.getCause();
         }
     }
 
@@ -183,8 +214,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         return newFlowPaths;
     }
 
-    private void updateIslsForFlowPath(FlowPath flowPath, FlowPath pathToReuseBandwidth) {
-        flowPath.getSegments().forEach(pathSegment -> {
+    private void updateIslsForFlowPath(FlowPath flowPath, FlowPath pathToReuseBandwidth)
+            throws ResourceAllocationException {
+        for (PathSegment pathSegment : flowPath.getSegments()) {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
 
             long allowedOverprovisionedBandwidth = 0;
@@ -202,11 +234,11 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
                     pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
                     allowedOverprovisionedBandwidth);
-        });
+        }
     }
 
     private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
-                                          long allowedOverprovisionedBandwidth) {
+                                          long allowedOverprovisionedBandwidth) throws ResourceAllocationException {
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
                 dstSwitch, dstPort);
         log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
@@ -214,7 +246,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         long islAvailableBandwidth =
                 islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
         if ((islAvailableBandwidth + allowedOverprovisionedBandwidth) < 0) {
-            throw new RecoverablePersistenceException(format("ISL %s_%d-%s_%d was overprovisioned",
+            throw new ResourceAllocationException(format("ISL %s_%d-%s_%d was overprovisioned",
                     srcSwitch, srcPort, dstSwitch, dstPort));
         }
     }
