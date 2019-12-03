@@ -530,8 +530,9 @@ public class SwitchService {
                 .updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
         return linkBandwidthUpdate;
     }
+    
     /**
- * Delete switch.
+     * Delete switch.
      *
      * @param switchId
      *            the switch id
