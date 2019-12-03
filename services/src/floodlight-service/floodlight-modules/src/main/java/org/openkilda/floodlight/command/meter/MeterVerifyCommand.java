@@ -84,7 +84,7 @@ public class MeterVerifyCommand extends AbstractMeterInstall<MeterVerifyReport> 
 
         boolean isInaccurate = getSwitchFeatures().contains(SwitchFeature.INACCURATE_METER);
         MeterSchema schema = MeterSchemaMapper.INSTANCE.map(getSw().getId(), target.get(), isInaccurate);
-        validateMeterConfig(schema);
+        validateMeterConfig(schema, isInaccurate);
 
         return schema;
     }
@@ -99,11 +99,12 @@ public class MeterVerifyCommand extends AbstractMeterInstall<MeterVerifyReport> 
         return Optional.empty();
     }
 
-    private void validateMeterConfig(MeterSchema actualSchema) {
+    private void validateMeterConfig(MeterSchema actualSchema, boolean isInaccurate) {
         DatapathId datapathId = getSw().getId();
         MeterSchema expectedSchema = MeterSchemaMapper.INSTANCE.map(datapathId, makeMeterAddMessage());
         if (! expectedSchema.equals(actualSchema)) {
-            throw maskCallbackException(new SwitchIncorrectMeterException(datapathId, meterConfig, actualSchema));
+            throw maskCallbackException(new SwitchIncorrectMeterException(
+                    datapathId, meterConfig, expectedSchema, actualSchema, isInaccurate));
         }
     }
 }
