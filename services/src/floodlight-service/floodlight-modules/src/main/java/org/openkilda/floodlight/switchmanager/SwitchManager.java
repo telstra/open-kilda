@@ -445,7 +445,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build FLOW_MOD command with meter
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
-                multiTable ? INGRESS_TABLE_ID : INPUT_TABLE_ID)
+                multiTable ? PRE_INGRESS_TABLE_ID : INPUT_TABLE_ID)
                 .setInstructions(instructions)
                 .setMatch(match);
 

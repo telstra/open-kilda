@@ -151,8 +151,8 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeDefaultPortForwardMessage(MeterId effectiveMeterId) {
         // FIXME we need some space between match rules (so it should be -10 instead of -1)
-        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
-                                                                      -1)
+        OFFlowMod.Builder builder = flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID), -1)
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
                                   .build());

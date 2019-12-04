@@ -290,7 +290,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                 command, -1, IngressSegmentCookie.IngressSegmentSubType.DEFAULT_PORT_FORWARD,
                 of.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
-                        .build(), getTargetIngressTableId(), vlanTransformation);
+                        .build(), getTargetPreIngressTableId(), vlanTransformation);
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(expected, factory.makeDefaultPortForwardMessage(getEffectiveMeterId(
                 command.getMeterConfig())));
@@ -301,7 +301,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                 command, -1, IngressSegmentCookie.IngressSegmentSubType.DEFAULT_PORT_FORWARD,
                 of.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
-                        .build(), getTargetIngressTableId(), Collections.emptyList());
+                        .build(), getTargetPreIngressTableId(), Collections.emptyList());
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(expected, factory.makeDefaultPortForwardMessage(
                 getEffectiveMeterId(command.getMeterConfig())));
