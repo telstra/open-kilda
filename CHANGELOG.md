@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.44.0 (04/12/2019)
+
+### Features:
+-  [#2818](https://github.com/telstra/open-kilda/pull/2818) Add Server 42 Design [**api**][**docs**]
+-  [#2900](https://github.com/telstra/open-kilda/pull/2900) add tests for multiTable feature [**tests**]
+
+### Bug Fixes:
+-  [#2963](https://github.com/telstra/open-kilda/pull/2963) Fix for single switch flow (Issue: [#2947](https://github.com/telstra/open-kilda/issues/2947)) [**storm-topologies**]
+-  [#2964](https://github.com/telstra/open-kilda/pull/2964) Fix for parse error in switch props update (Issue: [#2957](https://github.com/telstra/open-kilda/issues/2957)) [**storm-topologies**]
+-  [#2991](https://github.com/telstra/open-kilda/pull/2991) Fix flow segment verify issue on OF1.2 switches [**floodlight**]
+-  [#2993](https://github.com/telstra/open-kilda/pull/2993) Fix false-negative meter's validation [**floodlight**]
+
+### Improvements:
+-  [#2945](https://github.com/telstra/open-kilda/pull/2945) Valdate Switch Props against supported features (Issues: [#2932](https://github.com/telstra/open-kilda/issues/2932) [#2941](https://github.com/telstra/open-kilda/issues/2941)) [**storm-topologies**]
+-  [#2826](https://github.com/telstra/open-kilda/pull/2826) Extend local execution time for storm topologies [**storm-topologies**]
+-  [#2774](https://github.com/telstra/open-kilda/pull/2774) Extend speaker commands [**floodlight**]
+-  [#2967](https://github.com/telstra/open-kilda/pull/2967) Improve error handling and logging in H&S FSMs 
+-  [#2835](https://github.com/telstra/open-kilda/pull/2835) Update some configuration for local setup to speed up test execution [**configuration**][**docs**][**tests**]
+-  [#2965](https://github.com/telstra/open-kilda/pull/2965) Minor stability tweaks in functional tests [**tests**]
+-  [#2973](https://github.com/telstra/open-kilda/pull/2973) Minor stability fixes in functional tests [**tests**]
+-  [#2978](https://github.com/telstra/open-kilda/pull/2978) Fix stability of port history test [**tests**]
+-  [#2984](https://github.com/telstra/open-kilda/pull/2984) Ignore test that fails due to #2983 [**tests**]
+
+### Other changes:
+-  [#2970](https://github.com/telstra/open-kilda/pull/2970) Minor test updates related to V2 migration [**tests**]
+-  [#2979](https://github.com/telstra/open-kilda/pull/2979) Ignore port stats test as being unstable [**tests**]
+-  [#2929](https://github.com/telstra/open-kilda/pull/2929) Feature/flow diversity and network path (Issues: [#2283](https://github.com/telstra/open-kilda/issues/2283) [#2371](https://github.com/telstra/open-kilda/issues/2371) [#2373](https://github.com/telstra/open-kilda/issues/2373)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.43.1...v1.44.0).
+
+### Affected Components:
+flow-hs, fl, swmanager, nbworker
+
+---
+
+## v1.43.1 (03/12/2019)
+
+### Bug Fixes:
+-  [#2974](https://github.com/telstra/open-kilda/pull/2974) Handles reroute failures caused by over-provisioning  (Issue: [#2925](https://github.com/telstra/open-kilda/issues/2925)) 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.43.0...v1.43.1).
+
+### Affected Components:
+flow-hs
+
+---
+
 ## v1.43.0 (27/11/2019)
 
 ### Features:
