@@ -68,9 +68,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -262,6 +264,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                     lldpDevices.add(ConnectedDeviceMapper.INSTANCE.map(device));
                 }
             }
+            lldpDevices.sort(Comparator.comparing(o -> Instant.parse(o.getTimeLastSeen())));
             ports.add(new SwitchPortConnectedDevicesDto(entry.getKey(), lldpDevices));
         }
         return new SwitchConnectedDevicesResponse(ports);

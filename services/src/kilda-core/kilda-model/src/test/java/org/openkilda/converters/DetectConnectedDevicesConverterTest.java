@@ -19,8 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_LLDP;
+import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_SWITCH_LLDP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_LLDP;
+import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_SWITCH_LLDP;
 
 import org.openkilda.model.DetectConnectedDevices;
 
@@ -55,8 +57,8 @@ public class DetectConnectedDevicesConverterTest {
         assertEquals(srcArp, properties.get(SRC_ARP));
         assertEquals(dstLldp, properties.get(DST_LLDP));
         assertEquals(dstArp, properties.get(DST_ARP));
-        assertEquals(dstArp, properties.get(DST_ARP));
-        assertEquals(dstArp, properties.get(DST_ARP));
+        assertEquals(srcSwitchLldp, properties.get(SRC_SWITCH_LLDP));
+        assertEquals(dstSwitchLldp, properties.get(DST_SWITCH_LLDP));
     }
 
     @Test

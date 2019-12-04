@@ -15,15 +15,12 @@
 
 package org.openkilda.floodlight.service.connected;
 
-import static java.lang.String.format;
 import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
-import static org.projectfloodlight.openflow.types.EthType.BRIDGING;
-import static org.projectfloodlight.openflow.types.EthType.Q_IN_Q;
 import static org.projectfloodlight.openflow.types.EthType.VLAN_FRAME;
 
 import org.openkilda.floodlight.KafkaChannel;
@@ -42,9 +39,9 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.Value;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.LLDP;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.EthType;
@@ -53,11 +50,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class ConnectedDevicesService implements IService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(ConnectedDevicesService.class);
+    public static final int MAC_ADDRESS_LENGTH_IN_BYTES = 6;
+    public static final int VLAN_HEADER_LENGTH_IN_BYTES = 4;
+    public static final int VLAN_VALUE_MASK = 0x0FFF;
 
     private IKafkaProducerService producerService;
     private String topic;
@@ -74,14 +75,26 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         };
     }
 
-    private LldpPacket deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
+    @VisibleForTesting
+    PacketData deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
         try {
-            if (eth.getPayload() instanceof LLDP) {
-                return new LldpPacket((LLDP) eth.getPayload());
-            } else if (VLAN_FRAME.equals(eth.getEtherType())) {
-                return getLldpPacket(removeVlanTag(eth.getPayload()));
-            } else if (BRIDGING.equals(eth.getEtherType()) || Q_IN_Q.equals(eth.getEtherType())) {
-                return getLldpPacket(removeOuterAndInnerVlanTag(eth.getPayload()));
+            byte[] data = eth.serialize();
+            ByteBuffer bb = ByteBuffer.wrap(data, MAC_ADDRESS_LENGTH_IN_BYTES * 2,
+                    data.length - MAC_ADDRESS_LENGTH_IN_BYTES * 2);
+            List<Integer> vlans = new ArrayList<>();
+
+            short s = bb.getShort();
+            EthType ethType = EthType.of(Short.toUnsignedInt(s));
+            while (bb.remaining() > VLAN_HEADER_LENGTH_IN_BYTES && VLAN_FRAME.equals(ethType)) {
+                vlans.add(bb.getShort() & VLAN_VALUE_MASK);
+                ethType = EthType.of(Short.toUnsignedInt(bb.getShort()));
+            }
+
+            if (EthType.LLDP.equals(ethType)) {
+                LLDP lldp = new LLDP();
+                lldp.deserialize(data, bb.position(), data.length - bb.position());
+                LldpPacket lldpPacket = new LldpPacket(lldp);
+                return new PacketData(lldpPacket, vlans);
             }
         }  catch (Exception exception) {
             logger.info("Could not deserialize LLDP packet {} on switch {}. Cookie {}. Deserialization failure: {}",
@@ -90,12 +103,6 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         }
         logger.info("Got invalid lldp packet: {} on switch {}. Cookie {}", eth, switchId, cookie);
         return null;
-    }
-
-    private LldpPacket getLldpPacket(byte[] data) {
-        LLDP lldp = new LLDP();
-        lldp.deserialize(data, 0, data.length);
-        return new LldpPacket(lldp);
     }
 
     private boolean isLldpRelated(long value) {
@@ -122,66 +129,21 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
 
     private void handleSwitchLldp(OfInput input, SwitchId switchId, long cookie) {
         Ethernet ethernet = input.getPacketInPayload();
-        LldpPacket lldpPacket = deserializeLldp(ethernet, switchId, cookie);
-        if (lldpPacket == null) {
+        PacketData packetData = deserializeLldp(ethernet, switchId, cookie);
+        if (packetData == null) {
             return;
         }
 
-        InfoMessage message = createSwitchLldpMessage(switchId, cookie, input, lldpPacket);
+        InfoMessage message = createSwitchLldpMessage(switchId, cookie, input, packetData.lldpPacket, packetData.vlans);
         producerService.sendMessageAndTrack(topic, switchId.toString(), message);
     }
 
-    @VisibleForTesting
-    byte[] removeVlanTag(IPacket payload) {
-        byte[] data = payload.serialize();
-        ByteBuffer bb = ByteBuffer.wrap(data, 0, data.length);
-
-        bb.getShort(); // remove vlan
-        EthType ethType = EthType.of(Short.toUnsignedInt(bb.getShort()));
-        if (EthType.LLDP.equals(ethType)) {
-            return Arrays.copyOfRange(data, bb.position(), data.length);
-        }
-
-        throw new IllegalArgumentException(
-                format("EthType '%s' is not equal to LLDP type (%s). Payload [%s]",
-                        ethType, EthType.LLDP, toHexString(data)));
-    }
-
-    @VisibleForTesting
-    byte[] removeOuterAndInnerVlanTag(IPacket payload) {
-        byte[] data = payload.serialize();
-        ByteBuffer bb = ByteBuffer.wrap(data, 0, data.length);
-
-        bb.getShort(); // remove outer vlan
-        EthType vlanEthType = EthType.of(Short.toUnsignedInt(bb.getShort()));
-        if (!VLAN_FRAME.equals(vlanEthType)) {
-            throw new IllegalArgumentException(format("Outer vlan was successfully removed. But ethType '%s' of "
-                            + "next header is not equal to Vlan eth type (%s). Payload: [%s]",
-                    vlanEthType, VLAN_FRAME, toHexString(data)));
-        }
-        bb.getShort(); // remove inner vlan
-        EthType ethType = EthType.of(Short.toUnsignedInt(bb.getShort()));
-        if (EthType.LLDP.equals(ethType)) {
-            return Arrays.copyOfRange(data, bb.position(), data.length);
-        }
-
-        throw new IllegalArgumentException(
-                format("EthType '%s' is not equal to LLDP type (0x88CC). Payload [%s]", ethType, toHexString(data)));
-    }
-
-    private String toHexString(byte[] array) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : array) {
-            sb.append(String.format("0x%X ", b));
-        }
-        return sb.toString();
-    }
-
-    private InfoMessage createSwitchLldpMessage(SwitchId switchId, long cookie, OfInput input, LldpPacket lldpPacket) {
+    private InfoMessage createSwitchLldpMessage(
+            SwitchId switchId, long cookie, OfInput input, LldpPacket lldpPacket, List<Integer> vlans) {
         SwitchLldpInfoData lldpInfoData = new SwitchLldpInfoData(
                 switchId,
                 input.getPort().getPortNumber(),
-                input.getPacketInPayload().getVlanID(),
+                vlans,
                 cookie,
                 input.getPacketInPayload().getSourceMACAddress().toString(),
                 lldpPacket.getParsedChassisId(),
@@ -208,5 +170,11 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
 
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
+    }
+
+    @Value
+    static class PacketData {
+        LldpPacket lldpPacket;
+        List<Integer> vlans;
     }
 }

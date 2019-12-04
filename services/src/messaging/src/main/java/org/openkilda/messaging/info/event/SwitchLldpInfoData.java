@@ -25,6 +25,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -36,7 +38,7 @@ public class SwitchLldpInfoData extends InfoData {
 
     private SwitchId switchId;
     private int portNumber;
-    private int vlan;
+    private List<Integer> vlans;
     private long cookie;
     private String macAddress;
     private String chassisId;
