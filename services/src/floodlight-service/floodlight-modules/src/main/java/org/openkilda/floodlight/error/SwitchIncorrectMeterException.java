@@ -23,12 +23,24 @@ import org.projectfloodlight.openflow.types.DatapathId;
 
 @Getter
 public class SwitchIncorrectMeterException extends SwitchOperationException {
-    private final MeterConfig expectedMeterConfig;
+    private final MeterConfig meterConfig;
+    private final MeterSchema expectedSchema;
     private final MeterSchema actualSchema;
 
-    public SwitchIncorrectMeterException(DatapathId dpId, MeterConfig meterConfig, MeterSchema actualSchema) {
-        super(dpId, String.format("Meter %d on %s have incorrect config", meterConfig.getId().getValue(), dpId));
-        this.expectedMeterConfig = meterConfig;
-        this.actualSchema = actualSchema;
+    public SwitchIncorrectMeterException(
+            DatapathId dpId, MeterConfig meterConfig, MeterSchema expected, MeterSchema actual,
+            boolean isInaccurate) {
+        super(dpId, formatMessage(dpId, meterConfig, expected, actual, isInaccurate));
+        this.meterConfig = meterConfig;
+        this.expectedSchema = expected;
+        this.actualSchema = actual;
+    }
+
+    private static String formatMessage(
+            DatapathId dpId, MeterConfig config, MeterSchema expected, MeterSchema actual, boolean isInaccurate) {
+        return String.format(
+                "Meter %d on %s have incorrect config - actual value is %s while expected value is %s "
+                        + "(is accurate %s, config %s)",
+                expected.getMeterId().getValue(), dpId, actual, expected, !isInaccurate, config);
     }
 }

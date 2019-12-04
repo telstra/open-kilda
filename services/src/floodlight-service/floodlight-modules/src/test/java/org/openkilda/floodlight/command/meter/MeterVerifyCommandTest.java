@@ -35,7 +35,10 @@ import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
+import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
+import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -100,6 +103,42 @@ public class MeterVerifyCommandTest extends AbstractSpeakerCommandTest {
     }
 
     @Test
+    public void burstPositiveDeviationOnAccurateMeter() throws Exception {
+        verifySuccessCompletion(testBurstDeviationOnAccurateMeter(1));
+    }
+
+    @Test
+    public void burstNegativeDeviationOnAccurateMeter() throws Exception {
+        verifySuccessCompletion(testBurstDeviationOnAccurateMeter(-1));
+    }
+
+    @Test
+    public void burstPositiveOvercomeDeviationOnAccurateMeter() throws Exception {
+        verifyErrorCompletion(testBurstDeviationOnAccurateMeter(2), SwitchIncorrectMeterException.class);
+    }
+
+    @Test
+    public void burstNegativeOvercomeDeviationOnAccurateMeter() throws Exception {
+        verifyErrorCompletion(testBurstDeviationOnAccurateMeter(-2), SwitchIncorrectMeterException.class);
+    }
+
+    private CompletableFuture<MeterVerifyReport> testBurstDeviationOnAccurateMeter(long deviation) {
+        switchFeaturesSetup(sw, true);
+        SettableFuture<List<OFMeterConfigStatsReply>> statsReplyProxy = setupMeterConfigStatsReply();
+        replayAll();
+
+        CompletableFuture<MeterVerifyReport> futureResult = command.execute(commandProcessor);
+        OFMeterConfig reply = sw.getOFFactory().buildMeterConfig()
+                .setMeterId(meterConfig.getId().getValue())
+                .setFlags(command.makeMeterFlags())
+                .setEntries(patchMeterBand(command.makeMeterBands(), 0, deviation))
+                .build();
+        statsReplyProxy.set(wrapMeterStatsReply(reply));
+
+        return futureResult;
+    }
+
+    @Test
     public void meterNotFound() throws Exception {
         switchFeaturesSetup(sw, true);
         SettableFuture<List<OFMeterConfigStatsReply>> statsReplyProxy = setupMeterConfigStatsReply();
@@ -139,5 +178,24 @@ public class MeterVerifyCommandTest extends AbstractSpeakerCommandTest {
                 sw.getOFFactory().buildMeterConfigStatsReply()
                         .setEntries(ImmutableList.of(replyEntry))
                         .build());
+    }
+
+    private List<OFMeterBand> patchMeterBand(List<OFMeterBand> meterBands, long rateDeviation, long bursDeviation) {
+        List<OFMeterBand> results = new ArrayList<>();
+        for (OFMeterBand entry : meterBands) {
+            if (entry instanceof OFMeterBandDrop) {
+                results.add(patchMeterBand((OFMeterBandDrop) entry, rateDeviation, bursDeviation));
+            } else {
+                throw new IllegalArgumentException(String.format("Unsupported meter band %s patch request", entry));
+            }
+        }
+        return results;
+    }
+
+    private OFMeterBand patchMeterBand(OFMeterBandDrop bandDrop, long rateDeviation, long burstDeviation) {
+        return bandDrop.createBuilder()
+                .setRate(bandDrop.getRate() + rateDeviation)
+                .setBurstSize(bandDrop.getBurstSize() + burstDeviation)
+                .build();
     }
 }
