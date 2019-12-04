@@ -16,7 +16,7 @@
 package org.openkilda.model;
 
 public enum SwitchFeature {
-    METERS,
+    METERS, INACCURATE_METER,
     BFD,
     BFD_REVIEW,
     GROUP_PACKET_OUT_CONTROLLER,

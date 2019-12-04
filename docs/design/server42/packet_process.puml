@@ -1,0 +1,48 @@
+@startuml
+
+participant "Server 42" as S42
+participant "First Switch" as SW1
+collections "Middle Switches" as SWX
+participant "Last Switch" as SW2
+participant "Stats Application" as SA
+participant "Srever 42 \nStats Toplogy" as ST
+participant "Stats Toplogy" as STT
+participant "OpenTSDB" as OTSDB
+
+activate S42
+S42 -> S42: tick
+S42 -> S42: generate packet
+S42 -> SW1: send packet
+deactivate S42
+activate SW1
+SW1 -> SW1: add first timestamp
+SW1 -> SWX:
+deactivate SW1
+SWX -> SW2: recive packet
+activate SW2
+SW2 -> SW2: change src mac
+SW2 -> SWX: send it back
+deactivate SW2
+SWX -> SW1
+activate SW1
+SW1 -> SW1: add second timestamp
+SW1 -> S42
+deactivate SW1
+activate S42
+S42 -> SA: zeroMq
+deactivate S42
+activate SA
+SA -> SA: accumulate packets
+alt if big packet ready
+SA -> ST: kafka
+deactivate SA
+activate ST
+ST -> ST: parse packets to entitys
+ST -> STT: kafka
+deactivate ST
+activate STT
+STT -> OTSDB: HTTP
+deactivate STT
+end
+
+@enduml

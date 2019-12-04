@@ -72,21 +72,20 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
                 .map(FeatureToggles::getCreateFlowEnabled)
                 .orElse(Boolean.FALSE);
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED,
-                    getGenericErrorMessage(), "Flow create feature is disabled");
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow create feature is disabled");
         }
 
         if (flowRepository.exists(request.getFlowId())) {
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS, getGenericErrorMessage(),
+            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
                     format("Flow %s already exists", request.getFlowId()));
         }
 
         try {
             flowValidator.validate(request);
         } catch (InvalidFlowException e) {
-            throw new FlowProcessingException(e.getType(), getGenericErrorMessage(), e.getMessage(), e);
+            throw new FlowProcessingException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, getGenericErrorMessage(), e.getMessage(), e);
+            throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
         if (event != Event.RETRY) {

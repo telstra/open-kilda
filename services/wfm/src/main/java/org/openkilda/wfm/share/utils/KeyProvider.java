@@ -30,11 +30,11 @@ public final class KeyProvider {
     }
 
     public static String generateChainedKey(String parentKey) {
-        return StringUtils.joinWith(" : ", generateKey(), parentKey);
+        return joinKeys(generateKey(), parentKey);
     }
 
     public static String joinKeys(String childKey, String parentKey) {
-        return StringUtils.joinWith(" : ", childKey, parentKey);
+        return StringUtils.joinWith(SEPARATOR, childKey, parentKey);
     }
 
     /**

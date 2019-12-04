@@ -15,8 +15,8 @@
 
 package org.openkilda.floodlight.flow.response;
 
-import static org.openkilda.messaging.Utils.FLOW_ID;
-
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.ToString;
 
 import java.util.UUID;
@@ -32,7 +33,7 @@ import java.util.UUID;
 @Getter
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class FlowErrorResponse extends FlowResponse {
+public class FlowErrorResponse extends SpeakerFlowSegmentResponse {
 
     @JsonProperty("error_code")
     private ErrorCode errorCode;
@@ -42,13 +43,13 @@ public class FlowErrorResponse extends FlowResponse {
 
     @JsonCreator
     @Builder(builderMethodName = "errorBuilder")
-    public FlowErrorResponse(@JsonProperty("error_code") ErrorCode errorCode,
+    public FlowErrorResponse(@JsonProperty("error_code") @NonNull ErrorCode errorCode,
                              @JsonProperty("description") String description,
-                             @JsonProperty("command_context") MessageContext messageContext,
+                             @JsonProperty("message_context") MessageContext messageContext,
                              @JsonProperty("command_id") UUID commandId,
-                             @JsonProperty(FLOW_ID) String flowId,
-                             @JsonProperty("switch_id") SwitchId switchId) {
-        super(false, messageContext, commandId, flowId, switchId);
+                             @JsonProperty("switch_id") SwitchId switchId,
+                             @JsonProperty("metadata") FlowSegmentMetadata metadata) {
+        super(messageContext, commandId, switchId, metadata, false);
 
         this.description = description;
         this.errorCode = errorCode;
@@ -60,7 +61,7 @@ public class FlowErrorResponse extends FlowResponse {
         BAD_FLAGS,
         BAD_COMMAND,
         OPERATION_TIMED_OUT,
+        MISSING_OF_FLOWS,
         UNKNOWN
     }
-
 }

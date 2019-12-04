@@ -15,8 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -29,15 +28,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class RemoveOldRulesAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
@@ -53,31 +49,22 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
         FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(oldEncapsulationType);
 
-        Collection<RemoveRule> commands = new ArrayList<>();
-
         FlowPath oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
         FlowPath oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
         Flow flow = oldPrimaryForward.getFlow();
-        commands.addAll(commandBuilder.createRemoveNonIngressRules(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse));
-        commands.addAll(commandBuilder.createRemoveIngressRules(
+        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAll(
                 stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse));
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-            commands.addAll(commandBuilder.createRemoveNonIngressRules(
+            commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        stateMachine.getRemoveCommands().putAll(commands.stream()
-                .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
-
-        Set<UUID> commandIds = commands.stream()
-                .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
         stateMachine.getRetriedCommands().clear();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");

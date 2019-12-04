@@ -8,6 +8,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -111,20 +112,22 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Forward flow from source switch to destination switch"
-        def flow1 = flowHelper.randomFlow(switchPair)
+        def flow1 = flowHelper.randomFlow(switchPair).tap { it.pinned = true }
         flow1 = flowHelper.addFlow(flow1)
 
         and: "Reverse flow from destination switch to source switch"
-        def flow2 = flowHelper.randomFlow(switchPair)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.pinned = true }
         flow2 = flowHelper.addFlow(flow2)
 
         and: "Forward flow from source switch to some 'internal' switch"
         def islToInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.id))).first()
-        def flow3 = flowHelper.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch)
+        def flow3 = flowHelper.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch, false, [flow1, flow2])
+                              .tap { it.pinned = true }
         flow3 = flowHelper.addFlow(flow3)
 
         and: "Reverse flow from 'internal' switch to source switch"
-        def flow4 = flowHelper.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch)
+        def flow4 = flowHelper.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch, false,
+                [flow1, flow2, flow3]).tap { it.pinned = true }
         flow4 = flowHelper.addFlow(flow4)
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
@@ -153,7 +156,12 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.id).status == FlowState.DOWN }
+            [flow1, flow2, flow3, flow4].each {
+                assert northbound.getFlowStatus(it.id).status == FlowState.DOWN
+                def isls = pathHelper.getInvolvedIsls(northbound.getFlowPath(it.id))
+                assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
+            }
+
         }
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
@@ -180,7 +188,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "Delete all created flows and reset costs"
-        [flow1, flow2, flow3, flow4].each { flowHelper.deleteFlow(it.id) }
+        [flow1, flow2, flow3, flow4].each { flowHelperV2.deleteFlow(it.id) }
         database.resetCosts()
     }
 
@@ -259,6 +267,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    @Tidy
     @Unroll
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
         when: "Get flows without specifying #item"
@@ -351,7 +360,7 @@ class LinkSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(switchPair)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1])
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 

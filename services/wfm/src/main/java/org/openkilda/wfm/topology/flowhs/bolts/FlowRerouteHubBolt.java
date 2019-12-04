@@ -20,8 +20,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -91,7 +91,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     protected void onWorkerResponse(Tuple input) throws PipelineException {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        FlowResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, FlowResponse.class);
+        SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
         service.handleAsyncResponse(currentKey, flowResponse);
     }
 
@@ -102,7 +102,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendSpeakerRequest(SpeakerFlowRequest command) {
+    public void sendSpeakerRequest(FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);

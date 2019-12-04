@@ -40,5 +40,4 @@ public class CorrelationContextTest {
         //then
         assertNotEquals(DEFAULT_CORRELATION_ID, correlationId);
     }
-
 }

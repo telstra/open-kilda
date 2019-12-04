@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
@@ -28,7 +29,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class HandleNotRemovedPathsAction extends
@@ -42,6 +45,12 @@ public class HandleNotRemovedPathsAction extends
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
         FlowPath[] paths = flow.getPaths().stream().filter(Objects::nonNull).toArray(FlowPath[]::new);
-        stateMachine.saveErrorToHistory("Failed to remove paths", format("Failed to remove paths: %s", paths));
+        stateMachine.saveErrorToHistory(
+                "Failed to remove paths", format(
+                        "Failed to remove paths: \"%s\"",
+                        Arrays.stream(paths)
+                                .map(FlowPath::getPathId)
+                                .map(PathId::toString)
+                                .collect(Collectors.joining("\", \""))));
     }
 }

@@ -1,0 +1,46 @@
+@startuml
+
+participant Northbound as NB
+participant "Flow topology" as FT
+participant "Control topology" as CPT
+participant "Control application " as CPA
+participant "Server 42" as S42
+
+== Northbound communication ==
+
+-> NB: REST
+activate NB
+NB -> CPT : kafka
+activate CPT
+CPT -> CPA: kafka
+deactivate CPT
+activate CPA
+CPA -> S42: zeroMQ
+deactivate CPA
+activate S42
+CPA <-- S42: zeroMQ
+deactivate S42
+activate CPA
+CPA --> CPT: kafka
+deactivate CPA
+activate CPT
+NB <-- CPT: kafka
+deactivate CPT
+<- NB: REST
+deactivate NB
+
+== Flow event reaction ==
+
+-> FT : flow event
+activate FT
+FT -> CPT : kafka
+deactivate FT
+activate CPT
+CPT -> CPA: kafka
+deactivate CPT
+activate CPA
+CPA -> S42: zeroMQ
+deactivate CPA
+
+
+@enduml

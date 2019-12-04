@@ -63,17 +63,17 @@ public class ValidateFlowAction extends NbTrackableAction<FlowDeleteFsm, State, 
         dashboardLogger.onFlowDelete(flowId);
 
         boolean isOperationAllowed = featureTogglesRepository.find()
-                .map(FeatureToggles::getDeleteFlowEnabled).orElse(Boolean.FALSE);
+                .map(FeatureToggles::getDeleteFlowEnabled)
+                .orElse(FeatureToggles.DEFAULTS.getDeleteFlowEnabled());
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, getGenericErrorMessage(),
-                    "Flow delete feature is disabled");
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow delete feature is disabled");
         }
 
         Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow foundFlow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        getGenericErrorMessage(), format("Flow %s is in progress now", flowId));
+                        format("Flow %s is in progress now", flowId));
             }
 
             // Keep it, just in case we have to revert it.

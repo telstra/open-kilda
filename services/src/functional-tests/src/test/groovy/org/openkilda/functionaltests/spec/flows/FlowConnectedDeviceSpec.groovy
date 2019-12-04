@@ -2,6 +2,10 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.LLDP_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.LLDP_RULE_SINGLE_TABLE_ID
+import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -432,7 +436,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs() {
         def tgSwitches = topology.activeTraffGens*.switchConnected
-                                 .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
+                .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
         def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.details.hardware].sort() }
         List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
             it.src in tgSwitches && it.dst in tgSwitches
@@ -498,29 +502,37 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         def path = source ? flow.forwardPath : flow.reversePath
 
         def allRules = northbound.getSwitchRules(switchId).flowEntries
-        assert allRules.count { it.tableId == 1 } == getExpectedLldpRulesCount(flow, source)
+        def isMultiTableEnabled = northbound.getSwitchProperties(switchId).multiTable
+        assert allRules.findAll {
+            !Cookie.isDefaultRule(it.cookie) && it.tableId ==
+                    (isMultiTableEnabled ? LLDP_RULE_MULTI_TABLE_ID : LLDP_RULE_SINGLE_TABLE_ID)
+        }.size() == getExpectedLldpRulesCount(flow, source)
 
-
-        validateRules(allRules, path.cookie, path.lldpResources, lldpEnabled, false)
+        validateRules(allRules, path.cookie, path.lldpResources, lldpEnabled, false, isMultiTableEnabled)
 
         if (flow.allocateProtectedPath) {
             def protectedPath = source ? flow.protectedForwardPath : flow.protectedReversePath
-            validateRules(allRules, protectedPath.cookie, protectedPath.lldpResources, lldpEnabled, true)
+            validateRules(allRules, protectedPath.cookie, protectedPath.lldpResources, lldpEnabled, true, isMultiTableEnabled)
         }
     }
 
-    private static void validateRules(List<FlowEntry> allRules, Cookie flowCookie, LldpResources lldpResources,
-            boolean lldpEnabled, boolean protectedPath) {
+    void validateRules(List<FlowEntry> allRules, Cookie flowCookie, LldpResources lldpResources,
+                       boolean lldpEnabled, boolean protectedPath, boolean isMultiTableEnabled) {
         def ingressRules = allRules.findAll { it.cookie == flowCookie.value }
         if (protectedPath) {
             assert ingressRules.size() == 0
         } else {
             assert ingressRules.size() == 1
-            assert ingressRules[0].instructions.goToTable == (lldpEnabled ? 1 : null)
-            assert ingressRules[0].tableId == 0
+            def lldpTableId = isMultiTableEnabled ? LLDP_RULE_MULTI_TABLE_ID : LLDP_RULE_SINGLE_TABLE_ID
+            assert ingressRules[0].instructions.goToTable == (lldpEnabled ? lldpTableId : null)
+            int tableId = isMultiTableEnabled ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+            assert ingressRules[0].tableId == tableId
         }
 
-        def lldpRules = allRules.findAll { it.tableId == 1 }
+
+        def lldpRules = allRules.findAll {
+            it.tableId == (isMultiTableEnabled ? LLDP_RULE_MULTI_TABLE_ID : LLDP_RULE_SINGLE_TABLE_ID)
+        }
         if (lldpEnabled) {
             assert lldpRules.count { it.cookie == lldpResources.cookie.value } == 1
         } else {

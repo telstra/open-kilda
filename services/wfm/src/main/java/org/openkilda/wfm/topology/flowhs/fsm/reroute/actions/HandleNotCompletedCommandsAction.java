@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -34,20 +34,29 @@ public class HandleNotCompletedCommandsAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     @Override
     public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        FlowSegmentRequestFactory requestFactory;
         for (UUID commandId : stateMachine.getPendingCommands()) {
-            RemoveRule removeCommand = stateMachine.getRemoveCommands().get(commandId);
-            if (removeCommand != null) {
-                stateMachine.saveErrorToHistory("Command is not finished yet",
+            requestFactory = stateMachine.getRemoveCommands().get(commandId);
+            if (requestFactory != null) {
+                stateMachine.saveErrorToHistory(
+                        "Command is not finished yet",
                         format("Completing the reroute operation although the remove command may not be "
-                                        + "finished yet: commandId %s, switch %s, cookie %s", commandId,
-                                removeCommand.getSwitchId(), removeCommand.getCookie()));
+                                       + "finished yet: commandId %s, switch %s, cookie %s",
+                               commandId, requestFactory.getSwitchId(), requestFactory.getCookie()));
             } else {
-                InstallIngressRule ingressRule = stateMachine.getIngressCommands().get(commandId);
-                stateMachine.saveErrorToHistory("Command is not finished yet",
+                requestFactory = stateMachine.getIngressCommands().get(commandId);
+                stateMachine.saveErrorToHistory(
+                        "Command is not finished yet",
                         format("Completing the reroute operation although the install command may not be "
-                                        + "finished yet: commandId %s, switch %s, rule %s", commandId,
-                                ingressRule.getSwitchId(), ingressRule));
+                                       + "finished yet: commandId %s, switch %s, cookie %s",
+                               commandId, requestFactory.getSwitchId(), requestFactory.getCookie()));
             }
+        }
+
+        for (FlowErrorResponse errorResponse : stateMachine.getFailedCommands().values()) {
+            log.warn(
+                    "Receive error response from {} for command {}: {}",
+                    errorResponse.getSwitchId(), errorResponse.getCommandId(), errorResponse);
         }
 
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());

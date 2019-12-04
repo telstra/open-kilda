@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -233,7 +233,7 @@ public class FlowsIntegrationService {
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 Flow flow = restClientManager.getResponse(response, Flow.class);
-                return flowConverter.toFlowWithSwitchNames(flow);
+                return flow;
             }
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting flow by id:" + flowId, e);

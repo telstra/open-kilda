@@ -5,6 +5,7 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import { SwitchService } from 'src/app/common/services/switch.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 declare var jQuery: any;
 @Component({
   selector: 'app-port-flows',
@@ -34,7 +35,7 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
   expandedState : boolean = false;
   expandedStatus : boolean = false;
   expandedDescription : boolean = false;
-  constructor(private renderer:Renderer2 , private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService) { }
+  constructor(private renderer:Renderer2 , private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService, private router: Router) { }
 
   ngOnInit() {
     var ref = this;
@@ -108,7 +109,9 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
     });
     this.enableButtons();
   }
-
+  showFlow(flowObj){
+    this.router.navigate(['/flows/details/'+flowObj.flowid]);
+  }
   rerender(): void {
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.destroy();

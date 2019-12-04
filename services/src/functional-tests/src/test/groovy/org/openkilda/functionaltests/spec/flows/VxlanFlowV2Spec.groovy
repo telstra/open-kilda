@@ -3,16 +3,19 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
@@ -20,9 +23,12 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -114,7 +120,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
-        northboundV2.updateFlow(flowInfo.id, 
+        northboundV2.updateFlow(flowInfo.id,
                 flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = encapsulationUpdate }))
 
         then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
@@ -363,70 +369,123 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
-    def "System doesn't allow to create a flow with 'VXLAN' encapsulation on a non-noviflow switches"() {
-        setup:
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { !it.src.noviflow && !it.dst.noviflow }
-        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
+    @Tidy
+    def "Unable to create a VXLAN flow when src and dst switches do not support it"() {
+        given: "Src and dst switches do not support VXLAN"
+        def switchPair = topologyHelper.switchPairs.first()
+        Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
+            [(it): northbound.getSwitchProperties(it.dpId)]
+        }
+        initProps.each { sw, swProp ->
+            SwitchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
+                it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+            })
+        }
 
-        when: "Try to create a flow"
+        when: "Try to create a VXLAN flow"
         def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
-        northboundV2.addFlow(flow)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN.toString()
+        def addedFlow = northboundV2.addFlow(flow)
 
         then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
+        def createError = thrown(HttpClientErrorException)
+        createError.rawStatusCode == 404
         // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
+        def createErrorDetails = createError.responseBodyAsString.to(MessageError)
+        createErrorDetails.errorMessage == "Could not create flow"
+        createErrorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
                 " doesn't have links with enough bandwidth"
+
+        when: "Create a VLAN flow"
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN.toString()
+        addedFlow = flowHelperV2.addFlow(flow)
+
+        and: "Try updated its encap type to VXLAN"
+        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.encapsulationType = FlowEncapsulationType.VXLAN.toString() })
+
+        then: "Human readable error is returned"
+        def updateError = thrown(HttpClientErrorException)
+        updateError.rawStatusCode == 404
+        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        def updateErrorDetails = updateError.responseBodyAsString.to(MessageError)
+        updateErrorDetails.errorMessage == "Could not update flow"
+        createErrorDetails.errorDescription == "Not enough bandwidth or no path found. " +
+                "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
+                " doesn't have links with enough bandwidth"
+
+
+        cleanup:
+        addedFlow && flowHelperV2.deleteFlow(addedFlow.flowId)
+        initProps.each { sw, swProps ->
+            SwitchHelper.updateSwitchProperties(sw, swProps)
+        }
     }
 
-    @Tags(HARDWARE)
-    def "System doesn't allow to create a vxlan flow when transit switch is not Noviflow"() {
-        setup:
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).find { !it.noviflow }
+    @Tidy
+    @Tags(TOPOLOGY_DEPENDENT)
+    def "System selects longer path if shorter path does not support required encapsulation type"() {
+        given: "Shortest path transit switch does not support VXLAN and alt paths with VXLAN are available"
+        Switch vxlanSw = null
+        List<PathNode> vxlanPath = null
+        def switchPair = topologyHelper.switchPairs.find {
+            vxlanPath = it.paths.find {
+                def involvedSwitches = pathHelper.getInvolvedSwitches(it)
+                if(involvedSwitches.size() > 2) {
+                    vxlanSw = involvedSwitches.find {
+                        it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                    }
+                    return vxlanSw
+                }
+                return false
             }
-        } ?: assumeTrue("Unable to find required switches in topology", false)
-        // find path with needed transit switch
-        def requiredPath = switchPair.paths.find { pathHelper.getInvolvedSwitches(it).find { !it.noviflow } }
-        // make all alternative paths are unavailable (bring ports down on the srcSwitch)
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != requiredPath }.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
+            //there should be an alt path that will have a switch with disabled vxlan
+            //2 switches for src/dst + 1 transit sw with vxlan. Need at least one more
+            def enoughSwitches = it.paths.collectMany { pathHelper.getInvolvedSwitches(it) }.unique().size() > 3
+            return vxlanPath && enoughSwitches &&
+                    [it.src, it.dst].every { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
         }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
+        assumeTrue("Wasn't able to find enough VXLAN-enabled switches", switchPair as boolean)
+        def initVxlanSwProps = northbound.getSwitchProperties(vxlanSw.dpId)
+        SwitchHelper.updateSwitchProperties(vxlanSw, initVxlanSwProps.jacksonCopy().tap {
+            it.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN, FlowEncapsulationType.TRANSIT_VLAN]
+                    .collect { it.toString() }
+        })
+        //make a no-vxlan path to be the most preferred
+        def noVxlanPath = switchPair.paths.find {
+            def involvedSwitches = pathHelper.getInvolvedSwitches(it)
+            involvedSwitches.size() > 2 && !involvedSwitches*.dpId.contains(vxlanSw.dpId)
         }
+        switchPair.paths.findAll { it != noVxlanPath }.each { pathHelper.makePathMorePreferable(noVxlanPath, it) }
+        def noVxlanSw = pathHelper.getInvolvedSwitches(noVxlanPath).first()
+        def initNoVxlanSwProps = northbound.getSwitchProperties(noVxlanSw.dpId)
+        SwitchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps.jacksonCopy().tap {
+            it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        })
 
-        when: "Try to create a flow"
+        when: "Create a VXLAN flow"
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
         northboundV2.addFlow(flow)
 
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        //TODO(andriidovhan)add errorMessage when the 2587 issue is fixed
-
-        and: "Cleanup: Reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
+        with(pathHelper.convert(northbound.getFlowPath(flow.flowId))) {
+            it != noVxlanPath
+            pathHelper.getInvolvedSwitches(it).each {
+                assert northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                                 .collect { FlowEncapsulationType.valueOf(it) }
+                                 .contains(FlowEncapsulationType.VXLAN)
+            }
         }
-        database.resetCosts()
+
+        cleanup: "Restore all the changed sw props and remove the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initVxlanSwProps && SwitchHelper.updateSwitchProperties(vxlanSw, initVxlanSwProps)
+        initNoVxlanSwProps && SwitchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps)
     }
 
-    @Tags(HARDWARE)
-    def "System doesn't allow to create a vxlan flow when dst switch is not Noviflow"() {
+    @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
+    def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "Noviflow and non-Noviflow switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
             it.src.noviflow && !it.src.wb5164 && !it.dst.noviflow
@@ -534,44 +593,18 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
     }
 
-    def "System doesn't allow to enable a flow with 'VXLAN' encapsulation on a non-noviflow switch"() {
-        given: "A flow with 'TRANSIT_VLAN' encapsulation"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { !it.src.noviflow && !it.dst.noviflow }
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-        flowHelperV2.addFlow(flow)
-
-        when: "Try to change the encapsulation type to VXLAN"
-        def flowData = northbound.getFlow(flow.flowId)
-        flowHelperV2.updateFlow(flowData.id,
-                flowHelperV2.toV2(flowData.tap { it.encapsulationType = FlowEncapsulationType.VXLAN }))
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. \
-Failed to find path with requested bandwidth=$flow.maximumBandwidth: \
-Switch $switchPair.src.dpId doesn't have links with enough bandwidth"
-
-        and: "Cleanup: Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-    }
-
     FlowPayload toFlowPayload(FlowRequestV2 flow) {
         FlowEndpointV2 source = flow.source
         FlowEndpointV2 destination = flow.destination
 
         FlowPayload.builder()
-                .id(flow.flowId)
-                .source(new FlowEndpointPayload(source.switchId, source.portNumber, source.vlanId,
-                        new DetectConnectedDevicesPayload(false, false)))
-                .destination(new FlowEndpointPayload(destination.switchId, destination.portNumber, destination.vlanId,
-                        new DetectConnectedDevicesPayload(false, false)))
-                .maximumBandwidth(flow.maximumBandwidth)
-                .ignoreBandwidth(flow.ignoreBandwidth)
-                .build()
+                   .id(flow.flowId)
+                   .source(new FlowEndpointPayload(source.switchId, source.portNumber, source.vlanId,
+                new DetectConnectedDevicesPayload(false, false)))
+                   .destination(new FlowEndpointPayload(destination.switchId, destination.portNumber, destination.vlanId,
+                new DetectConnectedDevicesPayload(false, false)))
+                   .maximumBandwidth(flow.maximumBandwidth)
+                   .ignoreBandwidth(flow.ignoreBandwidth)
+                   .build()
     }
 }

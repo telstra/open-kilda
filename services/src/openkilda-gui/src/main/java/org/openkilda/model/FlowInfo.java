@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * The Class FlowResponse.
@@ -71,7 +72,9 @@ public class FlowInfo implements Serializable {
 
     @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
-
+    
+    @JsonProperty("allocate_protected_path")
+    private boolean allocateProtectedPath;
 
     @JsonProperty("status")
     private String status;
@@ -98,6 +101,9 @@ public class FlowInfo implements Serializable {
     
     @JsonProperty("inventory-flow")
     private boolean inventoryFlow;
+    
+    @JsonProperty("diverse_with")
+    private List<String> diverseWith;
 
     private static final long serialVersionUID = -7015976328478701934L;
 

@@ -7,6 +7,7 @@ import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.testing.model.topology.TopologyDefinition.Status
 
 class HealthCheckSpecification extends BaseSpecification {
 
@@ -20,7 +21,7 @@ class HealthCheckSpecification extends BaseSpecification {
         verifyAll {
             Wrappers.wait(WAIT_OFFSET) {
                 links = northbound.getAllLinks()
-                assert northbound.activeSwitches.size() == topology.activeSwitches.size()
+                assert northbound.activeSwitches.size() == topology.switches.findAll { it.status != Status.Inactive }.size()
                 assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
             }
             def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->

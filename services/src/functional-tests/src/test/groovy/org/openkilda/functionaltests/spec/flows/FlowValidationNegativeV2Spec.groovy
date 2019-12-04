@@ -30,10 +30,8 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
-        def flowToBreak = (switchPair.src == switchPair.dst) ? flowHelperV2.singleSwitchFlow(switchPair.src)
-                : flowHelperV2.randomFlow(switchPair)
-        def intactFlow = (switchPair.src == switchPair.dst) ? flowHelperV2.singleSwitchFlow(switchPair.src)
-                : flowHelperV2.randomFlow(switchPair)
+        def flowToBreak = flowHelperV2.randomFlow(switchPair, false)
+        def intactFlow = flowHelperV2.randomFlow(switchPair, false, [flowToBreak])
 
         flowHelperV2.addFlow(flowToBreak)
         flowHelperV2.addFlow(intactFlow)

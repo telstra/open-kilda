@@ -61,7 +61,7 @@ public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreate
         } catch (FlowProcessingException e) {
             stateMachine.saveActionToHistory("Skip resources deallocation",
                     format("Skip resources deallocation. Flow %s has already been deleted: %s",
-                            stateMachine.getFlowId(), e.getErrorMessage()));
+                            stateMachine.getFlowId(), e.getMessage()));
             return;
         }
 

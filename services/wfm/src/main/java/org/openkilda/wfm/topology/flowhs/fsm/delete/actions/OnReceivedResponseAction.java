@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.Cookie;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
@@ -35,7 +35,7 @@ public class OnReceivedResponseAction extends
         HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         if (!response.isSuccess() || response instanceof FlowErrorResponse) {
             throw new IllegalArgumentException(
                     format("Invoked %s for an error response: %s", this.getClass(), response));
@@ -47,7 +47,7 @@ public class OnReceivedResponseAction extends
             return;
         }
 
-        Cookie cookie = stateMachine.getCookieForCommand(commandId);
+        Cookie cookie = response.getCookie();
         stateMachine.saveActionToHistory("Rule was deleted",
                 format("The rule was deleted: switch %s, cookie %s", response.getSwitchId(), cookie));
 

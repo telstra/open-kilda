@@ -665,6 +665,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "Cleanup: Restore state of the ISL"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        database.resetCosts()
     }
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
@@ -695,6 +696,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+        database.resetCosts()
     }
 
     def "Able to CRUD unmetered one-switch pinned flow"() {

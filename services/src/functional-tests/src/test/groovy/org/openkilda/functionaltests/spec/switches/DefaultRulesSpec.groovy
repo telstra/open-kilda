@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -21,9 +22,6 @@ import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.model.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
@@ -130,6 +128,66 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    def "Able to install default multitable rule on an #sw.ofVersion \
+switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) {
+        given: "A switch without rules"
+        assumeTrue("Multi table should be enabled on the switch",
+                northbound.getSwitchProperties(sw.dpId).multiTable)
+        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+        assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
+
+        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
+        Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
+
+        when: "Install rules on the switch"
+        def installedRules = northbound.installSwitchRules(sw.dpId, data.installRulesAction)
+
+        then: "The corresponding rules are really installed"
+        installedRules.size() == 1
+
+        def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, expectedRules)
+        }
+
+        and: "Cleanup: Install missing default rules and restore switch properties"
+        northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
+        }
+
+        where:
+        [data, sw] << [
+                [
+                        [
+                                installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH,
+                                cookie            : Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
+                        ],
+                        [
+                                installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_INGRESS_DROP,
+                                cookie            : Cookie.MULTITABLE_INGRESS_DROP_COOKIE
+                        ],
+                        [
+                                installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_POST_INGRESS_DROP,
+                                cookie            : Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
+                        ],
+                        [
+                                installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_EGRESS_PASS_THROUGH,
+                                cookie            : Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
+                        ],
+                        [
+                                installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_TRANSIT_DROP,
+                                cookie            : Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+                        ]
+                ],
+                getTopology().getActiveSwitches().findAll {
+                    it.noviflow || it.virtual
+                }.unique { activeSw -> activeSw.description }
+        ].combinations()
+    }
+
+    @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
         given: "A switch without any rules"
@@ -217,6 +275,77 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                     //dropping this rule on WB5164 will lead to disco-packet storm. Reason: #2595
             !(theSw.wb5164 && dataPiece.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE)
         }
+    }
+
+    @Unroll
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    def "Able to delete default multitable rule from an #sw.ofVersion \
+switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
+        when: "Delete rule from the switch"
+        assumeTrue("Multi table should be enabled on the switch",
+                northbound.getSwitchProperties(sw.dpId).multiTable)
+        def defaultRules
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+            assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
+        }
+        def deletedRules = northbound.deleteSwitchRules(sw.dpId, data.deleteRulesAction)
+
+        then: "The corresponding rule is really deleted"
+        deletedRules.size() == 1
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def actualRules = northbound.getSwitchRules(sw.dpId).flowEntries
+            assert actualRules.findAll { it.cookie in deletedRules }.empty
+            compareRules(actualRules, defaultRules.findAll { it.cookie != data.cookie })
+        }
+
+        and: "Switch and rules validation shows that corresponding default rule is missing"
+        verifyAll(northbound.validateSwitchRules(sw.dpId)) {
+            missingRules == deletedRules
+            excessRules.empty
+            properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+        }
+        verifyAll(northbound.validateSwitch(sw.dpId)) {
+            rules.missing == deletedRules
+            rules.misconfigured.empty
+            rules.excess.empty
+            rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+        }
+
+        and: "Cleanup: Install default rules back"
+        northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
+        }
+
+        where:
+        [data, sw] << [
+                [
+                        [
+                                deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_PRE_INGRESS_PASS_THROUGH,
+                                cookie           : Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
+                        ],
+                        [
+                                deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_INGRESS_DROP,
+                                cookie           : Cookie.MULTITABLE_INGRESS_DROP_COOKIE
+                        ],
+                        [
+                                deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_POST_INGRESS_DROP,
+                                cookie           : Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
+                        ],
+                        [
+                                deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_EGRESS_PASS_THROUGH,
+                                cookie           : Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
+                        ],
+                        [
+                                deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_TRANSIT_DROP,
+                                cookie           : Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+                        ]
+                ],
+                getTopology().getActiveSwitches().findAll {
+                    it.noviflow || it.virtual
+                }.unique { activeSw -> activeSw.description }
+        ].combinations()
     }
 
     void compareRules(actualRules, expectedRules) {

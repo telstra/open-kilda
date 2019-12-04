@@ -9,6 +9,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -36,6 +37,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Tidy
     @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
@@ -69,13 +71,14 @@ class FlowPingSpec extends HealthCheckSpecification {
         }
         statsData.values().last().toLong() > unicastCounterBefore
 
-        and: "Remove the flow"
+        cleanup: "Remove the flow"
         flowHelper.deleteFlow(flow.id)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
+    @Tidy
     @Unroll("Able to ping a flow with no vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
@@ -97,13 +100,14 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "Remove the flow"
+        cleanup: "Remove the flow"
         flowHelper.deleteFlow(flow.id)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
     }
 
+    @Tidy
     @Unroll("Flow ping can detect a broken #description")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
     def "Flow ping can detect a broken path"() {
@@ -140,9 +144,9 @@ class FlowPingSpec extends HealthCheckSpecification {
         expect response, sameBeanAs(expectedPingResult)
                 .ignoring("forward.latency").ignoring("reverse.latency")
 
-        and: "Restore rules, costs and remove the flow"
-        lockKeeper.addFlows(rulesToRemove)
-        flowHelper.deleteFlow(flow.id)
+        cleanup: "Restore rules, costs and remove the flow"
+        rulesToRemove && lockKeeper.addFlows(rulesToRemove)
+        flow && flowHelper.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
@@ -196,6 +200,7 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .build()
     }
 
+    @Tidy
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
         def sw = topology.activeSwitches.find { !it.centec && it.ofVersion != "OF_12" }
@@ -215,10 +220,11 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "Remove the flow"
+        cleanup: "Remove the flow"
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Verify error if try to ping with wrong flowId"() {
         when: "Send ping request with non-existing flowId"
         def wrongFlowId = "nonexistent"

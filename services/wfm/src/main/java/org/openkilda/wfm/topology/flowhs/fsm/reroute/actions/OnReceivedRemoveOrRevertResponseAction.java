@@ -17,10 +17,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallFlowRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -42,10 +41,10 @@ public class OnReceivedRemoveOrRevertResponseAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        RemoveRule removeCommand = stateMachine.getRemoveCommands().get(commandId);
-        InstallFlowRule installCommand = stateMachine.getInstallCommand(commandId);
+        FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommands().get(commandId);
+        FlowSegmentRequestFactory installCommand = stateMachine.getInstallCommand(commandId);
         if (!stateMachine.getPendingCommands().contains(commandId)
                 || (removeCommand == null && installCommand == null)) {
             log.info("Received a response for unexpected command: {}", response);
@@ -77,14 +76,14 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                                     + "Retrying (attempt %d)",
                             commandId, errorResponse.getSwitchId(), removeCommand.getCookie(), errorResponse, retries));
 
-                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand);
+                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeInstallRequest(commandId));
                 } else {
                     stateMachine.saveErrorToHistory("Failed to re-install (revert) rule", format(
                             "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
                                     + "Retrying (attempt %d)", commandId, errorResponse.getSwitchId(),
                             installCommand.getCookie(), errorResponse, retries));
 
-                    stateMachine.getCarrier().sendSpeakerRequest(installCommand);
+                    stateMachine.getCarrier().sendSpeakerRequest(installCommand.makeInstallRequest(commandId));
                 }
             } else {
                 stateMachine.getPendingCommands().remove(commandId);

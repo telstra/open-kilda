@@ -170,6 +170,19 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
+    public Collection<Flow> findByEndpointSwitchWithMultiTableSupport(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter srcMultiTableFilter = new Filter(SRC_MULTI_TABLE_PROPERTY_NAME, ComparisonOperator.IS_TRUE);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+        Filter dstMultiTableFilter = new Filter(DST_MULTI_TABLE_PROPERTY_NAME, ComparisonOperator.IS_TRUE);
+
+        return Stream.concat(
+                loadAll(srcSwitchFilter.and(srcMultiTableFilter)).stream(),
+                loadAll(dstSwitchFilter.and(dstMultiTableFilter)).stream())
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Collection<Flow> findDownFlows() {
         Filter flowStatusDown = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DOWN);
         Filter flowStatusDegraded = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DEGRADED);

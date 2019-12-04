@@ -7,11 +7,12 @@ import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COO
 import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
-import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
+import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -133,7 +134,19 @@ class SwitchHelper {
         northbound.activeSwitches.find { it.switchId == sw }.description
     }
 
-     /**
+    /**
+     * The same as direct northbound call, but additionally waits that default rules are indeed reinstalled according
+     * to config
+     */
+    static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
+        def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
+        Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
+        return response
+    }
+
+    /**
      * This method calculates expected burst for different types of switches. The common burst equals to
      * `rate * burstCoefficient`. There are couple exceptions though:<br>
      * <b>Noviflow</b>: Does not use our common burst coefficient and overrides it with its own coefficient (see static
@@ -175,12 +188,20 @@ class SwitchHelper {
 
     /**
      * Verifies that specified sections in the validation response are empty.
-     * NOTE: will filter out default rules
+     * NOTE: will filter out default rules, except default flow rules(multiTable flow)
+     * Default flow rules for the system looks like as a simple default rule.
+     * Based on that you have to use extra filter to detect these rules in missing/excess/misconfigured sections.
      */
     static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess"]) {
-        sections.each {
-            assert switchValidateInfo.rules."$it".findAll { !Cookie.isDefaultRule(it) }.empty
+        sections.each { String section ->
+            if(section == "proper") {
+                assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.empty
+            } else {
+                assert switchValidateInfo.rules."$section".findAll { cookie ->
+                    Cookie.isIngressRulePassThrough(cookie) || !Cookie.isDefaultRule(cookie)
+                }.empty
+            }
         }
     }
 }
