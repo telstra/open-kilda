@@ -15,38 +15,72 @@
 
 package org.openkilda.floodlight.service.connected;
 
-import static org.junit.Assert.assertArrayEquals;
+import static com.google.common.primitives.Bytes.concat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import net.floodlightcontroller.packet.Data;
-import net.floodlightcontroller.packet.IPacket;
-import org.apache.commons.lang3.ArrayUtils;
+import org.openkilda.floodlight.service.connected.ConnectedDevicesService.PacketData;
+
+import net.floodlightcontroller.packet.Ethernet;
 import org.junit.Test;
+import org.projectfloodlight.openflow.types.EthType;
 
 public class ConnectedDevicesServiceTest {
-    private byte[] lldpHeaderWithVlan = new byte[]{
-            0x6, 0x22,               // vlan
-            (byte) 0x88, (byte) 0xCC // LLDP eth type
+    private byte[] srcAndDstMacAddresses = new byte[] {
+            0x1, (byte) 0x80, (byte) 0xC2, 0x0, 0x0, 0xE,           // src mac address
+            0x10, 0x4E, (byte) 0xF1, (byte) 0xF9, 0x6D, (byte) 0xFA // dst mac address
     };
-    private byte[] lldpHeaderWithQinQ = new byte[]{
-            0x6, 0x21,               // other vlan
-            (byte) 0x81, 0x00,       // inner vlan eth type
-            0x6, 0x22,               // inner vlan
-            (byte) 0x88, (byte) 0xCC // LLDP eth type
-    };
-    private byte[] lldpPacketWithVlan = ArrayUtils.addAll(lldpHeaderWithVlan, LldpPacketTest.packet);
-    private byte[] lldpPacketWithQinQ = ArrayUtils.addAll(lldpHeaderWithQinQ, LldpPacketTest.packet);
 
     private ConnectedDevicesService service = new ConnectedDevicesService();
 
     @Test
-    public void removeVlanTest() {
-        IPacket packet = new Data(lldpPacketWithVlan);
-        assertArrayEquals(LldpPacketTest.packet, service.removeVlanTag(packet));
+    public void deserializeLldpTest() {
+        byte[] ethernetWithLldp = concat(
+                srcAndDstMacAddresses, ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
+        Ethernet ethernet = new Ethernet();
+        ethernet.deserialize(ethernetWithLldp, 0, ethernetWithLldp.length);
+
+        PacketData data = service.deserializeLldp(ethernet, null, 0);
+        assertTrue(data.getVlans().isEmpty());
+        assertEquals(LldpPacketTest.buildLldpPacket(LldpPacketTest.packet), data.getLldpPacket());
     }
 
     @Test
-    public void removeQinQTest() {
-        IPacket packet = new Data(lldpPacketWithQinQ);
-        assertArrayEquals(LldpPacketTest.packet, service.removeOuterAndInnerVlanTag(packet));
+    public void deserializeLldpWithVlanTest() {
+        short vlan = 1234;
+        byte[] ethernetWithLldp = concat(srcAndDstMacAddresses, ethTypeToByteArray(EthType.VLAN_FRAME),
+                shortToByteArray(vlan), ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
+        Ethernet ethernet = new Ethernet();
+        ethernet.deserialize(ethernetWithLldp, 0, ethernetWithLldp.length);
+
+        PacketData data = service.deserializeLldp(ethernet, null, 0);
+        assertEquals(1, data.getVlans().size());
+        assertEquals(Integer.valueOf(vlan), data.getVlans().get(0));
+        assertEquals(LldpPacketTest.buildLldpPacket(LldpPacketTest.packet), data.getLldpPacket());
+    }
+
+    @Test
+    public void deserializeLldpWithTwoVlanTest() {
+        short innerVlan = 1234;
+        short outerVlan = 2345;
+        byte[] ethernetWithLldp = concat(srcAndDstMacAddresses, ethTypeToByteArray(EthType.VLAN_FRAME),
+                shortToByteArray(outerVlan), ethTypeToByteArray(EthType.VLAN_FRAME), shortToByteArray(innerVlan),
+                ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
+        Ethernet ethernet = new Ethernet();
+        ethernet.deserialize(ethernetWithLldp, 0, ethernetWithLldp.length);
+
+        PacketData data = service.deserializeLldp(ethernet, null, 0);
+        assertEquals(2, data.getVlans().size());
+        assertEquals(Integer.valueOf(outerVlan), data.getVlans().get(0));
+        assertEquals(Integer.valueOf(innerVlan), data.getVlans().get(1));
+        assertEquals(LldpPacketTest.buildLldpPacket(LldpPacketTest.packet), data.getLldpPacket());
+    }
+
+    private byte[] ethTypeToByteArray(EthType ethType) {
+        return shortToByteArray((short) ethType.getValue());
+    }
+
+    private byte[] shortToByteArray(short s) {
+        return new byte[] {(byte) (s >> 8), (byte) s};
     }
 }

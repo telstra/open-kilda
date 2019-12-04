@@ -61,9 +61,7 @@ public class LldpPacketTest {
 
     @Test
     public void errorReporting() {
-        LLDP lldp = new LLDP();
-        lldp.deserialize(packet, 0, packet.length);
-        LldpPacket lldpPacket = new LldpPacket(lldp);
+        LldpPacket lldpPacket = buildLldpPacket(packet);
         assertEquals(addDescription(MAC_DESCRIPTION, "ae:59:21:13:41:36"), lldpPacket.getParsedChassisId());
         assertEquals(addDescription(MAC_DESCRIPTION, "e2:4c:63:33:f3:eb"), lldpPacket.getParsedPortId());
         assertEquals(120, (int) lldpPacket.getParsedTtl());
@@ -88,5 +86,11 @@ public class LldpPacketTest {
                 .setValue(new byte[] {PORT_ID_SUBTYPE_MAC, 0x01, (byte) 0x80, (byte) 0xc2, 0x00, 0x00, 0x0e});
         LldpPacket lldpPacket = LldpPacket.builder().portId(portTvl).build();
         assertEquals(addDescription(MAC_DESCRIPTION, "01:80:c2:00:00:0e"), lldpPacket.getParsedPortId());
+    }
+
+    static LldpPacket buildLldpPacket(byte[] packet) {
+        LLDP lldp = new LLDP();
+        lldp.deserialize(packet, 0, packet.length);
+        return new LldpPacket(lldp);
     }
 }

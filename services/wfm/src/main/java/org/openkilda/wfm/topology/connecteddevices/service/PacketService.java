@@ -37,6 +37,7 @@ import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -103,25 +104,46 @@ public class PacketService {
         } else if (data.getCookie() == LLDP_INPUT_PRE_DROP_COOKIE
                 || data.getCookie() == LLDP_INGRESS_COOKIE
                 || data.getCookie() == LLDP_TRANSIT_COOKIE) {
-            return new FlowRelatedData(data.getVlan(), null, null);
+            int vlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
+            return new FlowRelatedData(vlan, null, null);
         }
-        log.warn("Got LLDP packet from unknown rule with cookie {}. Switch {}, port {}, vlan {}",
-                data.getCookie(), data.getSwitchId(), data.getPortNumber(), data.getVlan());
+        log.warn("Got LLDP packet from unknown rule with cookie {}. Switch {}, port {}, vlans {}",
+                data.getCookie(), data.getSwitchId(), data.getPortNumber(), data.getVlans());
         return null;
     }
 
-    private FlowRelatedData findFlowRelatedDataForVlanFlow(SwitchLldpInfoData data) {
-        int transitVlan = data.getVlan();
+    @VisibleForTesting
+    FlowRelatedData findFlowRelatedDataForVlanFlow(SwitchLldpInfoData data) {
+        if (data.getVlans().isEmpty()) {
+            log.warn("Got LLDP packet without transit VLAN: {}", data);
+            return null;
+        }
+        int transitVlan = data.getVlans().get(0);
         Flow flow = findFlowByTransitVlan(transitVlan);
 
         if (flow == null) {
             return null;
         }
 
+        int customerVlan = data.getVlans().size() > 1 ? data.getVlans().get(1) : 0;
         if (data.getSwitchId().equals(flow.getSrcSwitch().getSwitchId())) {
-            return new FlowRelatedData(flow.getSrcVlan(), flow.getFlowId(), true);
+            if (flow.getSrcVlan() == FULL_PORT_VLAN) {
+                // case 1:  customer vlan 0 ==> src vlan 0, transit vlan 2 ==> output vlan 2, vlans in packet: [2]
+                // case 2:  customer vlan 1 ==> src vlan 0, transit vlan 2 ==> output vlan 2, vlans in packet: [2, 1]
+                return new FlowRelatedData(customerVlan, flow.getFlowId(), true);
+            } else {
+                // case 1:  customer vlan 1 ==> src vlan 1, transit vlan 2 ==> output vlan 2, vlans in packet: [2]
+                return new FlowRelatedData(flow.getSrcVlan(), flow.getFlowId(), true);
+            }
         } else if (data.getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
-            return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
+            if (flow.getDestVlan() == FULL_PORT_VLAN) {
+                // case 1:  customer vlan 0 ==> dst vlan 0, transit vlan 2 ==> output vlan 2, vlans in packet: [2]
+                // case 2:  customer vlan 1 ==> dst vlan 0, transit vlan 2 ==> output vlan 2, vlans in packet: [2, 1]
+                return new FlowRelatedData(customerVlan, flow.getFlowId(), false);
+            } else {
+                // case 1:  customer vlan 1 ==> dst vlan 1, transit vlan 2 ==> output vlan 2, vlans in packet: [2]
+                return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
+            }
         } else {
             log.warn("Got LLDP packet from Flow {} on non-src/non-dst switch {}. Transit vlan: {}",
                     flow.getFlowId(), data.getSwitchId(), transitVlan);
@@ -129,8 +151,9 @@ public class PacketService {
         }
     }
 
-    private FlowRelatedData findFlowRelatedDataForVxlanFlow(SwitchLldpInfoData data) {
-        int inputVlan = data.getVlan();
+    @VisibleForTesting
+    FlowRelatedData findFlowRelatedDataForVxlanFlow(SwitchLldpInfoData data) {
+        int inputVlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
         Flow flow = getFlowBySwitchIdPortAndVlan(data.getSwitchId(), data.getPortNumber(), inputVlan);
 
         if (flow == null) {
@@ -148,8 +171,12 @@ public class PacketService {
         }
     }
 
-    private FlowRelatedData findFlowRelatedDataForOneSwitchFlow(SwitchLldpInfoData data) {
-        int outputVlan = data.getVlan();
+    @VisibleForTesting
+    FlowRelatedData findFlowRelatedDataForOneSwitchFlow(SwitchLldpInfoData data) {
+        // top vlan with which we got LLDP packet in Floodlight.
+        int outputVlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
+        // second vlan with which we got LLDP packet in Floodlight. Exists only for some full port flows.
+        int customerVlan = data.getVlans().size() > 1 ? data.getVlans().get(1) : 0;
         Flow flow = getFlowBySwitchIdInPortAndOutVlan(data.getSwitchId(), data.getPortNumber(), outputVlan);
 
         if (flow == null) {
@@ -162,15 +189,71 @@ public class PacketService {
             return null;
         }
 
-        if (outputVlan == flow.getDestVlan()) {
-            return new FlowRelatedData(flow.getSrcVlan(), flow.getFlowId(), true);
-        } else if (outputVlan == flow.getSrcVlan()) {
-            return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
-        } else {
-            log.warn("Got LLDP packet from one switch flow {} with non-src/non-dst vlan {}. SwitchId {}, "
-                    + "port number {}", flow.getFlowId(), outputVlan, data.getSwitchId(), data.getPortNumber());
-            return null;
+        if (flow.getSrcPort() == flow.getDestPort()) {
+            return getOneSwitchOnePortFlowRelatedData(flow, outputVlan, customerVlan, data);
         }
+
+        if (data.getPortNumber() == flow.getSrcPort()) {
+            if (flow.getSrcVlan() == FULL_PORT_VLAN) {
+                if (flow.getDestVlan() == FULL_PORT_VLAN) {
+                    // case 1:  customer vlan 0 ==> src vlan 0, dst vlan 0 ==> output vlan 0, vlans in packet: []
+                    // case 2:  customer vlan 1 ==> src vlan 0, dst vlan 0 ==> output vlan 1, vlans in packet: [1]
+                    return new FlowRelatedData(outputVlan, flow.getFlowId(), true);
+                } else {
+                    // case 1:  customer vlan 0 ==> src vlan 0, dst vlan 2 ==> output vlan 2, vlans in packet: [2]
+                    // case 2:  customer vlan 1 ==> src vlan 0, dst vlan 2 ==> output vlan 2, vlans in packet: [2, 1]
+                    return new FlowRelatedData(customerVlan, flow.getFlowId(), true);
+                }
+            } else {
+                // case 1:  customer vlan 1 ==> src vlan 1, dst vlan 2 ==> output vlan 2, vlans in packet: [2]
+                return new FlowRelatedData(flow.getSrcVlan(), flow.getFlowId(), true);
+            }
+        } else if (data.getPortNumber() == flow.getDestPort()) {
+            if (flow.getDestVlan() == FULL_PORT_VLAN) {
+                if (flow.getSrcVlan() == FULL_PORT_VLAN) {
+                    // case 1:  customer vlan 0 ==> dst vlan 0, src vlan 0 ==> output vlan 0, vlans in packet: []
+                    // case 1:  customer vlan 1 ==> dst vlan 0, src vlan 0 ==> output vlan 1, vlans in packet: [1]
+                    return new FlowRelatedData(outputVlan, flow.getFlowId(), false);
+                } else {
+                    // case 1:  customer vlan 0 ==> dst vlan 0, src vlan 2 ==> output vlan 2, vlans in packet: [2]
+                    // case 2:  customer vlan 1 ==> dst vlan 0, src vlan 2 ==> output vlan 2, vlans in packet: [2, 1]
+                    return new FlowRelatedData(customerVlan, flow.getFlowId(), false);
+                }
+            } else {
+                // case 1:  customer vlan 1 ==> dst vlan 1, src vlan 2 ==> output vlan 2, vlans in packet: [2]
+                return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
+            }
+        }
+
+        log.warn("Got LLDP packet from one switch flow {} with non-src/non-dst vlan {}. SwitchId {}, "
+                + "port number {}", flow.getFlowId(), outputVlan, data.getSwitchId(), data.getPortNumber());
+        return null;
+    }
+
+    private FlowRelatedData getOneSwitchOnePortFlowRelatedData(
+            Flow flow, int outputVlan, int customerVlan, SwitchLldpInfoData data) {
+        if (flow.getDestVlan() == outputVlan) {
+            if (flow.getSrcVlan() == FULL_PORT_VLAN) {
+                // case 1:  customer vlan 0 ==> src vlan 0, dst vlan 2 ==> output vlan 2, vlans in packet: [2]
+                // case 2:  customer vlan 1 ==> src vlan 0, dst vlan 2 ==> output vlan 2, vlans in packet: [2, 1]
+                return new FlowRelatedData(customerVlan, flow.getFlowId(), true);
+            } else {
+                // case 1:  customer vlan 1 ==> src vlan 1, dst vlan 2 ==> output vlan 2, vlans in packet: [2]
+                return new FlowRelatedData(flow.getSrcVlan(), flow.getFlowId(), true);
+            }
+        } else if (flow.getSrcVlan() == outputVlan) {
+            if (flow.getDestVlan() == FULL_PORT_VLAN) {
+                // case 1:  customer vlan 0 ==> dst vlan 0, src vlan 2 ==> output vlan 2, vlans in packet: [2]
+                // case 2:  customer vlan 1 ==> dst vlan 0, src vlan 2 ==> output vlan 2, vlans in packet: [2, 1]
+                return new FlowRelatedData(customerVlan, flow.getFlowId(), false);
+            } else {
+                // case 1:  customer vlan 1 ==> dst vlan 1, src vlan 2 ==> output vlan 2, vlans in packet: [2]
+                return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
+            }
+        }
+        log.warn("Got LLDP data for one switch one Flow with unknown output vlan {}. Flow {} Data {}",
+                outputVlan, flow.getFlowId(), data);
+        return null;
     }
 
     private Flow findFlowByTransitVlan(int vlan) {
@@ -239,7 +322,7 @@ public class PacketService {
 
         if (!sw.isPresent()) {
             log.warn("Got LLDP packet from non existent switch {}. Port number '{}', vlan '{}', mac address '{}', "
-                            + "chassis id '{}', port id '{}'", data.getSwitchId(), data.getPortNumber(), data.getVlan(),
+                            + "chassis id '{}', port id '{}'", data.getSwitchId(), data.getPortNumber(), vlan,
                     data.getMacAddress(), data.getChassisId(), data.getPortId());
             return null;
         }
@@ -257,7 +340,7 @@ public class PacketService {
     }
 
     @Value
-    private static class FlowRelatedData {
+    static class FlowRelatedData {
         int originalVlan;
         String flowId;
         Boolean source; // device connected to source of Flow or to destination
