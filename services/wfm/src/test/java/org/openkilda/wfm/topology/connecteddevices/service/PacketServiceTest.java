@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.connecteddevices.service;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
@@ -22,22 +23,34 @@ import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.info.event.SwitchLldpInfoData;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowCookie;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.topology.connecteddevices.service.PacketService.FlowRelatedData;
 
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
+@RunWith(JUnitParamsRunner.class)
 public class PacketServiceTest extends Neo4jBasedTest {
     public static final long COOKIE = Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
     public static final String MAC_ADDRESS_1 = "00:00:00:00:00:01";
@@ -57,18 +70,23 @@ public class PacketServiceTest extends Neo4jBasedTest {
     public static final String MANAGEMENT_ADDRESS_1 = "127.0.0.1";
     public static final String MANAGEMENT_ADDRESS_2 = "192.168.1.1";
     public static final String FLOW_ID = "flow1";
+    public static final String PATH_ID = "path1";
     public static final SwitchId SWITCH_ID_1 = new SwitchId("01");
     public static final SwitchId SWITCH_ID_2 = new SwitchId("02");
     public static final int PORT_NUMBER_1 = 1;
     public static final int PORT_NUMBER_2 = 2;
+    public static final int VLAN_0 = 0;
     public static final int VLAN_1 = 1;
     public static final int VLAN_2 = 2;
+    public static final int VLAN_3 = 3;
     public static final int TTL_1 = 120;
     public static final int TTL_2 = 240;
 
     private static SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private static SwitchRepository switchRepository;
     private static FlowCookieRepository flowCookieRepository;
+    private static FlowRepository flowRepository;
+    private static TransitVlanRepository transitVlanRepository;
     private static PacketService packetService;
 
     @BeforeClass
@@ -77,6 +95,8 @@ public class PacketServiceTest extends Neo4jBasedTest {
                 .createSwitchConnectedDeviceRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowCookieRepository = persistenceManager.getRepositoryFactory().createFlowCookieRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
         packetService = new PacketService(persistenceManager);
     }
 
@@ -136,7 +156,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
     @Test
     public void testHandleSwitchLldpDataDifferentVlan() {
         SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
-        updatedData.setVlan(VLAN_2);
+        updatedData.setVlans(Collections.singletonList(VLAN_2));
         runHandleSwitchLldpWithAddedDevice(updatedData);
     }
 
@@ -203,6 +223,111 @@ public class PacketServiceTest extends Neo4jBasedTest {
         runHandleSwitchLldpWithUpdatedDevice(updatedData);
     }
 
+    private Object[][] getOneSwitchOnePortFlowParameters() {
+        return new Object[][] {
+                // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
+                {VLAN_0, VLAN_0, VLAN_2, newArrayList(VLAN_2), true},
+                {VLAN_1, VLAN_0, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
+                {VLAN_1, VLAN_1, VLAN_2, newArrayList(VLAN_2), true},
+                {VLAN_0, VLAN_2, VLAN_0, newArrayList(VLAN_2), false},
+                {VLAN_1, VLAN_2, VLAN_0, newArrayList(VLAN_2, VLAN_1), false},
+                {VLAN_1, VLAN_2, VLAN_1, newArrayList(VLAN_2), false}
+        };
+    }
+
+    @Test
+    @Parameters(method = "getOneSwitchOnePortFlowParameters")
+    public void findFlowRelatedDataForOneSwitchOnePortFlowTest(
+            int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
+        createFlow(FLOW_ID, srcVlan, dstVlan, null, true, true);
+        SwitchLldpInfoData data = createSwitchLldpInfoData(SWITCH_ID_1, vlansInPacket, PORT_NUMBER_1);
+        FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForOneSwitchFlow(data);
+        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        assertEquals(source, flowRelatedData.getSource());
+    }
+
+    private Object[][] getOneSwitchFlowParameters() {
+        return new Object[][] {
+                // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
+                {VLAN_0, VLAN_0, VLAN_0, newArrayList(), true},
+                {VLAN_1, VLAN_0, VLAN_0, newArrayList(VLAN_1), true},
+                {VLAN_0, VLAN_0, VLAN_2, newArrayList(VLAN_2), true},
+                {VLAN_1, VLAN_0, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
+                {VLAN_1, VLAN_1, VLAN_2, newArrayList(VLAN_2), true},
+                {VLAN_0, VLAN_0, VLAN_0, newArrayList(), false},
+                {VLAN_1, VLAN_0, VLAN_0, newArrayList(VLAN_1), false},
+                {VLAN_0, VLAN_2, VLAN_0, newArrayList(VLAN_2), false},
+                {VLAN_1, VLAN_2, VLAN_0, newArrayList(VLAN_2, VLAN_1), false},
+                {VLAN_1, VLAN_2, VLAN_1, newArrayList(VLAN_2), false}
+        };
+    }
+
+    @Test
+    @Parameters(method = "getOneSwitchFlowParameters")
+    public void findFlowRelatedDataForOneSwitchFlowTest(
+            int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
+        createFlow(FLOW_ID, srcVlan, dstVlan, null, true, false);
+        SwitchLldpInfoData data = createSwitchLldpInfoData(
+                SWITCH_ID_1, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
+        FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForOneSwitchFlow(data);
+        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        assertEquals(source, flowRelatedData.getSource());
+    }
+
+    private Object[][] getVlanFlowParameters() {
+        return new Object[][] {
+                // inVlan, srcVlan, dstVlan, transitVlan, vlansInPacket, sourceSwitch
+                {VLAN_0, VLAN_0, VLAN_3, VLAN_2, newArrayList(VLAN_2), true},
+                {VLAN_1, VLAN_0, VLAN_3, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
+                {VLAN_1, VLAN_1, VLAN_3, VLAN_2, newArrayList(VLAN_2), true},
+                {VLAN_0, VLAN_3, VLAN_0, VLAN_2, newArrayList(VLAN_2), false},
+                {VLAN_1, VLAN_3, VLAN_0, VLAN_2, newArrayList(VLAN_2, VLAN_1), false},
+                {VLAN_1, VLAN_3, VLAN_1, VLAN_2, newArrayList(VLAN_2), false}
+        };
+    }
+
+    @Test
+    @Parameters(method = "getVlanFlowParameters")
+    public void findFlowRelatedDataForVlanFlowTest(
+            int inVlan, int srcVlan, int dstVlan, int transitVlan, List<Integer> vlansInPacket, boolean source) {
+        createFlow(FLOW_ID, srcVlan, dstVlan, transitVlan, false, false);
+        SwitchLldpInfoData data = createSwitchLldpInfoData(
+                source ? SWITCH_ID_1 : SWITCH_ID_2, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
+        FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForVlanFlow(data);
+        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        assertEquals(source, flowRelatedData.getSource());
+    }
+
+    private Object[][] getInOutVlanCombinationForVxlanParameters() {
+        return new Object[][] {
+                // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
+                {VLAN_0, VLAN_0, VLAN_0, newArrayList(), true},
+                {VLAN_0, VLAN_0, VLAN_2, newArrayList(), true},
+                {VLAN_1, VLAN_0, VLAN_2, newArrayList(VLAN_1), true},
+                {VLAN_1, VLAN_1, VLAN_2, newArrayList(VLAN_1), true},
+                {VLAN_0, VLAN_0, VLAN_0, newArrayList(), false},
+                {VLAN_0, VLAN_2, VLAN_0, newArrayList(), false},
+                {VLAN_1, VLAN_2, VLAN_0, newArrayList(VLAN_1), false},
+                {VLAN_1, VLAN_2, VLAN_1, newArrayList(VLAN_1), false}
+        };
+    }
+
+    @Test
+    @Parameters(method = "getInOutVlanCombinationForVxlanParameters")
+    public void findFlowRelatedDataForVxlanFlowTest(
+            int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
+        createFlow(FLOW_ID, srcVlan, dstVlan, null, false, false);
+        SwitchLldpInfoData data = createSwitchLldpInfoData(
+                source ? SWITCH_ID_1 : SWITCH_ID_2, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
+        FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForVxlanFlow(data);
+        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        assertEquals(source, flowRelatedData.getSource());
+    }
+
     private void runHandleSwitchLldpWithAddedDevice(SwitchLldpInfoData updatedData) {
         SwitchLldpInfoData data = createSwitchLldpInfoData();
         packetService.handleSwitchLldpData(data);
@@ -218,7 +343,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     private void runHandleSwitchLldpWithUpdatedDevice(SwitchLldpInfoData updatedData) throws InterruptedException {
         // Need to have a different timestamp in 'data' and 'updatedData' messages.
-        Thread.sleep(1);
+        Thread.sleep(10);
         SwitchLldpInfoData data = createSwitchLldpInfoData();
         packetService.handleSwitchLldpData(data);
         Collection<SwitchConnectedDevice> oldDevices = switchConnectedDeviceRepository.findAll();
@@ -237,7 +362,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     private void assertSwitchConnectedDeviceExistInDatabase(SwitchLldpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlan(),
+                .findByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
                         data.getMacAddress(), LLDP, data.getChassisId(), data.getPortId());
         assertTrue(switchConnectedDevice.isPresent());
         assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
@@ -247,7 +372,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
             SwitchLldpInfoData data, SwitchConnectedDevice device) {
         assertEquals(data.getSwitchId(), device.getSwitchObj().getSwitchId());
         assertEquals(data.getPortNumber(), device.getPortNumber());
-        assertEquals(data.getVlan(), device.getVlan());
+        assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
         assertEquals(data.getMacAddress(), device.getMacAddress());
         assertEquals(data.getChassisId(), device.getChassisId());
         assertEquals(data.getPortId(), device.getPortId());
@@ -259,10 +384,32 @@ public class PacketServiceTest extends Neo4jBasedTest {
         assertEquals(data.getTtl(), device.getTtl());
     }
 
+    private void createFlow(
+            String flowId, int srcVlan, int dstVlan, Integer transitVlan, boolean oneSwitchFlow, boolean onePort) {
+        if (transitVlan != null) {
+            transitVlanRepository.createOrUpdate(new TransitVlan(flowId, new PathId(PATH_ID), transitVlan));
+        }
+        Switch srcSwitch = switchRepository.findById(SWITCH_ID_1).get();
+        Switch dstSwitch = oneSwitchFlow ? srcSwitch : switchRepository.findById(SWITCH_ID_2).get();
+        Flow flow = Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(srcSwitch)
+                .srcVlan(srcVlan)
+                .srcPort(PORT_NUMBER_1)
+                .destSwitch(dstSwitch)
+                .destVlan(dstVlan)
+                .destPort(onePort ? PORT_NUMBER_1 : PORT_NUMBER_2)
+                .build();
+        flowRepository.createOrUpdate(flow);
+    }
 
     private SwitchLldpInfoData createSwitchLldpInfoData() {
-        return new SwitchLldpInfoData(SWITCH_ID_1, PORT_NUMBER_1, VLAN_1, COOKIE, MAC_ADDRESS_1, CHASSIS_ID_1,
-                PORT_ID_1, TTL_1, PORT_DESCRIPTION_1, SYSTEM_NAME_1, SYSTEM_DESCRIPTION_1, CAPABILITIES_1,
+        return createSwitchLldpInfoData(SWITCH_ID_1, newArrayList(VLAN_1), PORT_NUMBER_1);
+    }
+
+    private SwitchLldpInfoData createSwitchLldpInfoData(SwitchId switchId, List<Integer> vlans, int portNumber) {
+        return new SwitchLldpInfoData(switchId, portNumber, vlans, COOKIE, MAC_ADDRESS_1,
+                CHASSIS_ID_1, PORT_ID_1, TTL_1, PORT_DESCRIPTION_1, SYSTEM_NAME_1, SYSTEM_DESCRIPTION_1, CAPABILITIES_1,
                 MANAGEMENT_ADDRESS_1);
     }
 }
