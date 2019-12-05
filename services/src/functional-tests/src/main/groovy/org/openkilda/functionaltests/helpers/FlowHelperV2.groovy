@@ -157,11 +157,10 @@ class FlowHelperV2 {
      */
     FlowResponseV2 deleteFlow(String flowId) {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
+
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.getFlowStatus(flowId) }
-
-        checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
 
         return response
     }
@@ -171,15 +170,10 @@ class FlowHelperV2 {
      * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
      */
     FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
+
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
         Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
-
-        def flowEntryAfterUpdate = db.getFlow(flowId)
-
-        // TODO(ylobankov): Delete check for rules installation once we add a new test to verify this functionality.
-        checkRulesOnSwitches(flowEntryAfterUpdate, RULES_INSTALLATION_TIME, true)
-        checkRulesOnSwitches(flowEntryBeforeUpdate, RULES_DELETION_TIME, false)
 
         return response
     }
