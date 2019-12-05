@@ -64,7 +64,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
     private LldpPacket deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
         try {
             if (eth.getPayload() instanceof LLDP) {
-                return new LldpPacket(eth.getPayload().serialize());
+                return new LldpPacket((LLDP) eth.getPayload());
             }
         }  catch (Exception exception) {
             logger.info("Could not deserialize LLDP packet {} on switch {}. Cookie {}. Deserialization failure: {}, "

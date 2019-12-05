@@ -381,7 +381,7 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid switch id.
      * @param multiTable flag
-     * @param switchLldp flag
+     * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
      * @return list of default flows.
      */
     List<OFFlowMod> getExpectedDefaultFlows(
@@ -496,7 +496,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param islPorts ports with isl default rule
      * @param flowPorts ports with flow default rule
      * @param multiTable multiTableMode
-     * @param switchLldp switch Lldp enabled
+     * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
