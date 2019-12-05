@@ -43,6 +43,8 @@ class FlowHelper {
     NorthboundService northbound
     @Autowired
     Database db
+    @Autowired
+    FlowHelperV2 flowHelperV2
 
     def random = new Random()
     def faker = new Faker()
@@ -247,7 +249,7 @@ class FlowHelper {
         def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainSwitch.switchId).flowEntries
         def multiTableStateSrcSw = multiTableIsEnabled[srcMainSwitch.switchId]
         assert rulesOnSrcSwitch.find {
-            it.cookie == mainForwardCookie
+            it.cookie == flowHelperV2.getRealCookie(srcMainSwitch.switchId, mainForwardCookie)
         }.tableId == (multiTableStateSrcSw ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
         assert rulesOnSrcSwitch.find {
             it.cookie == mainReverseCookie
@@ -263,7 +265,7 @@ class FlowHelper {
             it.cookie == mainForwardCookie
         }.tableId == (multiTableStateDstSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
         assert rulesOnDstSwitch.find {
-            it.cookie == mainReverseCookie
+            it.cookie == flowHelperV2.getRealCookie(dstMainSwitch.switchId, mainReverseCookie)
         }.tableId == (multiTableStateDstSw ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
         assert rulesOnDstSwitch.find {
             it.cookie == protectedForwardCookie
