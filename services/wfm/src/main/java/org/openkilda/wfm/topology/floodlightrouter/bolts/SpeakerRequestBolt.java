@@ -17,14 +17,20 @@ package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersRequest;
+import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpRulesRequest;
+import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
+import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -97,6 +103,13 @@ public class SpeakerRequestBolt extends RequestBolt {
                 || commandMessage.getData() instanceof RemoveFlowForSwitchManagerRequest
                 || commandMessage.getData() instanceof ReinstallDefaultFlowForSwitchManagerRequest) {
             getOutput().emit(Stream.KILDA_SWITCH_MANAGER, input, values);
+        } else if (commandMessage.getData() instanceof DumpSwitchPortsDescriptionRequest
+                || commandMessage.getData() instanceof DumpPortDescriptionRequest
+                || commandMessage.getData() instanceof DumpRulesRequest
+                || commandMessage.getData() instanceof DumpMetersRequest
+                || commandMessage.getData() instanceof DeleteMeterRequest
+                || commandMessage.getData() instanceof PortConfigurationRequest) {
+            getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", commandMessage);
         }
@@ -109,5 +122,6 @@ public class SpeakerRequestBolt extends RequestBolt {
                 FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
         outputFieldsDeclarer.declareStream(Stream.KILDA_SWITCH_MANAGER, fields);
+        outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
     }
 }
