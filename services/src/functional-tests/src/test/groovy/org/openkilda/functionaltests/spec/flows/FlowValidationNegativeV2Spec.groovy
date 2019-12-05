@@ -42,9 +42,11 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         assert damagedFlowSwitches.equals(intactFlowSwitches)
 
         when: "#flowType flow rule from first flow on #switchNo switch gets deleted"
-        def cookieToDelete = flowType == "forward" ? database.getFlow(flowToBreak.flowId).forwardPath.cookie.value :
-                database.getFlow(flowToBreak.flowId).reversePath.cookie.value
         SwitchId damagedSwitch = damagedFlowSwitches[item]
+        def cookieToDelete = flowType == "forward" ?
+                flowHelperV2.getRealCookie(damagedSwitch, database.getFlow(flowToBreak.flowId).forwardPath.cookie.value) :
+                flowHelperV2.getRealCookie(damagedSwitch, database.getFlow(flowToBreak.flowId).reversePath.cookie.value)
+        def cookieToDeleteInDbFormat = (cookieToDelete & 0xe000_0000_000f_ffff)
         northbound.deleteSwitchRules(damagedSwitch, cookieToDelete)
 
         then: "Intact flow should be validated successfully"
@@ -63,12 +65,12 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         and: "Flow rule discrepancy should contain dpID of the affected switch and cookie of the damaged flow"
         def rules = findRulesDiscrepancies(damagedDirection[0])
         rules.size() == 1
-        rules[damagedSwitch.toString()] == cookieToDelete.toString()
+        rules[damagedSwitch.toString()] == cookieToDeleteInDbFormat.toString()
 
         and: "Affected switch should have one missing rule with the same cookie as the damaged flow"
         def switchValidationResult = northbound.validateSwitchRules(damagedSwitch)
         switchValidationResult.missingRules.size() == 1
-        switchValidationResult.missingRules[0] == cookieToDelete
+        switchValidationResult.missingRules[0] == cookieToDeleteInDbFormat
 
         and: "There should be no excess rules on the affected switch"
         switchValidationResult.excessRules.size() == 0
