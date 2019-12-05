@@ -1,6 +1,10 @@
 package org.openkilda.functionaltests.helpers
 
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -9,12 +13,15 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.Flow
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.FloodlightService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
@@ -39,6 +46,8 @@ class FlowHelperV2 {
     NorthboundServiceV2 northboundV2
     @Autowired
     Database db
+    @Autowired
+    FloodlightService floodlight
 
     def random = new Random()
     def faker = new Faker()
@@ -184,6 +193,31 @@ class FlowHelperV2 {
      */
     FlowResponseV2 updateFlow(String flowId, FlowCreatePayload flow) {
         return updateFlow(flowId, toV2(flow))
+    }
+
+    /** TDB */
+    long getRealCookie(SwitchId switchId, long cookieFromDb) {
+        def isMultiTableEnabled = northbound.getSwitchProperties(switchId).multiTable
+        def tableId = isMultiTableEnabled ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+        floodlight.getFlows(switchId)*.getValue().inject(null) { result, flowEntry  ->
+            def flCookieLong = Long.parseUnsignedLong(flowEntry.cookie, 16)
+            //filter out default cookies
+            if(Long.parseUnsignedLong(flowEntry.cookie, 16) > 0) {
+                def flMaskedCookie = (flCookieLong & 0xe000_0000_000f_ffff).toLong()
+                if(flowEntry.tableId == tableId && flMaskedCookie == cookieFromDb) {
+                    result = flCookieLong
+                } else {
+                    // if cookieFromDb is not matched with any cookie from floodlight,
+                    // then we assume that this cookie is egress and it is exist on a switch as in db
+                    if(!result) {
+                        result = cookieFromDb
+                    }
+                    log.debug("Requested cookie is not found. Cookie: $cookieFromDb, switchId: $switchId, " +
+                            "isMultiTableEnabled: $isMultiTableEnabled")
+                }
+            }
+            result
+        } as long
     }
 
     /**
