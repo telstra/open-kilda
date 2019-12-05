@@ -618,6 +618,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Ignore("is not working with QinQ feature")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
         given: "Two active neighboring switches and two possible flow paths at least"
