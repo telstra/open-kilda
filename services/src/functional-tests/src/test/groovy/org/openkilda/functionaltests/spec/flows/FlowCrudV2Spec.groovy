@@ -988,7 +988,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "System allows traffic on the default flow"
+        and: "System allows traffic on the QinQ flow"
         def examQinqFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
                 toFlowPayload(qinqFlow), 1000, 5
         )

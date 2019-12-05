@@ -126,13 +126,13 @@ class QinQFlowSpec extends HealthCheckSpecification {
 //            }
 //        }
 
-//        and: "Both flows are pingable"
-//        [flow.flowId, flow2.id].each {
-//            verifyAll(northbound.pingFlow(it, new PingInput())) {
-//                it.forward.pingSuccess
-//                it.reverse.pingSuccess
-//            }
-//        }
+        and: "Both flows are pingable"
+        [flow.flowId, flow2.id].each {
+            verifyAll(northbound.pingFlow(it, new PingInput())) {
+                it.forward.pingSuccess
+                it.reverse.pingSuccess
+            }
+        }
 
         then: "Both flows allow traffic"
         def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
@@ -147,23 +147,27 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Update the QinQ flow"
-        def newSrcInnerVlanId = srcInnerVlanId + 1
-        def newDstInnerVlanId = dstInnerVlanId + 1
         def updateResponse = flowHelperV2.updateFlow(flow.flowId, flow.tap {
-            flow.source.innerVlanId = newSrcInnerVlanId
-            flow.destination.innerVlanId = newDstInnerVlanId
+            flow.source.vlanId = flow2.source.vlanId
+            flow.source.innerVlanId = flow2.destination.vlanId
+            flow.destination.vlanId = flow2.destination.vlanId
+            flow.destination.innerVlanId = flow2.source.vlanId
         })
 
         then: "Update response contains correct info about innerVlanIds"
         with(updateResponse) {
-            it.source.innerVlanId == newSrcInnerVlanId
-            it.destination.innerVlanId == newDstInnerVlanId
+            it.source.vlanId == flow2.source.vlanId
+            it.source.innerVlanId == flow2.destination.vlanId
+            it.destination.vlanId == flow2.destination.vlanId
+            it.destination.innerVlanId == flow2.source.vlanId
         }
 
         and: "Flow is really updated"
         with(northbound.getFlow(flow.flowId)) {
-            it.source.innerVlanId == newSrcInnerVlanId
-            it.destination.innerVlanId == newDstInnerVlanId
+            it.source.vlanId == flow2.source.vlanId
+            it.source.innerVlanId == flow2.destination.vlanId
+            it.destination.vlanId == flow2.destination.vlanId
+            it.destination.innerVlanId == flow2.source.vlanId
         }
 
         // is not implemented yet
@@ -171,16 +175,16 @@ class QinQFlowSpec extends HealthCheckSpecification {
 //        [flow.flowId, flow2.id].each {
 //            northbound.validateFlow(it).each { assert it.asExpected }
 //        }
-//        [flow.flowId, flow2.id].each {
-//            verifyAll(northbound.pingFlow(it, new PingInput())) {
-//                it.forward.pingSuccess
-//                it.reverse.pingSuccess
-//            }
-//        }
+
+        [flow.flowId, flow2.id].each {
+            verifyAll(northbound.pingFlow(it, new PingInput())) {
+                it.forward.pingSuccess
+                it.reverse.pingSuccess
+            }
+        }
 
         when: "Delete the flows"
-        flowHelperV2.deleteFlow(flow.flowId)
-        flowHelper.deleteFlow(flow2.id)
+        [flow.flowId, flow2.id].each { flowHelperV2.deleteFlow(it) }
 
         then: "Flows rules are deleted"
         //is not implemented yet
@@ -267,7 +271,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     @Tags(TOPOLOGY_DEPENDENT)
     def "System doesn't allow to create a QinQ flow when a switch doesn't support multi table mode"() {
-        given: "A switch pair with disabled multi table mode on the src switch"
+        given: "A switch pair with disabled multi table mode at least on the one switch"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].any { northbound.getSwitchProperties(it.dpId).multiTable }
         } ?: assumeTrue("No suiting switches found", false)
@@ -301,7 +305,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         when: "Try to create a QinQ flow with incorrect innerVlanId"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].any { northbound.getSwitchProperties(it.dpId).multiTable }
+            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable }
         } ?: assumeTrue("No suiting switches found", false)
 
         def flow = flowHelperV2.randomFlow(swP)

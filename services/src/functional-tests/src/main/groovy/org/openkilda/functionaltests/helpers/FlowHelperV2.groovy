@@ -160,6 +160,9 @@ class FlowHelperV2 {
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.getFlowStatus(flowId) }
+
+//        checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
+
         return response
     }
 
@@ -171,6 +174,13 @@ class FlowHelperV2 {
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
         Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
+
+        def flowEntryAfterUpdate = db.getFlow(flowId)
+
+//        // TODO(ylobankov): Delete check for rules installation once we add a new test to verify this functionality.
+//        checkRulesOnSwitches(flowEntryAfterUpdate, RULES_INSTALLATION_TIME, true)
+//        checkRulesOnSwitches(flowEntryBeforeUpdate, RULES_DELETION_TIME, false)
+
         return response
     }
 
