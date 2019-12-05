@@ -119,7 +119,6 @@ kilda_pce_network_strategy: "SYMMETRIC_COST"
 
 kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2
-kilda_floodlight_request_timeout: 180
 kilda_message_blacklist_timeout: 180
 kilda_floodlight_regions: "1"
 
