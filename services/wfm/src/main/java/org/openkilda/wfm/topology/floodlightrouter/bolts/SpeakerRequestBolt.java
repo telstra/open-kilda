@@ -88,7 +88,7 @@ public class SpeakerRequestBolt extends RequestBolt {
     }
 
     private void processNotFoundError(CommandMessage commandMessage, SwitchId switchId, Tuple input) {
-        String errorDetails = String.format("Switch %s was not found", switchId.toString());
+        String errorDetails = String.format("Switch %s not found", switchId.toString());
         ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, errorDetails, errorDetails);
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
                 commandMessage.getCorrelationId(), null);

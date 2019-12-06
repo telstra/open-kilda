@@ -61,7 +61,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
     public void deleteRules(String key, SwitchRulesDeleteRequest data) {
         SwitchId switchId = data.getSwitchId();
         if (!switchRepository.exists(switchId)) {
-            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s was not found", switchId),
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
                     "Error when deleting switch rules");
             ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
 
@@ -93,7 +93,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
     public void installRules(String key, SwitchRulesInstallRequest data) {
         SwitchId switchId = data.getSwitchId();
         if (!switchRepository.exists(switchId)) {
-            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s was not found", switchId),
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
                     "Error when installing switch rules");
             ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
 
