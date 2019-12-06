@@ -65,3 +65,4 @@ grpc.remote.log.server.port=321
 
 use.hs=true
 use.multitable=false
+cleanup.verifier=true
