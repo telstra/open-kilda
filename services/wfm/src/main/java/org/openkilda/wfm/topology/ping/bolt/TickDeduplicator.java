@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFIER;
+
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.MonotonicClock;
@@ -54,6 +56,9 @@ public class TickDeduplicator extends AbstractBolt {
         }
 
         if (shouldProxy(taskId)) {
+            if (TickId.PERIODIC_PING.equals(input.getValueByField(FIELD_ID_TICK_IDENTIFIER))) {
+                stream = STREAM_PING_ID;
+            }
             log.debug("Proxy tuple in stream {} from {}", stream, taskId);
             getOutput().emit(stream, input, input.getValues());
         }
