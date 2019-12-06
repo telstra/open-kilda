@@ -1,15 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -17,15 +14,9 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import spock.lang.Ignore
 import spock.lang.Unroll
 
-import java.time.Instant
-
 class FlowPriorityRerouteSpec extends HealthCheckSpecification {
-    //TODO: new H&S reroute consists of multiple steps and can't guarantee that the last step is performed in the same
-    // order as the first ones. Revise and fix the test appropriately.
-    @Ignore
-    @Unroll
-    @IterationTag(tags = [SMOKE], iterationNameRegex = /without protected path/)
-    def "System is able to reroute(automatically) flow #info in the correct order based on the priority field"() {
+
+    def "System is able to reroute(automatically) flow in the correct order based on the priority field"() {
         given: "Three flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
@@ -36,7 +27,7 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         3.times {
             def flow = flowHelperV2.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
-            flow.allocateProtectedPath = protectedPath
+            flow.allocateProtectedPath = true
             flow.priority = newPriority
             flowHelperV2.addFlow(flow)
             newPriority -= 100
@@ -68,7 +59,11 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         // for a flow with protected path we use a little bit different logic for rerouting then for simple flow
         // that's why we use WAIT_OFFSET here
         Wrappers.wait(WAIT_OFFSET) {
-            assert flows.sort { it.priority }*.flowId == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
+            assert flows.sort { it.priority }*.flowId == flows.sort {
+                def rerouteAction = northbound.getFlowHistory(it.flowId).last()
+                assert rerouteAction.action == "Flow rerouting"
+                return rerouteAction.timestamp
+            }*.flowId
         }
 
         and: "Cleanup: revert system to original state"
@@ -78,11 +73,6 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
         database.resetCosts()
-
-        where:
-        info                     | protectedPath
-        "without protected path" | false
-        "with protected path"    | true
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2211")
@@ -127,7 +117,11 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
 
         and: "Reroute procedure was done based on the priority field"
         Wrappers.wait(WAIT_OFFSET) {
-            assert flows.sort { it.priority }*.flowId == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
+            assert flows.sort { it.priority }*.flowId == flows.sort {
+                def rerouteAction = northbound.getFlowHistory(it.flowId).last()
+                assert rerouteAction.action == "Flow reroute"
+                return rerouteAction.timestamp
+            }*.flowId
         }
         and: "Cleanup: revert system to original state"
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
