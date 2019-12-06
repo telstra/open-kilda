@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -270,17 +271,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
-    def "System doesn't allow to create a QinQ flow when a switch doesn't support multi table mode"() {
+    def "System doesn't allow to create a QinQ flow when a switch supports multi table mode but it is disabled"() {
         given: "A switch pair with disabled multi table mode at least on the one switch"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].any { northbound.getSwitchProperties(it.dpId).multiTable }
         } ?: assumeTrue("No suiting switches found", false)
         def initSrcSwProps = northbound.getSwitchProperties(swP.src.dpId)
-        northbound.updateSwitchProperties(swP.src.dpId,
-                northbound.getSwitchProperties(swP.src.dpId).tap { multiTable = false })
-        Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assert northbound.getSwitchRules(swP.src.dpId).flowEntries*.cookie.sort() == swP.src.defaultCookies.sort()
-        }
+        SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps.jacksonCopy().tap {
+            it.multiTable = false
+        })
         when: "Try to create a QinQ flow when at least on switch doesn't support multi table mode"
 
         def flow = flowHelperV2.randomFlow(swP)
@@ -298,6 +297,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assert northbound.getSwitchRules(swP.src.dpId).flowEntries*.cookie.sort() == swP.src.defaultCookies.sort()
         }
+        SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps)
     }
 
     @Unroll
