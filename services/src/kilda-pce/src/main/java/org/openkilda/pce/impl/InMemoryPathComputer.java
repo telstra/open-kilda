@@ -20,17 +20,20 @@ import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.WeightFunction;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -50,10 +53,13 @@ import java.util.stream.Collectors;
 public class InMemoryPathComputer implements PathComputer {
     private final AvailableNetworkFactory availableNetworkFactory;
     private final PathFinder pathFinder;
+    private final PathComputerConfig config;
 
-    public InMemoryPathComputer(AvailableNetworkFactory availableNetworkFactory, PathFinder pathFinder) {
+    public InMemoryPathComputer(AvailableNetworkFactory availableNetworkFactory, PathFinder pathFinder,
+                                PathComputerConfig config) {
         this.availableNetworkFactory = availableNetworkFactory;
         this.pathFinder = pathFinder;
+        this.config = config;
     }
 
     @Override
@@ -72,12 +78,13 @@ public class InMemoryPathComputer implements PathComputer {
                     .build();
         }
 
+        WeightFunction weightFunction = getWeightFunctionByStrategy(flow.getPathComputationStrategy());
         Pair<List<Edge>, List<Edge>> biPath;
         try {
-            network.reduceByWeight(pathFinder.getWeightFunction());
+            network.reduceByWeight(weightFunction);
 
             biPath = pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
-                    flow.getDestSwitch().getSwitchId());
+                    flow.getDestSwitch().getSwitchId(), weightFunction);
         } catch (UnroutableFlowException e) {
             String message = format("Failed to find path with requested bandwidth=%s: %s",
                     flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
@@ -89,7 +96,8 @@ public class InMemoryPathComputer implements PathComputer {
 
     @Override
     public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
-                                FlowEncapsulationType flowEncapsulationType)
+                                FlowEncapsulationType flowEncapsulationType,
+                                PathComputationStrategy pathComputationStrategy)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
                 .flowId("") // just any id, as not used.
@@ -103,7 +111,8 @@ public class InMemoryPathComputer implements PathComputer {
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
 
         List<List<Edge>> paths =
-                pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count);
+                pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
+                        getWeightFunctionByStrategy(pathComputationStrategy));
         return paths.stream()
                 .map(edges -> convertToPath(srcSwitchId, dstSwitchId, edges))
                 .sorted(Comparator.comparing(Path::getMinAvailableBandwidth)
@@ -111,6 +120,43 @@ public class InMemoryPathComputer implements PathComputer {
                         .thenComparing(Path::getLatency))
                 .limit(count)
                 .collect(Collectors.toList());
+    }
+
+    private WeightFunction getWeightFunctionByStrategy(PathComputationStrategy strategy) {
+        switch (strategy) {
+            case COST:
+                return this::weightByCost;
+            case LATENCY:
+                return this::weightByLatency;
+            default:
+                throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+        }
+    }
+
+    private Long weightByCost(Edge edge) {
+        long total = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
+        if (edge.isUnderMaintenance()) {
+            total += config.getUnderMaintenanceCostRaise();
+        }
+        if (edge.isUnstable()) {
+            total += config.getUnstableCostRaise();
+        }
+        total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+        return total;
+    }
+
+    private Long weightByLatency(Edge edge) {
+        long total = edge.getLatency() <= 0 ? config.getDefaultIslLatency() : edge.getLatency();
+        if (edge.isUnderMaintenance()) {
+            total += config.getUnderMaintenanceLatencyRaise();
+        }
+        if (edge.isUnstable()) {
+            total += config.getUnstableLatencyRaise();
+        }
+        total += edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency()
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
+        return total;
     }
 
     private PathPair convertToPathPair(SwitchId srcSwitchId, SwitchId dstSwitchId,

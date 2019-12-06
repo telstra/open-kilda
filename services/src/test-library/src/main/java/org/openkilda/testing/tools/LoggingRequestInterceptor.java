@@ -79,7 +79,7 @@ public class LoggingRequestInterceptor implements ClientHttpRequestInterceptor {
                 StringUtils.substringBetween(v.toString(), "[", "]"))));
         String body = new String(payload, "UTF-8");
         if (!StringUtils.isEmpty(body)) {
-            sb.append(format("-d '%s' \n", body));
+            sb.append(format("-d '%s' \n", toJson(body)));
         }
         return sb.toString();
     }

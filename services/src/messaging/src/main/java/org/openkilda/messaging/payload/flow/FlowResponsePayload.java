@@ -43,22 +43,24 @@ public class FlowResponsePayload extends FlowPayload {
     /**
      * Instance constructor.
      *
-     * @param id                    flow id
-     * @param source                flow source
-     * @param destination           flow destination
-     * @param maximumBandwidth      flow maximum bandwidth
-     * @param ignoreBandwidth       should ignore bandwidth in path computation
-     * @param periodicPings         enable periodic flow pings
-     * @param allocateProtectedPath allocate flow protected path
-     * @param description           flow description
-     * @param created               flow created timestamp
-     * @param lastUpdated           flow last updated timestamp
-     * @param status                flow status
-     * @param flowStatusDetails     flow status details
-     * @param maxLatency            max latency
-     * @param priority              flow priority
-     * @param diverseWith           diverse with flows id
-     * @param pinned                pinned flag
+     * @param id                        flow id
+     * @param source                    flow source
+     * @param destination               flow destination
+     * @param maximumBandwidth          flow maximum bandwidth
+     * @param ignoreBandwidth           should ignore bandwidth in path computation
+     * @param periodicPings             enable periodic flow pings
+     * @param allocateProtectedPath     allocate flow protected path
+     * @param description               flow description
+     * @param created                   flow created timestamp
+     * @param lastUpdated               flow last updated timestamp
+     * @param status                    flow status
+     * @param flowStatusDetails         flow status details
+     * @param maxLatency                max latency
+     * @param priority                  flow priority
+     * @param diverseWith               diverse with flows id
+     * @param pinned                    pinned flag
+     * @param encapsulationType         flow encapsulation type
+     * @param pathComputationStrategy   path computation strategy
      */
     @Builder(builderMethodName = "flowResponsePayloadBuilder")
     @JsonCreator
@@ -78,9 +80,11 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("priority") Integer priority,
                                @JsonProperty("diverse_with") List<String> diverseWith,
                                @JsonProperty("pinned") Boolean pinned,
-                               @JsonProperty("encapsulation-type") String encapsulationType) {
+                               @JsonProperty("encapsulation-type") String encapsulationType,
+                               @JsonProperty("path-computation-strategy") String pathComputationStrategy) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
-                description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType);
+                description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType,
+                pathComputationStrategy);
         this.diverseWith = diverseWith;
         this.flowStatusDetails = flowStatusDetails;
     }

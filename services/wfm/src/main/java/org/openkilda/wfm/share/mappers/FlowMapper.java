@@ -27,7 +27,9 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
@@ -104,10 +106,11 @@ public abstract class FlowMapper {
      * <p/>
      * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
      * with only switchId filled.</strong>
-     * If no encapsulation type is provided then defaultFlowEncapsulationType will be used.
+     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
+     * will be used.
      */
-    public UnidirectionalFlow map(FlowDto flowDto, Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
-        Flow flow = buildFlow(flowDto, defaultFlowEncapsulationType);
+    public UnidirectionalFlow map(FlowDto flowDto, Supplier<KildaConfiguration> kildaConfiguration) {
+        Flow flow = buildFlow(flowDto, kildaConfiguration);
 
         FlowPath flowPath = buildPath(flow, flowDto);
         flow.setForwardPath(flowPath);
@@ -119,15 +122,15 @@ public abstract class FlowMapper {
 
     /**
      * Convert {@link FlowPairDto} to {@link FlowPair}.
-     * If no encapsulation type is provided then defaultFlowEncapsulationType will be used.
+     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
+     * will be used.
      */
-    public FlowPair map(FlowPairDto<FlowDto, FlowDto> flowPair,
-                        Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
+    public FlowPair map(FlowPairDto<FlowDto, FlowDto> flowPair, Supplier<KildaConfiguration> kildaConfiguration) {
         if (flowPair == null) {
             return null;
         }
 
-        Flow flow = buildFlow(flowPair.getLeft(), defaultFlowEncapsulationType);
+        Flow flow = buildFlow(flowPair.getLeft(), kildaConfiguration);
 
         FlowPath forwardPath = buildPath(flow, flowPair.getLeft());
         FlowPath reversePath = buildPath(flow, flowPair.getRight());
@@ -216,15 +219,6 @@ public abstract class FlowMapper {
     }
     
     /**
-     * Convert {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType} to {@link FlowEncapsulationType}.
-     */
-    public FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType encapsulationType,
-                                     Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
-        return encapsulationType != null ? FlowEncapsulationType.valueOf(encapsulationType.name()) :
-                defaultFlowEncapsulationType.get();
-    }
-
-    /**
      * Convert {@link FlowEncapsulationType} to {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType}.
      */
     public org.openkilda.messaging.payload.flow.FlowEncapsulationType map(FlowEncapsulationType encapsulationType) {
@@ -272,7 +266,7 @@ public abstract class FlowMapper {
                 .build();
     }
 
-    private Flow buildFlow(FlowDto flow, Supplier<FlowEncapsulationType> defaultFlowEncapsulationType) {
+    private Flow buildFlow(FlowDto flow, Supplier<KildaConfiguration> kildaConfiguration) {
         Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
         Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
 
@@ -290,7 +284,12 @@ public abstract class FlowMapper {
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
                 .allocateProtectedPath(flow.isAllocateProtectedPath())
-                .encapsulationType(map(flow.getEncapsulationType(), defaultFlowEncapsulationType))
+                .encapsulationType(Optional.ofNullable(flow.getEncapsulationType())
+                    .map(encapsulationType -> FlowEncapsulationType.valueOf(encapsulationType.name()))
+                    .orElse(kildaConfiguration.get().getFlowEncapsulationType()))
+                .pathComputationStrategy(Optional.ofNullable(flow.getPathComputationStrategy())
+                        .map(pathComputationStrategy -> PathComputationStrategy.valueOf(pathComputationStrategy.name()))
+                        .orElse(kildaConfiguration.get().getPathComputationStrategy()))
                 .maxLatency(flow.getMaxLatency())
                 .priority(flow.getPriority())
                 .timeCreate(map(flow.getCreatedTime()))

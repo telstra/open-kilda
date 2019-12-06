@@ -52,37 +52,30 @@ import java.util.stream.Collectors;
  * reflect the links that should be traversed.
  * <p/>
  * Algorithm Notes: 1. forward = get path (src, dst) 2. reverse = get path (dst, src, hint=forward) 3 get path: 0.
- * allowedDepth = 35 √ . go breadth first (majority of switches probably have 5 hops or less) √ . add cost . compare
- * against bestCost (if greater, then return) . have we visited this node before? - if so, was it cheaper? Yes? return.
- * - No, remove the prior put. We and any downstream cost (BUT .. maybe we stopped somewhere and need to continue?
+ * allowedDepth = 35 √ . go breadth first (majority of switches probably have 5 hops or less) √ . add weight . compare
+ * against bestWeight (if greater, then return) . have we visited this node before? - if so was it cheaper? Yes? return.
+ * - No, remove the prior put. We and any downstream weight (BUT .. maybe we stopped somewhere and need to continue?
  * Probably could just replace the old one with the current one and add the children as unvisited? Oooh .. this could
- * cause a loop.. if there are negative costs - So, should probably track path to this point... . if node = target,
- * update bestCost, return . add each neighbor to the investigation list, where neighbor.outbound.dst != current node.
+ * cause a loop.. if there are negative weights - So, should probably track path to this point... . if node = target,
+ * update bestWeight, return . add each neighbor to the investigation list, where neighbor.outbound.dst != current node.
  */
 @Slf4j
-public class BestCostAndShortestPathFinder implements PathFinder {
+public class BestWeightAndShortestPathFinder implements PathFinder {
     private final int allowedDepth;
-    private final WeightFunction weightFunction;
 
     /**
      * Constructs the finder with the specified limit on path depth.
      *
      * @param allowedDepth the allowed depth for a potential path.
-     * @param weightFunction  the edge weight computing function.
      */
-    public BestCostAndShortestPathFinder(int allowedDepth, WeightFunction weightFunction) {
+    public BestWeightAndShortestPathFinder(int allowedDepth) {
         this.allowedDepth = allowedDepth;
-        this.weightFunction = weightFunction;
-    }
-
-    @Override
-    public WeightFunction getWeightFunction() {
-        return weightFunction;
     }
 
     @Override
     public Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
-                                                        SwitchId startSwitchId, SwitchId endSwitchId)
+                                                          SwitchId startSwitchId, SwitchId endSwitchId,
+                                                          WeightFunction weightFunction)
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -91,7 +84,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
                     start == null ? startSwitchId : endSwitchId));
         }
 
-        List<Edge> forwardPath = getPath(start, end);
+        List<Edge> forwardPath = getPath(start, end, weightFunction);
         if (forwardPath.isEmpty()) {
             throw new UnroutableFlowException(format("Can't find a path from %s to %s", start, end));
         }
@@ -112,8 +105,8 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      */
     @Override
     public List<List<Edge>> findNPathsBetweenSwitches(
-            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count)
-            throws UnroutableFlowException {
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
+            WeightFunction weightFunction) throws UnroutableFlowException {
 
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -124,7 +117,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
 
         // Determine the shortest path from the start to the end.
         List<List<Edge>> bestPaths = new ArrayList<>();
-        bestPaths.add(getPath(start, end));
+        bestPaths.add(getPath(start, end, weightFunction));
 
         // Initialize the set to store the potential kth shortest path.
         Set<List<Edge>> potentialKthShortestPaths = new HashSet<>();
@@ -152,7 +145,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
                 }
 
                 // Calculate the spur path from the spur node to the end.
-                List<Edge> pathFromSpurNode = getPath(spurNode, end);
+                List<Edge> pathFromSpurNode = getPath(spurNode, end, weightFunction);
                 if (!pathFromSpurNode.isEmpty()) {
                     List<Edge> totalPath = new ArrayList<>(rootPath);
                     // Entire path is made up of the root path and spur path.
@@ -174,8 +167,9 @@ public class BestCostAndShortestPathFinder implements PathFinder {
                 break;
             }
 
-            // Add the lowest cost path becomes the k-shortest path.
-            List<Edge> newBestPath = getBestPotentialKthShortestPath(potentialKthShortestPaths, bestPaths);
+            // Add the lowest weight path becomes the k-shortest path.
+            List<Edge> newBestPath =
+                    getBestPotentialKthShortestPath(potentialKthShortestPaths, bestPaths, weightFunction);
             bestPaths.add(newBestPath);
         }
 
@@ -183,19 +177,20 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     }
 
     private List<Edge> getBestPotentialKthShortestPath(Set<List<Edge>> potentialKthShortestPaths,
-                                                       List<List<Edge>> bestPaths) {
+                                                       List<List<Edge>> bestPaths,
+                                                       WeightFunction weightFunction) {
         List<Edge> bestKthShortestPath = new ArrayList<>();
 
         long bestAvailableBandwidth = Long.MIN_VALUE;
-        long bestCost = Long.MAX_VALUE;
+        long bestWeight = Long.MAX_VALUE;
 
         for (List<Edge> path : potentialKthShortestPaths) {
             long currentAvailableBandwidth = getMinAvailableBandwidth(path);
-            long currentCost = getTotalCost(path);
+            long currentWeight = getTotalWeight(path, weightFunction);
             if (!bestPaths.contains(path) && (currentAvailableBandwidth > bestAvailableBandwidth
-                    || (currentAvailableBandwidth == bestAvailableBandwidth && currentCost < bestCost))) {
+                    || (currentAvailableBandwidth == bestAvailableBandwidth && currentWeight < bestWeight))) {
                 bestAvailableBandwidth = currentAvailableBandwidth;
-                bestCost = currentCost;
+                bestWeight = currentWeight;
                 bestKthShortestPath = path;
             }
         }
@@ -209,11 +204,11 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         return path.stream().mapToLong(Edge::getAvailableBandwidth).min().orElse(Long.MIN_VALUE);
     }
 
-    private long getTotalCost(List<Edge> path) {
+    private long getTotalWeight(List<Edge> path, WeightFunction weightFunction) {
         if (path.isEmpty()) {
             return Long.MAX_VALUE;
         }
-        return path.stream().mapToLong(Edge::getCost).sum();
+        return path.stream().mapToLong(weightFunction::apply).sum();
     }
 
     private void removeEdge(Edge edge) {
@@ -240,14 +235,14 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      *
      * @return An ordered list that represents the path from start to end, or an empty list
      */
-    private List<Edge> getPath(Node start, Node end) {
-        long bestCost = Integer.MAX_VALUE; // Need to be long because it stores sum of ints.
+    private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction) {
+        long bestWeight = Long.MAX_VALUE; // Need to be long because it stores sum of ints.
         SearchNode bestPath = null;
 
         Deque<SearchNode> toVisit = new LinkedList<>(); // working list
         Map<Node, SearchNode> visited = new HashMap<>();
 
-        toVisit.add(new SearchNode(start, allowedDepth, 0, emptyList()));
+        toVisit.add(new SearchNode(weightFunction, start, allowedDepth, 0, emptyList()));
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
@@ -255,10 +250,10 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
                 // We found the destination
-                if (current.parentCost < bestCost) {
+                if (current.parentWeight < bestWeight) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
-                    bestCost = current.parentCost;
+                    bestWeight = current.parentWeight;
                     bestPath = current;
                 }
                 // We found dest, no need to keep processing
@@ -267,21 +262,21 @@ public class BestCostAndShortestPathFinder implements PathFinder {
 
             // Otherwise, if we've been here before, see if this path is better
             SearchNode prior = visited.get(current.dstSw);
-            if (prior != null && current.parentCost >= prior.parentCost) {
+            if (prior != null && current.parentWeight >= prior.parentWeight) {
                 continue;
             }
 
-            // Stop processing entirely if we've gone too far, or over bestCost
-            if (current.allowedDepth <= 0 || current.parentCost > bestCost) {
+            // Stop processing entirely if we've gone too far, or over bestWeight
+            if (current.allowedDepth <= 0 || current.parentWeight > bestWeight) {
                 continue;
             }
 
-            // Either this is the first time, or this is cheaper .. either way, this node should
+            // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
 
 
-            // At this stage .. haven't found END, haven't gone too deep, and we are not over cost.
+            // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
             current.dstSw.getOutgoingLinks().stream()
                     .sorted(Comparator.comparing(edge -> edge.getDestSwitch().getSwitchId()))
@@ -376,27 +371,24 @@ public class BestCostAndShortestPathFinder implements PathFinder {
      * search data per search node.
      */
     @Value
-    private class SearchNode {
+    private static class SearchNode {
+        final WeightFunction weightFunction;
         final Node dstSw;
         final int allowedDepth;
-        final long parentCost; // Need to be long because it stores sum of ints.
+        final long parentWeight; // Need to be long because it stores sum of ints.
         final List<Edge> parentPath;
         // NB: We could consider tracking the child path as well .. to facilitate
         //     re-calc if we find a better parentPath.
 
-        SearchNode addNode(Edge nextIsl) {
+        SearchNode addNode(Edge nextEdge) {
             List<Edge> newParentPath = new ArrayList<>(this.parentPath);
-            newParentPath.add(nextIsl);
+            newParentPath.add(nextEdge);
 
-            long weight = parentCost
-                    + nextIsl.getFullWeight(weightFunction)
-                    + nextIsl.getDestSwitch().getStaticWeight();
-            if (this.parentPath.isEmpty()) {
-                weight += nextIsl.getSrcSwitch().getStaticWeight();
-            }
+            long weight = parentWeight + weightFunction.apply(nextEdge);
 
             return new SearchNode(
-                    nextIsl.getDestSwitch(),
+                    weightFunction,
+                    nextEdge.getDestSwitch(),
                     allowedDepth - 1,
                     weight,
                     newParentPath);

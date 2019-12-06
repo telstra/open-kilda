@@ -71,7 +71,8 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
 
             log.debug("Updating the flow {} with properties: {}", flowId, targetFlow);
 
-            updateFlow(flow, targetFlow, stateMachine);
+            // Complete target flow in FSM with values from original flow
+            stateMachine.setTargetFlow(updateFlow(flow, targetFlow, stateMachine));
             flowRepository.createOrUpdate(flow);
         });
 
@@ -80,7 +81,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         return Optional.empty();
     }
 
-    private void updateFlow(Flow flow, RequestedFlow targetFlow, FlowUpdateFsm stateMachine) {
+    private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow, FlowUpdateFsm stateMachine) {
         RequestedFlow originalFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
         stateMachine.setOriginalFlow(originalFlow);
 
@@ -127,6 +128,12 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         } else {
             targetFlow.setFlowEncapsulationType(flow.getEncapsulationType());
         }
+        if (targetFlow.getPathComputationStrategy() != null) {
+            flow.setPathComputationStrategy(targetFlow.getPathComputationStrategy());
+        } else {
+            targetFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
+        }
+        return targetFlow;
     }
 
     private String getOrCreateFlowGroupId(String flowId) throws FlowProcessingException {

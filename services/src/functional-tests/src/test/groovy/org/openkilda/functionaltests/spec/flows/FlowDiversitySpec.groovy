@@ -30,19 +30,19 @@ the same diversity group may overlap if the cost of each non-overlapping path is
 path. The cost of paths for diverse flows is calculated in real time and consists of the following parameters: 
 
 1. The cost of ISL involved in the flow path (taken from DB);
-2. (diversity.switch.weight) * (the number of diverse flows going through this switch);
-3. (diversity.isl.weight) * (the number of diverse flows going through this ISL). 
+2. (diversity.switch.cost) * (the number of diverse flows going through this switch);
+3. (diversity.isl.cost) * (the number of diverse flows going through this ISL). 
 
 Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
 """)
 @Tags([LOW_PRIORITY])
 class FlowDiversitySpec extends HealthCheckSpecification {
 
-    @Value('${diversity.isl.weight}')
-    int diversityIslWeight
+    @Value('${diversity.isl.cost}')
+    int diversityIslCost
 
-    @Value('${diversity.switch.weight}')
-    int diversitySwitchWeight
+    @Value('${diversity.switch.cost}')
+    int diversitySwitchCost
 
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
@@ -210,9 +210,9 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def altPaths = switchPair.paths
         altPaths.remove(flow1Path)
 
-        def flow1PathCost = pathHelper.getCost(flow1Path) + diversityIslWeight + diversitySwitchWeight * 2
+        def flow1PathCost = pathHelper.getCost(flow1Path) + diversityIslCost + diversitySwitchCost * 2
         altPaths.each { altPath ->
-            def altPathCost = pathHelper.getCost(altPath) + diversitySwitchWeight * 2
+            def altPathCost = pathHelper.getCost(altPath) + diversitySwitchCost * 2
             int difference = flow1PathCost - altPathCost
             def firstAltPathIsl = pathHelper.getInvolvedIsls(altPath)[0]
             int firstAltPathIslCost = database.getIslCost(firstAltPathIsl)

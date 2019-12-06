@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
+import org.openkilda.model.PathComputationStrategy;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
@@ -39,9 +40,12 @@ public abstract class KildaConfigurationMapper {
         }
         String flowEncapsulationType = kildaConfiguration.getFlowEncapsulationType() == null ? null :
                 kildaConfiguration.getFlowEncapsulationType().name().toLowerCase();
+        String pathComputationStrategy = kildaConfiguration.getPathComputationStrategy() == null ? null :
+                kildaConfiguration.getPathComputationStrategy().name().toLowerCase();
         return KildaConfigurationDto.builder()
                 .flowEncapsulationType(flowEncapsulationType)
                 .useMultiTable(kildaConfiguration.getUseMultiTable())
+                .pathComputationStrategy(pathComputationStrategy)
                 .build();
     }
 
@@ -53,10 +57,14 @@ public abstract class KildaConfigurationMapper {
             return null;
         }
         String flowEncapsulationType = kildaConfigurationDto.getFlowEncapsulationType();
+        String pathComputationStrategy = kildaConfigurationDto.getPathComputationStrategy();
         return KildaConfiguration.builder()
                 .flowEncapsulationType(
                         flowEncapsulationType == null ? null
                                 : FlowEncapsulationType.valueOf(flowEncapsulationType.toUpperCase()))
+                .pathComputationStrategy(
+                        pathComputationStrategy == null ? null
+                                : PathComputationStrategy.valueOf(pathComputationStrategy.toUpperCase()))
                 .useMultiTable(kildaConfigurationDto.getUseMultiTable())
                 .build();
     }
