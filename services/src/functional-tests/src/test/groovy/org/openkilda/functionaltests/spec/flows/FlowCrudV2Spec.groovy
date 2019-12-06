@@ -63,8 +63,45 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Shared
-    def getPortViolationError = { String action, int port, SwitchId swId, String flowSide ->
-        "The port $port on the switch '$swId' is occupied by an ISL (conflict with $flowSide endpoint)."
+    def getPortViolationError = { String action, int port, SwitchId swId, String switchType ->
+        "The port $port on the switch '$swId' is occupied by an ISL (conflict with $switchType endpoint)."
+    }
+
+    def "System marks flow as UP when and only when all the rules are actually set on all involved switches"() {
+        given: "Two active not neighbouring switches"
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def isMultiTableEnabledOnSrcSw = northbound.getSwitchProperties(switchPair.src.dpId).multiTable
+        def isMultiTableEnabledOnDstSw = northbound.getSwitchProperties(switchPair.dst.dpId).multiTable
+
+        when: "Create a flow"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        northboundV2.addFlow(flow)
+
+        then: "Flow is created"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
+        and: "All needed rules are installed on all involved switches"
+        def flowInfo = database.getFlow(flow.flowId)
+        def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
+        def realCookiesOnSrcSw = []
+        def realCookiesOnDstSw = []
+        flowCookies.each { cookie ->
+            realCookiesOnSrcSw << flowHelperV2.getRealCookie(switchPair.src.dpId, cookie)
+            realCookiesOnDstSw << flowHelperV2.getRealCookie(switchPair.dst.dpId, cookie)
+        }
+        def rulesOnSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie
+        rulesOnSrcSw.containsAll(realCookiesOnSrcSw)
+        def rulesOnDstSw = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries*.cookie
+        rulesOnDstSw.containsAll(realCookiesOnDstSw)
+        if (isMultiTableEnabledOnSrcSw) {
+            !rulesOnSrcSw.findAll { Cookie.isIngressRulePassThrough(it) }.empty
+        }
+        if (isMultiTableEnabledOnDstSw) {
+            !rulesOnDstSw.findAll { Cookie.isIngressRulePassThrough(it) }.empty
+        }
+
+        and: "Cleanup: Delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -360,6 +397,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Ignore("wait for a fix: toString")
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelperV2.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -379,6 +417,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 "vlanId=$flow.destination.vlanId)"
     }
 
+    @Ignore("wait for a fix: toString")
     @Unroll("Unable to create flow with #data.conflict")
     def "Unable to create flow with conflicting vlans or flow IDs"() {
         given: "A potential flow"
@@ -620,8 +659,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                             "Could not create flow"
                         },
                         errorDescription   : { Isl violatedIsl ->
-                            getPortViolationError(
-                                    "create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId, "destination")
+                            getPortViolationError("create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId,
+                                    "destination")
                         }
                 ]
         ]
@@ -663,8 +702,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                         switchType: "destination",
                         port      : "dstPort",
                         message   : { Isl violatedIsl ->
-                            getPortViolationError(
-                                    "update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId, "destination")
+                            getPortViolationError("update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId,
+                                    "destination")
                         }
                 ]
         ]
@@ -1004,7 +1043,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         [vlanFlow, defaultFlow, qinqFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2904")
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
@@ -1024,8 +1062,12 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        //TODO(andriidovhan) check error message when the issue is fixed
+        exc.statusCode == HttpStatus.NOT_FOUND
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not create flow"
+        // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
+        error.errorDescription == "Not enough bandwidth or no path found. Failed to find path with requested \
+bandwidth= ignored: Switch $swPair.src.dpId doesn't have links with enough bandwidth"
     }
 
     @Tidy
