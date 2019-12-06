@@ -126,7 +126,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
 
         FlowFetcher bolt = new FlowFetcher(persistenceManager);
         topology.setBolt(FlowFetcher.BOLT_ID, bolt, scaleFactor)
-                .globalGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_PING_ID)
+                .globalGrouping(TickDeduplicator.BOLT_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID);
     }
 
