@@ -18,18 +18,23 @@ package org.openkilda.floodlight.command.flow;
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.error.SwitchMissingFlowsException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.utils.OfFlowDumpProducer;
 import org.openkilda.floodlight.utils.OfFlowPresenceVerifier;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -40,6 +45,10 @@ public abstract class FlowSegmentCommand extends SpeakerCommand<FlowSegmentRepor
     // payload
     protected final FlowSegmentMetadata metadata;
 
+    // operation data
+    @Getter(AccessLevel.PROTECTED)
+    private Set<SwitchFeature> switchFeatures;
+
     public FlowSegmentCommand(
             MessageContext messageContext, SwitchId switchId, UUID commandId, @NonNull FlowSegmentMetadata metadata) {
         super(messageContext, switchId, commandId);
@@ -47,9 +56,17 @@ public abstract class FlowSegmentCommand extends SpeakerCommand<FlowSegmentRepor
         this.metadata = metadata;
     }
 
+    @Override
+    protected void setup(FloodlightModuleContext moduleContext) throws Exception {
+        super.setup(moduleContext);
+
+        FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
+        switchFeatures = featureDetectorService.detectSwitch(getSw());
+    }
+
     protected CompletableFuture<FlowSegmentReport> makeVerifyPlan(List<OFFlowMod> expected) {
         OfFlowDumpProducer dumper = new OfFlowDumpProducer(messageContext, getSw(), expected);
-        OfFlowPresenceVerifier verifier = new OfFlowPresenceVerifier(dumper, expected);
+        OfFlowPresenceVerifier verifier = new OfFlowPresenceVerifier(dumper, expected, switchFeatures);
         return verifier.getFinish()
                 .thenApply(verifyResults -> handleVerifyResponse(expected, verifyResults));
     }

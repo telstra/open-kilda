@@ -13,19 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.floodlight.utils;
 
-public enum SwitchFeature {
-    METERS, INACCURATE_METER,
-    BFD,
-    BFD_REVIEW,
-    GROUP_PACKET_OUT_CONTROLLER,
-    RESET_COUNTS_FLAG,
-    LIMITED_BURST_SIZE,
-    NOVIFLOW_COPY_FIELD,
-    PKTPS_FLAG,
-    MATCH_UDP_PORT,
-    MAX_BURST_COEFFICIENT_LIMITATION,
-    MULTI_TABLE,
-    INACCURATE_SET_VLAN_VID_ACTION
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.types.DatapathId;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+public interface IOfFlowDumpProducer {
+    List<CompletableFuture<List<OFFlowStatsEntry>>> getTableRequests();
+
+    CompletableFuture<Void> getFinish();
+
+    DatapathId getSwId();
 }

@@ -24,7 +24,6 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -39,12 +38,6 @@ import org.projectfloodlight.openflow.types.U64;
 import java.util.UUID;
 
 public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentCommandTest {
-    @Override
-    @Before
-    public void setUp() throws Exception {
-        super.setUp();
-    }
-
     @Test
     public void happyPathTransitVlanZeroVlanToZeroVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
