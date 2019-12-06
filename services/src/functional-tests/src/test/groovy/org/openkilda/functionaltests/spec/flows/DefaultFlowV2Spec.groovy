@@ -11,6 +11,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import javax.inject.Provider
@@ -83,6 +84,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         [defaultFlow, simpleflow].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Ignore("wait for a fix: toString")
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
