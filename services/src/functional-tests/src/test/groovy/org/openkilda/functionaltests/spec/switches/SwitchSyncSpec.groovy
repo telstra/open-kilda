@@ -29,7 +29,8 @@ import org.springframework.beans.factory.annotation.Value
 import spock.lang.See
 import spock.lang.Unroll
 
-@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync")
+@See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync",
+"https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
 class SwitchSyncSpec extends BaseSpecification {
 
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
