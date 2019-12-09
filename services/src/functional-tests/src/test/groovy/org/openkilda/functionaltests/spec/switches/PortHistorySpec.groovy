@@ -20,6 +20,7 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -246,13 +247,12 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/3007")
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
  before collecting ANTI_FLAP_PERIODIC_STATS"() {
         assumeTrue("It can't be run when antiflap.cooldown + flap_duration > port.antiflap.stats.dumping.interval.seconds",
                 antiflapCooldown + 3 < antiflapDumpingInterval)
         //port up/down procedure is done once in this test, so it can't take more than 3 seconds
-        assumeTrue("At least 10 seconds should be available for changing port status", antiflapCooldown >= 10)
-        // assume that portDown/portUp can take some time on hardware env(no more than 10 seconds)
 
         given: "A direct link"
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
