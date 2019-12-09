@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -21,7 +20,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -34,7 +32,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -523,22 +520,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         description         | maximumBandwidth
         "a flow"            | 1000
         "an unmetered flow" | 0
-    }
-
-    @Unroll
-    def "Unable to #action rules on a non-existent switch"() {
-        when: "Try to #action rules on a non-existent switch"
-        northbound."$method"(NON_EXISTENT_SWITCH_ID)
-
-        then: "An error is received (404 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
-
-        where:
-        action        | method
-        "synchronize" | "synchronizeSwitchRules"
-        "validate"    | "validateSwitchRules"
     }
 
     @Tags([LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
