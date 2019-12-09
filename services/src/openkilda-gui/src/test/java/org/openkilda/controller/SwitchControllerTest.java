@@ -153,7 +153,7 @@ public class SwitchControllerTest {
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
-        	System.out.println("exception: " + e.getMessage());
+            System.out.println("exception: " + e.getMessage());
             assertTrue(false);
         }
     }
@@ -166,7 +166,7 @@ public class SwitchControllerTest {
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
-        	System.out.println("exception: " + e.getMessage());
+            System.out.println("exception: " + e.getMessage());
             assertTrue(false);
         }
     }
