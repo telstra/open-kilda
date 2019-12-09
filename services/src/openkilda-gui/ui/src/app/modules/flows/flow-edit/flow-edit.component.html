@@ -27,7 +27,7 @@
           <div class='form-group row flow_details' [ngClass]="{'error': f.maximum_bandwidth.errors && submitted}">
             <label class='col-sm-3 col-form-label required'>Maximum Bandwidth:</label>
             <div class="col-sm-4">
-              <input formControlName="maximum_bandwidth"  id="max_bandwidth" class="form-control" name="max_bandwidth" type="number" required
+              <input formControlName="maximum_bandwidth"  id="max_bandwidth" class="form-control" min="0" name="max_bandwidth" type="number" required
               />
               <div *ngIf="submitted && f.maximum_bandwidth.errors" class="invalid-feedback">
                     <div *ngIf="f.maximum_bandwidth.errors.required">Maximum bandwidth is required</div>
