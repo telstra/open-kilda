@@ -20,15 +20,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Value
-@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true, exclude = {"trackConnectedDevices"})
 public class FlowEndpoint extends NetworkEndpoint {
     @JsonProperty("outer_vlan_id")
@@ -99,5 +98,15 @@ public class FlowEndpoint extends NetworkEndpoint {
 
     public static boolean isVlanIdSet(Integer vlanId) {
         return vlanId != null && 0 < vlanId;
+    }
+
+    @Override
+    public String toString() {
+        List<Integer> portWithVlans = new ArrayList<>();
+        portWithVlans.add(portNumber);
+        portWithVlans.addAll(getVlanStack());
+        return switchId.toString() + "_" + portWithVlans.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(":"));
     }
 }
