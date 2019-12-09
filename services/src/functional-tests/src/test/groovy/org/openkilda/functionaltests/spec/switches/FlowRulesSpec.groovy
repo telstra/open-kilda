@@ -536,7 +536,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch properties not found for switch '$NON_EXISTENT_SWITCH_ID'"
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
 
         where:
         action        | method
