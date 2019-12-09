@@ -26,6 +26,7 @@ public abstract class IAuthConstants {
         String AUTHORIZATION = "Authorization";
         String CORRELATION_ID = "correlation_id";
         String BASIC_AUTH = "BasicAuth";
+        String EXTRA_AUTH = "EXTRA_AUTH";
     }
 
     public interface ContentType {
