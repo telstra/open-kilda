@@ -20,6 +20,7 @@ import static org.openkilda.model.SwitchFeature.BFD;
 import static org.openkilda.model.SwitchFeature.BFD_REVIEW;
 import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
 import static org.openkilda.model.SwitchFeature.INACCURATE_METER;
+import static org.openkilda.model.SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
@@ -121,7 +122,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void roundTripCentec() {
         discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 2),
-                       ImmutableSet.of(METERS, LIMITED_BURST_SIZE, MULTI_TABLE));
+                       ImmutableSet.of(LIMITED_BURST_SIZE, INACCURATE_SET_VLAN_VID_ACTION, MULTI_TABLE, METERS));
     }
 
     @Test
@@ -150,7 +151,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void pktpsFlagCentec() {
         discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 3),
-                ImmutableSet.of(METERS, LIMITED_BURST_SIZE, MULTI_TABLE));
+                ImmutableSet.of(LIMITED_BURST_SIZE, INACCURATE_SET_VLAN_VID_ACTION, MULTI_TABLE, METERS));
     }
 
     @Test
@@ -158,6 +159,13 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13, 2),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
                         MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE));
+    }
+
+    @Test
+    public void centecSwitch() {
+        discoveryCheck(makeSwitchMock("2004-2014 Centec Networks Inc", "2.8.16.15", "48T", OFVersion.OF_13, 2),
+                ImmutableSet.of(
+                        METERS, INACCURATE_SET_VLAN_VID_ACTION, LIMITED_BURST_SIZE, MULTI_TABLE));
     }
 
     private void discoveryCheck(IOFSwitch sw, Set<SwitchFeature> expectedFeatures) {

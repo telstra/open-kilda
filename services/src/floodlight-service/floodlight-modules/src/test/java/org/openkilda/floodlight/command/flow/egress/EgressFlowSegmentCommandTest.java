@@ -22,12 +22,21 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 abstract class EgressFlowSegmentCommandTest extends AbstractSpeakerCommandTest {
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        switchFeaturesSetup(swNext, Collections.emptySet());
+    }
+
     @Test
     public void errorOnFlowMod() {
         switchFeaturesSetup(sw, true);

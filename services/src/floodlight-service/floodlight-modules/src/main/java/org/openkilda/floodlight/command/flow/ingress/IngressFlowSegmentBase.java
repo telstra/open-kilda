@@ -29,7 +29,6 @@ import org.openkilda.floodlight.command.meter.MeterVerifyCommand;
 import org.openkilda.floodlight.command.meter.MeterVerifyReport;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -65,9 +64,6 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
     // operation data
     @Getter(AccessLevel.PROTECTED)
-    private Set<SwitchFeature> switchFeatures;
-
-    @Getter(AccessLevel.PROTECTED)
     @Setter(AccessLevel.PROTECTED)
     private IngressFlowModFactory flowModFactory;
 
@@ -83,9 +79,6 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     @Override
     protected void setup(FloodlightModuleContext moduleContext) throws Exception {
         super.setup(moduleContext);
-
-        FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
-        switchFeatures = featureDetectorService.detectSwitch(getSw());
 
         ensureSwitchEnoughCapabilities();
 
@@ -238,7 +231,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
     private void ensureSwitchEnoughCapabilities() throws UnsupportedSwitchOperationException {
         Set<SwitchFeature> required = getRequiredFeatures();
-        required.removeAll(switchFeatures);
+        required.removeAll(getSwitchFeatures());
         if (required.isEmpty()) {
             return;
         }

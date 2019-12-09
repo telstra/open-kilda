@@ -15,14 +15,21 @@
 
 package org.openkilda.floodlight.utils;
 
+import org.openkilda.model.SwitchFeature;
+
 import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmVlanVid;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmVlanVidMasked;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
@@ -34,24 +41,28 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class OfFlowPresenceVerifier {
     private final DatapathId swId;
-    private final Map<FlowLookupKey, List<OFFlowMod>> expected = new HashMap<>();
+    private final Set<SwitchFeature> switchFeatures;
+    private final Map<FlowLookupKey, List<OFFlowMod>> expectedOfFlows = new HashMap<>();
 
     @Getter
     private final CompletableFuture<OfFlowPresenceVerifier> finish = new CompletableFuture<>();
 
-    public OfFlowPresenceVerifier(OfFlowDumpProducer dumpProducer, List<OFFlowMod> expectedFlows) {
+    public OfFlowPresenceVerifier(
+            IOfFlowDumpProducer dumpProducer, List<OFFlowMod> expectedFlows, Set<SwitchFeature> switchFeatures) {
         swId = dumpProducer.getSwId();
+        this.switchFeatures = switchFeatures;
 
         for (OFFlowMod entry : expectedFlows) {
             FlowLookupKey key = new FlowLookupKey(entry.getTableId(), entry.getCookie());
             log.debug("Schedule expect flow - {} on {} - {}", key, swId, entry);
-            expected.computeIfAbsent(key, ignore -> new ArrayList<>())
+            expectedOfFlows.computeIfAbsent(key, ignore -> new ArrayList<>())
                     .add(entry);
         }
 
@@ -68,7 +79,7 @@ public class OfFlowPresenceVerifier {
      * Expose "missing" OF flows.
      */
     public List<OFFlowMod> getMissing() {
-        return expected.values().stream()
+        return expectedOfFlows.values().stream()
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }
@@ -89,7 +100,7 @@ public class OfFlowPresenceVerifier {
 
     private void verifyTableEntry(OFFlowStatsEntry tableEntry) {
         FlowLookupKey key = new FlowLookupKey(tableEntry.getTableId(), tableEntry.getCookie());
-        List<OFFlowMod> expectedChunk = expected.get(key);
+        List<OFFlowMod> expectedChunk = expectedOfFlows.get(key);
         if (expectedChunk != null) {
             Iterator<OFFlowMod> iter = expectedChunk.iterator();
             while (iter.hasNext()) {
@@ -107,7 +118,7 @@ public class OfFlowPresenceVerifier {
         }
     }
 
-    private static boolean isEquals(OFFlowMod expectEntry, OFFlowStatsEntry tableEntry) {
+    private boolean isEquals(OFFlowMod expectEntry, OFFlowStatsEntry tableEntry) {
         if (! Objects.equals(expectEntry.getPriority(), tableEntry.getPriority())) {
             return false;
         }
@@ -120,7 +131,7 @@ public class OfFlowPresenceVerifier {
         return isInstructionsEquals(expectEntry.getInstructions(), tableEntry.getInstructions());
     }
 
-    private static boolean isInstructionsEquals(List<OFInstruction> expectedSeq, List<OFInstruction> actualSeq) {
+    private boolean isInstructionsEquals(List<OFInstruction> expectedSeq, List<OFInstruction> actualSeq) {
         if (expectedSeq.size() != actualSeq.size()) {
             return false;
         }
@@ -128,43 +139,93 @@ public class OfFlowPresenceVerifier {
         Map<Class<?>, OFInstruction> expectedMap = sequenceToMapByTypes(expectedSeq);
         Map<Class<?>, OFInstruction> actualMap = sequenceToMapByTypes(actualSeq);
 
+        boolean result = true;
         for (Map.Entry<Class<?>, OFInstruction> entry : expectedMap.entrySet()) {
             OFInstruction expected = entry.getValue();
             OFInstruction actual = actualMap.get(entry.getKey());
 
-            if (expected instanceof OFInstructionWriteActions) {
-                if (! isWriteActionsInstructionEquals((OFInstructionWriteActions) expected,
-                                                      (OFInstructionWriteActions) actual)) {
-                    return false;
-                }
+            if (actual == null) {
+                result = false;
+            } else if (expected instanceof OFInstructionApplyActions) {
+                result = isApplyActionsInstructionEquals(
+                        (OFInstructionApplyActions) expected, (OFInstructionApplyActions) actual);
+            } else if (expected instanceof OFInstructionWriteActions) {
+                result = isWriteActionsInstructionEquals(
+                        (OFInstructionWriteActions) expected, (OFInstructionWriteActions) actual);
             } else if (! Objects.equals(expected, actual)) {
-                return false;
+                result = false;
+            }
+
+            if (! result) {
+                break;
             }
         }
-        return true;
+        return result;
     }
 
-    private static boolean isWriteActionsInstructionEquals(
+    private boolean isApplyActionsInstructionEquals(
+            OFInstructionApplyActions expectedInstruction, OFInstructionApplyActions actualInstruction) {
+        return isActionsListEquals(expectedInstruction.getActions(), actualInstruction.getActions());
+    }
+
+    private boolean isWriteActionsInstructionEquals(
             OFInstructionWriteActions expectedInstruction, OFInstructionWriteActions actualInstruction) {
-        List<OFAction> expectedSeq = expectedInstruction.getActions();
-        List<OFAction> actualSeq = actualInstruction.getActions();
+        return isActionsListEquals(expectedInstruction.getActions(), actualInstruction.getActions());
+    }
+
+    private boolean isActionsListEquals(List<OFAction> expectedSeq, List<OFAction> actualSeq) {
         if (expectedSeq.size() != actualSeq.size()) {
             return false;
         }
 
-        Map<Class<?>, OFAction> expectedMap = sequenceToMapByTypes(expectedSeq);
-        Map<Class<?>, OFAction> actualMap = sequenceToMapByTypes(actualSeq);
+        Iterator<OFAction> expectedIter = expectedSeq.iterator();
+        Iterator<OFAction> actualIter = actualSeq.iterator();
+        while (expectedIter.hasNext() && actualIter.hasNext()) {
+            OFAction expected = expectedIter.next();
+            OFAction actual = actualIter.next();
 
-        for (Map.Entry<Class<?>, OFAction> entry : expectedMap.entrySet()) {
-            OFAction expected = entry.getValue();
-            OFAction actual = actualMap.get(entry.getKey());
-
-            if (! Objects.equals(expected, actual)) {
+            if (! isActionEquals(expected, actual)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private boolean isActionEquals(OFAction expected, OFAction actual) {
+        if (expected.getType() != actual.getType()) {
+            return false;
+        } else if (expected instanceof OFActionSetField && actual instanceof OFActionSetField) {
+            return isSetFieldActionEquals((OFActionSetField) expected, (OFActionSetField) actual);
+        } else {
+            return Objects.equals(expected, actual);
+        }
+    }
+
+    private boolean isSetFieldActionEquals(OFActionSetField expected, OFActionSetField actual) {
+        if (! switchFeatures.contains(SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION)) {
+            return Objects.equals(expected, actual);
+        }
+
+        final OFOxm<?> expectedField = expected.getField();
+        final OFOxm<?> actualField = actual.getField();
+        if (expectedField instanceof OFOxmVlanVid && actualField instanceof OFOxmVlanVid) {
+            return isSetVlanVidActionEquals((OFOxmVlanVid) expectedField, (OFOxmVlanVid) actualField);
+        } else if (expectedField instanceof OFOxmVlanVidMasked && actualField instanceof OFOxmVlanVidMasked) {
+            return isSetVlanVidMaskedActionEquals(
+                    (OFOxmVlanVidMasked) expectedField, (OFOxmVlanVidMasked) actualField);
+        } else {
+            return Objects.equals(expected, actual);
+        }
+    }
+
+    private boolean isSetVlanVidActionEquals(OFOxmVlanVid expected, OFOxmVlanVid actual) {
+        return expected.getValue().getVlan() == actual.getValue().getVlan();
+    }
+
+    private boolean isSetVlanVidMaskedActionEquals(OFOxmVlanVidMasked expected, OFOxmVlanVidMasked actual) {
+        return expected.getValue().getVlan() == actual.getValue().getVlan()
+                && expected.getMask().getVlan() == actual.getMask().getVlan();
     }
 
     private static <T> Map<Class<?>, T> sequenceToMapByTypes(List<T> sequence) {
