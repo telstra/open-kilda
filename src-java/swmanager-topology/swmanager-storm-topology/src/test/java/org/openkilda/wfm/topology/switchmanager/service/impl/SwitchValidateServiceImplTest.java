@@ -51,6 +51,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -101,6 +102,8 @@ public class SwitchValidateServiceImplTest {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
         FlowRepository flowRepository = Mockito.mock(FlowRepository.class);
+        SwitchRepository switchRepository = Mockito.mock(SwitchRepository.class);
+        when(switchRepository.exists(any())).thenReturn(true);
         SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
         when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
                 Optional.of(SwitchProperties.builder()
@@ -114,6 +117,7 @@ public class SwitchValidateServiceImplTest {
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         service = new SwitchValidateServiceImpl(carrier, persistenceManager);
