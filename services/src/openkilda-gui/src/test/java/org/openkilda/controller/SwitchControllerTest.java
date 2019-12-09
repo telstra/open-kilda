@@ -147,12 +147,26 @@ public class SwitchControllerTest {
     public void testDeleteSwitch() {
         SwitchInfo switcheInfo = new SwitchInfo();
         try {
-            when(serviceSwitch.deleteSwitch(TestSwitchMock.SWITCH_ID, true)).thenReturn(switcheInfo);
-            mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID)
+            when(serviceSwitch.deleteSwitch(TestSwitchMock.SWITCH_ID, false)).thenReturn(switcheInfo);
+            mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID, true)
                     .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
+        	System.out.println("exception: " + e.getMessage());
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testDeleteSwitchIfSwitchIdNotPassed() {
+        try {
+            mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID_NULL, true)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+            assertTrue(true);
+        } catch (Exception e) {
+        	System.out.println("exception: " + e.getMessage());
             assertTrue(false);
         }
     }

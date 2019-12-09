@@ -271,6 +271,8 @@ public abstract class IConstants {
 
         public static final String SW_SWITCH_DELETE = "sw_switch_delete";
         
+        public static final String MENU_AVAILABLE_PATH = "menu_available_path";
+        
     }
 
     public final class Settings {
