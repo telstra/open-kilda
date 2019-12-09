@@ -23,21 +23,13 @@ import net.floodlightcontroller.core.IOFSwitch;
 
 import java.util.Optional;
 
-public class GroupPacketOutFeature extends AbstractFeature {
-
-    public static final String ACTON_MANUFACTURED = "Sonus";
-
+public class InaccurateSetVlanVidAction extends AbstractFeature {
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {
-        Optional<SwitchFeature> empty = Optional.empty();
         if (containsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), CENTEC_MANUFACTURED)) {
-            return empty;
+            return Optional.of(SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION);
         }
 
-        if (containsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), ACTON_MANUFACTURED)) {
-            return empty;
-        }
-
-        return Optional.of(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER);
+        return Optional.empty();
     }
 }

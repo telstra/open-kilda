@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.44.1 (09/12/2019)
+
+### Bug Fixes:
+-  [#3005](https://github.com/telstra/open-kilda/pull/3005) Fix flow segment validation relaxing set field action match [**floodlight**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.44.0...v1.44.1).
+
+### Affected Components:
+fl
+
+---
+
 ## v1.44.0 (04/12/2019)
 
 ### Features:

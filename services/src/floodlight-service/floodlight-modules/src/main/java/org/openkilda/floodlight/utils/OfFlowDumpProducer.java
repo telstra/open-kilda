@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Getter
-public class OfFlowDumpProducer {
+public class OfFlowDumpProducer implements IOfFlowDumpProducer {
     private final List<CompletableFuture<List<OFFlowStatsEntry>>> tableRequests;
     private final CompletableFuture<Void> finish;
 

@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.transit;
 
+import static org.easymock.EasyMock.expect;
+
 import org.openkilda.floodlight.command.AbstractSpeakerCommandTest;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.error.SwitchErrorResponseException;
@@ -22,14 +24,25 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 abstract class TransitFlowSegmentCommandTest extends AbstractSpeakerCommandTest {
     protected static final FlowTransitEncapsulation encapsulationVlan = new FlowTransitEncapsulation(
             50, FlowEncapsulationType.TRANSIT_VLAN);
+
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+
+        expect(featureDetectorService.detectSwitch(sw)).andStubReturn(Collections.emptySet());
+        expect(featureDetectorService.detectSwitch(swNext)).andStubReturn(Collections.emptySet());
+    }
 
     @Test
     public void errorOnFlowMod() {
