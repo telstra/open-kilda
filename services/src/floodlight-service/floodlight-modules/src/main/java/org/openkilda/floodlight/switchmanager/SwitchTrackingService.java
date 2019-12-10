@@ -168,25 +168,19 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     }
 
     private void dumpAllSwitchesAction(String correlationId) {
-        producerService.enableGuaranteedOrder(discoveryTopic);
-        try {
-            Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap().values();
-            int switchCounter = 0;
-            for (IOFSwitch sw : iofSwitches) {
-                try {
-                    NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
-                    producerService.sendMessageAndTrack(discoveryTopic,
-                                                    correlationId,
-                                                    new ChunkedInfoMessage(swData, System.currentTimeMillis(),
-                                                            correlationId, switchCounter, iofSwitches.size(), region));
-                } catch (Exception e) {
-                    logger.error("Failed to send network dump for {}", sw.getId());
-                }
-                switchCounter++;
+        Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap().values();
+        int switchCounter = 0;
+        for (IOFSwitch sw : iofSwitches) {
+            try {
+                NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
+                producerService.sendMessageAndTrack(discoveryTopic,
+                                                correlationId,
+                                                new ChunkedInfoMessage(swData, System.currentTimeMillis(),
+                                                        correlationId, switchCounter, iofSwitches.size(), region));
+            } catch (Exception e) {
+                logger.error("Failed to send network dump for {}", sw.getId());
             }
-
-        } finally {
-            producerService.disableGuaranteedOrder(discoveryTopic);
+            switchCounter++;
         }
     }
 
