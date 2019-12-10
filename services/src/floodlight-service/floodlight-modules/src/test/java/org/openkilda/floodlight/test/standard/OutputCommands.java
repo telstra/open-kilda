@@ -483,7 +483,7 @@ public interface OutputCommands {
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setMatch(match)
                 .setInstructions(ImmutableList.of(
-                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID))))
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))))
                 .build();
     }
 
