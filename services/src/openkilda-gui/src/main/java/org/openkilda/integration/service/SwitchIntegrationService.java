@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -639,6 +639,27 @@ public class SwitchIntegrationService {
             LOGGER.error("Error occurred while getting switch flows", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
+        return null;
+    }
+    
+    /** Deletes the switch.
+     *
+     * @return the switch info
+     */
+    public SwitchInfo deleteSwitch(String switchId, boolean force) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                    .DELETE_SWITCH.replace("{switch_id}", switchId).replace("{force}", String.valueOf(force)), 
+                    HttpMethod.DELETE, "", "", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchInfo.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while deleting switch:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } 
         return null;
     }
 }

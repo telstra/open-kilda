@@ -29,7 +29,7 @@
                 <label class='col-sm-3 col-form-label required'>Maximum Bandwidth:</label>
                 <div class="col-sm-4">
                   <input formControlName="maximum_bandwidth" id="max_bandwidth" class="form-control" name="max_bandwidth"
-                    type="number"  />
+                    type="number" min="0"  required />
                   <div *ngIf="submitted && f.maximum_bandwidth.errors" class="invalid-feedback">
                     <div *ngIf="f.maximum_bandwidth.errors.required">Maximum bandwidth is required</div>
                   </div>

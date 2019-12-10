@@ -55,7 +55,7 @@
         <table class="table network-path-tbl mt-5" >
             <thead>
               <th>Bandwidth(Mbps) <i style="cursor:pointer;" (click)="sortNetworkData('bandwidth');" class="fa fa-fw fa-sort"></i> </th>
-              <th>Latency(Mbps) <i style="cursor:pointer;"  (click)="sortNetworkData('latency');"  class="fa fa-fw fa-sort"></i></th>
+              <th>Latency(ns) <i style="cursor:pointer;"  (click)="sortNetworkData('latency');"  class="fa fa-fw fa-sort"></i></th>
               <th>Nodes <i style="cursor:pointer;"  (click)="sortNetworkData('nodes');"  class="fa fa-fw fa-sort"></i></th>
             </thead>
           </table>
@@ -63,7 +63,7 @@
               <tbody>
                   <tr (click)="viewPath(i,pathData.nodes)" [ngClass]= "{'activerow':activeRowIndex == i}" *ngFor="let pathData of networkPaths; let i = index;">
                      <td>{{pathData.bandwidth / 1000}}</td>
-                    <td>{{pathData.latency / 1000}}</td>
+                    <td>{{pathData.latency}}</td>
                     <td>{{pathData.nodes.length}}</td>
                     </tr>
           </tbody>
