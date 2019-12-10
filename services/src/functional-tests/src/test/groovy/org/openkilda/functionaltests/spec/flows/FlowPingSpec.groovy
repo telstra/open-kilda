@@ -200,6 +200,10 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .build()
     }
 
+    /**
+     * Single-switch ping does not actually verify the routing. It is an always-success.
+     * Should consider disabling the ability to ping such flows at all.
+     */
     @Tidy
     def "Able to ping a single-switch flow"() {
         given: "A single-switch flow"
