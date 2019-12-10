@@ -369,6 +369,13 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
+    public Instant getIslTimeUnstable(Isl isl) {
+        return islRepository.findByEndpoints(
+                isl.getSrcSwitch().getDpId(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId(), isl.getDstPort()).get().getTimeUnstable();
+    }
+
+    @Override
     public List<Object> dumpAllNodes() {
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
         String query = "MATCH (n) RETURN n";
