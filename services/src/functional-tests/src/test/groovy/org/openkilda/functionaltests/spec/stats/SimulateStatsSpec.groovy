@@ -46,8 +46,8 @@ class SimulateStatsSpec extends HealthCheckSpecification {
     def "Flow stats with big values are properly being saved to stats db (noviflow boundaries)"() {
         given: "A flow"
         def (Switch src, Switch dst) = topology.activeSwitches
-        def flow = flowHelper.randomFlow(src, dst)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(src, dst)
+        flowHelperV2.addFlow(flow)
         def srcRules = northbound.getSwitchRules(src.dpId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
 
         when: "Flow stats information with noviflow-specific right boundary packet/byte counts is written to kafka"
@@ -84,7 +84,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
             def soft = new SoftAssertions()
             expectedMetricValueMap.each { metric, expectedValue ->
                 soft.checkSucceeds {
-                    def values = otsdb.query(1.minute.ago, "$metricPrefix$metric", [flowid: flow.id]).dps.values()
+                    def values = otsdb.query(1.minute.ago, "$metricPrefix$metric", [flowid: flow.flowId]).dps.values()
                     assert values.contains(expectedValue), "metric: $metric"
                 }
             }
@@ -93,7 +93,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
         }
 
         and: "Remove flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         cleanup:
         producer && producer.close()

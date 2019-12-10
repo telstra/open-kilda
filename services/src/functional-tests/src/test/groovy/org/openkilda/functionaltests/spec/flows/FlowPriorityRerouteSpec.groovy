@@ -12,6 +12,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
 import spock.lang.Ignore
 import spock.lang.Unroll
@@ -28,24 +29,24 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         given: "Three flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
-        List<FlowPayload> flows = []
+        List<FlowRequestV2> flows = []
 
         def newPriority = 300
 
         3.times {
-            def flow = flowHelper.randomFlow(switchPair)
+            def flow = flowHelperV2.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
             flow.allocateProtectedPath = protectedPath
             flow.priority = newPriority
-            flowHelper.addFlow(flow)
+            flowHelperV2.addFlow(flow)
             newPriority -= 100
             flows << flow
         }
 
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].id))
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].flowId))
         //ensure all flows are on the same path
-        assert pathHelper.convert(northbound.getFlowPath(flows[1].id)) == currentPath
-        assert pathHelper.convert(northbound.getFlowPath(flows[2].id)) == currentPath
+        assert pathHelper.convert(northbound.getFlowPath(flows[1].flowId)) == currentPath
+        assert pathHelper.convert(northbound.getFlowPath(flows[2].flowId)) == currentPath
 
         def altPath = switchPair.paths.find { it != currentPath }
 
@@ -58,8 +59,8 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         then: "Flows were rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             flows.each {
-                assert northbound.getFlowStatus(it.id).status == FlowState.UP
-                assert pathHelper.convert(northbound.getFlowPath(it.id)) != currentPath
+                assert northbound.getFlowStatus(it.flowId).status == FlowState.UP
+                assert pathHelper.convert(northbound.getFlowPath(it.flowId)) != currentPath
             }
         }
 
@@ -67,12 +68,12 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         // for a flow with protected path we use a little bit different logic for rerouting then for simple flow
         // that's why we use WAIT_OFFSET here
         Wrappers.wait(WAIT_OFFSET) {
-            assert flows.sort { it.priority }*.id == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
+            assert flows.sort { it.priority }*.flowId == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
         }
 
         and: "Cleanup: revert system to original state"
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        flows.each { flowHelper.deleteFlow(it.id) }
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -90,23 +91,23 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         given: "Three flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
-        List<FlowPayload> flows = []
+        List<FlowRequestV2> flows = []
 
         def newPriority = 300
 
         3.times {
-            def flow = flowHelper.randomFlow(switchPair)
+            def flow = flowHelperV2.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
             flow.allocateProtectedPath = protectedPath
             flow.priority = newPriority
-            flowHelper.addFlow(flow)
+            flowHelperV2.addFlow(flow)
             newPriority -= 100
             flows << flow
         }
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].id))
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].flowId))
         //ensure all flows are on the same path
-        assert pathHelper.convert(northbound.getFlowPath(flows[1].id)) == currentPath
-        assert pathHelper.convert(northbound.getFlowPath(flows[2].id)) == currentPath
+        assert pathHelper.convert(northbound.getFlowPath(flows[1].flowId)) == currentPath
+        assert pathHelper.convert(northbound.getFlowPath(flows[2].flowId)) == currentPath
 
         when: "Make another path more preferable"
         def newPath = switchPair.paths.find { it != currentPath }
@@ -119,17 +120,17 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         then: "Flows were rerouted"
         Wrappers.wait(WAIT_OFFSET) {
             flows.each {
-                assert northbound.getFlowStatus(it.id).status == FlowState.UP
-                assert pathHelper.convert(northbound.getFlowPath(it.id)) == newPath
+                assert northbound.getFlowStatus(it.flowId).status == FlowState.UP
+                assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == newPath
             }
         }
 
         and: "Reroute procedure was done based on the priority field"
         Wrappers.wait(WAIT_OFFSET) {
-            assert flows.sort { it.priority }*.id == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
+            assert flows.sort { it.priority }*.flowId == northbound.getAllFlows().sort { Instant.parse(it.lastUpdated) }*.id
         }
         and: "Cleanup: revert system to original state"
-        flows.each { flowHelper.deleteFlow(it.id) }
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 

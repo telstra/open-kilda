@@ -47,11 +47,11 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         assumeTrue("Topology is too small to run this test", switchPairs.size() > 3)
         def flows = switchPairs.take(5).collect { switchPair ->
-            def flow = flowHelper.randomFlow(switchPair)
-            flowHelper.addFlow(flow)
+            def flow = flowHelperV2.randomFlow(switchPair)
+            flowHelperV2.addFlow(flow)
             flow
         }
-        def flowPaths = flows.collect { northbound.getFlowPath(it.id) }
+        def flowPaths = flows.collect { northbound.getFlowPath(it.flowId) }
 
         when: "All flows break one by one"
         def brokenIsls = flowPaths.collect {
@@ -65,14 +65,14 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
         sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.3)) //check after 70% of rerouteDelay has passed
-        northbound.getFlowStatus(flows.first().id).status == FlowState.UP
+        northbound.getFlowStatus(flows.first().flowId).status == FlowState.UP
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
         def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME
         Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
-            assert northbound.getFlowStatus(flows.first().id).status == FlowState.DOWN ||
-                    northbound.getFlowPath(flows.first().id) != flowPaths.first()
+            assert northbound.getFlowStatus(flows.first().flowId).status == FlowState.DOWN ||
+                    northbound.getFlowPath(flows.first().flowId) != flowPaths.first()
         }
 
         and: "The rest of the flows are rerouted too"
@@ -84,7 +84,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "cleanup: restore broken paths and delete flows"
-        flows.each { flowHelper.deleteFlow(it.id) }
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
         brokenIsls.each {
             antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
         }
@@ -106,11 +106,11 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         int minFlowsRequired = (int) Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
         assumeTrue("Topology is too small to run this test", switchPairs.size() >= minFlowsRequired)
         def flows = switchPairs.collect { switchPair ->
-            def flow = flowHelper.randomFlow(switchPair)
-            flowHelper.addFlow(flow)
+            def flow = flowHelperV2.randomFlow(switchPair)
+            flowHelperV2.addFlow(flow)
             flow
         }
-        def flowPaths = flows.collect { northbound.getFlowPath(it.id) }
+        def flowPaths = flows.collect { northbound.getFlowPath(it.flowId) }
 
         when: "All flows begin to continuously reroute in a loop"
         def stop = false //flag to abort all reroute triggers
@@ -159,7 +159,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "cleanup: delete flows"
-        flows.each { flowHelper.deleteFlow(it.id) }
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
 
         cleanup: "revive all paths"
         stop = true
@@ -173,15 +173,15 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
-        def path = northbound.getFlowPath(flow.id)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
+        def path = northbound.getFlowPath(flow.flowId)
 
         when: "Init a flow reroute by breaking current path"
         def brokenIsl = breakFlow(path)
 
         and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
         northbound.getAllFlows().empty

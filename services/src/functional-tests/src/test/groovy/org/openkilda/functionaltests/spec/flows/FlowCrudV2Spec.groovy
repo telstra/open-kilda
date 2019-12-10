@@ -8,19 +8,18 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
-import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -64,24 +63,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     @Shared
     def getPortViolationError = { String action, int port, SwitchId swId ->
         "The port $port on the switch '$swId' is occupied by an ISL."
-    }
-
-    def "System marks flow as UP when and only when all the rules are actually set on all involved switches"() {
-        given: "Two active not neighbouring switches"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
-
-        when: "Create a flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        northboundV2.addFlow(flow)
-
-        then: "Flow is created"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-
-        and: "All needed rules are installed on all involved switches"
-        flowHelperV2.checkRulesOnSwitches(flow.flowId, RULES_INSTALLATION_TIME, true)
-
-        and: "Cleanup: Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -1003,6 +984,51 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         //TODO(andriidovhan) check error message when the issue is fixed
+    }
+
+    @Tidy
+    def "Flow status accurately represents the actual state of the flow and flow rules"() {
+        when: "Create a flow on a long path"
+        def swPair = topologyHelper.switchPairs.first()
+        def longPath = swPair.paths.max { it.size() }
+        swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
+        def flow = flowHelperV2.randomFlow(swPair)
+        northboundV2.addFlow(flow)
+
+        then: "Flow status is changed to UP only when all rules are actually installed"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
+        def flowInfo = database.getFlow(flow.flowId)
+        def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
+        def switches = pathHelper.getInvolvedSwitches(flow.flowId)
+        withPool(switches.size()) {
+            switches.eachParallel { Switch sw ->
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.containsAll(flowCookies)
+            }
+        }
+
+        when: "Delete flow"
+        def deleteResponse = northboundV2.deleteFlow(flow.flowId)
+
+        then: "Flow is actually removed from flows dump only after all rules are removed"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert !northbound.getFlowStatus(flow.flowId)
+        }
+        withPool(switches.size()) {
+            switches.eachParallel { Switch sw ->
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.findAll { cookie ->
+                    Cookie.isIngressRulePassThrough(cookie) || !Cookie.isDefaultRule(cookie)
+                }.empty
+            }
+        }
+        northbound.getAllFlows().empty
+
+        cleanup: 
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        flow && !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Shared

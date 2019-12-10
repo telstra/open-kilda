@@ -64,7 +64,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -80,7 +80,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         switchValidateInfo.meters.proper.each {
             assert it.rate == flow.maximumBandwidth
-            assert it.flowId == flow.id
+            assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
@@ -94,7 +94,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -124,7 +124,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
                 INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
         def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size() + isMultitableEnabled
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -132,7 +132,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         Long newBandwidth = flow.maximumBandwidth + 100
         /** at this point meters are set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meters from the 'proper' section into the 'misconfigured'*/
-        database.updateFlowBandwidth(flow.id, newBandwidth)
+        database.updateFlowBandwidth(flow.flowId, newBandwidth)
         //at this point existing meters do not correspond with the flow
 
         then: "Meters info is moved into the 'misconfigured' section"
@@ -144,7 +144,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.misconfigured*.cookie.containsAll(createdCookies)
         switchValidateInfo.meters.misconfigured.each {
             assert it.rate == flow.maximumBandwidth
-            assert it.flowId == flow.id
+            assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
@@ -162,7 +162,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.rules.proper.containsAll(createdCookies)
 
         and: "Flow validation shows discrepancies"
-        def flowValidateResponse = northbound.validateFlow(flow.id)
+        def flowValidateResponse = northbound.validateFlow(flow.flowId)
         flowValidateResponse.each { direction ->
             assert direction.discrepancies.size() == 2
 
@@ -184,7 +184,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Restore correct bandwidth via DB"
-        database.updateFlowBandwidth(flow.id, flow.maximumBandwidth)
+        database.updateFlowBandwidth(flow.flowId, flow.maximumBandwidth)
 
         then: "Misconfigured meters are moved into the 'proper' section"
         def switchValidateInfoRestored = northbound.validateSwitch(sw.dpId)
@@ -192,13 +192,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfoRestored, ["missing", "misconfigured", "excess"])
 
         and: "Flow validation shows no discrepancies"
-        northbound.validateFlow(flow.id).each { direction ->
+        northbound.validateFlow(flow.flowId).each { direction ->
             assert direction.discrepancies.empty
             assert direction.asExpected
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -224,7 +224,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
         def meterIds = getCreatedMeterIds(sw.dpId)
 
         and: "Remove created meter"
@@ -241,7 +241,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.missing*.cookie.containsAll(createdCookies)
         switchValidateInfo.meters.missing.each {
             assert it.rate == flow.maximumBandwidth
-            assert it.flowId == flow.id
+            assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
@@ -264,7 +264,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.meters.installed*.meterId.containsAll(meterIds)
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -290,7 +290,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
         def metersIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -301,7 +301,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         when: "Update meterId for created flow directly via db"
         MeterId newMeterId = new MeterId(100)
-        database.updateFlowMeterId(flow.id, newMeterId)
+        database.updateFlowMeterId(flow.flowId, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
         def switchValidateInfo = northbound.validateSwitch(sw.dpId)
@@ -318,7 +318,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.missing.collect { it.cookie }.containsAll(createdCookies)
         switchValidateInfo.meters.missing.each {
             assert it.rate == flow.maximumBandwidth
-            assert it.flowId == flow.id
+            assert it.flowId == flow.flowId
             assert it.meterId == newMeterId.value
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             verifyBurstSizeIsCorrect(burstSize, it.burstSize)
@@ -328,7 +328,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Delete excess meters"
         metersIds.each { northbound.deleteMeter(sw.dpId, it) }
@@ -357,7 +357,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
         def createdCookies = getCookiesWithMeter(sw.dpId)
 
         and: "Delete created rules"
@@ -380,7 +380,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.rules.installed.containsAll(createdCookies)
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -496,7 +496,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     def "Able to validate and sync a #switchType switch having missing rules of single-port single-switch flow"() {
         assumeTrue("Unable to find $switchType switch in topology", sw as boolean)
         given: "A single-port single-switch flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchSinglePortFlow(sw))
+        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchSinglePortFlow(sw))
 
         when: "Remove flow rules from the switch, so that they become missing"
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
@@ -517,7 +517,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id, true)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validation returns empty sections"
         with(northbound.validateSwitch(sw.dpId)) {

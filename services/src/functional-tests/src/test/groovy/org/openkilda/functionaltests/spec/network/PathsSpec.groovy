@@ -16,7 +16,7 @@ class PathsSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelper.addFlow(flowHelper.randomFlow(switchPair))
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
 
         when: "Get paths between switches"
         def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId)
@@ -36,7 +36,7 @@ class PathsSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: delete flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to get paths between one switch"() {
