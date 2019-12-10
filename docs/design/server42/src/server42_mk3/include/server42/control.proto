@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package org.openkilda;
+package org.openkilda.server42.control.messaging.flowrtt;
 
 import "google/protobuf/any.proto";
 
@@ -8,7 +8,7 @@ message Flow {
     string flow_id = 1;
     enum EncapsulationType {
         VLAN = 0;
-        VXVLAN = 1;
+        VXLAN = 1;
     }
     EncapsulationType encapsulation_type = 2;
     int64 tunnel_id = 3;
