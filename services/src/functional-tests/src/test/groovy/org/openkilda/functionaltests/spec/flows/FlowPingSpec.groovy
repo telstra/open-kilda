@@ -239,6 +239,33 @@ class FlowPingSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
+    def "Able to turn on periodic pings on a flow"() {
+        when: "Create a flow with periodic pings turned on"
+        def flow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair).tap {
+            it.periodicPings = true
+        }
+        flowHelperV2.addFlow(flow)
+
+        then: "Packet counter on flow rules grows due to pings happening"
+        def initialCounts = northbound.validateFlow(flow.flowId)
+        Wrappers.wait(3) {
+            with(northbound.validateFlow(flow.flowId)) {
+                //forward
+                [it[0].pktCounts[0..-2], initialCounts[0].pktCounts[0..-2]].transpose().every { now, initial ->
+                    now > initial
+                }
+                //reverse
+                [it[1].pktCounts[0..-2], initialCounts[1].pktCounts[0..-2]].transpose().every { now, initial ->
+                    now > initial
+                }
+            }
+        }
+
+        cleanup: "Remove flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
     /**
      * Returns all switch combinations with unique description, excluding single-switch combinations,
      * combinations with Centec switches and OF_12 switches
