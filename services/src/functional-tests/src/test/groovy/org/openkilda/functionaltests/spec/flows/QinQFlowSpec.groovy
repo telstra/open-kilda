@@ -442,6 +442,79 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow1.flowId)
     }
 
+    def "System allows to create more than one QinQ flow on the same port and with the same vlan"() {
+        given: "Two switches connected to traffgen and enabled multiTable mode"
+        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 1))
+        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every { sw ->
+                sw.dpId in allTraffGenSwitches*.dpId && northbound.getSwitchProperties(sw.dpId).multiTable
+            } && it.paths.size() > 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        when: "Create a first QinQ flow"
+        def flow1 = flowHelperV2.randomFlow(swP)
+        flow1.source.innerVlanId = 300
+        flow1.destination.innerVlanId = 400
+        flowHelperV2.addFlow(flow1)
+
+        and: "Create a second QinQ flow"
+        def flow2 = flowHelperV2.randomFlow(swP)
+        flow2.source.vlanId = flow1.source.vlanId
+        flow2.source.innerVlanId = flow1.destination.innerVlanId
+        flow2.destination.vlanId = flow2.destination.vlanId
+        flow2.destination.innerVlanId = flow1.source.innerVlanId
+        flowHelperV2.addFlow(flow2)
+
+
+        then: "Both flow are valid and pingable"
+        [flow1.flowId, flow2.flowId].each { flowId ->
+            // is not implemented yet
+//            northbound.validateFlow(flowId).each { assert it.asExpected }
+            verifyAll(northbound.pingFlow(flowId, new PingInput())) {
+                it.forward.pingSuccess
+                it.reverse.pingSuccess
+            }
+        }
+
+        and: "Flows allow traffic"
+        def traffExam = traffExamProvider.get()
+        def exam1 = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildBidirectionalExam(flowHelperV2.toV1(flow1), 1000, 5)
+        def exam2 = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildBidirectionalExam(flowHelperV2.toV1(flow2), 1000, 5)
+        withPool {
+            [exam1.forward, exam1.reverse, exam2.forward, exam2.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        when: "Delete the second flow"
+        flowHelperV2.deleteFlow(flow2.flowId)
+
+        then: "The first flow is still valid and pingable"
+        // is not implemented yet
+//        northbound.validateFlow(flow1.flowId).each { assert it.asExpected }
+        verifyAll(northbound.pingFlow(flow1.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        and: "The first flow still allows traffic"
+        withPool {
+            [exam1.forward, exam1.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        and: "Cleanup: Delete the first flow"
+        flowHelperV2.deleteFlow(flow1.flowId)
+    }
+
     @Unroll
     def "System allows to create a single-switch-port QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
