@@ -20,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
+import spock.lang.Unroll
 
 class SwitchesSpec extends HealthCheckSpecification {
     def "System is able to return a list of all switches"() {
@@ -297,5 +298,18 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
         e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
+
+        where:
+        data << [
+                [descr    : "synchronizing rules on",
+                 operation: { getNorthbound().synchronizeSwitchRules(NON_EXISTENT_SWITCH_ID) }],
+                [descr    : "synchronizing",
+                 operation: { getNorthbound().synchronizeSwitch(NON_EXISTENT_SWITCH_ID, true) }],
+                [descr    : "validating rules on",
+                 operation: { getNorthbound().validateSwitchRules(NON_EXISTENT_SWITCH_ID) }],
+                [descr    : "validating",
+                 operation: { getNorthbound().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
+        ]
     }
 }
