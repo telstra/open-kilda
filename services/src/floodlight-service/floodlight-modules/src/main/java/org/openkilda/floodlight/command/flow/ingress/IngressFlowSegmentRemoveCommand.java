@@ -24,10 +24,13 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -41,8 +44,10 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
-            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation);
+            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
+            @JsonProperty("remove_customer_port_shared_catch_rule") boolean removeCustomerPortSharedCatchRule) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
+                removeCustomerPortSharedCatchRule);
     }
 
     @Override
@@ -59,6 +64,15 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
     @Override
     protected CompletableFuture<FlowSegmentReport> makeExecutePlan(SpeakerCommandProcessor commandProcessor) {
         return makeRemovePlan(commandProcessor);
+    }
+
+    @Override
+    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
+        if (removeCustomerPortSharedCatchRule) {
+            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+        }
+        return ofMessages;
     }
 
     @Override

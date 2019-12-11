@@ -24,6 +24,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -76,6 +77,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                     processed.add(oppositePath.getPathId());
                 }
 
+
                 if (oppositePath != null) {
                     stateMachine.getFlowResources().add(buildResources(flow, path, oppositePath));
 
@@ -83,8 +85,13 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                         commands.addAll(commandBuilder.buildAllExceptIngress(
                                 stateMachine.getCommandContext(), flow, path, oppositePath));
                     } else {
-                        commands.addAll(commandBuilder.buildAll(
-                                stateMachine.getCommandContext(), flow, path, oppositePath));
+                        SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
+                                .removeCustomerPortSharedCatchRule(isRemoveCustomerPortSharedCatchRule(flow, path))
+                                .removeOppositeCustomerPortSharedCatchRule(
+                                        isRemoveCustomerPortSharedCatchRule(flow, oppositePath))
+                                .build();
+                        commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
+                                path, oppositePath, speakerRequestBuildContext));
                     }
                 } else {
                     log.warn("No opposite path found for {}, trying to delete as unpaired path", pathId);
@@ -95,8 +102,11 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                         commands.addAll(commandBuilder.buildAllExceptIngress(
                                 stateMachine.getCommandContext(), flow, path, null));
                     } else {
+                        SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
+                                .removeCustomerPortSharedCatchRule(isRemoveCustomerPortSharedCatchRule(flow, path))
+                                .build();
                         commands.addAll(commandBuilder.buildAll(
-                                stateMachine.getCommandContext(), flow, path, null));
+                                stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
                     }
                 }
             }
@@ -142,5 +152,11 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                         .encapsulationResources(encapsulationResources)
                         .build())
                 .build();
+    }
+
+    private boolean isRemoveCustomerPortSharedCatchRule(Flow flow, FlowPath path) {
+        boolean isForward = flow.isForward(path);
+        return isRemoveCustomerPortSharedCatchRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+                isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 }
