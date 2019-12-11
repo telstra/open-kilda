@@ -68,8 +68,8 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
     }
 
     public void expectMakeCustomerPortSharedCatchInstallMessage(IngressFlowSegmentBase command) {
-        EasyMock.expect(flowModFactoryMock.makeCustomerPortSharedCatchInstallMessage())
-                .andAnswer(() -> extractFlowModFactory(command).makeCustomerPortSharedCatchInstallMessage());
+        EasyMock.expect(flowModFactoryMock.makeCustomerPortSharedCatchMessage())
+                .andAnswer(() -> extractFlowModFactory(command).makeCustomerPortSharedCatchMessage());
     }
 
     public void expectNoMoreOfMessages() {

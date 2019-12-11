@@ -42,8 +42,9 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
-            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint);
+            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
+            @JsonProperty("remove_customer_port_shared_catch_rule") boolean removeCustomerPortSharedCatchRule) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, removeCustomerPortSharedCatchRule);
     }
 
     @Override
@@ -64,7 +65,7 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
     protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
         if (metadata.isMultiTable()) {
-            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchInstallMessage());
+            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
         }
         return ofMessages;
     }

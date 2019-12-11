@@ -106,7 +106,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
                 .setInstructions(Collections.singletonList(of.instructions().gotoTable(
                         TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))))
                 .build();
-        verifyOfMessageEquals(expected, factory.makeCustomerPortSharedCatchInstallMessage());
+        verifyOfMessageEquals(expected, factory.makeCustomerPortSharedCatchMessage());
     }
 
     // --- verify methods
