@@ -24,6 +24,7 @@ import static org.openkilda.floodlight.service.connected.LldpPacket.PORT_ID_SUBT
 import static org.openkilda.floodlight.service.connected.LldpPacket.PORT_ID_SUBTYPE_MAC;
 import static org.openkilda.floodlight.service.connected.LldpPacket.addDescription;
 
+import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import org.junit.Test;
 
@@ -60,7 +61,9 @@ public class LldpPacketTest {
 
     @Test
     public void errorReporting() {
-        LldpPacket lldpPacket = new LldpPacket(packet);
+        LLDP lldp = new LLDP();
+        lldp.deserialize(packet, 0, packet.length);
+        LldpPacket lldpPacket = new LldpPacket(lldp);
         assertEquals(addDescription(MAC_DESCRIPTION, "ae:59:21:13:41:36"), lldpPacket.getParsedChassisId());
         assertEquals(addDescription(MAC_DESCRIPTION, "e2:4c:63:33:f3:eb"), lldpPacket.getParsedPortId());
         assertEquals(120, (int) lldpPacket.getParsedTtl());

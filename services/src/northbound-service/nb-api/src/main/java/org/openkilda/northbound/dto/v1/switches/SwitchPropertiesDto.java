@@ -29,4 +29,7 @@ public class SwitchPropertiesDto {
 
     @JsonProperty("multi_table")
     private boolean multiTable;
+
+    @JsonProperty("switch_lldp")
+    private boolean switchLldp;
 }

@@ -28,6 +28,8 @@ import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
@@ -71,6 +73,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Meter;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchFeature;
 
@@ -186,12 +189,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
-    public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 1;
-    public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
+    public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
+    public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
     public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
-    public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
+    public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
     public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
     public static final int MINIMAL_POSITIVE_PRIORITY = FlowModUtils.PRIORITY_MIN + 1;
+
+    public static final int LLDP_INPUT_PRE_DROP_PRIORITY = MINIMAL_POSITIVE_PRIORITY + 1;
+    public static final int LLDP_TRANSIT_ISL_PRIORITY = FLOW_PRIORITY - 1;
 
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
@@ -636,8 +642,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid,
-                                                   boolean multiTable) throws SwitchOperationException {
+    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable, boolean switchLldp)
+            throws SwitchOperationException {
         List<OFFlowMod> flows = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
@@ -654,6 +660,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     TRANSIT_TABLE_ID, EGRESS_TABLE_ID)).ifPresent((flows::add));
             Optional.ofNullable(buildTablePassThroughDefaultRule(ofFactory, MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE,
                     INGRESS_TABLE_ID, PRE_INGRESS_TABLE_ID)).ifPresent((flows::add));
+            if (switchLldp) {
+                addLldpTransitFlow(flows, sw);
+                addLldpInputPreDropFlow(flows, sw);
+            }
         }
         ArrayList<OFAction> actionListBroadcastRule = prepareActionListForBroadcastRule(sw);
         OFInstructionMeter meterBroadcastRule = buildMeterInstructionForBroadcastRule(sw, actionListBroadcastRule);
@@ -676,6 +686,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     meter, actionListUnicastVxlanRule)).ifPresent(flows::add);
         }
         return flows;
+    }
+
+    private void addLldpTransitFlow(List<OFFlowMod> flows, IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForLldpTransitFlow(sw, actionList);
+        Optional.ofNullable(buildLldpTransitFlow(sw, meter, actionList)).ifPresent((flows::add));
+    }
+
+    private void addLldpInputPreDropFlow(List<OFFlowMod> flows, IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForLldpIngressPreDropFlow(sw, actionList);
+        Optional.ofNullable(buildLldpInputPreDropRule(sw, meter, actionList)).ifPresent((flows::add));
     }
 
     @Override
@@ -720,6 +742,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private OFInstructionMeter buildMeterInstructionForUnicastVxlanRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
         return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue(),
                 sw, actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForLldpTransitFlow(IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(
+                createMeterIdForDefaultRule(Cookie.LLDP_TRANSIT_COOKIE).getValue(), sw, actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForLldpIngressPreDropFlow(
+            IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(
+                createMeterIdForDefaultRule(Cookie.LLDP_INPUT_PRE_DROP_COOKIE).getValue(), sw, actionList);
     }
 
     /**
@@ -1026,14 +1059,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
-                                         List<Integer> flowPorts, boolean multiTable) throws SwitchOperationException {
+                                         List<Integer> flowPorts, boolean multiTable,
+                                         boolean switchLldp) throws SwitchOperationException {
 
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
                 ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                MULTITABLE_TRANSIT_DROP_COOKIE);
+                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE);
         if (multiTable) {
             for (int islPort : islPorts) {
                 deletedRules.addAll(removeMultitableEndpointIslRules(dpid, islPort));
@@ -1049,6 +1083,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue());
+            if (switchLldp) {
+                deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE).getValue());
+                deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE).getValue());
+            }
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
         }
@@ -1397,7 +1435,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return null;
         }
 
-        return prepareFlowModBuilder(ofFactory, cookie, 1, tableId)
+        return prepareFlowModBuilder(ofFactory, cookie, MINIMAL_POSITIVE_PRIORITY, tableId)
                 .build();
     }
 
@@ -1586,6 +1624,67 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE, INPUT_TABLE_ID)
                 .setMatch(match)
                 .setInstructions(ImmutableList.of(goToTable)).build();
+    }
+
+    @Override
+    public long installLldpTransitFlow(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = installMeterForLldpRule(
+                sw, MeterId.createMeterIdForDefaultRule(Cookie.LLDP_TRANSIT_COOKIE).getValue(), actionList);
+
+        OFFlowMod flowMod = buildLldpTransitFlow(sw, meter, actionList);
+        String flowName = "--Isl LLDP transit rule for VLAN--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    private OFFlowMod buildLldpTransitFlow(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
+                .setExact(MatchField.ETH_TYPE, EthType.LLDP)
+                .build();
+
+        actionList.add(actionSendToController(sw));
+        OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
+
+        return prepareFlowModBuilder(
+                ofFactory, Cookie.LLDP_TRANSIT_COOKIE,
+                LLDP_TRANSIT_ISL_PRIORITY, TRANSIT_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .build();
+    }
+
+    @Override
+    public long installLldpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = installMeterForLldpRule(
+                sw, MeterId.createMeterIdForDefaultRule(Cookie.LLDP_INPUT_PRE_DROP_COOKIE).getValue(), actionList);
+
+        OFFlowMod flowMod = buildLldpInputPreDropRule(sw, meter, actionList);
+        String flowName = "--Isl LLDP input pre drop rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    private OFFlowMod buildLldpInputPreDropRule(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
+                .setExact(MatchField.ETH_TYPE, EthType.LLDP)
+                .build();
+
+        actionList.add(actionSendToController(sw));
+        OFInstructionApplyActions actions = ofFactory.instructions().applyActions(actionList).createBuilder().build();
+        return prepareFlowModBuilder(
+                ofFactory, Cookie.LLDP_INPUT_PRE_DROP_COOKIE,
+                LLDP_INPUT_PRE_DROP_PRIORITY, INPUT_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .build();
     }
 
     @Override

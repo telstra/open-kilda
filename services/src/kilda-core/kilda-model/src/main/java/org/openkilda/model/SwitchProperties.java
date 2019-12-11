@@ -76,12 +76,16 @@ public class SwitchProperties implements Serializable {
     @Property(name = "multi_table")
     private boolean multiTable;
 
+    @Property(name = "switch_lldp")
+    private boolean switchLldp;
+
     @Builder(toBuilder = true)
     public SwitchProperties(Switch switchObj, Set<FlowEncapsulationType> supportedTransitEncapsulation,
-                            boolean multiTable) {
+                            boolean multiTable, boolean switchLldp) {
         this.switchObj = switchObj;
         this.supportedTransitEncapsulation = supportedTransitEncapsulation;
         this.multiTable = multiTable;
+        this.switchLldp = switchLldp;
     }
 
     @VisibleForTesting

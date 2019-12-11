@@ -179,6 +179,22 @@ public interface ISwitchManager extends IFloodlightService {
     long installEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
+     * Install LLDP rule which will send LLDP packet from ISL port to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpTransitFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install LLDP rule which will send all LLDP packets received from not ISL/Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
      *
      * @param dpid datapathId of the switch
@@ -365,9 +381,11 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid switch id.
      * @param multiTable flag
+     * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
      * @return list of default flows.
      */
-    List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable) throws SwitchOperationException;
+    List<OFFlowMod> getExpectedDefaultFlows(
+            DatapathId dpid, boolean multiTable, boolean switchLldp) throws SwitchOperationException;
 
 
     /**
@@ -478,11 +496,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @param islPorts ports with isl default rule
      * @param flowPorts ports with flow default rule
      * @param multiTable multiTableMode
+     * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
-                                  List<Integer> flowPorts, boolean multiTable) throws SwitchOperationException;
+                                  List<Integer> flowPorts, boolean multiTable,
+                                  boolean switchLldp) throws SwitchOperationException;
 
     /**
      * Delete rules that match the criteria.

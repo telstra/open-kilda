@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
+import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
@@ -72,6 +74,7 @@ class SwitchHelper {
     static List<Long> getDefaultCookies(Switch sw) {
         def swProps = northbound.getSwitchProperties(sw.dpId)
         def multiTableRules = []
+        def switchLldpRules = []
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
@@ -92,21 +95,24 @@ class SwitchHelper {
                 }
             }
         }
+        if (swProps.switchLldp) {
+            switchLldpRules = [LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE]
+        }
         if (sw.noviflow && !sw.wb5164) {
             return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
                     Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
                     Cookie.CATCH_BFD_RULE_COOKIE, Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE,
-                    Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules)
+                    Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + switchLldpRules)
         } else if((sw.noviflow || sw.details.manufacturer == "E") && sw.wb5164){
             return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
                     Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                    Cookie.CATCH_BFD_RULE_COOKIE] + multiTableRules)
+                    Cookie.CATCH_BFD_RULE_COOKIE] + multiTableRules + switchLldpRules)
         } else if (sw.ofVersion == "OF_12") {
             return [Cookie.VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
             return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
                     Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE]
-            + multiTableRules)
+            + multiTableRules + switchLldpRules)
         }
     }
 

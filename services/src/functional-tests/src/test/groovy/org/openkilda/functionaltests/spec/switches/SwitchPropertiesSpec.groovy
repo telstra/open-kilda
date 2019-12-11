@@ -101,6 +101,24 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         null                          | "Supported transit encapsulations should not be null or empty"
     }
 
+    def "Unable to turn on switchLldp property without turning on multiTable property"() {
+        given: "A switch"
+        def sw = topology.activeSwitches.first()
+
+        when: "Try to update set switchLldp property to True and multiTable property to False"
+        def switchProperties = new SwitchPropertiesDto()
+        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+        switchProperties.multiTable = false
+        switchProperties.switchLldp = true
+        northbound.updateSwitchProperties(sw.dpId, switchProperties)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains(
+                "Illegal switch properties combination for switch $sw.dpId.")
+    }
+
     @Tidy
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"

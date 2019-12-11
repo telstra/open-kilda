@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.service.connected;
 
+import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
+
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
@@ -27,6 +30,7 @@ import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.LldpInfoData;
+import org.openkilda.messaging.info.event.SwitchLldpInfoData;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
@@ -57,46 +61,88 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         };
     }
 
-    private LldpPacket deserialize(Ethernet eth) {
-        if (eth.getPayload() instanceof LLDP) {
-            return new LldpPacket(eth.getPayload().serialize());
+    private LldpPacket deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
+        try {
+            if (eth.getPayload() instanceof LLDP) {
+                return new LldpPacket((LLDP) eth.getPayload());
+            }
+        }  catch (Exception exception) {
+            logger.info("Could not deserialize LLDP packet {} on switch {}. Cookie {}. Deserialization failure: {}, "
+                    + "exception: {}", eth, switchId, cookie, exception.getMessage(), exception);
+            return null;
         }
+        logger.info("Got invalid lldp packet: {} on switch {}. Cookie {}", eth, switchId, cookie);
         return null;
+    }
+
+    private boolean isLldpRelated(long value) {
+        return value == LLDP_INPUT_PRE_DROP_COOKIE
+                || value == LLDP_TRANSIT_COOKIE
+                || Cookie.isFlowLldp(value);
     }
 
     private void handlePacketIn(OfInput input) {
         U64 rawCookie = input.packetInCookie();
 
-        if (rawCookie == null || !Cookie.isMaskedAsLldp(rawCookie.getValue())) {
+        if (rawCookie == null || !isLldpRelated(rawCookie.getValue())) {
             return;
         }
 
         long cookie = rawCookie.getValue();
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 
-        LldpPacket lldpPacket;
-        try {
-            lldpPacket = deserialize(input.getPacketInPayload());
-            if (lldpPacket == null) {
-                logger.info("Got invalid lldp packet: {} on switch {}. Cookie {}",
-                        input.getPacketInPayload(), switchId, cookie);
-                return;
-            }
-        } catch (Exception exception) {
-            logger.info("Could not deserialize LLDP packet {} on switch {}. Cookie {}. Deserialization failure: {}, "
-                    + "exception: {}", input.getPacketInPayload(), switchId, cookie, exception.getMessage(), exception);
+        if (Cookie.isFlowLldp(cookie)) {
+            handleFlowLldp(input, switchId, cookie);
+        } else if (cookie == LLDP_TRANSIT_COOKIE || cookie == LLDP_INPUT_PRE_DROP_COOKIE) {
+            handleSwitchLldpNonIngress(input, switchId, cookie);
+        }
+    }
+
+    private void handleFlowLldp(OfInput input, SwitchId switchId, long cookie) {
+        LldpPacket lldpPacket = deserializeLldp(input.getPacketInPayload(), switchId, cookie);
+        if (lldpPacket == null) {
             return;
         }
 
-        InfoMessage message = createLldpMessage(input.getPacketInPayload().getSourceMACAddress().toString(),
+        InfoMessage message = createFlowLldpMessage(input.getPacketInPayload().getSourceMACAddress().toString(),
                 cookie, lldpPacket);
         producerService.sendMessageAndTrack(topic, switchId.toString(), message);
     }
 
-    private InfoMessage createLldpMessage(String macAddress, long cookie, LldpPacket lldpPacket) {
+    private void handleSwitchLldpNonIngress(OfInput input, SwitchId switchId, long cookie) {
+        Ethernet ethernet = input.getPacketInPayload();
+        LldpPacket lldpPacket = deserializeLldp(ethernet, switchId, cookie);
+        if (lldpPacket == null) {
+            return;
+        }
+
+        InfoMessage message = createSwitchLldpMessage(switchId, cookie, input, lldpPacket);
+        // sending of message to Connected Device Topology will be added in next patch
+    }
+
+    private InfoMessage createFlowLldpMessage(String macAddress, long cookie, LldpPacket lldpPacket) {
         LldpInfoData lldpInfoData = new LldpInfoData(
                 cookie,
                 macAddress,
+                lldpPacket.getParsedChassisId(),
+                lldpPacket.getParsedPortId(),
+                lldpPacket.getParsedTtl(),
+                lldpPacket.getParsedPortDescription(),
+                lldpPacket.getParsedSystemName(),
+                lldpPacket.getParsedSystemDescription(),
+                lldpPacket.getParsedSystemCapabilities(),
+                lldpPacket.getParsedManagementAddress());
+
+        return new InfoMessage(lldpInfoData, System.currentTimeMillis(), CorrelationContext.getId(), region);
+    }
+
+    private InfoMessage createSwitchLldpMessage(SwitchId switchId, long cookie, OfInput input, LldpPacket lldpPacket) {
+        SwitchLldpInfoData lldpInfoData = new SwitchLldpInfoData(
+                switchId,
+                input.getPort().getPortNumber(),
+                input.getPacketInPayload().getVlanID(),
+                cookie,
+                input.getPacketInPayload().getSourceMACAddress().toString(),
                 lldpPacket.getParsedChassisId(),
                 lldpPacket.getParsedPortId(),
                 lldpPacket.getParsedTtl(),
