@@ -77,4 +77,21 @@ getNetworkPath(source_switch,target_switch){
     return this.httpClient.post<any>(`${environment.apiEndPoint}/switch/under-maintenance/${switchid}`,data);
   }
 
+  deleteSwitch(switchId,data,successCb,errorCb): void{
+    var requestBody = JSON.stringify(data);
+    var xhr = new XMLHttpRequest();
+    xhr.withCredentials = false;
+    xhr.addEventListener("readystatechange", function () {
+      if (this.readyState == 4 && this.status == 200) {
+        successCb(JSON.parse(this.responseText));
+      }else if(this.readyState == 4 && this.status >= 300){
+        errorCb(JSON.parse(this.responseText));
+      }
+    });
+    
+    xhr.open("DELETE", `${environment.apiEndPoint}/switch/${switchId}`);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(requestBody);
+  }
+
 }

@@ -34,6 +34,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -49,6 +50,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2995")
     @Unroll
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a flow\

@@ -7,6 +7,7 @@
         <Socket name="LOGSTASH" host="logstash.pendev" port="5005">
             <JsonLayout compact="true" eventEol="true">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+                <KeyValuePair key="timeMillis" value="$${timeMillis:}"/>
             </JsonLayout>
         </Socket>
         <RollingFile name="ROLLINGFILE" fileName="/var/logs/northbound/app.log"

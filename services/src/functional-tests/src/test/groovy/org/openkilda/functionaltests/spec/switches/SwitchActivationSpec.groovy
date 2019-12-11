@@ -42,8 +42,8 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
 
         def createdMeterIds = northbound.getAllMeters(switchPair.src.dpId).meterEntries.findAll {
             it.meterId > MAX_SYSTEM_RULE_METER_ID
@@ -81,7 +81,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Excess rules/meters are synced from a new switch before connecting to the controller"() {

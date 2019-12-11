@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -97,10 +97,9 @@ public class RestClientManager {
      * @return the http response
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
-            final String contentType, final String basicAuth) { 
+            final String contentType, final String basicAuth) {
         HttpResponse httpResponse = null;
-
-        try {
+        try { 
             RequestContext requestContext = serverContext.getRequestContext();
 
             HttpClient client = HttpClients.createDefault();
@@ -152,6 +151,8 @@ public class RestClientManager {
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting DELETE related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH, 
+                        String.valueOf(System.currentTimeMillis()));
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
                         requestContext.getCorrelationId());
@@ -172,13 +173,13 @@ public class RestClientManager {
         }
         return httpResponse;
     }
-    
     /**
      * Invoke.
      *
      * @param apiRequestDto the api request dto
      * @return the http response
      */
+    
     public HttpResponse invoke(final ApiRequestDto apiRequestDto) {
         HttpResponse httpResponse = null;
 

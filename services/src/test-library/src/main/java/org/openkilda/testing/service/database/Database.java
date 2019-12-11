@@ -43,9 +43,13 @@ public interface Database {
 
     boolean updateIslCost(Isl isl, int value);
 
+    boolean updateIslLatency(Isl isl, long latency);
+
     boolean resetCosts();
 
     boolean updateIslTimeUnstable(Isl isl, Instant newTimeUnstable);
+
+    Instant getIslTimeUnstable(Isl isl);
 
     // Switches
 

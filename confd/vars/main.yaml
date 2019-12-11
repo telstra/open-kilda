@@ -101,11 +101,15 @@ kilda_flow_default_priority: 1000
 kilda_flow_create_hub_retries: 3
 kilda_flow_create_command_retries: 3
 
-kilda_diversity_isl_weight: 10000
-kilda_diversity_switch_weight: 1000
+kilda_diversity_isl_cost: 10000
+kilda_diversity_switch_cost: 1000
+kilda_diversity_isl_latency: 1000000000
+kilda_diversity_switch_latency: 300000000
 
-kilda_isl_cost_when_port_down: 10000
+kilda_isl_cost_when_unstable: 10000
 kilda_isl_cost_when_under_maintenance: 10000
+kilda_isl_latency_when_unstable: 10000000000
+kilda_isl_latency_when_under_maintenance: 10000000000
 kilda_isl_unstable_timeout_sec: 15
 
 kilda_port_up_down_throttling_delay_seconds_min: 1
@@ -119,7 +123,6 @@ kilda_pce_network_strategy: "SYMMETRIC_COST"
 
 kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2
-kilda_floodlight_request_timeout: 180
 kilda_message_blacklist_timeout: 180
 kilda_floodlight_regions: "1"
 

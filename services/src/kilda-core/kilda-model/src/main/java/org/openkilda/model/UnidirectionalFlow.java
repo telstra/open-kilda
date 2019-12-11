@@ -191,4 +191,8 @@ public class UnidirectionalFlow implements Serializable {
     public FlowEncapsulationType getEncapsulationType() {
         return getFlow().getEncapsulationType();
     }
+
+    public PathComputationStrategy getPathComputationStrategy() {
+        return getFlow().getPathComputationStrategy();
+    }
 }

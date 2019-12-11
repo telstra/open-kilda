@@ -22,7 +22,6 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 
 @Getter
 @AllArgsConstructor
@@ -39,26 +38,13 @@ public class Edge {
     private int cost;
     private long availableBandwidth;
     private long latency;
+    private boolean underMaintenance;
+    private boolean unstable;
 
-    @Setter
-    private int diversityWeight;
+    private int diversityGroupUseCounter;
 
-    /**
-     * Gets sum of weights, that filling is ruled by AvailableNetwork construction.
-     *
-     * @return the edge total static weight.
-     */
-    public long getStaticWeight() {
-        return diversityWeight;
-    }
-
-    /**
-     * Gets edge full weight. Sum of {@link WeightFunction} result and getStaticWeight().
-     *
-     * @return the edge full weight.
-     */
-    public long getFullWeight(WeightFunction weightFunction) {
-        return weightFunction.apply(this) + getStaticWeight();
+    public void increaseDiversityGroupUseCounter() {
+        diversityGroupUseCounter++;
     }
 
     /**
@@ -85,8 +71,10 @@ public class Edge {
         return Edge.builder()
                 .srcPort(isl.getSrcPort())
                 .destPort(isl.getDestPort())
-                .cost(isl.getEffectiveCost())
+                .cost(isl.getCost())
                 .latency(isl.getLatency())
+                .underMaintenance(isl.isUnderMaintenance())
+                .unstable(isl.isUnstable())
                 .availableBandwidth(isl.getAvailableBandwidth());
     }
 }

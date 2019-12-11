@@ -20,6 +20,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -49,6 +50,7 @@ public class FlowUpdateService {
     private final FlowUpdateHubCarrier carrier;
     private final PersistenceManager persistenceManager;
     private final FlowEventRepository flowEventRepository;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
     private final PathComputer pathComputer;
     private final FlowResourcesManager flowResourcesManager;
     private final int transactionRetriesLimit;
@@ -61,6 +63,7 @@ public class FlowUpdateService {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
         flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
+        kildaConfigurationRepository = persistenceManager.getRepositoryFactory().createKildaConfigurationRepository();
         this.pathComputer = pathComputer;
         this.flowResourcesManager = flowResourcesManager;
         this.transactionRetriesLimit = transactionRetriesLimit;
@@ -94,6 +97,12 @@ public class FlowUpdateService {
         fsms.put(key, fsm);
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        if (requestedFlow.getFlowEncapsulationType() == null) {
+            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+        }
+        if (requestedFlow.getPathComputationStrategy() == null) {
+            requestedFlow.setPathComputationStrategy(kildaConfigurationRepository.get().getPathComputationStrategy());
+        }
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .targetFlow(requestedFlow)
                 .build();

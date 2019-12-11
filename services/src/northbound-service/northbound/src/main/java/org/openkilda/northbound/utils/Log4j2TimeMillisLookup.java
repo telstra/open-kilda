@@ -13,19 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.service.kafka;
+package org.openkilda.northbound.utils;
 
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.lookup.StrLookup;
 
-class DefaultWorker extends AbstractWorker {
-    DefaultWorker(Producer<String, String> kafkaProducer) {
-        super(kafkaProducer);
+@Plugin(name = "timeMillis", category = StrLookup.CATEGORY)
+public class Log4j2TimeMillisLookup implements StrLookup {
+
+    public String lookup(String key) {
+        return String.valueOf(System.currentTimeMillis());
     }
 
-    @Override
-    SendStatus send(ProducerRecord<String, String> record, Callback callback) {
-        return new SendStatus(kafkaProducer.send(record, callback));
+    public String lookup(LogEvent event, String key) {
+        return String.valueOf(System.currentTimeMillis());
     }
 }

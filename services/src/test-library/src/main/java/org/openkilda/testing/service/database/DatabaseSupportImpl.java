@@ -155,6 +155,21 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    @Override
+    public boolean updateIslLatency(Isl islToUpdate, long latency) {
+        return transactionManager.doInTransaction(() -> {
+            Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
+                    islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
+                    islToUpdate.getDstSwitch().getDpId(), islToUpdate.getDstPort());
+            isl.ifPresent(link -> {
+                link.setLatency(latency);
+                islRepository.createOrUpdate(link);
+            });
+
+            return isl.isPresent();
+        });
+    }
+
     /**
      * Set ISL's max bandwidth to be equal to its speed (the default situation).
      *
@@ -351,6 +366,13 @@ public class DatabaseSupportImpl implements Database {
         islRepository.createOrUpdate(islToUpdate);
 
         return islToUpdate.getTimeUnstable().equals(newTimeUnstable);
+    }
+
+    @Override
+    public Instant getIslTimeUnstable(Isl isl) {
+        return islRepository.findByEndpoints(
+                isl.getSrcSwitch().getDpId(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId(), isl.getDstPort()).get().getTimeUnstable();
     }
 
     @Override

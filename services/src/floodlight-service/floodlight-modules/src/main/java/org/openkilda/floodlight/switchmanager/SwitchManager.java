@@ -1622,7 +1622,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         builder.setCookieMask(U64.NO_MASK);
         Match match = buildInPortMatch(port, ofFactory);
         builder.setMatch(match);
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         builder.setInstructions(ImmutableList.of(goToTable));
         builder.setPriority(INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE);
         removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
@@ -1634,7 +1634,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         Match match = buildInPortMatch(port, ofFactory);
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeIngressRulePassThrough(port),
                 INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, INPUT_TABLE_ID)

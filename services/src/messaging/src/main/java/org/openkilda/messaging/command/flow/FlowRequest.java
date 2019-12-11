@@ -62,6 +62,7 @@ public class FlowRequest extends CommandData {
     boolean pinned;
     String diverseFlowId;
     String encapsulationType;
+    String pathComputationStrategy;
     Type type;
 
     public enum Type {

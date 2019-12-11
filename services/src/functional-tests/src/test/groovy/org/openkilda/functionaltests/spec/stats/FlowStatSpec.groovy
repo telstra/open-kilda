@@ -46,20 +46,21 @@ class FlowStatSpec extends HealthCheckSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "Flow with protected path"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
-        def flowPathInfo = northbound.getFlowPath(flow.id)
+        flowHelperV2.addFlow(flow)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
 
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 5)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 5)
         def waitInterval = 10
         def mainPathStat
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def metric = metricPrefix + "flow.raw.bytes"
         //generate two points of stat just to be sure that stat is not collected for protected path
         2.times { count ->
@@ -72,7 +73,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         then: "Stats collects stat for main path cookies"
-        def flowInfo = database.getFlow(flow.id)
+        def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
@@ -88,10 +89,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         protectedReverseCookieStat.values().first() == 0
 
         when: "Swap main and protected path"
-        northbound.swapFlowPath(flow.id)
+        northbound.swapFlowPath(flow.flowId)
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            def newFlowPathInfo = northbound.getFlowPath(flow.id)
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
             assert pathHelper.convert(newFlowPathInfo) == currentProtectedPath
             assert pathHelper.convert(newFlowPathInfo.protectedPath) == currentPath
         }
@@ -118,7 +119,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps.size() == mainForwardCookieStat.size()
 
         and: "Cleanup: revert system to original state"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2762")
@@ -131,11 +132,11 @@ class FlowStatSpec extends HealthCheckSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "A flow with protected path"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
-        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
         assert flowPathInfo.protectedPath
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
@@ -143,20 +144,21 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stats is not empty for main path cookies"
         def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def waitInterval = 10
         def mainPathStat
         Wrappers.wait(statsRouterInterval, waitInterval) {
             mainPathStat = otsdb.query(startTime, metric, tags).dps
             assert mainPathStat.size() >= 1
         }
-        def flowInfo = database.getFlow(flow.id)
+        def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
@@ -176,21 +178,21 @@ class FlowStatSpec extends HealthCheckSpecification {
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
 
         and: "Init intentional reroute"
-        def rerouteResponse = northbound.rerouteFlow(flow.id)
+        def rerouteResponse = northbound.rerouteFlow(flow.flowId)
         rerouteResponse.rerouted
 
-        def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.id)
+        def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
         def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
         newCurrentPath != currentPath
         newCurrentPath != currentProtectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stats is not empty for new main path cookies"
-        def newFlowInfo = database.getFlow(flow.id)
+        def newFlowInfo = database.getFlow(flow.flowId)
         def newMainForwardCookie = newFlowInfo.forwardPath.cookie.value
         def newMainReverseCookie = newFlowInfo.reversePath.cookie.value
         Wrappers.wait(statsRouterInterval, waitInterval) {
@@ -207,7 +209,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         newProtectedReverseCookieStat.values().each { assert it == 0 }
 
         and: "Cleanup: revert system to original state"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
@@ -303,13 +305,13 @@ class FlowStatSpec extends HealthCheckSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "A flow with protected path"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
-        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
         switchPair.paths.findAll {
             it.first() != pathHelper.convert(flowPathInfo).first() &&
                     it.first() != pathHelper.convert(flowPathInfo.protectedPath).first()
@@ -331,7 +333,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlow(flow.id)) {
+            verifyAll(northbound.getFlow(flow.flowId)) {
                 status == "Degraded"
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
@@ -341,19 +343,20 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for a new main path cookies"
         def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def waitInterval = 10
         Wrappers.wait(statsRouterInterval, waitInterval) {
             def mainPathStat = otsdb.query(startTime, metric, tags).dps
             assert mainPathStat.size() >= 1
         }
-        def flowInfo = database.getFlow(flow.id)
+        def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
@@ -366,7 +369,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
         antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -382,28 +385,29 @@ class FlowStatSpec extends HealthCheckSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "An unmetered flow"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = 0
         flow.ignoreBandwidth = true
         flow.pinned = true
         flow.periodicPings = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         when: "Generate traffic on the given flow"
         Date startTime = new Date()
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
+                (int) flow.maximumBandwidth, 3)
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "System collects stats for egress/ingress cookies"
         def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
+        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def waitInterval = 10
         Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
             assert otsdb.query(startTime, metric, tags).dps.size() >= 1
         }
-        def flowInfo = database.getFlow(flow.id)
+        def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
         def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
@@ -413,6 +417,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 }

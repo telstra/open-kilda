@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.45.0 (10/12/2019)
+
+### Features:
+-  [#3013](https://github.com/telstra/open-kilda/pull/3013) Feature/switch delete [**gui**]
+-  [#2910](https://github.com/telstra/open-kilda/pull/2910) Rework PCE (Issue: [#2894](https://github.com/telstra/open-kilda/issues/2894)) [**docs**][**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3012](https://github.com/telstra/open-kilda/pull/3012) Change goToTable instruction for customer multi table flow (Issue: [#3010](https://github.com/telstra/open-kilda/issues/3010)) [**floodlight**]
+-  [#2966](https://github.com/telstra/open-kilda/pull/2966) Fix northbound logging after update log4j to 2.11.0 [**storm-topologies**]
+-  [#3020](https://github.com/telstra/open-kilda/pull/3020) Add DB migration for reworked PCE (Issue: [#2894](https://github.com/telstra/open-kilda/issues/2894)) 
+
+### Improvements:
+-  [#2985](https://github.com/telstra/open-kilda/pull/2985) Add cleanup verifier to check basic factors of a clean env [**tests**]
+-  [#2990](https://github.com/telstra/open-kilda/pull/2990) Refactor IslCostSpec to test 'unstable isl' behavior [**tests**]
+-  [#2958](https://github.com/telstra/open-kilda/pull/2958) add test for flows_reroute_using_default_encap_type feature toogle (Issue: [#2955](https://github.com/telstra/open-kilda/issues/2955)) [**tests**]
+-  [#2926](https://github.com/telstra/open-kilda/pull/2926) Fix performance degradation in FL Kafka Producer [**floodlight**]
+-  [#2992](https://github.com/telstra/open-kilda/pull/2992) Refactor multi-reroute spec to work with bigger amount of flows [**tests**]
+-  [#2994](https://github.com/telstra/open-kilda/pull/2994) Update all func tests to use v2 API wherever possible (Issue: [#2921](https://github.com/telstra/open-kilda/issues/2921)) [**tests**]
+-  [#2961](https://github.com/telstra/open-kilda/pull/2961) update See annotation for syncSwitch spec [**tests**]
+-  [#2999](https://github.com/telstra/open-kilda/pull/2999) Remove outdated/unused config option floodlight.request.timeout 
+-  [#2997](https://github.com/telstra/open-kilda/pull/2997) ignore fucn tests according to bugs [**tests**]
+-  [#3004](https://github.com/telstra/open-kilda/pull/3004) Revise flow priority reroute test with respect to h&s [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.44.1...v1.45.0).
+
+### Affected Components:
+flow-hs, fl, reroute, gui, flow, nbworker, nb
+
+### Upgrade notes:
+Consider using the following migration scripts to update db:
+
+- [1.18 migration-script](https://github.com/telstra/open-kilda/blob/v1.45.0/services/neo4j/migrations/1.18-path-computation-strategy/1-path-computation-strategy.xml)
+
+In case of issues these rollback scripts should be executed:
+
+- [1.18 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.45.0/services/neo4j/migrations/1.18-path-computation-strategy/rollback.cql)
+
+
+---
+
 ## v1.44.1 (09/12/2019)
 
 ### Bug Fixes:

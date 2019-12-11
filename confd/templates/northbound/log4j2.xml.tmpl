@@ -14,6 +14,7 @@ Do not change this file, all changes will be lost. Change corresponding template
                  filePattern="{{ getv "/kilda_logging_logfile_path" }}/northbound.log.json.%i.gz">
            <JsonLayout compact="true" eventEol="true" properties="true">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+                <KeyValuePair key="timeMillis" value="$${timeMillis:}"/>
            </JsonLayout>
            <Policies>
             <SizeBasedTriggeringPolicy size="100 MB"/> <!-- Or every 100 MB -->
@@ -25,6 +26,7 @@ Do not change this file, all changes will be lost. Change corresponding template
         <Socket name="LOGSTASH" host="{{ getv "/kilda_logging_logstash_host" }}" port="{{ getv "/kilda_logging_port_northbound" }}">
            <JsonLayout compact="true" eventEol="true" properties="true">
                 <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
+                <KeyValuePair key="timeMillis" value="$${timeMillis:}"/>
            </JsonLayout>
         </Socket>
 {{- end }}

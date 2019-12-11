@@ -70,7 +70,7 @@ class ChaosSpec extends HealthCheckSpecification {
         and: "Cleanup: remove flows and reset costs"
         flows.each { northboundV2.deleteFlow(it.flowId) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
-        Wrappers.wait(WAIT_OFFSET + flowsAmount * RULES_DELETION_TIME) {
+        Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
                 assert northbound.getAllMeters(it.dpId).meterEntries.findAll {
                     it.meterId > MAX_SYSTEM_RULE_METER_ID

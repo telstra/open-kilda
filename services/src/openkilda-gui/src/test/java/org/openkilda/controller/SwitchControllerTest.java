@@ -125,7 +125,7 @@ public class SwitchControllerTest {
     public void testGetSwitchById() throws Exception {
         SwitchInfo switchInfo = new SwitchInfo();
         when(serviceSwitch.getSwitch(TestSwitchMock.SWITCH_ID, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchInfo);
-        mockMvc.perform(get("/api/switch/{switchId}", TestFlowMock.FLOW_ID).contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID).contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk());
         assertTrue(true);
     }
@@ -139,6 +139,34 @@ public class SwitchControllerTest {
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testDeleteSwitch() {
+        SwitchInfo switcheInfo = new SwitchInfo();
+        try {
+            when(serviceSwitch.deleteSwitch(TestSwitchMock.SWITCH_ID, false)).thenReturn(switcheInfo);
+            mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID, true)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+            assertTrue(true);
+        } catch (Exception e) {
+            System.out.println("exception: " + e.getMessage());
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testDeleteSwitchIfSwitchIdNotPassed() {
+        try {
+            mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID_NULL, true)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+            assertTrue(true);
+        } catch (Exception e) {
+            System.out.println("exception: " + e.getMessage());
             assertTrue(false);
         }
     }

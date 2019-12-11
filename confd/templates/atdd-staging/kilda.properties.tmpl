@@ -45,16 +45,17 @@ antiflap.min={{ getv "/kilda_port_up_down_throttling_delay_seconds_min" }}
 antiflap.warmup={{ getv "/kilda_port_up_down_throttling_delay_seconds_warm_up" }}
 antiflap.cooldown={{ getv "/kilda_port_up_down_throttling_delay_seconds_cool_down" }}
 
-isl.cost.when.port.down={{ getv "/kilda_isl_cost_when_port_down" }}
-isl.cost.when.under.maintenance={{ getv "/kilda_isl_cost_when_under_maintenance" }}
+pce.isl.cost.when.unstable={{ getv "/kilda_isl_cost_when_unstable" }}
+pce.isl.cost.when.under.maintenance={{ getv "/kilda_isl_cost_when_under_maintenance" }}
+
 isl.unstable.timeout.sec={{ getv "/kilda_isl_unstable_timeout_sec" }}
 
 burst.coefficient={{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
 
 bfd.offset={{ getv "/kilda_bfd_port_offset" }}
 
-diversity.isl.weight={{ getv "/kilda_diversity_isl_weight" }}
-diversity.switch.weight={{ getv "/kilda_diversity_switch_weight" }}
+diversity.isl.cost={{ getv "/kilda_diversity_isl_cost" }}
+diversity.switch.cost={{ getv "/kilda_diversity_switch_cost" }}
 
 grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
 grpc.username={{ getv "/kilda_grpc_username" }}
@@ -65,6 +66,7 @@ grpc.remote.log.server.port={{ getv "/kilda_grpc_remote_log_server_port" }}
 use.hs=true
 use.multitable=false
 perf.debug=false
+cleanup.verifier=false
 
 # round trip latency
 latency.update.interval = {{ getv "/kilda_latency_update_interval" }}

@@ -14,6 +14,8 @@ import { FormGroup, FormBuilder } from '@angular/forms';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalconfirmationComponent } from 'src/app/common/components/modalconfirmation/modalconfirmation.component';
 import { IslmaintenancemodalComponent } from 'src/app/common/components/islmaintenancemodal/islmaintenancemodal.component';
+import { ModalComponent } from '../../../common/components/modal/modal.component';
+import { OtpComponent } from "../../../common/components/otp/otp.component"
 
 @Component({
   selector: 'app-switch-detail',
@@ -120,6 +122,61 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
     this.clipBoardItems.sourceSwitch = this.switchDetail.switch_id;
 
+  }
+
+  deleteSwitch(){
+
+    let is2FaEnabled  = localStorage.getItem('is2FaEnabled')
+    var self = this;
+    const modalReff = this.modalService.open(ModalconfirmationComponent);
+    modalReff.componentInstance.title = "Delete Switch";
+    modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';
+    
+    modalReff.result.then((response) => {
+      if(response && response == true){
+        if(is2FaEnabled == 'true'){
+          const modalRef = this.modalService.open(OtpComponent);
+          modalRef.componentInstance.emitService.subscribe(
+            otp => {
+              
+              if (otp) {
+                this.loaderService.show("Deleting Switch");
+                this.switchService.deleteSwitch(
+                  this.switchId,
+                  { code: otp },
+                  response => {
+                    modalRef.close();
+                    this.toastr.success("Switch deleted successfully", "Success!");
+                    this.loaderService.hide();
+                    localStorage.removeItem('switchDetailsJSON');
+                    localStorage.removeItem('SWITCHES_LIST');
+                    localStorage.removeItem('switchPortDetail');
+                    this.router.navigate(["/switches"]);
+                  },
+                  error => {
+                    this.loaderService.hide();
+                    this.toastr.error(
+                      error["error-auxiliary-message"],
+                      "Error!"
+                    );
+                    
+                  }
+                );
+              } else {
+                this.toastr.error("Unable to detect OTP", "Error!");
+              }
+            },
+            error => {
+            }
+          );
+        }else{
+          const modalRef2 = this.modalService.open(ModalComponent);
+          modalRef2.componentInstance.title = "Warning";
+          modalRef2.componentInstance.content = 'You are not authorised to delete the switch.';
+        }
+        
+      }
+    });
   }
 
   toggleTab(tab, enableLoader = false){

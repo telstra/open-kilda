@@ -32,19 +32,43 @@ public interface PathComputerConfig extends Serializable {
     @Default("700")
     int getDefaultIslCost();
 
-    @Key("diversity.isl.weight")
+    @Key("diversity.isl.cost")
     @Default("1000")
-    int getDiversityIslWeight();
+    int getDiversityIslCost();
 
-    @Key("diversity.switch.weight")
+    @Key("diversity.switch.cost")
     @Default("100")
-    int getDiversitySwitchWeight();
-
-    @Key("strategy")
-    @Default("COST")
-    String getStrategy();
+    int getDiversitySwitchCost();
 
     @Key("network.strategy")
     @Default("COST")
     String getNetworkStrategy();
+
+    @Key("isl.cost.when.unstable")
+    @Default("10000")
+    int getUnstableCostRaise();
+
+    @Key("isl.cost.when.under.maintenance")
+    @Default("10000")
+    int getUnderMaintenanceCostRaise();
+
+    @Key("default.isl.latency")
+    @Default("500000000")
+    long getDefaultIslLatency();
+
+    @Key("diversity.isl.latency")
+    @Default("1000000000")
+    long getDiversityIslLatency();
+
+    @Key("diversity.switch.latency")
+    @Default("300000000")
+    long getDiversitySwitchLatency();
+
+    @Key("isl.latency.when.unstable")
+    @Default("10000000000")
+    long getUnstableLatencyRaise();
+
+    @Key("isl.latency.when.under.maintenance")
+    @Default("10000000000")
+    long getUnderMaintenanceLatencyRaise();
 }

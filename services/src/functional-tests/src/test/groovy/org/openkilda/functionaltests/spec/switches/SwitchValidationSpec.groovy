@@ -63,7 +63,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
     def "Able to validate and sync a terminating switch with proper rules and meters"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
-        def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
 
         expect: "Validate switch for src and dst contains expected meters data in 'proper' section"
         def srcSwitchValidateInfo = northbound.validateSwitch(srcSwitch.dpId)
@@ -80,7 +80,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             it.meters.proper.each {
                 assert it.rate == flow.maximumBandwidth
-                assert it.flowId == flow.id
+                assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             }
         }
@@ -116,7 +116,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validate request returns only default rules information"
         Wrappers.wait(WAIT_OFFSET) {
@@ -140,9 +140,9 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
 
         when: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         then: "The intermediate switch does not contain any information about meter"
         def switchToValidate = flowPath[1..-2].find { !it.switchId.description.contains("OF_12") }
@@ -162,7 +162,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         pathHelper.getInvolvedSwitches(flowPath).each { sw ->
@@ -177,7 +177,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
     def "Able to validate switch with 'misconfigured' meters"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
-        def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
         def srcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
         def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
 
@@ -186,7 +186,7 @@ misconfigured"
         def newBandwidth = flow.maximumBandwidth + 100
         /** at this point meter is set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meter from the 'proper' section into the 'misconfigured'*/
-        database.updateFlowBandwidth(flow.id, newBandwidth)
+        database.updateFlowBandwidth(flow.flowId, newBandwidth)
         //at this point existing meters do not correspond with the flow
 
         and: "Validate src and dst switches"
@@ -207,7 +207,7 @@ misconfigured"
             assert it.meters.misconfigured.meterId.size() == 1
             it.meters.misconfigured.each {
                 assert it.rate == flow.maximumBandwidth
-                assert it.flowId == flow.id
+                assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             }
         }
@@ -238,14 +238,14 @@ misconfigured"
         }
 
         and: "Flow validation shows discrepancies"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def totalSwitchRules = 0
         def totalSwitchMeters = 0
         involvedSwitches.each { swId ->
             totalSwitchRules += northbound.getSwitchRules(swId).flowEntries.size()
             totalSwitchMeters += northbound.getAllMeters(swId).meterEntries.size()
         }
-        def flowValidateResponse = northbound.validateFlow(flow.id)
+        def flowValidateResponse = northbound.validateFlow(flow.flowId)
         flowValidateResponse.eachWithIndex { direction, i ->
             assert direction.discrepancies.size() == 2
 
@@ -272,7 +272,7 @@ misconfigured"
         }
 
         when: "Restore correct bandwidth via DB"
-        database.updateFlowBandwidth(flow.id, flow.maximumBandwidth)
+        database.updateFlowBandwidth(flow.flowId, flow.maximumBandwidth)
 
         then: "Misconfigured meters are moved into the 'proper' section"
         def srcSwitchValidateInfoRestored = northbound.validateSwitch(srcSwitch.dpId)
@@ -286,13 +286,13 @@ misconfigured"
         }
 
         and: "Flow validation shows no discrepancies"
-        northbound.validateFlow(flow.id).each { direction ->
+        northbound.validateFlow(flow.flowId).each { direction ->
             assert direction.discrepancies.empty
             assert direction.asExpected
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -308,7 +308,7 @@ misconfigured"
     def "Able to validate and sync a switch with missing ingress rule + meter"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
-        def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
         def srcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
         def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
 
@@ -328,7 +328,7 @@ misconfigured"
             Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
             it.meters.missing.each {
                 assert it.rate == flow.maximumBandwidth
-                assert it.flowId == flow.id
+                assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 verifyBurstSizeIsCorrect(srcSwitchBurstSize, it.burstSize)
             }
@@ -348,7 +348,7 @@ misconfigured"
             Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
             it.meters.proper.each {
                 assert it.rate == flow.maximumBandwidth
-                assert it.flowId == flow.id
+                assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 verifyBurstSizeIsCorrect(dstSwitchBurstSize, it.burstSize)
             }
@@ -369,7 +369,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -385,14 +385,14 @@ misconfigured"
     def "Able to validate and sync a switch with missing ingress rule (unmetered)"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 0
         flow.ignoreBandwidth = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Remove ingress rule on the srcSwitch"
-        def ingressCookie = database.getFlow(flow.id).forwardPath.cookie.value
-        def egressCookie = database.getFlow(flow.id).reversePath.cookie.value
+        def ingressCookie = database.getFlow(flow.flowId).forwardPath.cookie.value
+        def egressCookie = database.getFlow(flow.flowId).reversePath.cookie.value
         northbound.deleteSwitchRules(srcSwitch.dpId, ingressCookie)
 
         then: "Ingress rule is moved into the 'missing' section on the srcSwitch"
@@ -416,7 +416,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -441,11 +441,11 @@ misconfigured"
         }
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
 
         when: "Delete created rules on the transit"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def transitSw = involvedSwitches[1]
         northbound.deleteSwitchRules(transitSw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
@@ -470,7 +470,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
@@ -496,11 +496,11 @@ misconfigured"
         }
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
 
         when: "Delete created rules on the srcSwitch"
-        def egressCookie = database.getFlow(flow.id).reversePath.cookie.value
+        def egressCookie = database.getFlow(flow.flowId).reversePath.cookie.value
         northbound.deleteSwitchRules(switchPair.src.dpId, egressCookie)
 
         then: "Rule info is moved into the 'missing' section on the srcSwitch"
@@ -516,7 +516,7 @@ misconfigured"
         def dstSwitchValidateInfo = northbound.validateSwitch(switchPair.dst.dpId)
         dstSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
         switchHelper.verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def transitSwitches = involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }
 
         transitSwitches.each { switchId ->
@@ -537,7 +537,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
@@ -561,31 +561,31 @@ misconfigured"
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
         createdCookies.size() == 2
 
         when: "Create excess rules on switches"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1,
+                new InstallEgressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1,
                         OutputVlanType.REPLACE, false)).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
-                    new InstallTransitFlow(UUID.randomUUID(), flow.id, 1L, transitSw, 1, 2, 1,
+                    new InstallTransitFlow(UUID.randomUUID(), flow.flowId, 1L, transitSw, 1, 2, 1,
                             FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.src.dpId, 1, 2, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
                         switchPair.dst.dpId, false, false)).toJson()))
@@ -641,7 +641,7 @@ misconfigured"
         assert syncResultsMap[switchPair.src.dpId].meters.removed.meterId[0] == excessMeterId
 
         when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
@@ -666,13 +666,13 @@ misconfigured"
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create a flow with vxlan encapsulation"
-        def flow = flowHelper.randomFlow(switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Remove required rules and meters from switches"
-        def flowInfoFromDb = database.getFlow(flow.id)
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def transitSwitchIds = involvedSwitches[-1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -764,15 +764,15 @@ misconfigured"
         }
 
         and: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to validate and sync a missing 'protected path' egress rule"() {
         given: "A flow with protected path"
         def swPair = topologyHelper.switchPairs.first()
-        def flow = flowHelper.randomFlow(swPair)
+        def flow = flowHelperV2.randomFlow(swPair)
         flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
+        flowHelperV2.addFlow(flow)
         // protected path creates the 'egress' rule only on src and dst switches
         // and creates 2 rules(input/output) on transit switches
         // so, if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
@@ -780,7 +780,7 @@ misconfigured"
         def amountOfRules = { SwitchId switchId ->
             (switchId == swPair.src.dpId || switchId == swPair.dst.dpId) ? 3 : 4
         }
-        def flowInfo = northbound.getFlowPath(flow.id)
+        def flowInfo = northbound.getFlowPath(flow.flowId)
         assert flowInfo.protectedPath
 
         when: "Validate rules on the switches"
@@ -808,7 +808,7 @@ misconfigured"
         }
 
         when: "Delete rule of protected path on the srcSwitch (egress)"
-        def protectedPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def protectedPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
         def srcSwitchRules = northbound.getSwitchRules(commonNodeIds[0]).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }
@@ -853,7 +853,7 @@ misconfigured"
         }
 
         and: "Cleanup: delete the flow"
-        flowHelper.deleteFlow(flow.id)
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2779")

@@ -42,6 +42,10 @@ public abstract class RequestedFlowMapper {
             expression = "java(java.util.Optional.ofNullable(request.getEncapsulationType())"
                     + ".map(v -> org.openkilda.model.FlowEncapsulationType.valueOf(v.toUpperCase()))"
                     + ".orElse(null))")
+    @Mapping(target = "pathComputationStrategy",
+            expression = "java(java.util.Optional.ofNullable(request.getPathComputationStrategy())"
+                    + ".map(pcs -> org.openkilda.model.PathComputationStrategy.valueOf(pcs.toUpperCase()))"
+                    + ".orElse(null))")
     public abstract RequestedFlow toRequestedFlow(FlowRequest request);
 
     /**

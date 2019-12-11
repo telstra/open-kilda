@@ -31,9 +31,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class KafkaProducerService implements IKafkaProducerService {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaProducerService.class);
@@ -42,40 +39,11 @@ public class KafkaProducerService implements IKafkaProducerService {
 
     private int failedSendMessageCounter;
     private Producer<String, String> producer;
-    private final Map<String, AbstractWorker> workersMap = new HashMap<>();
     private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
     @Override
     public void setup(FloodlightModuleContext moduleContext) {
         producer = moduleContext.getServiceImpl(KafkaUtilityService.class).makeProducer();
-    }
-
-    /**
-     * Enable guaranteed message order for topic.
-     */
-    public synchronized void enableGuaranteedOrder(String topic) {
-        logger.debug("Enable predictable order for topic {}", topic);
-        AbstractWorker worker = getWorker(topic);
-        workersMap.put(topic, new OrderAwareWorker(worker));
-    }
-
-    /**
-     * Disable guaranteed message order for topic.
-     */
-    public synchronized void disableGuaranteedOrder(String topic) {
-        logger.debug(
-                "Disable predictable order for topic {} (due to effect of transition period some future messages will "
-                + "be forced to have predictable order)", topic);
-        getWorker(topic).deactivate(1000);
-    }
-
-    /**
-     * Disable guaranteed message order for topic, with defined transition period.
-     */
-    public synchronized void disableGuaranteedOrder(String topic, long transitionPeriod) {
-        logger.debug(
-                "Disable predictable order for topic {} (transition period {} ms)", topic, transitionPeriod);
-        getWorker(topic).deactivate(transitionPeriod);
     }
 
     public void sendMessageAndTrack(String topic, Message message) {
@@ -104,8 +72,7 @@ public class KafkaProducerService implements IKafkaProducerService {
 
     protected SendStatus produce(ProducerRecord<String, String> record, Callback callback) {
         logger.debug("Send kafka message: {} <== key:{} value:{}", record.topic(), record.key(), record.value());
-        return getWorker(record.topic())
-                .send(record, callback);
+        return new SendStatus(producer.send(record, callback));
     }
 
     private ProducerRecord<String, String> encode(String topic, Message payload) {
@@ -129,20 +96,9 @@ public class KafkaProducerService implements IKafkaProducerService {
 
     /**
      * get failed sent messages count since last run.
-     * @return
      */
     public int getFailedSendMessageCounter() {
         return failedSendMessageCounter;
-    }
-
-    private synchronized AbstractWorker getWorker(String topic) {
-        AbstractWorker worker = workersMap.computeIfAbsent(
-                topic, t -> new DefaultWorker(producer));
-        if (!worker.isActive()) {
-            worker = new DefaultWorker(producer);
-            workersMap.put(topic, worker);
-        }
-        return worker;
     }
 
     private static class SendStatusCallback implements Callback {

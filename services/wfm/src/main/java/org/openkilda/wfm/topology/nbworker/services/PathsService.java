@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.KildaConfiguration;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
@@ -68,8 +70,11 @@ public class PathsService {
             throw new SwitchNotFoundException(dstSwitchId);
         }
         // TODO(tdurakov): NB request should accept encapsulation type as well, right now will use env default
-        FlowEncapsulationType flowEncapsulationType = kildaConfigurationRepository.get().getFlowEncapsulationType();
-        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType);
+        KildaConfiguration kildaConfiguration = kildaConfigurationRepository.get();
+        FlowEncapsulationType flowEncapsulationType = kildaConfiguration.getFlowEncapsulationType();
+        PathComputationStrategy pathComputationStrategy = kildaConfiguration.getPathComputationStrategy();
+        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType,
+                pathComputationStrategy);
 
         return flowPaths.stream().map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())

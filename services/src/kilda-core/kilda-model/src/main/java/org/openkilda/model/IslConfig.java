@@ -24,6 +24,4 @@ import java.time.Duration;
 @Builder(toBuilder = true)
 public class IslConfig {
     private Duration unstableIslTimeout;
-    private int unstableCostRaise;
-    private int underMaintenanceCostRaise;
 }
