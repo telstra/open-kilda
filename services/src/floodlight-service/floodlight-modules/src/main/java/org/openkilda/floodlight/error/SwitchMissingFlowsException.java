@@ -16,12 +16,15 @@
 package org.openkilda.floodlight.error;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.model.Cookie;
 
 import lombok.Getter;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 public class SwitchMissingFlowsException extends SwitchOperationException {
@@ -40,8 +43,15 @@ public class SwitchMissingFlowsException extends SwitchOperationException {
 
     private static String makeMessage(
             DatapathId dpId, FlowSegmentMetadata metadata, List<OFFlowMod> expected, List<OFFlowMod> missing) {
+        List<String> missingCookies = missing.stream()
+                .map(OFFlowMod::getCookie)
+                .map(U64::getValue)
+                .map(Cookie::toString)
+                .collect(Collectors.toList());
+
         return String.format(
-                "Detect %d missing OF flows on %s related to flow %s cookie %s (total verified %s OF messages)",
-                missing.size(), dpId, metadata.getFlowId(), metadata.getCookie(), expected.size());
+                "Detect %d missing OF flows with cookies %s on %s related to flow %s with cookie %s "
+                        + "(total verified %s OF messages)",
+                missing.size(), missingCookies, dpId, metadata.getFlowId(), metadata.getCookie(), expected.size());
     }
 }
