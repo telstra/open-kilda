@@ -24,6 +24,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FactoryBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -76,6 +77,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                     processed.add(oppositePath.getPathId());
                 }
 
+
                 if (oppositePath != null) {
                     stateMachine.getFlowResources().add(buildResources(flow, path, oppositePath));
 
@@ -83,8 +85,12 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                         commands.addAll(commandBuilder.buildAllExceptIngress(
                                 stateMachine.getCommandContext(), flow, path, oppositePath));
                     } else {
+                        FactoryBuildContext factoryBuildContext = FactoryBuildContext.builder()
+                                .cleanUpIngress(isCleanUpIngress(flow, path))
+                                .cleanUpOppositeIngress(isCleanUpIngress(flow, oppositePath))
+                                .build();
                         commands.addAll(commandBuilder.buildAll(
-                                stateMachine.getCommandContext(), flow, path, oppositePath));
+                                stateMachine.getCommandContext(), flow, path, oppositePath, factoryBuildContext));
                     }
                 } else {
                     log.warn("No opposite path found for {}, trying to delete as unpaired path", pathId);
@@ -95,8 +101,11 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                         commands.addAll(commandBuilder.buildAllExceptIngress(
                                 stateMachine.getCommandContext(), flow, path, null));
                     } else {
+                        FactoryBuildContext factoryBuildContext = FactoryBuildContext.builder()
+                                .cleanUpIngress(isCleanUpIngress(flow, path))
+                                .build();
                         commands.addAll(commandBuilder.buildAll(
-                                stateMachine.getCommandContext(), flow, path, null));
+                                stateMachine.getCommandContext(), flow, path, null, factoryBuildContext));
                     }
                 }
             }
@@ -142,5 +151,11 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                         .encapsulationResources(encapsulationResources)
                         .build())
                 .build();
+    }
+
+    private boolean isCleanUpIngress(Flow flow, FlowPath path) {
+        boolean isForward = flow.isForward(path);
+        return isIngressCleanUpNeeded(flow, path.getSrcSwitch().getSwitchId(),
+                isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 }

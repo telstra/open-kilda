@@ -37,10 +37,10 @@ public abstract class IngressFlowSegmentCommand extends IngressFlowSegmentBase {
     IngressFlowSegmentCommand(
             MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            @NonNull FlowTransitEncapsulation encapsulation) {
+            @NonNull FlowTransitEncapsulation encapsulation, boolean cleanUpIngress) {
         super(
                 messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressSwitchId);
+                egressSwitchId, cleanUpIngress);
         this.islPort = islPort;
         this.encapsulation = encapsulation;
     }

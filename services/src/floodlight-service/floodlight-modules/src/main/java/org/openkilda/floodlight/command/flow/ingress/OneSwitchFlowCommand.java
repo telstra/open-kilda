@@ -31,10 +31,11 @@ public abstract class OneSwitchFlowCommand extends IngressFlowSegmentBase {
 
     OneSwitchFlowCommand(
             MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
-            FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint) {
+            FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint,
+            boolean cleanUpIngress) {
         super(
                 messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint.getSwitchId());
+                egressEndpoint.getSwitchId(), cleanUpIngress);
         this.egressEndpoint = egressEndpoint;
     }
 

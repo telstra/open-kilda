@@ -47,8 +47,10 @@ public class IngressFlowSegmentInstallRequest extends IngressFlowSegmentRequest 
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
-            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
-        super(messageContext, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation);
+            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
+            @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+        super(messageContext, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
+                cleanUpIngress);
     }
 
     public IngressFlowSegmentInstallRequest(IngressFlowSegmentRequest other, UUID commandId) {

@@ -43,8 +43,9 @@ public class OneSwitchFlowInstallRequest extends OneSwitchFlowRequest {
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
-            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint) {
-        super(messageContext, commandId, metadata, endpoint, meterConfig, egressEndpoint);
+            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
+            @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+        super(messageContext, commandId, metadata, endpoint, meterConfig, egressEndpoint, cleanUpIngress);
     }
 
     public OneSwitchFlowInstallRequest(OneSwitchFlowRequest other, UUID commandId) {

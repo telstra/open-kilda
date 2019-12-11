@@ -42,13 +42,17 @@ abstract class IngressFlowSegmentBase extends FlowSegmentRequest {
     @JsonProperty("egress_switch")
     protected final SwitchId egressSwitchId;
 
+    @JsonProperty("clean_up_ingress")
+    protected final boolean cleanUpIngress;
+
     IngressFlowSegmentBase(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, @NonNull FlowEndpoint endpoint,
-            MeterConfig meterConfig, @NonNull SwitchId egressSwitchId) {
+            MeterConfig meterConfig, @NonNull SwitchId egressSwitchId, boolean cleanUpIngress) {
         super(context, endpoint.getSwitchId(), commandId, metadata);
 
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
+        this.cleanUpIngress = cleanUpIngress;
     }
 }

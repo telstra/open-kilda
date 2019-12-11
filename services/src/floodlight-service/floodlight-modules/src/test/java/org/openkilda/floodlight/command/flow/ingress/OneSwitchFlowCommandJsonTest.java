@@ -48,7 +48,8 @@ abstract class OneSwitchFlowCommandJsonTest
                 new FlowSegmentMetadata("single-switch-flow-install-request", new Cookie(2), false),
                 new FlowEndpoint(swId, 3, 4),
                 new MeterConfig(new MeterId(6), 7000),
-                new FlowEndpoint(swId, 8, 9));
+                new FlowEndpoint(swId, 8, 9),
+                false);
         return makeRequest(factory);
     }
 

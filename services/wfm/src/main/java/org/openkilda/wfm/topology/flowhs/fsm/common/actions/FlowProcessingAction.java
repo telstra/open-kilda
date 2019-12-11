@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -33,6 +34,8 @@ import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
+
+import java.util.Collection;
 
 @Slf4j
 public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
@@ -86,5 +89,15 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         return flowPathRepository.findById(pathId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow path %s not found", pathId)));
+    }
+
+    protected boolean isIngressCleanUpNeeded(Flow flow, SwitchId ingressSwitchId, int ingressPort) {
+        Collection<Flow> flows = flowRepository.findByEndpointWithMultiTableSupport(ingressSwitchId, ingressPort);
+
+        if (flow.isOneSwitchFlow() && flow.getSrcPort() == flow.getDestPort()) {
+            return flows.size() == 2 && flows.stream().allMatch(f -> f.getFlowId().equals(flow.getFlowId()));
+        }
+
+        return flows.size() == 1 && flows.iterator().next().getFlowId().equals(flow.getFlowId());
     }
 }

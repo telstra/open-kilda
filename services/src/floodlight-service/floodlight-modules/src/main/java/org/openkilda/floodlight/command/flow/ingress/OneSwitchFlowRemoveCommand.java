@@ -23,10 +23,13 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MeterId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -39,8 +42,9 @@ public class OneSwitchFlowRemoveCommand extends OneSwitchFlowCommand {
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
-            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint);
+            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
+            @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, cleanUpIngress);
     }
 
     @Override
@@ -55,6 +59,15 @@ public class OneSwitchFlowRemoveCommand extends OneSwitchFlowCommand {
     @Override
     protected CompletableFuture<FlowSegmentReport> makeExecutePlan(SpeakerCommandProcessor commandProcessor) {
         return makeRemovePlan(commandProcessor);
+    }
+
+    @Override
+    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
+        if (cleanUpIngress) {
+            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+        }
+        return ofMessages;
     }
 
     @Override

@@ -41,8 +41,10 @@ public class IngressFlowSegmentVerifyCommand extends IngressFlowSegmentInstallCo
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
-            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation);
+            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
+            @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
+                cleanUpIngress);
     }
 
     @Override

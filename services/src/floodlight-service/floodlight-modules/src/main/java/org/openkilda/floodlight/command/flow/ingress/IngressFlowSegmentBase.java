@@ -61,6 +61,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     protected final FlowEndpoint endpoint;
     protected final MeterConfig meterConfig;
     protected final SwitchId egressSwitchId;
+    protected final boolean cleanUpIngress;
 
     // operation data
     @Getter(AccessLevel.PROTECTED)
@@ -69,11 +70,13 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
     IngressFlowSegmentBase(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
-            @NonNull FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull SwitchId egressSwitchId) {
+            @NonNull FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
+            boolean cleanUpIngress) {
         super(messageContext, switchId, commandId, metadata);
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
+        this.cleanUpIngress = cleanUpIngress;
     }
 
     @Override

@@ -38,9 +38,9 @@ public class IngressFlowSegmentRequestFactory extends FlowSegmentRequestFactory 
     public IngressFlowSegmentRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            FlowTransitEncapsulation encapsulation) {
-        this(new RequestBlank(
-                messageContext, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation));
+            FlowTransitEncapsulation encapsulation, boolean cleanUpIngress) {
+        this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
+                cleanUpIngress));
     }
 
     private IngressFlowSegmentRequestFactory(IngressFlowSegmentRequest requestBlank) {
@@ -67,8 +67,9 @@ public class IngressFlowSegmentRequestFactory extends FlowSegmentRequestFactory 
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata,
                 FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-                FlowTransitEncapsulation encapsulation) {
-            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation);
+                FlowTransitEncapsulation encapsulation, boolean cleanUpIngress) {
+            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
+                    cleanUpIngress);
         }
     }
 }

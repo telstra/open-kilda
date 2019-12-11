@@ -77,8 +77,8 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
     protected OneSwitchFlowInstallCommand makeCommand(
             FlowEndpoint endpoint, FlowEndpoint egressEndpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
         UUID commandId = UUID.randomUUID();
-        return new CommandStub(
-                new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig, egressEndpoint);
+        return new CommandStub(new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig,
+                egressEndpoint, false);
     }
 
     static class CommandStub extends OneSwitchFlowInstallCommand implements IFlowModFactoryOverride {
@@ -87,8 +87,8 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
 
         public CommandStub(
                 MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
-                MeterConfig meterConfig, FlowEndpoint egressEndpoint) {
-            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint);
+                MeterConfig meterConfig, FlowEndpoint egressEndpoint, boolean cleanUpIngress) {
+            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, cleanUpIngress);
         }
 
         @Override

@@ -37,8 +37,9 @@ public class OneSwitchFlowVerifyCommand extends OneSwitchFlowInstallCommand {
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
-            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint);
+            @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
+            @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, cleanUpIngress);
     }
 
     @Override

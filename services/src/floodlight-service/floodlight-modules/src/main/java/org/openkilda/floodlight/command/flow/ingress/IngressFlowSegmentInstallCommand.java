@@ -51,8 +51,10 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
-            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation);
+            @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
+            @JsonProperty("clean_up_ingress") boolean cleanUpIngress) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
+                cleanUpIngress);
     }
 
     @Override
@@ -84,7 +86,7 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
     protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
         if (metadata.isMultiTable()) {
-            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchInstallMessage());
+            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
         }
         return ofMessages;
     }
