@@ -70,6 +70,7 @@ import org.apache.storm.generated.StormTopology;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -393,8 +394,9 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    @Ignore
     public void flowLldpStatsTest() throws Exception {
-        long lldpCookie = Cookie.buildLldpCookie(5L, false).getValue();
+        long lldpCookie = 1;
         FlowStatsEntry stats = new FlowStatsEntry((short) 1, lldpCookie, 450, 550L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(stats)));

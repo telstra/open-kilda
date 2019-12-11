@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
@@ -26,9 +27,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public class Neo4jTransitVlanRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final int VLAN = 1;
 
     static TransitVlanRepository transitVlanRepository;
 
@@ -51,6 +54,19 @@ public class Neo4jTransitVlanRepositoryTest extends Neo4jBasedTest {
 
         assertEquals(vlan.getVlan(), foundVlan.getVlan());
         assertEquals(TEST_FLOW_ID, foundVlan.getFlowId());
+    }
+
+    @Test
+    public void shouldFindTransitVlan() {
+        TransitVlan vlan = new TransitVlan(TEST_FLOW_ID, new PathId(TEST_FLOW_ID + "_path"), VLAN);
+        transitVlanRepository.createOrUpdate(vlan);
+
+        Optional<TransitVlan> foundVlan = transitVlanRepository.findByVlan(VLAN);
+
+        assertTrue(foundVlan.isPresent());
+        assertEquals(vlan.getVlan(), foundVlan.get().getVlan());
+        assertEquals(vlan.getFlowId(), foundVlan.get().getFlowId());
+        assertEquals(vlan.getPathId(), foundVlan.get().getPathId());
     }
 
     @Test

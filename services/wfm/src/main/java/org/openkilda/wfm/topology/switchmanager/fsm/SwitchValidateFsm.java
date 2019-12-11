@@ -68,7 +68,9 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -87,6 +89,7 @@ public class SwitchValidateFsm
     private SwitchProperties switchProperties;
     private List<Integer> islPorts;
     private List<Integer> flowPorts;
+    private Set<Integer> flowLldpPorts;
     private boolean hasMultiTableFlows;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
@@ -104,22 +107,36 @@ public class SwitchValidateFsm
         this.processMeters = request.isProcessMeters();
         this.switchId = request.getSwitchId();
         this.flowPorts = new ArrayList<>();
+        this.flowLldpPorts = new HashSet<>();
+
+        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
+        boolean switchLldp = switchProperties != null && switchProperties.isSwitchLldp();
+
         FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
         Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
         for (FlowPath flowPath : flowPaths) {
-            if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
-                flowPorts.add(flowPath.getFlow().getSrcPort());
-            } else if (!flowPath.isForward() && flowPath.getFlow().isDestWithMultiTable()) {
-                flowPorts.add(flowPath.getFlow().getDestPort());
+            if (flowPath.isForward()) {
+                if (flowPath.getFlow().isSrcWithMultiTable()) {
+                    flowPorts.add(flowPath.getFlow().getSrcPort());
+                }
+                if (flowPath.getFlow().getDetectConnectedDevices().isSrcLldp() || switchLldp) {
+                    flowLldpPorts.add(flowPath.getFlow().getSrcPort());
+                }
+            } else  {
+                if (flowPath.getFlow().isDestWithMultiTable()) {
+                    flowPorts.add(flowPath.getFlow().getDestPort());
+                }
+                if (flowPath.getFlow().getDetectConnectedDevices().isDstLldp() || switchLldp) {
+                    flowLldpPorts.add(flowPath.getFlow().getDestPort());
+                }
             }
         }
 
         hasMultiTableFlows = !flowPathRepository.findBySegmentSwitchWithMultiTable(switchId, true).isEmpty()
                              || !flowRepository.findByEndpointSwitchWithMultiTableSupport(switchId).isEmpty();
 
-        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
         IslRepository islRepository = repositoryFactory.createIslRepository();
         this.islPorts = islRepository.findBySrcSwitch(switchId).stream()
                 .map(Isl::getSrcPort)
@@ -195,9 +212,10 @@ public class SwitchValidateFsm
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
+        boolean switchLldp = switchProperties.isSwitchLldp();
 
-        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, islPorts,
-                flowPorts));
+        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp, islPorts,
+                flowPorts, flowLldpPorts));
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));

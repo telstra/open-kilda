@@ -15,15 +15,19 @@
 
 package org.openkilda.northbound.controller.v2;
 
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
@@ -38,6 +42,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
@@ -106,5 +111,33 @@ public class SwitchControllerV2 extends BaseController {
                                                                           @PathVariable("port") int port,
                                                                           @RequestBody PortPropertiesDto dto) {
         return switchService.updatePortProperties(switchId, port, dto);
+    }
+
+    /**
+     * Gets switch connected devices.
+     */
+    @ApiOperation(value = "Gets switch connected devices", response = SwitchConnectedDevicesResponse.class)
+    @GetMapping(path = "/{switch_id}/devices")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchConnectedDevicesResponse> getConnectedDevices(
+            @PathVariable("switch_id") SwitchId switchId,
+            @ApiParam(value = "Device will be included in response if it's `time_last_seen` >= `since`. "
+                    + "Example of `since` value: `2019-09-30T16:14:12.538Z`",
+                    required = false)
+            @RequestParam(value = "since", required = false) Optional<String> since) {
+        Instant sinceInstant;
+
+        if (!since.isPresent() || StringUtils.isEmpty(since.get())) {
+            sinceInstant = Instant.MIN;
+        } else {
+            try {
+                sinceInstant = Instant.parse(since.get());
+            } catch (DateTimeParseException e) {
+                String message = String.format("Invalid 'since' value '%s'. Correct example of 'since' value is "
+                        + "'2019-09-30T16:14:12.538Z'", since.get());
+                throw new MessageException(ErrorType.DATA_INVALID, message, "Invalid 'since' value");
+            }
+        }
+        return switchService.getSwitchConnectedDevices(switchId, sinceInstant);
     }
 }

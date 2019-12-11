@@ -36,10 +36,10 @@ import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
-import org.openkilda.model.ConnectedDevice;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
@@ -203,7 +203,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     private List<FlowConnectedDevicesResponse> processFlowConnectedDeviceRequest(FlowConnectedDeviceRequest request) {
 
-        Collection<ConnectedDevice> devices;
+        Collection<SwitchConnectedDevice> devices;
         try {
             devices = flowOperationsService.getFlowConnectedDevice(request.getFlowId()).stream()
                     .filter(device -> request.getSince().isBefore(device.getTimeLastSeen())
@@ -217,9 +217,12 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         FlowConnectedDevicesResponse response = new FlowConnectedDevicesResponse(
                 new TypedConnectedDevicesDto(new ArrayList<>()), new TypedConnectedDevicesDto(new ArrayList<>()));
 
-        for (ConnectedDevice device : devices) {
-            ConnectedDeviceDto deviceDto = ConnectedDeviceMapper.INSTANCE.map(device);
-            if (device.isSource()) {
+        for (SwitchConnectedDevice device : devices) {
+            ConnectedDeviceDto deviceDto = ConnectedDeviceMapper.INSTANCE.mapSwitchDeviceToFlowDeviceDto(device);
+            if (device.getSource() == null) {
+                log.warn("Switch Connected Device with unique index {} has Flow ID {} but has no 'source' property.",
+                        device.getUniqueIndex(), device.getFlowId());
+            } else if (device.getSource()) {
                 if (device.getType() == LLDP) {
                     response.getSource().getLldp().add(deviceDto);
                 }

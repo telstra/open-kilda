@@ -27,10 +27,12 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
@@ -117,14 +119,22 @@ public class FlowValidatorTest {
                 .features(dstLldpSupport ? newHashSet(MULTI_TABLE) : Sets.newHashSet())
                 .build();
 
+        SwitchProperties srcProperties = SwitchProperties.builder().multiTable(srcLldpSupport).build();
+        SwitchProperties dstProperties = SwitchProperties.builder().multiTable(dstLldpSupport).build();
+
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         when(switchRepository.findById(eq(FlowValidatorTest.SRC_SWITCH_ID))).thenReturn(Optional.of(srcSwitch));
         when(switchRepository.findById(eq(FlowValidatorTest.DST_SWITCH_ID))).thenReturn(Optional.of(dstSwitch));
         when(switchRepository.findById(eq(FlowValidatorTest.FAIL_SRC_SWITCH_ID))).thenReturn(Optional.empty());
         when(switchRepository.findById(eq(FlowValidatorTest.FAIL_DST_SWITCH_ID))).thenReturn(Optional.empty());
 
+        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
+        when(switchPropertiesRepository.findBySwitchId(eq(SRC_SWITCH_ID))).thenReturn(Optional.of(srcProperties));
+        when(switchPropertiesRepository.findBySwitchId(eq(DST_SWITCH_ID))).thenReturn(Optional.of(dstProperties));
+
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
         target = new FlowValidator(repositoryFactory);
     }
 
@@ -152,7 +162,7 @@ public class FlowValidatorTest {
         UnidirectionalFlow flow = new TestFlowBuilder()
                 .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                 .destSwitch(Switch.builder().switchId(dstSwitchId).build())
-                .detectConnectedDevices(new DetectConnectedDevices(true, false, true, false))
+                .detectConnectedDevices(new DetectConnectedDevices(true, false, true, false, false, false))
                 .buildUnidirectionalFlow();
 
         target.checkSwitchesSupportLldpIfNeeded(flow.getFlow());
@@ -201,7 +211,8 @@ public class FlowValidatorTest {
         UnidirectionalFlow flow = new TestFlowBuilder()
                 .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
-                .detectConnectedDevices(new DetectConnectedDevices(srcLldpRequested, false, dstLldpRequested, false))
+                .detectConnectedDevices(new DetectConnectedDevices(
+                        srcLldpRequested, false, dstLldpRequested, false, false, false))
                 .buildUnidirectionalFlow();
 
         target.checkSwitchesSupportLldpIfNeeded(flow.getFlow());

@@ -23,6 +23,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Set;
 
 @Value
 @Builder
@@ -34,19 +35,29 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("multi_table")
     private boolean multiTable;
 
+    @JsonProperty("switch_lldp")
+    private boolean switchLldp;
+
     @JsonProperty("isl_ports")
     private  List<Integer> islPorts;
 
     @JsonProperty("flow_ports")
     private List<Integer> flowPorts;
 
+    @JsonProperty("flow_lldp_ports")
+    private Set<Integer> flowLldpPorts;
+
     public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId,
                                           @JsonProperty("multi_table") boolean multiTable,
+                                          @JsonProperty("switch_lldp") boolean switchLldp,
                                           @JsonProperty("isl_ports") List<Integer> islPorts,
-                                          @JsonProperty("flow_ports") List<Integer> flowPorts) {
+                                          @JsonProperty("flow_ports") List<Integer> flowPorts,
+                                          @JsonProperty("flow_lldp_ports") Set<Integer> flowLldpPorts) {
         this.switchId = switchId;
         this.multiTable = multiTable;
+        this.switchLldp = switchLldp;
         this.islPorts = islPorts;
         this.flowPorts = flowPorts;
+        this.flowLldpPorts = flowLldpPorts;
     }
 }

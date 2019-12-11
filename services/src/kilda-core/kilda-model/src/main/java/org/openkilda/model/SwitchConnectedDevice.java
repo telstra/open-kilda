@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import static java.lang.String.format;
+import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -25,11 +26,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.ToString;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
@@ -41,10 +44,11 @@ import java.time.Instant;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
-@NodeEntity(label = "connected_device")
-public class ConnectedDevice implements Serializable {
-    private static final long serialVersionUID = 8997264875267255245L;
+@EqualsAndHashCode(exclude = {"entityId", "switchObj"})
+@NodeEntity(label = "switch_connected_device")
+@ToString(exclude = {"switchObj"})
+public class SwitchConnectedDevice implements Serializable {
+    private static final long serialVersionUID = 4191175994460517407L;
 
     // Hidden as needed for OGM only.
     @Id
@@ -54,32 +58,41 @@ public class ConnectedDevice implements Serializable {
     private Long entityId;
 
     @NonNull
+    @Relationship(type = "has", direction = INCOMING)
+    private Switch switchObj;
+
     @Index
+    @Property("port_number")
+    private int portNumber;
+
+    @Index
+    @Property("vlan")
+    private int vlan;
+
     @Property("flow_id")
     private String flowId;
 
-    @Index
     @Property("source")
-    private boolean source;
+    private Boolean source;
 
-    @NonNull
     @Index
+    @NonNull
     @Property("mac_address")
     private String macAddress;
 
-    @NonNull
     @Index
+    @NonNull
     @Property(name = "type")
     @Convert(graphPropertyType = String.class)
     private ConnectedDeviceType type;
 
-    @NonNull
     @Index
+    @NonNull
     @Property("chassis_id")
     private String chassisId;
 
-    @NonNull
     @Index
+    @NonNull
     @Property("port_id")
     private String portId;
 
@@ -117,11 +130,14 @@ public class ConnectedDevice implements Serializable {
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
-    public ConnectedDevice(@NonNull String flowId, boolean source, @NonNull String macAddress,
-                           @NonNull ConnectedDeviceType type,
-                           @NonNull String chassisId, @NonNull String portId, Integer ttl, String portDescription,
-                           String systemName, String systemDescription, String systemCapabilities,
-                           String managementAddress, Instant timeFirstSeen, Instant timeLastSeen) {
+    public SwitchConnectedDevice(@NonNull Switch switchObj, int portNumber, int vlan, String flowId, Boolean source,
+                                 @NonNull String macAddress, @NonNull ConnectedDeviceType type,
+                                 @NonNull String chassisId, @NonNull String portId, Integer ttl, String portDescription,
+                                 String systemName, String systemDescription, String systemCapabilities,
+                                 String managementAddress, Instant timeFirstSeen, Instant timeLastSeen) {
+        this.switchObj = switchObj;
+        this.portNumber = portNumber;
+        this.vlan = vlan;
         this.flowId = flowId;
         this.source = source;
         this.macAddress = macAddress;
@@ -139,27 +155,23 @@ public class ConnectedDevice implements Serializable {
         calculateUniqueIndex();
     }
 
-    /**
-     * Set the flow ID and update unique index.
-     */
-    public void setFlowId(@NonNull String flowId) {
-        this.flowId = flowId;
+    public void setSwitch(@NonNull Switch switchObj) {
+        this.switchObj = switchObj;
         calculateUniqueIndex();
     }
 
-    /**
-     * Set the source and update unique index.
-     */
-    public void setSource(boolean source) {
-        this.source = source;
+    public void setPortNumber(int portNumber) {
+        this.portNumber = portNumber;
         calculateUniqueIndex();
     }
 
-    /**
-     * Set the mac address and update unique index.
-     */
     public void setMacAddress(@NonNull String macAddress) {
         this.macAddress = macAddress;
+        calculateUniqueIndex();
+    }
+
+    public void setVlan(int vlan) {
+        this.vlan = vlan;
         calculateUniqueIndex();
     }
 
@@ -179,7 +191,7 @@ public class ConnectedDevice implements Serializable {
     }
 
     private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%s_%s_%s_%s_%s",
-                flowId, source ? "source" : "destination", macAddress, type, chassisId, portId);
+        uniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
+                switchObj.getSwitchId(), portNumber, vlan, macAddress, type, chassisId, portId);
     }
 }

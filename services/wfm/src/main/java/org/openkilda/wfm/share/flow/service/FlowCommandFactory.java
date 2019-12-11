@@ -16,18 +16,17 @@
 package org.openkilda.wfm.share.flow.service;
 
 import static java.lang.String.format;
-import static org.openkilda.messaging.Utils.OF_CONTROLLER_PORT;
 
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
-import org.openkilda.messaging.command.flow.InstallLldpFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -60,10 +59,6 @@ public class FlowCommandFactory {
 
         List<BaseInstallFlow> commands = new ArrayList<>();
 
-        if (needToInstallOrRemoveLldpFlow(flowPath)) {
-            commands.add(createInstallLldpRuleForFlow(flowPath, encapsulationResources));
-        }
-
         if (flow.isOneSwitchFlow()) {
             return commands;
         }
@@ -86,23 +81,6 @@ public class FlowCommandFactory {
         commands.add(buildInstallEgressFlow(flowPath, egressSegment.getDestPort(), encapsulationResources,
                 egressSegment.isDestWithMultiTable()));
         return commands;
-    }
-
-    /**
-     * Generates install transit and egress rules commands for a flow.
-     *
-     * @param flowPath flow path with segments to be used for building of install rules.
-     * @return list of commands
-     */
-    public BaseInstallFlow createInstallLldpRuleForFlow(
-            FlowPath flowPath, EncapsulationResources encapsulationResources) {
-        if (flowPath.getFlow().isOneSwitchFlow()) {
-            boolean isForward = flowPath.getFlow().isForward(flowPath);
-            int outVlan = isForward ? flowPath.getFlow().getDestVlan() : flowPath.getFlow().getSrcVlan();
-            return buildInstallLldpFlow(flowPath, outVlan, FlowEncapsulationType.TRANSIT_VLAN);
-        }
-        return buildInstallLldpFlow(flowPath, encapsulationResources.getTransitEncapsulationId(),
-                encapsulationResources.getEncapsulationType());
     }
 
     /**
@@ -142,10 +120,6 @@ public class FlowCommandFactory {
         Flow flow = flowPath.getFlow();
         List<RemoveFlow> commands = new ArrayList<>();
 
-        if (needToInstallOrRemoveLldpFlow(flowPath)) {
-            commands.add(createRemoveLldpRulesForFlow(flowPath, encapsulationResources));
-        }
-
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return commands;
@@ -171,28 +145,19 @@ public class FlowCommandFactory {
         return commands;
     }
 
-    private RemoveFlow createRemoveLldpRulesForFlow(FlowPath flowPath, EncapsulationResources encapsulationResources) {
-        if (flowPath.getFlow().isOneSwitchFlow()) {
-            boolean isForward = flowPath.getFlow().isForward(flowPath);
-            int outVlan = isForward ? flowPath.getFlow().getDestVlan() : flowPath.getFlow().getSrcVlan();
-            return buildRemoveLldpFlow(flowPath, outVlan, FlowEncapsulationType.TRANSIT_VLAN);
-        }
-        return buildRemoveLldpFlow(flowPath, encapsulationResources.getTransitEncapsulationId(),
-                encapsulationResources.getEncapsulationType());
-    }
-
     /**
      * Generates remove ingress rules commands for a flow.
      *
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public RemoveFlow createRemoveIngressRulesForFlow(FlowPath flowPath, boolean cleanUpIngress) {
+    public RemoveFlow createRemoveIngressRulesForFlow(
+            FlowPath flowPath, boolean cleanUpIngress, boolean cleanUpIngressLldp) {
         Flow flow = flowPath.getFlow();
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return buildRemoveIngressFlow(flow, flowPath, null,
-                    flow.isSrcWithMultiTable(), cleanUpIngress);
+                    flow.isSrcWithMultiTable(), cleanUpIngress, cleanUpIngressLldp);
         }
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
@@ -204,7 +169,7 @@ public class FlowCommandFactory {
         }
 
         return buildRemoveIngressFlow(flow, flowPath, ingressSegment.getSrcPort(),
-                ingressSegment.isSrcWithMultiTable(), cleanUpIngress);
+                ingressSegment.isSrcWithMultiTable(), cleanUpIngress, cleanUpIngressLldp);
     }
 
     /**
@@ -315,47 +280,6 @@ public class FlowCommandFactory {
     }
 
     /**
-     * Generate install LLDP flow command.
-     *
-     * @param flowPath flow path with segments to be used for building of install rules.
-     * @param encapsulationId the encapsulation id (vlan or vni).
-     * @param encapsulationType the encapsulation type (transit_vlan or vxlan).
-     * @return install LLDP flow command
-     */
-    public InstallLldpFlow buildInstallLldpFlow(FlowPath flowPath, Integer encapsulationId,
-                                                FlowEncapsulationType encapsulationType) {
-        Flow flow = flowPath.getFlow();
-        boolean isForward = flowPath.getFlow().isForward(flowPath);
-        boolean multiTable = isForward ? flow.isSrcWithMultiTable() : flow.isDestWithMultiTable();
-        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
-
-        return new InstallLldpFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
-                flowPath.getLldpResources().getCookie().getValue(), flowPath.getSrcSwitch().getSwitchId(), inPort,
-                encapsulationId, encapsulationType, flowPath.getLldpResources().getMeterId().getValue(), multiTable);
-    }
-
-    private RemoveFlow buildRemoveLldpFlow(FlowPath flowPath,  Integer encapsulationId,
-                                           FlowEncapsulationType encapsulationType) {
-        Flow flow = flowPath.getFlow();
-        boolean isForward = flowPath.getFlow().isForward(flowPath);
-        boolean multiTable = isForward ? flow.isSrcWithMultiTable() : flow.isDestWithMultiTable();
-        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
-        long cookie = flowPath.getLldpResources().getCookie().getValue();
-        DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie, inPort, encapsulationId, 0, OF_CONTROLLER_PORT,
-                encapsulationType, null);
-        return RemoveFlow.builder()
-                .transactionId(transactionIdGenerator.generate())
-                .flowId(flowPath.getFlow().getFlowId())
-                .cookie(cookie)
-                .switchId(flowPath.getSrcSwitch().getSwitchId())
-                .meterId(flowPath.getLldpResources().getMeterId().getValue())
-                .criteria(criteria)
-                .multiTable(multiTable)
-                .ruleType(RuleType.POST_INGRESS)
-                .build();
-    }
-
-    /**
      * Generate install ingress flow command.
      *
      * @param flow the flow.
@@ -385,7 +309,7 @@ public class FlowCommandFactory {
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo, boolean multiTable,
-                                              boolean cleanUpIngress) {
+                                              boolean cleanUpIngress, boolean cleanUpIngressLldp) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
@@ -406,14 +330,16 @@ public class FlowCommandFactory {
                 .multiTable(multiTable)
                 .ruleType(RuleType.INGRESS)
                 .cleanUpIngress(cleanUpIngress)
+                .cleanUpIngressLldp(cleanUpIngressLldp)
                 .build();
     }
 
     private boolean needToInstallOrRemoveLldpFlow(FlowPath path) {
         Flow flow = path.getFlow();
         boolean isForward = flow.isForward(path);
-        return  (isForward && flow.getDetectConnectedDevices().isSrcLldp())
-                || (!isForward && flow.getDetectConnectedDevices().isDstLldp());
+        DetectConnectedDevices detect = flow.getDetectConnectedDevices();
+        return  (isForward && (detect.isSrcLldp() || detect.isSrcSwitchLldp()))
+                || (!isForward && (detect.isDstLldp() || detect.isDstSwitchLldp()));
     }
 
     /**

@@ -22,7 +22,9 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 
+import java.util.Date;
 import java.util.List;
 
 public interface NorthboundServiceV2 {
@@ -38,6 +40,10 @@ public interface NorthboundServiceV2 {
     FlowRerouteResponseV2 rerouteFlow(String flowId);
 
     //switches
+
+    SwitchConnectedDevicesResponse getConnectedDevices(SwitchId switchId);
+
+    SwitchConnectedDevicesResponse getConnectedDevices(SwitchId switchId, Date since);
 
     List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port);
 

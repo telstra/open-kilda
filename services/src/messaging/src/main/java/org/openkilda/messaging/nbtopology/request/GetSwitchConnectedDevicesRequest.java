@@ -13,20 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.messaging.nbtopology.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import org.openkilda.model.SwitchId;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-/**
- * Represents flow LLDP resources.
- */
-@Data
-@AllArgsConstructor
-public class LldpResources implements Serializable {
+import java.time.Instant;
 
-    private MeterId meterId;
-    private Cookie cookie;
+@Value
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class GetSwitchConnectedDevicesRequest extends SwitchesBaseRequest {
+    private SwitchId switchId;
+    private Instant since;
 }

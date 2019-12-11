@@ -16,21 +16,29 @@
 package org.openkilda.messaging.info.event;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Value;
 
-@Value
-@EqualsAndHashCode(callSuper = false)
+import java.util.List;
+
+@Data
+@EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-public class LldpInfoData extends InfoData {
+@AllArgsConstructor
+public class SwitchLldpInfoData extends InfoData {
 
     private static final long serialVersionUID = 7963516610743491465L;
 
+    private SwitchId switchId;
+    private int portNumber;
+    private List<Integer> vlans;
     private long cookie;
     private String macAddress;
     private String chassisId;

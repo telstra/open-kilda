@@ -35,6 +35,7 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface ISwitchManager extends IFloodlightService {
     /**
@@ -179,6 +180,22 @@ public interface ISwitchManager extends IFloodlightService {
     long installEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
+     * Install LLDP rule which will send LLDP packet from ISL port to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpTransitFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install LLDP rule which will send all LLDP packets received from not ISL/Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
      *
      * @param dpid datapathId of the switch
@@ -198,6 +215,47 @@ public interface ISwitchManager extends IFloodlightService {
     long installIntermediateIngressRule(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
+     * Install input LLDP rule which will mark all LLDP packets received from Customer ports by metadata flag.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Install ingress LLDP rule which will send LLDP packets received from Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpIngressFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install post ingress LLDP rule which will send LLDP packets received from Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpPostIngressFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install post ingress LLDP rule which will send LLDP packets with encapsulation to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installLldpPostIngressVxlanFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install post ingress LLDP rule which will send LLDP packets received from one switch flows to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    long installLldpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Remove intermediate rule for isl on switch in table 0 to route ingress traffic.
      *
      * @param dpid datapathId of the switch
@@ -207,6 +265,15 @@ public interface ISwitchManager extends IFloodlightService {
     long removeIntermediateIngressRule(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
+     * Remove LLDP rule which marks LLDP packet received from customer port by metadata.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    long removeLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
      * Build intermidiate flowmod for ingress rule.
      *
      * @param dpid switch id
@@ -214,6 +281,15 @@ public interface ISwitchManager extends IFloodlightService {
      * @return modification command
      */
     OFFlowMod buildIntermediateIngressRule(DatapathId dpid, int port) throws SwitchNotFoundException;
+
+    /**
+     * Build LLDP rule which will mark LLDP packet received from customer port by metadata.
+     *
+     * @param dpid switch id
+     * @param port customer port
+     * @return modification command
+     */
+    OFFlowMod buildLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException;
 
     /**
      * Install default pass through rule for pre ingress table.
@@ -275,7 +351,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId input vlan to match on, 0 means not to match on vlan
      * @param transitTunnelId vlan or vni to add before outputing on outputPort
      * @param encapsulationType flow encapsulation type
-     * @param enableLldp        if True LLDP packets will be send to LLDP rule
      * @param multiTable multitable pipeline flag
      * @return transaction id
      * @throws SwitchOperationException Switch not found
@@ -283,22 +358,7 @@ public interface ISwitchManager extends IFloodlightService {
     long installIngressFlow(DatapathId dpid, DatapathId dstDpid, String flowId, Long cookie, int inputPort,
                             int outputPort, int inputVlanId,
                             int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                            FlowEncapsulationType encapsulationType, boolean enableLldp, boolean multiTable)
-            throws SwitchOperationException;
-
-    /**
-     * Installs a flow to catch LLDP packets.
-     *
-     * @param dpid              datapathId of the switch
-     * @param inputPort         port to expect the packet on
-     * @param tunnelId          vlan or vni to match packet
-     * @param encapsulationType flow encapsulation type
-     * @param multiTable        switch operations mode
-     * @return transaction id
-     * @throws SwitchOperationException Switch not found
-     */
-    long installLldpIngressFlow(DatapathId dpid, Long cookie, int inputPort, int tunnelId, long meterId,
-                                FlowEncapsulationType encapsulationType, boolean multiTable)
+                            FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException;
 
     /**
@@ -349,7 +409,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId vlan to match on inputPort
      * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
-     * @param enableLldp     if True LLDP packets will be send to LLDP rule
      * @param multiTable multitable pipeline flag
      * @return transaction id
      * @throws SwitchOperationException Switch not found
@@ -357,7 +416,7 @@ public interface ISwitchManager extends IFloodlightService {
     long installOneSwitchFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                       final int inputPort, final int outputPort, int inputVlanId,
                                                       int outputVlanId, final OutputVlanType outputVlanType,
-                                                      final long meterId, boolean enableLldp, boolean multiTable)
+                                                      final long meterId, boolean multiTable)
             throws SwitchOperationException;
 
     /**
@@ -365,9 +424,11 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid switch id.
      * @param multiTable flag
+     * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
      * @return list of default flows.
      */
-    List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable) throws SwitchOperationException;
+    List<OFFlowMod> getExpectedDefaultFlows(
+            DatapathId dpid, boolean multiTable, boolean switchLldp) throws SwitchOperationException;
 
 
     /**
@@ -477,12 +538,15 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapath ID of the switch
      * @param islPorts ports with isl default rule
      * @param flowPorts ports with flow default rule
+     * @param flowLldpPorts ports with lldp flow default rule
      * @param multiTable multiTableMode
+     * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
-                                  List<Integer> flowPorts, boolean multiTable) throws SwitchOperationException;
+                                  List<Integer> flowPorts, Set<Integer> flowLldpPorts, boolean multiTable,
+                                  boolean switchLldp) throws SwitchOperationException;
 
     /**
      * Delete rules that match the criteria.

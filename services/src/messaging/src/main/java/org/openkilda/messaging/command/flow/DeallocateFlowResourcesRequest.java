@@ -32,9 +32,6 @@ public class DeallocateFlowResourcesRequest extends CommandData {
     @JsonProperty("unmasked_cookie")
     private long unmaskedCookie;
 
-    @JsonProperty("unmasked_lldp_cookie")
-    private Long unmaskedLldpCookie;
-
     @JsonProperty("path_id")
     private PathId pathId;
 
@@ -43,12 +40,10 @@ public class DeallocateFlowResourcesRequest extends CommandData {
 
     public DeallocateFlowResourcesRequest(@JsonProperty("flow_id") String flowId,
                                           @JsonProperty("unmasked_cookie") long unmaskedCookie,
-                                          @JsonProperty("unmasked_lldp_cookie") Long unmaskedLldpCookie,
                                           @JsonProperty("path_id") PathId pathId,
                                           @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType) {
         this.flowId = flowId;
         this.unmaskedCookie = unmaskedCookie;
-        this.unmaskedLldpCookie = unmaskedLldpCookie;
         this.pathId = pathId;
         this.encapsulationType = encapsulationType;
     }

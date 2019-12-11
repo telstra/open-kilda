@@ -25,11 +25,15 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchRulesInstallRequest extends CommandData {
 
@@ -42,11 +46,17 @@ public class SwitchRulesInstallRequest extends CommandData {
     @JsonProperty("multi_table")
     private boolean multiTable = false;
 
+    @JsonProperty("switch_lldp")
+    private boolean switchLldp = false;
+
     @JsonProperty("isl_ports")
     private List<Integer> islPorts = new ArrayList<>();
 
     @JsonProperty("flow_ports")
     private List<Integer> flowPorts = new ArrayList<>();
+
+    @JsonProperty("flow_lldp_ports")
+    private Set<Integer> flowLldpPorts = new HashSet<>();
 
     /**
      * Constructs an install switch rules request.
@@ -79,6 +89,10 @@ public class SwitchRulesInstallRequest extends CommandData {
         return multiTable;
     }
 
+    public boolean isSwitchLldp() {
+        return switchLldp;
+    }
+
     public List<Integer> getIslPorts() {
         return islPorts;
     }
@@ -89,6 +103,10 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     public void setMultiTable(boolean multiTable) {
         this.multiTable = multiTable;
+    }
+
+    public void setSwitchLldp(boolean switchLldp) {
+        this.switchLldp = switchLldp;
     }
 
     public void setIslPorts(List<Integer> islPorts) {

@@ -24,11 +24,12 @@ import static org.openkilda.floodlight.service.connected.LldpPacket.PORT_ID_SUBT
 import static org.openkilda.floodlight.service.connected.LldpPacket.PORT_ID_SUBTYPE_MAC;
 import static org.openkilda.floodlight.service.connected.LldpPacket.addDescription;
 
+import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import org.junit.Test;
 
 public class LldpPacketTest {
-    private byte[] packet = new byte[]{
+    public static final byte[] packet = new byte[]{
             0x02, 0x07,                                                       // chassis ID type, len
             0x04,                                                             // chassis ID sub type (Mac address)
             (byte) 0xAE, 0x59, 0x21, 0x13, 0x41, 0x36,                        // Mac address
@@ -60,7 +61,7 @@ public class LldpPacketTest {
 
     @Test
     public void errorReporting() {
-        LldpPacket lldpPacket = new LldpPacket(packet);
+        LldpPacket lldpPacket = buildLldpPacket(packet);
         assertEquals(addDescription(MAC_DESCRIPTION, "ae:59:21:13:41:36"), lldpPacket.getParsedChassisId());
         assertEquals(addDescription(MAC_DESCRIPTION, "e2:4c:63:33:f3:eb"), lldpPacket.getParsedPortId());
         assertEquals(120, (int) lldpPacket.getParsedTtl());
@@ -85,5 +86,11 @@ public class LldpPacketTest {
                 .setValue(new byte[] {PORT_ID_SUBTYPE_MAC, 0x01, (byte) 0x80, (byte) 0xc2, 0x00, 0x00, 0x0e});
         LldpPacket lldpPacket = LldpPacket.builder().portId(portTvl).build();
         assertEquals(addDescription(MAC_DESCRIPTION, "01:80:c2:00:00:0e"), lldpPacket.getParsedPortId());
+    }
+
+    static LldpPacket buildLldpPacket(byte[] packet) {
+        LLDP lldp = new LLDP();
+        lldp.deserialize(packet, 0, packet.length);
+        return new LldpPacket(lldp);
     }
 }

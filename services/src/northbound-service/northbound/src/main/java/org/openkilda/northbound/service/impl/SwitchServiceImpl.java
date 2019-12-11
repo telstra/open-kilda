@@ -50,6 +50,7 @@ import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -66,6 +67,7 @@ import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
@@ -82,6 +84,7 @@ import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -108,6 +111,9 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Autowired
     private SwitchMapper switchMapper;
+
+    @Autowired
+    private ConnectedDeviceMapper connectedDeviceMapper;
 
     @Autowired
     private PortPropertiesMapper portPropertiesMapper;
@@ -495,6 +501,21 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(topoDiscoTopic, request)
                 .thenApply(PortPropertiesPayload.class::cast)
                 .thenApply(portPropertiesMapper::map);
+    }
+
+    @Override
+    public CompletableFuture<SwitchConnectedDevicesResponse> getSwitchConnectedDevices(
+            SwitchId switchId, Instant since) {
+        logger.info("Get connected devices for switch {} since {}", switchId, since);
+
+        GetSwitchConnectedDevicesRequest request = new GetSwitchConnectedDevicesRequest(switchId, since);
+
+        CommandMessage message = new CommandMessage(
+                request, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse.class::cast)
+                .thenApply(connectedDeviceMapper::map);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {
