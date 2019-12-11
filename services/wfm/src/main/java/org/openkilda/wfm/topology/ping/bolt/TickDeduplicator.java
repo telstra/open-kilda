@@ -77,7 +77,7 @@ public class TickDeduplicator extends AbstractBolt {
     }
 
     private boolean shouldProxy(int taskId) {
-        return activeSourceTask == taskId;
+        return activeSourceTask != null && activeSourceTask == taskId;
     }
 
     private Long pullTick(Tuple input) throws PipelineException {
