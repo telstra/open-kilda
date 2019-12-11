@@ -11,7 +11,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 
@@ -54,6 +53,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found."
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2885")
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -124,6 +124,19 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse4.size() == 1
         getSwitchFlowsResponse4[0].id == protectedFlow.flowId
 
+        when: "Create default flow on the same switches"
+        def defaultFlow = flowHelperV2.randomFlow(switchPair)
+        defaultFlow.source.vlanId = 0
+        defaultFlow.destination.vlanId = 0
+        flowHelperV2.addFlow(defaultFlow)
+
+        and: "Get all flows going through the src switch"
+        def getSwitchFlowsResponse5 = northbound.getSwitchFlows(switchPair.src.dpId)
+
+        then: "The created flows are in the response list"
+        getSwitchFlowsResponse5.size() == 3
+        getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
+
         when: "Bring down all ports on src switch to make flow DOWN"
         topology.getBusyPortsForSwitch(switchPair.src).each {
             antiflap.portDown(switchPair.src.dpId, it)
@@ -136,15 +149,14 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN }
-        def getSwitchFlowsResponse5 = northbound.getSwitchFlows(switchPair.src.dpId)
+        def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)
 
         then: "The created flows are in the response list"
-        getSwitchFlowsResponse5.size() == 2
-        getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId].sort()
+        getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         and: "Cleanup: Delete the flows"
         topology.getBusyPortsForSwitch(switchPair.src).each { antiflap.portUp(switchPair.src.dpId, it) }
-        [protectedFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
+        [protectedFlow, singleFlow, defaultFlow].each { flowHelperV2.deleteFlow(it.flowId) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
