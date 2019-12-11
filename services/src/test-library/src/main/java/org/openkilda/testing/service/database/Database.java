@@ -57,6 +57,8 @@ public interface Database {
 
     List<PathInfoData> getPaths(SwitchId src, SwitchId dst);
 
+    void removeConnectedDevices(SwitchId sw);
+
     boolean removeInactiveSwitches();
 
     // Flows
