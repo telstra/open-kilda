@@ -19,7 +19,6 @@ import org.openkilda.model.IslConfig;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
-import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
@@ -156,11 +155,6 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public SwitchPropertiesRepository createSwitchPropertiesRepository() {
         return new Neo4jSwitchPropertiesRepository(sessionFactory, transactionManager);
-    }
-
-    @Override
-    public ConnectedDeviceRepository createConnectedDeviceRepository() {
-        return new Neo4jConnectedDevicesRepository(sessionFactory, transactionManager);
     }
 
     @Override

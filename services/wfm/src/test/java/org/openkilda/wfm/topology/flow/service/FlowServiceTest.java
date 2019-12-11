@@ -22,24 +22,20 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.openkilda.model.Cookie.buildLldpCookie;
 import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 
 import org.openkilda.model.Cookie;
-import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
-import org.openkilda.model.LldpResources;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -77,7 +73,6 @@ import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
 import com.google.common.collect.Sets;
 import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -273,15 +268,11 @@ public class FlowServiceTest extends Neo4jBasedTest {
         assertEquals(flow.getFlowId(), foundFlow.get().getFlowId());
     }
 
-    private static Object[][] getShowSrcConnectedDevicesDstConnectedDevicesParameters() {
-        // showSrcDevices, showDstDevices
-        return SHOW_SRC_DEVICES_SHOW_DST_DEVICES_MATRIX;
-    }
-
     @Test
-    @Parameters(method = "getShowSrcConnectedDevicesDstConnectedDevicesParameters")
-    public void createFlowAllocateLldpResources(boolean showSrcDevices, boolean showDstDevices) throws Exception {
-        Flow flow = getFlowWithConnectedDevices(showSrcDevices, showDstDevices);
+    public void createFlowAllocateResources() throws Exception {
+        Flow flow = getFlowBuilder()
+                .allocateProtectedPath(true)
+                .build();
 
         when(pathComputer.getPath(any())).thenReturn(PATH_1_TO_3_VIA_2, PATH_DIRECT_1_TO_3);
 
@@ -292,9 +283,8 @@ public class FlowServiceTest extends Neo4jBasedTest {
     }
 
     @Test
-    @Parameters(method = "getShowSrcConnectedDevicesDstConnectedDevicesParameters")
-    public void saveFlowAllocateLldpResources(boolean showSrcDevices, boolean showDstDevices) throws Exception {
-        Flow flow = getFlowWithConnectedDevices(showSrcDevices, showDstDevices);
+    public void saveFlowAllocateResources() throws Exception {
+        Flow flow = getFlowBuilder().build();
         flow.setAllocateProtectedPath(false);
         FlowPair flowPair = createFlowPair(flow, PATH_DIRECT_1_TO_3);
 
@@ -391,52 +381,20 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         assertEquals(METER_32, createdFlow.getForwardPath().getMeterId());
         assertEquals(METER_32, createdFlow.getReversePath().getMeterId());
-
-        assertFlowLldpResources(createdFlow);
-    }
-
-    private void assertFlowLldpResources(Flow flow) {
-        assertLldpResources(flow.getDetectConnectedDevices().isSrcLldp(), flow.getForwardPath().getLldpResources(),
-                METER_33, buildLldpCookie(1L, true));
-        assertLldpResources(flow.getDetectConnectedDevices().isDstLldp(), flow.getReversePath().getLldpResources(),
-                METER_33, buildLldpCookie(1L, false));
-
-        if (flow.isAllocateProtectedPath()) {
-            assertLldpResources(flow.getDetectConnectedDevices().isSrcLldp(),
-                    flow.getProtectedForwardPath().getLldpResources(), METER_35, buildLldpCookie(3L, true));
-            assertLldpResources(flow.getDetectConnectedDevices().isDstLldp(),
-                    flow.getProtectedReversePath().getLldpResources(), METER_35, buildLldpCookie(3L, false));
-        }
-    }
-
-    private void assertLldpResources(boolean mustAllocate, LldpResources lldpResources,
-                                     MeterId expectedMeterId, Cookie expectedCookie) {
-        if (mustAllocate) {
-            assertEquals(new LldpResources(expectedMeterId, expectedCookie), lldpResources);
-        } else {
-            assertNull(lldpResources);
-        }
     }
 
     private int getExpectedMeterCount(Flow flow) {
         int count = 0;
 
         count += flow.getBandwidth() > 0 ? 2 : 0;
-        count += flow.getDetectConnectedDevices().isSrcLldp() ? 1 : 0;
-        count += flow.getDetectConnectedDevices().isDstLldp() ? 1 : 0;
         count *= flow.isAllocateProtectedPath() ? 2 : 1;
         return count;
     }
 
     private int getExpectedCookieCount(Flow flow) {
         int count = 1;
-        count += allocateLldpResources(flow) ? 1 : 0;
         count *= flow.isAllocateProtectedPath() ? 2 : 1;
         return count;
-    }
-
-    private boolean allocateLldpResources(Flow flow) {
-        return flow.getDetectConnectedDevices().isSrcLldp() || flow.getDetectConnectedDevices().isDstLldp();
     }
 
     private FlowPair createFlowPair(Flow flow, PathPair pathPair) {
@@ -454,14 +412,6 @@ public class FlowServiceTest extends Neo4jBasedTest {
         flow.setReversePath(reverse);
 
         return new FlowPair(flow, null, null);
-    }
-
-    private Flow getFlowWithConnectedDevices(boolean detectSrcLldpDevices, boolean detectDstLldpDevices) {
-        return getFlowBuilder()
-                .detectConnectedDevices(
-                        new DetectConnectedDevices(detectSrcLldpDevices, false, detectDstLldpDevices, false))
-                .allocateProtectedPath(true)
-                .build();
     }
 
     private Flow.FlowBuilder getFlowBuilder() {

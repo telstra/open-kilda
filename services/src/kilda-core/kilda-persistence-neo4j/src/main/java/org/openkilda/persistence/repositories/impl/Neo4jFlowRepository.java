@@ -58,6 +58,8 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     static final String GROUP_ID_PROPERTY_NAME = "group_id";
     static final String SRC_PORT_PROPERTY_NAME = "src_port";
     static final String DST_PORT_PROPERTY_NAME = "dst_port";
+    static final String SRC_VLAN_PROPERTY_NAME = "src_vlan";
+    static final String DST_VLAN_PROPERTY_NAME = "dst_vlan";
     static final String SRC_MULTI_TABLE_PROPERTY_NAME = "src_with_multi_table";
     static final String DST_MULTI_TABLE_PROPERTY_NAME = "dst_with_multi_table";
     static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
@@ -143,6 +145,55 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 loadAll(srcSwitchFilter.and(srcPortFilter)).stream(),
                 loadAll(dstSwitchFilter.and(dstPortFilter)).stream())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Flow> findByEndpointAndVlan(SwitchId switchId, int port, int vlan) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port);
+        Filter srcVlanFilter = new Filter(SRC_VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, vlan);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port);
+        Filter dstVlanFilter = new Filter(DST_VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, vlan);
+
+        Collection<Flow> flows = Stream.concat(
+                loadAll(srcSwitchFilter.and(srcPortFilter).and(srcVlanFilter), FetchStrategy.DIRECT_RELATIONS).stream(),
+                loadAll(dstSwitchFilter.and(dstPortFilter).and(dstVlanFilter), FetchStrategy.DIRECT_RELATIONS).stream())
+                .collect(Collectors.toList());
+
+        if (flows.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 Flow entity by SwitchId %s, port %d and vlan %d",
+                    switchId, port, vlan));
+        } else if (flows.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(flows.iterator().next());
+    }
+
+    @Override
+    public Optional<Flow> findBySwitchIdInPortAndOutVlan(SwitchId switchId, int inPort, int outVlan) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, inPort);
+        Filter dstVlanFilter = new Filter(DST_VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, outVlan);
+
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, inPort);
+        Filter srcVlanFilter = new Filter(SRC_VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, outVlan);
+
+        Collection<Flow> flows = Stream.concat(
+                loadAll(srcSwitchFilter.and(srcPortFilter).and(dstVlanFilter), FetchStrategy.DIRECT_RELATIONS).stream(),
+                loadAll(dstSwitchFilter.and(dstPortFilter).and(srcVlanFilter), FetchStrategy.DIRECT_RELATIONS).stream())
+                .collect(Collectors.toList());
+
+        if (flows.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 Flow entity by SwitchId %s, InPort %d and "
+                    + " OutVlan %d", switchId, inPort, outVlan));
+        } else if (flows.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(flows.iterator().next());
     }
 
     @Override

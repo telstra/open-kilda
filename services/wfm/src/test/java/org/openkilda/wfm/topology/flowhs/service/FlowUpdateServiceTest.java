@@ -306,7 +306,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
         verify(flowResourcesManager, never()).deallocatePathResources(any());
-        verify(flowResourcesManager, never()).deallocatePathResources(any(), anyLong(), any(), any());
+        verify(flowResourcesManager, never()).deallocatePathResources(any(), anyLong(), any());
     }
 
     @Test

@@ -25,12 +25,13 @@ import java.io.Serializable;
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |L|                        Reserved Prefix                      |
+ * |L|O|                      Reserved Prefix                      |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                          Reserved Prefix                      |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * <p>
  * L - flag indicates LLDP packet
+ * O - flag indicates packet received by one switch flow
  * </p>
  */
 @Value
@@ -40,7 +41,18 @@ public class Metadata implements Serializable {
     public static final long METADATA_LLDP_VALUE = 0x0000_0000_0000_0001L;
     public static final long METADATA_LLDP_MASK =  0x0000_0000_0000_0001L;
 
+    public static final long METADATA_ONE_SWITCH_FLOW_VALUE = 0x0000_0000_0000_0002L;
+    public static final long METADATA_ONE_SWITCH_FLOW_MASK =  0x0000_0000_0000_0002L;
+
     private final long value;
+
+    public static long getOneSwitchFlowLldpValue() {
+        return METADATA_LLDP_VALUE | METADATA_ONE_SWITCH_FLOW_VALUE;
+    }
+
+    public static long getOneSwitchFlowLldpMask() {
+        return METADATA_LLDP_MASK | METADATA_ONE_SWITCH_FLOW_MASK;
+    }
 
     @Override
     public String toString() {

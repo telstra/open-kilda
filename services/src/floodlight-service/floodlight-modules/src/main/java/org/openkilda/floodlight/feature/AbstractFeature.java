@@ -31,6 +31,7 @@ public abstract class AbstractFeature {
     protected static final Pattern NOVIFLOW_VIRTUAL_SWITCH_HARDWARE_DESCRIPTION_REGEX = compile("^SM5\\d{3}-SM$");
     protected static final String CENTEC_MANUFACTURED = "Centec";
     protected static final Pattern NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX = compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
+    protected static final String NOVIFLOW_MANUFACTURER_SUFFIX = "noviflow";
 
     public abstract Optional<SwitchFeature> discover(IOFSwitch sw);
 }

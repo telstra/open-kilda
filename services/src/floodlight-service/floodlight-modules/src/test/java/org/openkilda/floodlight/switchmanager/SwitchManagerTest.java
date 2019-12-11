@@ -51,7 +51,11 @@ import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.of
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
@@ -175,6 +179,12 @@ public class SwitchManagerTest {
             createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue();
     private static final long lldpPreDropMeterId = createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE).getValue();
     private static final long lldpTransitMeterId = createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE).getValue();
+    private static final long lldpIngressMeterId = createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).getValue();
+    private static final long lldpPostIngressMeterId = createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue();
+    private static final long lldpPostIngressVxlanMeterId = createMeterIdForDefaultRule(
+            LLDP_POST_INGRESS_VXLAN_COOKIE).getValue();
+    private static final long lldpPostIngressOneSwitchMeterId = createMeterIdForDefaultRule(
+            LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue();
     private SwitchManager switchManager;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
@@ -408,7 +418,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false, false);
+                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressReplaceFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -423,7 +433,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false, false);
+                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressReplaceFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -438,8 +448,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false,
-                false);
+                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressPopFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -454,7 +463,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false, false);
+                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressPopFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -469,7 +478,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false, false);
+                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -484,7 +493,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false, false);
+                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -499,7 +508,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false, false);
+                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -514,7 +523,7 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false, false);
+                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false);
 
         assertEquals(
                 scheme.ingressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -527,7 +536,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest(true);
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, FlowEncapsulationType.TRANSIT_VLAN, false, false);
+                0, transitVlanId, OutputVlanType.NONE, meterId, FlowEncapsulationType.TRANSIT_VLAN, false);
 
         final OFFlowMod actual = capture.getValue();
         assertThat(actual.getFlags().isEmpty(), is(true));
@@ -682,8 +691,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, outputVlanId, OutputVlanType.REPLACE, meterId, false,
-                false);
+                inputPort, outputPort, inputVlanId, outputVlanId, OutputVlanType.REPLACE, meterId, false);
 
         assertEquals(
                 scheme.oneSwitchReplaceFlowMod(inputPort, outputPort, inputVlanId, outputVlanId, meterId, cookie),
@@ -695,8 +703,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, outputVlanId, OutputVlanType.PUSH, meterId, false,
-                false);
+                inputPort, outputPort, 0, outputVlanId, OutputVlanType.PUSH, meterId, false);
 
         assertEquals(
                 scheme.oneSwitchPushFlowMod(inputPort, outputPort, outputVlanId, meterId, cookie),
@@ -708,8 +715,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, 0, OutputVlanType.POP, meterId, false,
-                false);
+                inputPort, outputPort, inputVlanId, 0, OutputVlanType.POP, meterId, false);
 
         assertEquals(
                 scheme.oneSwitchPopFlowMod(inputPort, outputPort, inputVlanId, meterId, cookie),
@@ -721,8 +727,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false,
-                false);
+                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false);
 
         assertEquals(
                 scheme.oneSwitchNoneFlowMod(inputPort, outputPort, meterId, cookie),
@@ -734,7 +739,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest(true);
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false, false);
+                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false);
 
         final OFFlowMod actual = capture.getValue();
         assertThat(actual.getFlags().isEmpty(), is(true));
@@ -872,10 +877,12 @@ public class SwitchManagerTest {
                 ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE);
+                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
+                LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(14);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(18);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -886,11 +893,11 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), true, true);
+                Collections.emptyList(), Collections.emptySet(), true, true);
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(14, actual.size());
+        assertEquals(18, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -906,13 +913,19 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_TRANSIT_DROP_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INPUT_PRE_DROP_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_TRANSIT_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INGRESS_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_VXLAN_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
 
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
                 ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE));
+                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
+                LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
     }
 
     @Test
@@ -929,10 +942,11 @@ public class SwitchManagerTest {
                 VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE);
+                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE,
+                LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(20);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(28);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -943,22 +957,22 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), true, true);
+                Collections.emptyList(), Collections.emptySet(), true, true);
 
         // then
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE
-
-                ));
+                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
+                LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(20, actual.size());
+        assertEquals(28, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 14);
+        List<OFFlowMod> rulesMod = actual.subList(0, 18);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -974,16 +988,24 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_TRANSIT_DROP_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INPUT_PRE_DROP_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_TRANSIT_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INGRESS_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_VXLAN_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
 
 
         // verify meters deletion
-        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 5);
+        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 9);
         assertThat(metersMod, everyItem(hasProperty("command", equalTo(OFMeterModCommand.DELETE))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(broadcastMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(unicastMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(unicastVxlanMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPreDropMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpTransitMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpIngressMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPostIngressMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPostIngressVxlanMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPostIngressOneSwitchMeterId))));
 
         // verify group deletion
         List<OFFlowMod> groupMod = actual.subList(rulesMod.size() + metersMod.size(), actual.size());
