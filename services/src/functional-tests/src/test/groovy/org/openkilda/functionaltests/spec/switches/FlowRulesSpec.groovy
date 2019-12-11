@@ -25,8 +25,6 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload
-import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
@@ -36,6 +34,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -45,6 +44,9 @@ import spock.lang.Unroll
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
 class FlowRulesSpec extends HealthCheckSpecification {
+    @Value('${use.multitable}')
+    boolean useMultiTable
+
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
@@ -470,6 +472,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with the longest available path"
+        assumeTrue("https://github.com/telstra/open-kilda/issues/3056", !useMultiTable)
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
             pair.paths.max { it.size() }.size()
         }

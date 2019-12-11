@@ -37,13 +37,14 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.See
 
 import javax.inject.Provider
 
-@Ignore("https://github.com/telstra/open-kilda/issues/2971 https://github.com/telstra/open-kilda/issues/3059")
+@Ignore("https://github.com/telstra/open-kilda/issues/3059")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/multi-table-pipelines")
 class MultitableFlowsSpec extends HealthCheckSpecification {
 
@@ -206,7 +207,6 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2947")
     def "Single-switch flow rules are (re)installed according to switch property while rerouting,syncing,updating"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
@@ -288,11 +288,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, true))
 
         then: "Flow rules are still in single table mode on the switch"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-                rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
-                rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
-            }
+        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+            rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
+            rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
         }
 
         and: "Flow is valid and pingable"
@@ -303,7 +301,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         when: "Update the flow"
-        northboundV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
+        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
 
         then: "Flow rules on the switch are recreated in multi table mode"
         def flowInfoFromDb3
@@ -474,6 +472,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2996")
     def "Flow rules are (re)installed according to switch property while rerouting"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -652,10 +651,16 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Update switch properties(multi_table: false) on the dst switch"
         northbound.updateSwitchProperties(involvedSwitches[2].dpId,
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[2].dpId], false))
+        sleep(3000) // TODO(andriidovhan) delete sleep when 3034 is fixed
 
         and: "Enable protected path on the flow"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET, 1) {
+            with(northbound.getFlow(flow.flowId).flowStatusDetails) {
+                mainFlowPathStatus == "Up"
+                protectedFlowPathStatus == "Up"
+            }
+        }
 
         then: "Flow rules on the dst switch are recreated in the single table mode"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
@@ -1186,9 +1191,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2932")
     @Tags(TOPOLOGY_DEPENDENT)
-    def "System does not allow ot enable the multiTable mode on an unsupported switch"() {
+    def "System does not allow to enable the multiTable mode on an unsupported switch"() {
         given: "Unsupported switch"
         def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.MULTI_TABLE) }
         assumeTrue("Unable to find required switch", sw as boolean)
@@ -1200,9 +1204,10 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        //TODO(andriidovhan) fix error message when 2932 is fixed
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch doesn't support multiTable"
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Failed to update switch properties."
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
+                "Switch $sw.dpId doesn't support requested feature MULTI_TABLE"
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
