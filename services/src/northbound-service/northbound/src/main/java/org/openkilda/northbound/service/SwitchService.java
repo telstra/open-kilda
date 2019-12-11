@@ -39,6 +39,7 @@ import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 
 import java.time.Instant;
 import java.util.List;
@@ -269,4 +270,12 @@ public interface SwitchService {
      */
     CompletableFuture<PortPropertiesResponse> updatePortProperties(SwitchId switchId, int port,
                                                                    PortPropertiesDto portPropertiesDto);
+
+    /**
+     * Get devices connected to the switch.
+     *
+     * @param switchId id of the switch
+     * @return port properties object
+     */
+    CompletableFuture<SwitchConnectedDevicesResponse> getSwitchConnectedDevices(SwitchId switchId, Instant since);
 }

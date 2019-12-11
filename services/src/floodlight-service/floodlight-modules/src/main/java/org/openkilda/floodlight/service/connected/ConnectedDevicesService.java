@@ -117,7 +117,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         }
 
         InfoMessage message = createSwitchLldpMessage(switchId, cookie, input, lldpPacket);
-        // sending of message to Connected Device Topology will be added in next patch
+        producerService.sendMessageAndTrack(topic, switchId.toString(), message);
     }
 
     private InfoMessage createFlowLldpMessage(String macAddress, long cookie, LldpPacket lldpPacket) {

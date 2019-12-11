@@ -27,6 +27,8 @@ import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.converter.ConnectedDeviceMapper;
+import org.openkilda.northbound.converter.ConnectedDeviceMapperImpl;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.FlowMapperImpl;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
@@ -146,6 +148,11 @@ public class SwitchServiceTest {
         @Bean
         public SwitchMapper switchMapper() {
             return new SwitchMapperImpl();
+        }
+
+        @Bean
+        public ConnectedDeviceMapper connectedDeviceMapper() {
+            return new ConnectedDeviceMapperImpl();
         }
 
         @Bean
