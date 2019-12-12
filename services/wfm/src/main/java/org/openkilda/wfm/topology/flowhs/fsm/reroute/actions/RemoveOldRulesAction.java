@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -49,31 +48,28 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowEncapsulationType encapsulationType = stateMachine.getOriginalEncapsulationType();
-        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
+        Flow originalFlow = stateMachine.getOriginalFlow();
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(originalFlow.getEncapsulationType());
 
         Collection<FlowSegmentRequestFactory> factories = new ArrayList<>();
 
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-            Flow flow = oldForward.getFlow();
             factories.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+                    stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse));
         }
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-            Flow flow = oldForward.getFlow();
             factories.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+                    stateMachine.getCommandContext(), originalFlow, oldForward, oldReverse));
         }
 
         Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getRemoveCommands();
         for (FlowSegmentRequestFactory factory : factories) {
             FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
-            // TODO ensure no conflicts
             requestsStorage.put(request.getCommandId(), factory);
             stateMachine.getCarrier().sendSpeakerRequest(request);
         }

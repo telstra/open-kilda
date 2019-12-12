@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -32,16 +33,25 @@ import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
+import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.EgressFlowSegmentRemoveRequest;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.IngressFlowSegmentRemoveRequest;
+import org.openkilda.floodlight.api.request.TransitFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.TransitFlowSegmentRemoveRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -49,20 +59,24 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.Vxlan;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
+import org.openkilda.wfm.share.flow.resources.vxlan.VxlanEncapsulation;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -70,7 +84,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -91,6 +107,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private FlowRerouteHubCarrier carrier;
     @Mock
     private CommandContext commandContext;
+    @Mock
+    private KildaConfigurationRepository kildaConfigurationRepository;
 
     private FlowRerouteService rerouteService;
 
@@ -119,6 +137,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
+
+        when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
 
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
@@ -574,27 +594,125 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
     }
 
+    @Test
+    public void shouldUseCorrectEncapsulationTypeForVlanToVxLanUpdate()
+            throws RecoverableException, ResourceAllocationException, UnroutableFlowException {
+        testFlowEncapsulationChange(FlowEncapsulationType.TRANSIT_VLAN, FlowEncapsulationType.VXLAN);
+    }
+
+    @Test
+    public void shouldUseCorrectEncapsulationTypeForVxLanToVlanUpdate()
+            throws RecoverableException, ResourceAllocationException, UnroutableFlowException {
+        testFlowEncapsulationChange(FlowEncapsulationType.VXLAN, FlowEncapsulationType.TRANSIT_VLAN);
+    }
+
+    private void testFlowEncapsulationChange(
+            FlowEncapsulationType originalEncapsulationType, FlowEncapsulationType targetEncapsulationType)
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow(originalEncapsulationType);
+
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        buildFlowResources(originalEncapsulationType, targetEncapsulationType);
+
+        when(featureTogglesRepository.find()).thenReturn(Optional.of(
+                FeatureToggles.DEFAULTS.toBuilder()
+                        .createFlowEnabled(true)
+                        .updateFlowEnabled(true)
+                        .deleteFlowEnabled(true)
+                        .flowsRerouteUsingDefaultEncapType(true)
+                        .build()
+        ));
+        when(kildaConfigurationRepository.get()).thenReturn(
+                KildaConfiguration.DEFAULTS.toBuilder()
+                        .flowEncapsulationType(targetEncapsulationType)
+                        .build());
+
+        rerouteService.handleRequest(
+                "test_key", commandContext, flow.getFlowId(), Collections.emptySet(), false, "unit-test");
+
+        FlowSegmentRequest flowRequest;
+        List<FlowSegmentRequest> removeRequests = new ArrayList<>();
+        List<FlowSegmentRequest> installRequests = new ArrayList<>();
+        while ((flowRequest = requests.poll()) != null) {
+            if (flowRequest.isInstallRequest()) {
+                installRequests.add(flowRequest);
+            } else if (flowRequest.isRemoveRequest()) {
+                removeRequests.add(flowRequest);
+            }
+            produceAsyncResponse("test_key", flowRequest);
+        }
+
+        assertFalse(installRequests.isEmpty());
+        for (FlowSegmentRequest install : installRequests) {
+            FlowTransitEncapsulation encapsulation;
+            if (install instanceof IngressFlowSegmentInstallRequest) {
+                encapsulation = ((IngressFlowSegmentInstallRequest) install).getEncapsulation();
+            } else if (install instanceof TransitFlowSegmentInstallRequest) {
+                encapsulation = ((TransitFlowSegmentInstallRequest) install).getEncapsulation();
+            } else if (install instanceof EgressFlowSegmentInstallRequest) {
+                encapsulation = ((EgressFlowSegmentInstallRequest) install).getEncapsulation();
+            } else {
+                throw new IllegalStateException(String.format(
+                        "Unable to fetch flow transit encapsulation from %s", install));
+            }
+
+            assertEquals(targetEncapsulationType, encapsulation.getType());
+        }
+
+        assertFalse(removeRequests.isEmpty());
+        for (FlowSegmentRequest remove : removeRequests) {
+            FlowTransitEncapsulation encapsulation;
+            if (remove instanceof IngressFlowSegmentRemoveRequest) {
+                encapsulation = ((IngressFlowSegmentRemoveRequest) remove).getEncapsulation();
+            } else if (remove instanceof TransitFlowSegmentRemoveRequest) {
+                encapsulation = ((TransitFlowSegmentRemoveRequest) remove).getEncapsulation();
+            } else if (remove instanceof EgressFlowSegmentRemoveRequest) {
+                encapsulation = ((EgressFlowSegmentRemoveRequest) remove).getEncapsulation();
+            } else {
+                throw new IllegalStateException(String.format(
+                        "Unable to fetch flow transit encapsulation from %s", remove));
+            }
+
+            assertEquals(originalEncapsulationType, encapsulation.getType());
+        }
+        assertEquals(FlowStatus.UP, flow.getStatus());
+    }
+
+    private void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
+        rerouteService.handleAsyncResponse(key, SpeakerFlowSegmentResponse.builder()
+                .messageContext(flowRequest.getMessageContext())
+                .commandId(flowRequest.getCommandId())
+                .metadata(flowRequest.getMetadata())
+                .switchId(flowRequest.getSwitchId())
+                .success(true)
+                .build());
+    }
+
     private PathPair build2SwitchPathPair() {
         return build2SwitchPathPair(1, 2);
     }
 
     private PathPair build2SwitchPathPair(int srcPort, int destPort) {
+        return build2SwitchPathPair(SWITCH_1, srcPort, SWITCH_2, destPort);
+    }
+
+    private PathPair build2SwitchPathPair(SwitchId srcSwitch, int srcPort, SwitchId destSwitch, int destPort) {
         return PathPair.builder()
                 .forward(Path.builder()
-                        .srcSwitchId(SWITCH_1).destSwitchId(SWITCH_2)
+                        .srcSwitchId(srcSwitch).destSwitchId(destSwitch)
                         .segments(Collections.singletonList(Segment.builder()
-                                .srcSwitchId(SWITCH_1)
+                                .srcSwitchId(srcSwitch)
                                 .srcPort(srcPort)
-                                .destSwitchId(SWITCH_2)
+                                .destSwitchId(destSwitch)
                                 .destPort(destPort)
                                 .build()))
                         .build())
                 .reverse(Path.builder()
-                        .srcSwitchId(SWITCH_2).destSwitchId(SWITCH_1)
+                        .srcSwitchId(destSwitch).destSwitchId(srcSwitch)
                         .segments(Collections.singletonList(Segment.builder()
-                                .srcSwitchId(SWITCH_2)
+                                .srcSwitchId(destSwitch)
                                 .srcPort(destPort)
-                                .destSwitchId(SWITCH_1)
+                                .destSwitchId(srcSwitch)
                                 .destPort(srcPort)
                                 .build()))
                         .build())
@@ -602,13 +720,20 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     private Flow build2SwitchFlow() {
+        return build2SwitchFlow(FlowEncapsulationType.TRANSIT_VLAN);
+    }
+
+    private Flow build2SwitchFlow(FlowEncapsulationType encapsulationType) {
         Switch src = Switch.builder().switchId(SWITCH_1).build();
         Switch dst = Switch.builder().switchId(SWITCH_2).build();
 
         Flow flow = Flow.builder().flowId(FLOW_ID)
-                .srcSwitch(src).destSwitch(dst)
+                .srcSwitch(src)
+                .srcPort(1)
+                .destSwitch(dst)
+                .destPort(2)
                 .status(FlowStatus.UP)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .encapsulationType(encapsulationType)
                 .build();
 
         FlowPath oldForwardPath = FlowPath.builder()
@@ -666,6 +791,12 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     private FlowResources buildFlowResources() throws ResourceAllocationException {
+        return buildFlowResources(FlowEncapsulationType.TRANSIT_VLAN, FlowEncapsulationType.TRANSIT_VLAN);
+    }
+
+    private FlowResources buildFlowResources(
+            FlowEncapsulationType oldEncapsulationType, FlowEncapsulationType newEncapsulationType)
+            throws ResourceAllocationException {
         FlowResources flowResources = FlowResources.builder()
                 .unmaskedCookie(1)
                 .forward(PathResources.builder()
@@ -680,28 +811,45 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         when(flowResourcesManager.allocateFlowResources(any())).thenReturn(flowResources);
 
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
-                        .build()));
+        when(flowResourcesManager.getEncapsulationResources(
+                eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH), eq(newEncapsulationType)))
+                .thenReturn(Optional.of(
+                        buildEncapsulationResource(newEncapsulationType, FLOW_ID, NEW_FORWARD_FLOW_PATH, 101)));
+        when(flowResourcesManager.getEncapsulationResources(
+                eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH), eq(newEncapsulationType)))
+                .thenReturn(Optional.of(
+                        buildEncapsulationResource(newEncapsulationType, FLOW_ID, NEW_REVERSE_FLOW_PATH, 102)));
 
-        when(flowResourcesManager.getEncapsulationResources(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build())
-                        .build()));
+        when(flowResourcesManager.getEncapsulationResources(
+                eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH), eq(oldEncapsulationType)))
+                .thenReturn(Optional.of(
+                        buildEncapsulationResource(oldEncapsulationType, FLOW_ID, NEW_FORWARD_FLOW_PATH, 201)));
+        when(flowResourcesManager.getEncapsulationResources(
+                eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH), eq(oldEncapsulationType)))
+                .thenReturn(Optional.of(
+                        buildEncapsulationResource(oldEncapsulationType, FLOW_ID, NEW_REVERSE_FLOW_PATH, 202)));
 
         return flowResources;
+    }
+
+    private EncapsulationResources buildEncapsulationResource(
+            FlowEncapsulationType encapsulationType, String flowId, PathId pathId, int id) {
+        if (encapsulationType == FlowEncapsulationType.TRANSIT_VLAN) {
+            return buildVlanEncapsulationResource(flowId, pathId, id);
+        } else if (encapsulationType == FlowEncapsulationType.VXLAN) {
+            return buildVxLanEncapsulationResource(flowId, pathId, id);
+        } else {
+            throw new IllegalArgumentException(String.format("Unsupported encapsulation type %s", encapsulationType));
+        }
+    }
+
+    private EncapsulationResources buildVlanEncapsulationResource(String flowId, PathId pathId, int id) {
+        return TransitVlanEncapsulation.builder().transitVlan(
+                TransitVlan.builder().flowId(flowId).pathId(pathId).vlan(id).build()).build();
+    }
+
+    private EncapsulationResources buildVxLanEncapsulationResource(String flowId, PathId pathId, int id) {
+        return VxlanEncapsulation.builder().vxlan(
+                Vxlan.builder().flowId(flowId).pathId(pathId).vni(id).build()).build();
     }
 }

@@ -19,8 +19,9 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -50,7 +51,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedInstallRe
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedRemoveOrRevertResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.PostResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RemoveOldRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertFlowStatusAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertFlowModificationsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertPathsSwapAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertResourceAllocationAction;
@@ -79,10 +80,17 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private boolean rerouteProtected;
 
     private FlowStatus originalFlowStatus;
-    private FlowEncapsulationType originalEncapsulationType;
 
     private FlowStatus newFlowStatus;
-    private FlowEncapsulationType newEncapsulationType;
+
+    protected PathId oldPrimaryForwardPath;
+    protected FlowPathStatus oldPrimaryForwardPathStatus;
+    protected PathId oldPrimaryReversePath;
+    protected FlowPathStatus oldPrimaryReversePathStatus;
+    protected PathId oldProtectedForwardPath;
+    protected FlowPathStatus oldProtectedForwardPathStatus;
+    protected PathId oldProtectedReversePath;
+    protected FlowPathStatus oldProtectedReversePathStatus;
 
     public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
         super(commandContext, flowId);
@@ -154,6 +162,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
+            RevertFlowModificationsAction revertFlowModificationsAction = new RevertFlowModificationsAction(
+                    persistenceManager);
+
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
             builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
@@ -191,7 +202,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.FINISHED_WITH_ERROR)
                     .on(Event.REROUTE_IS_SKIPPED)
-                    .perform(new RevertFlowStatusAction(persistenceManager));
+                    .perform(revertFlowModificationsAction);
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -355,7 +366,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
-                    .perform(new RevertFlowStatusAction(persistenceManager));
+                    .perform(revertFlowModificationsAction);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));

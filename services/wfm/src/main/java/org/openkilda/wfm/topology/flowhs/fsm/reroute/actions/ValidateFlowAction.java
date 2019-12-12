@@ -20,6 +20,7 @@ import static java.util.Collections.emptySet;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
@@ -66,28 +67,30 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));
         dashboardLogger.onFlowPathReroute(flowId, pathsToReroute, context.isForceReroute());
 
+        final boolean forceDefaultEncapsulation = featureTogglesRepository.find()
+                .map(FeatureToggles::getFlowsRerouteUsingDefaultEncapType)
+                .orElseGet(FeatureToggles.DEFAULTS::getFlowsRerouteUsingDefaultEncapType);
+
         Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
+            Flow foundFlow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
 
+            stateMachine.setOriginalFlow(new Flow(foundFlow));
+
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
-            stateMachine.setOriginalEncapsulationType(foundFlow.getEncapsulationType());
             stateMachine.setRecreateIfSamePath(!foundFlow.isActive() || context.isForceReroute());
 
-            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
+            if (forceDefaultEncapsulation) {
+                foundFlow.setEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+            }
+            foundFlow.setStatus(FlowStatus.IN_PROGRESS);
+            flowRepository.createOrUpdate(foundFlow);
+
             return foundFlow;
         });
-
-        featureTogglesRepository.find().ifPresent(featureToggles ->
-                Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
-                    if (toggle) {
-                        stateMachine.setNewEncapsulationType(
-                                kildaConfigurationRepository.get().getFlowEncapsulationType());
-                    }
-                }));
 
         // check whether the primary paths should be rerouted
         // | operator is used intentionally, see validation below.

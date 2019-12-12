@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -43,6 +43,8 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
 
     protected final String flowId;
 
+    private Flow originalFlow;
+
     protected FlowResources newPrimaryResources;
     protected FlowResources newProtectedResources;
     protected PathId newPrimaryForwardPath;
@@ -51,14 +53,6 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId newProtectedReversePath;
 
     protected final Collection<FlowResources> oldResources = new ArrayList<>();
-    protected PathId oldPrimaryForwardPath;
-    protected FlowPathStatus oldPrimaryForwardPathStatus;
-    protected PathId oldPrimaryReversePath;
-    protected FlowPathStatus oldPrimaryReversePathStatus;
-    protected PathId oldProtectedForwardPath;
-    protected FlowPathStatus oldProtectedForwardPathStatus;
-    protected PathId oldProtectedReversePath;
-    protected FlowPathStatus oldProtectedReversePathStatus;
 
     protected final Set<UUID> pendingCommands = new HashSet<>();
     protected final Map<UUID, Integer> retriedCommands = new HashMap<>();

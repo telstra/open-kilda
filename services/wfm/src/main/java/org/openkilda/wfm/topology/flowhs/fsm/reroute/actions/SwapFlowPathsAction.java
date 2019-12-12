@@ -102,10 +102,6 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 saveHistory(stateMachine, flow.getFlowId(), newForward, newReverse);
             }
 
-            if (stateMachine.getNewEncapsulationType() != null) {
-                flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
-            }
-
             flowRepository.createOrUpdate(flow);
         });
     }

@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -52,9 +51,8 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowRerouteF
         String flowId = stateMachine.getFlowId();
         Flow flow = getFlow(flowId);
 
-        FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
-                ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
-        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
+        // Path swap "step" have replaced "encapsulation" field inside flow, so it contain desired value
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
 
         Collection<FlowSegmentRequestFactory> requestFactories = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {

@@ -122,6 +122,19 @@ public class Switch implements Serializable {
         setFeatures(features);
     }
 
+    public Switch(Switch reference) {
+        switchId = reference.switchId;
+        status = reference.status;
+        socketAddress = reference.socketAddress;
+        hostname = reference.hostname;
+        controller = reference.controller;
+        description = reference.description;
+        underMaintenance = reference.underMaintenance;
+        timeCreate = reference.timeCreate;
+        timeModify = reference.timeModify;
+        features = new HashSet<>(reference.features);
+    }
+
     /**
      * Set features for the switch.
      * @param features target features

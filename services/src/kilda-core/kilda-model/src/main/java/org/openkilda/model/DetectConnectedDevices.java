@@ -32,4 +32,13 @@ public class DetectConnectedDevices implements Serializable {
 
     private boolean srcSwitchLldp;
     private boolean dstSwitchLldp;
+
+    public DetectConnectedDevices(DetectConnectedDevices reference) {
+        srcLldp = reference.srcLldp;
+        srcArp = reference.srcArp;
+        dstLldp = reference.dstLldp;
+        dstArp = reference.dstArp;
+        srcSwitchLldp = reference.srcSwitchLldp;
+        dstSwitchLldp = reference.dstSwitchLldp;
+    }
 }

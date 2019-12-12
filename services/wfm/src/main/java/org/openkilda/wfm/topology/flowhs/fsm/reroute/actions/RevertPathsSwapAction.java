@@ -40,11 +40,7 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
-
-            if (stateMachine.getNewEncapsulationType() != null) {
-                flow.setEncapsulationType(stateMachine.getOriginalEncapsulationType());
-            }
+            final Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
             if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());

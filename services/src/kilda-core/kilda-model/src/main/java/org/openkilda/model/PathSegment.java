@@ -100,6 +100,23 @@ public class PathSegment implements Serializable {
         this.destWithMultiTable = destWithMultiTable;
     }
 
+    public PathSegment(PathSegment reference) {
+        this(
+                reference,
+                reference.srcSwitch != null ? new Switch(reference.srcSwitch) : null,
+                reference.destSwitch != null ? new Switch(reference.destSwitch) : null);
+    }
+
+    public PathSegment(PathSegment reference, Switch referenceSrcSwitch, Switch referenceDestSwitch) {
+        srcSwitch = referenceSrcSwitch;
+        destSwitch = referenceDestSwitch;
+        srcPort = reference.srcPort;
+        destPort = reference.destPort;
+        latency = reference.latency;
+        srcWithMultiTable = reference.srcWithMultiTable;
+        destWithMultiTable = reference.destWithMultiTable;
+    }
+
     /**
      * Checks whether endpoint belongs to segment or not.
      * @param switchId target switch

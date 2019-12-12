@@ -74,10 +74,6 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
     private RequestedFlow targetFlow;
 
-    private FlowStatus originalFlowStatus;
-    private String originalFlowGroup;
-    private RequestedFlow originalFlow;
-
     private FlowStatus newFlowStatus;
 
     public FlowUpdateFsm(CommandContext commandContext, FlowUpdateHubCarrier carrier, String flowId) {
@@ -206,7 +202,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transition().from(State.NON_INGRESS_RULES_VALIDATED).to(State.PATHS_SWAPPED).on(Event.NEXT)
                     .perform(new SwapFlowPathsAction(persistenceManager, resourcesManager));
             builder.transitions().from(State.NON_INGRESS_RULES_VALIDATED)
-                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.PATHS_SWAPPED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)

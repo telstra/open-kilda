@@ -43,7 +43,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -136,6 +138,41 @@ public class FlowPath implements Serializable {
         this.timeModify = timeModify;
         this.status = status;
         setSegments(segments != null ? segments : new ArrayList<>());
+    }
+
+    public FlowPath(FlowPath reference, Flow referenceFlow) {
+        this(
+                reference, referenceFlow,
+                reference.srcSwitch != null ? new Switch(reference.srcSwitch) : null,
+                reference.destSwitch != null ? new Switch(reference.destSwitch) : null);
+    }
+
+    public FlowPath(FlowPath reference, Flow referenceFlow, Switch referenceSrcSwitch, Switch referenceDestSwitch) {
+        pathId = reference.pathId;
+        srcSwitch = referenceSrcSwitch;
+        destSwitch = referenceDestSwitch;
+        flow = referenceFlow;
+        cookie = reference.cookie;
+        meterId = reference.meterId;
+        latency = reference.latency;
+        bandwidth = reference.bandwidth;
+        ignoreBandwidth = reference.ignoreBandwidth;
+        timeCreate = reference.timeCreate;
+        timeModify = reference.timeModify;
+        status = reference.status;
+
+        Map<SwitchId, Switch> switchCopyCache = new HashMap<>();
+        switchCopyCache.put(srcSwitch.getSwitchId(), srcSwitch);
+        switchCopyCache.put(destSwitch.getSwitchId(), destSwitch);
+
+        segments = new ArrayList<>();
+        for (PathSegment entry : reference.segments) {
+            Switch segmentSrcSwitch = switchCopyCache.computeIfAbsent(
+                    entry.getSrcSwitch().getSwitchId(), ignore -> new Switch(entry.getSrcSwitch()));
+            Switch segmentDestSwitch = switchCopyCache.computeIfAbsent(
+                    entry.getDestSwitch().getSwitchId(), ignore -> new Switch(entry.getDestSwitch()));
+            segments.add(new PathSegment(entry, segmentSrcSwitch, segmentDestSwitch));
+        }
     }
 
     /**

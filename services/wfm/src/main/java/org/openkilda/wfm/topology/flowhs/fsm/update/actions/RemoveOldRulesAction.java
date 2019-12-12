@@ -46,20 +46,20 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
+        FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(oldEncapsulationType);
 
-        FlowPath oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-        FlowPath oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-        Flow flow = oldPrimaryForward.getFlow();
+        Flow flow = stateMachine.getOriginalFlow();
+        FlowPath forwardPath = getFlowPath(flow.getForwardPathId());
+        FlowPath reversePath = getFlowPath(flow.getReversePathId());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAll(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse));
+                stateMachine.getCommandContext(), flow, forwardPath, reversePath));
 
-        if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
-            FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+        if (flow.getProtectedForwardPathId() != null && flow.getProtectedReversePathId() != null) {
+            forwardPath = getFlowPath(flow.getProtectedForwardPathId());
+            reversePath = getFlowPath(flow.getProtectedReversePathId());
             commands.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+                    stateMachine.getCommandContext(), flow, forwardPath, reversePath));
         }
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
