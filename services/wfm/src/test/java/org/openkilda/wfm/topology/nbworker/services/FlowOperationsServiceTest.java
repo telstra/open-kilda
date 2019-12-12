@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -51,6 +52,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         String testFlowId = "flow_id";
         Integer maxLatency = 555;
         Integer priority = 777;
+        PathComputationStrategy pathComputationStrategy = PathComputationStrategy.LATENCY;
 
         Switch switchA = new Switch();
         switchA.setSwitchId(new SwitchId(1));
@@ -71,6 +73,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .buildUnidirectionalFlow();
         flow.setStatus(FlowStatus.UP);
         flowRepository.createOrUpdate(flow.getFlow());
@@ -79,12 +82,14 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .flowId(testFlowId)
                 .maxLatency(maxLatency)
                 .priority(priority)
+                .pathComputationStrategy(pathComputationStrategy)
                 .build();
 
         UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
+        assertEquals(pathComputationStrategy, updatedFlow.getPathComputationStrategy());
 
         receivedFlow = FlowDto.builder()
                 .flowId(testFlowId)
@@ -93,5 +98,6 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
+        assertEquals(pathComputationStrategy, updatedFlow.getPathComputationStrategy());
     }
 }

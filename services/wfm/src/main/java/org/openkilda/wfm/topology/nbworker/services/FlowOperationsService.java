@@ -274,6 +274,9 @@ public class FlowOperationsService {
             if (flow.getPriority() != null) {
                 currentFlow.setPriority(flow.getPriority());
             }
+            if (flow.getPathComputationStrategy() != null) {
+                currentFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
+            }
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);
 

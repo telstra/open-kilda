@@ -28,10 +28,15 @@ public class FlowPatchDto {
     @JsonProperty("priority")
     private Integer priority;
 
+    @JsonProperty("path-computation-strategy")
+    private String pathComputationStrategy;
+
     @JsonCreator
     public FlowPatchDto(@JsonProperty("max-latency") Integer maxLatency,
-                        @JsonProperty("priority") Integer priority) {
+                        @JsonProperty("priority") Integer priority,
+                        @JsonProperty("path-computation-strategy") String pathComputationStrategy) {
         this.maxLatency = maxLatency;
         this.priority = priority;
+        this.pathComputationStrategy = pathComputationStrategy;
     }
 }
