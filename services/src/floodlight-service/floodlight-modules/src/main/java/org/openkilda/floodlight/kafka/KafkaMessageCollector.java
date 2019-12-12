@@ -104,9 +104,9 @@ public class KafkaMessageCollector implements IFloodlightModule {
         ExecutorService discoCommandExecutor = buildExecutorWithNoQueue(consumerConfig.getDiscoExecutorCount());
         logger.info("Kafka Consumer: disco executor threads = {}", consumerConfig.getDiscoExecutorCount());
 
-        KafkaConsumerSetup kafkaSetup = new KafkaConsumerSetup(kafkaChannel.getSpeakerDiscoTopic());
-        kafkaSetup.offsetResetStrategy(OffsetResetStrategy.LATEST);
-        launcher.launch(discoCommandExecutor, kafkaSetup);
+        launcher.launch(discoCommandExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerDiscoTopic())
+                .withOffsetResetStrategy(OffsetResetStrategy.LATEST)
+                .withForceSeekToEnd(true));
     }
 
     protected ExecutorService buildExecutorWithNoQueue(int executorCount) {
