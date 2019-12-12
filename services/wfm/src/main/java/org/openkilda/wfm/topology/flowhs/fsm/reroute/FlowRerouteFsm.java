@@ -20,7 +20,9 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -43,20 +45,21 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotRemovedPat
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotRevertedResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.LockFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnNoPathFoundAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.OnReceivedRemoveOrRevertResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.PostResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.PrepareFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RemoveOldRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertFlowStatusAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertFlowModificationsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertPathsSwapAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.RevertResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.SwapFlowPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.UpdateFlowStatusAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
@@ -78,11 +81,19 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private boolean reroutePrimary;
     private boolean rerouteProtected;
 
-    private FlowStatus originalFlowStatus;
-    private FlowEncapsulationType originalEncapsulationType;
+    private boolean allowFlowStatusRevert = true;
 
     private FlowStatus newFlowStatus;
     private FlowEncapsulationType newEncapsulationType;
+
+    protected PathId oldPrimaryForwardPath;
+    protected FlowPathStatus oldPrimaryForwardPathStatus;
+    protected PathId oldPrimaryReversePath;
+    protected FlowPathStatus oldPrimaryReversePathStatus;
+    protected PathId oldProtectedForwardPath;
+    protected FlowPathStatus oldProtectedForwardPathStatus;
+    protected PathId oldProtectedReversePath;
+    protected FlowPathStatus oldProtectedReversePathStatus;
 
     public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
         super(commandContext, flowId);
@@ -93,7 +104,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     protected void afterTransitionCausedException(State fromState, State toState, Event event,
                                                   FlowRerouteContext context) {
         String errorMessage = getLastException().getMessage();
-        if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
+        if (fromState == State.INITIALIZED || fromState == State.FLOW_PREPARED) {
             ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow", errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                                                getCommandContext().getCorrelationId());
@@ -154,16 +165,26 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
-            builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
-                    .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
+            RevertFlowModificationsAction revertFlowModificationsAction = new RevertFlowModificationsAction(
+                    persistenceManager);
+
+            builder.onEntry(State.INITIALIZED)
+                    .perform(new LockFlowAction(persistenceManager));
+            builder.transition().from(State.INITIALIZED).to(State.FLOW_LOCKED).on(Event.NEXT);
+            builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
             builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
 
-            builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
+            builder.transition().from(State.FLOW_LOCKED).to(State.FLOW_PREPARED).on(Event.NEXT)
+                    .perform(new PrepareFlowAction(persistenceManager, dashboardLogger));
+            builder.transition().from(State.FLOW_LOCKED).to(State.REVERTING_FLOW).on(Event.ERROR);
+            builder.transition().from(State.FLOW_LOCKED).to(State.REVERTING_FLOW).on(Event.TIMEOUT);
+
+            builder.transition().from(State.FLOW_PREPARED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
                     .perform(new AllocatePrimaryResourcesAction(persistenceManager, transactionRetriesLimit,
                             pathAllocationRetriesLimit, pathAllocationRetryDelay,
                             pathComputer, resourcesManager, dashboardLogger));
-            builder.transitions().from(State.FLOW_VALIDATED)
-                    .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
+            builder.transitions().from(State.FLOW_PREPARED)
+                    .toAmong(State.REVERTING_FLOW, State.REVERTING_FLOW)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
@@ -191,7 +212,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.FINISHED_WITH_ERROR)
                     .on(Event.REROUTE_IS_SKIPPED)
-                    .perform(new RevertFlowStatusAction(persistenceManager));
+                    .perform(revertFlowModificationsAction);
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -347,15 +368,15 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertResourceAllocationAction(persistenceManager, resourcesManager));
             builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED)
-                    .to(State.REVERTING_FLOW_STATUS).on(Event.NEXT);
-            builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW_STATUS)
+                    .to(State.REVERTING_FLOW).on(Event.NEXT);
+            builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW)
                     .on(Event.ERROR)
                     .perform(new HandleNotRevertedResourceAllocationAction());
 
-            builder.transitions().from(State.REVERTING_FLOW_STATUS)
+            builder.transitions().from(State.REVERTING_FLOW)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
-                    .perform(new RevertFlowStatusAction(persistenceManager));
+                    .perform(revertFlowModificationsAction);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
@@ -364,13 +385,16 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         }
 
         public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId) {
-            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            FlowRerouteFsm instance = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            instance.start();
+            return instance;
         }
     }
 
     public enum State {
         INITIALIZED,
-        FLOW_VALIDATED,
+        FLOW_LOCKED,
+        FLOW_PREPARED,
         PRIMARY_RESOURCES_ALLOCATED,
         PROTECTED_RESOURCES_ALLOCATED,
         RESOURCE_ALLOCATION_COMPLETED,
@@ -410,7 +434,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         MARKING_FLOW_DOWN,
         REVERTING_ALLOCATED_RESOURCES,
         RESOURCES_ALLOCATION_REVERTED,
-        REVERTING_FLOW_STATUS,
+        REVERTING_FLOW,
 
         FINISHED_WITH_ERROR
     }

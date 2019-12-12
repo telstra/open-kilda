@@ -123,6 +123,22 @@ public class Switch implements Serializable {
     }
 
     /**
+     * Create copy (deep) of {@code Switch} object. Result object is not tied to any persistent instance.
+     */
+    public Switch(Switch reference) {
+        this(
+                reference.switchId,
+                reference.status,
+                reference.socketAddress,
+                reference.hostname,
+                reference.controller,
+                reference.description,
+                reference.underMaintenance,
+                reference.timeCreate, reference.timeModify,
+                new HashSet<>(reference.features));
+    }
+
+    /**
      * Set features for the switch.
      * @param features target features
      */

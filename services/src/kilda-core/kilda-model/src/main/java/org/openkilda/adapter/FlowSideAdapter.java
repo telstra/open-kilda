@@ -18,6 +18,7 @@ package org.openkilda.adapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
 
@@ -50,6 +51,8 @@ public abstract class FlowSideAdapter {
     protected FlowSideAdapter(Flow flow) {
         this.flow = flow;
     }
+
+    public abstract SwitchId getSwitchId();
 
     public abstract FlowEndpoint getEndpoint();
 

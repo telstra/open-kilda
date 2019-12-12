@@ -29,7 +29,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,17 +55,17 @@ public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State,
     }
 
     private void revertFlow(Flow flow, FlowUpdateFsm stateMachine) {
-        flow.setGroupId(stateMachine.getOriginalFlowGroup());
+        final Flow originalFlow = stateMachine.getOriginalFlow();
 
-        RequestedFlow originalFlow = stateMachine.getOriginalFlow();
+        flow.setGroupId(originalFlow.getGroupId());
 
-        Switch srcSwitch = switchRepository.findById(originalFlow.getSrcSwitch())
+        Switch srcSwitch = switchRepository.findById(originalFlow.getSrcSwitch().getSwitchId())
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Switch %s not found", originalFlow.getSrcSwitch())));
         flow.setSrcSwitch(srcSwitch);
         flow.setSrcPort(originalFlow.getSrcPort());
         flow.setSrcVlan(originalFlow.getSrcVlan());
-        Switch destSwitch = switchRepository.findById(originalFlow.getDestSwitch())
+        Switch destSwitch = switchRepository.findById(originalFlow.getDestSwitch().getSwitchId())
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Switch %s not found", originalFlow.getDestSwitch())));
         flow.setDestSwitch(destSwitch);
@@ -81,6 +80,6 @@ public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State,
         flow.setIgnoreBandwidth(originalFlow.isIgnoreBandwidth());
         flow.setMaxLatency(originalFlow.getMaxLatency());
         flow.setPeriodicPings(originalFlow.isPeriodicPings());
-        flow.setEncapsulationType(originalFlow.getFlowEncapsulationType());
+        flow.setEncapsulationType(originalFlow.getEncapsulationType());
     }
 }

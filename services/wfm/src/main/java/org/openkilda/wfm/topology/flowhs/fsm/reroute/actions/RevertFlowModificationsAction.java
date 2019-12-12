@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -28,21 +29,29 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    public RevertFlowStatusAction(PersistenceManager persistenceManager) {
+public class RevertFlowModificationsAction
+        extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+    public RevertFlowModificationsAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        FlowStatus originalStatus = stateMachine.getOriginalFlowStatus();
-        if (originalStatus != null) {
+
+        Flow originalFlow = stateMachine.getOriginalFlow();
+
+        Flow flow = getFlow(flowId);
+        flow.setEncapsulationType(originalFlow.getEncapsulationType());
+
+        if (stateMachine.isAllowFlowStatusRevert()) {
+            FlowStatus originalStatus = originalFlow.getStatus();
             log.debug("Reverting the flow status of {} to {}", flowId, originalStatus);
 
-            flowRepository.updateStatus(flowId, originalStatus);
-
+            flow.setStatus(originalStatus);
             stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalStatus));
         }
+
+        flowRepository.createOrUpdate(flow);
     }
 }

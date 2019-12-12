@@ -101,6 +101,27 @@ public class PathSegment implements Serializable {
     }
 
     /**
+     * Create copy (deep) of {@code PathSegment} object. Result object is not tied to any persistent instance.
+     */
+    public PathSegment(PathSegment reference) {
+        this(
+                reference,
+                reference.srcSwitch != null ? new Switch(reference.srcSwitch) : null,
+                reference.destSwitch != null ? new Switch(reference.destSwitch) : null);
+    }
+
+    /**
+     * Create copy (deep) of {@code PathSegment} object. Result object is not tied to any persistent instance.
+     */
+    public PathSegment(PathSegment reference, Switch referenceSrcSwitch, Switch referenceDestSwitch) {
+        this(
+                referenceSrcSwitch, referenceDestSwitch,
+                reference.srcPort, reference.destPort,
+                reference.latency,
+                reference.srcWithMultiTable, reference.destWithMultiTable);
+    }
+
+    /**
      * Checks whether endpoint belongs to segment or not.
      * @param switchId target switch
      * @param port target port

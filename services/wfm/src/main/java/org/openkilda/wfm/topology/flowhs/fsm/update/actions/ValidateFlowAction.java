@@ -103,14 +103,14 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
                 }
             }
 
-            Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
+            Flow foundFlow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
 
-            // Keep it, just in case we have to revert it.
-            stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
+            // Keep copy of original flow
+            stateMachine.setOriginalFlow(new Flow(foundFlow));
 
             flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
             return foundFlow;

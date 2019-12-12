@@ -46,7 +46,7 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
             flowRepository.updateStatus(flowId, FlowStatus.DOWN);
-            stateMachine.setOriginalFlowStatus(null);
+            stateMachine.setAllowFlowStatusRevert(false);
             stateMachine.setNewFlowStatus(FlowStatus.DOWN);
 
             Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);

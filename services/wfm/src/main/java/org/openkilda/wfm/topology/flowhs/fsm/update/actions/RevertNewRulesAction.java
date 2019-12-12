@@ -49,18 +49,18 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         Flow flow = getFlow(flowId);
+        Flow originalFlow = stateMachine.getOriginalFlow();
 
         FlowEncapsulationType encapsulationType = stateMachine.getTargetFlow().getFlowEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
         Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
+
         // Reinstall old ingress rules that may be overridden by new ingress.
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
-            installCommands.addAll(commandBuilder.buildIngressOnly(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
-        }
+        FlowPath oldForward = getFlowPath(flow, originalFlow.getForwardPathId());
+        FlowPath oldReverse = getFlowPath(flow, originalFlow.getReversePathId());
+        installCommands.addAll(commandBuilder.buildIngressOnly(
+                stateMachine.getCommandContext(), flow, oldForward, oldReverse));
 
         stateMachine.getIngressCommands().clear();  // need to clean previous requests
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(

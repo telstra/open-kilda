@@ -55,19 +55,16 @@ public class CompleteFlowPathRemovalAction extends
 
     private void removeFlowPaths(FlowUpdateFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
+        Flow originalFlow = stateMachine.getOriginalFlow();
 
-        FlowPath oldPrimaryForward = null;
-        FlowPath oldPrimaryReverse = null;
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            oldPrimaryForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            oldPrimaryReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
-        }
+        FlowPath oldPrimaryForward = getFlowPath(flow, originalFlow.getForwardPathId());
+        FlowPath oldPrimaryReverse = getFlowPath(flow, originalFlow.getReversePathId());
+
         FlowPath oldProtectedForward = null;
         FlowPath oldProtectedReverse = null;
-        if (stateMachine.getOldProtectedForwardPath() != null
-                && stateMachine.getOldProtectedReversePath() != null) {
-            oldProtectedForward = getFlowPath(flow, stateMachine.getOldProtectedForwardPath());
-            oldProtectedReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
+        if (originalFlow.getProtectedForwardPathId() != null && originalFlow.getProtectedReversePathId() != null) {
+            oldProtectedForward = getFlowPath(flow, originalFlow.getProtectedForwardPathId());
+            oldProtectedReverse = getFlowPath(flow, originalFlow.getProtectedReversePathId());
         }
 
         flowPathRepository.lockInvolvedSwitches(Stream.of(oldPrimaryForward, oldPrimaryReverse,

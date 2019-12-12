@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -53,9 +52,7 @@ public class InstallNonIngressRulesAction extends
         String flowId = stateMachine.getFlowId();
         Flow flow = getFlow(flowId);
 
-        FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
-                ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
-        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
 
         Collection<FlowSegmentRequestFactory> requestFactories = new ArrayList<>();
 
@@ -80,7 +77,6 @@ public class InstallNonIngressRulesAction extends
         } else {
             for (FlowSegmentRequestFactory factory : requestFactories) {
                 FlowSegmentRequest request = factory.makeInstallRequest(commandIdGenerator.generate());
-                // TODO ensure no conflicts
                 requestsStorage.put(request.getCommandId(), factory);
                 stateMachine.getCarrier().sendSpeakerRequest(request);
             }

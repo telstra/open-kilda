@@ -66,11 +66,6 @@ public class AllocateProtectedResourcesAction extends
         FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
                 .orElse(flow.getReversePath());
 
-        if (stateMachine.getNewEncapsulationType() != null) {
-            // This is for PCE to use proper (updated) encapsulation type.
-            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
-        }
-
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow,
                 asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
@@ -92,7 +87,7 @@ public class AllocateProtectedResourcesAction extends
                 flowRepository.updateStatus(flowId, flowStatus);
             }
             stateMachine.setNewFlowStatus(flowStatus);
-            stateMachine.setOriginalFlowStatus(null);
+            stateMachine.setAllowFlowStatusRevert(false);
 
             stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
         } else {

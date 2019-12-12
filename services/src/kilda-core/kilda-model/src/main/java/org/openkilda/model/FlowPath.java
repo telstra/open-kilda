@@ -19,6 +19,8 @@ import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
+import org.openkilda.adapter.FlowSideAdapter;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -43,7 +45,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -115,7 +119,29 @@ public class FlowPath implements Serializable {
     @Setter(AccessLevel.NONE)
     private List<PathSegment> segments = new ArrayList<>();
 
+    /**
+     * Find and return source switch id. Use switch reference stored in flow if it missing into path itself.
+     */
+    public static SwitchId findSrcSwitchId(Flow flow, FlowPath path) {
+        Switch switchReference = path.getSrcSwitch();
+        if (switchReference == null) {
+            return FlowSideAdapter.makeIngressAdapter(flow, path).getSwitchId();
+        } else {
+            return switchReference.getSwitchId();
+        }
+    }
 
+    /**
+     * Find and return source switch id. Use switch reference stored in flow if it missing into path itself.
+     */
+    public static SwitchId findDestSwitchId(Flow flow, FlowPath path) {
+        Switch switchReference = path.getDestSwitch();
+        if (switchReference == null) {
+            return FlowSideAdapter.makeEgressAdapter(flow, path).getSwitchId();
+        } else {
+            return switchReference.getSwitchId();
+        }
+    }
 
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
@@ -136,6 +162,52 @@ public class FlowPath implements Serializable {
         this.timeModify = timeModify;
         this.status = status;
         setSegments(segments != null ? segments : new ArrayList<>());
+    }
+
+    /**
+     * Create copy (deep) of {@code FlowPath} object. Result object is not tied to any persistent instance.
+     *
+     * <p>Flow reference required to break dependency loop.
+     */
+    public FlowPath(FlowPath reference, Flow referenceFlow) {
+        this(
+                reference, referenceFlow,
+                reference.srcSwitch != null ? new Switch(reference.srcSwitch) : null,
+                reference.destSwitch != null ? new Switch(reference.destSwitch) : null);
+    }
+
+    /**
+     * Create copy (deep) of {@code FlowPath} object. Result object is not tied to any persistent instance.
+     *
+     * <p>Flow reference required to break dependency loop. Endpoint switch references required to keep same instance in
+     * flow and into related FlowPath objects.
+     */
+    public FlowPath(FlowPath reference, Flow referenceFlow, Switch referenceSrcSwitch, Switch referenceDestSwitch) {
+        this(
+                reference.pathId,
+                referenceSrcSwitch, referenceDestSwitch,
+                referenceFlow,
+                reference.cookie, reference.meterId,
+                reference.latency,
+                reference.bandwidth, reference.ignoreBandwidth,
+                reference.timeCreate, reference.timeModify,
+                reference.status,
+                new ArrayList<>());
+
+        // force "missing" from persistent storage state
+        entityId = null;
+
+        Map<SwitchId, Switch> segmentSwitchesCache = new HashMap<>();
+        segmentSwitchesCache.put(srcSwitch.getSwitchId(), srcSwitch);
+        segmentSwitchesCache.put(destSwitch.getSwitchId(), destSwitch);
+
+        for (PathSegment entry : reference.segments) {
+            Switch segmentSrcSwitch = segmentSwitchesCache.computeIfAbsent(
+                    entry.getSrcSwitch().getSwitchId(), ignore -> new Switch(entry.getSrcSwitch()));
+            Switch segmentDestSwitch = segmentSwitchesCache.computeIfAbsent(
+                    entry.getDestSwitch().getSwitchId(), ignore -> new Switch(entry.getDestSwitch()));
+            segments.add(new PathSegment(entry, segmentSrcSwitch, segmentDestSwitch));
+        }
     }
 
     /**

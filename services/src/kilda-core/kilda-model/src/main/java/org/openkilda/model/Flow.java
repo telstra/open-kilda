@@ -41,9 +41,11 @@ import org.neo4j.ogm.typeconversion.InstantStringConverter;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -213,6 +215,58 @@ public class Flow implements Serializable {
         this.srcWithMultiTable = srcWithMultiTable;
         this.destWithMultiTable = destWithMultiTable;
         this.pathComputationStrategy = pathComputationStrategy;
+    }
+
+    /**
+     * Create copy (deep) of {@code Flow} object. Result object is not tied to any persistent instance.
+     */
+    public Flow(Flow reference) {
+        this(
+                reference.flowId,
+                new Switch(reference.srcSwitch),
+                new Switch(reference.destSwitch),
+                reference.srcPort, reference.srcVlan,
+                reference.destPort, reference.destVlan,
+                reference.groupId,
+                reference.bandwidth, reference.ignoreBandwidth,
+                reference.description,
+                reference.periodicPings,
+                reference.allocateProtectedPath,
+                reference.encapsulationType,
+                reference.status,
+                reference.maxLatency,
+                reference.priority,
+                reference.timeCreate, reference.timeModify,
+                reference.pinned,
+                reference.srcWithMultiTable, reference.destWithMultiTable,
+                new DetectConnectedDevices(reference.detectConnectedDevices),
+                reference.pathComputationStrategy);
+
+        // force "missing" from persistent storage state
+        entityId = null;
+
+        forwardPathId = reference.forwardPathId;
+        reversePathId = reference.reversePathId;
+
+        protectedForwardPathId = reference.protectedForwardPathId;
+        protectedReversePathId = reference.protectedReversePathId;
+
+        Map<SwitchId, Switch> flowSwitches = new HashMap<>();
+        flowSwitches.put(srcSwitch.getSwitchId(), srcSwitch);
+        flowSwitches.put(destSwitch.getSwitchId(), destSwitch);
+        for (FlowPath entry : reference.paths) {
+            Switch pathSrcSwitch = Optional.of(flowSwitches.get(FlowPath.findSrcSwitchId(reference, entry)))
+                    .orElseThrow(() -> new IllegalStateException(String.format(
+                            "FlowPath %s owned by %s src switch %s do not point on any flow's switch (%s and %s)",
+                            entry.getPathId(), flowId, entry.getSrcSwitch().getSwitchId(),
+                            srcSwitch.getSwitchId(), destSwitch.getSwitchId())));
+            Switch pathDestSwitch = Optional.of(flowSwitches.get(FlowPath.findDestSwitchId(reference, entry)))
+                    .orElseThrow(() -> new IllegalStateException(String.format(
+                            "FlowPath %s owned by %s dest switch %s do not point on any flow's switch (%s and %s)",
+                            entry.getPathId(), flowId, entry.getDestSwitch().getSwitchId(),
+                            srcSwitch.getSwitchId(), destSwitch.getSwitchId())));
+            paths.add(new FlowPath(entry, this, pathSrcSwitch, pathDestSwitch));
+        }
     }
 
     /**

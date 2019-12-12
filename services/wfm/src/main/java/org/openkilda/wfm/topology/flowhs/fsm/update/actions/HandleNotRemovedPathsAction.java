@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.Flow;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -25,19 +26,27 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 @Slf4j
 public class HandleNotRemovedPathsAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            stateMachine.saveErrorToHistory(format("Failed to remove paths %s / %s",
-                    stateMachine.getOldPrimaryForwardPath(), stateMachine.getOldPrimaryReversePath()));
-        }
-        if (stateMachine.getOldProtectedForwardPath() != null
-                && stateMachine.getOldProtectedReversePath() != null) {
-            stateMachine.saveErrorToHistory(format("Failed to remove paths %s / %s",
-                    stateMachine.getOldProtectedForwardPath(), stateMachine.getOldProtectedReversePath()));
+        Flow originalFlow = stateMachine.getOriginalFlow();
+
+        String targetPaths = Stream.of(
+                originalFlow.getForwardPathId(),
+                originalFlow.getReversePathId(),
+                originalFlow.getProtectedForwardPathId(),
+                originalFlow.getProtectedReversePathId())
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .collect(Collectors.joining(", "));
+        if (! targetPaths.isEmpty()) {
+            stateMachine.saveErrorToHistory(format("Failed to remove at least one of paths %s", targetPaths));
         }
     }
 }

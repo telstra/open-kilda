@@ -23,7 +23,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.RecoverablePersistenceException;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -32,7 +31,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,14 +43,12 @@ import java.util.Optional;
 public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final int transactionRetriesLimit;
     private final SwitchRepository switchRepository;
-    private final IslRepository islRepository;
 
     public UpdateFlowAction(PersistenceManager persistenceManager, int transactionRetriesLimit) {
         super(persistenceManager);
         this.transactionRetriesLimit = transactionRetriesLimit;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        islRepository = repositoryFactory.createIslRepository();
     }
 
     @Override
@@ -72,7 +68,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
             log.debug("Updating the flow {} with properties: {}", flowId, targetFlow);
 
             // Complete target flow in FSM with values from original flow
-            stateMachine.setTargetFlow(updateFlow(flow, targetFlow, stateMachine));
+            stateMachine.setTargetFlow(updateFlow(flow, targetFlow));
             flowRepository.createOrUpdate(flow);
         });
 
@@ -81,11 +77,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         return Optional.empty();
     }
 
-    private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow, FlowUpdateFsm stateMachine) {
-        RequestedFlow originalFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
-        stateMachine.setOriginalFlow(originalFlow);
-
-        stateMachine.setOriginalFlowGroup(flow.getGroupId());
+    private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow) {
         if (targetFlow.getDiverseFlowId() != null) {
             flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
         } else if (targetFlow.isAllocateProtectedPath()) {

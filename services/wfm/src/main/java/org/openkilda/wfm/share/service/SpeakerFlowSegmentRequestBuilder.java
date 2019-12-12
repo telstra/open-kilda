@@ -308,7 +308,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         EncapsulationResources resources = resourcesManager
                 .getEncapsulationResources(pathId, oppositePathId, encapsulation)
                 .orElseThrow(() -> new IllegalStateException(format(
-                        "No encapsulation resources found for flow path %s (opposite: %s)", pathId, oppositePathId)));
+                        "No encapsulation resources found for flow path %s (opposite: %s, encapsulation: %s)",
+                        pathId, oppositePathId, encapsulation)));
         return new FlowTransitEncapsulation(resources.getTransitEncapsulationId(), resources.getEncapsulationType());
     }
 }

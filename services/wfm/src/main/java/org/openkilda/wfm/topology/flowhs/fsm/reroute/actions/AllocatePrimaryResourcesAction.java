@@ -56,11 +56,6 @@ public class AllocatePrimaryResourcesAction extends
         String flowId = stateMachine.getFlowId();
         Flow flow = getFlow(flowId);
 
-        if (stateMachine.getNewEncapsulationType() != null) {
-            // This is for PCE to use proper (updated) encapsulation type.
-            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
-        }
-
         FlowPathPair oldPaths = FlowPathPair.builder()
                 .forward(flow.getForwardPath())
                 .reverse(flow.getReversePath())
