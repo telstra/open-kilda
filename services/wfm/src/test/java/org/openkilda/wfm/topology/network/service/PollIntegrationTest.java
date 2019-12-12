@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslChangeType;
@@ -67,8 +68,8 @@ public class PollIntegrationTest {
                         .packetId(discoveryRequest.getPacketId())
                         .build();
 
-                watcherService.confirmation(Endpoint.of(discoveryRequest.getSwitchId(),
-                        discoveryRequest.getPortNumber()), discoveryRequest.getPacketId());
+                watcherService.processConfirmation(Endpoint.of(discoveryRequest.getSwitchId(),
+                        discoveryRequest.getPortNumber()), discoveryRequest.getPacketId(), true);
                 watcherService.discovery(response);
             }
         };
@@ -112,9 +113,9 @@ public class PollIntegrationTest {
         NetworkIntegrationCarrier integrationCarrier = new NetworkIntegrationCarrier() {
             @Override
             public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
-                watcherService.confirmation(
+                watcherService.processConfirmation(
                         Endpoint.of(discoveryRequest.getSwitchId(), discoveryRequest.getPortNumber()),
-                        discoveryRequest.getPacketId());
+                        discoveryRequest.getPacketId(), true);
             }
         };
 
@@ -133,6 +134,33 @@ public class PollIntegrationTest {
         }
 
         verify(carrier).linkDestroyed(eq(Endpoint.of(new SwitchId(1), 1)));
+    }
+
+    @Test
+    public void discoveryPacketNotConfirmed() {
+        NetworkIntegrationCarrier integrationCarrier = new NetworkIntegrationCarrier() {
+            @Override
+            public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
+                watcherService.processConfirmation(
+                        Endpoint.of(discoveryRequest.getSwitchId(), discoveryRequest.getPortNumber()),
+                        discoveryRequest.getPacketId(), false);
+            }
+        };
+
+        NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10);
+        NetworkWatcherService watcherService = new NetworkWatcherService(integrationCarrier, 100, taskId);
+        NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier, 200, 100);
+
+        integrationCarrier.configure(watcherService, watchListService, decisionMakerService);
+
+        watchListService.addWatch(Endpoint.of(new SwitchId(1), 1), 0);
+
+        for (int i = 1; i <= 200; ++i) {
+            watchListService.tick(i);
+            watcherService.tick(i);
+        }
+
+        verifyZeroInteractions(carrier);
     }
 
     @Data

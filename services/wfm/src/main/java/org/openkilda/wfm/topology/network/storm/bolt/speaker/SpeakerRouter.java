@@ -19,7 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.DiscoPacketResponse;
 import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
@@ -126,9 +126,9 @@ public class SpeakerRouter extends AbstractBolt {
         if (payload instanceof IslInfoData) {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
                     input, new WatcherSpeakerDiscoveryCommand((IslInfoData) payload)));
-        } else if (payload instanceof DiscoPacketSendingConfirmation) {
+        } else if (payload instanceof DiscoPacketResponse) {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
-                    input, new WatcherSpeakerSendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
+                    input, new WatcherSpeakerSendConfirmationCommand((DiscoPacketResponse) payload)));
         } else if (payload instanceof SwitchInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {

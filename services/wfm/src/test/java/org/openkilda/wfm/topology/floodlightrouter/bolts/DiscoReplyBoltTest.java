@@ -22,7 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.DiscoPacketResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
@@ -84,7 +84,7 @@ public class DiscoReplyBoltTest {
     @Test
     public void verifySpeakerToConsumerTupleConsistency() throws Exception {
         InfoMessage discoveryConfirmation = new InfoMessage(
-                new DiscoPacketSendingConfirmation(new NetworkEndpoint(switchAlpha, 1), 1L),
+                new DiscoPacketResponse(new NetworkEndpoint(switchAlpha, 1), 1L, true),
                 3L, "discovery-confirmation", REGION_ONE);
         Tuple tuple = mock(Tuple.class);
         when(tuple.getStringByField(FIELD_ID_KEY)).thenReturn(switchAlpha.toString());

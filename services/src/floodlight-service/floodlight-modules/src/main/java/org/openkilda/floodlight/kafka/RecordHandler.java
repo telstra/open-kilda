@@ -107,7 +107,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.DiscoPacketResponse;
 import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
@@ -322,13 +322,14 @@ class RecordHandler implements Runnable {
     private void doDiscoverIslCommand(CommandMessage message) {
         DiscoverIslCommandData command = (DiscoverIslCommandData) message.getData();
         SwitchId switchId = command.getSwitchId();
-        context.getPathVerificationService().sendDiscoveryMessage(
+        boolean confirmed = context.getPathVerificationService().sendDiscoveryMessage(
                 DatapathId.of(switchId.toLong()), OFPort.of(command.getPortNumber()), command.getPacketId());
 
-        DiscoPacketSendingConfirmation confirmation = new DiscoPacketSendingConfirmation(
-                new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()), command.getPacketId());
+        DiscoPacketResponse discoPacketResponse = new DiscoPacketResponse(
+                new NetworkEndpoint(command.getSwitchId(), command.getPortNumber()), command.getPacketId(),
+                confirmed);
         getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(), command.getSwitchId().toString(),
-                new InfoMessage(confirmation, System.currentTimeMillis(), message.getCorrelationId(),
+                new InfoMessage(discoPacketResponse, System.currentTimeMillis(), message.getCorrelationId(),
                         context.getRegion()));
     }
 
