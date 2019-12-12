@@ -15,20 +15,20 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.watcher.command;
 
-import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.DiscoPacketResponse;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherSpeakerSendConfirmationCommand extends WatcherCommand {
-    private final DiscoPacketSendingConfirmation confirmation;
+    private final DiscoPacketResponse response;
 
-    public WatcherSpeakerSendConfirmationCommand(DiscoPacketSendingConfirmation confirmation) {
-        super(new Endpoint(confirmation.getEndpoint()));
-        this.confirmation = confirmation;
+    public WatcherSpeakerSendConfirmationCommand(DiscoPacketResponse response) {
+        super(new Endpoint(response.getEndpoint()));
+        this.response = response;
     }
 
     @Override
     public void apply(WatcherHandler handler) {
-        handler.processConfirmation(getEndpoint(), confirmation.getPacketId());
+        handler.processConfirmation(getEndpoint(), response.getPacketId(), response.isConfirmed());
     }
 }
