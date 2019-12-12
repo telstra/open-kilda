@@ -33,12 +33,17 @@ public class FlowPatchDto {
     @JsonProperty("periodic_pings")
     private Boolean periodicPings;
 
+    @JsonProperty("target_path_computation_strategy")
+    private String targetPathComputationStrategy;
+
     @JsonCreator
     public FlowPatchDto(@JsonProperty("max-latency") Long maxLatency,
                         @JsonProperty("priority") Integer priority,
-                        @JsonProperty("periodic_pings") Boolean periodicPings) {
+                        @JsonProperty("periodic_pings") Boolean periodicPings,
+                        @JsonProperty("target_path_computation_strategy") String targetPathComputationStrategy) {
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.periodicPings = periodicPings;
+        this.targetPathComputationStrategy = targetPathComputationStrategy;
     }
 }

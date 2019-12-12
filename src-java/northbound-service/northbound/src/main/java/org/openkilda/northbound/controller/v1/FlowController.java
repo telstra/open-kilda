@@ -138,7 +138,7 @@ public class FlowController extends BaseController {
     }
 
     /**
-     * Updates max latency or priority of existing flow.
+     * Updates existing flow params.
      *
      * @param flowPatchDto  flow parameters for update
      * @param flowId        flow id

@@ -22,6 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -88,6 +89,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private RequestedFlow originalFlow;
     private FlowStatus originalFlowStatus;
     private FlowEncapsulationType originalEncapsulationType;
+    private PathComputationStrategy originalPathComputationStrategy;
 
     private FlowStatus newFlowStatus;
     private FlowEncapsulationType newEncapsulationType;

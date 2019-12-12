@@ -269,6 +269,17 @@ public interface FlowMapper {
     }
 
     /**
+     * Convert {@link String} to {@link PathComputationStrategy}.
+     */
+    default PathComputationStrategy mapPathComputationStrategy(String pathComputationStrategy) {
+        if (pathComputationStrategy == null) {
+            return null;
+        }
+
+        return PathComputationStrategy.valueOf(pathComputationStrategy.toUpperCase());
+    }
+
+    /**
      * Translate Java's error code(enum) into human readable string.
      */
     default String getPingError(Ping.Errors error) {

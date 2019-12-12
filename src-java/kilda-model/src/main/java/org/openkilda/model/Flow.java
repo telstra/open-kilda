@@ -179,6 +179,10 @@ public class Flow implements Serializable {
     @Convert(graphPropertyType = String.class)
     private PathComputationStrategy pathComputationStrategy;
 
+    @Property(name = "target_path_computation_strategy")
+    @Convert(graphPropertyType = String.class)
+    private PathComputationStrategy targetPathComputationStrategy;
+
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int destPort, int destVlan,
@@ -187,7 +191,8 @@ public class Flow implements Serializable {
                 Long maxLatency, Integer priority,
                 Instant timeCreate, Instant timeModify, boolean pinned,
                 boolean srcWithMultiTable, boolean destWithMultiTable, DetectConnectedDevices detectConnectedDevices,
-                PathComputationStrategy pathComputationStrategy) {
+                PathComputationStrategy pathComputationStrategy,
+                PathComputationStrategy targetPathComputationStrategy) {
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -212,6 +217,7 @@ public class Flow implements Serializable {
         this.srcWithMultiTable = srcWithMultiTable;
         this.destWithMultiTable = destWithMultiTable;
         this.pathComputationStrategy = pathComputationStrategy;
+        this.targetPathComputationStrategy = targetPathComputationStrategy;
     }
 
     /**
