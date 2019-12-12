@@ -17,8 +17,10 @@ package org.openkilda.floodlight.service.kafka;
 
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.TopicPartition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,26 +30,36 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
+@Slf4j
 public class KafkaConsumerSetup {
     private final HashSet<String> topicsSet = new HashSet<>();
 
     private final HashMap<String, String> configOverride = new HashMap<>();
+
+    private boolean forceSeekToEnd = false;
 
     public KafkaConsumerSetup(String topic, String... extraTopics) {
         topicsSet.add(topic);
         topicsSet.addAll(Arrays.asList(extraTopics));
     }
 
-    public void offsetResetStrategy(OffsetResetStrategy strategy) {
+    public KafkaConsumerSetup withOffsetResetStrategy(OffsetResetStrategy strategy) {
         configOverride.put(AUTO_OFFSET_RESET_CONFIG, strategy.toString().toLowerCase());
+        return this;
+    }
+
+    public KafkaConsumerSetup withForceSeedToEnd(boolean value) {
+        forceSeekToEnd = value;
+        return this;
     }
 
     /**
      * List of kafka-topics consumer will be subscribed to.
      */
     public List<String> getTopics() {
-        ArrayList<String> topics = new ArrayList<>(topicsSet.size());
+        ArrayList<String> topics = new ArrayList<>(topicsSet);
         Collections.sort(topics);
         return topics;
     }
@@ -67,5 +79,22 @@ public class KafkaConsumerSetup {
      */
     public void applyInstance(KafkaConsumer<?, ?> consumer) {
         consumer.subscribe(topicsSet);
+        if (forceSeekToEnd) {
+            seekToEnd(consumer);
+        }
+    }
+
+    private void seekToEnd(KafkaConsumer<?, ?> consumer) {
+        // Force partitions assignment, because this is initial read and seek to end is forced we can ignore any
+        // available now records (i.e. ignore results of .poll() call)
+        consumer.poll(0L);
+
+        // Seek to end assigned for current consumer partitions (other consumers for this consumer group will do the
+        // same) i.e. seek to the end will be applied to all partitions
+        List<TopicPartition> partitionsToSeek = new ArrayList<>(consumer.assignment());
+        log.info("Seek kafka partitions to the end: \"{}\"", partitionsToSeek.stream()
+                .map(TopicPartition::toString)
+                .collect(Collectors.joining("\", \"")));
+        consumer.seekToEnd(partitionsToSeek);
     }
 }
