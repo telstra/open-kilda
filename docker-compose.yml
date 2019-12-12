@@ -43,7 +43,11 @@ services:
       NEO4J_dbms_security_procedures_whitelist: "apoc.*"
       NEO4J_dbms_security_allow__csv__import__from__file__urls: "true"
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
-      NEO4J_dbms_memory_heap_max__size: "1024M"
+      NEO4J_dbms_memory_heap_max__size: "512M"
+      NEO4J_dbms_memory_pagecache_size: "512M"
+      NEO4J_dbms_memory_heap_initial__size: "512M"
+      NEO4J_dbms_connectors_default__listen__address: "0.0.0.0"
+      NEO4J_dbms_directories_data: "/var/lib/neo4j/data"
     networks:
       default:
         aliases:

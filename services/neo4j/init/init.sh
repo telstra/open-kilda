@@ -1,5 +1,6 @@
 #!/bin/bash
 
+PATH=/opt/neo4j-community-${NEO4j_VERSION}/bin:$PATH
 TEST_MODE="${TEST_MODE:-true}"
 
 # TEst mode is default
@@ -15,7 +16,7 @@ if [ "${TEST_MODE}" == "true" ]; then
             exit 1
         fi
         # Will exit with error if users already exist (and print a message explaining that)
-        /usr/bin/neo4j-admin set-initial-password "${password}" || true
+        /opt/neo4j-community-${NEO4j_VERSION}/bin/neo4j-admin set-initial-password "${password}" || true
     elif [ -n "${NEO4J_AUTH:-}" ]; then
         echo >&2 "Invalid value for NEO4J_AUTH: '${NEO4J_AUTH}'"
         exit 1
@@ -29,12 +30,12 @@ if [ "${TEST_MODE}" == "true" ]; then
         # Don't allow settings with no value or settings that start with a number (neo4j converts settings to env variables and you cannot have an env variable that starts with a number)
         if [[ -n ${value} ]]; then
             if [[ ! "${setting}" =~ ^[0-9]+.*$ ]]; then
-                if grep -q -F "${setting}=" /etc/neo4j/neo4j.conf; then
+                if grep -q -F "${setting}=" /opt/neo4j-community-${NEO4j_VERSION}/conf/neo4j.conf; then
                     # Remove any lines containing the setting already
-                    sed --in-place "/${setting}=.*/d" /etc/neo4j/neo4j.conf
+                    sed --in-place "/${setting}=.*/d" /opt/neo4j-community-${NEO4j_VERSION}/conf/neo4j.conf
                 fi
                 # Then always append setting to file
-                echo "${setting}=${value}" >> /etc/neo4j/neo4j.conf
+                echo "${setting}=${value}" >> /opt/neo4j-community-${NEO4j_VERSION}/conf/neo4j.conf
             else
                 echo >&2 "WARNING: ${setting} not written to conf file because settings that start with a number are not permitted"
             fi
