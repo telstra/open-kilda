@@ -75,8 +75,8 @@ public class NetworkWatcherServiceTest {
 
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
 
-        w.confirmation(Endpoint.of(new SwitchId(1), 2), 1);
-        w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
+        w.processConfirmation(Endpoint.of(new SwitchId(1), 2), 1, true);
+        w.processConfirmation(Endpoint.of(new SwitchId(2), 1), 2, true);
 
         assertThat(w.getConfirmedPackets().size(), is(2));
         assertThat(w.getTimeouts().size(), is(5));
@@ -108,8 +108,8 @@ public class NetworkWatcherServiceTest {
         assertThat(w.getTimeouts().size(), is(3));
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
 
-        w.confirmation(Endpoint.of(new SwitchId(1), 1), 0);
-        w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
+        w.processConfirmation(Endpoint.of(new SwitchId(1), 1), 0, true);
+        w.processConfirmation(Endpoint.of(new SwitchId(2), 1), 2, true);
 
         assertThat(w.getConfirmedPackets().size(), is(2));
 
@@ -137,8 +137,8 @@ public class NetworkWatcherServiceTest {
         assertThat(w.getTimeouts().size(), is(3));
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
 
-        w.confirmation(Endpoint.of(new SwitchId(1), 1), 0);
-        w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
+        w.processConfirmation(Endpoint.of(new SwitchId(1), 1), 0, true);
+        w.processConfirmation(Endpoint.of(new SwitchId(2), 1), 2, true);
         assertThat(w.getConfirmedPackets().size(), is(2));
 
         PathNode source = new PathNode(new SwitchId(1), 1, 0);
@@ -176,12 +176,27 @@ public class NetworkWatcherServiceTest {
         IslInfoData islAlphaBeta = IslInfoData.builder().source(source).destination(destination).packetId(0L).build();
 
         w.discovery(islAlphaBeta);
-        w.confirmation(new Endpoint(source), 0);
+        w.processConfirmation(new Endpoint(source), 0, true);
         w.tick(awaitTime + 1);
 
         verify(carrier).discoveryReceived(eq(new Endpoint(source)), eq(0L), eq(islAlphaBeta), anyLong());
         verify(carrier, never()).discoveryFailed(eq(new Endpoint(source)), anyLong(), anyLong());
 
         assertThat(w.getConfirmedPackets().size(), is(0));
+    }
+
+    @Test
+    public void packetIsNotConfirmed() {
+        final int awaitTime = 1000;
+
+        NetworkWatcherService w = new NetworkWatcherService(carrier, awaitTime, taskId);
+        w.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+
+        verify(carrier, times(1)).sendDiscovery(any(DiscoverIslCommandData.class));
+
+        w.processConfirmation(Endpoint.of(new SwitchId(1), 1), 0, false);
+
+        assertThat(w.getConfirmedPackets().size(), is(0));
+        assertThat(w.getProducedPackets().size(), is(0));
     }
 }

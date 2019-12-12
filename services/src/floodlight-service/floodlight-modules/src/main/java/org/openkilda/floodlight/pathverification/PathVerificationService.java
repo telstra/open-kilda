@@ -293,13 +293,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, Long packetId) {
-        boolean result = false;
-
         try {
             IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
             if (srcSwitch != null && srcSwitch.getPort(port) != null) {
                 OFPacketOut ofPacketOut = generateDiscoveryPacket(srcSwitch, port, true, packetId);
 
+                boolean result = false;
                 if (ofPacketOut != null) {
                     logger.debug("==> Sending discovery packet out {}/{} id {}: {}", srcSwitch.getId(),
                             port.getPortNumber(),
@@ -319,12 +318,15 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                             "Failed to send PACKET_OUT(ISL discovery packet) via {}-{} id: {}",
                             srcSwitch.getId(), port.getPortNumber(), packetId);
                 }
+                return result;
             }
         } catch (Exception exception) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), exception);
         }
 
-        return result;
+        // return true to make sure network topology will fail already discovered ISL's by timeout
+        // on disconnected switches
+        return true;
     }
 
     private static LLDPTLV switchTimestampTlv(byte type) {

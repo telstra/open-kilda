@@ -26,7 +26,7 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class DiscoPacketSendingConfirmation extends InfoData {
+public class DiscoPacketResponse extends InfoData {
 
     @JsonProperty("endpoint")
     private NetworkEndpoint endpoint;
@@ -37,10 +37,15 @@ public class DiscoPacketSendingConfirmation extends InfoData {
     @JsonProperty("packetId")
     private long packetId;
 
+    @JsonProperty("confirmed")
+    private boolean confirmed;
+
     @JsonCreator
-    public DiscoPacketSendingConfirmation(@JsonProperty("endpoint") NetworkEndpoint endpoint,
-                                          @JsonProperty("packetId") final long packetId) {
+    public DiscoPacketResponse(@JsonProperty("endpoint") NetworkEndpoint endpoint,
+                               @JsonProperty("packetId") final long packetId,
+                               @JsonProperty("confirmed") boolean confirmed) {
         this.endpoint = endpoint;
         this.packetId = packetId;
+        this.confirmed = confirmed;
     }
 }

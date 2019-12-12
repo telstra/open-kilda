@@ -142,8 +142,8 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
 
     // WatcherCommand
 
-    public void processConfirmation(Endpoint endpoint, long packetId) {
-        service.confirmation(endpoint, packetId);
+    public void processConfirmation(Endpoint endpoint, long packetId, boolean confirmed) {
+        service.processConfirmation(endpoint, packetId, confirmed);
     }
 
     public void processAddWatch(Endpoint endpoint) {
