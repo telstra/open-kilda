@@ -467,6 +467,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
     @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
+    @Ignore("https://github.com/telstra/open-kilda/issues/3027")
     def "Meter burst size is correctly set on Noviflow Wb5164 switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = getNoviflowWb5164()

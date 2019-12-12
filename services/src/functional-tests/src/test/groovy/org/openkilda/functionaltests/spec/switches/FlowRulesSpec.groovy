@@ -37,6 +37,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -546,15 +547,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with protected path"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "Create a flow with protected path"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
         flowHelperV2.addFlow(flow)
 
@@ -569,7 +567,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         and: "Delete flow rules(for main and protected paths) on involved switches for creating missing rules"
         def amountOfRules = { SwitchId switchId ->
-            (switchId == srcSwitch.dpId || switchId == dstSwitch.dpId) ? 3 : 4
+            (switchId == switchPair.src.dpId || switchId == switchPair.dst.dpId) ? 3 : 4
         }
         commonNodeIds.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
         uniqueNodes.each { northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS) }
@@ -671,6 +669,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tags([HARDWARE, LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
+    @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
@@ -687,7 +686,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
-        def transitSwitchIds = involvedSwitches[-1..-2]
+        def transitSwitchIds = involvedSwitches[1..-2]
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
