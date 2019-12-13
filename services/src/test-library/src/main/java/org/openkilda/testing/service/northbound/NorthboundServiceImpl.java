@@ -44,6 +44,7 @@ import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -326,6 +327,13 @@ public class NorthboundServiceImpl implements NorthboundService {
                 new SwapFlowEndpointPayload(firstFlow, secondFlow), buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v2/flows/swap-endpoint", HttpMethod.POST, httpEntity,
                 SwapFlowEndpointPayload.class).getBody();
+    }
+
+    @Override
+    public FlowResponsePayload partialUpdate(String flowId, FlowPatchDto payload) {
+        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.PATCH,
+                new HttpEntity<>(payload, buildHeadersWithCorrelationId()), FlowResponsePayload.class, flowId)
+                .getBody();
     }
 
     @Override
