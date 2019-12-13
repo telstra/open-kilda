@@ -23,8 +23,10 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 @Value
 @Builder
 public class MeterSchemaBand {
-    private static final float INACCURATE_RATE_DEVIATION = 0.01f;
-    private static final float INACCURATE_BURST_DEVIATION = 0.01f;
+    private static final long INACCURATE_RATE_ALLOWED_DIFF = 1;
+    private static final long INACCURATE_BURST_ALLOWED_DIFF = 1;
+    private static final float INACCURATE_RATE_ALLOWED_DEVIATION = 0.01f;
+    private static final float INACCURATE_BURST_ALLOWED_DEVIATION = 0.01f;
     private static final long ACCURATE_BURST_DEVIATION = 1;
 
     private final int type;
@@ -51,8 +53,10 @@ public class MeterSchemaBand {
 
         if (inaccurate || that.inaccurate) {
             return equals.isEquals()
-                    && inaccurateEquals(rate, that.rate, INACCURATE_RATE_DEVIATION)
-                    && inaccurateEquals(burstSize, that.burstSize, INACCURATE_BURST_DEVIATION);
+                    && (inaccurateEquals(rate, that.rate, INACCURATE_RATE_ALLOWED_DIFF)
+                    || inaccurateEquals(rate, that.rate, INACCURATE_RATE_ALLOWED_DEVIATION))
+                    && (inaccurateEquals(burstSize, that.burstSize, INACCURATE_BURST_ALLOWED_DIFF)
+                    || inaccurateEquals(burstSize, that.burstSize, INACCURATE_BURST_ALLOWED_DEVIATION));
         } else {
             return equals.append(rate, that.rate).isEquals()
                     && inaccurateEquals(burstSize, that.burstSize, ACCURATE_BURST_DEVIATION);
