@@ -17,7 +17,7 @@ Each changelog file can be applied either separately or via the grouping changel
 
 ```
 $> cd LIQUIGRAPH_DIR/liquigraph-cli
-$> ./liquigraph.sh --changelog MIGRATION_SCRIPT_DIR/changelog.xml" \
+$> ./liquigraph.sh --changelog MIGRATION_SCRIPT_DIR/changelog.xml \
     --username neo4j
     --password \ # leave empty (password prompt will appear)
     --graph-db-uri jdbc:neo4j:http://localhost:7474/

@@ -32,15 +32,7 @@ CREATE CONSTRAINT ON (`switch_properties`:`switch_properties`) ASSERT `switch_pr
 CREATE INDEX ON :`vxlan`(`path_id`);
 CREATE INDEX ON :`flow_meter` (`switch_id`);
 CREATE INDEX ON :`flow_meter` (`flow_id`);
-CREATE CONSTRAINT ON (`connected_device`:`connected_device`) ASSERT `connected_device`.`entityId` IS UNIQUE;
-CREATE CONSTRAINT ON (`connected_device`:`connected_device`) ASSERT `connected_device`.`unique_index` IS UNIQUE;
-CREATE INDEX ON :`connected_device` (`flow_id`);
-CREATE INDEX ON :`connected_device` (`source`);
-CREATE INDEX ON :`connected_device` (`mac_address`);
 CREATE CONSTRAINT ON (`port_history`:`port_history`) ASSERT `port_history`.`entityId` IS UNIQUE;
-CREATE INDEX ON :`connected_device` (`type`);
-CREATE INDEX ON :`connected_device` (`chassis_id`);
-CREATE INDEX ON :`connected_device` (`port_id`);
 CREATE CONSTRAINT ON (`port_properties`:`port_properties`) ASSERT `port_properties`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`port_properties`:`port_properties`) ASSERT `port_properties`.`discriminator` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch_connected_device`:`switch_connected_device`) ASSERT `switch_connected_device`.`entityId` IS UNIQUE;
