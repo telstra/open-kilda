@@ -1,0 +1,16 @@
+# topology configuration
+config:
+  topology.parallelism: 1
+  topology.workers: 1
+  topology.spouts.parallelism: 1
+  topology.bolts.parallelism: 2
+
+# spout definitions
+spouts:
+  - id: "input"
+    parallelism: 1
+
+# bolt definitions
+bolts:
+  - id: "output"
+    parallelism: 1

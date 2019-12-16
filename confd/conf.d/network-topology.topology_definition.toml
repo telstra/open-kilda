@@ -1,0 +1,5 @@
+[template]
+src = "network-topology/network-topology.tmpl"
+dest = "src-java/network-topology/network-storm-topology/src/main/resources/network-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

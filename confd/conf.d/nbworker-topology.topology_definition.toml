@@ -1,0 +1,5 @@
+[template]
+src = "nbworker-topology/nbworker-topology.tmpl"
+dest = "src-java/nbworker-topology/nbworker-storm-topology/src/main/resources/nbworker-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

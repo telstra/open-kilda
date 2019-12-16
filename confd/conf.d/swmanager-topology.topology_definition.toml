@@ -1,0 +1,5 @@
+[template]
+src = "swmanager-topology/swmanager-topology.tmpl"
+dest = "src-java/swmanager-topology/swmanager-storm-topology/src/main/resources/swmanager-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

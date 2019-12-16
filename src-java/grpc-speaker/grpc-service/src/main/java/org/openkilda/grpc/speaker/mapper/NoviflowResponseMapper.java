@@ -34,6 +34,7 @@ public abstract class NoviflowResponseMapper {
     @Mapping(source = "logicalportno", target = "logicalPortNumber")
     @Mapping(source = "portnoList", target = "portNumbers")
     @Mapping(source = "logicalporttype", target = "type")
+    @Mapping(ignore = true, target = "portNumber")
     public abstract LogicalPort map(io.grpc.noviflow.LogicalPort port);
 
     @Mapping(source = "ethLinksList", target = "ethLinks")
