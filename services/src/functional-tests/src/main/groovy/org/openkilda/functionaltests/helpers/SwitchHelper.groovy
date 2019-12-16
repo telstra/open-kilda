@@ -76,7 +76,10 @@ class SwitchHelper {
     }
 
     static List<Long> getDefaultCookies(Switch sw) {
-        def swProps = northbound.getSwitchProperties(sw.dpId)
+        getDefaultCookies(sw, northbound.getSwitchProperties(sw.dpId))
+    }
+
+    static List<Long> getDefaultCookies(Switch sw, SwitchPropertiesDto swProps) {
         def multiTableRules = []
         def switchLldpRules = []
         if (swProps.multiTable) {
@@ -165,7 +168,7 @@ class SwitchHelper {
                 actualHexCookie.add(Cookie.decode(cookie).toString())
             }
             def expectedHexCookie = []
-            for (long cookie : sw.defaultCookies) {
+            for (long cookie : sw.getDefaultCookies(switchProperties)) {
                 expectedHexCookie.add(Cookie.decode(cookie).toString())
             }
             assert actualHexCookie.sort() == expectedHexCookie.sort()

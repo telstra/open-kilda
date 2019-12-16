@@ -8,7 +8,9 @@ import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.Constants
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovyx.gpars.group.DefaultPGroup
@@ -53,13 +55,39 @@ class ContentionV2Spec extends BaseSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    def "Able to quickly change switch table mode multiple times"() {
+        given: "A switch that supports multi-table mode"
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
+
+        when: "Change table mode for the switch multiple times in a row"
+        def originalProperties = northbound.getSwitchProperties(sw.dpId)
+        def currentMode = originalProperties.multiTable
+        3.times {
+            northbound.updateSwitchProperties(sw.dpId, originalProperties.jacksonCopy().tap {
+                it.multiTable = !currentMode
+                currentMode = it.multiTable
+            })
+        }
+
+        then: "Switch ends up with default rules installed with respect to currently selected table mode"
+        Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
+        Wrappers.timedLoop(3) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+        }
+
+        cleanup: "Restore original switch props"
+        switchHelper.updateSwitchProperties(sw, originalProperties)
+    }
+
     @Ignore("https://github.com/telstra/open-kilda/issues/2983")
     def "Parallel flow crud requests properly allocate/deallocate bandwidth resources"() {
         when: "Create multiple flows on the same ISLs concurrently"
         def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
         List<FlowRequestV2> flows = []
-        flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false , flows) }
+        flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false, flows) }
         def createTasks = flows.collect { flow ->
             group.task { flowHelperV2.addFlow(flow) }
         }
