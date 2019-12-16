@@ -1,0 +1,5 @@
+[template]
+src = "flowhs-topology/flowhs-topology.tmpl"
+dest = "src-java/flowhs-topology/flowhs-storm-topology/src/main/resources/flowhs-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

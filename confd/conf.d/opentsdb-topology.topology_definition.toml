@@ -1,0 +1,5 @@
+[template]
+src = "opentsdb-topology/opentsdb-topology.tmpl"
+dest = "src-java/opentsdb-topology/opentsdb-storm-topology/src/main/resources/opentsdb-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

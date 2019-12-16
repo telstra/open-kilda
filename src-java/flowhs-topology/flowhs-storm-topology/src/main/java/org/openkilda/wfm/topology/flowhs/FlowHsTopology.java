@@ -31,7 +31,6 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB
 import static org.openkilda.wfm.topology.flowhs.bolts.RouterBolt.FLOW_ID_FIELD;
 
 import org.openkilda.messaging.AbstractMessage;
-import org.openkilda.messaging.Message;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
@@ -60,7 +59,6 @@ import org.openkilda.wfm.topology.flowhs.bolts.SpeakerWorkerBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
@@ -69,12 +67,8 @@ import java.util.concurrent.TimeUnit;
 public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private static final Fields FLOW_FIELD = new Fields(FLOW_ID_FIELD);
 
-    private int parallelism;
-
     public FlowHsTopology(LaunchEnvironment env) {
-        super(env, FlowHsTopologyConfig.class);
-
-        parallelism = topologyConfig.getFlowHsParallelism();
+        super(env, "flowhs-topology", FlowHsTopologyConfig.class);
     }
 
     @Override
@@ -115,13 +109,11 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
-        KafkaSpout<String, Message> mainSpout = buildKafkaSpout(getConfig().getKafkaFlowHsTopic(),
-                ComponentId.FLOW_SPOUT.name());
-        topologyBuilder.setSpout(ComponentId.FLOW_SPOUT.name(), mainSpout, parallelism);
+        declareKafkaSpout(topologyBuilder, getConfig().getKafkaFlowHsTopic(), ComponentId.FLOW_SPOUT.name());
     }
 
     private void inputRouter(TopologyBuilder topologyBuilder) {
-        topologyBuilder.setBolt(ComponentId.FLOW_ROUTER_BOLT.name(), new RouterBolt(), parallelism)
+        declareBolt(topologyBuilder, new RouterBolt(), ComponentId.FLOW_ROUTER_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_SPOUT.name())
                 .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT.name());
     }
@@ -144,7 +136,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowCreateHubBolt hubBolt = new FlowCreateHubBolt(config, persistenceManager, pathComputerConfig,
                 flowResourcesConfig);
-        topologyBuilder.setBolt(ComponentId.FLOW_CREATE_HUB.name(), hubBolt, parallelism)
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_CREATE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_CREATE.name())
@@ -168,7 +160,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowUpdateHubBolt hubBolt = new FlowUpdateHubBolt(config, persistenceManager, pathComputerConfig,
                 flowResourcesConfig);
-        topologyBuilder.setBolt(ComponentId.FLOW_UPDATE_HUB.name(), hubBolt, parallelism)
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_UPDATE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_UPDATE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_UPDATE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_UPDATE.name())
@@ -188,7 +180,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowPathSwapHubBolt hubBolt = new FlowPathSwapHubBolt(config, persistenceManager, flowResourcesConfig);
-        topologyBuilder.setBolt(ComponentId.FLOW_PATH_SWAP_HUB.name(), hubBolt, parallelism)
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_PATH_SWAP_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_PATH_SWAP_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_PATH_SWAP_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_PATH_SWAP.name())
@@ -212,7 +204,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowRerouteHubBolt hubBolt = new FlowRerouteHubBolt(config, persistenceManager, pathComputerConfig,
                 flowResourcesConfig);
-        topologyBuilder.setBolt(ComponentId.FLOW_REROUTE_HUB.name(), hubBolt, parallelism)
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_REROUTE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_REROUTE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_REROUTE.name())
@@ -232,7 +224,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowDeleteHubBolt hubBolt = new FlowDeleteHubBolt(config, persistenceManager, flowResourcesConfig);
-        topologyBuilder.setBolt(ComponentId.FLOW_DELETE_HUB.name(), hubBolt, parallelism)
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_DELETE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_DELETE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_DELETE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_DELETE.name())
@@ -249,7 +241,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .build();
 
         FlowSwapEndpointsHubBolt hubBolt = new FlowSwapEndpointsHubBolt(config, persistenceManager);
-        topologyBuilder.setBolt(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), hubBolt, parallelism)
+        declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
                         ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(),
@@ -258,10 +250,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void speakerSpout(TopologyBuilder topologyBuilder) {
-        KafkaSpout<String, AbstractMessage> flWorkerSpout = buildKafkaSpoutForAbstractMessage(
-                getConfig().getKafkaFlowSpeakerWorkerTopic(),
+        declareKafkaSpoutForAbstractMessage(topologyBuilder, getConfig().getKafkaFlowSpeakerWorkerTopic(),
                 ComponentId.SPEAKER_WORKER_SPOUT.name());
-        topologyBuilder.setSpout(ComponentId.SPEAKER_WORKER_SPOUT.name(), flWorkerSpout, parallelism);
     }
 
     private void flowCreateSpeakerWorker(TopologyBuilder topologyBuilder) {
@@ -273,7 +263,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(ComponentId.FLOW_CREATE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_CREATE.name())
                 .build());
-        topologyBuilder.setBolt(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(), speakerWorker, parallelism)
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.FLOW_CREATE_SPEAKER_WORKER.name())
                 .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
                         FIELDS_KEY)
@@ -289,7 +279,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(ComponentId.FLOW_UPDATE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_UPDATE.name())
                 .build());
-        topologyBuilder.setBolt(ComponentId.FLOW_UPDATE_SPEAKER_WORKER.name(), speakerWorker, parallelism)
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.FLOW_UPDATE_SPEAKER_WORKER.name())
                 .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
                         FIELDS_KEY)
@@ -305,7 +295,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(ComponentId.FLOW_PATH_SWAP_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_PATH_SWAP.name())
                 .build());
-        topologyBuilder.setBolt(ComponentId.FLOW_PATH_SWAP_SPEAKER_WORKER.name(), speakerWorker, parallelism)
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.FLOW_PATH_SWAP_SPEAKER_WORKER.name())
                 .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
                         FIELDS_KEY)
@@ -321,7 +311,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(ComponentId.FLOW_REROUTE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_REROUTE.name())
                 .build());
-        topologyBuilder.setBolt(ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name(), speakerWorker, parallelism)
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name())
                 .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
                         FIELDS_KEY)
@@ -337,7 +327,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(ComponentId.FLOW_DELETE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_DELETE.name())
                 .build());
-        topologyBuilder.setBolt(ComponentId.FLOW_DELETE_SPEAKER_WORKER.name(), speakerWorker, parallelism)
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.FLOW_DELETE_SPEAKER_WORKER.name())
                 .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
                         FIELDS_KEY)
@@ -347,7 +337,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private void speakerOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt<String, AbstractMessage> flKafkaBolt = makeKafkaBolt(
                 getConfig().getKafkaSpeakerFlowTopic(), AbstractMessageSerializer.class);
-        topologyBuilder.setBolt(ComponentId.SPEAKER_REQUEST_SENDER.name(), flKafkaBolt, parallelism)
+        declareBolt(topologyBuilder, flKafkaBolt, ComponentId.SPEAKER_REQUEST_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_REQUEST_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_SPEAKER_WORKER.name(),
@@ -361,8 +351,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void coordinator(TopologyBuilder topologyBuilder) {
-        topologyBuilder.setSpout(CoordinatorSpout.ID, new CoordinatorSpout());
-        topologyBuilder.setBolt(CoordinatorBolt.ID, new CoordinatorBolt(), parallelism)
+        declareSpout(topologyBuilder, new CoordinatorSpout(), CoordinatorSpout.ID);
+        declareBolt(topologyBuilder, new CoordinatorBolt(), CoordinatorBolt.ID)
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
                         CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
@@ -384,7 +374,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void northboundOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt nbKafkaBolt = buildKafkaBolt(getConfig().getKafkaNorthboundTopic());
-        topologyBuilder.setBolt(ComponentId.NB_RESPONSE_SENDER.name(), nbKafkaBolt, parallelism)
+        declareBolt(topologyBuilder, nbKafkaBolt, ComponentId.NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
@@ -395,14 +385,14 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt rerouteKafkaBolt = buildKafkaBolt(getConfig().getKafkaRerouteTopic());
-        topologyBuilder.setBolt(ComponentId.REROUTE_RESPONSE_SENDER.name(), rerouteKafkaBolt, parallelism)
+        declareBolt(topologyBuilder, rerouteKafkaBolt, ComponentId.REROUTE_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name());
     }
 
     private void pingOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt pingKafkaBolt = buildKafkaBolt(getConfig().getKafkaPingTopic());
-        topologyBuilder.setBolt(ComponentId.FLOW_PING_SENDER.name(), pingKafkaBolt, parallelism)
+        declareBolt(topologyBuilder, pingKafkaBolt, ComponentId.FLOW_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
@@ -412,8 +402,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void server42ControlTopologyOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt server42ControlKafkaBolt = buildKafkaBolt(getConfig().getKafkaFlowHsServer42StormNotifyTopic());
-        topologyBuilder.setBolt(ComponentId.SERVER42_CONTROL_TOPOLOGY_SENDER.name(),
-                server42ControlKafkaBolt, parallelism)
+        declareBolt(topologyBuilder, server42ControlKafkaBolt, ComponentId.SERVER42_CONTROL_TOPOLOGY_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(),
                         Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(),
@@ -424,7 +413,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
-        topologyBuilder.setBolt(ComponentId.HISTORY_BOLT.name(), historyBolt, parallelism)
+        declareBolt(topologyBuilder, historyBolt, ComponentId.HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())

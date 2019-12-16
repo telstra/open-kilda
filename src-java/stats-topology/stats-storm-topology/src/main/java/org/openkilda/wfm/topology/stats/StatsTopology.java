@@ -71,7 +71,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     public static final Fields statsFields = new Fields(STATS_FIELD, FIELD_ID_CONTEXT);
 
     public StatsTopology(LaunchEnvironment env) {
-        super(env, StatsTopologyConfig.class);
+        super(env, "stats-topology", StatsTopologyConfig.class);
     }
 
     /**
@@ -90,73 +90,70 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     public StormTopology createTopology() {
         logger.info("Creating StatsTopology - {}", topologyName);
 
-        final Integer parallelism = topologyConfig.getParallelism();
         TopologyBuilder builder = new TopologyBuilder();
 
-
         final String kafkaSpoutId = StatsComponentType.STATS_OFS_KAFKA_SPOUT.toString();
-        KafkaSpout kafkaSpout = buildKafkaSpout(topologyConfig.getKafkaStatsTopic(), kafkaSpoutId);
-        builder.setSpout(kafkaSpoutId, kafkaSpout, parallelism);
+        declareKafkaSpout(builder, topologyConfig.getKafkaStatsTopic(), kafkaSpoutId);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
         final String statsOfsBolt = StatsComponentType.STATS_OFS_BOLT.toString();
-        builder.setBolt(statsOfsBolt, speakerBolt, parallelism)
+        declareBolt(builder, speakerBolt, statsOfsBolt)
                 .shuffleGrouping(kafkaSpoutId);
 
-        inputSpeakerRequests(builder, parallelism);
-        cacheSyncFilter(builder, parallelism);
+        inputSpeakerRequests(builder);
+        cacheSyncFilter(builder);
 
         // Cache bolt get data from the database on start
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
-        builder.setBolt(STATS_CACHE_BOLT.name(), new CacheBolt(persistenceManager), parallelism)
+        declareBolt(builder, new CacheBolt(persistenceManager), STATS_CACHE_BOLT.name())
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.CACHE_DATA.toString(), statsFields);
 
-        builder.setBolt(PORT_STATS_METRIC_GEN.name(),
-                new PortMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new PortMetricGenBolt(topologyConfig.getMetricPrefix()), PORT_STATS_METRIC_GEN.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
-        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(),
-                new MeterConfigMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new MeterConfigMetricGenBolt(topologyConfig.getMetricPrefix()), METER_CFG_STATS_METRIC_GEN.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
-        builder.setBolt(SYSTEM_RULE_STATS_METRIC_GEN.name(),
-                new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), SYSTEM_RULE_STATS_METRIC_GEN.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.SYSTEM_RULE_STATS.toString(), statsFields);
-        builder.setBolt(TABLE_STATS_METRIC_GEN.name(),
-                new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), TABLE_STATS_METRIC_GEN.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.TABLE_STATS.toString(), statsFields);
-        builder.setBolt(PACKET_IN_OUT_STATS_METRIC_GEN.name(),
-                new PacketInOutMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new PacketInOutMetricGenBolt(topologyConfig.getMetricPrefix()), PACKET_IN_OUT_STATS_METRIC_GEN.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PACKET_IN_OUT_STATS.toString(), statsFields);
 
         logger.debug("starting flow_stats_metric_gen");
-        builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
-                new FlowMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new FlowMetricGenBolt(topologyConfig.getMetricPrefix()), FLOW_STATS_METRIC_GEN.name())
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), statsWithCacheFields);
-        builder.setBolt(METER_STATS_METRIC_GEN.name(),
-                new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), METER_STATS_METRIC_GEN.name())
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.METER_STATS.toString(), statsWithCacheFields);
 
-        builder.setBolt(TICK_BOLT.name(), new TickBolt(topologyConfig.getStatisticsRequestInterval()));
+        declareBolt(builder,
+                new TickBolt(topologyConfig.getStatisticsRequestInterval()), TICK_BOLT.name());
 
-        builder.setBolt(STATS_REQUESTER_BOLT.name(), new StatsRequesterBolt(persistenceManager), parallelism)
+        declareBolt(builder, new StatsRequesterBolt(persistenceManager), STATS_REQUESTER_BOLT.name())
                 .shuffleGrouping(TICK_BOLT.name());
 
-        builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getSpeakerTopic()))
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getSpeakerTopic()), STATS_KILDA_SPEAKER_BOLT.name())
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
-        builder.setBolt(STATS_GRPC_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()))
+        declareBolt(builder, buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()), STATS_GRPC_SPEAKER_BOLT.name())
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), GRPC_REQUEST.name());
 
-        KafkaSpout server42StatsFlowRttSpout = buildKafkaSpout(topologyConfig.getServer42StatsFlowRttTopic(),
+        declareKafkaSpout(builder, topologyConfig.getServer42StatsFlowRttTopic(),
                 SERVER42_STATS_FLOW_RTT_SPOUT.name());
-        builder.setSpout(SERVER42_STATS_FLOW_RTT_SPOUT.name(), server42StatsFlowRttSpout, parallelism);
 
-        builder.setBolt(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(),
-                new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+        declareBolt(builder,
+                new FlowRttMetricGenBolt(topologyConfig.getMetricPrefix()), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name())
                 .shuffleGrouping(SERVER42_STATS_FLOW_RTT_SPOUT.name());
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
-        builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
+        declareBolt(builder, createKafkaBolt(openTsdbTopic), "stats-opentsdb")
                 .shuffleGrouping(PORT_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
@@ -172,7 +169,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     /**
      * Capture and decode speaker requests (kilda.speaker.flow).
      */
-    private void inputSpeakerRequests(TopologyBuilder topology, int scaleFactor) {
+    private void inputSpeakerRequests(TopologyBuilder topology) {
         String id = STATS_KILDA_SPEAKER_SPOUT.name();
         KafkaTopicsConfig topics = topologyConfig.getKafkaTopics();
         KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfig(
@@ -180,10 +177,10 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                     id, StringDeserializer.class)
                 .setRecordTranslator(new JsonKafkaTranslator())
                 .build();
-        topology.setSpout(id, new KafkaSpout<>(config), scaleFactor);
+        declareSpout(topology, new KafkaSpout<>(config), id);
 
         SpeakerRequestDecoderBolt decoder = new SpeakerRequestDecoderBolt();
-        topology.setBolt(SpeakerRequestDecoderBolt.BOLT_ID, decoder)
+        declareBolt(topology, decoder, SpeakerRequestDecoderBolt.BOLT_ID)
                 .shuffleGrouping(id);
     }
 
@@ -191,8 +188,8 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
      * CacheFilterBolt catch data from kilda.speaker spout and tried to find InstallEgressFlow
      * or InstallOneSwitchFlow and throw tuple to CacheBolt.
      */
-    private void cacheSyncFilter(TopologyBuilder topology, int scaleFactor) {
-        topology.setBolt(STATS_CACHE_FILTER_BOLT.name(), new CacheFilterBolt(), scaleFactor)
+    private void cacheSyncFilter(TopologyBuilder topology) {
+        declareBolt(topology, new CacheFilterBolt(), STATS_CACHE_FILTER_BOLT.name())
                 .shuffleGrouping(SpeakerRequestDecoderBolt.BOLT_ID, SpeakerRequestDecoderBolt.STREAM_GENERIC_ID)
                 .shuffleGrouping(SpeakerRequestDecoderBolt.BOLT_ID, SpeakerRequestDecoderBolt.STREAM_HUB_AND_SPOKE_ID);
     }

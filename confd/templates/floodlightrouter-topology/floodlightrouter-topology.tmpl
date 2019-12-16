@@ -1,0 +1,16 @@
+# topology configuration
+config:
+  topology.parallelism: {{ getv "/kilda_storm_parallelism_level_new" }}
+  topology.workers: {{ getv "/kilda_storm_parallelism_workers_count" }}
+  topology.spouts.parallelism: {{ getv "/kilda_storm_parallelism_level" }}
+
+# spout definitions
+# spouts:
+
+# bolt definitions
+bolts:
+  - id: "KILDA_TOPO_DISCO_BOLT"
+    # must be 1 for now
+    parallelism: 1
+  - id: "clock"
+    parallelism: 1

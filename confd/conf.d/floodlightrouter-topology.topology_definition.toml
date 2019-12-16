@@ -1,0 +1,5 @@
+[template]
+src = "floodlightrouter-topology/floodlightrouter-topology.tmpl"
+dest = "src-java/floodlightrouter-topology/floodlightrouter-storm-topology/src/main/resources/floodlightrouter-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

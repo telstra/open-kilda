@@ -1,0 +1,5 @@
+[template]
+src = "stats-topology/stats-topology.tmpl"
+dest = "src-java/stats-topology/stats-storm-topology/src/main/resources/stats-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

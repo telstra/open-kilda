@@ -42,12 +42,11 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
     public static final String SIMULATOR_COMMAND_STREAM = "simulator_command_stream";
 
     public SimulatorTopology(LaunchEnvironment env) {
-        super(env, SimulatorTopologyConfig.class);
+        super(env, "simulator", SimulatorTopologyConfig.class);
     }
 
     @Override
     public StormTopology createTopology() {
-        final int parallelism = topologyConfig.getParallelism();
         final String inputTopic = topologyConfig.getKafkaSpeakerTopic();
         final String simulatorTopic = topologyConfig.getKafkaSimulatorTopic();
 
@@ -56,31 +55,31 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
         logger.debug("Building SimulatorTopology - {}", topologyName);
 
         logger.debug("connecting to {} topic", simulatorTopic);
-        builder.setSpout(SIMULATOR_SPOUT, buildKafkaSpout(simulatorTopic, SIMULATOR_SPOUT));
+        declareKafkaSpout(builder, simulatorTopic, SIMULATOR_SPOUT);
 
         logger.debug("connecting to {} topic", inputTopic);
-        builder.setSpout(COMMAND_SPOUT, buildKafkaSpout(inputTopic, COMMAND_SPOUT));
+        declareKafkaSpout(builder, inputTopic, COMMAND_SPOUT);
 
         CommandBolt commandBolt = new CommandBolt();
         logger.debug("starting " + COMMAND_BOLT + " bolt");
-        builder.setBolt(COMMAND_BOLT, commandBolt, parallelism)
+        declareBolt(builder, commandBolt, COMMAND_BOLT)
                 .shuffleGrouping(SIMULATOR_SPOUT)
                 .shuffleGrouping(COMMAND_SPOUT);
 
         SimulatorCommandBolt simulatorCommandBolt = new SimulatorCommandBolt();
         logger.debug("starting " + SIMULATOR_COMMAND_BOLT + " bolt");
-        builder.setBolt(SIMULATOR_COMMAND_BOLT, simulatorCommandBolt, parallelism)
+        declareBolt(builder, simulatorCommandBolt, SIMULATOR_COMMAND_BOLT)
                 .shuffleGrouping(SIMULATOR_SPOUT);
 
         SpeakerBolt speakerBolt = new SpeakerBolt();
         logger.debug("starting " + SWITCH_BOLT + " bolt");
-        builder.setBolt(SWITCH_BOLT, speakerBolt, 1)
+        declareBolt(builder, speakerBolt, SWITCH_BOLT)
                 .fieldsGrouping(COMMAND_BOLT, COMMAND_BOLT_STREAM, new Fields("dpid"))
                 .fieldsGrouping(SWITCH_BOLT, SWITCH_BOLT_STREAM, new Fields("dpid"))
                 .fieldsGrouping(SIMULATOR_COMMAND_BOLT, SIMULATOR_COMMAND_STREAM, new Fields("dpid"));
 
         // TODO(dbogun): check is it must be output topic
-        builder.setBolt(KAFKA_BOLT, createKafkaBolt(inputTopic), parallelism)
+        declareBolt(builder, createKafkaBolt(inputTopic), KAFKA_BOLT)
                 .shuffleGrouping(SWITCH_BOLT, KAFKA_BOLT_STREAM);
 
         return builder.createTopology();
