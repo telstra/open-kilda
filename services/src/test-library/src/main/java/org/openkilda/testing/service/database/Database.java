@@ -21,6 +21,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -54,6 +55,8 @@ public interface Database {
     // Switches
 
     Switch getSwitch(SwitchId switchId);
+
+    void setSwitchStatus(SwitchId switchId, SwitchStatus swStatus);
 
     List<PathInfoData> getPaths(SwitchId src, SwitchId dst);
 

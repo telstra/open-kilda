@@ -107,6 +107,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             log.warn(e.message)
         }
 
+        and: "Flow writes stats"
+        def isSingleSwitch = flow.source.switchId == flow.destination.switchId
+        statsHelper.verifyFlowWritesStats(flow.flowId, !isSingleSwitch)
+
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 

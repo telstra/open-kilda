@@ -134,6 +134,9 @@ class SwitchSyncSpec extends BaseSpecification {
             }
         }
 
+        and: "Flow continues to write stats"
+        statsHelper.verifyFlowWritesStats(flow.flowId)
+
         and: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
