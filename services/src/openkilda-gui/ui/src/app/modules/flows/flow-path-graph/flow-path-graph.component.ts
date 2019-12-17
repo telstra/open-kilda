@@ -20,7 +20,17 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
 
   filterForm: FormGroup;
   flowMetrics = [];
-  timezoneData = [{label:'UTC', value:'UTC'},{label:'My Timezone',value:'My'}];
+  timezoneData = [{label:'UTC', value:'UTC'},{label:'My Timezone',value:'My'}];  
+  highestYaXis = null;
+  labels: any;
+  graph_data:any = [];
+  options : any = Object.assign({}, {
+    width: "auto",
+    chartHeight:"380",
+    legend: "onmouseover",
+    noDataLabel:"Please wait",
+    
+  });
   constructor(
     private flowService: FlowsService,
     private dygraphService: DygraphService,
@@ -169,67 +179,103 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
         let cookieBasedData = this.dygraphService.getCookieBasedData(response,this.type);
         this.cookieData = Object.keys(cookieBasedData);
         let data = (dataforgraph && dataforgraph.length) ? dataforgraph: [] ;
-        let graphdata = {
-          data: data,
-          startDate: fromDate,
-          endDate: toDate,
-          type: this.type,
-          timezone: formData.timezone,
-          loadfromcookie:this.selectedCookie
-        };
-        this.dygraphService.changeFlowPathGraphData(graphdata);
+        this.plotFlowPathGraph(data,fromDate,toDate,this.type,formData.timezone,this.selectedCookie);
       },
       error => {
         let dataforgraph = this.dygraphService.getCookieDataforFlowStats([],this.type);
         let cookieBasedData = this.dygraphService.getCookieBasedData([],this.type);
         this.cookieData = Object(cookieBasedData).keys;
-        var data = (dataforgraph && dataforgraph.length) ? dataforgraph :[]
-        let graphdata = {
-          data: data,
-          startDate: fromDate,
-          endDate: toDate,
-          type: this.type,
-          timezone: formData.timezone,
-          loadfromcookie:this.selectedCookie
-        };
-        this.dygraphService.changeFlowPathGraphData(graphdata);
+        var data = (dataforgraph && dataforgraph.length) ? dataforgraph :[];
+        this.plotFlowPathGraph(data,fromDate,toDate,this.type,formData.timezone,this.selectedCookie);
       }
     );
+  }
+
+
+  plotFlowPathGraph(data, startDate, endDate, type, timezone,loadfromCookie) {
+    var graph_data = this.dygraphService.computeFlowPathGraphData(
+      data,
+      startDate,
+      endDate,
+      type,
+      timezone,
+      loadfromCookie
+    );
+    var graphData =  graph_data["data"];
+    var labels = graph_data["labels"];
+    var series = {};
+    var colors = graph_data["color"];
+    if (labels && labels.length) {
+      for (var k = 0; k < labels.length; k++) {
+        if (k != 0) {
+          series[labels[k]] = { color: colors[k - 1] };
+        }
+      }
+    }
+    this.graph_data = graphData;
+    if (timezone == "UTC") {
+      if (type == "forward") {
+        this.options = Object.assign(this.options,{
+          labels: labels,
+          labelsUTC: true,
+          series: series,
+          legend: "onmouseover",
+          connectSeparatedPoints:true,
+          legendFormatter:this.dygraphService.legendFormatter,
+          zoomCallback: this.zoom
+        });
+      } else if (type == "reverse") {
+        this.options = Object.assign(this.options,{
+          labels: labels,
+          series: series,
+          labelsUTC: true,
+          legend: "onmouseover",
+          connectSeparatedPoints:true,
+          legendFormatter:this.dygraphService.legendFormatter,
+          zoomCallback: this.zoom
+        });
+      }
+    } else {
+      if (type == "forward") {
+        this.options = Object.assign(this.options,{
+          labels: labels,
+          series: series,
+          labelsUTC: false,
+          legend: "onmouseover",
+          connectSeparatedPoints:true,
+          legendFormatter:this.dygraphService.legendFormatter,
+          zoomCallback: this.zoom
+        });
+      } else if (type == "reverse") {
+        this.options = Object.assign(this.options, {
+          labels: labels,
+          series: series,
+          labelsUTC: false,
+          legend: "onmouseover",
+          connectSeparatedPoints:true,
+          legendFormatter:this.dygraphService.legendFormatter,
+          zoomCallback: this.zoom
+        });
+      }
+    }
   }
 
   ngOnDestroy(){
    
   }
-  loadcookiegraph(cookie){
-    this.selectedCookie = cookie;
-    let cookieBasedData = JSON.parse(localStorage.getItem('flowPathCookieData'));
-    var data = (cookieBasedData && cookieBasedData[cookie])?cookieBasedData[cookie] :[]
-       
-    let formData = this.filterForm.value;
-    
-    let graphdata = {
-      data: data,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      type: this.type,
-      timezone: formData.timezone,
-      loadfromcookie:this.selectedCookie
-    };
-    this.dygraphService.changeFlowPathGraphData(graphdata);
-  }
   
-  zoom =(event)=>{
+  zoom =(minX, maxX, yRanges)=>{
     let formdata = this.filterForm.value;
 
     if(formdata.timezone == 'UTC'){
-      var startDate = moment(new Date(event.minX)).utc().format("YYYY/MM/DD HH:mm:ss");
-      var endDate = moment( new Date(event.maxX)).utc().format("YYYY/MM/DD HH:mm:ss");
+      var startDate = moment(new Date(minX)).utc().format("YYYY/MM/DD HH:mm:ss");
+      var endDate = moment( new Date(maxX)).utc().format("YYYY/MM/DD HH:mm:ss");
 
       this.filterForm.controls['startDate'].setValue(startDate);
       this.filterForm.controls['endDate'].setValue(endDate);
     }else{
-      var startDate = moment(new Date(event.minX)).format("YYYY/MM/DD HH:mm:ss");
-      var endDate = moment( new Date(event.maxX)).format("YYYY/MM/DD HH:mm:ss");
+      var startDate = moment(new Date(minX)).format("YYYY/MM/DD HH:mm:ss");
+      var endDate = moment( new Date(maxX)).format("YYYY/MM/DD HH:mm:ss");
 
       this.filterForm.controls['startDate'].setValue(startDate);
       this.filterForm.controls['endDate'].setValue(endDate);

@@ -51,20 +51,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
     private dygraphService: DygraphService,
     private cdr: ChangeDetectorRef
   ) {
-    /**capturing API changed data push*/
-    dygraphService.flowPathGraph.subscribe(data => {
-      this.plotFlowPathGraph(
-        data.data,
-        data.startDate,
-        data.endDate,
-        data.type,
-        data.timezone,
-        data.loadfromCookie
-      );
-      try {
-        cdr.detectChanges();
-      } catch (err) {}
-    });
+
   }
 
   constructGraphData(data, jsonResponse, startDate, endDate, timezone) {
@@ -269,79 +256,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
 
   /** Start : Flow Graphs */
 
-   
-  
-
-  plotFlowPathGraph(data, startDate, endDate, type, timezone,loadfromCookie) {
-    var graph_data = this.dygraphService.computeFlowPathGraphData(
-      data,
-      startDate,
-      endDate,
-      type,
-      timezone,
-      loadfromCookie
-    );
-    var graphData = graph_data["data"];
-    var labels = graph_data["labels"];
-    var series = {};
-    var colors = graph_data["color"];
-    if (labels && labels.length) {
-      for (var k = 0; k < labels.length; k++) {
-        if (k != 0) {
-          series[labels[k]] = { color: colors[k - 1] };
-        }
-      }
-    }
- 
-
-    this.data = graphData;
-
-    if (timezone == "UTC") {
-      if (type == "forward") {
-        this.options = Object.assign(this.options,{
-          labels: labels,
-          labelsUTC: true,
-          series: series,
-          legend: "onmouseover",
-          connectSeparatedPoints:true,
-          legendFormatter:this.dygraphService.legendFormatter,
-          zoomCallback: this.zoomCallbackHandler
-        });
-      } else if (type == "reverse") {
-        this.options = Object.assign(this.options,{
-          labels: labels,
-          series: series,
-          labelsUTC: true,
-          legend: "onmouseover",
-          connectSeparatedPoints:true,
-          legendFormatter:this.dygraphService.legendFormatter,
-          zoomCallback: this.zoomCallbackHandler
-        });
-      }
-    } else {
-      if (type == "forward") {
-        this.options = Object.assign(this.options,{
-          labels: labels,
-          series: series,
-          labelsUTC: false,
-          legend: "onmouseover",
-          connectSeparatedPoints:true,
-          legendFormatter:this.dygraphService.legendFormatter,
-          zoomCallback: this.zoomCallbackHandler
-        });
-      } else if (type == "reverse") {
-        this.options = Object.assign(this.options, {
-          labels: labels,
-          series: series,
-          labelsUTC: false,
-          legend: "onmouseover",
-          connectSeparatedPoints:true,
-          legendFormatter:this.dygraphService.legendFormatter,
-          zoomCallback: this.zoomCallbackHandler
-        });
-      }
-    }
-  }
 
   plotMeterGraph(data, startDate, endDate, timezone){
     var graph_data = this.dygraphService.computeMeterGraphData(
