@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -77,8 +78,11 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         srcSwitchValidateInfo.meters.proper*.cookie.containsAll(srcSwitchCreatedCookies)
         dstSwitchValidateInfo.meters.proper*.cookie.containsAll(dstSwitchCreatedCookies)
 
-        [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            it.meters.proper.each {
+        def srcSwitchProperMeters = srcSwitchValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        def dstSwitchProperMeters = dstSwitchValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+
+        [srcSwitchProperMeters, dstSwitchProperMeters].each {
+            it.each {
                 assert it.rate == flow.maximumBandwidth
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
@@ -87,8 +91,8 @@ class SwitchValidationSpec extends HealthCheckSpecification {
 
         Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
         Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
-        verifyBurstSizeIsCorrect(srcSwitchBurstSize, srcSwitchValidateInfo.meters.proper*.burstSize[0])
-        verifyBurstSizeIsCorrect(dstSwitchBurstSize, dstSwitchValidateInfo.meters.proper*.burstSize[0])
+        verifyBurstSizeIsCorrect(srcSwitchBurstSize, srcSwitchProperMeters*.burstSize[0])
+        verifyBurstSizeIsCorrect(dstSwitchBurstSize, srcSwitchProperMeters*.burstSize[0])
 
 
         and: "The rest fields in the 'meter' section are empty"
@@ -227,7 +231,7 @@ misconfigured"
 
         and: "The rest fields of 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "proper", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "excess"])
         }
 
         and: "Created rules are still stored in the 'proper' section"
@@ -332,7 +336,7 @@ misconfigured"
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 verifyBurstSizeIsCorrect(srcSwitchBurstSize, it.burstSize)
             }
-            switchHelper.verifyMeterSectionsAreEmpty(it, ["misconfigured", "proper", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["misconfigured", "excess"])
             switchHelper.verifyRuleSectionsAreEmpty(it, ["excess"])
         }
 
@@ -341,12 +345,13 @@ misconfigured"
             it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
             it.rules.proper.containsAll(forwardCookies + reverseCookies)
 
-            it.meters.proper*.meterId == dstSwitchCreatedMeterIds
-            it.meters.proper.cookie.size() == 1
-            it.meters.proper*.cookie == reverseCookies
+            def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
+            properMeters*.meterId == dstSwitchCreatedMeterIds
+            properMeters.cookie.size() == 1
+            properMeters*.cookie == reverseCookies
 
             Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
-            it.meters.proper.each {
+            properMeters.each {
                 assert it.rate == flow.maximumBandwidth
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)

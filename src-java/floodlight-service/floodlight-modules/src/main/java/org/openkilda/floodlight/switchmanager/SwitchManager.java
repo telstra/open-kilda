@@ -79,6 +79,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.meter.MeterEntry.MeterEntryBuilder;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Metadata;
@@ -666,6 +668,68 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return flows;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<MeterEntry> getExpectedDefaultMeters(DatapathId dpid, boolean multiTable, boolean switchLldp)
+            throws SwitchOperationException {
+        List<MeterEntry> meters = new ArrayList<>();
+        IOFSwitch sw = lookupSwitch(dpid);
+        boolean packetsFlag = featureDetectorService.detectSwitch(sw).contains(SwitchFeature.PKTPS_FLAG);
+
+        meters.add(getExpectedDefaultMeter(sw, VERIFICATION_BROADCAST_RULE_COOKIE, true, packetsFlag));
+        meters.add(getExpectedDefaultMeter(sw, VERIFICATION_UNICAST_RULE_COOKIE, false, packetsFlag));
+        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
+            meters.add(getExpectedDefaultMeter(sw, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE, false, packetsFlag));
+        }
+        if (multiTable) {
+            meters.add(getExpectedLldpMeter(sw, LLDP_POST_INGRESS_COOKIE, packetsFlag));
+            meters.add(getExpectedLldpMeter(sw, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, packetsFlag));
+            if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+                meters.add(getExpectedLldpMeter(sw, LLDP_POST_INGRESS_VXLAN_COOKIE, packetsFlag));
+            }
+
+            if (switchLldp) {
+                meters.add(getExpectedLldpMeter(sw, LLDP_TRANSIT_COOKIE, packetsFlag));
+                meters.add(getExpectedLldpMeter(sw, LLDP_INPUT_PRE_DROP_COOKIE, packetsFlag));
+                meters.add(getExpectedLldpMeter(sw, LLDP_INGRESS_COOKIE, packetsFlag));
+            }
+        }
+
+        return meters;
+    }
+
+    private MeterEntry getExpectedDefaultMeter(IOFSwitch sw, long cookie, boolean isBroadcast, boolean packetsFlag) {
+        long meterRate = isBroadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
+        return getExpectedMeter(sw, cookie, meterRate, config.getSystemMeterBurstSizeInPackets(),
+                config.getDiscoPacketSize(), packetsFlag);
+    }
+
+    private MeterEntry getExpectedLldpMeter(IOFSwitch sw, long cookie, boolean packetsFlag) {
+        return getExpectedMeter(sw, cookie, config.getLldpRateLimit(), config.getLldpMeterBurstSizeInPackets(),
+                config.getLldpPacketSize(), packetsFlag);
+    }
+
+    private MeterEntry getExpectedMeter(IOFSwitch sw, long cookie, long rate, long burstSize, int packetSize,
+                                        boolean packetsFlag) {
+        MeterEntryBuilder builder = MeterEntry.builder()
+                .meterId(createMeterIdForDefaultRule(cookie).getValue())
+                .version(sw.getOFFactory().getVersion().toString());
+        if (packetsFlag) {
+            builder.rate(rate)
+                    .burstSize(burstSize)
+                    .flags(new String[]{OFMeterFlags.PKTPS.name(), OFMeterFlags.STATS.name(),
+                            OFMeterFlags.BURST.name()});
+        } else {
+            builder.rate(Meter.convertRateToKiloBits(rate, packetSize))
+                    .burstSize(Meter.convertBurstSizeToKiloBits(burstSize, packetSize))
+                    .flags(new String[]{OFMeterFlags.KBPS.name(), OFMeterFlags.STATS.name(),
+                            OFMeterFlags.BURST.name()});
+        }
+        return builder.build();
+    }
+
     private void addLldpTransitFlow(List<OFFlowMod> flows, IOFSwitch sw) {
         ArrayList<OFAction> actionList = new ArrayList<>();
         OFInstructionMeter meter = buildMeterInstructionForLldpTransitFlow(sw, actionList);
@@ -1104,7 +1168,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 deletedRules.addAll(removeMultitableEndpointIslRules(dpid, islPort));
             }
 
-            for (int flowPort: flowPorts) {
+            for (int flowPort : flowPorts) {
                 deletedRules.add(removeIntermediateIngressRule(dpid, flowPort));
             }
 

@@ -97,6 +97,7 @@ import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
@@ -118,6 +119,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
@@ -233,6 +235,8 @@ class RecordHandler implements Runnable {
             doDumpRulesForNbworkerRequest(message);
         } else if (data instanceof GetExpectedDefaultRulesRequest) {
             doGetExpectedDefaultRulesRequest(message);
+        } else if (data instanceof GetExpectedDefaultMetersRequest) {
+            doGetExpectedDefaultMetersRequest(message);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message);
         } else if (data instanceof DumpRulesForSwitchManagerRequest) {
@@ -1130,6 +1134,44 @@ class RecordHandler implements Runnable {
                     .sendVia(producerService);
         }
 
+    }
+
+    private void doGetExpectedDefaultMetersRequest(CommandMessage message) {
+        IKafkaProducerService producerService = getKafkaProducer();
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
+
+        GetExpectedDefaultMetersRequest request = (GetExpectedDefaultMetersRequest) message.getData();
+        SwitchId switchId = request.getSwitchId();
+        boolean multiTable = request.isMultiTable();
+        boolean switchLldp = request.isSwitchLldp();
+
+        try {
+            logger.debug("Loading expected default meters for switch {}", switchId);
+            DatapathId dpid = DatapathId.of(switchId.toLong());
+            List<MeterEntry> defaultMeters =
+                    context.getSwitchManager().getExpectedDefaultMeters(dpid, multiTable, switchLldp);
+
+            SwitchExpectedDefaultMeterEntries response = SwitchExpectedDefaultMeterEntries.builder()
+                    .switchId(switchId)
+                    .meterEntries(defaultMeters)
+                    .build();
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
+        } catch (UnsupportedSwitchOperationException e) {
+            logger.info("Meters not supported: {}", switchId);
+            InfoMessage infoMessage = new InfoMessage(new SwitchMeterUnsupported(switchId), message.getTimestamp(),
+                    message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Getting of expected default meters for switch '{}' was unsuccessful: {}",
+                    switchId, e.getMessage());
+            anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("The switch was not found when requesting get expected default meters.")
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
     }
 
     private void doDumpRulesRequest(final CommandMessage message) {

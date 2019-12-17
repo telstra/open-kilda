@@ -20,6 +20,7 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 
@@ -430,6 +431,16 @@ public interface ISwitchManager extends IFloodlightService {
     List<OFFlowMod> getExpectedDefaultFlows(
             DatapathId dpid, boolean multiTable, boolean switchLldp) throws SwitchOperationException;
 
+    /**
+     * Returns list of default meters that must be installed on a switch.
+     *
+     * @param dpid switch id.
+     * @param multiTable flag
+     * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
+     * @return list of default meters.
+     */
+    List<MeterEntry> getExpectedDefaultMeters(
+            DatapathId dpid, boolean multiTable, boolean switchLldp) throws SwitchOperationException;
 
     /**
      * Returns list of flows that must be installed for multitable pipeline per isl port.

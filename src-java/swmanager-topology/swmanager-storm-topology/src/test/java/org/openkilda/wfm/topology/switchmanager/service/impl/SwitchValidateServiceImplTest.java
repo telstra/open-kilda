@@ -40,6 +40,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.model.SwitchId;
@@ -50,6 +51,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -90,7 +92,7 @@ public class SwitchValidateServiceImplTest {
     private MeterEntry meterEntry;
 
     @Before
-    public void setUp() {
+    public void setUp() throws SwitchNotFoundException {
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(new Properties());
         SwitchManagerTopologyConfig topologyConfig =
@@ -124,7 +126,7 @@ public class SwitchValidateServiceImplTest {
         when(validationService.validateRules(any(), any(), any()))
                 .thenReturn(new ValidateRulesResult(singletonList(flowEntry.getCookie()), emptyList(), emptyList(),
                         emptyList()));
-        when(validationService.validateMeters(any(), any()))
+        when(validationService.validateMeters(any(), any(), any()))
                 .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }
 
@@ -171,7 +173,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationSuccess() {
+    public void validationSuccess() throws SwitchNotFoundException {
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
 
@@ -217,6 +219,8 @@ public class SwitchValidateServiceImplTest {
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         service.handleMetersUnsupportedResponse(KEY);
+        service.handleExpectedDefaultMeterEntriesResponse(KEY,
+                new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
 
@@ -233,11 +237,11 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void exceptionWhileValidation() {
+    public void exceptionWhileValidation() throws SwitchNotFoundException {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
-        when(validationService.validateMeters(any(), any()))
+        when(validationService.validateMeters(any(), any(), any()))
                 .thenThrow(new IllegalArgumentException(errorMessage));
         handleDataReceiveAndValidate();
 
@@ -260,7 +264,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationPerformSync() {
+    public void validationPerformSync() throws SwitchNotFoundException {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).processMeters(true).build();
 
         handleRequestAndInitDataReceive();
@@ -276,18 +280,20 @@ public class SwitchValidateServiceImplTest {
         verify(carrier, times(1)).getTopologyConfig();
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(4)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
     }
 
-    private void handleDataReceiveAndValidate() {
+    private void handleDataReceiveAndValidate() throws SwitchNotFoundException {
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         service.handleMeterEntriesResponse(KEY, new SwitchMeterEntries(SWITCH_ID, singletonList(meterEntry)));
+        service.handleExpectedDefaultMeterEntriesResponse(KEY,
+                new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-        verify(validationService).validateMeters(eq(SWITCH_ID), any());
+        verify(validationService).validateMeters(eq(SWITCH_ID), any(), any());
     }
 
     private ErrorMessage getErrorMessage() {

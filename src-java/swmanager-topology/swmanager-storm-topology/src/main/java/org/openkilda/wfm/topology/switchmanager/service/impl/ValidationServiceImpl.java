@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
-import static com.google.common.collect.Lists.newArrayList;
+import static java.util.stream.Collectors.toList;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -25,11 +25,13 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -38,6 +40,7 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -53,6 +56,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
     private FlowPathRepository flowPathRepository;
+    private SwitchRepository switchRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
     private final int lldpRateLimit;
@@ -61,6 +65,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
         this.lldpRateLimit = topologyConfig.getLldpRateLimit();
@@ -147,12 +152,12 @@ public class ValidationServiceImpl implements ValidationService {
                                       Set<Long> misconfiguredRules) {
         List<FlowEntry> presentDefaultRules = presentRules.stream()
                 .filter(rule -> Cookie.isDefaultRule(rule.getCookie()))
-                .collect(Collectors.toList());
+                .collect(toList());
 
         expectedDefaultRules.forEach(expectedDefaultRule -> {
             List<FlowEntry> defaultRule = presentDefaultRules.stream()
                     .filter(rule -> rule.getCookie() == expectedDefaultRule.getCookie())
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             if (defaultRule.isEmpty()) {
                 missingRules.add(expectedDefaultRule.getCookie());
@@ -172,7 +177,7 @@ public class ValidationServiceImpl implements ValidationService {
         presentDefaultRules.forEach(presentDefaultRule -> {
             List<FlowEntry> defaultRule = expectedDefaultRules.stream()
                     .filter(rule -> rule.getCookie() == presentDefaultRule.getCookie())
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             if (defaultRule.isEmpty()) {
                 excessRules.add(presentDefaultRule.getCookie());
@@ -185,23 +190,22 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters) {
+    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
+                                               List<MeterEntry> expectedDefaultMeters) throws SwitchNotFoundException {
         log.debug("Validating meters on switch {}", switchId);
 
-        presentMeters.removeIf(meterEntry -> MeterId.isMeterIdOfDefaultRule(meterEntry.getMeterId()));
-
-        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId);
-
-        if (paths.isEmpty()) {
-            // we do not expect any flow meter on this switch
-            List<MeterInfoEntry> excessMeters = getExcessMeters(presentMeters, newArrayList());
-            return new ValidateMetersResult(newArrayList(), newArrayList(), newArrayList(), excessMeters);
-        }
-
-        Switch sw = paths.iterator().next().getSrcSwitch();
+        Switch sw = switchRepository.findById(switchId)
+                .orElseThrow(() -> new SwitchNotFoundException(switchId));
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
 
-        List<SimpleMeterEntry> expectedMeters = getExpectedFlowMeters(paths);
+        List<SimpleMeterEntry> expectedMeters = expectedDefaultMeters.stream()
+                .map(MeterEntryMapper.INSTANCE::map)
+                .collect(toList());
+
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId);
+        if (!paths.isEmpty()) {
+            expectedMeters.addAll(getExpectedFlowMeters(paths));
+        }
 
         return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
     }
@@ -225,7 +229,7 @@ public class ValidationServiceImpl implements ValidationService {
 
             if (Meter.equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
                     && Meter.equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
-                    && Arrays.equals(presentedMeter.getFlags(), expectedMeter.getFlags())) {
+                    && flagsAreEqual(presentedMeter.getFlags(), expectedMeter.getFlags())) {
 
                 properMeters.add(makeProperMeterEntry(
                         expectedMeter.getFlowId(), expectedMeter.getCookie(), presentedMeter));
@@ -236,6 +240,13 @@ public class ValidationServiceImpl implements ValidationService {
 
         List<MeterInfoEntry> excessMeters = getExcessMeters(presentMeters, expectedMeters);
         return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
+    }
+
+    private boolean flagsAreEqual(String[] present, String[] expected) {
+        Set<String> left = Sets.newHashSet(present);
+        Set<String> right = Sets.newHashSet(expected);
+
+        return left.size() == right.size() && left.containsAll(right);
     }
 
     private List<MeterInfoEntry> getExcessMeters(List<MeterEntry> presented, List<SimpleMeterEntry> expected) {
@@ -264,9 +275,14 @@ public class ValidationServiceImpl implements ValidationService {
             long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
                     flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
 
-            SimpleMeterEntry expectedMeter = new SimpleMeterEntry(path.getFlow().getFlowId(),
-                    path.getMeterId().getValue(), path.getCookie().getValue(), path.getBandwidth(), calculatedBurstSize,
-                    Meter.getMeterKbpsFlags());
+            SimpleMeterEntry expectedMeter = SimpleMeterEntry.builder()
+                    .flowId(path.getFlow().getFlowId())
+                    .meterId(path.getMeterId().getValue())
+                    .cookie(path.getCookie().getValue())
+                    .rate(path.getBandwidth())
+                    .burstSize(calculatedBurstSize)
+                    .flags(Meter.getMeterKbpsFlags())
+                    .build();
             expectedMeters.add(expectedMeter);
         }
         return expectedMeters;
