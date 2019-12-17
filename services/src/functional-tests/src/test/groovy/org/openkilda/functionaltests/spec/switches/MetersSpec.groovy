@@ -208,7 +208,7 @@ on a #switchType switch"() {
 
         and: "Switch validation shows no discrepancies in meters"
         def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2
+        metersValidation.proper.size() == 4
         metersValidation.excess.empty
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
@@ -385,7 +385,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
         and: "Switch validation shows no discrepancies in meters"
         def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2
+        metersValidation.proper.size() == 4
         metersValidation.excess.empty
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
@@ -442,7 +442,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
         and: "Switch validation shows no discrepancies in meters"
         def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2
+        metersValidation.proper.size() == 4
         metersValidation.excess.empty
         metersValidation.missing.empty
         metersValidation.misconfigured.empty
@@ -503,7 +503,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
         and: "Switch validation shows no discrepancies in meters"
         def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2
+        metersValidation.proper.size() == 4
         metersValidation.excess.empty
         metersValidation.missing.empty
         metersValidation.misconfigured.empty

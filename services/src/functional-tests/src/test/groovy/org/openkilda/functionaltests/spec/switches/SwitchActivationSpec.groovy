@@ -45,23 +45,22 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
-        def createdMeterIds = northbound.getAllMeters(switchPair.src.dpId).meterEntries.findAll {
-            it.meterId > MAX_SYSTEM_RULE_METER_ID
-        }*.meterId
-        assert createdMeterIds.size() == 1
+        def createdMeterIds = northbound.getAllMeters(switchPair.src.dpId).meterEntries*.meterId
+        assert createdMeterIds.size() == 3
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
         assert createdCookies.size() == 2
 
-        northbound.deleteMeter(switchPair.src.dpId, createdMeterIds[0])
+        def nonDefaultMeterIds = createdMeterIds.findAll({it > MAX_SYSTEM_RULE_METER_ID})
+        northbound.deleteMeter(switchPair.src.dpId, nonDefaultMeterIds[0])
         northbound.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
                 it.rules.missing.containsAll(createdCookies)
                 switchHelper.verifyRuleSectionsAreEmpty(it, ["proper", "excess"])
                 it.meters.missing.size() == 1
-                switchHelper.verifyMeterSectionsAreEmpty(it, ["proper", "misconfigured", "excess"])
+                switchHelper.verifyMeterSectionsAreEmpty(it, ["misconfigured", "excess"])
             }
         }
 
@@ -76,7 +75,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
             it.rules.proper.containsAll(createdCookies)
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            it.meters.proper*.meterId == createdMeterIds
+            it.meters.proper*.meterId == createdMeterIds.sort()
             switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "excess", "misconfigured"])
         }
 
@@ -114,7 +113,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                 it.rules.excess.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(it, ["proper", "missing"])
                 it.meters.excess.size() == 1
-                switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "proper", "misconfigured"])
+                switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured"])
             }
         }
 

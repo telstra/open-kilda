@@ -41,6 +41,7 @@ import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
@@ -114,6 +115,8 @@ public final class RouterUtils {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof GetExpectedDefaultRulesRequest) {
                 return ((GetExpectedDefaultRulesRequest) commandData).getSwitchId();
+            } else if (commandData instanceof GetExpectedDefaultMetersRequest) {
+                return ((GetExpectedDefaultMetersRequest) commandData).getSwitchId();
             } else if (commandData instanceof InstallFlowForSwitchManagerRequest) {
                 return ((InstallFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof RemoveFlowForSwitchManagerRequest) {

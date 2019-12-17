@@ -1176,7 +1176,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         involvedSwitches.each {
             with(northbound.validateSwitch(it.dpId)) { validation ->
                 validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured", "proper"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 

@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -19,6 +20,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -56,7 +58,8 @@ class SwitchSyncSpec extends BaseSpecification {
         syncResult.rules.removed.size() == 0
         syncResult.rules.installed.size() == 0
 
-        syncResult.meters.proper.size() == 0
+        def properMeters = syncResult.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        properMeters.size() == 0
         syncResult.meters.excess.size() == 0
         syncResult.meters.missing.size() == 0
         syncResult.meters.removed.size() == 0
@@ -82,10 +85,8 @@ class SwitchSyncSpec extends BaseSpecification {
                 !(it.cookie in sw.defaultCookies)
             }*.cookie]
         }
-        def metersMap = involvedSwitches.collectEntries { sw ->
-            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
-                it.meterId > MAX_SYSTEM_RULE_METER_ID
-            }*.meterId]
+        Map<SwitchId, List<Long>> metersMap = involvedSwitches.collectEntries { sw ->
+            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries*.meterId]
         }
 
         involvedSwitches.each { sw ->
@@ -96,12 +97,11 @@ class SwitchSyncSpec extends BaseSpecification {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches[1..-2].each {
                 assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
-                //missing meters for default rules are not supported atm, so nothing here
-                assert validationResultsMap[it.dpId].meters.missing.empty
+                assert validationResultsMap[it.dpId].meters.missing.size() == 2
             }
             [switchPair.src, switchPair.dst].each {
                 assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
-                assert validationResultsMap[it.dpId].meters.missing.size() == 1
+                assert validationResultsMap[it.dpId].meters.missing.size() == 3
             }
         }
 
@@ -119,9 +119,9 @@ class SwitchSyncSpec extends BaseSpecification {
         [switchPair.src, switchPair.dst].each {
             assert syncResultsMap[it.dpId].meters.proper.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
-            assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
+            assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId].sort()
             assert syncResultsMap[it.dpId].meters.removed.size() == 0
-            assert syncResultsMap[it.dpId].meters.installed*.meterId == metersMap[it.dpId]
+            assert syncResultsMap[it.dpId].meters.installed*.meterId == metersMap[it.dpId].sort()
         }
 
         and: "Switch validation doesn't complain about any missing rules and meters"
@@ -162,10 +162,8 @@ class SwitchSyncSpec extends BaseSpecification {
                 !(it.cookie in sw.defaultCookies)
             }*.cookie]
         }
-        def metersMap = involvedSwitches.collectEntries { sw ->
-            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
-                it.meterId > MAX_SYSTEM_RULE_METER_ID
-            }*.meterId]
+        Map<SwitchId, List<Long>> metersMap = involvedSwitches.collectEntries { sw ->
+            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries*.meterId]
         }
 
         def producer = new KafkaProducer(producerProps)
@@ -208,7 +206,7 @@ class SwitchSyncSpec extends BaseSpecification {
             assert syncResultsMap[it.dpId].rules.installed.size() == 0
         }
         [srcSwitch, dstSwitch].each {
-            assert syncResultsMap[it.dpId].meters.proper*.meterId == metersMap[it.dpId]
+            assert syncResultsMap[it.dpId].meters.proper*.meterId == metersMap[it.dpId].sort()
             assert syncResultsMap[it.dpId].meters.excess*.meterId == [excessMeterId]
             assert syncResultsMap[it.dpId].meters.missing.size() == 0
             assert syncResultsMap[it.dpId].meters.removed*.meterId == [excessMeterId]
