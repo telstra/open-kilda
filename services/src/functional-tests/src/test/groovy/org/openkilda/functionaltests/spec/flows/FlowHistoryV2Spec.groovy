@@ -42,6 +42,30 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         assert flowHistory.size() == 1
         checkHistoryCreateV2Action(flowHistory[0], flow.flowId)
 
+        and: "Flow history contains all flow properties in the dump section"
+        with(flowHistory[0].dumps[0]) { dump ->
+            dump.type == "stateAfter"
+            dump.bandwidth == flow.maximumBandwidth
+            dump.ignoreBandwidth == flow.ignoreBandwidth
+            dump.forwardCookie > 0
+            dump.reverseCookie > 0
+            dump.sourceSwitch == flow.source.switchId.toString()
+            dump.destinationSwitch == flow.destination.switchId.toString()
+            dump.sourcePort == flow.source.portNumber
+            dump.destinationPort == flow.destination.portNumber
+            dump.sourceVlan == flow.source.vlanId
+            dump.destinationVlan == flow.destination.vlanId
+            dump.forwardMeterId > 0
+            dump.forwardStatus == "IN_PROGRESS" // issue 3038
+            dump.reverseStatus == "IN_PROGRESS"
+            dump.reverseMeterId > 0
+            //dump.allocateProtectedPath == flow.allocateProtectedPath // issue 3031
+            //dump.encapsulationType == flow.encapsulationType
+            //dump.pinned == flow.pinned
+            //dump.pathComputationStrategy == flow.pathComputationStrategy
+            //dump.periodicPings == flow.periodicPings
+        }
+
         when: "Update the created flow"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + "updated" })
 
