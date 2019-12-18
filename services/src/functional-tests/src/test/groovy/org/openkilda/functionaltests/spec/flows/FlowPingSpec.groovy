@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
@@ -15,6 +16,8 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
@@ -110,7 +113,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tidy
     @Unroll("Flow ping can detect a broken #description")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
-    def "Flow ping can detect a broken path"() {
+    def "Flow ping can detect a broken path for a vlan flow"() {
         given: "A flow with at least 1 a-switch link"
         def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }
         List<List<PathNode>> allPaths = []
@@ -241,6 +244,49 @@ class FlowPingSpec extends HealthCheckSpecification {
             !reverse
             error == "Flow $wrongFlowId does not exist"
         }
+    }
+
+    @Tidy
+    @Tags(HARDWARE)
+    def "Flow ping can detect a broken path for a vxlan flow on an intermediate switch"() {
+        given: "A vxlan flow with intermediate switch(es)"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            swP.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every {
+                    northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation.contains(
+                            FlowEncapsulationType.VXLAN.toString().toLowerCase()
+                    )
+                }
+            }.size() >= 1
+        } ?: assumeTrue("Unable to find required switches in topology",false)
+
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelperV2.addFlow(flow)
+        //make sure that flow is pingable
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        when: "Break the flow by removing flow rules from the intermediate switch"
+        def intermediateSwId = pathHelper.getInvolvedSwitches(flow.flowId)[1].dpId
+        def rulesToDelete = northbound.getSwitchRules(intermediateSwId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }*.cookie
+        rulesToDelete.each { cookie ->
+            northbound.deleteSwitchRules(intermediateSwId, cookie)
+        }
+
+        and: "Ping the flow"
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
+
+        then: "Ping shows that path is broken"
+        !response.forward.pingSuccess
+        !response.reverse.pingSuccess
+
+        cleanup: "Delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     /**
