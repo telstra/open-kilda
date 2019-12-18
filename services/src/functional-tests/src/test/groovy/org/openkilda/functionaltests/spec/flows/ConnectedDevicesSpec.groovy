@@ -54,6 +54,7 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@Ignore("https://github.com/telstra/open-kilda/issues/3059")
 @Slf4j
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
