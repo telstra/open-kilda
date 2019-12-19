@@ -1,0 +1,55 @@
+package org.openkilda.functionaltests.helpers
+
+import static groovyx.gpars.GParsPool.withPool
+
+import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.otsdb.OtsdbQueryService
+import org.openkilda.testing.tools.SoftAssertions
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+
+@Component
+class StatsHelper {
+    private static int STATS_INTERVAL = 65
+
+    @Autowired
+    OtsdbQueryService otsdb
+    @Autowired
+    Database database
+    @Autowired
+    NorthboundService northbound
+
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
+
+    void verifyFlowsWriteStats(List<String> flowIds) {
+        def soft = new SoftAssertions()
+        withPool(flowIds.size()) {
+            flowIds.eachParallel { String flowId ->
+                soft.checkSucceeds { verifyFlowWritesStats(flowId) }
+            }
+        }
+        soft.verify()
+    }
+
+    void verifyFlowWritesStats(String flowId, boolean mustHaveTraffic = true) {
+        def beforePing = new Date()
+        mustHaveTraffic && northbound.pingFlow(flowId, new PingInput())
+        verifyFlowWritesStats(flowId, beforePing, mustHaveTraffic)
+    }
+
+    void verifyFlowWritesStats(String flowId, Date from, boolean mustHaveTraffic) {
+        Wrappers.wait(STATS_INTERVAL) {
+            def dps = otsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
+            if(mustHaveTraffic) {
+                assert dps.values().any { it > 0 }
+            } else {
+                assert dps.size() > 0
+            }
+        }
+    }
+}

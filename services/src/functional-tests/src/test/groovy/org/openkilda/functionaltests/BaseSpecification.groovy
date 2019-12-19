@@ -8,6 +8,7 @@ import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
+import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.model.SwitchId
@@ -57,6 +58,8 @@ class BaseSpecification extends Specification implements SetupOnce {
     NorthboundServiceV2 northboundV2
     @Autowired
     FlowHelperV2 flowHelperV2
+    @Autowired
+    StatsHelper statsHelper
 
     @Value('${spring.profiles.active}')
     String profile

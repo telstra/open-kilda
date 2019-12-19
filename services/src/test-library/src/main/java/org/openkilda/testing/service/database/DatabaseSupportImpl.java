@@ -220,6 +220,14 @@ public class DatabaseSupportImpl implements Database {
                 .orElseThrow(() -> new IllegalStateException(format("Switch %s not found", switchId)));
     }
 
+    @Override
+    public void setSwitchStatus(SwitchId switchId, SwitchStatus swStatus) {
+        Switch sw = switchRepository.findById(switchId)
+                .orElseThrow(() -> new IllegalStateException(format("Switch %s not found", switchId)));
+        sw.setStatus(swStatus);
+        switchRepository.createOrUpdate(sw);
+    }
+
     /**
      * Set cost for all ISLs to be equal to DEFAULT_COST value.
      *
