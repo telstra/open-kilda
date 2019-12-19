@@ -15,8 +15,13 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.model.FlowPath;
@@ -26,6 +31,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 
@@ -43,18 +49,27 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
     private FlowPathRepository flowPathRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
     private IslRepository islRepository;
+    private SwitchRepository switchRepository;
 
     public SwitchRuleServiceImpl(SwitchManagerCarrier carrier, RepositoryFactory repositoryFactory) {
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         islRepository = repositoryFactory.createIslRepository();
+        switchRepository = repositoryFactory.createSwitchRepository();
         this.carrier = carrier;
     }
 
     @Override
     public void deleteRules(String key, SwitchRulesDeleteRequest data) {
-
         SwitchId switchId = data.getSwitchId();
+        if (!switchRepository.exists(switchId)) {
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
+                    "Error when deleting switch rules");
+            ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
+
+            carrier.response(key, errorMessage);
+            return;
+        }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
@@ -76,8 +91,15 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
 
     @Override
     public void installRules(String key, SwitchRulesInstallRequest data) {
-
         SwitchId switchId = data.getSwitchId();
+        if (!switchRepository.exists(switchId)) {
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
+                    "Error when installing switch rules");
+            ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
+
+            carrier.response(key, errorMessage);
+            return;
+        }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());

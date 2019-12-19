@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -9,6 +10,8 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -16,7 +19,6 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 
 class SwitchesSpec extends HealthCheckSpecification {
     def "System is able to return a list of all switches"() {
@@ -206,5 +208,93 @@ class SwitchesSpec extends HealthCheckSpecification {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }
         [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when requesting switch ports from non-existing switch"() {
+        when: "Request all ports info from non-existing switch"
+        northbound.getPorts(NON_EXISTENT_SWITCH_ID)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when requesting switch rules from non-existing switch"() {
+        when: "Request all rules from non-existing switch"
+        northbound.getSwitchRules(NON_EXISTENT_SWITCH_ID)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when installing switch rules on non-existing switch"() {
+        when: "Install switch rules on non-existing switch"
+        northbound.installSwitchRules(NON_EXISTENT_SWITCH_ID, InstallRulesAction.INSTALL_DEFAULTS)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when deleting switch rules on non-existing switch"() {
+        when: "Delete switch rules on non-existing switch"
+        northbound.deleteSwitchRules(NON_EXISTENT_SWITCH_ID, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when setting under maintenance non-existing switch"() {
+        when: "set under maintenance non-existing switch"
+        northbound.setSwitchMaintenance(NON_EXISTENT_SWITCH_ID, true, true)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found."
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when requesting all meters from non-existing switch"() {
+        when: "Request all meters from non-existing switch"
+        northbound.getAllMeters(NON_EXISTENT_SWITCH_ID)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when deleting meter on non-existing switch"() {
+        when: "Delete meter on non-existing switch"
+        northbound.deleteMeter(NON_EXISTENT_SWITCH_ID, 33)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "System returns human readable error when configuring port on non-existing switch"() {
+        when: "Configure port on non-existing switch"
+        northbound.portUp(NON_EXISTENT_SWITCH_ID, 33)
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
     }
 }
