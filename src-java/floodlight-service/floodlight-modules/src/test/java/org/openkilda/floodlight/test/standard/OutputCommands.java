@@ -660,6 +660,7 @@ public interface OutputCommands {
     default OFFlowAdd installUnicastVerificationRuleVxlan(DatapathId dpid) {
         Match match = ofFactory.buildMatch()
                 .setMasked(MatchField.ETH_SRC, FLOW_PING_MAGIC_SRC_MAC_ADDRESS, MacAddress.NO_MASK)
+                .setMasked(MatchField.ETH_DST, MacAddress.of(dpid), MacAddress.NO_MASK)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.UDP_SRC, TransportPort.of(4500))
