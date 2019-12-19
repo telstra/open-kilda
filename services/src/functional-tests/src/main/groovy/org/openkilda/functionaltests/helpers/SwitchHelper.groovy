@@ -53,7 +53,7 @@ class SwitchHelper {
 
     @Value('${burst.coefficient}')
     double burstCoefficient
-    
+
     @Autowired
     SwitchHelper(NorthboundService northbound, Database database) {
         this.northbound = northbound
@@ -208,8 +208,10 @@ class SwitchHelper {
 
     static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        sections.each {
-            assert switchValidateInfo.meters."$it".empty
+        if (switchValidateInfo.meters) {
+            sections.each {
+                assert switchValidateInfo.meters."$it".empty
+            }
         }
     }
 
@@ -222,7 +224,7 @@ class SwitchHelper {
     static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess"]) {
         sections.each { String section ->
-            if(section == "proper") {
+            if (section == "proper") {
                 assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.empty
             } else {
                 assert switchValidateInfo.rules."$section".findAll { cookie ->
