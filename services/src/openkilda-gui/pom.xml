@@ -132,13 +132,13 @@
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>bootstrap</artifactId>
-			<version>4.0.0</version>
+			<version>4.1.2</version>
 		</dependency>
 
 		<dependency>
 			<groupId>net.logstash.logback</groupId>
 			<artifactId>logstash-logback-encoder</artifactId>
-			<version>4.7</version>
+			<version>6.3</version>
 		</dependency>
 		
 		<dependency>
