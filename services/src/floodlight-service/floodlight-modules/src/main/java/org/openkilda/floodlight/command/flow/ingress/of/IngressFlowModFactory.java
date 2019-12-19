@@ -98,10 +98,9 @@ public abstract class IngressFlowModFactory {
      * port (if OF flow-mod ADD message use same match and priority fields with existing OF flow, existing OF flow will
      * be replaced/not added).
      */
-    public OFFlowMod makeCustomerPortSharedCatchInstallMessage() {
+    public OFFlowMod makeCustomerPortSharedCatchMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        return of.buildFlowAdd()
-                .setTableId(TableId.of(SwitchManager.INPUT_TABLE_ID))
+        return flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INPUT_TABLE_ID))
                 .setPriority(SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
                 .setCookie(U64.of(Cookie.encodeIngressRulePassThrough(endpoint.getPortNumber())))
                 .setMatch(of.buildMatch()

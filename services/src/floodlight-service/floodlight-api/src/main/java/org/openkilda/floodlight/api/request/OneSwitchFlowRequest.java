@@ -39,8 +39,9 @@ public class OneSwitchFlowRequest extends IngressFlowSegmentBase {
 
     protected OneSwitchFlowRequest(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
-            MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint.getSwitchId());
+            MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint, boolean removeCustomerPortSharedCatchRule) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint.getSwitchId(),
+                removeCustomerPortSharedCatchRule);
 
         if (! getSwitchId().equals(egressEndpoint.getSwitchId())) {
             throw new IllegalArgumentException(String.format(
@@ -54,6 +55,6 @@ public class OneSwitchFlowRequest extends IngressFlowSegmentBase {
     protected OneSwitchFlowRequest(@NonNull OneSwitchFlowRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint, other.meterConfig,
-                other.egressEndpoint);
+                other.egressEndpoint, other.removeCustomerPortSharedCatchRule);
     }
 }

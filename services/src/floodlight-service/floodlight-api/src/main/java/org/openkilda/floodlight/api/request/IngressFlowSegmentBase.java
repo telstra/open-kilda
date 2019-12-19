@@ -42,13 +42,17 @@ abstract class IngressFlowSegmentBase extends FlowSegmentRequest {
     @JsonProperty("egress_switch")
     protected final SwitchId egressSwitchId;
 
+    @JsonProperty("remove_customer_port_shared_catch_rule")
+    protected final boolean removeCustomerPortSharedCatchRule;
+
     IngressFlowSegmentBase(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, @NonNull FlowEndpoint endpoint,
-            MeterConfig meterConfig, @NonNull SwitchId egressSwitchId) {
+            MeterConfig meterConfig, @NonNull SwitchId egressSwitchId, boolean removeCustomerPortSharedCatchRule) {
         super(context, endpoint.getSwitchId(), commandId, metadata);
 
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
+        this.removeCustomerPortSharedCatchRule = removeCustomerPortSharedCatchRule;
     }
 }
