@@ -45,6 +45,7 @@ import groovy.transform.AutoClone
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -61,6 +62,9 @@ Verify ability to detect connected devices per flow endpoint (src/dst).
 Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 class ConnectedDevicesSpec extends HealthCheckSpecification {
+
+    @Value('${use.multitable}')
+    boolean useMultiTable
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
@@ -137,8 +141,10 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(data.switchPair.src.dpId)
-        cleanupLldpMeters(data.switchPair.dst.dpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(data.switchPair.src.dpId)
+            cleanupLldpMeters(data.switchPair.dst.dpId)
+        }
 
         where:
         data <<
@@ -243,8 +249,10 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(flow.source.switchDpId)
-        cleanupLldpMeters(flow.destination.switchDpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(flow.source.switchDpId)
+            cleanupLldpMeters(flow.destination.switchDpId)
+        }
 
         where:
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
@@ -299,7 +307,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         database.removeConnectedDevices(sw.dpId)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(sw.dpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(sw.dpId)
+        }
     }
 
     @Unroll
@@ -359,8 +369,10 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(flow.source.switchDpId)
-        cleanupLldpMeters(flow.destination.switchDpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(flow.source.switchDpId)
+            cleanupLldpMeters(flow.destination.switchDpId)
+        }
 
         where:
         [srcEnabled, dstEnabled] << [
@@ -414,7 +426,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(flow.source.datapath)
+        if (!useMultiTable) {
+            cleanupLldpMeters(flow.source.datapath)
+        }
     }
 
     @Tidy
@@ -470,7 +484,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(flow.destination.datapath)
+        if (!useMultiTable) {
+            cleanupLldpMeters(flow.destination.datapath)
+        }
     }
 
     @Tidy
@@ -530,7 +546,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(sw.dpId, initialProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(sw.dpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(sw.dpId)
+        }
     }
 
     @Tidy
@@ -580,10 +598,12 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         switchHelper.updateSwitchProperties(sw, initialProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(sw.dpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(sw.dpId)
+        }
     }
 
-    def "Able to detected devices on free switch port (no flow or isl)"() {
+    def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
@@ -615,7 +635,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         switchHelper.updateSwitchProperties(sw, initialProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(sw.dpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(sw.dpId)
+        }
     }
 
     @Unroll
@@ -709,7 +731,9 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         switchHelper.updateSwitchProperties(sw, initialProps)
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(sw.dpId)
+        if (!useMultiTable) {
+            cleanupLldpMeters(sw.dpId)
+        }
 
         where:
         srcDefault | dstDefault
@@ -787,8 +811,10 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
         and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        cleanupLldpMeters(flow.source.datapath)
-        cleanupLldpMeters(flow.destination.datapath)
+        if (!useMultiTable) {
+            cleanupLldpMeters(flow.source.datapath)
+            cleanupLldpMeters(flow.destination.datapath)
+        }
 
         where:
         srcDefault | dstDefault
