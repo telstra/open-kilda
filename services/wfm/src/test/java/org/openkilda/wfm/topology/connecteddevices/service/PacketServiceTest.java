@@ -342,13 +342,15 @@ public class PacketServiceTest extends Neo4jBasedTest {
     }
 
     private void runHandleSwitchLldpWithUpdatedDevice(SwitchLldpInfoData updatedData) throws InterruptedException {
-        // Need to have a different timestamp in 'data' and 'updatedData' messages.
-        Thread.sleep(10);
         SwitchLldpInfoData data = createSwitchLldpInfoData();
         packetService.handleSwitchLldpData(data);
         Collection<SwitchConnectedDevice> oldDevices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, oldDevices.size());
         assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(data, oldDevices.iterator().next());
+
+        // Need to have a different timestamp in 'data' and 'updatedData' messages.
+        // More info https://github.com/telstra/open-kilda/issues/3064
+        updatedData.setTimestamp(data.getTimestamp() + 1000);
 
         // we must update old device
         packetService.handleSwitchLldpData(updatedData);
