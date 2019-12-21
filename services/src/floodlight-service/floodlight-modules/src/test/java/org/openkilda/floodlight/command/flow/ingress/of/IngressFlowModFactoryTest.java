@@ -17,22 +17,16 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import static org.easymock.EasyMock.expect;
 
-import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
-import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.MetadataAdapter;
-import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
-import org.openkilda.model.IngressSegmentCookie;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMockSupport;
@@ -42,7 +36,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -51,7 +44,6 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -104,6 +96,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
 
     // --- makeOuterVlanMatchAndRemoveMessage
 
+    /*
     @Test
     public void makeOuterVlanMatchAndRemoveMessage() {
         final IngressFlowModFactory factory = makeFactory();
@@ -128,6 +121,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
                 .build();
         verifyOfMessageEquals(expected, factory.makeOuterVlanMatchAndRemoveMessage());
     }
+    */
 
     // --- makeCustomerPortSharedCatchInstallMessage
 

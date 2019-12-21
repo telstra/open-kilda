@@ -48,7 +48,7 @@ public class CookieTest extends AbstractCookieTest {
 
     @Test
     public void goBeyondUpperBoundary() {
-        testFieldReadWrite(new Cookie(0), 0x8000_0000_0000_0000L, new Cookie.BitField(0x8000_0000_0000_0000L), 3);
+        testFieldReadWrite(new Cookie(0), 0x8000_0000_0000_0000L, new Cookie.BitField(0x8000_0000_0000_0000L), 3, 1);
     }
 
     @Test

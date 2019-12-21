@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.flowhs.model;
 
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import lombok.Builder;

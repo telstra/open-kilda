@@ -38,15 +38,15 @@ public class FlowEndpoint extends NetworkEndpoint {
     @JsonProperty("track_connected_devices")
     private final boolean trackConnectedDevices;
 
-    public FlowEndpoint(SwitchId switchId, Integer portNumber) {
+    public FlowEndpoint(SwitchId switchId, int portNumber) {
         this(switchId, portNumber, 0);
     }
 
-    public FlowEndpoint(SwitchId switchId, Integer portNumber, int outerVlanId) {
+    public FlowEndpoint(SwitchId switchId, int portNumber, int outerVlanId) {
         this(switchId, portNumber, outerVlanId, 0, false);
     }
 
-    public FlowEndpoint(SwitchId switchId, Integer portNumber, int outerVlanId, int innerVlanId) {
+    public FlowEndpoint(SwitchId switchId, int portNumber, int outerVlanId, int innerVlanId) {
         this(switchId, portNumber, outerVlanId, innerVlanId, false);
     }
 
@@ -54,7 +54,7 @@ public class FlowEndpoint extends NetworkEndpoint {
     @Builder(toBuilder = true)
     public FlowEndpoint(
             @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("port_number") Integer portNumber,
+            @JsonProperty("port_number") int portNumber,
             @JsonProperty("outer_vlan_id") int outerVlanId,
             @JsonProperty("inner_vlan_id") int innerVlanId,
             @JsonProperty("track_connected_devices") boolean trackConnectedDevices) {

@@ -22,8 +22,6 @@ import org.openkilda.floodlight.model.PingWiredView;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
-import org.openkilda.floodlight.service.ping.packet.EthernetHeader;
-import org.openkilda.floodlight.service.ping.packet.EthernetPayload;
 import org.openkilda.floodlight.service.ping.packet.VlanTag;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
@@ -96,25 +94,27 @@ public class PingService implements IService {
         l3.setDestinationAddress(NET_L3_ADDRESS);
         l3.setTtl(NET_L3_TTL);
 
-        EthernetPayload l2Payload = new EthernetPayload();
-        l2Payload.setPayload(l3);
-        l2Payload.setEtherType(EthType.IPv4);
+        EthType l2Type = EthType.IPv4;
+        IPacket l2Payload = l3;
+        List<Integer> vlanStack = FlowEndpoint.makeVlanStack(ping.getIngressInnerVlanId(), ping.getIngressVlanId());
+        for (int vlanID : vlanStack) {
+            VlanTag vlanTag = new VlanTag();
+            vlanTag.setVlanId((short) vlanID);
+            vlanTag.setEtherType(l2Type);
+            vlanTag.setPayload(l2Payload);
 
-        IPacket packet = l2Payload;
-        if (FlowEndpoint.isVlanIdSet(ping.getIngressInnerVlanId())) {
-            packet = injectVlan(packet, ping.getIngressInnerVlanId());
-        }
-        if (FlowEndpoint.isVlanIdSet(ping.getIngressVlanId())) {
-            packet = injectVlan(packet, ping.getIngressVlanId());
+            l2Payload = vlanTag;
+            l2Type = EthType.VLAN_FRAME;
         }
 
-        EthernetHeader l2Headers = new EthernetHeader();
-        l2Headers.setPayload(packet);
-        l2Headers.setSourceMacAddress(magicSourceMacAddress);
+        Ethernet l2 = new Ethernet();
+        l2.setEtherType(l2Type);
+        l2.setSourceMACAddress(magicSourceMacAddress);
         DatapathId egressSwitch = DatapathId.of(ping.getDest().getDatapath().toLong());
-        l2Headers.setDestinationMacAddress(MacAddress.of(egressSwitch));
+        l2.setDestinationMACAddress(MacAddress.of(egressSwitch));
+        l2.setPayload(l2Payload);
 
-        return l2Headers;
+        return l2;
     }
 
     /**
@@ -178,10 +178,6 @@ public class PingService implements IService {
         while (payload instanceof VlanTag) {
             short vlanId = ((VlanTag) payload).getVlanId();
             vlanStack.add((int) vlanId);
-            payload = payload.getPayload();
-        }
-
-        if (payload instanceof EthernetPayload) {
             payload = payload.getPayload();
         }
 

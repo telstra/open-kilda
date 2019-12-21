@@ -38,7 +38,7 @@ public abstract class RequestedFlowMapper {
     public RequestedFlow unpackRequest(FlowRequest request) {
         RequestedFlow flow = toRequestedFlow(request);
         flow.setFlowEncapsulationType(map(request.getEncapsulationType()));
-        flow.setPathComputationStrategy(mapComputationStrategy(request.getPathComputationStrategy().toUpperCase()));
+        flow.setPathComputationStrategy(mapComputationStrategy(request.getPathComputationStrategy()));
 
         mapRequestedFlowSource(request.getSource(), flow);
         mapRequestedFlowDestination(request.getDestination(), flow);
@@ -89,5 +89,13 @@ public abstract class RequestedFlowMapper {
 
     public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);
 
-    public abstract PathComputationStrategy mapComputationStrategy(String raw);
+    /**
+     * Decode string representation of {@code PathComputationStrategy}.
+     */
+    public PathComputationStrategy mapComputationStrategy(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        return PathComputationStrategy.valueOf(raw.toUpperCase());
+    }
 }

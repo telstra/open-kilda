@@ -34,6 +34,5 @@ public abstract class NetworkEndpoint implements Serializable {
     protected final SwitchId switchId;
 
     @JsonProperty("port_number")
-    @NonNull
-    protected final Integer portNumber;
+    protected final int portNumber;
 }

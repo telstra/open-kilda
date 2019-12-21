@@ -275,9 +275,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
         FlowResources oldResources = getResources(flow, oldPaths.getForward(), oldPaths.getReverse());
         stateMachine.setOldPrimaryForwardPath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, , oldPaths.getForward(), oldResources.getForward()));
+                sharedOfFlowManager, flow, oldPaths.getForward(), oldResources.getForward()));
         stateMachine.setOldPrimaryReversePath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, , oldPaths.getReverse(), oldResources.getReverse()));
+                sharedOfFlowManager, flow, oldPaths.getReverse(), oldResources.getReverse()));
 
         stateMachine.setOldPrimaryForwardPathStatus(oldPaths.getForward().getStatus());
         stateMachine.setOldPrimaryReversePathStatus(oldPaths.getReverse().getStatus());
@@ -298,9 +298,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
         FlowResources oldResources = getResources(flow, oldPaths.getForward(), oldPaths.getReverse());
         stateMachine.setOldProtectedForwardPath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, , oldPaths.getForward(), oldResources.getForward()));
+                sharedOfFlowManager, flow, oldPaths.getForward(), oldResources.getForward()));
         stateMachine.setOldProtectedReversePath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, , oldPaths.getReverse(), oldResources.getReverse()));
+                sharedOfFlowManager, flow, oldPaths.getReverse(), oldResources.getReverse()));
 
         stateMachine.setOldProtectedForwardPathStatus(oldPaths.getForward().getStatus());
         stateMachine.setOldProtectedReversePathStatus(oldPaths.getReverse().getStatus());

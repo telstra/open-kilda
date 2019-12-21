@@ -33,6 +33,8 @@ public class VlanTag extends BasePacket {
     protected short vlanId;
     protected byte priorityCode;
 
+    protected EthType etherType;
+
     static {
         Ethernet.etherTypeClassMap.put((short) EthType.VLAN_FRAME.getValue(), VlanTag.class);
     }
@@ -47,8 +49,8 @@ public class VlanTag extends BasePacket {
 
         byte[] data = new byte[payloadData.length + 4];
         ByteBuffer bb = ByteBuffer.wrap(data);
-        bb.putShort((short) EthType.VLAN_FRAME.getValue());
         bb.putShort((short) ((priorityCode << 13) | (vlanId & 0x0fff)));
+        bb.putShort((short) etherType.getValue());
 
         bb.put(payloadData);
 
@@ -60,7 +62,7 @@ public class VlanTag extends BasePacket {
         // our own EthType is processed by parent/caller we are responsible to process "next" ethernet type header
 
         if (length <= 4) {
-            // at least 2 byte from VLAN tag must be present
+            // at least 4 byte from VLAN tag must be present
             return null;
         }
 
@@ -70,13 +72,28 @@ public class VlanTag extends BasePacket {
         priorityCode = (byte) ((tci >> 13) & 0x07);
         vlanId = (short) (tci & 0x0fff);
 
-        EthType etherType = EthType.of(bb.getShort() & 0xffff);
-        if (etherType == EthType.VLAN_FRAME) {
-            payload = new VlanTag().deserialize(data, offset + 4, length - 4);
-        } else {
-            payload = new EthernetPayload().deserialize(data, offset + 2, length - 2);
+        payload = null;
+
+        etherType = EthType.of(bb.getShort() & 0xffff);
+        Class<? extends IPacket> clazz = Ethernet.etherTypeClassMap.get((short) etherType.getValue());
+        if (Ethernet.etherTypeClassMap.containsKey((short) etherType.getValue())) {
+            try {
+                payload = clazz.newInstance().deserialize(data, bb.position(), bb.limit() - bb.position());
+            } catch (Exception e) {
+                if (log.isTraceEnabled()) {
+                    log.trace(
+                            "Failed to parse ethernet payload with type {}: by {}, treat as plain ethernet packet",
+                            etherType, clazz.getName(), e);
+                }
+            }
+        }
+        if (payload == null) {
+            byte[] buf = new byte[bb.remaining()];
+            bb.get(buf);
+            payload = new net.floodlightcontroller.packet.Data(buf);
         }
 
+        payload.setParent(this);
         return this;
     }
 }

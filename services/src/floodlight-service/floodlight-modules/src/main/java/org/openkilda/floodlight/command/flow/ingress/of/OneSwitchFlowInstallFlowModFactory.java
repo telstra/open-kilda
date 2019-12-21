@@ -47,7 +47,7 @@ abstract class OneSwitchFlowInstallFlowModFactory extends IngressInstallFlowModF
     protected OFAction makeOutputAction() {
         FlowEndpoint endpoint = command.getEndpoint();
         FlowEndpoint egressEndpoint = command.getEgressEndpoint();
-        if (endpoint.getPortNumber().equals(egressEndpoint.getPortNumber())) {
+        if (endpoint.getPortNumber() == egressEndpoint.getPortNumber()) {
             return super.makeOutputAction(OFPort.IN_PORT);
         }
         return super.makeOutputAction(OFPort.of(egressEndpoint.getPortNumber()));

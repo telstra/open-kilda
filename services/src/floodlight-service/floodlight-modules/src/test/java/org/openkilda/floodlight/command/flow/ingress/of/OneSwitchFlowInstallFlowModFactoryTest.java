@@ -215,7 +215,7 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
 
         FlowEndpoint ingress = command.getEndpoint();
         FlowEndpoint egress = command.getEgressEndpoint();
-        OFPort outPort = ingress.getPortNumber().equals(egress.getPortNumber())
+        OFPort outPort = ingress.getPortNumber() == egress.getPortNumber()
                 ? OFPort.IN_PORT
                 : OFPort.of(egress.getPortNumber());
         applyActions.add(of.actions().buildOutput().setPort(outPort).build());

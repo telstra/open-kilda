@@ -204,7 +204,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private FlowSegmentRequestFactory makeOneSwitchRequest(
-            CommandContext context, FlowPathSnapshot pathSnapshot, FlowSideAdapter ingressSide, FlowSideAdapter egressSide) {
+            CommandContext context, FlowPathSnapshot pathSnapshot,
+            FlowSideAdapter ingressSide, FlowSideAdapter egressSide) {
         Flow flow = ingressSide.getFlow();
         FlowPath path = pathSnapshot.getPath();
 

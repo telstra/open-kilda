@@ -245,7 +245,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     /**
      * Checks whether the cookie corresponds to the LLDP flow.
      */
-    public static boolean isLldpInputCustomer (long value) {
+    public static boolean isLldpInputCustomer(long value) {
         Cookie cookie = new Cookie(value);
         return cookie.getRawType() == CookieType.LLDP.getValue();
     }
@@ -381,8 +381,8 @@ public class Cookie implements Comparable<Cookie>, Serializable {
             Integer end = null;
 
             long probe = 1;
-            for (int i = 0; i < 8 * 8 - 1; i++) {
-                boolean isSet = (mask & probe) !=0;
+            for (int i = 0; i < 8 * 8; i++) {
+                boolean isSet = (mask & probe) != 0;
                 if (start == null && isSet) {
                     start = i;
                 } else if (start != null && end == null && ! isSet) {
@@ -391,6 +391,8 @@ public class Cookie implements Comparable<Cookie>, Serializable {
                     throw new IllegalArgumentException(String.format(
                             "Illegal bit field mask %s - it contain gaps", Cookie.toString(mask)));
                 }
+
+                probe <<= 1;
             }
 
             if (start == null) {

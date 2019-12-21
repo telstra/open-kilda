@@ -35,7 +35,6 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.model.FlowPathSnapshot;
-import org.openkilda.wfm.share.model.FlowPathSnapshot.FlowPathSnapshotBuilder;
 import org.openkilda.wfm.share.model.SharedOfFlowStatus;
 import org.openkilda.wfm.share.service.SharedOfFlowManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
