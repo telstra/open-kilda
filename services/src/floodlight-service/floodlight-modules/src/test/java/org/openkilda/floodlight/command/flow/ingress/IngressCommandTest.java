@@ -58,11 +58,6 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
                 });
     }
 
-    void expectMakeMultiVlanPreForwardMessage(IngressFlowSegmentBase command) {
-        EasyMock.expect(flowModFactoryMock.makeOuterVlanMatchAndRemoveMessage())
-                .andAnswer(() -> extractFlowModFactory(command).makeOuterVlanMatchAndRemoveMessage());
-    }
-
     void expectMakeSingleVlanForwardMessage(IngressFlowSegmentBase command, MeterId effectiveMeterId) {
         EasyMock.expect(flowModFactoryMock.makeSingleVlanForwardMessage(effectiveMeterId))
                 .andAnswer(() -> {

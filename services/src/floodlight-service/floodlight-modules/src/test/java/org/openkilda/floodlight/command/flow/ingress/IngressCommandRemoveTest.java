@@ -109,14 +109,12 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
 
     void processSingleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
         expectMakeSingleVlanForwardMessage(command, meterConfig.getId());
-        expectMakeMultiVlanPreForwardMessage(command);
         expectMakeOldForwardingRemoveMessage(command);
         executeCommand(command, 3);
     }
 
     void processDoubleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
         expectMakeDoubleVlanForwardMessage(command, meterConfig.getId());
-        expectMakeMultiVlanPreForwardMessage(command);
         expectMakeOldForwardingRemoveMessage(command);
         executeCommand(command, 3);
     }

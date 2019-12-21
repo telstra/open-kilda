@@ -17,20 +17,14 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
-import org.openkilda.model.SharedOfFlow;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -50,7 +44,6 @@ import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.share.model.FlowPathSnapshot;
-import org.openkilda.wfm.share.model.SharedOfFlowStatus;
 import org.openkilda.wfm.share.service.SharedOfFlowManager;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
@@ -62,14 +55,8 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A base for action classes that allocate resources for flow paths.
@@ -81,7 +68,6 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected final int pathAllocationRetriesLimit;
     protected final int pathAllocationRetryDelay;
     protected final SwitchRepository switchRepository;
-    protected final SwitchPropertiesRepository switchPropertiesRepository;
     protected final IslRepository islRepository;
     protected final PathComputer pathComputer;
     protected final FlowResourcesManager resourcesManager;
@@ -99,7 +85,6 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         islRepository = repositoryFactory.createIslRepository();
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
@@ -290,9 +275,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
         FlowResources oldResources = getResources(flow, oldPaths.getForward(), oldPaths.getReverse());
         stateMachine.setOldPrimaryForwardPath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, oldPaths.getForward(), oldResources.getForward()));
+                sharedOfFlowManager, , oldPaths.getForward(), oldResources.getForward()));
         stateMachine.setOldPrimaryReversePath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, oldPaths.getReverse(), oldResources.getReverse()));
+                sharedOfFlowManager, , oldPaths.getReverse(), oldResources.getReverse()));
 
         stateMachine.setOldPrimaryForwardPathStatus(oldPaths.getForward().getStatus());
         stateMachine.setOldPrimaryReversePathStatus(oldPaths.getReverse().getStatus());
@@ -313,9 +298,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
         FlowResources oldResources = getResources(flow, oldPaths.getForward(), oldPaths.getReverse());
         stateMachine.setOldProtectedForwardPath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, oldPaths.getForward(), oldResources.getForward()));
+                sharedOfFlowManager, , oldPaths.getForward(), oldResources.getForward()));
         stateMachine.setOldProtectedReversePath(makeFlowPathOldSnapshot(
-                sharedOfFlowManager, oldPaths.getReverse(), oldResources.getReverse()));
+                sharedOfFlowManager, , oldPaths.getReverse(), oldResources.getReverse()));
 
         stateMachine.setOldProtectedForwardPathStatus(oldPaths.getForward().getStatus());
         stateMachine.setOldProtectedReversePathStatus(oldPaths.getReverse().getStatus());
@@ -339,71 +324,6 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                         .encapsulationResources(encapsulationResources)
                         .build())
                 .build();
-    }
-
-    protected SharedOfFlowManager makeSharedOfFlowManager(Flow flow) {
-        List<PathId> pathToIgnore = Stream.of(flow.getForwardPathId(), flow.getReversePathId(),
-                                              flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        return new SharedOfFlowManager(persistenceManager, pathToIgnore);
-    }
-
-    protected FlowPathSnapshot makeFlowPathNewSnapshot(
-            SharedOfFlowManager sharedOfFlowManager, Flow flow, FlowPath path, FlowResources.PathResources resources) {
-        FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot = FlowPathSnapshot.builder(path).resources(resources);
-        createSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, flow, path);
-        return pathSnapshot.build();
-    }
-
-    protected FlowPathSnapshot makeFlowPathOldSnapshot(
-            SharedOfFlowManager sharedOfFlowManager, FlowPath path, FlowResources.PathResources resources) {
-        FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot = FlowPathSnapshot.builder(path)
-                .resources(resources);
-        removeSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, path);
-        return pathSnapshot.build();
-    }
-
-    protected void createSharedOfFlowsReferences(
-            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            Flow flow, FlowPath path) {
-        FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
-        createSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, ingressSide, path);
-    }
-
-    protected void createSharedOfFlowsReferences(
-            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            FlowSideAdapter flowSide, FlowPath path) {
-        FlowEndpoint endpoint = flowSide.getEndpoint();
-        if (flowSide.isMultiTableSegment()
-                && isSwitchInMultiTableMode(endpoint.getSwitchId())
-                && FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            SharedOfFlowStatus sharedStatus = sharedOfFlowManager.bindIngressFlowSegmentOuterVlanMatchFlow(
-                    endpoint, path);
-            pathSnapshot.sharedIngressSegmentOuterVlanMatchStatus(sharedStatus);
-        }
-    }
-
-    private void removeSharedOfFlowsReferences(
-            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            FlowPath path) {
-        Set<SharedOfFlow> pathSharedFlowReferences = new HashSet<>(path.getSharedOfFlows());
-        for (SharedOfFlow reference : pathSharedFlowReferences) {
-            SharedOfFlowStatus status = sharedOfFlowManager.removeBinding(reference, path);
-            if (reference.getType() == SharedOfFlow.SharedOfFlowType.INGRESS_OUTER_VLAN_MATCH) {
-                pathSnapshot.sharedIngressSegmentOuterVlanMatchStatus(status);
-            } else {
-                log.error("Unknown shared OF Flow type {} - {}", reference.getType(), reference);
-            }
-        }
-    }
-
-    private boolean isSwitchInMultiTableMode(SwitchId switchId) {
-        SwitchProperties props = switchPropertiesRepository.findBySwitchId(switchId)
-                .orElseThrow(() -> new IllegalStateException(String.format(
-                        "Unable to locate switch properties record for %s", switchId)));
-        return props.isMultiTable();
     }
 
     protected FlowPath extractPath(Flow flow, FlowPathSnapshot pathSnapshot, FlowPath fallback) {

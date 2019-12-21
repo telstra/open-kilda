@@ -260,10 +260,9 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
 
-        SharedOfFlowManager sharedOfFlowManager = new SharedOfFlowManager(persistenceManager);
-
-        fsm.setForwardPath(makePrimaryFlowPathSnapshot(sharedOfFlowManager, flow, forward, flowResources.getForward()));
-        fsm.setReversePath(makePrimaryFlowPathSnapshot(sharedOfFlowManager, flow, reverse, flowResources.getReverse()));
+        SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);
+        fsm.setForwardPath(makeFlowPathNewSnapshot(sharedOfFlowManager, flow, forward, flowResources.getForward()));
+        fsm.setReversePath(makeFlowPathNewSnapshot(sharedOfFlowManager, flow, reverse, flowResources.getReverse()));
 
         log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
 
@@ -286,6 +285,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         log.debug("Creating the protected path {} for flow {}", protectedPath, flow);
 
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
+        SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);
         Cookie forwardCookie = Cookie.buildForwardCookie(flowResources.getUnmaskedCookie());
 
         FlowPath forward = flowPathBuilder.buildFlowPath(flow, flowResources.getForward(),
@@ -293,9 +293,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         forward.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setProtectedForwardPath(forward);
         fsm.setProtectedForwardPath(
-                FlowPathSnapshot.builder(forward)
-                        .resources(flowResources.getForward())
-                        .build());
+                makeFlowPathNewSnapshot(sharedOfFlowManager, flow, forward, flowResources.getForward()));
 
         Cookie reverseCookie = Cookie.buildReverseCookie(flowResources.getUnmaskedCookie());
         FlowPath reverse = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
@@ -303,9 +301,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setProtectedReversePath(reverse);
         fsm.setProtectedReversePath(
-                FlowPathSnapshot.builder(reverse)
-                        .resources(flowResources.getReverse())
-                        .build());
+                makeFlowPathNewSnapshot(sharedOfFlowManager, flow, reverse, flowResources.getReverse()));
 
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
         flowRepository.createOrUpdate(flow);
@@ -333,30 +329,6 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
             islRepository.createOrUpdate(isl);
         });
-    }
-
-    private FlowPathSnapshot makePrimaryFlowPathSnapshot(
-            SharedOfFlowManager sharedOfFlowManager, Flow flow, FlowPath path, FlowResources.PathResources resources) {
-        FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot = FlowPathSnapshot.builder(path).resources(resources);
-        addSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, flow, path);
-        return pathSnapshot.build();
-    }
-
-    private void addSharedOfFlowsReferences(
-            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            Flow flow, FlowPath path) {
-        FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
-        addSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, ingressSide, path);
-    }
-
-    private void addSharedOfFlowsReferences(
-            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            FlowSideAdapter flowSide, FlowPath path) {
-        if (FlowEndpoint.isVlanIdSet(flowSide.getEndpoint().getOuterVlanId())) {
-            SharedOfFlowStatus sharedStatus = sharedOfFlowManager.bindIngressFlowSegmentOuterVlanMatchFlow(
-                    flowSide.getEndpoint(), path);
-            pathSnapshot.sharedIngressSegmentOuterVlanMatchStatus(sharedStatus);
-        }
     }
 
     private String getGroupId(String flowId) throws FlowNotFoundException {

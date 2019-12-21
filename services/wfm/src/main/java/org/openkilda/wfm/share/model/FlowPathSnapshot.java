@@ -30,6 +30,8 @@ public class FlowPathSnapshot {
 
     private final SharedOfFlowStatus sharedIngressSegmentOuterVlanMatchStatus;
 
+    private final boolean removeCustomerPortSharedCatchRule;
+
     public static FlowPathSnapshotBuilder builder(FlowPath path) {
         return new FlowPathSnapshotBuilder()
                 .path(path);

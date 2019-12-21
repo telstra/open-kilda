@@ -22,6 +22,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SharedOfFlow;
 import org.openkilda.model.SharedOfFlow.SharedOfFlowType;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
@@ -45,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -67,15 +69,9 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
 
-        Set<PathId> protectedPaths = Arrays.stream(
-                new PathId[]{
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()})
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Set<PathId> processed = new HashSet<>();
-
         SharedOfFlowManager sharedOfFlowManager = new SharedOfFlowManager(persistenceManager, flow.getFlowPathIds());
 
+        Set<PathId> processed = new HashSet<>();
         for (FlowPath path : flow.getPaths()) {
             PathId pathId = path.getPathId();
             if (processed.add(pathId)) {
@@ -94,29 +90,9 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                 }
 
                 stateMachine.getFlowResources().add(pathPairResources);
-
-                if (protectedPaths.contains(pathId)) {
-                    commands.addAll(commandBuilder.buildAllExceptIngress(
-                            stateMachine.getCommandContext(), flow,
-                            makeProtectedPathSnapshot(pathPairResources, path),
-                            oppositePath != null
-                                    ? makeProtectedPathSnapshot(pathPairResources, oppositePath)
-                                    : null));
-                } else {
-/*
-                    SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                            .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
-                            .removeOppositeCustomerPortRule(
-                                    isRemoveCustomerPortSharedCatchRule(flow, oppositePath))
-                            .build();
-*/
-                    commands.addAll(commandBuilder.buildAll(
-                            stateMachine.getCommandContext(), flow,
-                            makePrimaryPathSnapshot(sharedOfFlowManager, path, pathPairResources),
-                            oppositePath != null
-                                    ? makePrimaryPathSnapshot(sharedOfFlowManager, oppositePath, pathPairResources)
-                                    : null));
-                }
+                commands.addAll(makeSpeakerRequests(
+                        commandBuilder, sharedOfFlowManager, stateMachine.getCommandContext(),
+                        flow, path, oppositePath, pathPairResources));
             }
         }
 
@@ -162,26 +138,17 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                 .build();
     }
 
-/*
-    private boolean isRemoveCustomerPortSharedCatchRule(Flow flow, FlowPath path) {
-        boolean isForward = flow.isForward(path);
-        return isRemoveCustomerPortSharedCatchRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
-                isForward ? flow.getSrcPort() : flow.getDestPort());
-    }
-*/
-
-    private FlowPathSnapshot makePrimaryPathSnapshot(
-            SharedOfFlowManager sharedOfFlowManager, FlowPath path, FlowResources resources) {
-        FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot = FlowPathSnapshot.builder(path)
-                .resources(extractPathResources(resources, path));
-        addSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, path);
-        return pathSnapshot.build();
-    }
-
-    private FlowPathSnapshot makeProtectedPathSnapshot(FlowResources resources, FlowPath path) {
-        return FlowPathSnapshot.builder(path)
-                .resources(extractPathResources(resources, path))
-                .build();
+    private List<FlowSegmentRequestFactory> makeSpeakerRequests(
+            FlowCommandBuilder commandBuilder, SharedOfFlowManager sharedOfFlowManager, CommandContext commandContext,
+            Flow flow, FlowPath path, FlowPath oppositePath, FlowResources resources) {
+        FlowPathSnapshot pathSnapshot = makeFlowPathOldSnapshot(
+                sharedOfFlowManager, flow, path, extractPathResources(resources, path));
+        FlowPathSnapshot oppositePathSnapshot = null;
+        if (oppositePath != null) {
+            oppositePathSnapshot = makeFlowPathOldSnapshot(
+                    sharedOfFlowManager, flow, oppositePath, extractPathResources(resources, path));
+        }
+        return commandBuilder.buildAll(commandContext, flow, pathSnapshot, oppositePathSnapshot);
     }
 
     private PathResources extractPathResources(FlowResources resources, FlowPath path) {
@@ -189,19 +156,6 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             return resources.getForward();
         } else {
             return resources.getReverse();
-        }
-    }
-
-    private void addSharedOfFlowsReferences(
-            SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshotBuilder pathSnapshot, FlowPath path) {
-        Set<SharedOfFlow> pathSharedFlowReferences = new HashSet<>(path.getSharedOfFlows());
-        for (SharedOfFlow reference : pathSharedFlowReferences) {
-            SharedOfFlowStatus status = sharedOfFlowManager.removeBinding(reference, path);
-            if (reference.getType() == SharedOfFlowType.INGRESS_OUTER_VLAN_MATCH) {
-                pathSnapshot.sharedIngressSegmentOuterVlanMatchStatus(status);
-            } else {
-                log.error("Unknown shared OF Flow type {} - {}", reference.getType(), reference);
-            }
         }
     }
 }

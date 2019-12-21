@@ -119,7 +119,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         } else if (doIngress) {
             // one switch flow (path without path segments)
             requests.addAll(makeSharedIngressRequests(context, flow, pathSnapshot));
-            requests.add(makeOneSwitchRequest(context, path, ingressSide, egressSide));
+            requests.add(makeOneSwitchRequest(context, pathSnapshot, ingressSide, egressSide));
         }
 
         return requests;
@@ -146,7 +146,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .egressSwitchId(egressFlowSide.getEndpoint().getSwitchId())
                 .islPort(segmentSide.getEndpoint().getPortNumber())
                 .encapsulation(makeEncapsulation(pathSnapshot))
-                .removeCustomerPortSharedCatchRule(removeCustomerPortSharedCatchRule)
+                .removeCustomerPortSharedCatchRule(pathSnapshot.isRemoveCustomerPortSharedCatchRule())
                 .build();
     }
 
@@ -204,8 +204,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private FlowSegmentRequestFactory makeOneSwitchRequest(
-            CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide) {
+            CommandContext context, FlowPathSnapshot pathSnapshot, FlowSideAdapter ingressSide, FlowSideAdapter egressSide) {
         Flow flow = ingressSide.getFlow();
+        FlowPath path = pathSnapshot.getPath();
 
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
@@ -219,7 +220,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .endpoint(ingressSide.getEndpoint())
                 .meterConfig(getMeterConfig(path))
                 .egressEndpoint(egressSide.getEndpoint())
-                .removeCustomerPortSharedCatchRule(removeCustomerPortSharedCatchRule)
+                .removeCustomerPortSharedCatchRule(pathSnapshot.isRemoveCustomerPortSharedCatchRule())
                 .build();
     }
 
