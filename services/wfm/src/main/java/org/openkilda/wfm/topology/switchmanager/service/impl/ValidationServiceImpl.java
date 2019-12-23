@@ -30,8 +30,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.wfm.share.model.validate.FlowPathReference;
-import org.openkilda.wfm.share.utils.rule.validation.OfCookieUtil;
+import org.openkilda.wfm.share.model.FlowPathReference;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -127,7 +126,7 @@ public class ValidationServiceImpl implements ValidationService {
                 continue;
             }
 
-            FlowPathReference expectedPathReference = OfCookieUtil.INSTANCE.makeFlowPathRef(cookie);
+            FlowPathReference expectedPathReference = new FlowPathReference(cookie);
             ListIterator<OfFlowEntryDescriptor> iterator = actualOfFlows.listIterator();
             boolean isMissing = true;
             while (iterator.hasNext()) {
@@ -368,7 +367,7 @@ public class ValidationServiceImpl implements ValidationService {
 
         OfFlowEntryDescriptor(FlowEntry entry) {
             this.cookie = new Cookie(entry.getCookie());
-            pathReference = OfCookieUtil.INSTANCE.makeFlowPathRef(cookie);
+            pathReference = new FlowPathReference(cookie);
             this.entry = entry;
         }
     }

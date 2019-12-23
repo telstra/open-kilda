@@ -207,18 +207,22 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a flow-update event.
      */
-    public void onFlowUpdate(String flowId, RequestedFlow flow) {
+    public void onFlowUpdate(
+            String flowId,
+            SwitchId srcSwitch, int srcPort, int srcVlan, int srcInnerVlan,
+            SwitchId destSwitch, int destPort, int destVlan, int destInnerVlan,
+            String diverseFlowId, long bandwidth) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-update");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
         String sourceEndpoint = formatEndpoint(
-                flow.getSrcSwitch(), flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan());
+                srcSwitch, srcPort, srcVlan, srcInnerVlan);
         String destEndpoint = formatEndpoint(
-                flow.getDestSwitch(), flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan());
+                destSwitch, destPort, destVlan, destInnerVlan);
         invokeLogger(Level.INFO, String.format(
                 "Update the flow %s with: source %s, destination %s, diverse flowId %s, bandwidth %d",
-                flowId, sourceEndpoint, destEndpoint, flow.getDiverseFlowId(), flow.getBandwidth()), data);
+                flowId, sourceEndpoint, destEndpoint, diverseFlowId, bandwidth), data);
     }
 
     /**

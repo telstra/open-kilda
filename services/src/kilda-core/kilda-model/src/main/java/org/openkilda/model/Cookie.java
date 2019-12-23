@@ -320,13 +320,13 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     @VisibleForTesting
     long getField(BitField field) {
-        long payload = value & makeFieldMask(field);
+        long payload = value & field.getMask();
         return payload >>> field.offset;
     }
 
     @VisibleForTesting
     Cookie setField(BitField field, long payload) {
-        long mask = makeFieldMask(field);
+        long mask = field.getMask();
         payload <<= field.offset;
         payload &= mask;
 
@@ -334,11 +334,6 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         value = (value & mask) | payload;
 
         return this;
-    }
-
-    private long makeFieldMask(BitField field) {
-        long mask = -1 << field.width;
-        return ~mask << field.offset;
     }
 
     @JsonValue
@@ -373,7 +368,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     @Getter
     static class BitField {
-        private final int width;
+        private final long mask;
         private final int offset;
 
         public BitField(long mask) {
@@ -394,15 +389,11 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
                 probe <<= 1;
             }
-
             if (start == null) {
                 throw new IllegalArgumentException("Bit field mask must not be 0");
             }
-            if (end == null) {
-                end = 8 * 8;
-            }
 
-            this.width = end - start;
+            this.mask = mask;
             this.offset = start;
         }
     }

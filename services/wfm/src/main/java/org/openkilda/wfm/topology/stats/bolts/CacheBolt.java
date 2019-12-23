@@ -34,11 +34,11 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.model.FlowPathReference;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
-import org.openkilda.wfm.topology.stats.model.FlowPathReference;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 import org.openkilda.wfm.topology.stats.model.StatsFlowBatch;
@@ -108,6 +108,7 @@ public class CacheBolt extends AbstractBolt {
                             log.warn("Flow {} has no meter ID", path.getFlow().getFlowId());
                         }
                     });
+            // FIXME(surabujin): I believe this bad idea to log entire cache here (it can be a lot of megabytes)
             log.debug(
                     "cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", flowsMetadataCache, switchAndMeterToFlow);
             log.info("Stats Cache: Initialized");

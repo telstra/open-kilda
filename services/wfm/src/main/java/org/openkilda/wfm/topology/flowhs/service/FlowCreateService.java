@@ -85,7 +85,7 @@ public class FlowCreateService {
         FlowCreateFsm fsm = fsmFactory.produce(request.getFlowId(), commandContext);
         fsms.put(key, fsm);
 
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.unpackRequest(request);
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
         }

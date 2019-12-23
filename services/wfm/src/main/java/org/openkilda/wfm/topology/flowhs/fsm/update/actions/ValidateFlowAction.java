@@ -63,7 +63,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         String flowId = stateMachine.getFlowId();
         RequestedFlow targetFlow = context.getTargetFlow();
 
-        dashboardLogger.onFlowUpdate(flowId, targetFlow);
+        dashboardLogger.onFlowUpdate(
+                flowId, targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
+                targetFlow.getSrcInnerVlan(), targetFlow.getDestSwitch(), targetFlow.getDestPort(),
+                targetFlow.getDestVlan(), targetFlow.getDestInnerVlan(), targetFlow.getDiverseFlowId(),
+                targetFlow.getBandwidth());
 
         boolean isOperationAllowed = featureTogglesRepository.find()
                 .map(FeatureToggles::getUpdateFlowEnabled).orElse(Boolean.FALSE);

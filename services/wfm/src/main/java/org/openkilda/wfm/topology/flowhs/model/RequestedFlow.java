@@ -23,7 +23,6 @@ import org.openkilda.model.SwitchId;
 import lombok.Builder;
 import lombok.Data;
 
-// TODO(surabujin): replace with generic Flow object (and some wrapper responsible for flowhs specific data if required)
 @Data
 @Builder
 public class RequestedFlow {

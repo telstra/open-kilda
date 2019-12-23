@@ -96,7 +96,7 @@ public class FlowUpdateService {
         FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
         fsms.put(key, fsm);
 
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.unpackRequest(request);
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
         }

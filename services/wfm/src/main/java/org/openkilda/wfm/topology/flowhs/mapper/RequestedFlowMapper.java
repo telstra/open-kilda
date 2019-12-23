@@ -35,8 +35,8 @@ public abstract class RequestedFlowMapper {
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
      */
-    public RequestedFlow unpackRequest(FlowRequest request) {
-        RequestedFlow flow = toRequestedFlow(request);
+    public RequestedFlow toRequestedFlow(FlowRequest request) {
+        RequestedFlow flow = automaticMap(request);
         flow.setFlowEncapsulationType(map(request.getEncapsulationType()));
         flow.setPathComputationStrategy(mapComputationStrategy(request.getPathComputationStrategy()));
 
@@ -45,7 +45,7 @@ public abstract class RequestedFlowMapper {
         return flow;
     }
 
-    protected abstract RequestedFlow toRequestedFlow(FlowRequest request);
+    protected abstract RequestedFlow automaticMap(FlowRequest request);
 
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.

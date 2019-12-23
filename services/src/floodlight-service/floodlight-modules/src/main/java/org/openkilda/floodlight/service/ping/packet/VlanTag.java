@@ -47,14 +47,13 @@ public class VlanTag extends BasePacket {
             payloadData = payload.serialize();
         }
 
-        byte[] data = new byte[payloadData.length + 4];
-        ByteBuffer bb = ByteBuffer.wrap(data);
+        ByteBuffer bb = ByteBuffer.allocate(payloadData.length + 4);
         bb.putShort((short) ((priorityCode << 13) | (vlanId & 0x0fff)));
         bb.putShort((short) etherType.getValue());
 
         bb.put(payloadData);
 
-        return data;
+        return bb.array();
     }
 
     @Override

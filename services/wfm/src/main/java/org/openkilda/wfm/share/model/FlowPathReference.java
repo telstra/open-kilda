@@ -13,24 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.model;
+package org.openkilda.wfm.share.model;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPathDirection;
 
+import lombok.AllArgsConstructor;
 import lombok.Value;
 
 @Value
+@AllArgsConstructor
 public class FlowPathReference {
     private FlowPathDirection direction;
-    private long effectiveId;
+    private long effectiveFlowId;
 
     public FlowPathReference(Long rawCookie) {
         this(new Cookie(rawCookie));
     }
 
     public FlowPathReference(Cookie cookie) {
-        direction = cookie.getFlowPathDirection();
-        effectiveId = cookie.getFlowEffectiveId();
+        this(cookie.getFlowPathDirection(), cookie.getFlowEffectiveId());
     }
 }

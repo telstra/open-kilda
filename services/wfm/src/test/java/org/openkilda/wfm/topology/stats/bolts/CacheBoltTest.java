@@ -32,8 +32,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.share.model.FlowPathReference;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
-import org.openkilda.wfm.topology.stats.model.FlowPathReference;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 
 import org.junit.Assert;

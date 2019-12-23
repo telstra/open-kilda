@@ -36,8 +36,7 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.model.validate.FlowPathReference;
-import org.openkilda.wfm.share.utils.rule.validation.OfCookieUtil;
+import org.openkilda.wfm.share.model.FlowPathReference;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRuleConverter;
 
@@ -224,10 +223,10 @@ public class FlowValidationService {
 
     private SimpleSwitchRule findMatchByCookie(SimpleSwitchRule needle, List<SimpleSwitchRule> haystack) {
         Cookie cookie = new Cookie(needle.getCookie());
-        FlowPathReference needleReference = OfCookieUtil.INSTANCE.makeFlowPathRef(cookie);
+        FlowPathReference needleReference = new FlowPathReference(cookie);
 
         for (SimpleSwitchRule entry : haystack) {
-            FlowPathReference reference = OfCookieUtil.INSTANCE.makeFlowPathRef(new Cookie(entry.getCookie()));
+            FlowPathReference reference = new FlowPathReference(new Cookie(entry.getCookie()));
             if (needleReference.equals(reference)) {
                 return entry;
             }
@@ -259,7 +258,7 @@ public class FlowValidationService {
     private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched)
             throws SwitchNotFoundException {
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
-        if (! OfCookieUtil.INSTANCE.isSameCookie(matched.getCookie(), expected.getCookie())) {
+        if (! isSameCookie(matched.getCookie(), expected.getCookie())) {
             discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "cookie",
                     String.valueOf(expected.getCookie()), String.valueOf(matched.getCookie())));
         }
@@ -341,5 +340,11 @@ public class FlowValidationService {
         }
 
         return flow;
+    }
+
+    private boolean isSameCookie(long leftCookie, long rightCookie) {
+        FlowPathReference left = new FlowPathReference(new Cookie(leftCookie));
+        FlowPathReference right = new FlowPathReference(new Cookie(rightCookie));
+        return left.equals(right);
     }
 }

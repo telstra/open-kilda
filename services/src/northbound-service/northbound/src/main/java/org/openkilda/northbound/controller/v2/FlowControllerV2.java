@@ -99,15 +99,15 @@ public class FlowControllerV2 extends BaseController {
     }
 
     private void verifyRequest(FlowRequestV2 request) {
-        List<String> defects = Stream.concat(
+        String[] defects = Stream.concat(
                 verifyFlowEndpoint(request.getSource(), "source"),
                 verifyFlowEndpoint(request.getDestination(), "destination"))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .collect(Collectors.toList());
+                .toArray(String[]::new);
 
-        if (! defects.isEmpty()) {
-            String errorDescription = "Errors:\n" + String.join("\n", defects.toArray(new String[0]));
+        if (defects.length != 0) {
+            String errorDescription = "Errors:\n" + String.join("\n", defects);
             throw new MessageException(ErrorType.DATA_INVALID, "Invalid request payload", errorDescription);
         }
     }

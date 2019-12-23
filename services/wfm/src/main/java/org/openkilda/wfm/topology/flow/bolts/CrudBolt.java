@@ -388,7 +388,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleDeleteRequest(String flowId, CommandMessage message, Tuple tuple) {
-        final String errorType = "Could not delete flow";
+        final String errorType = "Can not delete flow";
 
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.DELETE_FLOW);

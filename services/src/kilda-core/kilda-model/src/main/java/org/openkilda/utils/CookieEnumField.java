@@ -15,6 +15,10 @@
 
 package org.openkilda.utils;
 
+/**
+ * Interface used by {@code org.openkilda.model.Cookie.resolveEnum} to map fields numeric representation into enum
+ * constant.
+ */
 public interface CookieEnumField {
     int getValue();
 }
