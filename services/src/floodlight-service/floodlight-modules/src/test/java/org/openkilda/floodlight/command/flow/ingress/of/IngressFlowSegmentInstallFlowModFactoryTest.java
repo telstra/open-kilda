@@ -20,6 +20,7 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
@@ -67,6 +68,32 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         processMakeOuterVlanOnlyForwardMessageVxLan(command);
     }
 
+    @Test
+    public void makeOuterVlanOnlyForwardMessageWhenEndpointVlanMatchTransitVlan() {
+        FlowTransitEncapsulation encapsulation = new FlowTransitEncapsulation(
+                endpointSingleVlan.getVlanId(), FlowEncapsulationType.TRANSIT_VLAN);
+        IngressFlowSegmentInstallCommand command = makeCommand(endpointSingleVlan, meterConfig, encapsulation);
+
+        List<OFAction> applyActions = new ArrayList<>();
+        List<OFInstruction> instructions = new ArrayList<>();
+        OfAdapter.INSTANCE.makeMeterCall(of, command.getMeterConfig().getId(), applyActions, instructions);
+
+        instructions.add(of.instructions().applyActions(applyActions));
+        applyActions.add(of.actions().buildOutput().setPort(OFPort.of(command.getIslPort())).build());
+
+        OFFlowAdd expected = of.buildFlowAdd()
+                .setTableId(getTargetTableId())
+                .setPriority(IngressFlowSegmentInstallCommand.FLOW_PRIORITY)
+                .setCookie(U64.of(command.getCookie().getValue()))
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
+                        .build())
+                .setInstructions(instructions)
+                .build();
+
+        processMakeOuterVlanOnlyForwardMessageVlan(command, expected);
+    }
+
     public void processMakeOuterVlanOnlyForwardMessageVlan(IngressFlowSegmentInstallCommand command) {
         OFFlowAdd expected = makeVlanForwardingMessage(
                 command, 0,
@@ -74,6 +101,11 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
                         .build(),
                 getTargetTableId());
+        processMakeOuterVlanOnlyForwardMessageVlan(command, expected);
+    }
+
+    public void processMakeOuterVlanOnlyForwardMessageVlan(
+            IngressFlowSegmentInstallCommand command, OFFlowAdd expected) {
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
                 expected, factory.makeOuterVlanOnlyForwardMessage(getEffectiveMeterId(command.getMeterConfig())));

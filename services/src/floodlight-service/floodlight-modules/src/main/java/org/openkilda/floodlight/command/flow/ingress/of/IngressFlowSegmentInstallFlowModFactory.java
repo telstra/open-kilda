@@ -25,12 +25,12 @@ import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -63,12 +63,12 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
     }
 
     private List<OFAction> makeVlanEncapsulationTransformActions() {
-        List<OFAction> actions = new ArrayList<>();
-        if (! FlowEndpoint.isVlanIdSet(command.getEndpoint().getVlanId())) {
-            actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
+        List<Integer> currentVlan = new ArrayList<>();
+        if (FlowEndpoint.isVlanIdSet(command.getEndpoint().getVlanId())) {
+            currentVlan.add(command.getEndpoint().getVlanId());
         }
-        actions.add(OfAdapter.INSTANCE.setVlanIdAction(of, command.getEncapsulation().getId()));
-        return actions;
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(
+                of, currentVlan, Collections.singletonList(command.getEncapsulation().getId()));
     }
 
     private List<OFAction> makeVxLanEncapsulationTransformActions() {
