@@ -21,7 +21,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.reporting.AbstractDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import org.slf4j.Logger;
 import org.slf4j.event.Level;

@@ -45,8 +45,6 @@ public abstract class RequestedFlowMapper {
         return flow;
     }
 
-    protected abstract RequestedFlow automaticMap(FlowRequest request);
-
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
      */
@@ -59,6 +57,8 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     public abstract RequestedFlow toRequestedFlow(Flow flow);
+
+    protected abstract RequestedFlow automaticMap(FlowRequest request);
 
     /**
      * Convert {@link RequestedFlow} to {@link Flow}.
