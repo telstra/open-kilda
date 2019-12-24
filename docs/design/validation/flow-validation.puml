@@ -1,0 +1,41 @@
+@startuml
+title Flow validation
+
+participant northbound as NB
+participant nbworker
+collections speakers
+collections SWs
+
+-> NB: request
+activate NB
+
+NB -> nbworker: validation\nrequest
+
+activate nbworker
+note right of nbworker: produce speaker\nflow segment\nrequest builder
+note right of nbworker: produce flow\nsegment validate\nrequests
+
+loop for each flow segment
+nbworker -> speakers: flow-segment validate\nrequest
+activate speakers
+note right of speakers: produce OFFlowAdd requests
+loop for each OFFlowAdd requests
+speakers -> SWs: dump related OF table
+activate SWs
+SWs -> speakers: list of OFFlowStatsEntry
+deactivate SWs
+note right of speakers: make OFflow validation\nand produce validation\nartifacts
+end loop
+speakers -> nbworker: validation artifacts
+deactivate speakers
+end loop
+
+note right of nbworker: collect validation artifacts\nand produce validation\nresponse
+
+nbworker -> NB: response
+deactivate nbworker
+
+<- NB: response
+deactivate NB
+
+@enduml
