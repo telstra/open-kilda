@@ -251,15 +251,15 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setReversePath(reverse);
 
+        SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);
+        fsm.setForwardPath(makeFlowPathNewSnapshot(sharedOfFlowManager, flow, forward, flowResources.getForward()));
+        fsm.setReversePath(makeFlowPathNewSnapshot(sharedOfFlowManager, flow, reverse, flowResources.getReverse()));
+
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
         flowRepository.createOrUpdate(flow);
 
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
-
-        SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);
-        fsm.setForwardPath(makeFlowPathNewSnapshot(sharedOfFlowManager, flow, forward, flowResources.getForward()));
-        fsm.setReversePath(makeFlowPathNewSnapshot(sharedOfFlowManager, flow, reverse, flowResources.getReverse()));
 
         log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
 

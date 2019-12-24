@@ -24,12 +24,14 @@ import org.openkilda.floodlight.api.request.factory.SharedIngressFlowSegmentOute
 import org.openkilda.floodlight.api.request.factory.TransitFlowSegmentRequestFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.SharedOfFlow;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.model.FlowPathSnapshot;
@@ -243,12 +245,13 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             CommandContext context, FlowPath path, FlowSideAdapter ingressFlowSide,
             SharedOfFlowStatus sharedOfFlowStatus) {
         UUID commandId = commandIdGenerator.generate();
+        SharedOfFlow sharedOfFlow = sharedOfFlowStatus.getSharedFlow();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
         SharedIngressFlowSegmentOuterVlanMatchRequestFactory requestFactory;
         requestFactory = SharedIngressFlowSegmentOuterVlanMatchRequestFactory
                 .builder()
                 .messageContext(messageContext)
-                .metadata(makeMetadata(path, ingressFlowSide.isMultiTableSegment()))
+                .metadata(makeMetadata(path, sharedOfFlow.getCookie(), ingressFlowSide.isMultiTableSegment()))
                 .endpoint(ingressFlowSide.getEndpoint())
                 .build();
         return addSharedRequestFactoryFilter(requestFactory, sharedOfFlowStatus);
@@ -288,8 +291,12 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private FlowSegmentMetadata makeMetadata(FlowPath path, boolean isMultiTable) {
+        return makeMetadata(path, path.getCookie(), isMultiTable);
+    }
+
+    private FlowSegmentMetadata makeMetadata(FlowPath path, Cookie cookie, boolean isMultiTable) {
         Flow flow = path.getFlow();
-        return new FlowSegmentMetadata(flow.getFlowId(), path.getCookie(), isMultiTable);
+        return new FlowSegmentMetadata(flow.getFlowId(), cookie, isMultiTable);
     }
 
     @Value

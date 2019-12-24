@@ -83,6 +83,7 @@ public class AllocatePrimaryResourcesAction extends
             log.debug("New primary path has been created: {}", newPaths);
 
             savePrimaryPaths(stateMachine, flow, newPaths, oldPaths, flowResources);
+            flushPathChanges(newPaths);
 
             saveAllocationActionWithDumpsToHistory(stateMachine, flow, "primary", newPaths);
         } else {

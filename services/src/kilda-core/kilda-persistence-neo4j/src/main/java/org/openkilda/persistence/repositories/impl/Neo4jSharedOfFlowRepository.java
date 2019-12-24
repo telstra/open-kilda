@@ -55,8 +55,8 @@ public class Neo4jSharedOfFlowRepository
         Map<String, Object> parameters = ImmutableMap.of(
                 "id", persistentId,
                 "ignore", ignorePath);
-        String query = "MATCH (of_flow:shadow_of_flow)<-[:uses]-(p:flow_path) "
-                + "WHERE id(of_flow)=$id AND p.path_id not in $ignore "
+        String query = "MATCH (of_flow:shared_of_flow)<-[:uses]-(p:flow_path) "
+                + "WHERE id(of_flow)=$id AND NOT (p.path_id IN $ignore) "
                 + "RETURN count(p) as references";
         return queryForLong(query, parameters, "references")
                 .orElse(0L);

@@ -264,9 +264,14 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 dumpData);
     }
 
+    protected void flushPathChanges(FlowPathPair pathPair) {
+        flowPathRepository.createOrUpdate(pathPair.getForward());
+        flowPathRepository.createOrUpdate(pathPair.getReverse());
+    }
+
     protected void savePrimaryPaths(
             FlowPathSwappingFsm<?, ?, ?, ?> stateMachine, Flow flow, FlowPathPair newPaths, FlowPathPair oldPaths,
-            FlowResources flowResources) {
+            FlowResources flowResources) throws ResourceAllocationException {
         SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);
         stateMachine.setNewPrimaryForwardPath(makeFlowPathNewSnapshot(
                 sharedOfFlowManager, flow, newPaths.getForward(), flowResources.getForward()));
@@ -287,7 +292,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
     protected void saveProtectedPaths(
             FlowPathSwappingFsm<?, ?, ?, ?> stateMachine, Flow flow, FlowPathPair newPaths, FlowPathPair oldPaths,
-            FlowResources flowResources) {
+            FlowResources flowResources) throws ResourceAllocationException {
         // Process shared resources for protected paths in same way as it done for primary paths. So they will be
         // available if we will swap paths.
         SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);

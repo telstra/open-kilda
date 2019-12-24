@@ -34,6 +34,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
+import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.share.model.SharedOfFlowStatus;
 import org.openkilda.wfm.share.service.SharedOfFlowManager;
@@ -131,7 +132,8 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected FlowPathSnapshot makeFlowPathNewSnapshot(
-            SharedOfFlowManager sharedOfFlowManager, Flow flow, FlowPath path, FlowResources.PathResources resources) {
+            SharedOfFlowManager sharedOfFlowManager, Flow flow, FlowPath path, FlowResources.PathResources resources)
+            throws ResourceAllocationException {
         FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot = FlowPathSnapshot.builder(path).resources(resources);
         createSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, flow, path);
         return pathSnapshot.build();
@@ -148,14 +150,14 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected void createSharedOfFlowsReferences(
             SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            Flow flow, FlowPath path) {
+            Flow flow, FlowPath path) throws ResourceAllocationException {
         FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
         createSharedOfFlowsReferences(sharedOfFlowManager, pathSnapshot, ingressSide, path);
     }
 
     protected void createSharedOfFlowsReferences(
             SharedOfFlowManager sharedOfFlowManager, FlowPathSnapshot.FlowPathSnapshotBuilder pathSnapshot,
-            FlowSideAdapter flowSide, FlowPath path) {
+            FlowSideAdapter flowSide, FlowPath path) throws ResourceAllocationException {
         FlowEndpoint endpoint = flowSide.getEndpoint();
         if (flowSide.isMultiTableSegment()
                 && isSwitchInMultiTableMode(endpoint.getSwitchId())

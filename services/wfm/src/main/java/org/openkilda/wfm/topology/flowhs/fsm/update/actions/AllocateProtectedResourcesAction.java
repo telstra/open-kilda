@@ -94,6 +94,7 @@ public class AllocateProtectedResourcesAction extends
             log.debug("New protected path has been created: {}", newPaths);
 
             saveProtectedPaths(stateMachine, flow, newPaths, oldPaths, flowResources);
+            flushPathChanges(newPaths);
 
             saveAllocationActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
         }

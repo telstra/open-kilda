@@ -25,11 +25,14 @@ import org.openkilda.model.SharedOfFlow.SharedOfFlowType;
 import org.openkilda.model.SharedOfFlowCookie;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SharedOfFlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.model.SharedOfFlowStatus;
 
 import java.util.ArrayList;
@@ -39,10 +42,10 @@ import java.util.List;
 import java.util.Optional;
 
 public class SharedOfFlowManager {
+    private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
-
     private final SharedOfFlowRepository sharedOfFlowRepository;
-    
+
     private final List<PathId> referencesToRemove;
 
     public SharedOfFlowManager(PersistenceManager persistenceManager) {
@@ -54,6 +57,8 @@ public class SharedOfFlowManager {
     }
 
     public SharedOfFlowManager(PersistenceManager persistenceManager, List<PathId> referencesToRemove) {
+        transactionManager = persistenceManager.getTransactionManager();
+
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
         sharedOfFlowRepository = repositoryFactory.createSharedOfFlowRepository();
@@ -65,7 +70,8 @@ public class SharedOfFlowManager {
      * Make new reference(if not exists now) between {@code FlowPath} and {@code SharedOfFlow}. Must be called inside
      * transaction responsible for path modification.
      */
-    public SharedOfFlowStatus bindIngressFlowSegmentOuterVlanMatchFlow(FlowEndpoint ingressEndpoint, FlowPath path) {
+    public SharedOfFlowStatus bindIngressFlowSegmentOuterVlanMatchFlow(FlowEndpoint ingressEndpoint, FlowPath path)
+            throws ResourceAllocationException {
         SharedOfFlowCookie cookie = new SharedOfFlowCookie()
                 .setUniqueIdField(ingressEndpoint.getPortNumber(), ingressEndpoint.getOuterVlanId());
         SharedOfFlow sharedFlow = SharedOfFlow.builder()
@@ -73,6 +79,7 @@ public class SharedOfFlowManager {
                 .cookie(cookie)
                 .type(SharedOfFlowType.INGRESS_OUTER_VLAN_MATCH)
                 .build();
+        sharedFlow = loadOrCreate(sharedFlow);
 
         SharedOfFlowStatus status = evaluateStatus(sharedFlow, null);
         path.getSharedOfFlows().add(sharedFlow);
@@ -89,9 +96,7 @@ public class SharedOfFlowManager {
         return evaluateStatus(sharedFlow, path.getPathId());
     }
 
-    private SharedOfFlowStatus evaluateStatus(SharedOfFlow sharedFlowReference, PathId ignorePath) {
-        SharedOfFlow sharedFlow = loadOrCreate(sharedFlowReference);
-
+    private SharedOfFlowStatus evaluateStatus(SharedOfFlow sharedFlow, PathId ignorePath) {
         List<PathId> ignoreReferences = referencesToRemove;
         if (ignorePath != null) {
             ignoreReferences = new ArrayList<>(ignoreReferences);
@@ -107,14 +112,19 @@ public class SharedOfFlowManager {
                 .orElseThrow(() -> new PersistenceException(format("Switch not found: %s", switchId)));
     }
 
-    private SharedOfFlow loadOrCreate(SharedOfFlow sharedFlowReference) {
+    private SharedOfFlow loadOrCreate(SharedOfFlow sharedFlowReference) throws ResourceAllocationException {
         Optional<SharedOfFlow> potentialEntity = sharedOfFlowRepository
                 .findByUniqueIndex(sharedFlowReference);
         if (potentialEntity.isPresent()) {
             return potentialEntity.get();
         }
 
-        sharedOfFlowRepository.createOrUpdate(sharedFlowReference);
+        try {
+            transactionManager.doInTransaction(() -> sharedOfFlowRepository.createOrUpdate(sharedFlowReference));
+        } catch (ConstraintViolationException e) {
+            throw new ResourceAllocationException(String.format(
+                    "Collision during allocation shared OF flow record for %s", sharedFlowReference));
+        }
         return sharedFlowReference;
     }
 }

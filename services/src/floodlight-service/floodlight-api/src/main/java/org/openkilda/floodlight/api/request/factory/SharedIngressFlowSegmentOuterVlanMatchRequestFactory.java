@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.api.request.factory;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.SharedIngressFlowSegmentOuterVlanMatchInstallRequest;
 import org.openkilda.floodlight.api.request.SharedIngressFlowSegmentOuterVlanMatchRemoveRequest;
 import org.openkilda.floodlight.api.request.SharedIngressFlowSegmentOuterVlanMatchRequest;
@@ -45,17 +44,17 @@ public class SharedIngressFlowSegmentOuterVlanMatchRequestFactory extends Abstra
     }
 
     @Override
-    public Optional<? extends FlowSegmentRequest> makeInstallRequest(UUID commandId) {
+    public Optional<SharedIngressFlowSegmentOuterVlanMatchRequest> makeInstallRequest(UUID commandId) {
         return Optional.of(new SharedIngressFlowSegmentOuterVlanMatchInstallRequest(requestBlank, commandId));
     }
 
     @Override
-    public Optional<? extends FlowSegmentRequest> makeRemoveRequest(UUID commandId) {
+    public Optional<SharedIngressFlowSegmentOuterVlanMatchRequest> makeRemoveRequest(UUID commandId) {
         return Optional.of(new SharedIngressFlowSegmentOuterVlanMatchRemoveRequest(requestBlank, commandId));
     }
 
     @Override
-    public Optional<? extends FlowSegmentRequest> makeVerifyRequest(UUID commandId) {
+    public Optional<SharedIngressFlowSegmentOuterVlanMatchRequest> makeVerifyRequest(UUID commandId) {
         return Optional.of(new SharedIngressFlowSegmentOuterVlanMatchVerifyRequest(requestBlank, commandId));
     }
 

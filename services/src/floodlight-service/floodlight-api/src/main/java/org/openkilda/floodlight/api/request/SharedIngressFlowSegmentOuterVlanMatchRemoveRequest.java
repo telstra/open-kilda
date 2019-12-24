@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.NonNull;
 
 import java.util.UUID;
 
@@ -31,10 +32,10 @@ public class SharedIngressFlowSegmentOuterVlanMatchRemoveRequest
     @JsonCreator
     @Builder(toBuilder = true)
     public SharedIngressFlowSegmentOuterVlanMatchRemoveRequest(
-            @JsonProperty("metadata") MessageContext messageContext,
+            @JsonProperty("message_context") MessageContext messageContext,
             @JsonProperty("command_id") UUID commandId,
             @JsonProperty("metadata") FlowSegmentMetadata metadata,
-            @JsonProperty("endpoint") FlowEndpoint endpoint) {
+            @JsonProperty("endpoint") @NonNull FlowEndpoint endpoint) {
         super(messageContext, commandId, metadata, endpoint);
     }
 
