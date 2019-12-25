@@ -24,7 +24,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.reroute.RerouteTopology;
@@ -63,8 +62,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      */
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        this.rerouteService = new RerouteService(repositoryFactory);
+        this.rerouteService = new RerouteService(persistenceManager);
         super.prepare(stormConf, context, collector);
     }
 
