@@ -106,6 +106,51 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
     }
 
     @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateMultiTableFlagWhenUpdatingSwitchProperties() {
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        switchRepository.createOrUpdate(sw);
+        createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, false);
+
+        // user can't disable multiTable without disabling LLDP
+        SwitchPropertiesDto update = new SwitchPropertiesDto();
+        update.setSupportedTransitEncapsulation(
+                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+        update.setMultiTable(false);
+        update.setSwitchLldp(true);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateFlowWithLldpFlagWhenUpdatingSwitchProperties() {
+        Switch firstSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        Switch secondSwitch = Switch.builder().switchId(TEST_SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
+        switchRepository.createOrUpdate(firstSwitch);
+        switchRepository.createOrUpdate(secondSwitch);
+
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID_1)
+                .srcSwitch(firstSwitch)
+                .destSwitch(secondSwitch)
+                .detectConnectedDevices(new DetectConnectedDevices(
+                        true, false, true, false, false, false, false, false))
+                .build();
+        flowRepository.createOrUpdate(flow);
+
+        createSwitchProperties(
+                firstSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+
+        // user can't disable multiTable if some flows has enabled detect connected devices via LLDP
+        SwitchPropertiesDto update = new SwitchPropertiesDto();
+        update.setSupportedTransitEncapsulation(
+                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+        update.setMultiTable(false);
+        update.setSwitchLldp(false);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateMultiTableFlagWhenUpdatingSwitchPropertiesWithArp() {
         Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
         switchRepository.createOrUpdate(sw);
