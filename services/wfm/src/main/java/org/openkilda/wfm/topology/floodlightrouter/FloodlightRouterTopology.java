@@ -52,7 +52,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void createKildaFlowSpout(TopologyBuilder builder, int parallelism, List<String> kildaFlowTopics) {
         KafkaSpout kildaFlowSpout = buildKafkaSpout(kildaFlowTopics,
-                ComponentType.KILDA_FLOW_KAFKA_SPOUT);
+                ComponentType.KILDA_FLOW_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_FLOW_KAFKA_SPOUT, kildaFlowSpout, parallelism);
     }
 
@@ -98,7 +98,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void createKildaPingSpout(TopologyBuilder builder, int parallelism, List<String> kildaPingTopics) {
         KafkaSpout kildaPingSpout = buildKafkaSpout(kildaPingTopics,
-                ComponentType.KILDA_PING_KAFKA_SPOUT);
+                ComponentType.KILDA_PING_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_PING_KAFKA_SPOUT, kildaPingSpout, parallelism);
     }
 
@@ -122,7 +122,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void createKildaStatsSpout(TopologyBuilder builder, int parallelism, List<String> kildaStatsTopics) {
         KafkaSpout kildaStatsSpout = buildKafkaSpout(kildaStatsTopics,
-                ComponentType.KILDA_STATS_KAFKA_SPOUT);
+                ComponentType.KILDA_STATS_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_STATS_KAFKA_SPOUT, kildaStatsSpout, parallelism);
     }
 
@@ -146,7 +146,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void createKildaIslLatencySpout(TopologyBuilder builder, int parallelism, List<String> kildaStatsTopics) {
         KafkaSpout kildaStatsSpout = buildKafkaSpout(kildaStatsTopics,
-                ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT);
+                ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT, kildaStatsSpout, parallelism);
     }
 
@@ -168,7 +168,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     }
 
     private void createKildaConnectedDevicesSpout(TopologyBuilder builder, int parallelism, List<String> topics) {
-        KafkaSpout spout = buildKafkaSpout(topics, ComponentType.KILDA_CONNECTED_DEVICES_KAFKA_SPOUT);
+        KafkaSpout spout = buildKafkaSpout(topics, ComponentType.KILDA_CONNECTED_DEVICES_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_CONNECTED_DEVICES_KAFKA_SPOUT, spout, parallelism);
     }
 
@@ -192,7 +192,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void createKildaSwitchManagerSpout(TopologyBuilder builder, int parallelism,
                                                List<String> kildaSwitchManagerTopics) {
         KafkaSpout kildaSwitchManagerSpout = buildKafkaSpout(kildaSwitchManagerTopics,
-                ComponentType.KILDA_SWITCH_MANAGER_KAFKA_SPOUT);
+                ComponentType.KILDA_SWITCH_MANAGER_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_SWITCH_MANAGER_KAFKA_SPOUT, kildaSwitchManagerSpout, parallelism);
     }
 
@@ -219,7 +219,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void createKildaNorthboundSpout(TopologyBuilder builder, int parallelism,
                                                List<String> kildaNorthboundTopics) {
         KafkaSpout kildaNorthboundSpout = buildKafkaSpout(kildaNorthboundTopics,
-                ComponentType.NORTHBOUND_REPLY_KAFKA_SPOUT);
+                ComponentType.NORTHBOUND_REPLY_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.NORTHBOUND_REPLY_KAFKA_SPOUT, kildaNorthboundSpout, parallelism);
     }
 
@@ -246,7 +246,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void createKildaNbWorkerSpout(TopologyBuilder builder, int parallelism,
                                             List<String> kildaNbWorkerTopics) {
         KafkaSpout kildaNbWorkerSpout = buildKafkaSpout(kildaNbWorkerTopics,
-                ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT);
+                ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT, kildaNbWorkerSpout, parallelism);
     }
 
@@ -364,7 +364,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     private void createKildaTopoDiscoSpout(TopologyBuilder builder, int parallelism,
                                            List<String> kildaTopoDiscoTopics) {
         KafkaSpout kildaTopoDiscoSpout = buildKafkaSpout(kildaTopoDiscoTopics,
-                ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
+                ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, true);
         builder.setSpout(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, kildaTopoDiscoSpout, parallelism);
     }
 
@@ -459,7 +459,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                                              KafkaTopicsConfig topicsConfig,
                                              List<String> kildaFlStatsSwitchesTopics) {
         KafkaSpout flStatsSwitchesSpout = buildKafkaSpout(kildaFlStatsSwitchesTopics,
-                ComponentType.FL_STATS_SWITCHES_SPOUT);
+                ComponentType.FL_STATS_SWITCHES_SPOUT, true);
         builder.setSpout(ComponentType.FL_STATS_SWITCHES_SPOUT, flStatsSwitchesSpout);
 
         ReplyBolt replyBolt = new ReplyBolt(Stream.FL_STATS_SWITCHES);

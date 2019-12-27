@@ -91,7 +91,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
         //FIXME: We have to use the Message class for messaging.
-        KafkaSpoutConfig<String, InfoData> config = getKafkaSpoutConfigBuilder(otsdbTopic, OTSDB_SPOUT_ID)
+        KafkaSpoutConfig<String, InfoData> config = getKafkaSpoutConfigBuilder(otsdbTopic, OTSDB_SPOUT_ID, false)
                 .setValue(InfoDataDeserializer.class)
                 .setRecordTranslator(new InfoDataTranslator())
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)

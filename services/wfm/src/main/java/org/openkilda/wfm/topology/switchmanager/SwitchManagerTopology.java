@@ -71,7 +71,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
         List<String> inputTopics = Lists.newArrayList(topologyConfig.getKafkaSwitchManagerNbTopic(),
                 topologyConfig.getKafkaSwitchManagerNetworkTopic(),
                 topologyConfig.getKafkaSwitchManagerNbWorkerTopic());
-        builder.setSpout(HUB_SPOUT, buildKafkaSpout(inputTopics, HUB_SPOUT));
+        builder.setSpout(HUB_SPOUT, buildKafkaSpout(inputTopics, HUB_SPOUT, false));
         builder.setBolt(SwitchManagerHub.ID, new SwitchManagerHub(hubConfig, persistenceManager,
                 topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 topologyConfig.getNewParallelism())

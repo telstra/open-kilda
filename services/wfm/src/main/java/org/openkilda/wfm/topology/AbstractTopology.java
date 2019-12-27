@@ -35,6 +35,8 @@ import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.RoundRobinAssignor;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -219,7 +221,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @return {@link KafkaSpout}
      */
     protected KafkaSpout<String, Message> buildKafkaSpout(String topic, String spoutId) {
-        return buildKafkaSpout(Collections.singletonList(topic), spoutId);
+        return buildKafkaSpout(Collections.singletonList(topic), spoutId, false);
     }
 
     /**
@@ -228,8 +230,10 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      * @param topics Kafka topic
      * @return {@link KafkaSpout}
      */
-    protected KafkaSpout<String, Message> buildKafkaSpout(List<String> topics, String spoutId) {
-        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId).build();
+    protected KafkaSpout<String, Message> buildKafkaSpout(List<String> topics, String spoutId,
+                                                          boolean useRoundRobin) {
+        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId,
+                useRoundRobin).build();
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
                 spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
         return new KafkaSpout<>(config);
@@ -303,20 +307,26 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
-    protected KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(String topic, String spoutId) {
-        return getKafkaSpoutConfigBuilder(Collections.singletonList(topic), spoutId);
+    protected KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(String topic, String spoutId,
+                                                                                   boolean useRoundRobin) {
+        return getKafkaSpoutConfigBuilder(Collections.singletonList(topic), spoutId, useRoundRobin);
     }
 
-    private KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(List<String> topics, String spoutId) {
-        return makeKafkaSpoutConfig(topics, spoutId, MessageDeserializer.class)
+    private KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(List<String> topics, String spoutId,
+                                                                                 boolean useRoundRobin) {
+        return makeKafkaSpoutConfig(topics, spoutId, MessageDeserializer.class, useRoundRobin)
                 .setRecordTranslator(new MessageKafkaTranslator());
     }
 
     protected <V> KafkaSpoutConfig.Builder<String, V> makeKafkaSpoutConfig(
-            List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder) {
+            List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder,
+            boolean useRoundRobin) {
         KafkaSpoutConfig.Builder<String, V> config = new KafkaSpoutConfig.Builder<>(
                 kafkaConfig.getHosts(), StringDeserializer.class, valueDecoder, new CustomNamedSubscription(topics));
-
+        if (useRoundRobin) {
+            config.setProp(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+                    Collections.singletonList(RoundRobinAssignor.class));
+        }
         config.setGroupId(makeKafkaGroupName(spoutId))
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
 

@@ -157,7 +157,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                     ImmutableList.of(
                             topics.getSpeakerFlowHsTopic(),
                             topics.getSpeakerFlowTopic()),
-                    id, StringDeserializer.class)
+                    id, StringDeserializer.class, false)
                 .setRecordTranslator(new JsonKafkaTranslator())
                 .build();
         topology.setSpout(id, new KafkaSpout<>(config), scaleFactor);
