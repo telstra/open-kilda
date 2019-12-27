@@ -56,6 +56,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 
     @Tags(SMOKE)
@@ -97,6 +98,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 
     @Tags([VIRTUAL, LOW_PRIORITY])
@@ -211,8 +213,11 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches*.switchId.contains(flowPath[1].switchId) }
 
         then: "The flow is #flowStatus"
-        TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + 2)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == flowStatus }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getLinks(flowPath[1].switchId, null, null, null)
+                      .each { assert it.state == IslChangeType.DISCOVERED }
+        }
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay) { assert northbound.getFlowStatus(flow.id).status == flowStatus }
 
         and: "Restore topology to the original state, remove the flow, reset toggles"
         flowHelper.deleteFlow(flow.id)
@@ -221,6 +226,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
 
         where:
         flowsRerouteOnIslDiscovery | flowStatus
@@ -268,6 +274,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
     }
 
     @Tags(SMOKE)
@@ -305,6 +312,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
+        database.resetCosts()
     }
 
     @Tags([VIRTUAL, SMOKE])
@@ -367,6 +375,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         and: "Bring flow ports up and delete the flow"
         ["source", "destination"].each { antiflap.portUp(flow."$it".datapath, flow."$it".portNumber) }
         flowHelper.deleteFlow(flow.id)
+        database.resetCosts()
     }
 
     def "System doesn't reroute flow to a path with not enough bandwidth available"() {
