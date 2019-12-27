@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.network.controller.sw;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
 import lombok.AllArgsConstructor;
@@ -40,7 +41,7 @@ public abstract class AbstractPort implements Serializable {
 
     public abstract void portDel(ISwitchCarrier carrier);
 
-    public abstract void updateOnlineStatus(ISwitchCarrier carrier, boolean mode);
+    public abstract void updateOnlineStatus(ISwitchCarrier carrier, OnlineStatus onlineStatus);
 
     public abstract void updatePortLinkMode(ISwitchCarrier carrier);
 

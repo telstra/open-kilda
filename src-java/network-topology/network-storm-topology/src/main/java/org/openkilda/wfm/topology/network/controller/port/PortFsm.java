@@ -102,6 +102,11 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         output.notifyPortPhysicalDown(endpoint);
     }
 
+    public void regionMissingEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+        IPortCarrier output = context.getOutput();
+        output.disableDiscoveryPoll(endpoint);
+    }
+
     public void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
@@ -139,6 +144,8 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
                     .from(PortFsmState.OPERATIONAL).to(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.OFFLINE);
             builder.transition()
                     .from(PortFsmState.OPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
+            builder.transition()
+                    .from(PortFsmState.OPERATIONAL).to(PortFsmState.REGION_MISSING).on(PortFsmEvent.REGION_OFFLINE);
             builder.defineSequentialStatesOn(PortFsmState.OPERATIONAL,
                     PortFsmState.UNKNOWN, PortFsmState.UP, PortFsmState.UP_DISABLED, PortFsmState.DOWN);
 
@@ -151,6 +158,14 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
                     .callMethod("proxyFail");
             builder.internalTransition().within(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.ROUND_TRIP_STATUS)
                     .callMethod(proxyRoundTripStatusMethod);
+
+            // REGION_MISSING
+            builder.transition()
+                    .from(PortFsmState.REGION_MISSING).to(PortFsmState.OPERATIONAL).on(PortFsmEvent.ONLINE);
+            builder.transition()
+                    .from(PortFsmState.REGION_MISSING).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
+            builder.onEntry(PortFsmState.REGION_MISSING)
+                    .callMethod("regionMissingEnter");
 
             // UNKNOWN
             builder.transition()
@@ -223,7 +238,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     public enum PortFsmEvent {
         NEXT,
 
-        ONLINE, OFFLINE,
+        ONLINE, OFFLINE, REGION_OFFLINE,
         PORT_UP, PORT_DOWN, PORT_DEL,
         ENABLE_DISCOVERY, DISABLE_DISCOVERY,
         DISCOVERY, FAIL, ROUND_TRIP_STATUS
@@ -235,6 +250,6 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         OPERATIONAL,
         UNKNOWN, UP, UP_DISABLED, DOWN,
 
-        FINISH, UNOPERATIONAL
+        FINISH, UNOPERATIONAL, REGION_MISSING
     }
 }

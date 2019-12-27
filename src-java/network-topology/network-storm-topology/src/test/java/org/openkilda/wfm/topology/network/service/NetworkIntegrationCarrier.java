@@ -29,6 +29,7 @@ import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import lombok.Data;
@@ -159,8 +160,8 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void setOnlineMode(Endpoint endpoint, boolean mode) {
-        portService.updateOnlineMode(endpoint, mode);
+    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
+        portService.updateOnlineMode(endpoint, onlineStatus);
     }
 
     @Override
