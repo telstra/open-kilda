@@ -39,6 +39,7 @@ import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -109,9 +110,9 @@ public class NetworkPortServiceTest {
         Endpoint port2 = Endpoint.of(alphaDatapath, 2);
 
         service.setup(port1, null);
-        service.updateOnlineMode(port1, false);
+        service.updateOnlineMode(port1, OnlineStatus.OFFLINE);
         service.setup(port2, null);
-        service.updateOnlineMode(port2, false);
+        service.updateOnlineMode(port2, OnlineStatus.OFFLINE);
 
         service.remove(port1);
         service.remove(port2);
@@ -132,9 +133,9 @@ public class NetworkPortServiceTest {
         Endpoint port2 = Endpoint.of(alphaDatapath, 2);
 
         service.setup(port1, null);
-        service.updateOnlineMode(port1, true);
+        service.updateOnlineMode(port1, OnlineStatus.ONLINE);
         service.setup(port2, null);
-        service.updateOnlineMode(port2, true);
+        service.updateOnlineMode(port2, OnlineStatus.ONLINE);
 
         verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 2), null);
         verifyZeroInteractions(dashboardLogger);
@@ -177,11 +178,11 @@ public class NetworkPortServiceTest {
         Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
 
         service.setup(endpoint, null);
-        service.updateOnlineMode(endpoint, true);
+        service.updateOnlineMode(endpoint, OnlineStatus.ONLINE);
 
         resetMocks();
 
-        service.updateOnlineMode(endpoint, false);
+        service.updateOnlineMode(endpoint, OnlineStatus.OFFLINE);
 
         // Port 1 from Unknown to UP then DOWN
 
@@ -196,7 +197,7 @@ public class NetworkPortServiceTest {
 
         resetMocks();
 
-        service.updateOnlineMode(endpoint, true);
+        service.updateOnlineMode(endpoint, OnlineStatus.ONLINE);
 
         service.updateLinkStatus(endpoint, LinkStatus.UP);
         service.updateLinkStatus(endpoint, LinkStatus.DOWN);
@@ -226,7 +227,7 @@ public class NetworkPortServiceTest {
                 .thenReturn(Optional.of(getDefaultSwitch()));
 
         service.setup(endpoint, null);
-        service.updateOnlineMode(endpoint, true);
+        service.updateOnlineMode(endpoint, OnlineStatus.ONLINE);
         service.updateLinkStatus(endpoint, LinkStatus.UP);
         service.updatePortProperties(endpoint, false);
 
@@ -253,18 +254,10 @@ public class NetworkPortServiceTest {
         int port = 7;
         Endpoint endpoint = Endpoint.of(alphaDatapath, port);
 
-        when(portPropertiesRepository.getBySwitchIdAndPort(alphaDatapath, port))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(PortProperties.builder()
-                        .switchObj(getDefaultSwitch())
-                        .port(port)
-                        .discoveryEnabled(false)
-                        .build()));
-        when(switchRepository.findById(alphaDatapath))
-                .thenReturn(Optional.of(getDefaultSwitch()));
+        expectSwitchLookup(endpoint, getDefaultSwitch());
 
         service.setup(endpoint, null);
-        service.updateOnlineMode(endpoint, true);
+        service.updateOnlineMode(endpoint, OnlineStatus.ONLINE);
         service.updateLinkStatus(endpoint, LinkStatus.DOWN);
         service.updatePortProperties(endpoint, false);
         service.updateLinkStatus(endpoint, LinkStatus.UP);
@@ -287,12 +280,56 @@ public class NetworkPortServiceTest {
                 .build());
     }
 
+    @Test
+    public void ignorePollFailWhenRegionOffline() {
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 8);
+
+        expectSwitchLookup(endpoint, getDefaultSwitch());
+
+        NetworkPortService service = makeService();
+        service.setup(endpoint, null);
+        service.updateOnlineMode(endpoint, OnlineStatus.ONLINE);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+
+        verify(carrier).setupUniIslHandler(endpoint, null);
+        verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_UP), any(Instant.class));
+        verify(carrier).enableDiscoveryPoll(eq(endpoint));
+        verifyNoMoreInteractions(carrier);
+
+        service.updateOnlineMode(endpoint, OnlineStatus.REGION_OFFLINE);
+        verify(carrier).disableDiscoveryPoll(endpoint);
+        verifyNoMoreInteractions(carrier);
+
+        service.fail(endpoint);
+        verifyNoMoreInteractions(carrier);
+
+        service.updateOnlineMode(endpoint, OnlineStatus.ONLINE);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+        verify(carrier).enableDiscoveryPoll(endpoint);
+        verifyNoMoreInteractions(carrier);
+
+        service.fail(endpoint);
+        verify(carrier).notifyPortDiscoveryFailed(endpoint);
+    }
+
     private NetworkPortService makeService() {
         NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder = mock(
                 NetworkTopologyDashboardLogger.Builder.class);
         when(dashboardLoggerBuilder.build(any(Logger.class))).thenReturn(dashboardLogger);
 
         return new NetworkPortService(carrier, persistenceManager, dashboardLoggerBuilder);
+    }
+
+    private void expectSwitchLookup(Endpoint endpoint, Switch entry) {
+        when(portPropertiesRepository.getBySwitchIdAndPort(alphaDatapath, endpoint.getPortNumber()))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(PortProperties.builder()
+                        .switchObj(entry)
+                        .port(endpoint.getPortNumber())
+                        .discoveryEnabled(false)
+                        .build()));
+        when(switchRepository.findById(alphaDatapath))
+                .thenReturn(Optional.of(entry));
     }
 
     private Switch getDefaultSwitch() {

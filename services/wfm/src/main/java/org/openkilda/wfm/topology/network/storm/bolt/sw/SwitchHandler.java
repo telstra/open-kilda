@@ -29,6 +29,7 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkSwitchService;
@@ -140,8 +141,8 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     @Override
-    public void setOnlineMode(Endpoint endpoint, boolean mode) {
-        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortOnlineModeCommand(endpoint, mode)));
+    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortOnlineModeCommand(endpoint, onlineStatus)));
     }
 
     @Override

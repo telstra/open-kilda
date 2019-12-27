@@ -33,6 +33,7 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.service.IAntiFlapCarrier;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkAntiFlapService;
@@ -234,8 +235,8 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         portService.remove(endpoint);
     }
 
-    public void processUpdateOnlineMode(Endpoint endpoint, boolean online) {
-        portService.updateOnlineMode(endpoint, online);
+    public void processUpdateOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
+        portService.updateOnlineMode(endpoint, onlineStatus);
     }
 
     public void processUpdateLinkStatus(Endpoint endpoint, LinkStatus linkStatus) {

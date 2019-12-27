@@ -37,6 +37,7 @@ import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.controller.port.PortReportFsm;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -100,13 +101,24 @@ public class NetworkPortService {
     /**
      * .
      */
-    public void updateOnlineMode(Endpoint endpoint, boolean online) {
+    public void updateOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
-        if (online) {
-            event = PortFsmEvent.ONLINE;
-        } else {
-            event = PortFsmEvent.OFFLINE;
+        switch (onlineStatus) {
+            case ONLINE:
+                event = PortFsmEvent.ONLINE;
+                break;
+            case OFFLINE:
+                event = PortFsmEvent.OFFLINE;
+                break;
+            case REGION_OFFLINE:
+                event = PortFsmEvent.REGION_OFFLINE;
+                break;
+
+            default:
+                throw new IllegalArgumentException(
+                        format("Unsupported %s value %s", OnlineStatus.class.getName(), onlineStatus));
+
         }
         log.debug("Port service receive online status change for {}, new status is {}", endpoint, event);
         controllerExecutor.fire(portFsm, event, PortFsmContext.builder(carrier).build());

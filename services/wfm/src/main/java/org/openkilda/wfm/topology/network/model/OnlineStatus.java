@@ -13,22 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.bolt.port.command;
+package org.openkilda.wfm.topology.network.model;
 
-import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.OnlineStatus;
-import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
+public enum OnlineStatus {
+    ONLINE, OFFLINE, REGION_OFFLINE;
 
-public class PortOnlineModeCommand extends PortCommand {
-    private final OnlineStatus onlineStatus;
-
-    public PortOnlineModeCommand(Endpoint endpoint, OnlineStatus onlineStatus) {
-        super(endpoint);
-        this.onlineStatus = onlineStatus;
+    public boolean isOnline() {
+        return this == ONLINE;
     }
 
-    @Override
-    public void apply(PortHandler handler) {
-        handler.processUpdateOnlineMode(getEndpoint(), onlineStatus);
+    /**
+     * Decode {@code OnlineStatus} from onlineOffline mode and isRegionOnline markers.
+     */
+    public static OnlineStatus of(boolean onlineOffline, Boolean isRegionOffline) {
+        if (isRegionOffline != null && isRegionOffline) {
+            return REGION_OFFLINE;
+        }
+        if (onlineOffline) {
+            return ONLINE;
+        } else {
+            return OFFLINE;
+        }
     }
 }

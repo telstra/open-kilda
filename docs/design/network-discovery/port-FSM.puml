@@ -9,6 +9,7 @@ Input signals:
 * offline (switch)
 * poll-discovery (poll)
 * poll-fail (poll)
+* region-offline (switch)
 
 Output signals:
 * physical-down (isl/2)
@@ -32,13 +33,13 @@ state OPERATIONAL {
     UNKNOWN --> UP : port-up
 
     DOWN --> UP : port-up
-    DOWN : enter / emit port-up into report
+    DOWN : enter / emit port-down into report
     DOWN : enter / emit physical-down
     DOWN : enter / emit delWatch
     DOWN : poll-fail / emit fail
 
     UP --> DOWN : port-down
-    UP : enter / emit port-down into report
+    UP : enter / emit port-up into report
     UP : enter[discovery-enabled] / issue addWatch
     UP : poll-discovery / emit discovery
     UP : poll-fail / emit fail
@@ -49,13 +50,18 @@ state OPERATIONAL {
 
 OPERATIONAL --> UNOPERATIONAL : offline
 OPERATIONAL -r-> FINISH : port-del
+OPERATIONAL --> REGION_MISSING : region-offline
 
 UNOPERATIONAL --> OPERATIONAL : online
 UNOPERATIONAL --> FINISH : port-del
 UNOPERATIONAL : poll-fail / emit fail
 
+REGION_MISSING : enter / emit delWatch
+REGION_MISSING --> OPERATIONAL : online
+REGION_MISSING -r-> FINISH : port-del
+
 FINISH: enter / emit uni-isl-del
 FINISH: enter / emit delWatch
-FINISH -d-> [*]
+FINISH -> [*]
 
 @enduml

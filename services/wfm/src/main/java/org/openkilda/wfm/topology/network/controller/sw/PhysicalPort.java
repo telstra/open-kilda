@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.network.controller.sw;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
 import lombok.Data;
@@ -43,8 +44,8 @@ public class PhysicalPort extends AbstractPort {
     }
 
     @Override
-    public void updateOnlineStatus(ISwitchCarrier carrier, boolean mode) {
-        carrier.setOnlineMode(getEndpoint(), mode);
+    public void updateOnlineStatus(ISwitchCarrier carrier, OnlineStatus onlineStatus) {
+        carrier.setOnlineMode(getEndpoint(), onlineStatus);
     }
 
     @Override
