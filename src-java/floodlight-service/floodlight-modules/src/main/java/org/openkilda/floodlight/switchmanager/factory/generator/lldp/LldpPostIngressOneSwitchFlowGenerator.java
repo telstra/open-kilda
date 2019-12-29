@@ -23,7 +23,7 @@ import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
-import org.openkilda.model.Metadata;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -50,9 +50,9 @@ public class LldpPostIngressOneSwitchFlowGenerator extends LldpFlowGenerator {
     @Override
     OFFlowMod getLldpFlowMod(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
+        RoutingMetadata metadata = makeMetadataMatch(sw);
         Match match = ofFactory.buildMatch()
-                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(Metadata.getOneSwitchFlowLldpValue()),
-                        OFMetadata.ofRaw(Metadata.getOneSwitchFlowLldpMask()))
+                .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                 .build();
 
         actionList.add(actionSendToController(sw.getOFFactory()));
@@ -68,5 +68,11 @@ public class LldpPostIngressOneSwitchFlowGenerator extends LldpFlowGenerator {
     @Override
     long getCookie() {
         return LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
+    }
+
+    private RoutingMetadata makeMetadataMatch(IOFSwitch sw) {
+        return buildMetadata(RoutingMetadata.builder()
+                .oneSwitchFlowFlag(true)
+                .lldpFlag(true), sw);
     }
 }

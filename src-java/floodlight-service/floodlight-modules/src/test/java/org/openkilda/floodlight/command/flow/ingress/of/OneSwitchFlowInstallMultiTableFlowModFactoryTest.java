@@ -18,12 +18,11 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.model.Metadata;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Optional;
 
@@ -51,7 +50,7 @@ public class OneSwitchFlowInstallMultiTableFlowModFactoryTest extends OneSwitchF
 
     @Override
     Optional<OFInstructionWriteMetadata> getWriteMetadataInstruction() {
-        return Optional.of(of.instructions().writeMetadata(
-                U64.of(Metadata.METADATA_ONE_SWITCH_FLOW_VALUE), U64.of(Metadata.METADATA_ONE_SWITCH_FLOW_MASK)));
+        RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(switchFeatures);
+        return Optional.of(of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()));
     }
 }
