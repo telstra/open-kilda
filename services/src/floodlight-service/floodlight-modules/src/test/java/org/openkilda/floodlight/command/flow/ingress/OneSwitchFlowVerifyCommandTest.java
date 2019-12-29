@@ -32,6 +32,7 @@ public class OneSwitchFlowVerifyCommandTest extends OneSwitchFlowCommandJsonTest
 
     @Override
     protected OneSwitchFlowRequest makeRequest(OneSwitchFlowRequestFactory factory) {
-        return factory.makeVerifyRequest(commandIdGenerator.generate());
+        return factory.makeVerifyRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

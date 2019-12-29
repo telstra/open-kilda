@@ -17,39 +17,27 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 
 import java.util.List;
 
 public interface FlowCommandBuilder {
-    List<FlowSegmentRequestFactory> buildAll(
-            CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath);
-
-    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow,
-                                             FlowPath forwardPath, FlowPath reversePath,
-                                             SpeakerRequestBuildContext speakerRequestBuildContext);
-
     /**
-     * Build install commands for transit(if needed) and egress rules for active forward and reverse paths.
+     * Build flow segment request factories for all segments for provided paths.
      */
-    List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow);
+    List<FlowSegmentRequestFactory> buildAll(
+            CommandContext context, Flow flow, FlowPathSnapshot path, FlowPathSnapshot oppositePath);
 
     /**
-     * Build install commands for transit(if needed) and egress rules for provided paths.
+     * Build flow segment request factories for transit(if needed) and egress segments for provided paths.
      */
     List<FlowSegmentRequestFactory> buildAllExceptIngress(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+            CommandContext context, Flow flow, FlowPathSnapshot path, FlowPathSnapshot oppositePath);
 
     /**
-     * Build install commands for ingress rules for active forward and reverse paths.
-     */
-    List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow);
-
-    /**
-     * Build install commands for ingress rules for provided paths.
+     * Build flow segment request factories for ingress segments for provided paths.
      */
     List<FlowSegmentRequestFactory> buildIngressOnly(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+            CommandContext context, Flow flow, FlowPathSnapshot path, FlowPathSnapshot oppositePath);
 }

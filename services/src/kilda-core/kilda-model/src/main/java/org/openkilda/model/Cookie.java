@@ -15,9 +15,14 @@
 
 package org.openkilda.model;
 
+import org.openkilda.exception.CookieTypeMismatchException;
+import org.openkilda.utils.CookieEnumField;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.Value;
+import com.google.common.annotations.VisibleForTesting;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -44,7 +49,7 @@ import java.util.stream.Collectors;
  * 5 - Multi-table customer flow rule for ingress table pass-through
  * </p>
  */
-@Value
+@EqualsAndHashCode(of = {"value"})
 public class Cookie implements Comparable<Cookie>, Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -78,16 +83,19 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long LLDP_POST_INGRESS_VXLAN_COOKIE             = 0x11L | DEFAULT_RULE_FLAG;
     public static final long LLDP_POST_INGRESS_ONE_SWITCH_COOKIE        = 0x12L | DEFAULT_RULE_FLAG;
 
-    // 9 bits cookie type "field"
-    public static final long TYPE_MASK                               = 0x1FF0_0000_0000_0000L;
-    public static final long FLOW_COOKIE_TYPE                        = 0x0000_0000_0000_0000L;
-    public static final long LLDP_INPUT_CUSTOMER_TYPE                = 0x0010_0000_0000_0000L;
-    public static final long MULTITABLE_ISL_VLAN_EGRESS_RULES_TYPE   = 0x0020_0000_0000_0000L;
-    public static final long MULTITABLE_ISL_VXLAN_EGRESS_RULES_TYPE  = 0x0030_0000_0000_0000L;
-    public static final long MULTITABLE_ISL_VXLAN_TRANSIT_RULES_TYPE = 0x0040_0000_0000_0000L;
-    public static final long MULTITABLE_INGRESS_RULES_TYPE           = 0x0050_0000_0000_0000L;
+    // update ALL_FIELDS if modify fields list
+    static final BitField DEFAULT_FLAG                = new BitField(0x8000_0000_0000_0000L);
+    static final BitField FLOW_FORWARD_DIRECTION_FLAG = new BitField(0x4000_0000_0000_0000L);
+    static final BitField FLOW_REVERSE_DIRECTION_FLAG = new BitField(0x2000_0000_0000_0000L);
+    static final BitField TYPE_FIELD                  = new BitField(0x1FF0_0000_0000_0000L);
+    static final BitField FLOW_EFFECTIVE_ID_FIELD     = new BitField(0x0000_0000_000F_FFFFL);
 
-    private final long value;
+    // used by unit tests to check fields intersections
+    static final BitField[] ALL_FIELDS = new BitField[] {
+            DEFAULT_FLAG, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, TYPE_FIELD,
+            FLOW_EFFECTIVE_ID_FIELD};
+
+    private long value;
 
     /**
      * Create {@code Cookie} instance and perform it's validation.
@@ -103,6 +111,11 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         this.value = value;
     }
 
+    protected Cookie(CookieType type) {
+        this.value = 0;
+        setType(type);
+    }
+
     public static Cookie buildForwardCookie(long unmaskedCookie) {
         return new Cookie(unmaskedCookie | Cookie.FLOW_PATH_FORWARD_FLAG);
     }
@@ -111,24 +124,55 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         return new Cookie(unmaskedCookie | Cookie.FLOW_PATH_REVERSE_FLAG);
     }
 
+    /**
+     * Convert port number into isl-VLAN-egress "cookie".
+     */
     public static long encodeIslVlanEgress(int port) {
-        return port | Cookie.MULTITABLE_ISL_VLAN_EGRESS_RULES_TYPE | Cookie.DEFAULT_RULE_FLAG;
+        // FIXME(surabujin): do not allow to return "raw" long value
+        return new Cookie(port | DEFAULT_RULE_FLAG)
+                .setType(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES)
+                .getValue();
     }
 
+    /**
+     * Convert port number into isl-VxLAN-egress "cookie".
+     */
     public static long encodeIslVxlanEgress(int port) {
-        return port | Cookie.MULTITABLE_ISL_VXLAN_EGRESS_RULES_TYPE | Cookie.DEFAULT_RULE_FLAG;
+        // FIXME(surabujin): do not allow to return "raw" long value
+        return new Cookie(port | Cookie.DEFAULT_RULE_FLAG)
+                .setType(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES)
+                .getValue();
     }
 
+    /**
+     * Convert port number into isl-VxLAN-transit "cookie".
+     */
     public static long encodeIslVxlanTransit(int port) {
-        return port | Cookie.MULTITABLE_ISL_VXLAN_TRANSIT_RULES_TYPE | Cookie.DEFAULT_RULE_FLAG;
+        // FIXME(surabujin): do not allow to return "raw" long value
+        return new Cookie(port | Cookie.DEFAULT_RULE_FLAG)
+                .setType(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES)
+                .getValue();
     }
 
+    /**
+     * Convert port number into ingress-rule-pass-through "cookie".
+     */
     public static long encodeIngressRulePassThrough(int port) {
-        return port | Cookie.MULTITABLE_INGRESS_RULES_TYPE | Cookie.DEFAULT_RULE_FLAG;
+        // FIXME(surabujin): do not allow to return "raw" long value
+        return new Cookie(port | Cookie.DEFAULT_RULE_FLAG)
+                .setType(CookieType.MULTI_TABLE_INGRESS_RULES)
+                .getValue();
     }
 
+    /**
+     * Creates masked cookie for LLDP rule.
+     */
     public static long encodeLldpInputCustomer(int port) {
-        return port | Cookie.LLDP_INPUT_CUSTOMER_TYPE | Cookie.DEFAULT_RULE_FLAG;
+        // FIXME(surabujin): do not allow to return "raw" long value
+        return new Cookie(port)
+                .setField(DEFAULT_FLAG, 1)
+                .setType(CookieType.LLDP)
+                .getValue();
     }
 
     /**
@@ -182,30 +226,48 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     }
 
     /**
-     * Checks whether the cookie is main flow cookie.
+     * Extract and return normalized representation flow path direction.
      */
-    public static boolean isMaskedAsFlowCookie(long value) {
-        return (TYPE_MASK & value) == FLOW_COOKIE_TYPE;
+    public FlowPathDirection getFlowPathDirection() {
+        if (getField(FLOW_FORWARD_DIRECTION_FLAG) != 0) {
+            return FlowPathDirection.FORWARD;
+        } else if (getField(FLOW_REVERSE_DIRECTION_FLAG) != 0) {
+            return FlowPathDirection.REVERSE;
+        } else {
+            return FlowPathDirection.UNKNOWN;
+        }
     }
 
+    public long getFlowEffectiveId() {
+        return getField(FLOW_EFFECTIVE_ID_FIELD);
+    }
+
+    /**
+     * Checks whether the cookie corresponds to the LLDP flow.
+     */
     public static boolean isLldpInputCustomer(long value) {
-        return (TYPE_MASK & value) == LLDP_INPUT_CUSTOMER_TYPE;
+        Cookie cookie = new Cookie(value);
+        return cookie.getRawType() == CookieType.LLDP.getValue();
     }
 
     public static boolean isIslVlanEgress(long value) {
-        return (TYPE_MASK & value) == Cookie.MULTITABLE_ISL_VLAN_EGRESS_RULES_TYPE;
+        Cookie cookie = new Cookie(value);
+        return cookie.getRawType() == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES.getValue();
     }
 
     public static boolean isIslVxlanEgress(long value) {
-        return (TYPE_MASK & value) == Cookie.MULTITABLE_ISL_VXLAN_EGRESS_RULES_TYPE;
+        Cookie cookie = new Cookie(value);
+        return cookie.getRawType() == CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES.getValue();
     }
 
     public static boolean isIslVxlanTransit(long value) {
-        return (TYPE_MASK & value) == Cookie.MULTITABLE_ISL_VXLAN_TRANSIT_RULES_TYPE;
+        Cookie cookie = new Cookie(value);
+        return cookie.getRawType() == CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES.getValue();
     }
 
     public static boolean isIngressRulePassThrough(long value) {
-        return (TYPE_MASK & value) == Cookie.MULTITABLE_INGRESS_RULES_TYPE;
+        Cookie cookie = new Cookie(value);
+        return cookie.getRawType() == CookieType.MULTI_TABLE_INGRESS_RULES.getValue();
     }
 
     public static long getValueFromIntermediateCookie(long value) {
@@ -214,6 +276,21 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     public long getUnmaskedValue() {
         return value & FLOW_COOKIE_VALUE_MASK;
+    }
+
+    /**
+     * Extract and return "type" field.
+     */
+    public CookieType getType() {
+        return resolveEnum(CookieType.values(), getRawType(), CookieType.class);
+    }
+
+    protected int getRawType() {
+        return (int) getField(TYPE_FIELD);
+    }
+
+    protected Cookie setType(CookieType type) {
+        return setField(TYPE_FIELD, type.getValue());
     }
 
     private void ensureNoFlagsConflicts() {
@@ -235,6 +312,30 @@ public class Cookie implements Comparable<Cookie>, Serializable {
         }
     }
 
+    protected void ensureType(CookieType type) throws CookieTypeMismatchException {
+        if (getRawType() != type.getValue()) {
+            throw new CookieTypeMismatchException(this, type);
+        }
+    }
+
+    @VisibleForTesting
+    long getField(BitField field) {
+        long payload = value & field.getMask();
+        return payload >>> field.offset;
+    }
+
+    @VisibleForTesting
+    Cookie setField(BitField field, long payload) {
+        long mask = field.getMask();
+        payload <<= field.offset;
+        payload &= mask;
+
+        mask = ~mask;
+        value = (value & mask) | payload;
+
+        return this;
+    }
+
     @JsonValue
     public long getValue() {
         return value;
@@ -252,5 +353,70 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     @Override
     public int compareTo(Cookie compareWith) {
         return Long.compare(value, compareWith.value);
+    }
+
+    protected static <T extends CookieEnumField> T resolveEnum(T[] valuesSpace, long needle, Class<T> typeRef) {
+        for (T entry : valuesSpace) {
+            if (entry.getValue() == needle) {
+                return entry;
+            }
+        }
+
+        throw new IllegalArgumentException(String.format(
+                "Unable to map value %x value into %s value", needle, typeRef.getSimpleName()));
+    }
+
+    @Getter
+    static class BitField {
+        private final long mask;
+        private final int offset;
+
+        public BitField(long mask) {
+            Integer start = null;
+            Integer end = null;
+
+            long probe = 1;
+            for (int i = 0; i < 8 * 8; i++) {
+                boolean isSet = (mask & probe) != 0;
+                if (start == null && isSet) {
+                    start = i;
+                } else if (start != null && end == null && ! isSet) {
+                    end = i;
+                } else if (end != null && isSet) {
+                    throw new IllegalArgumentException(String.format(
+                            "Illegal bit field mask %s - it contain gaps", Cookie.toString(mask)));
+                }
+
+                probe <<= 1;
+            }
+            if (start == null) {
+                throw new IllegalArgumentException("Bit field mask must not be 0");
+            }
+
+            this.mask = mask;
+            this.offset = start;
+        }
+    }
+
+    // 9 bit long field
+    public enum CookieType implements CookieEnumField {
+        FLOW_SEGMENT(0x000),
+        LLDP(0x001),
+        MULTI_TABLE_ISL_VLAN_EGRESS_RULES(0x002),
+        MULTI_TABLE_ISL_VXLAN_EGRESS_RULES(0x003),
+        MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES(0x004),
+        MULTI_TABLE_INGRESS_RULES(0x005),
+        INGRESS_SEGMENT(0x006),   // used for ingress flow segment and for one switch flow segments
+        SHARED_OF_FLOW(0x007);
+
+        private int value;
+
+        CookieType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 }

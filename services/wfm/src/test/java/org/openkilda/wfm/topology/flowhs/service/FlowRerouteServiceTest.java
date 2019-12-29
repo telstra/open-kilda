@@ -120,6 +120,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
 
+        when(repositoryFactory.createSharedOfFlowRepository()).thenReturn(sharedOfFlowRepository);
+
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
@@ -288,19 +290,17 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
+        // discard all requests produced by flow update process till now
+        requests.clear();
+
         rerouteService.handleTimeout("test_key");
 
+        // after timeout flow update process will rollback all changes, i.e. it will produce "remove" requests for
+        // possible installed segments and "install" requests for possible removed segments. So until this request are
+        // processed flow update process will not finished.
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isRemoveRequest()) {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", request);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
@@ -485,17 +485,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", request);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
@@ -556,22 +546,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", request);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    protected void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
+        rerouteService.handleAsyncResponse(key, buildSpeakerResponse(flowRequest));
     }
 
     private PathPair build2SwitchPathPair() {
@@ -666,40 +650,33 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     }
 
     private FlowResources buildFlowResources() throws ResourceAllocationException {
+        TransitVlanEncapsulation newForwardPathEncapsulation = TransitVlanEncapsulation.builder()
+                .transitVlan(TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
+                .build();
+        TransitVlanEncapsulation newReversePathEncapsulation = TransitVlanEncapsulation.builder()
+                .transitVlan(TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
+                .build();
+
         FlowResources flowResources = FlowResources.builder()
                 .unmaskedCookie(1)
                 .forward(PathResources.builder()
                         .pathId(NEW_FORWARD_FLOW_PATH)
                         .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 1))
+                        .encapsulationResources(newForwardPathEncapsulation)
                         .build())
                 .reverse(PathResources.builder()
                         .pathId(NEW_REVERSE_FLOW_PATH)
                         .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 2))
+                        .encapsulationResources(newReversePathEncapsulation)
                         .build())
                 .build();
 
         when(flowResourcesManager.allocateFlowResources(any())).thenReturn(flowResources);
 
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
-                        .build()));
-
         when(flowResourcesManager.getEncapsulationResources(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH),
                 eq(FlowEncapsulationType.TRANSIT_VLAN)))
                 .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
                         TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build())
                         .build()));
 
         return flowResources;

@@ -33,6 +33,7 @@ public class TransitFlowSegmentVerifyCommandTest extends TransitFlowSegmentComma
 
     @Override
     protected TransitFlowSegmentRequest makeRequest(TransitFlowSegmentRequestFactory factory) {
-        return factory.makeVerifyRequest(commandIdGenerator.generate());
+        return factory.makeVerifyRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

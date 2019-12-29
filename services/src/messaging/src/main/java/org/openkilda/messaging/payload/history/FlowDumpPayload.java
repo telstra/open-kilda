@@ -43,6 +43,10 @@ public class FlowDumpPayload {
 
     private int destinationVlan;
 
+    private int sourceInnerVlan;
+
+    private int destinationInnerVlan;
+
     private Long forwardMeterId;
 
     private Long reverseMeterId;

@@ -24,7 +24,7 @@ public class OfFlowModDelSingleTableMessageBuilderFactory extends OfFlowModDelBu
     }
 
     @Override
-    protected OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId) {
+    public OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId) {
         return builder;
     }
 }

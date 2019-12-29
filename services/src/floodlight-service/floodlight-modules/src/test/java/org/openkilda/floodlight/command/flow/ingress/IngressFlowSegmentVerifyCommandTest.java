@@ -33,6 +33,7 @@ public class IngressFlowSegmentVerifyCommandTest extends IngressFlowSegmentComma
 
     @Override
     protected IngressFlowSegmentRequest makeRequest(IngressFlowSegmentRequestFactory factory) {
-        return factory.makeVerifyRequest(commandIdGenerator.generate());
+        return factory.makeVerifyRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

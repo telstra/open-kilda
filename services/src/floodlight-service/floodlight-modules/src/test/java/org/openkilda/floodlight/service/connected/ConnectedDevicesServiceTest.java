@@ -17,14 +17,19 @@ package org.openkilda.floodlight.service.connected;
 
 import static com.google.common.primitives.Bytes.concat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.floodlight.service.connected.ConnectedDevicesService.PacketData;
+import org.openkilda.floodlight.service.ping.packet.VlanTag;
 
+import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.packet.Ethernet;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.projectfloodlight.openflow.types.EthType;
 
+@Slf4j
 public class ConnectedDevicesServiceTest {
     private byte[] srcAndDstMacAddresses = new byte[] {
             0x1, (byte) 0x80, (byte) 0xC2, 0x0, 0x0, 0xE,           // src mac address
@@ -32,6 +37,11 @@ public class ConnectedDevicesServiceTest {
     };
 
     private ConnectedDevicesService service = new ConnectedDevicesService();
+
+    @BeforeClass
+    public static void setUpClass() throws Exception {
+        log.info("Force loading of {}", Class.forName(VlanTag.class.getName()));
+    }
 
     @Test
     public void deserializeLldpTest() {
@@ -70,6 +80,7 @@ public class ConnectedDevicesServiceTest {
         ethernet.deserialize(ethernetWithLldp, 0, ethernetWithLldp.length);
 
         PacketData data = service.deserializeLldp(ethernet, null, 0);
+        assertNotNull(data);
         assertEquals(2, data.getVlans().size());
         assertEquals(Integer.valueOf(outerVlan), data.getVlans().get(0));
         assertEquals(Integer.valueOf(innerVlan), data.getVlans().get(1));

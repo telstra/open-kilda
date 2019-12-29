@@ -40,6 +40,7 @@ import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
@@ -138,6 +139,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         when(configurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
         when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(configurationRepository);
 
+        when(repositoryFactory.createSharedOfFlowRepository()).thenReturn(sharedOfFlowRepository);
+
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
@@ -157,12 +160,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -190,12 +189,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -222,12 +217,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -254,12 +245,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -288,12 +275,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -319,12 +302,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -371,12 +350,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -384,19 +359,17 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
+        // discard all requests produced by flow update process till now
+        requests.clear();
+
         updateService.handleTimeout("test_key");
 
+        // after timeout flow update process will rollback all changes, i.e. it will produce "remove" requests for
+        // possible installed segments and "install" requests for possible removed segments. So until this request are
+        // processed flow update process will not finished.
         FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest.isRemoveRequest()) {
-                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(flowRequest.getMessageContext())
-                        .commandId(flowRequest.getCommandId())
-                        .metadata(flowRequest.getMetadata())
-                        .switchId(flowRequest.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", flowRequest);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
@@ -416,12 +389,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -468,12 +437,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -513,12 +478,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -574,12 +535,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -628,12 +585,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -678,12 +631,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_1)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_3)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_1, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_3, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -731,12 +680,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(1000L)
-                .sourceSwitch(SWITCH_3)
-                .sourcePort(11)
-                .sourceVlan(101)
-                .destinationSwitch(SWITCH_4)
-                .destinationPort(12)
-                .destinationVlan(102)
+                .source(new FlowEndpoint(SWITCH_3, 11, 101))
+                .destination(new FlowEndpoint(SWITCH_4, 12, 102))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -779,12 +724,10 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowRequest request = FlowRequest.builder()
                 .flowId(FLOW_ID)
                 .bandwidth(flow.getBandwidth() + 1000L)
-                .sourceSwitch(flow.getSrcSwitch().getSwitchId())
-                .sourcePort(flow.getSrcPort())
-                .sourceVlan(flow.getSrcVlan())
-                .destinationSwitch(flow.getDestSwitch().getSwitchId())
-                .destinationPort(flow.getDestPort())
-                .destinationVlan(flow.getDestVlan())
+                .source(
+                        new FlowEndpoint(flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(), flow.getSrcVlan()))
+                .destination(
+                        new FlowEndpoint(flow.getDestSwitch().getSwitchId(), flow.getDestPort(), flow.getDestVlan()))
                 .build();
 
         updateService.handleRequest("test_key", commandContext, request);
@@ -813,6 +756,10 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(SWITCH_2, flow.getDestSwitch().getSwitchId());
         assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    protected void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
+        updateService.handleAsyncResponse(key, buildSpeakerResponse(flowRequest));
     }
 
     private PathPair build2SwitchPathPair() {
@@ -910,40 +857,33 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     private FlowResources buildFlowResources() throws ResourceAllocationException {
+        TransitVlanEncapsulation newForwardPathEncapsulation = TransitVlanEncapsulation.builder()
+                .transitVlan(TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
+                .build();
+        TransitVlanEncapsulation newReversePathEncapsulation = TransitVlanEncapsulation.builder()
+                .transitVlan(TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
+                .build();
+
         FlowResources flowResources = FlowResources.builder()
                 .unmaskedCookie(1)
                 .forward(PathResources.builder()
                         .pathId(NEW_FORWARD_FLOW_PATH)
                         .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 1))
+                        .encapsulationResources(newForwardPathEncapsulation)
                         .build())
                 .reverse(PathResources.builder()
                         .pathId(NEW_REVERSE_FLOW_PATH)
                         .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 2))
+                        .encapsulationResources(newReversePathEncapsulation)
                         .build())
                 .build();
 
         when(flowResourcesManager.allocateFlowResources(any())).thenReturn(flowResources);
 
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
-                        .build()));
-
         when(flowResourcesManager.getEncapsulationResources(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH),
                 eq(FlowEncapsulationType.TRANSIT_VLAN)))
                 .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
                         TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build())
                         .build()));
 
         return flowResources;

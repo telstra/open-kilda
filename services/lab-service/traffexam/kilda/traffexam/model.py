@@ -185,8 +185,10 @@ class IdMixin(Abstract):
 
 class NetworkIface(Abstract):
     index = Default(None)
+    vlan = Default(None)
     vlan_tag = Default(None)
-    pack_exclude = frozenset(('index', ))
+
+    pack_exclude = frozenset(('index', 'vlan'))
 
     def __init__(self, name, **fields):
         super().__init__(**fields)
@@ -233,8 +235,17 @@ class IpAddress(IdMixin, Abstract):
     def pack(self):
         payload = super().pack()
         payload.pop('network')
-        payload['vlan'] = self.iface.vlan_tag
+        payload['vlan'] = self.pack_vlan()
         return payload
+
+    def pack_vlan(self):
+        vlan = None
+        iface = self.iface
+        if iface is not None:
+            vlan = iface.vlan
+        if vlan is not None:
+            vlan = vlan.tag
+        return vlan
 
     def alloc_port(self):
         return next(self._ports)

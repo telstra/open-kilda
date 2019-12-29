@@ -18,18 +18,21 @@ package org.openkilda.floodlight.service.ping;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
+import org.openkilda.floodlight.model.PingWiredView;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
+import org.openkilda.floodlight.service.ping.packet.VlanTag;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEndpoint;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -39,6 +42,8 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class PingService implements IService {
@@ -49,7 +54,6 @@ public class PingService implements IService {
     private static final byte NET_L3_TTL = 96;
 
     private DataSignature signature = null;
-    private ISwitchManager switchManager;
     private MacAddress magicSourceMacAddress;
 
     /**
@@ -66,8 +70,6 @@ public class PingService implements IService {
             throw new FloodlightModuleException(String.format("Unable to initialize %s", getClass().getName()), e);
         }
 
-        switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
-
         InputService inputService = moduleContext.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, new PingInputTranslator());
 
@@ -78,7 +80,7 @@ public class PingService implements IService {
     /**
      * Wrap ping data into L2, l3 and L4 network packages.
      */
-    public Ethernet wrapData(Ping ping, byte[] payload) {
+    public IPacket wrapData(Ping ping, byte[] payload) {
         Data l7 = new Data(payload);
 
         UDP l4 = new UDP();
@@ -92,15 +94,25 @@ public class PingService implements IService {
         l3.setDestinationAddress(NET_L3_ADDRESS);
         l3.setTtl(NET_L3_TTL);
 
-        Ethernet l2 = new Ethernet();
-        l2.setPayload(l3);
-        l2.setEtherType(EthType.IPv4);
+        EthType l2Type = EthType.IPv4;
+        IPacket l2Payload = l3;
+        List<Integer> vlanStack = FlowEndpoint.makeVlanStack(ping.getIngressInnerVlanId(), ping.getIngressVlanId());
+        for (int vlanID : vlanStack) {
+            VlanTag vlanTag = new VlanTag();
+            vlanTag.setVlanId((short) vlanID);
+            vlanTag.setEtherType(l2Type);
+            vlanTag.setPayload(l2Payload);
 
-        l2.setSourceMACAddress(magicSourceMacAddress);
-        l2.setDestinationMACAddress(ping.getDest().getDatapath().toMacAddress());
-        if (null != ping.getSourceVlanId()) {
-            l2.setVlanID(ping.getSourceVlanId());
+            l2Payload = vlanTag;
+            l2Type = EthType.VLAN_FRAME;
         }
+
+        Ethernet l2 = new Ethernet();
+        l2.setEtherType(l2Type);
+        l2.setSourceMACAddress(magicSourceMacAddress);
+        DatapathId egressSwitch = DatapathId.of(ping.getDest().getDatapath().toLong());
+        l2.setDestinationMACAddress(MacAddress.of(egressSwitch));
+        l2.setPayload(l2Payload);
 
         return l2;
     }
@@ -109,16 +121,19 @@ public class PingService implements IService {
      * Unpack network package.
      * Verify all particular qualities used during discovery package creation time. Return packet payload.
      */
-    public byte[] unwrapData(DatapathId dpId, Ethernet packet) {
-        MacAddress targetL2Address = switchManager.dpIdToMac(dpId);
+    public PingWiredView unwrapData(DatapathId dpId, Ethernet packet) {
+        MacAddress targetL2Address = MacAddress.of(dpId);
         if (!packet.getDestinationMACAddress().equals(targetL2Address)) {
             return null;
         }
 
-        if (!(packet.getPayload() instanceof IPv4)) {
+        List<Integer> vlanStack = new ArrayList<>();
+        IPacket payload = extractEthernetPayload(packet, vlanStack);
+
+        if (! (payload instanceof IPv4)) {
             return null;
         }
-        IPv4 ip = (IPv4) packet.getPayload();
+        IPv4 ip = (IPv4) payload;
 
         if (!NET_L3_ADDRESS.equals(ip.getSourceAddress().toString())) {
             return null;
@@ -139,10 +154,33 @@ public class PingService implements IService {
             return null;
         }
 
-        return ((Data) udp.getPayload()).getData();
+        return new PingWiredView(vlanStack, udp.getPayload().serialize());
     }
 
     public DataSignature getSignature() {
         return signature;
+    }
+
+    private IPacket injectVlan(IPacket payload, int vlanId) {
+        VlanTag vlan = new VlanTag();
+        vlan.setVlanId((short) vlanId);
+        vlan.setPayload(payload);
+        return vlan;
+    }
+
+    private IPacket extractEthernetPayload(Ethernet packet, List<Integer> vlanStack) {
+        short rootVlan = packet.getVlanID();
+        if (0 < rootVlan) {
+            vlanStack.add((int) rootVlan);
+        }
+
+        IPacket payload = packet.getPayload();
+        while (payload instanceof VlanTag) {
+            short vlanId = ((VlanTag) payload).getVlanId();
+            vlanStack.add((int) vlanId);
+            payload = payload.getPayload();
+        }
+
+        return payload;
     }
 }

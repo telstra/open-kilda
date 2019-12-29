@@ -40,8 +40,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class AllocateProtectedResourcesAction extends
-        BaseResourceAllocationAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class AllocateProtectedResourcesAction
+        extends BaseResourceAllocationAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
                                             int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                             PathComputer pathComputer, FlowResourcesManager resourcesManager,
@@ -61,10 +61,8 @@ public class AllocateProtectedResourcesAction extends
         String flowId = stateMachine.getFlowId();
         Flow flow = getFlow(flowId);
 
-        FlowPath primaryForwardPath = flow.getPath(stateMachine.getNewPrimaryForwardPath())
-                .orElse(flow.getForwardPath());
-        FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
-                .orElse(flow.getReversePath());
+        FlowPath primaryForwardPath = extractPath(flow, stateMachine.getNewPrimaryForwardPath(), flow.getForwardPath());
+        FlowPath primaryReversePath = extractPath(flow, stateMachine.getNewPrimaryReversePath(), flow.getReversePath());
 
         if (stateMachine.getNewEncapsulationType() != null) {
             // This is for PCE to use proper (updated) encapsulation type.
@@ -114,8 +112,9 @@ public class AllocateProtectedResourcesAction extends
 
                 FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
                 log.debug("New protected path has been created: {}", newPaths);
-                stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
-                stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());
+
+                saveProtectedPaths(stateMachine, flow, newPaths, oldPaths, flowResources);
+                flushPathChanges(newPaths);
 
                 saveAllocationActionWithDumpsToHistory(stateMachine, flow, "protected", newPaths);
             } else {

@@ -118,6 +118,8 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                 rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
                 rerouteReason == null ? null : "Reason: " + rerouteReason);
 
+        stateMachine.setSharedOfFlowManager(makeSharedOfFlowManager(flow));
+
         return Optional.empty();
     }
 

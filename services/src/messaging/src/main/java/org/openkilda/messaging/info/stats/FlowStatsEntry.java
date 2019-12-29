@@ -16,12 +16,16 @@
 package org.openkilda.messaging.info.stats;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.io.Serializable;
 
 /**
  * TODO: add javadoc.
  */
+@Getter
+@ToString
 public class FlowStatsEntry implements Serializable {
 
     @JsonProperty
@@ -54,29 +58,5 @@ public class FlowStatsEntry implements Serializable {
         this.byteCount = byteCount;
         this.inPort = inPort;
         this.outPort = outPort;
-    }
-
-    public int getTableId() {
-        return tableId;
-    }
-
-    public long getCookie() {
-        return cookie;
-    }
-
-    public long getPacketCount() {
-        return packetCount;
-    }
-
-    public long getByteCount() {
-        return byteCount;
-    }
-
-    public int getInPort() {
-        return inPort;
-    }
-
-    public int getOutPort() {
-        return outPort;
     }
 }

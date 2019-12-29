@@ -19,10 +19,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Singular;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.util.List;
 
+// FIXME(surabujin): combination of push/pop/set actions for vlans have no sense without their order, at this
+//  moment this "view" of OF apply-actions do not preserve order...
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
 @Builder
@@ -30,29 +34,37 @@ public class FlowApplyActions implements Serializable {
 
     @JsonProperty("output")
     private String flowOutput;
+
+    @Singular
     @JsonProperty("set_field")
-    private FlowSetFieldAction fieldAction;
+    private List<FlowSetFieldAction> fieldActions;
+
     @JsonProperty("push_vlan")
     private String pushVlan;
+
     @JsonProperty("POP_VLAN")
     private String popVlan;
+
     @JsonProperty("meter")
     private String meter;
+
     @JsonProperty("push_vxlan")
     private String pushVxlan;
+
     @JsonProperty("group")
     private String group;
+
     @JsonProperty("set_copy_field")
     private FlowCopyFieldAction copyFieldAction;
 
     @JsonCreator
     public FlowApplyActions(
-            @JsonProperty("output") String flowOutput, @JsonProperty("set_field") FlowSetFieldAction fieldAction,
+            @JsonProperty("output") String flowOutput, @JsonProperty("set_field") List<FlowSetFieldAction> fieldActions,
             @JsonProperty("push_vlan") String pushVlan, @JsonProperty("POP_VLAN") String popVlan,
             @JsonProperty("meter") String meter, @JsonProperty("push_vxlan") String pushVxlan,
             @JsonProperty("group") String group, @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction) {
         this.flowOutput = flowOutput;
-        this.fieldAction = fieldAction;
+        this.fieldActions = fieldActions;
         this.pushVlan = pushVlan;
         this.popVlan = popVlan;
         this.meter = meter;
@@ -60,5 +72,4 @@ public class FlowApplyActions implements Serializable {
         this.group = group;
         this.copyFieldAction = copyFieldAction;
     }
-
 }

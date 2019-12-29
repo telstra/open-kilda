@@ -52,7 +52,7 @@ public final class CoordinatorSpout extends BaseRichSpout {
             collector.emit(new Values(System.currentTimeMillis(), new CommandContext()), messageId++);
             emit = false;
         } else {
-            org.apache.storm.utils.Utils.sleep(1L);
+            org.apache.storm.utils.Utils.sleep(5L);
         }
     }
 

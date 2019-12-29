@@ -32,6 +32,7 @@ public class TransitFlowSegmentRemoveCommandJsonTest extends TransitFlowSegmentC
 
     @Override
     protected TransitFlowSegmentRequest makeRequest(TransitFlowSegmentRequestFactory factory) {
-        return factory.makeRemoveRequest(commandIdGenerator.generate());
+        return factory.makeRemoveRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

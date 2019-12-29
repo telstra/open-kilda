@@ -22,9 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -53,9 +51,7 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
-        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
-        IslRepository islRepository = repositoryFactory.createIslRepository();
-        this.flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository);
+        this.flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
 

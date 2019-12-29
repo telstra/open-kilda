@@ -789,7 +789,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def rules = northbound.getSwitchRules(flowEndpoint.switchId).flowEntries
         def ingressRule = filterRules(rules, flowEndpoint.portNumber, flowEndpoint.vlanId, null)[0]
         def egressRule = filterRules(rules, null, null, flowEndpoint.portNumber).find {
-            it.instructions.applyActions.fieldAction.fieldValue == flowEndpoint.vlanId.toString()
+            it.instructions.applyActions.fieldActions.find {
+                it.fieldName == "vlan_vid" && it.fieldValue == flowEndpoint.vlanId.toString()
+            } != null
         }
 
         assert ingressRule.flags.contains("RESET_COUNTS")

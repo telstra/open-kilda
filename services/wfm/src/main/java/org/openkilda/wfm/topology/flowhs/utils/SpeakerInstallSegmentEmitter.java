@@ -18,12 +18,15 @@ package org.openkilda.wfm.topology.flowhs.utils;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 
+import java.util.Optional;
+import java.util.UUID;
+
 public final class SpeakerInstallSegmentEmitter extends SpeakerRequestEmitter {
     public static final SpeakerInstallSegmentEmitter INSTANCE = new SpeakerInstallSegmentEmitter();
 
     @Override
-    protected FlowSegmentRequest makeRequest(FlowSegmentRequestFactory factory) {
-        return factory.makeInstallRequest(commandIdGenerator.generate());
+    protected Optional<? extends FlowSegmentRequest> makeRequest(FlowSegmentRequestFactory factory, UUID commandId) {
+        return factory.makeInstallRequest(commandId);
     }
 
     private SpeakerInstallSegmentEmitter() {}

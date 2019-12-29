@@ -28,6 +28,7 @@ import com.fasterxml.uuid.NoArgGenerator;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 abstract class EmitVerifyRulesAction
@@ -44,11 +45,15 @@ abstract class EmitVerifyRulesAction
             FlowCreateFsm stateMachine, Collection<FlowSegmentRequestFactory> requestFactories) {
         final Map<UUID, SpeakerCommandObserver> pendingCommands = stateMachine.getPendingCommands();
         for (FlowSegmentRequestFactory factory : requestFactories) {
-            FlowSegmentRequest request = factory.makeVerifyRequest(commandIdGenerator.generate());
+            Optional<? extends FlowSegmentRequest> potentialRequest = factory.makeVerifyRequest(
+                    commandIdGenerator.generate());
+            if (! potentialRequest.isPresent()) {
+                continue;
+            }
 
+            FlowSegmentRequest request = potentialRequest.get();
             SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, request);
             commandObserver.start();
-            // TODO ensure no conflicts
             pendingCommands.put(request.getCommandId(), commandObserver);
         }
     }

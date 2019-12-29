@@ -31,6 +31,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SharedOfFlowRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import lombok.SneakyThrows;
@@ -61,6 +62,8 @@ public abstract class AbstractFlowTest {
     FeatureTogglesRepository featureTogglesRepository;
     @Mock
     IslRepository islRepository;
+    @Mock
+    SharedOfFlowRepository sharedOfFlowRepository;
 
     final Queue<FlowSegmentRequest> requests = new ArrayDeque<>();
     final Map<SwitchId, Map<Cookie, FlowSegmentRequest>> installedSegments = new HashMap<>();
@@ -105,6 +108,16 @@ public abstract class AbstractFlowTest {
                         .deleteFlowEnabled(true)
                         .build()
         ));
+    }
+
+    protected SpeakerFlowSegmentResponse buildSpeakerResponse(FlowSegmentRequest flowRequest) {
+        return SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
+                        .commandId(flowRequest.getCommandId())
+                        .metadata(flowRequest.getMetadata())
+                        .switchId(flowRequest.getSwitchId())
+                        .success(true)
+                        .build();
     }
 
     Answer getSpeakerCommandsAnswer() {

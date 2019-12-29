@@ -15,13 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -29,13 +28,13 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -56,36 +55,43 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
                 ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
-        Collection<FlowSegmentRequestFactory> installRequests = new ArrayList<>();
+        Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
 
         // Reinstall old ingress rules that may be overridden by new ingress.
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
-            installRequests.addAll(commandBuilder.buildIngressOnly(
+            FlowPathSnapshot oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+            FlowPathSnapshot oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+            installCommands.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
+        stateMachine.getIngressCommands().clear();  // need to clean previous requests
+        SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), installCommands, stateMachine.getIngressCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getIngressCommands().keySet());
+
         // Remove possible installed flow segments
-        Collection<FlowSegmentRequestFactory> removeRequests = new ArrayList<>();
+        Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-            removeRequests.addAll(commandBuilder.buildAll(
+            FlowPathSnapshot newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
+            FlowPathSnapshot newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+            removeCommands.addAll(commandBuilder.buildAll(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            removeRequests.addAll(commandBuilder.buildAllExceptIngress(
+            FlowPathSnapshot newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
+            FlowPathSnapshot newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
+            removeCommands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
-        stateMachine.getIngressCommands().clear();
-        sendRequests(stateMachine.getCarrier(), installRequests, stateMachine.getIngressCommands());
-        sendRequests(stateMachine.getCarrier(), removeRequests, stateMachine.getRemoveCommands());
+        stateMachine.getRemoveCommands().clear();
+        SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), removeCommands, stateMachine.getRemoveCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
 
         Set<UUID> pendingRequests = stateMachine.getPendingCommands();
+        pendingRequests.clear();
         pendingRequests.addAll(stateMachine.getIngressCommands().keySet());
         pendingRequests.addAll(stateMachine.getRemoveCommands().keySet());
 
@@ -93,17 +99,5 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
-    }
-
-    private void sendRequests(
-            FlowRerouteHubCarrier carrier, Collection<FlowSegmentRequestFactory> factories,
-            Map<UUID, FlowSegmentRequestFactory> requestsStorage) {
-
-        for (FlowSegmentRequestFactory factory : factories) {
-            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
-            // TODO ensure no conflicts
-            requestsStorage.put(request.getCommandId(), factory);
-            carrier.sendSpeakerRequest(request);
-        }
     }
 }

@@ -50,11 +50,13 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
                         "Couldn't complete flow creation. The flow was deleted");
             }
 
-            flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.ACTIVE);
-            flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.ACTIVE);
-            if (stateMachine.getProtectedForwardPathId() != null && stateMachine.getProtectedReversePathId() != null) {
-                flowPathRepository.updateStatus(stateMachine.getProtectedForwardPathId(), FlowPathStatus.ACTIVE);
-                flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.ACTIVE);
+            flowPathRepository.updateStatus(stateMachine.getForwardPath().getPath().getPathId(), FlowPathStatus.ACTIVE);
+            flowPathRepository.updateStatus(stateMachine.getReversePath().getPath().getPathId(), FlowPathStatus.ACTIVE);
+            if (stateMachine.getProtectedForwardPath() != null && stateMachine.getProtectedReversePath() != null) {
+                flowPathRepository.updateStatus(
+                        stateMachine.getProtectedForwardPath().getPath().getPathId(), FlowPathStatus.ACTIVE);
+                flowPathRepository.updateStatus(
+                        stateMachine.getProtectedReversePath().getPath().getPathId(), FlowPathStatus.ACTIVE);
             }
 
             flowRepository.updateStatus(flowId, FlowStatus.UP);

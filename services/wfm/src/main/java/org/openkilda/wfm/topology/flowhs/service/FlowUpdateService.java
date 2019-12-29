@@ -89,7 +89,7 @@ public class FlowUpdateService {
 
         String eventKey = commandContext.getCorrelationId();
         if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 

@@ -17,12 +17,12 @@ package org.openkilda.messaging.info.rule;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-@Builder
-public class FlowSetFieldAction {
+public class FlowSetFieldAction implements Serializable {
 
     @JsonProperty("key")
     private String fieldName;
@@ -30,7 +30,9 @@ public class FlowSetFieldAction {
     private String fieldValue;
 
     @JsonCreator
-    public FlowSetFieldAction(@JsonProperty("key") String fieldName, @JsonProperty("value") String fieldValue) {
+    public FlowSetFieldAction(
+            @JsonProperty("key") String fieldName,
+            @JsonProperty("value") String fieldValue) {
         this.fieldName = fieldName;
         this.fieldValue = fieldValue;
     }

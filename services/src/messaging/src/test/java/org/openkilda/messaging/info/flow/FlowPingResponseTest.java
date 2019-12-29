@@ -32,11 +32,11 @@ public class FlowPingResponseTest implements StringSerializer {
         NetworkEndpoint endpointAlpha = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
         NetworkEndpoint endpointBeta = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10);
         UniFlowPingResponse forward = new UniFlowPingResponse(
-                new Ping((short) 0x100, endpointAlpha, endpointBeta),
+                new Ping((short) 0x100, 0, endpointAlpha, endpointBeta),
                 new PingMeters(1L, 2L, 3L),
                 null);
         UniFlowPingResponse reverse = new UniFlowPingResponse(
-                new Ping((short) 0x200, endpointBeta, endpointAlpha),
+                new Ping((short) 0x200, 0, endpointBeta, endpointAlpha),
                 new PingMeters(3L, 2L, 1L),
                 null);
 

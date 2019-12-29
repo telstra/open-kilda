@@ -197,6 +197,11 @@ public class FlowResourcesManager {
         });
     }
 
+    public Optional<EncapsulationResources> getEncapsulationResources(
+            PathId pathId, FlowEncapsulationType encapsulationType) {
+        return getEncapsulationResources(pathId, null, encapsulationType);
+    }
+
     /**
      * Get allocated encapsulation resources of the flow path.
      */

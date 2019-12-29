@@ -68,8 +68,8 @@ public class FlowServiceTest {
         String firstFlowId = "bulk-flow-1";
         String secondFlowId = "bulk-flow-2";
 
-        FlowEndpointV2 firstEndpoint = new FlowEndpointV2(new SwitchId("ff:00"), 1, 1);
-        FlowEndpointV2 secondEndpoint = new FlowEndpointV2(new SwitchId("ff:01"), 2, 2);
+        FlowEndpointV2 firstEndpoint = new FlowEndpointV2(new SwitchId("ff:00"), 1, 1, 0);
+        FlowEndpointV2 secondEndpoint = new FlowEndpointV2(new SwitchId("ff:01"), 2, 2, 0);
 
         SwapFlowPayload firstFlowPayload = SwapFlowPayload.builder()
                 .flowId(firstFlowId)

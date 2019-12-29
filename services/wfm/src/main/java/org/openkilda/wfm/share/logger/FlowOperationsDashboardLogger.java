@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.logger;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -24,9 +25,12 @@ import org.openkilda.reporting.AbstractDashboardLogger;
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
 
@@ -202,15 +206,22 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a flow-update event.
      */
-    public void onFlowUpdate(String flowId, SwitchId srcSwitch, int srcPort, int srcVlan,
-                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth) {
+    public void onFlowUpdate(
+            String flowId,
+            SwitchId srcSwitch, int srcPort, int srcVlan, int srcInnerVlan,
+            SwitchId destSwitch, int destPort, int destVlan, int destInnerVlan,
+            String diverseFlowId, long bandwidth) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-update");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
-        invokeLogger(Level.INFO, String.format("Update the flow %s with: source %s_%d_%d, destination %s_%d_%d, "
-                        + "diverse flowId %s, bandwidth %d", flowId, srcSwitch, srcPort, srcVlan,
-                destSwitch, destPort, destVlan, diverseFlowId, bandwidth), data);
+        String sourceEndpoint = formatEndpoint(
+                srcSwitch, srcPort, srcVlan, srcInnerVlan);
+        String destEndpoint = formatEndpoint(
+                destSwitch, destPort, destVlan, destInnerVlan);
+        invokeLogger(Level.INFO, String.format(
+                "Update the flow %s with: source %s, destination %s, diverse flowId %s, bandwidth %d",
+                flowId, sourceEndpoint, destEndpoint, diverseFlowId, bandwidth), data);
     }
 
     /**
@@ -345,5 +356,20 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("failure-reason", failureReason);
         invokeLogger(
                 Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
+    }
+
+    private String formatEndpoint(SwitchId swId, int port, int outerVlanId, int innerVlanId) {
+        List<Integer> portAndEncapsulation = new ArrayList<>(3);
+        portAndEncapsulation.add(port);
+        for (int vlanId : new Integer[] {outerVlanId, innerVlanId}) {
+            if (FlowEndpoint.isVlanIdSet(vlanId)) {
+                portAndEncapsulation.add(vlanId);
+            }
+        }
+
+        return String.format(
+                "%s_%s", swId, portAndEncapsulation.stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(":")));
     }
 }

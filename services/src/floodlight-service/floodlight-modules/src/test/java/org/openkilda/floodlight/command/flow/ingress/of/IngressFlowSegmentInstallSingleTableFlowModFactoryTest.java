@@ -23,7 +23,12 @@ import org.projectfloodlight.openflow.types.TableId;
 public class IngressFlowSegmentInstallSingleTableFlowModFactoryTest
         extends IngressFlowSegmentInstallFlowModFactoryTest {
     @Override
-    TableId getTargetTableId() {
+    TableId getTargetIngressTableId() {
+        return TableId.ZERO;
+    }
+
+    @Override
+    TableId getTargetPreIngressTableId() {
         return TableId.ZERO;
     }
 

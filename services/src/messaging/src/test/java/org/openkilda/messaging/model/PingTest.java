@@ -25,7 +25,7 @@ public class PingTest implements ObjectSerializer {
     @Test
     public void serializeLoop() throws Exception {
         Ping origin = new Ping(
-                (short) 0x100,
+                (short) 0x100, 0,
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10));
 
@@ -36,24 +36,5 @@ public class PingTest implements ObjectSerializer {
                 String.format("%s object have been mangled in serialisation/deserialization loop",
                         origin.getClass().getName()),
                 origin, decoded);
-    }
-
-    @Test
-    public void sourceVlanValues() {
-        final NetworkEndpoint source = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
-        final NetworkEndpoint dest = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10);
-        Ping ping;
-
-        ping = new Ping(null, source, dest);
-        Assert.assertNull(ping.getSourceVlanId());
-
-        ping = new Ping((short) -1, source, dest);
-        Assert.assertNull(ping.getSourceVlanId());
-
-        ping = new Ping((short) 0, source, dest);
-        Assert.assertNull(ping.getSourceVlanId());
-
-        ping = new Ping((short) 1, source, dest);
-        Assert.assertEquals(1, (short) ping.getSourceVlanId());
     }
 }

@@ -210,8 +210,9 @@ public class SimpleSwitchRuleConverter {
         if (flowEntry.getInstructions() != null) {
             if (flowEntry.getInstructions().getApplyActions() != null) {
                 FlowApplyActions applyActions = flowEntry.getInstructions().getApplyActions();
-                rule.setOutVlan(Optional.ofNullable(applyActions.getFieldAction())
+                rule.setOutVlan(applyActions.getFieldActions().stream()
                         .filter(action -> VLAN_VID.equals(action.getFieldName()))
+                        .findFirst()
                         .map(FlowSetFieldAction::getFieldValue)
                         .map(NumberUtils::toInt)
                         .orElse(NumberUtils.INTEGER_ZERO));
