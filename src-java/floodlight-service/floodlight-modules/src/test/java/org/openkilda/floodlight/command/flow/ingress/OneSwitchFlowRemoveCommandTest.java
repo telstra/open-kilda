@@ -33,11 +33,11 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
     private static final FlowEndpoint endpointEgressDefaultPort = new FlowEndpoint(
             endpointIngressZeroVlan.getSwitchId(),
             IngressCommandRemoveTest.endpointEgressZeroVlan.getPortNumber(),
-            IngressCommandRemoveTest.endpointEgressZeroVlan.getVlanId());
+            IngressCommandRemoveTest.endpointEgressZeroVlan.getOuterVlanId());
     private static final FlowEndpoint endpointEgressSingleVlan = new FlowEndpoint(
-            endpointIngressOneVlan.getSwitchId(),
-            IngressCommandRemoveTest.endpointEgressOneVlan.getPortNumber(),
-            IngressCommandRemoveTest.endpointEgressOneVlan.getVlanId());
+            endpointIngressSingleVlan.getSwitchId(),
+            IngressCommandRemoveTest.endpointEgressSingleVlan.getPortNumber(),
+            IngressCommandRemoveTest.endpointEgressSingleVlan.getOuterVlanId());
 
     @Override
     protected OneSwitchFlowRemoveCommand makeCommand(

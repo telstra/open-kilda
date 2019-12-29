@@ -15,28 +15,25 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
+import org.openkilda.wfm.share.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
@@ -54,31 +51,25 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
         Collection<FlowSegmentRequestFactory> factories = new ArrayList<>();
 
+        Flow flow = getFlow(stateMachine.getFlowId());
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-            Flow flow = oldForward.getFlow();
+            FlowPathSnapshot oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+            FlowPathSnapshot oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
             factories.addAll(commandBuilder.buildAll(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
-            FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-            Flow flow = oldForward.getFlow();
+            FlowPathSnapshot oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
+            FlowPathSnapshot oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             factories.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getRemoveCommands();
-        for (FlowSegmentRequestFactory factory : factories) {
-            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
-            // TODO ensure no conflicts
-            requestsStorage.put(request.getCommandId(), factory);
-            stateMachine.getCarrier().sendSpeakerRequest(request);
-        }
-
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
+        stateMachine.getRemoveCommands().clear();
+        SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), factories, stateMachine.getRemoveCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
         stateMachine.getRetriedCommands().clear();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");

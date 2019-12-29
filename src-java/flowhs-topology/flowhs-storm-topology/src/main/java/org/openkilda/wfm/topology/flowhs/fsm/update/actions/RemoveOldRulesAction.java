@@ -18,16 +18,15 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
@@ -49,18 +48,16 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(oldEncapsulationType);
 
-        Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
-        FlowPath oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-        oldPrimaryForward.setFlow(flow);
-        FlowPath oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-        oldPrimaryReverse.setFlow(flow);
+        final Flow flow = getFlow(stateMachine.getFlowId());
+        FlowPathSnapshot oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+        FlowPathSnapshot oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAll(
                 stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse,
                 getSpeakerRequestBuildContext(stateMachine)));
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
-            FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+            FlowPathSnapshot oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
+            FlowPathSnapshot oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }

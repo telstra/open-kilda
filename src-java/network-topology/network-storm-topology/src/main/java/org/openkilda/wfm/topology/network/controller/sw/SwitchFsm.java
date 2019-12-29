@@ -407,7 +407,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         SwitchProperties switchProperties = switchPropertiesResult.orElseGet(() ->
                 SwitchProperties.builder()
                         .switchObj(sw)
-                        .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                         .multiTable(multiTable)
                         .build());
         switchPropertiesRepository.createOrUpdate(switchProperties);

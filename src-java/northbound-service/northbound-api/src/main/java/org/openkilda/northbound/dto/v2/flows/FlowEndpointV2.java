@@ -32,6 +32,12 @@ public class FlowEndpointV2 {
     private SwitchId switchId;
     private Integer portNumber;
     private int vlanId;
+    private int innerVlanId;
     @NonNull
     private DetectConnectedDevicesV2 detectConnectedDevices;
+
+    public FlowEndpointV2(SwitchId switchId, Integer portNumber, int vlanId) {
+        // FIXME
+        this(switchId, portNumber, vlanId, 0);
+    }
 }

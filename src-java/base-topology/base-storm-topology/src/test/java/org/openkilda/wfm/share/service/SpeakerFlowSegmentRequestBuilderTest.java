@@ -43,12 +43,17 @@ import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import com.google.common.collect.ImmutableList;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,13 +77,14 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
     private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
 
     private SpeakerFlowSegmentRequestBuilder target;
+    // TODO(surabujin): there is no more requests for persistent object in target code, so tests can be reworked too
     private TransitVlanRepository vlanRepository;
 
     @Before
     public void setUp() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager,
                 configurationProvider.getConfiguration(FlowResourcesConfig.class));
-        target = new SpeakerFlowSegmentRequestBuilder(resourcesManager);
+        target = new SpeakerFlowSegmentRequestBuilder();
         vlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
     }
 
@@ -88,14 +94,19 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
         Flow flow = buildFlow(srcSwitch, 1, 0, destSwitch, 2, 0, 0);
+        FlowPath forwardPath = flow.getForwardPath();
+        FlowPath reversePath = flow.getReversePath();
         setSegmentsWithoutTransitSwitches(
-                Objects.requireNonNull(flow.getForwardPath()), Objects.requireNonNull(flow.getReversePath()));
+                Objects.requireNonNull(forwardPath), Objects.requireNonNull(reversePath));
 
-        List<FlowSegmentRequestFactory> commands = target.buildAllExceptIngress(COMMAND_CONTEXT, flow);
+        List<FlowSegmentRequestFactory> commands = target.buildAllExceptIngress(
+                COMMAND_CONTEXT, flow,
+                buildFlowPathSnapshot(forwardPath, reversePath, FlowEncapsulationType.TRANSIT_VLAN),
+                buildFlowPathSnapshot(reversePath, forwardPath, FlowEncapsulationType.TRANSIT_VLAN));
         assertEquals(2, commands.size());
 
-        verifyForwardEgressRequest(flow, commands.get(0).makeInstallRequest(commandIdGenerator.generate()));
-        verifyReverseEgressRequest(flow, commands.get(1).makeInstallRequest(commandIdGenerator.generate()));
+        verifyForwardEgressRequest(flow, makeInstallRequest(commands.get(0)));
+        verifyReverseEgressRequest(flow, makeInstallRequest(commands.get(1)));
     }
 
     @Test
@@ -104,17 +115,22 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         Switch destSwitch = Switch.builder().switchId(SWITCH_3).build();
 
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0);
+        FlowPath forwardPath = flow.getForwardPath();
+        FlowPath reversePath = flow.getReversePath();
         setSegmentsWithTransitSwitches(
-                Objects.requireNonNull(flow.getForwardPath()), Objects.requireNonNull(flow.getReversePath()));
+                Objects.requireNonNull(forwardPath), Objects.requireNonNull(reversePath));
 
-        List<FlowSegmentRequestFactory> commands = target.buildAllExceptIngress(COMMAND_CONTEXT, flow);
+        List<FlowSegmentRequestFactory> commands = target.buildAllExceptIngress(
+                COMMAND_CONTEXT, flow,
+                buildFlowPathSnapshot(forwardPath, reversePath, FlowEncapsulationType.TRANSIT_VLAN),
+                buildFlowPathSnapshot(reversePath, forwardPath, FlowEncapsulationType.TRANSIT_VLAN));
         assertEquals(4, commands.size());
 
-        verifyForwardTransitRequest(flow, SWITCH_2, commands.get(0).makeInstallRequest(commandIdGenerator.generate()));
-        verifyForwardEgressRequest(flow, commands.get(1).makeInstallRequest(commandIdGenerator.generate()));
+        verifyForwardTransitRequest(flow, SWITCH_2, makeInstallRequest(commands.get(0)));
+        verifyForwardEgressRequest(flow, makeInstallRequest(commands.get(1)));
 
-        verifyReverseTransitRequest(flow, SWITCH_2, commands.get(2).makeInstallRequest(commandIdGenerator.generate()));
-        verifyReverseEgressRequest(flow, commands.get(3).makeInstallRequest(commandIdGenerator.generate()));
+        verifyReverseTransitRequest(flow, SWITCH_2, makeInstallRequest(commands.get(2)));
+        verifyReverseEgressRequest(flow, makeInstallRequest(commands.get(3)));
     }
 
     @Test
@@ -131,13 +147,17 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
     public void shouldCreateOneSwitchFlow() {
         Switch sw = Switch.builder().switchId(SWITCH_1).build();
         Flow flow = buildFlow(sw, 1, 10, sw, 2, 12, 1000);
+        FlowPath forwardPath = flow.getForwardPath();
+        FlowPath reversePath = flow.getReversePath();
         List<FlowSegmentRequestFactory> commands = target.buildAll(
-                COMMAND_CONTEXT, flow, flow.getForwardPath(), flow.getReversePath());
+                COMMAND_CONTEXT, flow,
+                buildFlowPathSnapshot(forwardPath, reversePath, FlowEncapsulationType.TRANSIT_VLAN),
+                buildFlowPathSnapshot(reversePath, forwardPath, FlowEncapsulationType.TRANSIT_VLAN));
 
         assertEquals(2, commands.size());
 
-        verifyForwardOneSwitchRequest(flow, commands.get(0).makeInstallRequest(commandIdGenerator.generate()));
-        verifyReverseOneSwitchRequest(flow, commands.get(1).makeInstallRequest(commandIdGenerator.generate()));
+        verifyForwardOneSwitchRequest(flow, makeInstallRequest(commands.get(0)));
+        verifyReverseOneSwitchRequest(flow, makeInstallRequest(commands.get(1)));
     }
 
     private void commonIngressCommandTest(int bandwidth) {
@@ -145,14 +165,19 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, bandwidth);
+        FlowPath forwardPath = flow.getForwardPath();
+        FlowPath reversePath = flow.getReversePath();
         setSegmentsWithoutTransitSwitches(
-                Objects.requireNonNull(flow.getForwardPath()), Objects.requireNonNull(flow.getReversePath()));
+                Objects.requireNonNull(forwardPath), Objects.requireNonNull(reversePath));
 
-        List<FlowSegmentRequestFactory> commands = target.buildIngressOnly(COMMAND_CONTEXT, flow);
+        List<FlowSegmentRequestFactory> commands = target.buildIngressOnly(
+                COMMAND_CONTEXT, flow,
+                buildFlowPathSnapshot(forwardPath, reversePath, FlowEncapsulationType.TRANSIT_VLAN),
+                buildFlowPathSnapshot(reversePath, forwardPath, FlowEncapsulationType.TRANSIT_VLAN));
         assertEquals(2, commands.size());
 
-        verifyForwardIngressRequest(flow, commands.get(0).makeInstallRequest(commandIdGenerator.generate()));
-        verifyReverseIngressRequest(flow, commands.get(1).makeInstallRequest(commandIdGenerator.generate()));
+        verifyForwardIngressRequest(flow, makeInstallRequest(commands.get(0)));
+        verifyReverseIngressRequest(flow, makeInstallRequest(commands.get(1)));
     }
 
     private IngressFlowSegmentRequest verifyForwardIngressRequest(Flow flow, FlowSegmentRequest rawRequest) {
@@ -375,14 +400,38 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         reverse.setSegments(ImmutableList.of(switch3ToSwitch2, switch2ToSwitch1));
     }
 
+    private FlowPathSnapshot buildFlowPathSnapshot(
+            FlowPath path, FlowPath oppositePath, FlowEncapsulationType encapsulationType) {
+        if (path == null) {
+            return null;
+        }
+
+        EncapsulationResources encapsulationResources;
+        if (encapsulationType == FlowEncapsulationType.TRANSIT_VLAN) {
+            Iterator<TransitVlan> vlan = vlanRepository.findByPathId(path.getPathId(), oppositePath.getPathId())
+                    .iterator();
+            Assert.assertTrue(vlan.hasNext());
+            encapsulationResources = TransitVlanEncapsulation.builder().transitVlan(vlan.next()).build();
+        } else {
+            throw new IllegalArgumentException(String.format("Unsupported encapsulation type %s", encapsulationType));
+        }
+
+        FlowResources.PathResources pathResources = FlowResources.PathResources.builder()
+                .encapsulationResources(encapsulationResources)
+                .build();
+        return FlowPathSnapshot.builder(path)
+                .resources(pathResources)
+                .build();
+    }
+
     private FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, Cookie cookie) {
         PathId forwardPathId = new PathId(UUID.randomUUID().toString());
-        TransitVlan forwardVlan = TransitVlan.builder()
+        TransitVlan transitVlan = TransitVlan.builder()
                 .flowId(flow.getFlowId())
                 .pathId(forwardPathId)
                 .vlan(vlanFactory.next())
                 .build();
-        vlanRepository.createOrUpdate(forwardVlan);
+        vlanRepository.createOrUpdate(transitVlan);
         return FlowPath.builder()
                 .flow(flow)
                 .bandwidth(flow.getBandwidth())
@@ -416,5 +465,10 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
                 flow, flow.getDestSwitch(), flow.getSrcSwitch(), Cookie.buildReverseCookie(rawCookie)));
 
         return flow;
+    }
+
+    private FlowSegmentRequest makeInstallRequest(FlowSegmentRequestFactory requestFactory) {
+        return requestFactory.makeInstallRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("no request produced"));
     }
 }

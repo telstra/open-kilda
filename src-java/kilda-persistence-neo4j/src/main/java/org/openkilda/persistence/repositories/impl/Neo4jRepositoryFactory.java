@@ -30,6 +30,7 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SharedOfFlowRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -70,6 +71,11 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public FlowMeterRepository createFlowMeterRepository() {
         return new Neo4jFlowMeterRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public SharedOfFlowRepository createSharedOfFlowRepository() {
+        return new Neo4jSharedOfFlowRepository(sessionFactory, transactionManager);
     }
 
     @Override

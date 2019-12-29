@@ -63,8 +63,8 @@ public class OneSwitchFlowRemoveCommand extends OneSwitchFlowCommand {
     }
 
     @Override
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
         if (removeSharedRulesContext != null) {
             if (removeSharedRulesContext.isRemoveCustomerCatchRule()) {
                 ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());

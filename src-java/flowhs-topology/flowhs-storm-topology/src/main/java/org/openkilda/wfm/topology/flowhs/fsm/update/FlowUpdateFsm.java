@@ -235,9 +235,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
             builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_INGRESS_RULES)

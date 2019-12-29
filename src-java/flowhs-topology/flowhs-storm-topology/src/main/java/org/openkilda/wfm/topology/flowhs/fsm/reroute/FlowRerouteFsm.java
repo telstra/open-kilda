@@ -193,7 +193,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
                     .on(Event.NEXT)
-                    .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
+                    .perform(new PostResourceAllocationAction(persistenceManager));
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
                     .on(Event.NO_PATH_FOUND);
             builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)

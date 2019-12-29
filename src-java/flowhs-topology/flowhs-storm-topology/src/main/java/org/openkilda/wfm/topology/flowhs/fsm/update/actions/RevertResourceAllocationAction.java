@@ -70,16 +70,16 @@ public class RevertResourceAllocationAction extends
             FlowPath newPrimaryReverse = null;
             if (stateMachine.getNewPrimaryForwardPath() != null
                     && stateMachine.getNewPrimaryReversePath() != null) {
-                newPrimaryForward = getFlowPath(stateMachine.getNewPrimaryForwardPath());
-                newPrimaryReverse = getFlowPath(stateMachine.getNewPrimaryReversePath());
+                newPrimaryForward = getFlowPath(stateMachine.getNewPrimaryForwardPath()).getPath();
+                newPrimaryReverse = getFlowPath(stateMachine.getNewPrimaryReversePath()).getPath();
             }
 
             FlowPath newProtectedForward = null;
             FlowPath newProtectedReverse = null;
             if (stateMachine.getNewProtectedForwardPath() != null
                     && stateMachine.getNewProtectedReversePath() != null) {
-                newProtectedForward = getFlowPath(stateMachine.getNewProtectedForwardPath());
-                newProtectedReverse = getFlowPath(stateMachine.getNewProtectedReversePath());
+                newProtectedForward = getFlowPath(stateMachine.getNewProtectedForwardPath()).getPath();
+                newProtectedReverse = getFlowPath(stateMachine.getNewProtectedReversePath()).getPath();
             }
 
             flowPathRepository.lockInvolvedSwitches(Stream.of(newPrimaryForward, newPrimaryReverse,

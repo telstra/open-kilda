@@ -45,9 +45,20 @@ def address_create():
     payload.pop('idnr', None)
 
     address = extract_payload_fields(payload, 'address')[0]
-    vlan_tag = payload.pop('vlan', 0)
-    if vlan_tag:
-        iface = context.service.vlan.allocate_stack(vlan_tag).iface
+    origin_vlan_tag = vlan_tag = payload.pop('vlan', None)
+    if vlan_tag is None:
+        vlan_tag = ()
+    elif not isinstance(vlan_tag, collections.Sequence):
+        vlan_tag = (vlan_tag, )
+    else:
+        vlan_tag = tuple(vlan_tag)
+    filtered_vlan_tag = tuple(x for x in vlan_tag if x)
+    if filtered_vlan_tag and filtered_vlan_tag != vlan_tag:
+        return bottle.HTTPError(
+            400, 'Invalid vlan field value(s): {}'.format(origin_vlan_tag))
+
+    if filtered_vlan_tag:
+        iface = context.service.vlan.allocate_stack(filtered_vlan_tag).iface
     else:
         iface = None
 

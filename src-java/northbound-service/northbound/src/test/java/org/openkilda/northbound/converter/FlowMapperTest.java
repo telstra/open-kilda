@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
@@ -64,12 +65,17 @@ public class FlowMapperTest {
         FlowRequest flowRequest = flowMapper.toFlowRequest(flowRequestV2);
 
         assertEquals(FLOW_ID, flowRequest.getFlowId());
-        assertEquals(SRC_SWITCH_ID, flowRequest.getSourceSwitch());
-        assertEquals(SRC_PORT, flowRequest.getSourcePort());
-        assertEquals(SRC_VLAN, flowRequest.getSourceVlan());
-        assertEquals(DST_SWITCH_ID, flowRequest.getDestinationSwitch());
-        assertEquals(DST_PORT, flowRequest.getDestinationPort());
-        assertEquals(DST_VLAN, flowRequest.getDestinationVlan());
+
+        FlowEndpoint sourceEndpoint = flowRequest.getSource();
+        assertEquals(SRC_SWITCH_ID, sourceEndpoint.getSwitchId());
+        assertEquals(SRC_PORT, sourceEndpoint.getPortNumber());
+        assertEquals(SRC_VLAN, sourceEndpoint.getOuterVlanId());
+
+        FlowEndpoint destEndpoint = flowRequest.getDestination();
+        assertEquals(DST_SWITCH_ID, destEndpoint.getSwitchId());
+        assertEquals(DST_PORT, destEndpoint.getPortNumber());
+        assertEquals(DST_VLAN, destEndpoint.getOuterVlanId());
+
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, flowRequest.getEncapsulationType());
         assertEquals(DESCRIPTION, flowRequest.getDescription());
         assertEquals(BANDWIDTH, flowRequest.getBandwidth());

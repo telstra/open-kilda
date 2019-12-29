@@ -26,7 +26,6 @@ import org.openkilda.model.SwitchFeature;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -40,22 +39,22 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
     private final IngressFlowSegmentCommand command;
 
     public IngressFlowSegmentInstallFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentCommand command, IOFSwitch sw,
+            OfFlowModBuilderFactory.Factory flowModFactoryFactory, IngressFlowSegmentCommand command, IOFSwitch sw,
             Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+        super(flowModFactoryFactory, command, sw, features);
         this.command = command;
     }
 
     @Override
-    protected List<OFAction> makeTransformActions() {
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
         List<OFAction> actions = new ArrayList<>();
         FlowTransitEncapsulation encapsulation = command.getEncapsulation();
         switch (encapsulation.getType()) {
             case TRANSIT_VLAN:
-                actions.addAll(makeVlanEncapsulationTransformActions());
+                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack));
                 break;
             case VXLAN:
-                actions.addAll(makeVxLanEncapsulationTransformActions());
+                actions.addAll(makeVxLanEncapsulationTransformActions(vlanStack));
                 break;
             default:
                 throw new NotImplementedEncapsulationException(
@@ -64,17 +63,15 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
         return actions;
     }
 
-    private List<OFAction> makeVlanEncapsulationTransformActions() {
-        List<OFAction> actions = new ArrayList<>();
-        if (! FlowEndpoint.isVlanIdSet(command.getEndpoint().getVlanId())) {
-            actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
-        }
-        actions.add(OfAdapter.INSTANCE.setVlanIdAction(of, command.getEncapsulation().getId()));
-        return actions;
+    private List<OFAction> makeVlanEncapsulationTransformActions(List<Integer> vlanStack) {
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(
+                of, vlanStack, FlowEndpoint.makeVlanStack(command.getEncapsulation().getId()));
     }
 
-    private List<OFAction> makeVxLanEncapsulationTransformActions() {
-        List<OFAction> actions = new ArrayList<>();
+    private List<OFAction> makeVxLanEncapsulationTransformActions(List<Integer> vlanStack) {
+        // restore vlan stack (if it was touched)
+        List<OFAction> actions = new ArrayList<>(
+                OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, command.getEndpoint().getVlanStack()));
 
         MacAddress l2src = MacAddress.of(sw.getId());
         actions.add(of.actions().buildNoviflowPushVxlanTunnel()

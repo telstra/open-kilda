@@ -29,9 +29,10 @@ import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
 
+import java.util.Optional;
 import java.util.UUID;
 
-public class IngressFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
+public class IngressFlowSegmentRequestFactory extends AbstractFlowSegmentRequestFactory {
     private final IngressFlowSegmentRequest requestBlank;
 
     @Builder
@@ -50,18 +51,18 @@ public class IngressFlowSegmentRequestFactory extends FlowSegmentRequestFactory 
     }
 
     @Override
-    public IngressFlowSegmentRequest makeInstallRequest(UUID commandId) {
-        return new IngressFlowSegmentInstallRequest(requestBlank, commandId);
+    public Optional<IngressFlowSegmentRequest> makeInstallRequest(UUID commandId) {
+        return Optional.of(new IngressFlowSegmentInstallRequest(requestBlank, commandId));
     }
 
     @Override
-    public IngressFlowSegmentRequest makeRemoveRequest(UUID commandId) {
-        return new IngressFlowSegmentRemoveRequest(requestBlank, commandId);
+    public Optional<IngressFlowSegmentRequest> makeRemoveRequest(UUID commandId) {
+        return Optional.of(new IngressFlowSegmentRemoveRequest(requestBlank, commandId));
     }
 
     @Override
-    public IngressFlowSegmentRequest makeVerifyRequest(UUID commandId) {
-        return new IngressFlowSegmentVerifyRequest(requestBlank, commandId);
+    public Optional<IngressFlowSegmentRequest> makeVerifyRequest(UUID commandId) {
+        return Optional.of(new IngressFlowSegmentVerifyRequest(requestBlank, commandId));
     }
 
     private static class RequestBlank extends IngressFlowSegmentRequest {

@@ -18,9 +18,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
@@ -36,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
@@ -55,8 +57,8 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
         // Reinstall old ingress rules that may be overridden by new ingress.
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+            FlowPathSnapshot oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+            FlowPathSnapshot oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
             installCommands.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
@@ -64,33 +66,37 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         stateMachine.getIngressCommands().clear();  // need to clean previous requests
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), installCommands, stateMachine.getIngressCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getIngressCommands().keySet());
 
 
 
         // Remove possible installed segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+            FlowPathSnapshot newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
+            FlowPathSnapshot newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
             removeCommands.addAll(commandBuilder.buildAll(
                     stateMachine.getCommandContext(), flow, newForward, newReverse,
                     getSpeakerRequestBuildContext(stateMachine)));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
+            FlowPathSnapshot newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
+            FlowPathSnapshot newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             removeCommands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
+        stateMachine.getRemoveCommands().clear();
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), removeCommands, stateMachine.getRemoveCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
 
-        // report
+        Set<UUID> pendingRequests = stateMachine.getPendingCommands();
+        pendingRequests.clear();
+        pendingRequests.addAll(stateMachine.getIngressCommands().keySet());
+        pendingRequests.addAll(stateMachine.getRemoveCommands().keySet());
+
         stateMachine.getRetriedCommands().clear();
 
+        // report
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
     }

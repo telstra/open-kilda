@@ -32,6 +32,7 @@ public class OneSwitchFlowRemoveCommandJsonTest extends OneSwitchFlowCommandJson
 
     @Override
     protected OneSwitchFlowRequest makeRequest(OneSwitchFlowRequestFactory factory) {
-        return factory.makeRemoveRequest(commandIdGenerator.generate());
+        return factory.makeRemoveRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

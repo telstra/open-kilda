@@ -31,6 +31,7 @@ public class EgressFlowSegmentInstallCommandJsonTest extends EgressFlowSegmentCo
 
     @Override
     protected EgressFlowSegmentRequest makeRequest(EgressFlowSegmentRequestFactory blank) {
-        return blank.makeInstallRequest(commandIdGenerator.generate());
+        return blank.makeInstallRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

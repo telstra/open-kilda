@@ -25,10 +25,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -56,10 +53,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
-        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
-        IslRepository islRepository = repositoryFactory.createIslRepository();
-        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository, switchPropertiesRepository);
+        flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
 
@@ -69,10 +63,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         String flowId = stateMachine.getFlowId();
         RequestedFlow targetFlow = context.getTargetFlow();
 
-        dashboardLogger.onFlowUpdate(flowId,
-                targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
-                targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
-                targetFlow.getDiverseFlowId(), targetFlow.getBandwidth());
+        dashboardLogger.onFlowUpdate(
+                flowId, targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
+                targetFlow.getSrcInnerVlan(), targetFlow.getDestSwitch(), targetFlow.getDestPort(),
+                targetFlow.getDestVlan(), targetFlow.getDestInnerVlan(), targetFlow.getDiverseFlowId(),
+                targetFlow.getBandwidth());
 
         boolean isOperationAllowed = featureTogglesRepository.find()
                 .map(FeatureToggles::getUpdateFlowEnabled).orElse(Boolean.FALSE);
@@ -96,19 +91,19 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
                     "Couldn't add one-switch flow into diverse group");
         }
 
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
+        Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
             if (targetFlow.getDiverseFlowId() != null) {
                 Flow diverseFlow = getFlow(targetFlow.getDiverseFlowId());
                 if (diverseFlow.isOneSwitchFlow()) {
                     throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
-                            "Couldn't create diverse group with one-switch flow");
+                                                      "Couldn't create diverse group with one-switch flow");
                 }
             }
 
             Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        format("Flow %s is in progress now", flowId));
+                                                  format("Flow %s is in progress now", flowId));
             }
 
             // Keep it, just in case we have to revert it.
@@ -119,6 +114,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         });
 
         stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.UPDATE);
+        stateMachine.setSharedOfFlowManager(makeSharedOfFlowManager(flow));
 
         return Optional.empty();
     }

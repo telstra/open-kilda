@@ -35,12 +35,13 @@ import java.util.Set;
 
 public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory {
     public IngressInstallFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentBase command, IOFSwitch sw,
+            OfFlowModBuilderFactory.Factory flowModFactoryFactory, IngressFlowSegmentBase command, IOFSwitch sw,
             Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+        super(flowModFactoryFactory.actionAdd(), command, sw, features);
     }
 
-    protected List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+    protected List<OFInstruction> makeForwardMessageInstructions(
+            OFFactory of, MeterId effectiveMeterId, List<Integer> vlanStack) {
         List<OFAction> applyActions = new ArrayList<>();
         List<OFInstruction> instructions = new ArrayList<>();
 
@@ -48,7 +49,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
             OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
         }
 
-        applyActions.addAll(makeTransformActions());
+        applyActions.addAll(makeTransformActions(vlanStack));
         applyActions.add(makeOutputAction());
 
         instructions.add(of.instructions().applyActions(applyActions));
@@ -60,7 +61,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         return instructions;
     }
 
-    protected abstract List<OFAction> makeTransformActions();
+    protected abstract List<OFAction> makeTransformActions(List<Integer> vlanStack);
 
     protected abstract List<OFInstruction> makeMetadataInstructions();
 

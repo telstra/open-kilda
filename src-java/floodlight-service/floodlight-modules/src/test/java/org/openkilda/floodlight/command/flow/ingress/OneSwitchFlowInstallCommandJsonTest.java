@@ -31,6 +31,7 @@ public class OneSwitchFlowInstallCommandJsonTest extends OneSwitchFlowCommandJso
 
     @Override
     protected OneSwitchFlowRequest makeRequest(OneSwitchFlowRequestFactory factory) {
-        return factory.makeInstallRequest(commandIdGenerator.generate());
+        return factory.makeInstallRequest(commandIdGenerator.generate())
+                .orElseThrow(() -> new AssertionError("request not produced"));
     }
 }

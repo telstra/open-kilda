@@ -643,6 +643,13 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
 
     private FlowEntry getFlowEntry(long cookie, int srcPort, int srcVlan, String dstPort, int tunnelId,
                                    FlowSetFieldAction flowSetFieldAction, Long meterId, boolean tunnelIdIngressRule) {
+        FlowApplyActions.FlowApplyActionsBuilder applyActions = FlowApplyActions.builder()
+                .flowOutput(dstPort)
+                .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null);
+        if (flowSetFieldAction != null) {
+            applyActions.fieldAction(flowSetFieldAction);
+        }
+
         return FlowEntry.builder()
                 .cookie(cookie)
                 .packetCount(7)
@@ -654,20 +661,13 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                         .tunnelId(!tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
                         .build())
                 .instructions(FlowInstructions.builder()
-                        .applyActions(FlowApplyActions.builder()
-                                .flowOutput(dstPort)
-                                .fieldAction(flowSetFieldAction)
-                                .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
-                                .build())
+                        .applyActions(applyActions.build())
                         .goToMeter(meterId)
                         .build())
                 .build();
     }
 
     private FlowSetFieldAction getFlowSetFieldAction(int dstVlan) {
-        return FlowSetFieldAction.builder()
-                .fieldName("vlan_vid")
-                .fieldValue(String.valueOf(dstVlan))
-                .build();
+        return new FlowSetFieldAction("vlan_vid", String.valueOf(dstVlan));
     }
 }

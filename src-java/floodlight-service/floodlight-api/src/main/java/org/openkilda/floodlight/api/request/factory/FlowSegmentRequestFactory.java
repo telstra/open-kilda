@@ -19,36 +19,21 @@ import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
+import java.util.Optional;
 import java.util.UUID;
 
-public abstract class FlowSegmentRequestFactory {
-    protected static UUID dummyCommandId = new UUID(0L, 0L);
+public interface FlowSegmentRequestFactory {
+    Optional<? extends FlowSegmentRequest> makeInstallRequest(UUID commandId);
 
-    private final FlowSegmentRequest requestBlank;
+    Optional<? extends FlowSegmentRequest> makeRemoveRequest(UUID commandId);
 
-    protected FlowSegmentRequestFactory(FlowSegmentRequest requestBlank) {
-        this.requestBlank = requestBlank;
-    }
+    Optional<? extends FlowSegmentRequest> makeVerifyRequest(UUID commandId);
 
-    public abstract FlowSegmentRequest makeInstallRequest(UUID commandId);
+    UUID getCommandId();
 
-    public abstract FlowSegmentRequest makeRemoveRequest(UUID commandId);
+    SwitchId getSwitchId();
 
-    public abstract FlowSegmentRequest makeVerifyRequest(UUID commandId);
+    String getFlowId();
 
-    public UUID getCommandId() {
-        return requestBlank.getCommandId();
-    }
-
-    public SwitchId getSwitchId() {
-        return requestBlank.getSwitchId();
-    }
-
-    public String getFlowId() {
-        return requestBlank.getMetadata().getFlowId();
-    }
-
-    public Cookie getCookie() {
-        return requestBlank.getMetadata().getCookie();
-    }
+    Cookie getCookie();
 }

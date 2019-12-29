@@ -30,6 +30,7 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -48,12 +49,16 @@ public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreat
 
         Map<UUID, SpeakerCommandObserver> pendingRequests = stateMachine.getPendingCommands();
         for (FlowSegmentRequestFactory factory : stateMachine.getSentCommands()) {
-            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
+            Optional<? extends FlowSegmentRequest> potentialRequest = factory.makeRemoveRequest(
+                    commandIdGenerator.generate());
+            if (! potentialRequest.isPresent()) {
+                continue;
+            }
 
+            FlowSegmentRequest request = potentialRequest.get();
             SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, request);
             commandObserver.start();
 
-            // TODO ensure no conflicts
             pendingRequests.put(request.getCommandId(), commandObserver);
         }
 

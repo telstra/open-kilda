@@ -27,9 +27,10 @@ import org.openkilda.model.MeterConfig;
 
 import lombok.Builder;
 
+import java.util.Optional;
 import java.util.UUID;
 
-public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
+public class OneSwitchFlowRequestFactory extends AbstractFlowSegmentRequestFactory {
     private final OneSwitchFlowRequest requestBlank;
 
     @Builder
@@ -46,18 +47,18 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     }
 
     @Override
-    public OneSwitchFlowRequest makeInstallRequest(UUID commandId) {
-        return new OneSwitchFlowInstallRequest(requestBlank, commandId);
+    public Optional<OneSwitchFlowRequest> makeInstallRequest(UUID commandId) {
+        return Optional.of(new OneSwitchFlowInstallRequest(requestBlank, commandId));
     }
 
     @Override
-    public OneSwitchFlowRequest makeRemoveRequest(UUID commandId) {
-        return new OneSwitchFlowRemoveRequest(requestBlank, commandId);
+    public Optional<OneSwitchFlowRequest> makeRemoveRequest(UUID commandId) {
+        return Optional.of(new OneSwitchFlowRemoveRequest(requestBlank, commandId));
     }
 
     @Override
-    public OneSwitchFlowRequest makeVerifyRequest(UUID commandId) {
-        return new OneSwitchFlowVerifyRequest(requestBlank, commandId);
+    public Optional<OneSwitchFlowRequest> makeVerifyRequest(UUID commandId) {
+        return Optional.of(new OneSwitchFlowVerifyRequest(requestBlank, commandId));
     }
 
     private static class RequestBlank extends OneSwitchFlowRequest {

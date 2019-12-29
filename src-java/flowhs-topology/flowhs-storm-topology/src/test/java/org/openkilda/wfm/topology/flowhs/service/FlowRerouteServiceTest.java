@@ -234,8 +234,14 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
 
+        // discard all requests produced by flow update process till now
+        requests.clear();
+
         service.handleTimeout(currentRequestKey);
 
+        // after timeout flow update process will rollback all changes, i.e. it will produce "remove" requests for
+        // possible installed segments and "install" requests for possible removed segments. So until this request are
+        // processed flow update process will not finished.
         FlowSegmentRequest speakerRequest;
         while ((speakerRequest = requests.poll()) != null) {
             produceAsyncResponse(service, speakerRequest);

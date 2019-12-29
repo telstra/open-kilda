@@ -18,40 +18,30 @@ package org.openkilda.messaging.command.flow;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
-import org.openkilda.model.SwitchId;
+import org.openkilda.model.FlowEndpoint;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 
-@Value
 @JsonNaming(value = SnakeCaseStrategy.class)
+@Value
+@EqualsAndHashCode(callSuper = true)
 @Builder(toBuilder = true)
 public class FlowRequest extends CommandData {
 
     @NonNull
     String flowId;
 
-    @JsonProperty("src_switch")
-    SwitchId sourceSwitch;
+    @JsonProperty("source")
+    FlowEndpoint source;
 
-    @JsonProperty("dst_switch")
-    SwitchId destinationSwitch;
-
-    @JsonProperty("src_port")
-    int sourcePort;
-
-    @JsonProperty("dst_port")
-    int destinationPort;
-
-    @JsonProperty("src_vlan")
-    int sourceVlan;
-
-    @JsonProperty("dst_vlan")
-    int destinationVlan;
+    @JsonProperty("destination")
+    FlowEndpoint destination;
 
     long bandwidth;
     boolean ignoreBandwidth;

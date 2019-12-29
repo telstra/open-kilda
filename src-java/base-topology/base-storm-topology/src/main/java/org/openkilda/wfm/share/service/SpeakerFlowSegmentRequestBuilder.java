@@ -15,29 +15,27 @@
 
 package org.openkilda.wfm.share.service;
 
-import static java.lang.String.format;
-
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.floodlight.api.request.factory.EgressFlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.request.factory.IngressFlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.request.factory.OneSwitchFlowRequestFactory;
+import org.openkilda.floodlight.api.request.factory.SharedIngressFlowSegmentOuterVlanMatchRequestFactory;
 import org.openkilda.floodlight.api.request.factory.TransitFlowSegmentRequestFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.MeterConfig;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.SharedOfFlow;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
+import org.openkilda.wfm.share.model.FlowSegmentRequestFactoryFilter;
+import org.openkilda.wfm.share.model.SharedOfFlowStatus;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 
 import com.fasterxml.uuid.Generators;
@@ -51,99 +49,50 @@ import java.util.UUID;
 
 public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
-    private final FlowResourcesManager resourcesManager;
-
-    public SpeakerFlowSegmentRequestBuilder(FlowResourcesManager resourcesManager) {
-        this.resourcesManager = resourcesManager;
-    }
 
     @Override
     public List<FlowSegmentRequestFactory> buildAll(
-            CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
-        return buildAll(context, flow, forwardPath, reversePath, SpeakerRequestBuildContext.builder().build());
-    }
-
-    @Override
-    public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath forwardPath,
-                                                    FlowPath reversePath,
-                                                    SpeakerRequestBuildContext speakerRequestBuildContext) {
-        return makeRequests(context, flow, forwardPath, reversePath, true, true, true, speakerRequestBuildContext);
-    }
-
-    @Override
-    public List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, @NonNull Flow flow) {
-        return buildAllExceptIngress(context, flow, flow.getForwardPath(), flow.getReversePath());
+            CommandContext context, Flow flow, FlowPathSnapshot path, FlowPathSnapshot oppositePath) {
+        return makeRequests(context, flow, path, oppositePath, true, true, true);
     }
 
     @Override
     public List<FlowSegmentRequestFactory> buildAllExceptIngress(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
-        return makeRequests(context, flow, path, oppositePath, false, true, true,
-                SpeakerRequestBuildContext.builder().build());
-    }
-
-    @Override
-    public List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, @NonNull Flow flow) {
-        return buildIngressOnly(context, flow, flow.getForwardPath(), flow.getReversePath());
+            CommandContext context, Flow flow, FlowPathSnapshot path, FlowPathSnapshot oppositePath) {
+        return makeRequests(context, flow, path, oppositePath, false, true, true);
     }
 
     @Override
     public List<FlowSegmentRequestFactory> buildIngressOnly(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
-        return makeRequests(context, flow, path, oppositePath, true, false, false,
-                SpeakerRequestBuildContext.builder().build());
+            CommandContext context, Flow flow, FlowPathSnapshot path, FlowPathSnapshot oppositePath) {
+        return makeRequests(context, flow, path, oppositePath, true, false, false);
     }
 
     private List<FlowSegmentRequestFactory> makeRequests(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
-            boolean doIngress, boolean doTransit, boolean doEgress,
-            SpeakerRequestBuildContext speakerRequestBuildContext) {
-        if (path == null) {
-            path = oppositePath;
-            oppositePath = null;
-            speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                    .removeCustomerPortRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortRule())
-                    .removeOppositeCustomerPortRule(speakerRequestBuildContext.isRemoveCustomerPortRule())
-                    .removeCustomerPortLldpRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule())
-                    .removeOppositeCustomerPortLldpRule(speakerRequestBuildContext.isRemoveCustomerPortLldpRule())
-                    .removeCustomerPortArpRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortArpRule())
-                    .removeOppositeCustomerPortArpRule(speakerRequestBuildContext.isRemoveCustomerPortArpRule())
-                    .build();
+            CommandContext context, Flow flow, FlowPathSnapshot pathSnapshot,
+            FlowPathSnapshot oppositePathSnapshot,
+            boolean doIngress, boolean doTransit, boolean doEgress) {
+        if (pathSnapshot == null) {
+            pathSnapshot = oppositePathSnapshot;
+            oppositePathSnapshot = null;
         }
-        if (path == null) {
+        if (pathSnapshot == null) {
             throw new IllegalArgumentException("At least one flow path must be not null");
         }
 
-        FlowTransitEncapsulation encapsulation = null;
-        if (!flow.isOneSwitchFlow()) {
-            encapsulation = getEncapsulation(
-                    flow.getEncapsulationType(), path.getPathId(),
-                    oppositePath != null ? oppositePath.getPathId() : null);
+        List<FlowSegmentRequestFactory> requests = new ArrayList<>(
+                makePathRequests(flow, pathSnapshot, context, doIngress, doTransit, doEgress));
+        if (oppositePathSnapshot != null) {
+            requests.addAll(makePathRequests(flow, oppositePathSnapshot, context, doIngress, doTransit, doEgress));
         }
 
-        List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(path, context, encapsulation,
-                doIngress, doTransit, doEgress, new RemoveSharedRulesContext(
-                        speakerRequestBuildContext.isRemoveCustomerPortRule(),
-                        speakerRequestBuildContext.isRemoveCustomerPortLldpRule(),
-                        speakerRequestBuildContext.isRemoveCustomerPortArpRule())));
-        if (oppositePath != null) {
-            if (!flow.isOneSwitchFlow()) {
-                encapsulation = getEncapsulation(
-                        flow.getEncapsulationType(), oppositePath.getPathId(), path.getPathId());
-            }
-            requests.addAll(makePathRequests(oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
-                    new RemoveSharedRulesContext(
-                            speakerRequestBuildContext.isRemoveOppositeCustomerPortRule(),
-                            speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule(),
-                            speakerRequestBuildContext.isRemoveOppositeCustomerPortArpRule())));
-        }
         return requests;
     }
 
     private List<FlowSegmentRequestFactory> makePathRequests(
-            @NonNull FlowPath path, CommandContext context, FlowTransitEncapsulation encapsulation,
-            boolean doIngress, boolean doTransit, boolean doEgress, RemoveSharedRulesContext removeSharedRulesContext) {
-        final Flow flow = path.getFlow();
+            @NonNull Flow flow, @NonNull FlowPathSnapshot pathSnapshot, CommandContext context,
+            boolean doIngress, boolean doTransit, boolean doEgress) {
+        final FlowPath path = pathSnapshot.getPath();
         final FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
         final FlowSideAdapter egressSide = FlowSideAdapter.makeEgressAdapter(flow, path);
 
@@ -153,12 +102,12 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         for (PathSegment segment : path.getSegments()) {
             if (lastSegment == null) {
                 if (doIngress) {
-                    requests.add(makeIngressRequest(context, path, encapsulation, ingressSide, segment, egressSide,
-                            removeSharedRulesContext));
+                    requests.addAll(makeSharedIngressRequests(context, flow, pathSnapshot));
+                    requests.add(makeIngressRequest(context, pathSnapshot, ingressSide, segment, egressSide));
                 }
             } else {
                 if (doTransit) {
-                    requests.add(makeTransitRequest(context, path, encapsulation, lastSegment, segment));
+                    requests.add(makeTransitRequest(context, flow, pathSnapshot, lastSegment, segment));
                 }
             }
             lastSegment = segment;
@@ -166,44 +115,43 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         if (lastSegment != null) {
             if (doEgress) {
-                requests.add(makeEgressRequest(context, path, encapsulation, lastSegment, egressSide, ingressSide));
+                requests.add(makeEgressRequest(context, pathSnapshot, lastSegment, egressSide, ingressSide));
             }
         } else if (doIngress) {
             // one switch flow (path without path segments)
-            requests.add(makeOneSwitchRequest(context, path, ingressSide, egressSide, removeSharedRulesContext));
+            requests.addAll(makeSharedIngressRequests(context, flow, pathSnapshot));
+            requests.add(makeOneSwitchRequest(context, pathSnapshot, ingressSide, egressSide));
         }
 
         return requests;
     }
 
     private FlowSegmentRequestFactory makeIngressRequest(
-            CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
-            FlowSideAdapter flowSide, PathSegment segment, FlowSideAdapter egressFlowSide,
-            RemoveSharedRulesContext removeSharedRulesContext) {
+            CommandContext context, FlowPathSnapshot pathSnapshot,
+            FlowSideAdapter flowSide, PathSegment segment, FlowSideAdapter egressFlowSide) {
         PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
+        FlowPath path = pathSnapshot.getPath();
 
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
+        String flowId = flowSide.getFlow().getFlowId();
         return IngressFlowSegmentRequestFactory.builder()
                 .messageContext(messageContext)
-                .metadata(makeMetadata(path, ensureEqualMultiTableFlag(
+                .metadata(new FlowSegmentMetadata(flowId, path.getCookie(), ensureEqualMultiTableFlag(
                         flowSide.isMultiTableSegment(), segmentSide.isMultiTable(),
                         String.format("First flow(id:%s, path:%s) segment and flow level multi-table flag values are "
-                                              + "incompatible to each other - flow(%s) != segment(%s)",
-                                      path.getFlow().getFlowId(), path.getPathId(),
-                                      flowSide.isMultiTableSegment(), segmentSide.isMultiTable()))))
+                                        + "incompatible to each other - flow(%s) != segment(%s)",
+                                flowId, path.getPathId(), flowSide.isMultiTableSegment(), segmentSide.isMultiTable()))))
                 .endpoint(flowSide.getEndpoint())
                 .meterConfig(getMeterConfig(path))
                 .egressSwitchId(egressFlowSide.getEndpoint().getSwitchId())
                 .islPort(segmentSide.getEndpoint().getPortNumber())
-                .encapsulation(encapsulation)
-                .removeSharedRulesContext(removeSharedRulesContext)
+                .encapsulation(makeEncapsulation(pathSnapshot))
                 .build();
     }
 
     private FlowSegmentRequestFactory makeTransitRequest(
-            CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
-            PathSegment ingress, PathSegment egress) {
+            CommandContext context, Flow flow, FlowPathSnapshot pathSnapshot, PathSegment ingress, PathSegment egress) {
         final PathSegmentSide inboundSide = makePathSegmentDestSide(ingress);
         final PathSegmentSide outboundSide = makePathSegmentSourceSide(egress);
 
@@ -213,57 +161,59 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         assert ingressEndpoint.getSwitchId().equals(egressEndpoint.getSwitchId())
                 : "Only neighbor segments can be used for for transit segment request creation";
 
+        String flowId = flow.getFlowId();
+        FlowPath path = pathSnapshot.getPath();
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
         return TransitFlowSegmentRequestFactory.builder()
                 .messageContext(messageContext)
                 .switchId(ingressEndpoint.getSwitchId())
-                .metadata(makeMetadata(path, ensureEqualMultiTableFlag(
+                .metadata(new FlowSegmentMetadata(flowId, path.getCookie(), ensureEqualMultiTableFlag(
                         inboundSide.isMultiTable(), outboundSide.isMultiTable(),
                         String.format(
-                                "Flow(id:%s, path:%s) have incompatible multi-table flags between segments %s "
-                                        + "and %s", path.getFlow().getFlowId(), path.getPathId(), ingress,
-                                egress))))
+                                "Flow(id:%s, path:%s) have incompatible multi-table flags between segments %s and %s",
+                                flowId, path.getPathId(), ingress, egress))))
                 .ingressIslPort(ingressEndpoint.getPortNumber())
                 .egressIslPort(egressEndpoint.getPortNumber())
-                .encapsulation(encapsulation)
+                .encapsulation(makeEncapsulation(pathSnapshot))
                 .build();
     }
 
     private FlowSegmentRequestFactory makeEgressRequest(
-            CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
+            CommandContext context, FlowPathSnapshot pathSnapshot,
             PathSegment segment, FlowSideAdapter flowSide, FlowSideAdapter ingressFlowSide) {
-        Flow flow = flowSide.getFlow();
         PathSegmentSide segmentSide = makePathSegmentDestSide(segment);
 
+        FlowPath path = pathSnapshot.getPath();
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
-
+        String flowId = flowSide.getFlow().getFlowId();
         return EgressFlowSegmentRequestFactory.builder()
                 .messageContext(messageContext)
-                .metadata(makeMetadata(path, ensureEqualMultiTableFlag(
+                .metadata(new FlowSegmentMetadata(flowId, path.getCookie(), ensureEqualMultiTableFlag(
                         segmentSide.isMultiTable(), flowSide.isMultiTableSegment(),
                         String.format("Last flow(id:%s, path:%s) segment and flow level multi-table flags value are "
                                               + "incompatible to each other - segment(%s) != flow(%s)",
-                                      flow.getFlowId(), path.getPathId(), segmentSide.isMultiTable(),
+                                      flowId, path.getPathId(), segmentSide.isMultiTable(),
                                       flowSide.isMultiTableSegment()))))
                 .endpoint(flowSide.getEndpoint())
                 .ingressEndpoint(ingressFlowSide.getEndpoint())
                 .islPort(segmentSide.getEndpoint().getPortNumber())
-                .encapsulation(encapsulation)
+                .encapsulation(makeEncapsulation(pathSnapshot))
                 .build();
     }
 
     private FlowSegmentRequestFactory makeOneSwitchRequest(
-            CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
-            RemoveSharedRulesContext removeSharedRulesContext) {
+            CommandContext context, FlowPathSnapshot pathSnapshot,
+            FlowSideAdapter ingressSide, FlowSideAdapter egressSide) {
         Flow flow = ingressSide.getFlow();
+        FlowPath path = pathSnapshot.getPath();
 
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
         return OneSwitchFlowRequestFactory.builder()
                 .messageContext(messageContext)
-                .metadata(makeMetadata(path, ensureEqualMultiTableFlag(
+                .metadata(new FlowSegmentMetadata(flow.getFlowId(), path.getCookie(), ensureEqualMultiTableFlag(
                         ingressSide.isMultiTableSegment(), egressSide.isMultiTableSegment(),
                         String.format("Flow(id:%s) have incompatible for one-switch flow per-side multi-table flags - "
                                               + "src(%s) != dst(%s)",
@@ -271,8 +221,50 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .endpoint(ingressSide.getEndpoint())
                 .meterConfig(getMeterConfig(path))
                 .egressEndpoint(egressSide.getEndpoint())
-                .removeSharedRulesContext(removeSharedRulesContext)
                 .build();
+    }
+
+    private List<FlowSegmentRequestFactory> makeSharedIngressRequests(
+            CommandContext commandContext, Flow flow, FlowPathSnapshot pathSnapshot) {
+        List<FlowSegmentRequestFactory> requestFactories = new ArrayList<>();
+
+        FlowSideAdapter ingressFlowSide = FlowSideAdapter.makeIngressAdapter(flow, pathSnapshot.getPath());
+        if (pathSnapshot.getSharedIngressSegmentOuterVlanMatchStatus() != null) {
+            requestFactories.add(makeSharedIngressSegmentOuterVlanMatchRequest(
+                    commandContext, ingressFlowSide, pathSnapshot.getSharedIngressSegmentOuterVlanMatchStatus()));
+        }
+
+        return requestFactories;
+    }
+
+    private FlowSegmentRequestFactory makeSharedIngressSegmentOuterVlanMatchRequest(
+            CommandContext context, FlowSideAdapter ingressFlowSide, SharedOfFlowStatus sharedOfFlowStatus) {
+        UUID commandId = commandIdGenerator.generate();
+        SharedOfFlow sharedOfFlow = sharedOfFlowStatus.getSharedFlow();
+        MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
+        FlowSegmentMetadata metadata = new FlowSegmentMetadata(
+                ingressFlowSide.getFlow().getFlowId(), sharedOfFlow.getCookie(), ingressFlowSide.isMultiTableSegment());
+        return addSharedRequestFactoryFilter(
+                SharedIngressFlowSegmentOuterVlanMatchRequestFactory.builder()
+                        .messageContext(messageContext)
+                        .metadata(metadata)
+                        .endpoint(ingressFlowSide.getEndpoint())
+                        .build(),
+                sharedOfFlowStatus);
+    }
+
+    private FlowSegmentRequestFactory addSharedRequestFactoryFilter(
+            FlowSegmentRequestFactory target, SharedOfFlowStatus sharedOfFlowStatus) {
+        FlowSegmentRequestFactoryFilter.FlowSegmentRequestFactoryFilterBuilder filter = FlowSegmentRequestFactoryFilter
+                .builder(target);
+        filter.allowVerify(true);
+
+        if (sharedOfFlowStatus.getForeignReferencesCount() < 1) {
+            filter.allowCreate(true);
+            filter.allowRemove(true);
+        }
+
+        return filter.build();
     }
 
     private boolean ensureEqualMultiTableFlag(boolean ingress, boolean egress, String errorMessage) {
@@ -294,11 +286,6 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 segment.isDestWithMultiTable());
     }
 
-    private FlowSegmentMetadata makeMetadata(FlowPath path, boolean isMultitable) {
-        Flow flow = path.getFlow();
-        return new FlowSegmentMetadata(flow.getFlowId(), path.getCookie(), isMultitable);
-    }
-
     @Value
     private static class PathSegmentSide {
         private final IslEndpoint endpoint;
@@ -313,12 +300,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         return new MeterConfig(path.getMeterId(), path.getBandwidth());
     }
 
-    private FlowTransitEncapsulation getEncapsulation(
-            FlowEncapsulationType encapsulation, PathId pathId, PathId oppositePathId) {
-        EncapsulationResources resources = resourcesManager
-                .getEncapsulationResources(pathId, oppositePathId, encapsulation)
-                .orElseThrow(() -> new IllegalStateException(format(
-                        "No encapsulation resources found for flow path %s (opposite: %s)", pathId, oppositePathId)));
+    private FlowTransitEncapsulation makeEncapsulation(FlowPathSnapshot pathSnapshot) {
+        EncapsulationResources resources = pathSnapshot.getResources()
+                .getEncapsulationResources();
         return new FlowTransitEncapsulation(resources.getTransitEncapsulationId(), resources.getEncapsulationType());
     }
 }

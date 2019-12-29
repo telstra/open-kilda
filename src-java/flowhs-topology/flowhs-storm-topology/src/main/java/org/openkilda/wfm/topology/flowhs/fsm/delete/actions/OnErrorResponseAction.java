@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.SpeakerRequestRepeatAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class OnErrorResponseAction extends HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public class OnErrorResponseAction extends SpeakerRequestRepeatAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     private final int speakerCommandRetriesLimit;
 
     public OnErrorResponseAction(int speakerCommandRetriesLimit) {
@@ -62,7 +62,7 @@ public class OnErrorResponseAction extends HistoryRecordingAction<FlowDeleteFsm,
                     "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. Retrying (attempt %d)",
                     failedCommandId, errorResponse.getSwitchId(), response.getCookie(), errorResponse, retries));
 
-            stateMachine.getCarrier().sendSpeakerRequest(failedCommand.makeRemoveRequest(failedCommandId));
+            stateMachine.getCarrier().sendSpeakerRequest(makeRemoveRequest(failedCommand, failedCommandId));
         } else {
             stateMachine.getPendingCommands().remove(failedCommandId);
 

@@ -168,10 +168,10 @@ public class PersistenceDummyEntityFactory {
                 .flowId(idProvider.provideFlowId())
                 .srcSwitch(fetchOrCreateSwitch(source.getSwitchId()))
                 .srcPort(source.getPortNumber())
-                .srcVlan(source.getVlanId())
+                .srcVlan(source.getOuterVlanId())
                 .destSwitch(fetchOrCreateSwitch(dest.getSwitchId()))
                 .destPort(dest.getPortNumber())
-                .destVlan(dest.getVlanId())
+                .destVlan(dest.getOuterVlanId())
                 .build();
         txManager.doInTransaction(() -> {
             makeFlowPathPair(flow, source, dest, pathHint);

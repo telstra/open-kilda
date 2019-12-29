@@ -50,20 +50,36 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
         super.tearDown();
     }
 
-    public void expectMakeOuterVlanOnlyForwardMessage(IngressFlowSegmentBase command, MeterId effectiveMeterId) {
-        EasyMock.expect(flowModFactoryMock.makeOuterVlanOnlyForwardMessage(effectiveMeterId))
+    void expectMakeOuterOnlyVlanForwardMessage(IngressFlowSegmentBase command, MeterId effectiveMeterId) {
+        EasyMock.expect(flowModFactoryMock.makeOuterOnlyVlanForwardMessage(effectiveMeterId))
                 .andAnswer(() -> {
                     MeterId meterId = (MeterId) getCurrentArguments()[0];
-                    return extractFlowModFactory(command).makeOuterVlanOnlyForwardMessage(meterId);
+                    return extractFlowModFactory(command).makeOuterOnlyVlanForwardMessage(meterId);
                 });
     }
 
-    public void expectMakeDefaultPortFlowMatchAndForwardMessage(
-            IngressFlowSegmentBase command, MeterId effectiveMeterId) {
-        EasyMock.expect(flowModFactoryMock.makeDefaultPortFlowMatchAndForwardMessage(effectiveMeterId))
+    void expectMakeSingleVlanForwardMessage(IngressFlowSegmentBase command, MeterId effectiveMeterId) {
+        EasyMock.expect(flowModFactoryMock.makeSingleVlanForwardMessage(effectiveMeterId))
                 .andAnswer(() -> {
                     MeterId meterId = (MeterId) getCurrentArguments()[0];
-                    return extractFlowModFactory(command).makeDefaultPortFlowMatchAndForwardMessage(meterId);
+                    return extractFlowModFactory(command).makeSingleVlanForwardMessage(meterId);
+                });
+    }
+
+    void expectMakeDoubleVlanForwardMessage(IngressFlowSegmentBase command, MeterId effectiveMeterId) {
+        EasyMock.expect(flowModFactoryMock.makeDoubleVlanForwardMessage(effectiveMeterId))
+                .andAnswer(() -> {
+                    MeterId meterId = (MeterId) getCurrentArguments()[0];
+                    return extractFlowModFactory(command).makeDoubleVlanForwardMessage(meterId);
+                });
+    }
+
+    void expectMakeDefaultPortForwardMessage(
+            IngressFlowSegmentBase command, MeterId effectiveMeterId) {
+        EasyMock.expect(flowModFactoryMock.makeDefaultPortForwardMessage(effectiveMeterId))
+                .andAnswer(() -> {
+                    MeterId meterId = (MeterId) getCurrentArguments()[0];
+                    return extractFlowModFactory(command).makeDefaultPortForwardMessage(meterId);
                 });
     }
 
@@ -72,7 +88,13 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
                 .andAnswer(() -> extractFlowModFactory(command).makeCustomerPortSharedCatchMessage());
     }
 
-    public void expectNoMoreOfMessages() {
+    void expectMakeOldForwardingRemoveMessage(IngressFlowSegmentBase command) {
+        int offset = FlowEndpoint.isVlanIdSet(command.getEndpoint().getOuterVlanId()) ? 0 : -1;
+        EasyMock.expect(flowModFactoryMock.makeOldForwardingRemoveMessage(offset))
+                .andAnswer(() -> extractFlowModFactory(command).makeOldForwardingRemoveMessage(offset));
+    }
+
+    void expectNoMoreOfMessages() {
         EasyMock.replay(flowModFactoryMock);
     }
 
@@ -83,7 +105,7 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
         return ((IFlowModFactoryOverride) command).getRealFlowModFactory();
     }
 
-    protected void executeCommand(IngressFlowSegmentBase command, int writeCount) throws Exception {
+    void executeCommand(IngressFlowSegmentBase command, int writeCount) throws Exception {
         switchFeaturesSetup(sw, true);
         if (command.getMeterConfig() != null) {
             expectMeter();

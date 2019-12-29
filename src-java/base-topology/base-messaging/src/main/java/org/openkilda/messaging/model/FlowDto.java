@@ -125,6 +125,12 @@ public class FlowDto implements Serializable {
     @JsonProperty("dst_vlan")
     private int destinationVlan;
 
+    @JsonProperty("src_inner_vlan")
+    private int sourceInnerVlan;
+
+    @JsonProperty("dst_inner_vlan")
+    private int destinationInnerVlan;
+
     @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesDto detectConnectedDevices
             = new DetectConnectedDevicesDto();
@@ -216,6 +222,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("dst_port") final int destinationPort,
                    @JsonProperty("src_vlan") final int sourceVlan,
                    @JsonProperty("dst_vlan") final int destinationVlan,
+                   @JsonProperty("src_inner_vlan") final int sourceInnerVlan,
+                   @JsonProperty("dst_inner_vlan") final int destinationInnerVlan,
                    @JsonProperty("meter_id") final Integer meterId,
                    @JsonProperty("transit_encapsulation_id") final int transitEncapsulationId,
                    @JsonProperty("state") FlowState state,
@@ -242,6 +250,8 @@ public class FlowDto implements Serializable {
         this.destinationPort = destinationPort;
         this.sourceVlan = sourceVlan;
         this.destinationVlan = destinationVlan;
+        this.sourceInnerVlan = sourceInnerVlan;
+        this.destinationInnerVlan = destinationInnerVlan;
         this.transitEncapsulationId = transitEncapsulationId;
         this.meterId = meterId;
         this.state = state;
@@ -292,6 +302,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
+                0, 0,
                 null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null, null);
     }
 
@@ -310,6 +321,8 @@ public class FlowDto implements Serializable {
                 input.getDestination().getPortNumber(),
                 input.getSource().getVlanId(),
                 input.getDestination().getVlanId(),
+                input.getSource().getInnerVlanId(),
+                input.getDestination().getInnerVlanId(),
                 null, 0, null, null,
                 input.getMaxLatency(),
                 input.getPriority(),

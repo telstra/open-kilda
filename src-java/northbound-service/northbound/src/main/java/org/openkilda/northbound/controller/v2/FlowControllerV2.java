@@ -15,7 +15,11 @@
 
 package org.openkilda.northbound.controller.v2;
 
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
@@ -34,7 +38,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/v2/flows")
@@ -47,6 +53,7 @@ public class FlowControllerV2 extends BaseController {
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
+        verifyRequest(flow);
         return flowService.createFlow(flow);
     }
 
@@ -55,6 +62,7 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
                                                         @RequestBody FlowRequestV2 flow) {
+        verifyRequest(flow);
         return flowService.updateFlow(flow);
     }
 
@@ -78,7 +86,6 @@ public class FlowControllerV2 extends BaseController {
         return flowService.deleteFlowV2(flowId);
     }
 
-
     /**
      * Bulk update for flow.
      */
@@ -87,5 +94,32 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(@RequestBody SwapFlowEndpointPayload payload) {
         return flowService.swapFlowEndpoint(payload);
+    }
+
+    private void verifyRequest(FlowRequestV2 request) {
+        String[] defects = Stream.concat(
+                verifyFlowEndpoint(request.getSource(), "source"),
+                verifyFlowEndpoint(request.getDestination(), "destination"))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toArray(String[]::new);
+
+        if (defects.length != 0) {
+            String errorDescription = "Errors:\n" + String.join("\n", defects);
+            throw new MessageException(ErrorType.DATA_INVALID, "Invalid request payload", errorDescription);
+        }
+    }
+
+    private Stream<Optional<String>> verifyFlowEndpoint(FlowEndpointV2 endpoint, String name) {
+        return Stream.of(
+                verifyEndpointVlanId(name, "vlanId", endpoint.getVlanId()),
+                verifyEndpointVlanId(name, "innerVlanId", endpoint.getInnerVlanId()));
+    }
+
+    private Optional<String> verifyEndpointVlanId(String endpoint, String field, int value) {
+        if (! Utils.validateVlanRange(value)) {
+            return Optional.of(String.format("Invalid %s value %d into %s endpoint", field, value, endpoint));
+        }
+        return Optional.empty();
     }
 }

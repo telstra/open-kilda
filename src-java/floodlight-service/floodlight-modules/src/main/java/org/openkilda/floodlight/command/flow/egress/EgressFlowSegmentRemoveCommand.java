@@ -16,10 +16,7 @@
 package org.openkilda.floodlight.command.flow.egress;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelSingleTableMessageBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -34,14 +31,6 @@ import java.util.List;
 import java.util.UUID;
 
 public class EgressFlowSegmentRemoveCommand extends EgressFlowSegmentCommand {
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModDelMultiTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        } else {
-            return new OfFlowModDelSingleTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        }
-    }
-
     @JsonCreator
     public EgressFlowSegmentRemoveCommand(
             @JsonProperty("message_context") MessageContext context,
@@ -53,7 +42,7 @@ public class EgressFlowSegmentRemoveCommand extends EgressFlowSegmentCommand {
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation) {
         super(
                 context, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation,
-                makeFlowModBuilderFactory(metadata.isMultiTable()));
+                OfFlowModBuilderFactory.makeFactory().actionDelete());
     }
 
     @Override

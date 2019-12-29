@@ -32,7 +32,6 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMet
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -40,34 +39,22 @@ abstract class OneSwitchFlowInstallFlowModFactory extends IngressInstallFlowModF
     private final OneSwitchFlowCommand command;
 
     public OneSwitchFlowInstallFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, OneSwitchFlowCommand command, IOFSwitch sw,
+            OfFlowModBuilderFactory.Factory flowModFactoryFactory, OneSwitchFlowCommand command, IOFSwitch sw,
             Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+        super(flowModFactoryFactory, command, sw, features);
         this.command = command;
     }
 
     @Override
-    protected List<OFAction> makeTransformActions() {
-        List<Integer> currentVlanStack = new ArrayList<>();
-        FlowEndpoint endpoint = command.getEndpoint();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getVlanId())) {
-            currentVlanStack.add(endpoint.getVlanId());
-        }
-
-        List<Integer> desiredVlanStack = new ArrayList<>();
-        FlowEndpoint egressEndpoint = command.getEgressEndpoint();
-        if (FlowEndpoint.isVlanIdSet(egressEndpoint.getVlanId())) {
-            desiredVlanStack.add(egressEndpoint.getVlanId());
-        }
-
-        return OfAdapter.INSTANCE.makeVlanReplaceActions(of, currentVlanStack, desiredVlanStack);
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, command.getEgressEndpoint().getVlanStack());
     }
 
     @Override
     protected OFAction makeOutputAction() {
         FlowEndpoint endpoint = command.getEndpoint();
         FlowEndpoint egressEndpoint = command.getEgressEndpoint();
-        if (endpoint.getPortNumber().equals(egressEndpoint.getPortNumber())) {
+        if (endpoint.getPortNumber() == egressEndpoint.getPortNumber()) {
             return super.makeOutputAction(OFPort.IN_PORT);
         }
         return super.makeOutputAction(OFPort.of(egressEndpoint.getPortNumber()));

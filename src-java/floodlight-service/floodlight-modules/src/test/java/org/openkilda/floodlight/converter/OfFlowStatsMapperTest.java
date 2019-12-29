@@ -126,7 +126,8 @@ public class OfFlowStatsMapperTest {
         assertEquals(udpSrc.toString(), entry.getMatch().getUdpSrc());
         assertEquals(udpDst.toString(), entry.getMatch().getUdpDst());
 
-        FlowSetFieldAction flowSetFieldAction = new FlowSetFieldAction("eth_type", ethType.toString());
+        List<FlowSetFieldAction> flowSetFieldAction = Collections.singletonList(
+                new FlowSetFieldAction("eth_type", ethType.toString()));
         FlowCopyFieldAction flowCopyFieldAction = FlowCopyFieldAction.builder()
                 .bits(String.valueOf(bits))
                 .srcOffset(String.valueOf(srcOffset))

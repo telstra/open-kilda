@@ -31,7 +31,7 @@ public class PingRequestTest {
     @Test
     public void serializeLoop() throws Exception {
         Ping ping = new Ping(
-                (short) 100,
+                (short) 100, 0,
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
                 new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10));
         PingRequest origin = new PingRequest(ping);

@@ -142,6 +142,8 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
         stateMachine.setAffectedIsls(context.getAffectedIsl());
         stateMachine.setForceReroute(context.isForceReroute());
 
+        stateMachine.setSharedOfFlowManager(makeSharedOfFlowManager(flow));
+
         return Optional.empty();
     }
 

@@ -13,22 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.model;
+package org.openkilda.exception;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.model.Cookie;
 
-@Data
-@Builder
-@AllArgsConstructor
-@EqualsAndHashCode
-public class SpeakerRequestBuildContext {
-    private boolean removeCustomerPortRule;
-    private boolean removeOppositeCustomerPortRule;
-    private boolean removeCustomerPortLldpRule;
-    private boolean removeOppositeCustomerPortLldpRule;
-    private boolean removeCustomerPortArpRule;
-    private boolean removeOppositeCustomerPortArpRule;
+public class CookieTypeMismatchException extends Exception {
+    public CookieTypeMismatchException(Cookie cookie, Cookie.CookieType expected) {
+        super(String.format(
+                "Cookie type mismatch - %s expected while actual value is %s (cookie: %s)",
+                expected, cookie.getType(), cookie));
+    }
 }

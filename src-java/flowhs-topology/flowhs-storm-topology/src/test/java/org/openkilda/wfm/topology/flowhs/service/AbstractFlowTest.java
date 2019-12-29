@@ -287,12 +287,8 @@ public abstract class AbstractFlowTest extends Neo4jBasedTest {
     protected FlowRequest.FlowRequestBuilder makeRequest() {
         return FlowRequest.builder()
                 .bandwidth(1000L)
-                .sourceSwitch(flowSource.getSwitchId())
-                .sourcePort(flowSource.getPortNumber())
-                .sourceVlan(flowSource.getVlanId())
-                .destinationSwitch(flowDestination.getSwitchId())
-                .destinationPort(flowDestination.getPortNumber())
-                .destinationVlan(flowDestination.getVlanId());
+                .source(flowSource)
+                .destination(flowDestination);
     }
 
     protected PathPair makeOneSwitchPathPair() {

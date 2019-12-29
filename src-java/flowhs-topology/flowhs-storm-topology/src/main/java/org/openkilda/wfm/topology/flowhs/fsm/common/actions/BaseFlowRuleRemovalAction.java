@@ -24,10 +24,10 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
 import lombok.extern.slf4j.Slf4j;
 

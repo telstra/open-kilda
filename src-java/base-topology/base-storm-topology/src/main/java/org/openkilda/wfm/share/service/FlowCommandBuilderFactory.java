@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service;
+package org.openkilda.wfm.share.service;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.service.SpeakerFlowSegmentRequestBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 
 public class FlowCommandBuilderFactory {
     private final FlowResourcesManager resourcesManager;
@@ -36,7 +36,7 @@ public class FlowCommandBuilderFactory {
         switch (encapsulationType) {
             case TRANSIT_VLAN:
             case VXLAN:
-                return new SpeakerFlowSegmentRequestBuilder(resourcesManager);
+                return new SpeakerFlowSegmentRequestBuilder();
             default:
                 throw new UnsupportedOperationException(
                         String.format("Encapsulation type %s is not supported", encapsulationType));

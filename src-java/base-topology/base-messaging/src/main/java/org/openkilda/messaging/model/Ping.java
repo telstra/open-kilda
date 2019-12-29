@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -22,7 +23,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Value
 public class Ping implements Serializable {
@@ -37,8 +40,11 @@ public class Ping implements Serializable {
     @JsonProperty(value = "ping_id", required = true)
     private UUID pingId;
 
-    @JsonProperty("source_vlan")
-    private Short sourceVlanId;
+    @JsonProperty("ingress_vlan")
+    private int ingressVlanId;
+
+    @JsonProperty("ingress_inner_vlan")
+    private int ingressInnerVlanId;
 
     @JsonProperty(value = "source", required = true)
     private NetworkEndpoint source;
@@ -49,45 +55,40 @@ public class Ping implements Serializable {
     @JsonCreator
     public Ping(
             @JsonProperty("ping_id") UUID pingId,
-            @JsonProperty("source_vlan") Short sourceVlanId,
+            @JsonProperty("ingress_vlan") int ingressVlanId,
+            @JsonProperty("ingress_inner_vlan") int ingressInnerVlanId,
             @JsonProperty("source") NetworkEndpoint source,
             @JsonProperty("dest") NetworkEndpoint dest) {
 
         this.pingId = pingId;
 
-        if (sourceVlanId != null && sourceVlanId < 1) {
-            this.sourceVlanId = null;
-        } else {
-            this.sourceVlanId = sourceVlanId;
-        }
+        this.ingressVlanId = ingressVlanId;
+        this.ingressInnerVlanId = ingressInnerVlanId;
 
         this.source = source;
         this.dest = dest;
     }
 
-    public Ping(Short sourceVlanId, NetworkEndpoint source, NetworkEndpoint dest) {
-        this(UUID.randomUUID(), sourceVlanId, source, dest);
-    }
-
-    public Ping(FlowDto flow) {
-        this(UUID.randomUUID(), (short) flow.getSourceVlan(),
-                new NetworkEndpoint(flow.getSourceSwitch(), flow.getSourcePort()),
-                new NetworkEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()));
-    }
-
-    public Ping(Short srcVlanId, SwitchId srcSwitchId, int srsPort, SwitchId dstSwitchId, int dstPort) {
-        this(UUID.randomUUID(), srcVlanId,
-                new NetworkEndpoint(srcSwitchId, srsPort),
-                new NetworkEndpoint(dstSwitchId, dstPort));
+    public Ping(int ingressVlanId, int ingressInnerVlanId, NetworkEndpoint source, NetworkEndpoint dest) {
+        this(UUID.randomUUID(), ingressVlanId, ingressInnerVlanId, source, dest);
     }
 
     @Override
     public String toString() {
-        String sourceEndpoint = source.getDatapath().toString();
-        if (sourceVlanId != null) {
-            sourceEndpoint += String.format("-%d", sourceVlanId);
-        }
-
+        String sourceEndpoint = formatEndpoint(
+                source.getDatapath(), source.getPortNumber(),
+                FlowEndpoint.makeVlanStack(ingressVlanId, ingressInnerVlanId));
         return String.format("%s ===( ping{%s} )===> %s", sourceEndpoint, pingId, dest.getDatapath());
+    }
+
+    /**
+     * Make string representation of ping endpoint(ingress). Used mostly for logging.
+     */
+    public static String formatEndpoint(SwitchId swId, int portNumber, List<Integer> vlanStack) {
+        String endpoint = String.format("%s-%d", swId, portNumber);
+        if (!vlanStack.isEmpty()) {
+            endpoint += ":" + vlanStack.stream().map(String::valueOf).collect(Collectors.joining(":"));
+        }
+        return endpoint;
     }
 }

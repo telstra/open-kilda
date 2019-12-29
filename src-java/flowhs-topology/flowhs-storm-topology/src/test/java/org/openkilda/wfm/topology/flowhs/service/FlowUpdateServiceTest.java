@@ -238,19 +238,17 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
         verifyNorthboundSuccessResponse(carrier);
 
+        // discard all requests produced by flow update process till now
+        requests.clear();
+
         service.handleTimeout(dummyRequestKey);
 
+        // after timeout flow update process will rollback all changes, i.e. it will produce "remove" requests for
+        // possible installed segments and "install" requests for possible removed segments. So until this request are
+        // processed flow update process will not finished.
         FlowSegmentRequest speakerRequest;
         while ((speakerRequest = requests.poll()) != null) {
-            if (speakerRequest.isRemoveRequest()) {
-                service.handleAsyncResponse(dummyRequestKey, SpeakerFlowSegmentResponse.builder()
-                        .messageContext(speakerRequest.getMessageContext())
-                        .commandId(speakerRequest.getCommandId())
-                        .metadata(speakerRequest.getMetadata())
-                        .switchId(speakerRequest.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            service.handleAsyncResponse(dummyRequestKey, buildSpeakerResponse(speakerRequest));
         }
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
@@ -514,8 +512,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldSuccessfullyUpdateFlowOnSameEndpoints()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+    public void shouldSuccessfullyUpdateFlowOnSameEndpoints() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN); // TODO(surabujin): why for we forcing initial DOWN state here?
         flushFlowChanges(origin);

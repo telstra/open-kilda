@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.SpeakerRequestRepeatAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -32,7 +32,7 @@ import java.util.UUID;
 
 @Slf4j
 public class OnReceivedRemoveOrRevertResponseAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+        SpeakerRequestRepeatAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final int speakerCommandRetriesLimit;
 
     public OnReceivedRemoveOrRevertResponseAction(int speakerCommandRetriesLimit) {
@@ -76,14 +76,14 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                                     + "Retrying (attempt %d)",
                             commandId, errorResponse.getSwitchId(), removeCommand.getCookie(), errorResponse, retries));
 
-                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeRemoveRequest(commandId));
+                    stateMachine.getCarrier().sendSpeakerRequest(makeRemoveRequest(removeCommand, commandId));
                 } else {
                     stateMachine.saveErrorToHistory("Failed to re-install (revert) rule", format(
                             "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
                                     + "Retrying (attempt %d)", commandId, errorResponse.getSwitchId(),
                             installCommand.getCookie(), errorResponse, retries));
 
-                    stateMachine.getCarrier().sendSpeakerRequest(installCommand.makeInstallRequest(commandId));
+                    stateMachine.getCarrier().sendSpeakerRequest(makeInstallRequest(installCommand, commandId));
                 }
             } else {
                 stateMachine.getPendingCommands().remove(commandId);

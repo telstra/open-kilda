@@ -20,11 +20,14 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSnapshot;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.service.SharedOfFlowManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -36,12 +39,10 @@ import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Objects;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
@@ -59,11 +60,8 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
 
-        Set<PathId> protectedPaths = Arrays.stream(
-                new PathId[]{
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()})
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        SharedOfFlowManager sharedOfFlowManager = makeSharedOfFlowManager(flow);
+
         Set<PathId> processed = new HashSet<>();
         for (FlowPath path : flow.getPaths()) {
             PathId pathId = path.getPathId();
@@ -74,45 +72,20 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                     processed.add(oppositePath.getPathId());
                 }
 
-
+                FlowResources pathPairResources;
                 if (oppositePath != null) {
-                    stateMachine.getFlowResources().add(buildResources(flow, path, oppositePath));
-
-                    if (protectedPaths.contains(pathId)) {
-                        commands.addAll(commandBuilder.buildAllExceptIngress(
-                                stateMachine.getCommandContext(), flow, path, oppositePath));
-                    } else {
-                        SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                                .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
-                                .removeOppositeCustomerPortRule(
-                                        isRemoveCustomerPortSharedCatchRule(flow, oppositePath))
-                                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
-                                .removeOppositeCustomerPortLldpRule(
-                                        isRemoveCustomerPortSharedLldpCatchRule(flow, oppositePath))
-                                .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
-                                .removeOppositeCustomerPortArpRule(
-                                        isRemoveCustomerPortSharedArpCatchRule(flow, oppositePath))
-                                .build();
-                        commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
-                                path, oppositePath, speakerRequestBuildContext));
-                    }
+                    // FIXME - shared rules
+                    pathPairResources = buildResources(flow, path, oppositePath);
                 } else {
                     log.warn("No opposite path found for {}, trying to delete as unpaired path", pathId);
-
-                    stateMachine.getFlowResources().add(buildResources(flow, path, path));
-
-                    if (protectedPaths.contains(pathId)) {
-                        commands.addAll(commandBuilder.buildAllExceptIngress(
-                                stateMachine.getCommandContext(), flow, path, null));
-                    } else {
-                        SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                                .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
-                                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
-                                .build();
-                        commands.addAll(commandBuilder.buildAll(
-                                stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
-                    }
+                    // FIXME - shared rules
+                    pathPairResources = buildResources(flow, path, path);
                 }
+
+                stateMachine.getFlowResources().add(pathPairResources);
+                commands.addAll(makeSpeakerRequests(
+                        commandBuilder, sharedOfFlowManager, stateMachine.getCommandContext(),
+                        flow, path, oppositePath, pathPairResources));
             }
         }
 
@@ -158,10 +131,25 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 .build();
     }
 
-    private boolean isRemoveCustomerPortSharedCatchRule(Flow flow, FlowPath path) {
-        boolean isForward = flow.isForward(path);
-        return isRemoveCustomerPortSharedCatchRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
-                isForward ? flow.getSrcPort() : flow.getDestPort());
+    private List<FlowSegmentRequestFactory> makeSpeakerRequests(
+            FlowCommandBuilder commandBuilder, SharedOfFlowManager sharedOfFlowManager, CommandContext commandContext,
+            Flow flow, FlowPath path, FlowPath oppositePath, FlowResources resources) {
+        FlowPathSnapshot pathSnapshot = makeFlowPathOldSnapshot(
+                sharedOfFlowManager, flow, path.getPathId(), extractPathResources(resources, path));
+        FlowPathSnapshot oppositePathSnapshot = null;
+        if (oppositePath != null) {
+            oppositePathSnapshot = makeFlowPathOldSnapshot(
+                    sharedOfFlowManager, flow, oppositePath.getPathId(), extractPathResources(resources, path));
+        }
+        return commandBuilder.buildAll(commandContext, flow, pathSnapshot, oppositePathSnapshot);
+    }
+
+    private PathResources extractPathResources(FlowResources resources, FlowPath path) {
+        if (path.isForward()) {
+            return resources.getForward();
+        } else {
+            return resources.getReverse();
+        }
     }
 
     private boolean isRemoveCustomerPortSharedLldpCatchRule(Flow flow, FlowPath path) {

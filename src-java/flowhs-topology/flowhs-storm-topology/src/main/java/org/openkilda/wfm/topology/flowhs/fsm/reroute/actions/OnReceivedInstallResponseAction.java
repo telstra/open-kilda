@@ -24,7 +24,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.SpeakerRequestRepeatAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -41,7 +41,7 @@ import java.util.UUID;
 
 @Slf4j
 public class OnReceivedInstallResponseAction extends
-        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+        SpeakerRequestRepeatAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final int speakerCommandRetriesLimit;
     private FlowRepository flowRepository;
     private FlowRerouteHubCarrier carrier;
@@ -87,7 +87,7 @@ public class OnReceivedInstallResponseAction extends
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
+                stateMachine.getCarrier().sendSpeakerRequest(makeInstallRequest(command, commandId));
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

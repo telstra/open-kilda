@@ -43,12 +43,16 @@ public abstract class NotIngressFlowSegmentCommand extends FlowSegmentCommand {
 
     public NotIngressFlowSegmentCommand(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
-            int ingressIslPort, FlowTransitEncapsulation encapsulation, OfFlowModBuilderFactory flowModBuilderFactory) {
+            int ingressIslPort, FlowTransitEncapsulation encapsulation,
+            OfFlowModBuilderFactory.Factory modBuilderMetaFactory) {
         super(messageContext, switchId, commandId, metadata);
         this.ingressIslPort = ingressIslPort;
         this.encapsulation = encapsulation;
 
-        this.flowModBuilderFactory = flowModBuilderFactory;
+        this.flowModBuilderFactory = modBuilderMetaFactory
+                .multiTable(metadata.isMultiTable())
+                .basePriority(FlowSegmentCommand.FLOW_PRIORITY)
+                .make();
     }
 
     protected Match makeTransitMatch(OFFactory of) {

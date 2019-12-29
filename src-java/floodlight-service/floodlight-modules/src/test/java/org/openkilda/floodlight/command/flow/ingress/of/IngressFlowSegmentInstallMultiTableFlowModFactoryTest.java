@@ -27,8 +27,13 @@ import java.util.Optional;
 public class IngressFlowSegmentInstallMultiTableFlowModFactoryTest extends IngressFlowSegmentInstallFlowModFactoryTest {
 
     @Override
-    TableId getTargetTableId() {
+    TableId getTargetIngressTableId() {
         return TableId.of(SwitchManager.INGRESS_TABLE_ID);
+    }
+
+    @Override
+    TableId getTargetPreIngressTableId() {
+        return TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID);
     }
 
     @Override

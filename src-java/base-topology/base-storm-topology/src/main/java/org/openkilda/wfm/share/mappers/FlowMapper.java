@@ -21,7 +21,6 @@ import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -31,8 +30,6 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.TransitVlan;
-import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -55,8 +52,10 @@ public abstract class FlowMapper {
 
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
+    @Mapping(source = "srcInnerVlan", target = "sourceInnerVlan")
     @Mapping(source = "destPort", target = "destinationPort")
     @Mapping(source = "destVlan", target = "destinationVlan")
+    @Mapping(source = "destInnerVlan", target = "destinationInnerVlan")
     @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
     @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
     @Mapping(source = "status", target = "state")
@@ -216,27 +215,6 @@ public abstract class FlowMapper {
         return encapsulationType != null ? org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(
                 encapsulationType.name()) : null;
     }
-
-    private EncapsulationId convertToEncapsulationId(Flow flow, FlowPath flowPath, FlowDto flowDto) {
-        FlowEncapsulationType flowEncapsulationType = flow.getEncapsulationType();
-        EncapsulationId encapsulationId = null;
-        if (FlowEncapsulationType.TRANSIT_VLAN.equals(flowEncapsulationType)) {
-
-            encapsulationId = TransitVlan.builder()
-                    .flowId(flow.getFlowId())
-                    .pathId(flowPath.getPathId())
-                    .vlan(flowDto.getTransitEncapsulationId())
-                    .build();
-        } else if (FlowEncapsulationType.VXLAN.equals(flowEncapsulationType)) {
-            encapsulationId = Vxlan.builder()
-                    .flowId(flow.getFlowId())
-                    .pathId(flowPath.getPathId())
-                    .vni(flowDto.getTransitEncapsulationId())
-                    .build();
-        }
-        return encapsulationId;
-    }
-
 
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {
         Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();
