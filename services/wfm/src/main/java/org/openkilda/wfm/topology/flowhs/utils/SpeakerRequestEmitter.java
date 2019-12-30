@@ -49,7 +49,6 @@ public abstract class SpeakerRequestEmitter {
 
         for (FlowSegmentRequestFactory factory : factories) {
             FlowSegmentRequest request = makeRequest(factory);
-            // TODO ensure no conflicts
             requestsStorage.put(request.getCommandId(), factory);
             carrier.sendSpeakerRequest(request);
         }
