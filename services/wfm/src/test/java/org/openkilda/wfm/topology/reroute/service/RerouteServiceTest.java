@@ -21,7 +21,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
@@ -36,13 +35,18 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionCallbackWithoutResult;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -183,11 +187,21 @@ public class RerouteServiceTest {
             return null;
         }).when(pathRepository).updateStatus(any(), any());
         when(repositoryFactory.createFlowPathRepository()).thenReturn(pathRepository);
+        PathSegmentRepository pathSegmentRepository = mock(PathSegmentRepository.class);
+        when(repositoryFactory.createPathSegmentRepository()).thenReturn(pathSegmentRepository);
         MessageSender messageSender = mock(MessageSender.class);
-        RerouteService rerouteService = new RerouteService(repositoryFactory);
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        TransactionManager transactionManager = mock(TransactionManager.class);
+        doAnswer(invocation -> {
+            TransactionCallbackWithoutResult arg = invocation.getArgument(0);
+            arg.doInTransaction();
+            return null;
+        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult>any());
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        RerouteService rerouteService = new RerouteService(persistenceManager);
         rerouteService.rerouteInactiveFlows(messageSender, CORRELATION_ID,
                 REROUTE_INACTIVE_FLOWS_COMMAND);
-        verify(flowRepository).createOrUpdate(pinnedFlow);
         assertTrue(FlowStatus.UP.equals(pinnedFlow.getStatus()));
         for (FlowPath fp : pinnedFlow.getPaths()) {
             assertTrue(FlowPathStatus.ACTIVE.equals(fp.getStatus()));
@@ -213,11 +227,29 @@ public class RerouteServiceTest {
         when(flowRepository.findDownFlows())
                 .thenReturn(Collections.singletonList(pinnedFlow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+        FlowPathRepository pathRepository = mock(FlowPathRepository.class);
+        doAnswer(invocation -> {
+            PathId pathId = invocation.getArgument(0);
+            FlowPathStatus status = invocation.getArgument(1);
+            pinnedFlow.getPath(pathId).get().setStatus(status);
+            return null;
+        }).when(pathRepository).updateStatus(any(), any());
+        when(repositoryFactory.createFlowPathRepository()).thenReturn(pathRepository);
+        PathSegmentRepository pathSegmentRepository = mock(PathSegmentRepository.class);
+        when(repositoryFactory.createPathSegmentRepository()).thenReturn(pathSegmentRepository);
         MessageSender messageSender = mock(MessageSender.class);
-        RerouteService rerouteService = new RerouteService(repositoryFactory);
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        TransactionManager transactionManager = mock(TransactionManager.class);
+        doAnswer(invocation -> {
+            TransactionCallbackWithoutResult arg = invocation.getArgument(0);
+            arg.doInTransaction();
+            return null;
+        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult>any());
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        RerouteService rerouteService = new RerouteService(persistenceManager);
         rerouteService.rerouteInactiveFlows(messageSender, CORRELATION_ID,
                 REROUTE_INACTIVE_FLOWS_COMMAND);
-        verify(flowRepository).createOrUpdate(pinnedFlow);
         assertTrue(FlowStatus.DOWN.equals(pinnedFlow.getStatus()));
         for (FlowPath fp : pinnedFlow.getPaths()) {
             assertTrue(FlowPathStatus.INACTIVE.equals(fp.getStatus()));
