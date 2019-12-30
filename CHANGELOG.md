@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.45.1 (30/12/2019)
+
+### Bug Fixes:
+-  [#2785](https://github.com/telstra/open-kilda/pull/2785) Reroute topology updates flow status for flows (Issue: [#2781](https://github.com/telstra/open-kilda/issues/2781)) [**storm-topologies**]
+-  [#3086](https://github.com/telstra/open-kilda/pull/3086) Decrease parallelism for reply kafka spouts in flr [**storm-topologies**]
+-  [#3062](https://github.com/telstra/open-kilda/pull/3062) Fix rollback in flow reroute [**storm-topologies**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.45.0...v1.45.1).
+
+### Affected Components:
+flow-hs, router, reroute
+
+---
+
 ## v1.45.0 (10/12/2019)
 
 ### Features:

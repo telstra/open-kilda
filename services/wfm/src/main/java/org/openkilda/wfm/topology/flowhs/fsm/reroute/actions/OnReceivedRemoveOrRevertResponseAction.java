@@ -76,7 +76,7 @@ public class OnReceivedRemoveOrRevertResponseAction extends
                                     + "Retrying (attempt %d)",
                             commandId, errorResponse.getSwitchId(), removeCommand.getCookie(), errorResponse, retries));
 
-                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeInstallRequest(commandId));
+                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeRemoveRequest(commandId));
                 } else {
                     stateMachine.saveErrorToHistory("Failed to re-install (revert) rule", format(
                             "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
