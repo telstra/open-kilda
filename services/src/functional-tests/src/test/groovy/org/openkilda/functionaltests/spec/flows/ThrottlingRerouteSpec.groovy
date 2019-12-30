@@ -65,7 +65,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
         sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.3)) //check after 70% of rerouteDelay has passed
-        northbound.getFlowStatus(flows.first().flowId).status == FlowState.UP
+        northbound.getFlowHistory(flows.first().flowId).last().action == "Flow creating" //reroute didn't start yet
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
         def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME

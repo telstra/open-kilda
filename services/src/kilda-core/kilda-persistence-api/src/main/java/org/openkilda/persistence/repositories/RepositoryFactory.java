@@ -70,4 +70,6 @@ public interface RepositoryFactory {
     PortHistoryRepository createPortHistoryRepository();
 
     PortPropertiesRepository createPortPropertiesRepository();
+
+    PathSegmentRepository createPathSegmentRepository();
 }

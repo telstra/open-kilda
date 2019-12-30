@@ -28,6 +28,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
@@ -170,5 +171,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public PortPropertiesRepository createPortPropertiesRepository() {
         return new Neo4jPortPropertiesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public PathSegmentRepository createPathSegmentRepository() {
+        return new Neo4jPathSegmentRepository(sessionFactory, transactionManager);
     }
 }
