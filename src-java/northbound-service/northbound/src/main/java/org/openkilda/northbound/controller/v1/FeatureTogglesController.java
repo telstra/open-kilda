@@ -44,7 +44,7 @@ public class FeatureTogglesController extends BaseController {
     private FeatureTogglesService featureTogglesService;
 
     @PatchMapping
-    @ApiOperation(value = "Toggle kilda features")
+    @ApiOperation(value = "Toggle kilda features", response = FeatureTogglesDto.class)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FeatureTogglesDto> toggleFeatures(@RequestBody FeatureTogglesDto request) {
         return featureTogglesService.toggleFeatures(request);
