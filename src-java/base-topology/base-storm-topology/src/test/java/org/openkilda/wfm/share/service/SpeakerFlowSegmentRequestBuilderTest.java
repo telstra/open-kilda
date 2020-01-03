@@ -27,6 +27,7 @@ import org.openkilda.floodlight.api.request.IngressFlowSegmentRequest;
 import org.openkilda.floodlight.api.request.OneSwitchFlowRequest;
 import org.openkilda.floodlight.api.request.TransitFlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.factory.IngressFlowSegmentRequestFactory;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -49,6 +50,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import com.google.common.collect.ImmutableList;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -138,6 +140,59 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
 
         verifyForwardOneSwitchRequest(flow, commands.get(0).makeInstallRequest(commandIdGenerator.generate()));
         verifyReverseOneSwitchRequest(flow, commands.get(1).makeInstallRequest(commandIdGenerator.generate()));
+    }
+
+    @Test
+    public void useActualFlowEndpoint() {
+        Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
+        Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
+
+        // having flow stored in DB
+        Flow origin = buildFlow(srcSwitch, 1, 5, destSwitch, 2, 0, 0);
+        setSegmentsWithoutTransitSwitches(
+                Objects.requireNonNull(origin.getForwardPath()), Objects.requireNonNull(origin.getReversePath()));
+
+        // then new set of paths are created
+        FlowPath goalForwardPath = buildFlowPath(
+                origin, origin.getSrcSwitch(), origin.getDestSwitch(), Cookie.buildForwardCookie(cookieFactory.next()));
+        FlowPath goalReversePath = buildFlowPath(
+                origin, origin.getDestSwitch(), origin.getSrcSwitch(), Cookie.buildReverseCookie(cookieFactory.next()));
+        setSegmentsWithTransitSwitches(goalForwardPath, goalReversePath);
+
+        // than new version of flow is created to fulfill update request
+        Flow goal = Flow.builder()
+                .flowId(origin.getFlowId())
+                .srcSwitch(origin.getSrcSwitch())
+                .srcPort(origin.getSrcPort())
+                .srcVlan(origin.getSrcVlan() + 10)  // update
+                .destSwitch(origin.getDestSwitch())
+                .destPort(origin.getDestPort())
+                .destVlan(origin.getDestVlan())
+                .bandwidth(origin.getBandwidth())
+                .encapsulationType(origin.getEncapsulationType())
+                .build();
+
+        // emulate db behaviour - flow will have "existing" paths after fetching it from DB
+        goal.setForwardPath(origin.getForwardPath());
+        goal.setReversePath(origin.getReversePath());
+
+        // then produce path segment request factories
+        List<FlowSegmentRequestFactory> commands = target.buildIngressOnly(
+                COMMAND_CONTEXT, goal, goalForwardPath, goalReversePath);
+        boolean haveMatch = false;
+        for (FlowSegmentRequestFactory entry : commands) {
+            // search command for flow source side
+            if (SWITCH_1.equals(entry.getSwitchId())) {
+                haveMatch = true;
+                Assert.assertTrue(entry instanceof IngressFlowSegmentRequestFactory);
+
+                IngressFlowSegmentRequestFactory segment = (IngressFlowSegmentRequestFactory) entry;
+                IngressFlowSegmentRequest request = segment.makeInstallRequest(commandIdGenerator.generate());
+                Assert.assertEquals(goal.getSrcVlan(), request.getEndpoint().getVlanId());
+            }
+        }
+
+        Assert.assertTrue(haveMatch);
     }
 
     private void commonIngressCommandTest(int bandwidth) {
