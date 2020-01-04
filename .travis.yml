@@ -32,19 +32,21 @@ jobs:
       before_cache:
         - sudo chown -R travis:travis $HOME/.m2/repository
         - sudo chown -R travis:travis $HOME/.sonar/cache
+        - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+        - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 
       script:
         # JaCoCo is used to have code coverage, the agent has to be activated
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-        - make build-no-test -C services/src
-        - mvn -f services/src/pom.xml package sonar:sonar
-        - make build-no-test -C services/wfm
-        - mvn -f services/wfm/pom.xml package sonar:sonar
+        - mkdir -p ~/.gradle && echo "org.gradle.jvmargs=-Xmx4096M" >> ~/.gradle/gradle.properties
+        - make sonar
 
       cache:
         directories:
           - '$HOME/.m2/repository'
           - '$HOME/.sonar/cache'
+          - '$HOME/.gradle/caches/'
+          - '$HOME/.gradle/wrapper/'
 
     - stage: tests
       name: "Unit"
@@ -58,6 +60,20 @@ jobs:
         - sudo chmod +x /opt/confd/bin/confd
         - export PATH="$PATH:/opt/confd/bin"
 
+      before_cache:
+        - sudo chown -R travis:travis $HOME/.m2/repository
+        - sudo chown -R travis:travis $HOME/.sonar/cache
+        - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+        - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
       script:
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+        - mkdir -p ~/.gradle && echo "org.gradle.jvmargs=-Xmx4096M" >> ~/.gradle/gradle.properties
         - make unit
+
+      cache:
+        directories:
+          - '$HOME/.m2/repository'
+          - '$HOME/.sonar/cache'
+          - '$HOME/.gradle/caches/'
+          - '$HOME/.gradle/wrapper/'

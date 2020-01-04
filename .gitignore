@@ -1,13 +1,13 @@
 .DS_Store
 *.sw?
 
-.idea/
+# IntelliJ specific files/directories
+.idea
+*.ipr
+*.iws
 *.iml
 .vscode/
 
 /.vagrant/
 /.venv
 /.env
-/kilda-bins/
-
-services/src/api/target/

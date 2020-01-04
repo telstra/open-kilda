@@ -1,0 +1,22 @@
+# IntelliJ specific files/directories
+.idea
+*/.idea
+*.ipr
+*.iws
+*.iml
+
+# Eclipse specific files/directories
+.classpath
+.project
+.settings
+.metadata
+
+# Gradle specific
+.gradle
+*/.gradle
+
+# Build output directies
+target
+*/target
+build
+*/build

@@ -1,0 +1,61 @@
+description = 'OpenTSDB Storm Topology'
+dependencies {
+    implementation(project(':base-storm-topology')) {
+        // Flux-Core conflicts with Apache HTTP Client
+        exclude(group: 'org.apache.storm', module: 'flux-core')
+        exclude(group: 'org.apache.storm', module: 'flux-wrappers')
+    }
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    testImplementation(project(path: ':base-storm-topology', configuration: 'testArtifacts')) {
+        // Flux-Core conflicts with Apache HTTP Client
+        exclude(group: 'org.apache.storm', module: 'flux-core')
+        exclude(group: 'org.apache.storm', module: 'flux-wrappers')
+    }
+    implementation project(':kilda-reporting')
+    runtimeOnly project(':kilda-persistence-neo4j')
+    testImplementation project(':kilda-persistence-neo4j')
+
+    implementation 'org.apache.storm:storm-opentsdb'
+
+    compileOnly('org.apache.storm:storm-core')
+    testImplementation('org.apache.storm:storm-core') {
+        exclude(group: 'org.slf4j', module: 'log4j-over-slf4j')
+    }
+
+    implementation 'org.hibernate.validator:hibernate-validator'
+    implementation 'org.slf4j:jcl-over-slf4j:1.7.30'
+
+    testImplementation 'junit:junit'
+    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.clojure:clojure'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.neo4j:neo4j'
+    testImplementation 'org.neo4j:neo4j-ogm-core'
+    testImplementation 'org.neo4j.driver:neo4j-java-driver'
+    testRuntimeOnly 'org.glassfish:javax.el'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
+    testImplementation('org.mock-server:mockserver-netty') {
+        exclude(group: 'ch.qos.logback')
+    }
+    testRuntimeOnly 'javax.servlet:javax.servlet-api'
+
+    implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.26'
+    implementation 'org.glassfish.jersey.core:jersey-client:2.26'
+    implementation 'org.glassfish.jersey.inject:jersey-hk2:2.26'
+    implementation 'org.glassfish.jersey.core:jersey-common:2.26'
+    implementation 'org.glassfish.jersey.connectors:jersey-apache-connector:2.26'
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+build.dependsOn collectDependencyJars
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology'
+    }
+}

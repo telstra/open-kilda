@@ -1,0 +1,12 @@
+description = 'Simulator Storm Topology'
+dependencies {
+    implementation project(':base-storm-topology')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+
+    implementation('org.projectfloodlight:openflowj')
+
+    compileOnly('org.apache.storm:storm-core')
+    testImplementation('org.apache.storm:storm-core')
+
+    testImplementation 'junit:junit'
+}
