@@ -1,0 +1,11 @@
+description = 'Kilda Data Model'
+dependencies {
+    implementation 'org.neo4j:neo4j-ogm-core'
+    implementation 'com.google.guava:guava'
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
+
+    testImplementation 'junit:junit'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

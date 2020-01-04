@@ -1,0 +1,52 @@
+description = 'Northbound Service'
+dependencies {
+    implementation project(':base-messaging')
+    implementation project(':nb-api')
+    implementation project(':kilda-persistence-api')
+    implementation project(':kilda-persistence-neo4j')
+    implementation project(':kilda-configuration')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation('org.springframework.boot:spring-boot-starter') {
+        exclude(module: 'spring-boot-starter-logging')
+    }
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-web'
+    implementation 'org.springframework.boot:spring-boot-starter-tomcat'
+    implementation('org.springframework.kafka:spring-kafka') {
+        exclude(module: 'kafka-clients')
+    }
+    implementation 'org.springframework:spring-webmvc'
+    implementation('org.apache.kafka:kafka_2.11') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation('io.springfox:springfox-swagger2') {
+        exclude(module: 'mapstruct')
+    }
+    implementation 'io.springfox:springfox-swagger-ui'
+
+    implementation('com.fasterxml.jackson.core:jackson-databind')
+    implementation('com.fasterxml.jackson.datatype:jackson-datatype-jsr310')
+
+    implementation 'com.google.guava:guava'
+    implementation 'org.apache.commons:commons-collections4'
+    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude(module: 'commons-logging')
+    }
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'junit:junit'
+    testImplementation 'org.neo4j:neo4j-ogm-test'
+}
+
+build.dependsOn collectDependencyJars

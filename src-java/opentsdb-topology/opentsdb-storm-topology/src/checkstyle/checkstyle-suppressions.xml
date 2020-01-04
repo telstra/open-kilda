@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Puppy Crawl//DTD Suppressions 1.2//EN"
+        "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
+    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/bolts/OpenTSDBFilterBolt.java" lines="41" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/main/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopology.java" lines="41" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/opentsdb/bolt/OpenTSDBFilterBoltTest.java" lines="56" checks="AbbreviationAsWordInName"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/opentsdb/bolt/OpenTSDBFilterBoltTest.java" lines="145" checks="AvoidEscapedUnicodeCharacters"/>
+    <suppress files="src/test/java/org/openkilda/wfm/topology/opentsdb/OpenTSDBTopologyTest.java" lines="43" checks="AbbreviationAsWordInName"/>
+</suppressions>

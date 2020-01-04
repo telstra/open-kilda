@@ -2,16 +2,16 @@
 default: build-latest run-dev
 
 build-base: update-props
-	base/hacks/storm.requirements.download.sh
-	docker build -t kilda/base-ubuntu:latest base/kilda-base-ubuntu/
-	docker build -t kilda/zookeeper:latest services/zookeeper
-	docker build -t kilda/kafka:latest services/kafka
-	docker build -t kilda/hbase:latest services/hbase
-	docker build -t kilda/storm:latest services/storm
-	docker build -t kilda/neo4j:latest services/neo4j
-	docker build -t kilda/opentsdb:latest services/opentsdb
-	docker build -t kilda/logstash:latest services/logstash
-	docker build -t kilda/base-lab-service:latest base/kilda-base-lab-service/
+	docker/base/hacks/storm.requirements.download.sh
+	docker build -t kilda/base-ubuntu:latest docker/base/kilda-base-ubuntu/
+	docker build -t kilda/zookeeper:latest docker/zookeeper
+	docker build -t kilda/kafka:latest docker/kafka
+	docker build -t kilda/hbase:latest docker/hbase
+	docker build -t kilda/storm:latest docker/storm
+	docker build -t kilda/neo4j:latest docker/neo4j
+	docker build -t kilda/opentsdb:latest docker/opentsdb
+	docker build -t kilda/logstash:latest docker/logstash
+	docker build -t kilda/base-lab-service:latest docker/base/kilda-base-lab-service/
 
 build-latest: build-base compile
 	docker-compose build
@@ -37,34 +37,18 @@ up-log-mode: up-test-mode
 run-test: up-log-mode
 
 clean-sources:
-	$(MAKE) -C services/src clean
-	$(MAKE) -C services/lab-service/lab clean
-	mvn -f services/wfm/pom.xml clean
-
-update-parent:
-	mvn --non-recursive -f services/src/pom.xml install -DskipTests
-
-update-core:
-	mvn -f services/src/kilda-core/pom.xml install -DskipTests
-
-update-pce:
-	mvn -f services/src/kilda-pce/pom.xml install -DskipTests
-
-update-msg:
-	mvn -f services/src/messaging/pom.xml install -DskipTests
-
-update: update-parent update-core update-msg update-pce
+	$(MAKE) -C services/src/openkilda-gui clean-java
+	$(MAKE) -C src-python/lab-service/lab clean
+	cd src-java && ./gradlew clean
 
 compile: update-props
-	$(MAKE) -C services/src
-	$(MAKE) -C services/wfm all-in-one
+	cd src-java && ./gradlew build
 	$(MAKE) -C services/lab-service/lab test
+	$(MAKE) -C services/src/openkilda-gui build
 
 .PHONY: unit
 unit: update-props
-	$(MAKE) build-no-test -C services/src
-	$(MAKE) unit -C services/src
-	mvn -B -f services/wfm/pom.xml test
+	cd src-java && ./gradlew test
 
 clean-test:
 	docker-compose down
@@ -86,9 +70,9 @@ update-props-dryrun:
 #   make func-tests PARAMS='-Dtest="LinkSpec#Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
 
 func-tests:
-	cp services/src/functional-tests/kilda.properties.example services/src/functional-tests/kilda.properties
-	cp services/src/functional-tests/src/test/resources/topology.yaml services/src/functional-tests/topology.yaml
-	mvn -Pfunctional -f services/src/functional-tests/pom.xml test $(PARAMS)
+	cp src-java/functional-tests/kilda.properties.example src-java/functional-tests/kilda.properties
+	cp src-java/functional-tests/src/test/resources/topology.yaml src-java/functional-tests/topology.yaml
+	cd src-java/functional-tests && ./gradlew -Pfunctional test $(PARAMS)
 
 .PHONY: default run-dev build-latest build-base	
 .PHONY: up-test-mode up-log-mode run-test clean-test	

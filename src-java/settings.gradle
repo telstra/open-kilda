@@ -1,0 +1,76 @@
+rootProject.name = 'kilda-parent'
+
+includeBuild('projectfloodlight/floodlight')
+includeBuild('projectfloodlight/openflowj')
+
+include 'base-messaging'
+include 'base-storm-topology'
+include 'connected-devices-storm-topology'
+include 'floodlight-router-storm-topology'
+include 'floodlight-api'
+include 'floodlight-modules'
+include 'flowhs-storm-topology'
+include 'flow-storm-topology'
+include 'grpc-api'
+include 'grpc-service'
+include 'isl-latency-storm-topology'
+include 'kilda-configuration'
+include 'kilda-model'
+include 'kilda-pce'
+include 'kilda-persistence-api'
+include 'kilda-persistence-neo4j'
+include 'kilda-reporting'
+include 'kilda-utils:janitor'
+include 'nb-worker-storm-topology'
+include 'network-storm-topology'
+include 'nb-api'
+include 'northbound'
+include 'opentsdb-storm-topology'
+include 'ping-storm-topology'
+include 'port-state-storm-topology'
+include 'reroute-storm-topology'
+include 'server42-control'
+include 'server42-control-messaging'
+include 'server42-control-server-stub'
+include 'server42-control-storm-stub'
+include 'simulator-storm-topology'
+include 'stats-router-storm-topology'
+include 'stats-storm-topology'
+include 'switch-manager-storm-topology'
+include 'atdd-staging'
+include 'functional-tests'
+include 'performance-tests'
+include 'test-library'
+
+project(':base-messaging').projectDir = "$rootDir/base-topology/base-messaging" as File
+project(':base-storm-topology').projectDir = "$rootDir/base-topology/base-storm-topology" as File
+project(':connected-devices-storm-topology').projectDir = "$rootDir/connected-devices-topology/connected-devices-storm-topology" as File
+project(':floodlight-router-storm-topology').projectDir = "$rootDir/floodlight-router-topology/floodlight-router-storm-topology" as File
+project(':floodlight-api').projectDir = "$rootDir/floodlight-service/floodlight-api" as File
+project(':floodlight-modules').projectDir = "$rootDir/floodlight-service/floodlight-modules" as File
+project(':flowhs-storm-topology').projectDir = "$rootDir/flowhs-topology/flowhs-storm-topology" as File
+project(':flow-storm-topology').projectDir = "$rootDir/flow-topology/flow-storm-topology" as File
+project(':grpc-api').projectDir = "$rootDir/grpc-speaker/grpc-api" as File
+project(':grpc-service').projectDir = "$rootDir/grpc-speaker/grpc-service" as File
+project(':isl-latency-storm-topology').projectDir = "$rootDir/isl-latency-topology/isl-latency-storm-topology" as File
+project(':nb-worker-storm-topology').projectDir = "$rootDir/nb-worker-topology/nb-worker-storm-topology" as File
+project(':network-storm-topology').projectDir = "$rootDir/network-topology/network-storm-topology" as File
+project(':nb-api').projectDir = "$rootDir/northbound-service/nb-api" as File
+project(':northbound').projectDir = "$rootDir/northbound-service/northbound" as File
+project(':opentsdb-storm-topology').projectDir = "$rootDir/opentsdb-topology/opentsdb-storm-topology" as File
+project(':ping-storm-topology').projectDir = "$rootDir/ping-topology/ping-storm-topology" as File
+project(':port-state-storm-topology').projectDir = "$rootDir/port-state-topology/port-state-storm-topology" as File
+project(':reroute-storm-topology').projectDir = "$rootDir/reroute-topology/reroute-storm-topology" as File
+project(':server42-control').projectDir = "$rootDir/server42/server42-control" as File
+project(':server42-control-messaging').projectDir = "$rootDir/server42/server42-control-messaging" as File
+project(':server42-control-server-stub').projectDir = "$rootDir/server42/server42-control-server-stub" as File
+project(':server42-control-storm-stub').projectDir = "$rootDir/server42/server42-control-storm-stub" as File
+project(':simulator-storm-topology').projectDir = "$rootDir/simulator-topology/simulator-storm-topology" as File
+project(':stats-router-storm-topology').projectDir = "$rootDir/stats-router-topology/stats-router-storm-topology" as File
+project(':stats-storm-topology').projectDir = "$rootDir/stats-topology/stats-storm-topology" as File
+project(':switch-manager-storm-topology').projectDir = "$rootDir/switch-manager-topology/switch-manager-storm-topology" as File
+
+project(':atdd-staging').projectDir = "$rootDir/testing/atdd-staging" as File
+project(':functional-tests').projectDir = "$rootDir/testing/functional-tests" as File
+project(':performance-tests').projectDir = "$rootDir/testing/performance-tests" as File
+project(':test-library').projectDir = "$rootDir/testing/test-library" as File

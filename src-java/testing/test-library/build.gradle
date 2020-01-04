@@ -1,0 +1,46 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Test-Library'
+dependencies {
+    implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
+
+    api project(':base-messaging')
+    implementation project(':nb-api')
+    implementation project(':kilda-persistence-api')
+    implementation project(':kilda-persistence-neo4j')
+    implementation project(':grpc-api')
+    implementation project(':kilda-configuration')
+
+    implementation 'org.springframework:spring-test'
+    implementation 'org.springframework:spring-beans'
+    implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-context'
+
+    implementation 'org.neo4j.driver:neo4j-java-driver'
+    implementation 'org.neo4j:neo4j-ogm-core'
+
+    implementation 'org.apache.httpcomponents:httpclient:4.4.1'
+    implementation 'com.spotify:docker-client:8.9.2'
+    implementation 'com.github.javafaker:javafaker:0.18'
+
+    implementation 'commons-io:commons-io'
+    implementation 'com.nitorcreations:matchers'
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'net.jodah:failsafe'
+    implementation('com.fasterxml.jackson.core:jackson-databind')
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'org.apache.kafka:kafka-clients'
+    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    implementation 'junit:junit'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

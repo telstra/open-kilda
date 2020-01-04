@@ -1,0 +1,16 @@
+description = 'Port State Storm Topology'
+dependencies {
+    implementation project(':base-storm-topology')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    implementation project(':kilda-reporting')
+    runtimeOnly project(':kilda-persistence-neo4j')
+
+    compileOnly('org.apache.storm:storm-core')
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+build.dependsOn collectDependencyJars

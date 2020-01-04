@@ -1,0 +1,17 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Kilda Configuration'
+dependencies {
+    api 'com.sabre.oss.conf4j:conf4j-api'
+    api 'com.sabre.oss.conf4j:conf4j-core'
+
+    implementation 'com.google.guava:guava'
+    implementation 'javax.validation:validation-api'
+
+    testImplementation 'junit:junit'
+    testImplementation 'org.mockito:mockito-core'
+    testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
+    testRuntimeOnly 'org.glassfish:javax.el'
+}

@@ -1,0 +1,41 @@
+description = 'Flow H&S Storm Topology'
+dependencies {
+    implementation project(':base-storm-topology')
+    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
+    implementation project(':kilda-pce')
+    implementation project(':kilda-reporting')
+    implementation project(':floodlight-api')
+    testImplementation project(':kilda-persistence-neo4j')
+
+    compileOnly('org.apache.storm:storm-core')
+    testImplementation('org.apache.storm:storm-core')
+
+    implementation 'org.neo4j.driver:neo4j-java-driver'
+
+    testImplementation 'junit:junit'
+    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.neo4j:neo4j'
+    testImplementation 'org.neo4j:neo4j-bolt'
+    testImplementation 'org.neo4j:neo4j-ogm-core'
+    testImplementation 'org.neo4j.driver:neo4j-java-driver'
+    testRuntimeOnly 'org.apache.curator:curator-test'
+    testRuntimeOnly 'org.clojure:clojure'
+    testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
+    testRuntimeOnly 'org.glassfish:javax.el'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
+    testRuntimeOnly 'javax.servlet:javax.servlet-api'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+build.dependsOn collectDependencyJars

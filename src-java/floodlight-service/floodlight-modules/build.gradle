@@ -1,0 +1,62 @@
+plugins {
+    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6'
+}
+
+compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
+compileJava.ajc.options.compilerArgs += '-verbose'
+
+description = 'Floodlight Service Modules'
+dependencies {
+    implementation project(':base-messaging')
+    implementation project(':floodlight-api')
+    implementation project(':kilda-configuration')
+    implementation project(':kilda-model')
+    implementation project(':kilda-reporting')
+
+    implementation('org.projectfloodlight:openflowj')
+    compileOnly('org.projectfloodlight:floodlight')
+    testImplementation('org.projectfloodlight:floodlight')
+
+    implementation('org.apache.kafka:kafka_2.11') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    implementation 'org.apache.commons:commons-collections4'
+    implementation 'com.auth0:java-jwt'
+    implementation 'net.logstash.logback:logstash-logback-encoder'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    implementation 'org.aspectj:aspectjrt'
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    implementation 'org.hibernate.validator:hibernate-validator'
+    implementation 'org.glassfish:javax.el'
+    implementation 'com.google.guava:guava'
+    implementation 'org.restlet.jse:org.restlet:2.3.2'
+    compileOnly 'com.google.code.findbugs:jsr305:2.0.1'
+
+    testImplementation 'junit:junit'
+    testImplementation 'org.easymock:easymock'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testRuntimeOnly 'ch.qos.logback:logback-classic'
+    testImplementation 'io.netty:netty-all'
+    testRuntimeOnly 'org.python:jython-standalone:2.5.2'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+repositories {
+    maven {
+        url 'https://maven.restlet.com'
+    }
+}
+
+build.dependsOn collectDependencyJars
