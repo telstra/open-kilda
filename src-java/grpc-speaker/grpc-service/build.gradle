@@ -1,0 +1,60 @@
+plugins {
+    id 'org.springframework.boot' version '2.2.1.RELEASE'
+}
+
+description = 'GRPC service'
+dependencies {
+    implementation project(':grpc-api')
+    implementation project(':kilda-configuration')
+
+    implementation('org.springframework.boot:spring-boot-starter') {
+        exclude(module: 'spring-boot-starter-logging')
+    }
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    implementation('org.springframework.boot:spring-boot-starter-web') {
+        exclude(module: 'spring-boot-starter-logging')
+    }
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-web'
+    implementation('org.springframework.kafka:spring-kafka')
+    implementation('org.apache.kafka:kafka_2.11') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+    }
+
+    implementation 'org.slf4j:slf4j-api'
+    implementation 'io.grpc:grpc-protobuf'
+    implementation 'io.grpc:grpc-stub'
+    implementation 'io.grpc:grpc-alts'
+    implementation 'com.google.protobuf:protobuf-java-util'
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
+    implementation('io.springfox:springfox-swagger2') {
+        exclude(module: 'mapstruct')
+    }
+    implementation 'io.springfox:springfox-swagger-ui'
+    implementation files('lib/noviflow-grpc-lib-1.0.jar')
+    //system group: 'io.grpc.noviflow', name: 'noviflow-grpc-lib', version:'1.0'
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude(module: 'commons-logging')
+    }
+    testImplementation 'junit:junit'
+    testImplementation 'io.grpc:grpc-testing'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+
+bootJar {
+    mainClassName = 'org.openkilda.grpc.speaker.GrpcSpeaker'
+    archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}
+
+bootJar.dependsOn generateVersionTxt

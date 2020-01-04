@@ -1,13 +1,18 @@
 .DS_Store
 *.sw?
+.env
 
+# IntelliJ specific files/directories
 .idea/
+*.ipr
+*.iws
 *.iml
+
+# Eclipse specific files/directories
+.classpath
+.project
+.settings
+.metadata
+
+# VSCode specific files/directories
 .vscode/
-
-/.vagrant/
-/.venv
-/.env
-/kilda-bins/
-
-services/src/api/target/

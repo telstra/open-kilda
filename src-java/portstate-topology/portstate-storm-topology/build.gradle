@@ -1,0 +1,31 @@
+plugins {
+    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6'
+}
+
+compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
+compileJava.ajc.options.compilerArgs += '-verbose'
+
+description = 'Port State Storm Topology'
+dependencies {
+    implementation project(':base-storm-topology')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    implementation project(':kilda-reporting')
+    implementation project(':network-messaging')
+    implementation project(':floodlight-api')
+    runtimeOnly project(':kilda-persistence-neo4j')
+
+    compileOnly('org.apache.storm:storm-core')
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+build.dependsOn collectDependencyJars
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.portstate.PortStateTopology'
+    }
+}

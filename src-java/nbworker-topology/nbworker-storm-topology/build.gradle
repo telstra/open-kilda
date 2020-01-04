@@ -1,0 +1,56 @@
+plugins {
+    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6'
+}
+
+compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
+compileJava.ajc.options.compilerArgs += '-verbose'
+
+description = 'NB Worker Storm Topology'
+dependencies {
+    implementation project(':nbworker-messaging')
+    implementation project(':flow-messaging')
+    implementation project(':network-messaging')
+    implementation project(':ping-messaging')
+    implementation project(':base-storm-topology')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
+    implementation project(':kilda-pce')
+    implementation project(':kilda-reporting')
+    implementation project(':floodlight-api')
+    runtimeOnly project(':kilda-persistence-neo4j')
+    testImplementation project(':kilda-persistence-neo4j')
+    testImplementation project(path: ':kilda-persistence-neo4j', configuration: 'testArtifacts')
+
+    compileOnly('org.apache.storm:storm-core')
+    testImplementation('org.apache.storm:storm-core')
+
+    testImplementation 'junit:junit'
+    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.clojure:clojure'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.neo4j:neo4j'
+    testImplementation 'org.neo4j:neo4j-bolt'
+    testImplementation 'org.neo4j:neo4j-ogm-core'
+    testImplementation 'org.neo4j.driver:neo4j-java-driver'
+    testRuntimeOnly 'org.glassfish:javax.el'
+    testRuntimeOnly 'org.apache.curator:curator-test'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+build.dependsOn collectDependencyJars
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.nbworker.NbWorkerTopology'
+    }
+}
