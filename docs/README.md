@@ -5,5 +5,5 @@ The folder contains OpenKilda contributor licenses agreements and tips for contr
 # OpenKilda design documents
 The folder contains the main use case diagrams and their descriptions.
 
-# Release notes
-The folder contains OpenKilda release notes.
+# Guidelines
+The folder contains OpenKilda guidelines and conventions for contributors.

@@ -1,0 +1,6 @@
+# Gradle specific
+.gradle/
+
+# Build output directies
+target/
+build/

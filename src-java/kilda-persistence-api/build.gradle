@@ -1,0 +1,14 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Kilda Persistence API'
+dependencies {
+    api project(':kilda-model')
+    implementation project(':kilda-configuration')
+
+    implementation 'net.jodah:failsafe'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
