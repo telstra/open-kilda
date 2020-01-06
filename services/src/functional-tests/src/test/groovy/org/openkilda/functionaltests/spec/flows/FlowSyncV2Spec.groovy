@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -22,6 +23,7 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
     @Shared
     int flowRulesCount = 2
 
+    @Tidy
     @Tags(SMOKE)
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) without rerouting"() {
         given: "An intermediate-switch flow with deleted rules on src switch"
@@ -66,10 +68,11 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) with rerouting"() {
         given: "An intermediate-switch flow with two possible paths at least and deleted rules on src switch"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -130,7 +133,7 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Delete the flow and link props, reset link costs"
+        cleanup: "Delete the flow and link props, reset link costs"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()

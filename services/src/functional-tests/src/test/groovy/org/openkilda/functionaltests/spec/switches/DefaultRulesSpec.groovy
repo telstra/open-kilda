@@ -12,6 +12,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -25,6 +26,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
+    @Tidy
     @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches"() {
@@ -57,6 +59,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"(
@@ -79,7 +82,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, expectedRules)
         }
 
-        and: "Install missing default rules"
+        cleanup: "Install missing default rules"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
@@ -127,6 +130,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default multitable rule on an #sw.ofVersion \
@@ -151,7 +155,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
             compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, expectedRules)
         }
 
-        and: "Cleanup: Install missing default rules and restore switch properties"
+        cleanup: "Install missing default rules and restore switch properties"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
@@ -212,6 +216,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(
@@ -242,7 +247,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
             rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
-        and: "Install default rules back"
+        cleanup: "Install default rules back"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
@@ -277,6 +282,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
         }
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete default multitable rule from an #sw.ofVersion \
@@ -312,7 +318,7 @@ switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(Map data, Switch sw) {
             rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
-        and: "Cleanup: Install default rules back"
+        cleanup: "Install default rules back"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()

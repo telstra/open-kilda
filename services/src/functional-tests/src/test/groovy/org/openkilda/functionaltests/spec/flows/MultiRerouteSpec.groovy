@@ -5,6 +5,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -16,6 +17,7 @@ import java.util.concurrent.TimeUnit
 
 class MultiRerouteSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3047")
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Two flows on the same path, with alt paths available"
@@ -78,7 +80,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
             assert it.availableBandwidth >= 0
         }
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "revert system to original state"
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())

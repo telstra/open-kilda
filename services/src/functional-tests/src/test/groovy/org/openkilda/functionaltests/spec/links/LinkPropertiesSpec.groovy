@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -34,6 +35,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "Empty list is returned if there are no properties"() {
         expect: "Get link properties is empty for no properties"
         northbound.getAllLinkProps().empty
@@ -42,7 +44,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     //TODO(ylobankov): Actually this is abnormal behavior and we should have an error. But this test is aligned
     // with the current system behavior to verify that system is not hanging. Need to rework the test when system
     // behavior is fixed.
-    def "Link props are created with empty values when sending not a valid link props key"() {
+    @Tidy
+    def "Link props are created with empty values when sending an invalid link props key"() {
         when: "Send link property request with invalid character"
         def response = northbound.updateLinkProps([new LinkPropsDto("00:00:00:00:00:00:00:01", 1,
                 "00:00:00:00:00:00:00:02", 1, ["`cost": "700"])])
@@ -55,7 +58,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         linkProps.size() == 2
         linkProps.each { assert it.props.isEmpty() }
 
-        and: "Delete created link props"
+        cleanup: "Delete created link props"
         northbound.deleteLinkProps(linkProps)
     }
 
@@ -83,6 +86,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         key << ["cost", "max_bandwidth"]
     }
 
+    @Tidy
     @Unroll
     @TestFixture(setup = "prepareLinkPropsForSearch", cleanup = "cleanLinkPropsAfterSearch")
     def "Searching for link props with #data.descr"() {

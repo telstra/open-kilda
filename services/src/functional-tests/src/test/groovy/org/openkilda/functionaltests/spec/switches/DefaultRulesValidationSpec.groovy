@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 
 import spock.lang.Narrative
@@ -20,6 +21,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
     test coverage is only provided on unit-test level (ValidationServiceImplTest)
      */
 
+    @Tidy
     @Unroll
     @Tags(SMOKE)
     def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name)"() {

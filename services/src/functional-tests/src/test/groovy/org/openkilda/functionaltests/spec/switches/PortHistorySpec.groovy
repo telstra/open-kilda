@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -38,6 +39,7 @@ class PortHistorySpec extends HealthCheckSpecification {
     //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
     def antiflapDumpingInterval = 60
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /direct/)
     def "Port history are created for the port down/up actions when link is #islDescription"() {
@@ -46,7 +48,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         def timestampBefore = System.currentTimeMillis()
 
         when: "Execute port DOWN on the src switch"
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def portDown = antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
@@ -64,7 +66,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Execute port UP on the src switch"
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        def portUp = antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
@@ -103,6 +105,14 @@ class PortHistorySpec extends HealthCheckSpecification {
         and: "Port history on the src switch is also available using default timeline"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort).size() >= 4
 
+        cleanup:
+        if (portDown && !portUp) {
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            }
+        }
+
         where:
         [islDescription, historySizeOnDstSw, isl] << [
                 ["direct", 4, getTopology().islsForActiveSwitches.find { !it.aswitch }],
@@ -112,17 +122,18 @@ class PortHistorySpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Port history should not be returned in case timeline is incorrect (timeBefore > timeAfter)"() {
         given: "A direct link with port history"
         def timestampBefore = System.currentTimeMillis()
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
 
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def portDown = antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        def portUp = antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
@@ -136,8 +147,17 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         then: "Port history is NOT returned"
         portH.isEmpty()
+
+        cleanup:
+        if (portDown && !portUp) {
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            }
+        }
     }
 
+    @Tidy
     def "Port history should not be returned in case port/switch have never existed"() {
         when: "Try to get port history for incorrect port and switch"
         def portHistory = northboundV2.getPortHistory(NON_EXISTENT_SWITCH_ID, 99999)
@@ -153,12 +173,12 @@ class PortHistorySpec extends HealthCheckSpecification {
         def isl = getTopology().islsForActiveSwitches.find { !it.aswitch }
 
         when: "Execute port DOWN/UP on the src switch"
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def portDown = antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        def portUp = antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
@@ -175,9 +195,15 @@ class PortHistorySpec extends HealthCheckSpecification {
         then: "Port history on the src switch is still available"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
-        and: "Cleanup: Revive the src switch"
-        lockKeeper.reviveSwitch(switchToDisconnect)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        cleanup: "Revive the src switch"
+        if (portDown && !portUp) {
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+            }
+        }
+        switchToDisconnect && lockKeeper.reviveSwitch(switchToDisconnect)
+        Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }
     }

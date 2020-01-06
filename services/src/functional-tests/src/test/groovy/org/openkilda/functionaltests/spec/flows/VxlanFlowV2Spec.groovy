@@ -50,6 +50,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2995")
     @Unroll
     @Tags(HARDWARE)
@@ -175,7 +176,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -184,6 +185,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         FlowEncapsulationType.VXLAN        | FlowEncapsulationType.TRANSIT_VLAN
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
@@ -212,10 +214,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active Noviflow switches with two available path at least"
@@ -329,10 +332,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        and: "Cleanup: Delete the flow and reset costs"
+        cleanup: "Delete the flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
@@ -367,7 +371,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
@@ -486,6 +490,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         initNoVxlanSwProps && SwitchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps)
     }
 
+    @Tidy
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "Noviflow and non-Noviflow switches"
@@ -508,8 +513,12 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: " +
                 "Switch $switchPair.dst.dpId doesn't have links with enough bandwidth"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Unroll
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a one-switch flow\
@@ -585,7 +594,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:

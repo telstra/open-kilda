@@ -10,6 +10,7 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -50,6 +51,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Unroll
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
@@ -77,7 +79,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        and: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -88,6 +90,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         0         | 0
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Able to enable/disable protected path on a flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
@@ -141,10 +144,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to create a single switch flow with protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -160,8 +164,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to update a single switch flow to enable protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -180,10 +188,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Unroll
     def "System is able to switch #flowDescription flow to protected path"() {
         given: "Two active not neighboring switches with three diverse paths at least"
@@ -223,7 +232,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -238,7 +247,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         when: "Restore port status"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portUp = antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -246,8 +255,14 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Path of the flow is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
+        if (portDown && !portUp) {
+            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+            }
+        }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
@@ -257,6 +272,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
@@ -305,7 +321,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         newCurrentProtectedPath != currentProtectedPath
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
@@ -315,6 +331,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     @Unroll
     def "System is able to switch #flowDescription flow to protected path and ignores more preferable path when reroute\
  is automatical"() {
@@ -346,7 +363,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         and: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -364,7 +381,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         when: "Restore port status"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portUp = antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -372,8 +389,14 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Path of the flow is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
+        if (portDown && !portUp) {
+            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+            }
+        }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
@@ -383,6 +406,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     @Unroll
     def "A flow with protected path does not get rerouted if already on the best path"() {
         given: "Two active neighboring switches and a flow"
@@ -408,10 +432,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo) == currentPath
         pathHelper.convert(newFlowPathInfo.protectedPath) == currentProtectedPath
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -435,10 +460,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Couldn't find non overlapping protected path"
 
-        and: "Cleanup: restore available bandwidth"
+        cleanup: "Restore available bandwidth"
         isls.each { database.resetIslBandwidth(it) }
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to update a flow to enable protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -468,11 +495,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Couldn't find non overlapping protected path"
 
-        and: "Cleanup: delete the flow and restore available bandwidth"
+        cleanup: "Delete the flow and restore available bandwidth"
         flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
+    @Tidy
     def "Able to create a flow with protected path when there is not enough bandwidth and ignoreBandwidth=true"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -497,11 +525,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         database.getTransitVlans(flowInfo.forwardPathId, flowInfo.reversePathId).size() == 1
         database.getTransitVlans(flowInfo.protectedForwardPathId, flowInfo.protectedReversePathId).size() == 1
 
-        and: "Cleanup: delete the flow and restore available bandwidth"
+        cleanup: "Delete the flow and restore available bandwidth"
         flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
+    @Tidy
     def "System is able to recalculate protected path when protected path is broken"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def allIsls = northbound.getAllLinks()
@@ -535,7 +564,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         when: "Break ISL on the protected path (bring port down) to init the recalculate procedure"
         def islToBreakProtectedPath = protectedIsls[0]
-        antiflap.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        def portDown = antiflap.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
 
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.FAILED
@@ -578,7 +607,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         originInfoBrokenIsl.availableBandwidth == currentInfoBrokenIsl.availableBandwidth
 
         when: "Restore port status"
-        antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        def portUp = antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
         }
@@ -586,11 +615,18 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Path is not recalculated again"
         pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath) == newProtectedPath
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
+        if (portDown && !portUp) {
+            antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
+            }
+        }
         database.resetCosts()
     }
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
@@ -626,12 +662,13 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Not enough bandwidth or no path found." +
                 " Couldn't find non overlapping protected path"
 
-        and: "Restore topology, delete flows and reset costs"
+        cleanup: "Restore topology, delete flows and reset costs"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         database.resetCosts()
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowDescription | bandwidth
@@ -639,6 +676,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
@@ -679,7 +717,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Not enough bandwidth or no path found." +
                 " Couldn't find non overlapping protected path"
 
-        and: "Restore topology, delete flows and reset costs"
+        cleanup: "Restore topology, delete flows and reset costs"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -693,6 +731,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
@@ -838,10 +877,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -862,10 +902,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not swap paths: Flow $flow.flowId doesn't have protected path"
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to swap paths for a non-existent flow"() {
         when: "Try to swap path on a non-existent flow"
         northbound.swapFlowPath(NON_EXISTENT_FLOW_ID)
@@ -982,6 +1023,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three diverse paths at least"
@@ -1042,7 +1084,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo) == currentPath
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
-        and: "Cleanup: Restore topology, delete flow and reset costs"
+        cleanup: "Restore topology, delete flow and reset costs"
         antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1053,6 +1095,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "#flowDescription flow is DEGRADED when protected and alternative paths are not available"() {
@@ -1093,7 +1136,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow status is UP"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
-        and: "Cleanup: Restore topology, delete flow and reset costs"
+        cleanup: "Restore topology, delete flow and reset costs"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1107,6 +1150,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         "An unmetered"  | 0
     }
 
+    @Tidy
     def "System doesn't allow to enable the pinned flag on a protected flow"() {
         given: "A protected flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -1125,10 +1169,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2762")
     def "System reuses current protected path when can't find new non overlapping protected path while intentional\
  rerouting"() {
@@ -1178,7 +1223,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
