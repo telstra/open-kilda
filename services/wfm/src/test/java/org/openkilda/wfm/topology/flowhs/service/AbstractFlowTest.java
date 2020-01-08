@@ -107,6 +107,16 @@ public abstract class AbstractFlowTest {
         ));
     }
 
+    protected SpeakerFlowSegmentResponse buildSpeakerResponse(FlowSegmentRequest flowRequest) {
+        return SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
+                        .commandId(flowRequest.getCommandId())
+                        .metadata(flowRequest.getMetadata())
+                        .switchId(flowRequest.getSwitchId())
+                        .success(true)
+                        .build();
+    }
+
     Answer getSpeakerCommandsAnswer() {
         return invocation -> {
             FlowSegmentRequest request = invocation.getArgument(0);
