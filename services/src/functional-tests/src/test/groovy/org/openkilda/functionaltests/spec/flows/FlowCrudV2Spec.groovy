@@ -110,8 +110,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "Flow writes stats"
-        def isSingleSwitch = flow.source.switchId == flow.destination.switchId
-        statsHelper.verifyFlowWritesStats(flow.flowId, !isSingleSwitch)
+        statsHelper.verifyFlowWritesStats(flow.flowId, isFlowPingable(flow))
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1304,6 +1303,17 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                     }
             ]
             r
+        }
+    }
+
+    boolean isFlowPingable(FlowRequestV2 flow) {
+        if (flow.source.switchId == flow.destination.switchId) {
+            return false
+        } else if (topologyHelper.findSwitch(flow.source.switchId).ofVersion == "OF_12" ||
+                topologyHelper.findSwitch(flow.destination.switchId).ofVersion == "OF_12") {
+            return false
+        } else {
+            return true
         }
     }
 
