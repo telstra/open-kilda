@@ -77,6 +77,15 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                         format("Flow %s is in progress now", flowId));
             }
 
+            if (!foundFlow.getSrcSwitch().isActive()) {
+                throw new FlowProcessingException(ErrorType.UNPROCESSABLE_REQUEST,
+                        format("Flow's %s src switch is not active", flowId));
+            }
+            if (!foundFlow.getDestSwitch().isActive()) {
+                throw new FlowProcessingException(ErrorType.UNPROCESSABLE_REQUEST,
+                        format("Flow's %s dest switch is not active", flowId));
+            }
+
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
             stateMachine.setOriginalEncapsulationType(foundFlow.getEncapsulationType());
             stateMachine.setOriginalPathComputationStrategy(foundFlow.getPathComputationStrategy());
