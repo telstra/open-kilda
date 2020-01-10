@@ -23,6 +23,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.AbandonPendingCommandsAction;
@@ -115,6 +116,18 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
         carrier.sendNorthboundResponse(message);
     }
 
+    @Override
+    public void reportError(Event event) {
+        if (Event.TIMEOUT == event) {
+            reportGlobalTimeout();
+        }
+    }
+
+    @Override
+    protected String getCrudActionName() {
+        return "update";
+    }
+
     public static class Factory {
         private final StateMachineBuilder<FlowUpdateFsm, State, Event, FlowUpdateContext> builder;
         private final FlowUpdateHubCarrier carrier;
@@ -130,6 +143,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     FlowUpdateContext.class, CommandContext.class, FlowUpdateHubCarrier.class, String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+            final ReportErrorAction<FlowUpdateFsm, State, Event, FlowUpdateContext>
+                    reportErrorAction = new ReportErrorAction<>();
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -293,10 +308,14 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
             builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
 
+            builder.onEntry(State.REVERTING_PATHS_SWAP)
+                    .perform(reportErrorAction);
             builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
                     .on(Event.NEXT)
                     .perform(new RevertPathsSwapAction(persistenceManager));
 
+            builder.onEntry(State.PATHS_SWAP_REVERTED)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.PATHS_SWAP_REVERTED)
                     .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
                     .onEach(Event.NEXT, Event.ERROR)
@@ -316,6 +335,8 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.NEXT, Event.ERROR);
 
+            builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_ALLOCATED_RESOURCES)
                     .toAmong(State.RESOURCES_ALLOCATION_REVERTED, State.RESOURCES_ALLOCATION_REVERTED)
                     .onEach(Event.NEXT, Event.ERROR)
@@ -325,15 +346,22 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .on(Event.ERROR)
                     .perform(new HandleNotRevertedResourceAllocationAction());
 
+            builder.onEntry(State.REVERTING_FLOW)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW)
                     .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertFlowAction(persistenceManager));
 
+            builder.onEntry(State.REVERTING_FLOW_STATUS)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertFlowStatusAction(persistenceManager));
+
+            builder.onEntry(State.FINISHED_WITH_ERROR)
+                    .perform(reportErrorAction);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));

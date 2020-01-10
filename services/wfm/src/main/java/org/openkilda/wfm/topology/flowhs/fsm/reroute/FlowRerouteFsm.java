@@ -27,9 +27,9 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AbandonPendingCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocatePrimaryResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocateProtectedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathInstallationAction;
@@ -139,6 +139,19 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         carrier.sendNorthboundResponse(message);
     }
 
+    @Override
+    public void reportError(Event event) {
+        if (Event.TIMEOUT == event) {
+            reportGlobalTimeout();
+        }
+        // other errors reported inside actions and can be ignored here
+    }
+
+    @Override
+    protected String getCrudActionName() {
+        return "reroute";
+    }
+
     public static class Factory {
         private final StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder;
         private final FlowRerouteHubCarrier carrier;
@@ -153,6 +166,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+            final ReportErrorAction<FlowRerouteFsm, State, Event, FlowRerouteContext>
+                    reportErrorAction = new ReportErrorAction<>();
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -204,8 +219,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
                     .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
-                    .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new AbandonPendingCommandsAction());
+                    .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.NON_INGRESS_RULES_INSTALLED).to(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
@@ -222,8 +236,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
                     .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
-                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR)
-                    .perform(new AbandonPendingCommandsAction());
+                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR);
 
             builder.transition().from(State.NON_INGRESS_RULES_VALIDATED).to(State.PATHS_SWAPPED).on(Event.NEXT)
                     .perform(new SwapFlowPathsAction(persistenceManager, resourcesManager));
@@ -247,8 +260,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .on(Event.INGRESS_IS_SKIPPED);
             builder.transitions().from(State.INSTALLING_INGRESS_RULES)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                    .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new AbandonPendingCommandsAction());
+                    .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.INGRESS_RULES_INSTALLED).to(State.VALIDATING_INGRESS_RULES).on(Event.NEXT)
                     .perform(new EmitIngressRulesVerifyRequestsAction());
@@ -264,8 +276,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_INGRESS_RULES)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR)
-                    .perform(new AbandonPendingCommandsAction());
+                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR);
 
             builder.transition().from(State.INGRESS_RULES_VALIDATED).to(State.NEW_PATHS_INSTALLATION_COMPLETED)
                     .on(Event.NEXT)
@@ -319,10 +330,14 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .on(Event.NEXT)
                     .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger));
 
+            builder.onEntry(State.REVERTING_PATHS_SWAP)
+                    .perform(reportErrorAction);
             builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
                     .on(Event.NEXT)
                     .perform(new RevertPathsSwapAction(persistenceManager));
 
+            builder.onEntry(State.PATHS_SWAP_REVERTED)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.PATHS_SWAP_REVERTED)
                     .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
                     .onEach(Event.NEXT, Event.ERROR)
@@ -342,6 +357,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.NEXT, Event.ERROR);
 
+            builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_ALLOCATED_RESOURCES)
                     .toAmong(State.RESOURCES_ALLOCATION_REVERTED, State.RESOURCES_ALLOCATION_REVERTED)
                     .onEach(Event.NEXT, Event.ERROR)
@@ -352,6 +369,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .on(Event.ERROR)
                     .perform(new HandleNotRevertedResourceAllocationAction());
 
+            builder.onEntry(State.REVERTING_FLOW_STATUS)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
