@@ -84,7 +84,7 @@ public class RerouteService {
 
             transactionManager.doInTransaction(() -> {
                 updateFlowPathsStateForFlow(switchId, port, flow);
-                flowRepository.updateStatus(flow.getFlowId(), flow.computeFlowStatus());
+                flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
             });
 
             sender.emitRerouteCommand(correlationId, entry.getKey(), entry.getValue(),
@@ -96,7 +96,7 @@ public class RerouteService {
                 updateFlowPathsStateForFlow(switchId, port, flow);
                 if (flow.getStatus() != FlowStatus.DOWN) {
                     flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.DOWN);
-                    flowRepository.updateStatus(flow.getFlowId(), FlowStatus.DOWN);
+                    flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN);
                 }
             });
         }
@@ -155,7 +155,7 @@ public class RerouteService {
                         flowPathRepository.updateStatus(flowPath.getPathId(), FlowPathStatus.ACTIVE);
                     }
                 }
-                flowRepository.updateStatus(flow.getFlowId(), flow.computeFlowStatus());
+                flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
             });
 
             if (flow.isPinned()) {
