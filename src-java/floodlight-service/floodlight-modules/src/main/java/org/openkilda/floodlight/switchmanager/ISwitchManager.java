@@ -39,10 +39,7 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ISwitchManager extends IFloodlightService {
-    /**
-     * OVS software switch manufacturer constant value.
-     */
-    String OVS_MANUFACTURER = "Nicira, Inc.";
+
 
     long COOKIE_FLAG_SERVICE = 0x8000000000000000L;
     long COOKIE_FLAG_BFD_CATCH = 0x0001000000000001L;
@@ -67,7 +64,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of switch
      * @throws SwitchOperationException in case of errors
      */
-    void installDefaultRules(final DatapathId dpid) throws SwitchOperationException;
+    List<Long> installDefaultRules(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Add default rule for install verfication rule applicable for vxlan.
@@ -186,7 +183,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of the switch
      * @throws SwitchOperationException Switch not found
      */
-    long installLldpTransitFlow(DatapathId dpid) throws SwitchOperationException;
+    Long installLldpTransitFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Install LLDP rule which will send all LLDP packets received from not ISL/Customer ports to controller.
@@ -194,7 +191,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of the switch
      * @throws SwitchOperationException Switch not found
      */
-    long installLldpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
+    Long installLldpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
@@ -230,7 +227,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of the switch
      * @throws SwitchOperationException Switch not found
      */
-    long installLldpIngressFlow(DatapathId dpid) throws SwitchOperationException;
+    Long installLldpIngressFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Install post ingress LLDP rule which will send LLDP packets received from Customer ports to controller.
@@ -238,7 +235,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of the switch
      * @throws SwitchOperationException Switch not found
      */
-    long installLldpPostIngressFlow(DatapathId dpid) throws SwitchOperationException;
+    Long installLldpPostIngressFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Install post ingress LLDP rule which will send LLDP packets with encapsulation to controller.
@@ -254,7 +251,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid datapathId of the switch
      * @throws SwitchOperationException Switch not found
      */
-    long installLldpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException;
+    Long installLldpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Remove intermediate rule for isl on switch in table 0 to route ingress traffic.
@@ -612,4 +609,11 @@ public interface ISwitchManager extends IFloodlightService {
      * @return true if tracking is enabled.
      */
     boolean isTrackingEnabled();
+
+    /**
+     * Return switch manager config.
+     *
+     * @return SwitchManagerConfig.
+     */
+    SwitchManagerConfig getSwitchManagerConfig();
 }

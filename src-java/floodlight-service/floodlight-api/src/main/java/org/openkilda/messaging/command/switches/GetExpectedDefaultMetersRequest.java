@@ -19,20 +19,16 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Value;
 
 @Value
-@Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class GetExpectedDefaultMetersRequest extends CommandData {
 
-    @JsonProperty("switch_id")
     private SwitchId switchId;
-
-    @JsonProperty("multi_table")
     private boolean multiTable;
-
-    @JsonProperty("switch_lldp")
     private boolean switchLldp;
 
     public GetExpectedDefaultMetersRequest(@JsonProperty("switch_id") SwitchId switchId,

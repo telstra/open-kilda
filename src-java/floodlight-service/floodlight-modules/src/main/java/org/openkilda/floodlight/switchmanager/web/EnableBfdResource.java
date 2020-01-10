@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager.web;
 
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
 
@@ -140,8 +141,8 @@ public class EnableBfdResource extends ServerResource {
         DatapathId remoteDatapath = DatapathId.of(bfdSession.getRemote().getDatapath().toLong());
         return new Ethernet()
                 .setEtherType(EthType.IPv4)
-                .setSourceMACAddress(switchManager.dpIdToMac(sw.getId()))
-                .setDestinationMACAddress(switchManager.dpIdToMac(remoteDatapath))
+                .setSourceMACAddress(convertDpIdToMac(sw.getId()))
+                .setDestinationMACAddress(convertDpIdToMac(remoteDatapath))
                 .setPayload(l3);
     }
 
