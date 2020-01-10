@@ -15,13 +15,14 @@
 
 package org.openkilda.floodlight.service.ping;
 
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
+
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.Cookie;
@@ -49,7 +50,6 @@ public class PingService implements IService {
     private static final byte NET_L3_TTL = 96;
 
     private DataSignature signature = null;
-    private ISwitchManager switchManager;
     private MacAddress magicSourceMacAddress;
 
     /**
@@ -65,8 +65,6 @@ public class PingService implements IService {
         } catch (InvalidSignatureConfigurationException e) {
             throw new FloodlightModuleException(String.format("Unable to initialize %s", getClass().getName()), e);
         }
-
-        switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
         InputService inputService = moduleContext.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, new PingInputTranslator());
@@ -110,7 +108,7 @@ public class PingService implements IService {
      * Verify all particular qualities used during discovery package creation time. Return packet payload.
      */
     public byte[] unwrapData(DatapathId dpId, Ethernet packet) {
-        MacAddress targetL2Address = switchManager.dpIdToMac(dpId);
+        MacAddress targetL2Address = convertDpIdToMac(dpId);
         if (!packet.getDestinationMACAddress().equals(targetL2Address)) {
             return null;
         }

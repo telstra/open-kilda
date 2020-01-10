@@ -127,7 +127,7 @@ public class SwitchValidateFsm
                 if (flowPath.getFlow().getDetectConnectedDevices().isSrcLldp() || switchLldp) {
                     flowLldpPorts.add(flowPath.getFlow().getSrcPort());
                 }
-            } else  {
+            } else {
                 if (flowPath.getFlow().isDestWithMultiTable()) {
                     flowPorts.add(flowPath.getFlow().getDestPort());
                 }
@@ -138,7 +138,7 @@ public class SwitchValidateFsm
         }
 
         hasMultiTableFlows = !flowPathRepository.findBySegmentSwitchWithMultiTable(switchId, true).isEmpty()
-                             || !flowRepository.findByEndpointSwitchWithMultiTableSupport(switchId).isEmpty();
+                || !flowRepository.findByEndpointSwitchWithMultiTableSupport(switchId).isEmpty();
 
         IslRepository islRepository = repositoryFactory.createIslRepository();
         this.islPorts = islRepository.findBySrcSwitch(switchId).stream()

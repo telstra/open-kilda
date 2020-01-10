@@ -165,10 +165,12 @@ public class ValidationServiceImpl implements ValidationService {
                 if (defaultRule.contains(expectedDefaultRule)) {
                     properRules.add(expectedDefaultRule.getCookie());
                 } else {
+                    log.info("Misconfigured rule: {} : expected : {}", defaultRule, expectedDefaultRule);
                     misconfiguredRules.add(expectedDefaultRule.getCookie());
                 }
 
                 if (defaultRule.size() > 1) {
+                    log.info("Misconfigured rule: {} : expected : {}", defaultRule, expectedDefaultRule);
                     misconfiguredRules.add(expectedDefaultRule.getCookie());
                 }
             }

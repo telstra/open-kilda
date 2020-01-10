@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.kafka;
 
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 import static org.openkilda.floodlight.kafka.ErrorMessageBuilder.anError;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
@@ -767,73 +766,49 @@ class RecordHandler implements Runnable {
         List<Long> installedRules = new ArrayList<>();
         try {
             if (installAction == InstallRulesAction.INSTALL_DROP) {
-                switchManager.installDropFlow(dpid);
-                installedRules.add(DROP_RULE_COOKIE);
+                installedRules.add(switchManager.installDropFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_BROADCAST) {
-                switchManager.installVerificationRule(dpid, true);
-                installedRules.add(VERIFICATION_BROADCAST_RULE_COOKIE);
+                installedRules.add(switchManager.installVerificationRule(dpid, true));
             } else if (installAction == InstallRulesAction.INSTALL_UNICAST) {
                 // TODO: this isn't always added (ie if OF1.2). Is there a better response?
-                switchManager.installVerificationRule(dpid, false);
-                installedRules.add(VERIFICATION_UNICAST_RULE_COOKIE);
+                installedRules.add(switchManager.installVerificationRule(dpid, false));
             } else if (installAction == InstallRulesAction.INSTALL_DROP_VERIFICATION_LOOP) {
-                switchManager.installDropLoopRule(dpid);
-                installedRules.add(DROP_VERIFICATION_LOOP_RULE_COOKIE);
+                installedRules.add(switchManager.installDropLoopRule(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_BFD_CATCH) {
                 // TODO: this isn't installed as well. Refactor this section
-                switchManager.installBfdCatchFlow(dpid);
-                installedRules.add(CATCH_BFD_RULE_COOKIE);
+                installedRules.add(switchManager.installBfdCatchFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY) {
                 // TODO: this isn't installed as well. Refactor this section
-                switchManager.installRoundTripLatencyFlow(dpid);
-                installedRules.add(ROUND_TRIP_LATENCY_RULE_COOKIE);
+                installedRules.add(switchManager.installRoundTripLatencyFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_UNICAST_VXLAN) {
-                switchManager.installUnicastVerificationRuleVxlan(dpid);
-                installedRules.add(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
+                installedRules.add(switchManager.installUnicastVerificationRuleVxlan(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH) {
-                switchManager.installPreIngressTablePassThroughDefaultRule(dpid);
-                installedRules.add(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE);
+                installedRules.add(switchManager.installPreIngressTablePassThroughDefaultRule(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_INGRESS_DROP) {
-                switchManager.installDropFlowForTable(dpid, INGRESS_TABLE_ID, MULTITABLE_INGRESS_DROP_COOKIE);
-                installedRules.add(MULTITABLE_INGRESS_DROP_COOKIE);
+                installedRules.add(switchManager.installDropFlowForTable(dpid,
+                        INGRESS_TABLE_ID, MULTITABLE_INGRESS_DROP_COOKIE));
             } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_POST_INGRESS_DROP) {
-                switchManager.installDropFlowForTable(dpid, POST_INGRESS_TABLE_ID, MULTITABLE_POST_INGRESS_DROP_COOKIE);
-                installedRules.add(MULTITABLE_POST_INGRESS_DROP_COOKIE);
+                installedRules.add(switchManager.installDropFlowForTable(dpid,
+                        POST_INGRESS_TABLE_ID, MULTITABLE_POST_INGRESS_DROP_COOKIE));
             } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_EGRESS_PASS_THROUGH) {
-                switchManager.installEgressTablePassThroughDefaultRule(dpid);
-                installedRules.add(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
+                installedRules.add(switchManager.installEgressTablePassThroughDefaultRule(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_TRANSIT_DROP) {
-                switchManager.installDropFlowForTable(dpid, TRANSIT_TABLE_ID, MULTITABLE_TRANSIT_DROP_COOKIE);
-                installedRules.add(MULTITABLE_TRANSIT_DROP_COOKIE);
+                installedRules.add(switchManager.installDropFlowForTable(dpid,
+                        TRANSIT_TABLE_ID, MULTITABLE_TRANSIT_DROP_COOKIE));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_INPUT_PRE_DROP) {
-                switchManager.installLldpInputPreDropFlow(dpid);
-                installedRules.add(LLDP_INPUT_PRE_DROP_COOKIE);
+                installedRules.add(switchManager.installLldpInputPreDropFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_INGRESS) {
-                switchManager.installLldpIngressFlow(dpid);
-                installedRules.add(LLDP_INGRESS_COOKIE);
+                installedRules.add(switchManager.installLldpIngressFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS) {
-                switchManager.installLldpPostIngressFlow(dpid);
-                installedRules.add(LLDP_POST_INGRESS_COOKIE);
+                installedRules.add(switchManager.installLldpPostIngressFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS_VXLAN) {
-                switchManager.installLldpPostIngressVxlanFlow(dpid);
-                installedRules.add(LLDP_POST_INGRESS_VXLAN_COOKIE);
+                installedRules.add(switchManager.installLldpPostIngressVxlanFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS_ONE_SWITCH) {
-                switchManager.installLldpPostIngressOneSwitchFlow(dpid);
-                installedRules.add(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                installedRules.add(switchManager.installLldpPostIngressOneSwitchFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_TRANSIT) {
-                switchManager.installLldpTransitFlow(dpid);
-                installedRules.add(LLDP_TRANSIT_COOKIE);
+                installedRules.add(switchManager.installLldpTransitFlow(dpid));
             } else {
-                switchManager.installDefaultRules(dpid);
-                installedRules.addAll(asList(
-                        DROP_RULE_COOKIE,
-                        VERIFICATION_BROADCAST_RULE_COOKIE,
-                        VERIFICATION_UNICAST_RULE_COOKIE,
-                        DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                        CATCH_BFD_RULE_COOKIE,
-                        ROUND_TRIP_LATENCY_RULE_COOKIE,
-                        VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
-                ));
+                installedRules.addAll(switchManager.installDefaultRules(dpid));
                 if (request.isMultiTable()) {
                     installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                             MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE));
@@ -1128,7 +1103,8 @@ class RecordHandler implements Runnable {
                     switchId, e.getMessage());
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
-                    .withDescription("The switch was not found when requesting get expected default rules.")
+                    .withDescription(format("Switch '%s' was not found when requesting expected default rules.",
+                            switchId))
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
                     .sendVia(producerService);
@@ -1167,7 +1143,8 @@ class RecordHandler implements Runnable {
                     switchId, e.getMessage());
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
-                    .withDescription("The switch was not found when requesting get expected default meters.")
+                    .withDescription(format("Switch '%s' was not found when requesting get expected default meters.",
+                            switchId))
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
                     .sendVia(producerService);

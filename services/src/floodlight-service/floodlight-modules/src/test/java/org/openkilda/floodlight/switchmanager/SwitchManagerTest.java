@@ -18,6 +18,7 @@ package org.openkilda.floodlight.switchmanager;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.capture;
@@ -31,7 +32,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.Every.everyItem;
@@ -45,7 +45,9 @@ import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
-import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACTURER;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.OVS_MANUFACTURER;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMode;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
@@ -88,6 +90,7 @@ import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
 import org.openkilda.floodlight.service.FeatureDetectorService;
+import org.openkilda.floodlight.switchmanager.factory.SwitchFlowFactory;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -156,7 +159,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 public class SwitchManagerTest {
     private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
@@ -189,6 +191,7 @@ public class SwitchManagerTest {
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
     private FeatureDetectorService featureDetectorService;
+    private SwitchFlowFactory switchFlowFactory;
     private IOFSwitch iofSwitch;
     private SwitchDescription switchDescription;
     private DatapathId dpid;
@@ -202,6 +205,8 @@ public class SwitchManagerTest {
         ofSwitchService = createMock(IOFSwitchService.class);
         restApiService = createMock(IRestApiService.class);
         featureDetectorService = createMock(FeatureDetectorService.class);
+        switchFlowFactory = new SwitchFlowFactory();
+
         iofSwitch = createMock(IOFSwitch.class);
 
         switchDescription = createMock(SwitchDescription.class);
@@ -235,9 +240,11 @@ public class SwitchManagerTest {
         context.addService(IRestApiService.class, restApiService);
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(FeatureDetectorService.class, featureDetectorService);
+        context.addService(SwitchFlowFactory.class, switchFlowFactory);
         context.addService(IPathVerificationService.class, pathVerificationService);
 
         switchManager = new SwitchManager();
+        context.addService(ISwitchManager.class, switchManager);
         switchManager.init(context);
         switchManager.startUp(context);
     }
@@ -269,7 +276,7 @@ public class SwitchManagerTest {
 
         expect(ofSwitchService.getActiveSwitch(defaultDpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getId()).andReturn(defaultDpid).times(4);
+        expect(iofSwitch.getId()).andReturn(defaultDpid).anyTimes();
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.write(capture(captureVerificationBroadcast))).andReturn(true).times(2);
 
@@ -1342,7 +1349,11 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         // when
-        switchManager.installMeterForDefaultRule(iofSwitch, unicastMeterId, 100L, new ArrayList<>());
+        long rate = 100L;
+        long burstSize = 1000L;
+        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+        OFMeterMod ofMeterMod = buildMeterMode(iofSwitch.getOFFactory(), rate, burstSize, unicastMeterId, flags);
+        switchManager.processMeter(iofSwitch, ofMeterMod);
 
         // then
         final List<OFMeterMod> actual = capture.getValues();
@@ -1351,48 +1362,10 @@ public class SwitchManagerTest {
         // verify meters creation
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFMeterModCommand.ADD))));
         assertThat(actual, everyItem(hasProperty("meterId", equalTo(unicastMeterId))));
-        assertThat(actual, everyItem(hasProperty("flags",
-                contains(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
+        assertThat(actual, everyItem(hasProperty("flags", containsInAnyOrder(flags.toArray()))));
         for (OFMeterMod mod : actual) {
-            long expectedBurstSize =
-                    config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() * 8 / 1024L;
-            assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(expectedBurstSize))));
-        }
-    }
-
-    @Test
-    public void shouldInstallMeterWithPktpsFlag() throws Exception {
-        long expectedRate = config.getUnicastRateLimit();
-        // given
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andStubReturn(dpid);
-        expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(PKTPS_FLAG));
-        mockGetMetersRequest(Collections.emptyList(), true, 0);
-        mockBarrierRequest();
-
-        Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(1);
-
-        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
-
-        // when
-        switchManager.installMeterForDefaultRule(iofSwitch, unicastMeterId, expectedRate, new ArrayList<>());
-
-        // verify meters installation
-        final List<OFMeterMod> actual = capture.getValues();
-        assertEquals(1, actual.size());
-
-        // verify meters creation
-        assertThat(actual, everyItem(hasProperty("command", equalTo(OFMeterModCommand.ADD))));
-        assertThat(actual, everyItem(hasProperty("meterId", equalTo(unicastMeterId))));
-        assertThat(actual, everyItem(hasProperty("flags",
-                contains(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
-        for (OFMeterMod mod : actual) {
-            assertThat(mod.getMeters(),
-                    everyItem(hasProperty("burstSize", is(config.getSystemMeterBurstSizeInPackets()))));
+            assertThat(mod.getMeters(), everyItem(hasProperty("rate", is(rate))));
+            assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(burstSize))));
         }
     }
 
@@ -1416,7 +1389,10 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         // when
-        switchManager.installMeterForDefaultRule(iofSwitch, unicastMeterId, expectedRate, new ArrayList<>());
+        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+        OFMeterMod ofMeterMod = buildMeterMode(iofSwitch.getOFFactory(), expectedRate,
+                config.getSystemMeterBurstSizeInPackets(), unicastMeterId, flags);
+        switchManager.processMeter(iofSwitch, ofMeterMod);
 
         // verify meters installation
         final List<OFMeterMod> actual = capture.getValues();
@@ -1427,8 +1403,7 @@ public class SwitchManagerTest {
         // verify meter installation
         assertThat(actual.get(1), hasProperty("command", equalTo(OFMeterModCommand.ADD)));
         assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeterId)));
-        assertThat(actual.get(1), hasProperty("flags",
-                containsInAnyOrder(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST)));
+        assertThat(actual.get(1), hasProperty("flags", containsInAnyOrder(flags.toArray())));
     }
 
     @Test
@@ -1452,7 +1427,11 @@ public class SwitchManagerTest {
         mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, originRate);
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
-        switchManager.installMeterForDefaultRule(iofSwitch, unicastMeter, updatedRate, new ArrayList<>());
+        //when
+        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
+        OFMeterMod ofMeterMod = buildMeterMode(iofSwitch.getOFFactory(), updatedRate,
+                config.getSystemMeterBurstSizeInPackets(), unicastMeter, flags);
+        switchManager.processMeter(iofSwitch, ofMeterMod);
 
         final List<OFMeterMod> actual = capture.getValues();
         assertEquals(2, actual.size());
@@ -1462,8 +1441,7 @@ public class SwitchManagerTest {
         // verify meter installation
         assertThat(actual.get(1), hasProperty("command", equalTo(OFMeterModCommand.ADD)));
         assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeter)));
-        assertThat(actual.get(1), hasProperty("flags",
-                containsInAnyOrder(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST)));
+        assertThat(actual.get(1), hasProperty("flags", containsInAnyOrder(flags.toArray())));
     }
 
     @Test
@@ -1538,7 +1516,7 @@ public class SwitchManagerTest {
                     replay(ofFlowStatsEntry);
                     return ofFlowStatsEntry;
                 })
-                .collect(Collectors.toList());
+                .collect(toList());
 
         OFFlowStatsEntry ofFlowStatsEntry = mock(OFFlowStatsEntry.class);
         expect(ofFlowStatsEntry.getCookie()).andStubReturn(U64.of(cookie));
@@ -1644,7 +1622,7 @@ public class SwitchManagerTest {
                     .buildSetField()
                     .setField(ofFactory.oxms()
                             .buildEthDst()
-                            .setValue(switchManager.dpIdToMac(dpid))
+                            .setValue(convertDpIdToMac(dpid))
                             .build())
                     .build();
 
