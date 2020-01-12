@@ -4,8 +4,8 @@ services:
   lab-api:
     container_name: lab-api
     image: kilda_lab-service
-    build:
-      context: docker/lab-service/
+      context: .
+      dockerfile: docker/lab-service/Dockerfile
     ports:
     - "8288:8288"
     privileged: true
