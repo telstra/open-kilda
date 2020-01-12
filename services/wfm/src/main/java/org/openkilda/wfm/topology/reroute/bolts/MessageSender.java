@@ -17,12 +17,12 @@ package org.openkilda.wfm.topology.reroute.bolts;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
+import org.openkilda.model.IslEndpoint;
 
 import java.util.Set;
 
 public interface MessageSender {
-    void emitRerouteCommand(String correlationId, Flow flow, Set<PathId> paths, String reason);
+    void emitRerouteCommand(String correlationId, Flow flow, Set<IslEndpoint> affectedIsl, String reason);
 
     void emitPathSwapCommand(String correlationId, FlowPath path, String reason);
 }

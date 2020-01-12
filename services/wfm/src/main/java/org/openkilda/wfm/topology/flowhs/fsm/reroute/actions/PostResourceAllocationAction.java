@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
@@ -71,6 +72,10 @@ public class PostResourceAllocationAction extends
                 && stateMachine.getNewProtectedForwardPath() == null
                 && stateMachine.getNewProtectedReversePath() == null) {
             stateMachine.fireRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
+        } else if (stateMachine.isEffectivelyDown()) {
+            log.warn("Flow {} is mentioned as effectively DOWN, so it will be forced to DOWN state if reroute fail",
+                     flowId);
+            stateMachine.setOriginalFlowStatus(FlowStatus.DOWN);
         }
 
         return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,

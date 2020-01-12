@@ -42,18 +42,10 @@ public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C>, S,
     protected final void perform(S from, S to, E event, C context, T stateMachine) {
         try {
             performWithResponse(from, to, event, context, stateMachine).ifPresent(stateMachine::sendResponse);
+        } catch (FlowProcessingException ex) {
+            handleError(stateMachine, ex, ex.getErrorType(), false);
         } catch (Exception ex) {
-            String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
-            stateMachine.saveErrorToHistory(errorMessage, ex);
-            stateMachine.fireError(errorMessage);
-
-            ErrorType errorType = ErrorType.INTERNAL_ERROR;
-            if (ex instanceof FlowProcessingException) {
-                errorType = ((FlowProcessingException) ex).getErrorType();
-            }
-
-            stateMachine.sendResponse(buildErrorMessage(stateMachine, errorType,
-                    getGenericErrorMessage(), ex.getMessage()));
+            handleError(stateMachine, ex, ErrorType.INTERNAL_ERROR, true);
         }
     }
 
@@ -71,4 +63,17 @@ public abstract class NbTrackableAction<T extends NbTrackableFsm<T, S, E, C>, S,
      * The message is being returned as the execution result.
      */
     protected abstract String getGenericErrorMessage();
+
+    private void handleError(T stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
+        if (logTraceback) {
+            stateMachine.saveErrorToHistory(errorMessage, ex);
+        } else {
+            stateMachine.saveErrorToHistory(errorMessage);
+        }
+        stateMachine.fireError(errorMessage);
+
+        stateMachine.sendResponse(buildErrorMessage(
+                stateMachine, errorType, getGenericErrorMessage(), ex.getMessage()));
+    }
 }
