@@ -15,9 +15,11 @@
 #
 
 
+set -ue${DEBUG:+x}
+
 PROJECT_ROOT=$(cd "$(dirname "$0")/../.."; pwd)
 
-TARGET=${PROJECT_ROOT}/services/storm/lib
+TARGET=${PROJECT_ROOT}/storm/lib
 
 JACKSON_VERSION=2.9.3
 
