@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -177,7 +178,7 @@ public class RerouteServiceTest {
             FlowStatus status = invocation.getArgument(1);
             pinnedFlow.setStatus(status);
             return null;
-        }).when(flowRepository).updateStatus(eq(pinnedFlow.getFlowId()), any());
+        }).when(flowRepository).updateStatusSafe(eq(pinnedFlow.getFlowId()), any());
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
         doAnswer(invocation -> {
@@ -202,9 +203,9 @@ public class RerouteServiceTest {
         RerouteService rerouteService = new RerouteService(persistenceManager);
         rerouteService.rerouteInactiveFlows(messageSender, CORRELATION_ID,
                 REROUTE_INACTIVE_FLOWS_COMMAND);
-        assertTrue(FlowStatus.UP.equals(pinnedFlow.getStatus()));
+        assertEquals(FlowStatus.UP, pinnedFlow.getStatus());
         for (FlowPath fp : pinnedFlow.getPaths()) {
-            assertTrue(FlowPathStatus.ACTIVE.equals(fp.getStatus()));
+            assertEquals(FlowPathStatus.ACTIVE, fp.getStatus());
             for (PathSegment ps : fp.getSegments()) {
                 if (ps.containsNode(SWITCH_ID_A, PORT)) {
                     assertFalse(ps.isFailed());

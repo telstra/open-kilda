@@ -343,7 +343,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 "flow_id", flowId,
                 "status", flowStatusConverter.toGraphProperty(flowStatus),
                 "time_modify", instantStringConverter.toGraphProperty(timestamp));
-        Session session = getSession();
         Optional<Long> updatedEntityId = queryForLong(
                 "MATCH (f:flow {flow_id: $flow_id}) "
                         + "SET f.status=$status, f.time_modify=$time_modify "
@@ -351,15 +350,23 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         if (!updatedEntityId.isPresent()) {
             throw new PersistenceException(format("Flow not found to be updated: %s", flowId));
         }
+        postStatusUpdate(flowStatus, timestamp, updatedEntityId.get());
+    }
 
-        Object updatedEntity = ((Neo4jSession) session).context().getNodeEntity(updatedEntityId.get());
-        if (updatedEntity instanceof Flow) {
-            Flow updatedFlow = (Flow) updatedEntity;
-            updatedFlow.setStatus(flowStatus);
-            updatedFlow.setTimeModify(timestamp);
-        } else if (updatedEntity != null) {
-            throw new PersistenceException(format("Expected a Flow entity, but found %s.", updatedEntity));
-        }
+    @Override
+    public void updateStatusSafe(String flowId, FlowStatus flowStatus) {
+        Instant timestamp = Instant.now();
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flow_id", flowId,
+                "status", flowStatusConverter.toGraphProperty(flowStatus),
+                "keep_status", flowStatusConverter.toGraphProperty(FlowStatus.IN_PROGRESS),
+                "time_modify", instantStringConverter.toGraphProperty(timestamp));
+        String query = "MATCH (f:flow {flow_id: $flow_id}) "
+                + "WHERE f.status<>$keep_status "
+                + "SET f.status=$status, f.time_modify=$time_modify "
+                + "RETURN id(f) as id";
+        Optional<Long> entityId = queryForLong(query, parameters, "id");
+        entityId.ifPresent(id -> postStatusUpdate(flowStatus, timestamp, id));
     }
 
     @Override
@@ -388,5 +395,17 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         // depth 3 is needed to create/update relations to switches, flow paths,
         // path segments and switches of path segments.
         return 3;
+    }
+
+    private void postStatusUpdate(FlowStatus flowStatus, Instant timestamp, Long entityId) {
+        Session session = getSession();
+        Object updatedEntity = ((Neo4jSession) session).context().getNodeEntity(entityId);
+        if (updatedEntity instanceof Flow) {
+            Flow updatedFlow = (Flow) updatedEntity;
+            updatedFlow.setStatus(flowStatus);
+            updatedFlow.setTimeModify(timestamp);
+        } else if (updatedEntity != null) {
+            throw new PersistenceException(format("Expected a Flow entity, but found %s.", updatedEntity));
+        }
     }
 }
