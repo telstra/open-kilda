@@ -60,7 +60,7 @@ public class ReroutesThrottling {
         log.info("Puts flow {} with correlationId {}", flowId, throttlingData.getCorrelationId());
         FlowThrottlingData prevThrottlingData = reroutes.put(flowId, throttlingData);
         if (prevThrottlingData != null) {
-            throttlingData.getPathIdSet().addAll(prevThrottlingData.getPathIdSet());
+            throttlingData.getAffectedIsl().addAll(prevThrottlingData.getAffectedIsl());
 
             log.info("Previous flow {} with correlationId {} was dropped.",
                     flowId, prevThrottlingData.getCorrelationId());

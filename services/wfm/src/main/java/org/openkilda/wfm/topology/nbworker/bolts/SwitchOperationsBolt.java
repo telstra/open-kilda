@@ -37,6 +37,7 @@ import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -62,7 +63,9 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier,
         SwitchOperationsServiceCarrier {
@@ -143,17 +146,16 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
                     .map(FeatureToggles::getFlowsRerouteViaFlowHs)
                     .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
+            String streamId = flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString();
 
-            flowOperationsService.groupFlowIdWithPathIdsForRerouting(
-                    flowOperationsService.getFlowPathsForSwitch(switchId)
-            ).forEach((flowId, pathIds) -> {
-                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds,
-                        format("evacuated due to switch maintenance %s", switchId));
-                CommandContext forkedContext = getCommandContext().fork(flowId);
-                getOutput().emit(
-                        flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
-                        tuple, new Values(rerouteRequest, forkedContext.getCorrelationId()));
-            });
+            Set<IslEndpoint> affectedIslEndpoint = new HashSet<>(
+                    switchOperationsService.getSwitchIslEndpoints(switchId));
+            String reason = format("evacuated due to switch maintenance %s", switchId);
+            for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
+                    flowOperationsService.getFlowPathsForSwitch(switchId), affectedIslEndpoint, reason)) {
+                CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
+                getOutput().emit(streamId, tuple, new Values(reroute, forkedContext.getCorrelationId()));
+            }
         }
 
         return Collections.singletonList(new GetSwitchResponse(sw));

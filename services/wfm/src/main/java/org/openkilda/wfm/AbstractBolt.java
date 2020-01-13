@@ -19,6 +19,7 @@ import org.openkilda.wfm.error.PipelineException;
 
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.base.BaseRichBolt;
@@ -48,6 +49,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     private transient Tuple currentTuple;
 
     @Getter(AccessLevel.PROTECTED)
+    @Setter(AccessLevel.PROTECTED)
     private transient CommandContext commandContext;
 
     @Override
