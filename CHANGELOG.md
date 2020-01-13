@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.45.2 (13/01/2020)
+
+### Bug Fixes:
+-  [#3107](https://github.com/telstra/open-kilda/pull/3107) Avoid reseting in progress flow status [**storm-topologies**]
+-  [#3108](https://github.com/telstra/open-kilda/pull/3108) Fix double network failure handling [**northbound**][**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.45.1...v1.45.2).
+
+### Affected Components:
+nb, reroute, flow-hs
+
+---
+
 ## v1.45.1 (30/12/2019)
 
 ### Bug Fixes:
