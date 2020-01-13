@@ -77,6 +77,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
+    private boolean effectivelyDown;
 
     private FlowStatus originalFlowStatus;
     private FlowEncapsulationType originalEncapsulationType;

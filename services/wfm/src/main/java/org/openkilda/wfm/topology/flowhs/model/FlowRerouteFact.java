@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,34 +13,39 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.reroute;
+package org.openkilda.wfm.topology.flowhs.model;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.model.IslEndpoint;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.wfm.CommandContext;
 
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import lombok.Value;
 
+import java.util.Collections;
 import java.util.Set;
 
-@Getter
-@EqualsAndHashCode(callSuper = true)
-public class FlowRerouteContext extends FlowContext {
+@Value
+public class FlowRerouteFact {
+    private String key;
+    private CommandContext commandContext;
     private String flowId;
     private Set<IslEndpoint> affectedIsl;
     private boolean forceReroute;
     private boolean effectivelyDown;
     private String rerouteReason;
 
-    @Builder
-    public FlowRerouteContext(
-            SpeakerFlowSegmentResponse speakerFlowResponse, String flowId, Set<IslEndpoint> affectedIsl,
+    public FlowRerouteFact(
+            String key, CommandContext commandContext, String flowId, Set<IslEndpoint> affectedIsl,
             boolean forceReroute, boolean effectivelyDown, String rerouteReason) {
-        super(speakerFlowResponse);
+        this.key = key;
+        this.commandContext = commandContext;
         this.flowId = flowId;
-        this.affectedIsl = affectedIsl;
+
+        if (affectedIsl == null) {
+            this.affectedIsl = Collections.emptySet();
+        } else {
+            this.affectedIsl = affectedIsl;
+        }
+
         this.forceReroute = forceReroute;
         this.effectivelyDown = effectivelyDown;
         this.rerouteReason = rerouteReason;

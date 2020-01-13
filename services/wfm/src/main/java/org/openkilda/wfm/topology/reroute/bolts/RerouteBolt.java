@@ -22,7 +22,7 @@ import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -88,12 +88,12 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      * Emit reroute command for consumer.
      * @param correlationId correlation id to pass through
      * @param flow affected flow
-     * @param paths affected paths
+     * @param affectedIsl affected paths
      * @param reason inital reason of reroute
      */
-    public void emitRerouteCommand(String correlationId, Flow flow, Set<PathId> paths, String reason) {
+    public void emitRerouteCommand(String correlationId, Flow flow, Set<IslEndpoint> affectedIsl, String reason) {
         getOutput().emit(getCurrentTuple(), new Values(flow.getFlowId(),
-                new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate(), paths)));
+                new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate(), affectedIsl)));
 
         log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
                 flow.getFlowId(), correlationId, reason);

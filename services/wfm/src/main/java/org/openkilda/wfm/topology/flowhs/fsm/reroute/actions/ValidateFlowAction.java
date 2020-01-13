@@ -21,8 +21,11 @@ import static java.util.Collections.emptySet;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
@@ -62,9 +65,9 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowRerouteContext context,
                                                     FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        Set<PathId> pathsToReroute =
-                new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));
-        dashboardLogger.onFlowPathReroute(flowId, pathsToReroute, context.isForceReroute());
+        Set<IslEndpoint> affectedIsl =
+                new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
+        dashboardLogger.onFlowPathReroute(flowId, affectedIsl, context.isForceReroute());
 
         Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
@@ -89,24 +92,42 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
                     }
                 }));
 
-        // check whether the primary paths should be rerouted
-        // | operator is used intentionally, see validation below.
-        boolean reroutePrimary = pathsToReroute.isEmpty() | pathsToReroute.remove(flow.getForwardPathId())
-                | pathsToReroute.remove(flow.getReversePathId());
-        // check whether the protected paths should be rerouted
-        // | operator is used intentionally, see validation below.
-        boolean rerouteProtected = flow.isAllocateProtectedPath() && (pathsToReroute.isEmpty()
-                | pathsToReroute.remove(flow.getProtectedForwardPathId())
-                | pathsToReroute.remove(flow.getProtectedReversePathId()));
+        boolean reroutePrimary;
+        boolean rerouteProtected;
+        if (affectedIsl.isEmpty()) {
+            // no know affected ISLs
+            reroutePrimary = true;
+            rerouteProtected = true;
+        } else {
+            reroutePrimary = checkIsPathAffected(flow.getForwardPathId(), affectedIsl)
+                    || checkIsPathAffected(flow.getReversePathId(), affectedIsl);
+            rerouteProtected = checkIsPathAffected(flow.getProtectedForwardPathId(), affectedIsl)
+                    || checkIsPathAffected(flow.getProtectedReversePathId(), affectedIsl);
+        }
+        // check protected path presence
+        rerouteProtected &= flow.isAllocateProtectedPath();
 
-        if (!pathsToReroute.isEmpty()) {
-            throw new FlowProcessingException(ErrorType.NOT_FOUND, format("Path(s) %s was not found in flow %s",
-                            pathsToReroute.stream().map(PathId::toString).collect(Collectors.joining(",")),
-                            flowId));
+        if (! reroutePrimary && ! rerouteProtected) {
+            throw new FlowProcessingException(ErrorType.NOT_FOUND, format(
+                    "No paths of the flow %s are affected by failure on %s", flowId,
+                    affectedIsl.stream()
+                            .map(IslEndpoint::toString)
+                            .collect(Collectors.joining(","))));
+        }
+
+        if (reroutePrimary) {
+            log.info("Reroute for the flow {} will affect primary paths: {} / {}",
+                    flowId, flow.getForwardPathId(), flow.getReversePathId());
+        }
+        if (rerouteProtected) {
+            log.info("Reroute for the flow {} will affect protected paths: {} / {}",
+                    flowId, flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
         }
 
         stateMachine.setReroutePrimary(reroutePrimary);
         stateMachine.setRerouteProtected(rerouteProtected);
+
+        stateMachine.setEffectivelyDown(context.isEffectivelyDown());
 
         if (stateMachine.isRerouteProtected() && flow.isPinned()) {
             throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
@@ -124,5 +145,34 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
     @Override
     protected String getGenericErrorMessage() {
         return "Could not reroute flow";
+    }
+
+    private boolean checkIsPathAffected(PathId pathId, Set<IslEndpoint> affectedIsl) {
+        if (pathId == null) {
+            return false;
+        }
+
+        FlowPath path = getFlowPath(pathId);
+        boolean isAffected = false;
+        for (PathSegment segment : path.getSegments()) {
+            isAffected = affectedIsl.contains(getSegmentSourceEndpoint(segment));
+            if (! isAffected) {
+                isAffected = affectedIsl.contains(getSegmentDestEndpoint(segment));
+            }
+
+            if (isAffected) {
+                break;
+            }
+        }
+
+        return isAffected;
+    }
+
+    private IslEndpoint getSegmentSourceEndpoint(PathSegment segment) {
+        return new IslEndpoint(segment.getSrcSwitch().getSwitchId(), segment.getSrcPort());
+    }
+
+    private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
+        return new IslEndpoint(segment.getDestSwitch().getSwitchId(), segment.getDestPort());
     }
 }

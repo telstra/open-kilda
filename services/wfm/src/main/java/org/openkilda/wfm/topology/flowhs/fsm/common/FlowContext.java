@@ -18,9 +18,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @AllArgsConstructor
 public abstract class FlowContext {
     private SpeakerFlowSegmentResponse speakerFlowResponse;

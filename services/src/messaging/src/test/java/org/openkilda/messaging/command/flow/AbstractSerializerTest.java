@@ -50,8 +50,8 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.OutputVlanType;
-import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
 import org.junit.Ignore;
@@ -69,7 +69,6 @@ import java.util.UUID;
 @Ignore
 public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final String FLOW_NAME = "test_flow";
-    private static final PathId PATH_ID = new PathId("path_name");
     private static final SwitchId SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
     private static final SwitchId EGRESS_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
     private static final String CORRELATION_ID = UUID.randomUUID().toString();
@@ -563,7 +562,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowRerouteCommandTest() throws IOException, ClassNotFoundException {
-        FlowRerouteRequest data = new FlowRerouteRequest(FLOW_NAME, false, Collections.singleton(PATH_ID), null);
+        FlowRerouteRequest data = new FlowRerouteRequest(
+                FLOW_NAME, false, false, Collections.singleton(new IslEndpoint(SWITCH_ID, 1)), null);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

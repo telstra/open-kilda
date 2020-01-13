@@ -16,7 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.PathId;
+import org.openkilda.model.IslEndpoint;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -41,7 +41,7 @@ public class FlowRerouteRequest extends CommandData {
     protected String flowId;
 
     @JsonProperty("path_ids")
-    protected Set<PathId> pathIds;
+    protected Set<IslEndpoint> affectedIsl;
 
     /**
      * Update flow even if path will not be changed.
@@ -49,21 +49,29 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("force")
     private boolean force;
 
+    @JsonProperty("effectively_down")
+    private boolean effectivelyDown;
+
     @JsonProperty("reason")
     private String reason;
 
+    /**
+     * Create Simplified request usable only for northbound API.
+     */
     public FlowRerouteRequest(String flowId, boolean force, String reason) {
-        this(flowId, force, Collections.emptySet(), reason);
+        this(flowId, force, false, Collections.emptySet(), reason);
     }
 
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
                               @JsonProperty("force") boolean force,
-                              @NonNull @JsonProperty("path_ids") Set<PathId> pathIds,
+                              @JsonProperty("effectively_down")  boolean effectivelyDown,
+                              @NonNull @JsonProperty("path_ids") Set<IslEndpoint> affectedIsl,
                               @JsonProperty("reason") String reason) {
         this.flowId = flowId;
         this.force = force;
-        this.pathIds = pathIds;
+        this.effectivelyDown = effectivelyDown;
+        this.affectedIsl = affectedIsl;
         this.reason = reason;
     }
 }

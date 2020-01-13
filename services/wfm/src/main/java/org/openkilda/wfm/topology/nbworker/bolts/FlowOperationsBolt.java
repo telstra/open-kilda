@@ -40,6 +40,7 @@ import org.openkilda.model.ConnectedDevice;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
@@ -61,7 +62,9 @@ import org.apache.storm.tuple.Values;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FlowOperationsBolt extends PersistenceOperationsBolt {
@@ -154,17 +157,19 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
                 .map(FeatureToggles::getFlowsRerouteViaFlowHs)
                 .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
+        String streamId = flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString();
 
-        flowOperationsService.groupFlowIdWithPathIdsForRerouting(paths)
-                .forEach((flowId, pathIds) -> {
-                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds,
-                            format("initiated via Northbound, reroute all flows that go over the link %s_%d - %s_%d",
-                                    srcSwitch, srcPort, dstSwitch, dstPort));
-                    CommandContext forkedContext = getCommandContext().fork(flowId);
-                    getOutput().emit(
-                            flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
-                            tuple, new Values(rerouteRequest, forkedContext.getCorrelationId()));
-                });
+        Set<IslEndpoint> affectedIslEndpoints = new HashSet<>();
+        affectedIslEndpoints.add(new IslEndpoint(srcSwitch, srcPort));
+        affectedIslEndpoints.add(new IslEndpoint(dstSwitch, dstPort));
+        String reason = format("initiated via Northbound, reroute all flows that go over the link %s_%d - %s_%d",
+                srcSwitch, srcPort, dstSwitch, dstPort);
+
+        for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
+                paths, affectedIslEndpoints, reason)) {
+            CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
+            getOutput().emit(streamId, tuple, new Values(request, forkedContext.getCorrelationId()));
+        }
 
         List<String> flowIds = paths.stream()
                 .map(FlowPath::getFlow)

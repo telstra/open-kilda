@@ -76,7 +76,7 @@ public class RouterBolt extends AbstractBolt {
         } else if (data instanceof FlowRerouteRequest) {
             FlowRerouteRequest rerouteRequest = (FlowRerouteRequest) data;
             log.debug("Received a reroute request {}/{} with key {}. MessageId {}", rerouteRequest.getFlowId(),
-                    rerouteRequest.getPathIds(), key, input.getMessageId());
+                    rerouteRequest.getAffectedIsl(), key, input.getMessageId());
             Values values = new Values(key, rerouteRequest.getFlowId(), data);
             emitWithContext(ROUTER_TO_FLOW_REROUTE_HUB.name(), input, values);
         } else if (data instanceof FlowDeleteRequest) {

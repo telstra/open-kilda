@@ -22,6 +22,7 @@ import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
@@ -308,5 +309,14 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                                 .orElseThrow(() -> new SwitchNotFoundException(switchId)))
                         .port(port)
                         .build());
+    }
+
+    /**
+     * Find and return all {@code IslEndpoint} for all ISL detected for this switch.
+     */
+    public List<IslEndpoint> getSwitchIslEndpoints(SwitchId switchId) {
+        return islRepository.findBySrcSwitch(switchId).stream()
+                .map(isl -> new IslEndpoint(switchId, isl.getSrcPort()))
+                .collect(Collectors.toList());
     }
 }
