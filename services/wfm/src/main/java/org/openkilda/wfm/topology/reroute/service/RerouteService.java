@@ -22,9 +22,11 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -33,9 +35,14 @@ import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -67,33 +74,35 @@ public class RerouteService {
      * @param command origin command
      */
     public void rerouteAffectedFlows(MessageSender sender, String correlationId, RerouteAffectedFlows command) {
+        // TODO(surabujin): need better/more detailed representation of failed ISL
         PathNode pathNode = command.getPathNode();
         int port = pathNode.getPortNo();
         SwitchId switchId = pathNode.getSwitchId();
-        Collection<FlowPath> affectedFlowPaths
-                = getAffectedFlowPaths(pathNode.getSwitchId(), pathNode.getPortNo());
+        final IslEndpoint affectedIsl = new IslEndpoint(switchId, port);
+
+        Collection<FlowPath> affectedFlowPaths = getAffectedFlowPaths(pathNode.getSwitchId(), pathNode.getPortNo());
 
         // swapping affected primary paths with available protected
         List<FlowPath> pathsForSwapping = getPathsForSwapping(affectedFlowPaths);
         for (FlowPath path : pathsForSwapping) {
             sender.emitPathSwapCommand(correlationId, path, command.getReason());
         }
-        Map<Flow, Set<PathId>> flowsForRerouting = groupFlowsForRerouting(affectedFlowPaths);
-        for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
-            Flow flow = entry.getKey();
 
+        for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {
+            Flow flow = entry.getFlow();
             transactionManager.doInTransaction(() -> {
-                updateFlowPathsStateForFlow(switchId, port, flow);
+                updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
                 flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
             });
 
-            sender.emitRerouteCommand(correlationId, entry.getKey(), entry.getValue(),
-                    command.getReason());
+            sender.emitRerouteCommand(correlationId, flow, Collections.singleton(affectedIsl), command.getReason());
         }
+
         Set<Flow> affectedPinnedFlows = groupAffectedPinnedFlows(affectedFlowPaths);
         for (Flow flow : affectedPinnedFlows) {
             transactionManager.doInTransaction(() -> {
-                updateFlowPathsStateForFlow(switchId, port, flow);
+                List<FlowPath> flowPaths = new ArrayList<>(flow.getPaths());
+                updateFlowPathsStateForFlow(switchId, port, flowPaths);
                 if (flow.getStatus() != FlowStatus.DOWN) {
                     flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.DOWN);
                     flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN);
@@ -102,8 +111,8 @@ public class RerouteService {
         }
     }
 
-    private void updateFlowPathsStateForFlow(SwitchId switchId, int port, Flow flow) {
-        for (FlowPath fp : flow.getPaths()) {
+    private void updateFlowPathsStateForFlow(SwitchId switchId, int port, List<FlowPath> paths) {
+        for (FlowPath fp : paths) {
             boolean failedFlowPath = false;
             for (PathSegment pathSegment : fp.getSegments()) {
                 if (pathSegment.getSrcPort() == port
@@ -117,8 +126,7 @@ public class RerouteService {
                 }
             }
             if (failedFlowPath) {
-                fp.setStatus(FlowPathStatus.INACTIVE);
-                flowPathRepository.updateStatus(fp.getPathId(), FlowPathStatus.INACTIVE);
+                updateFlowPathStatus(fp, FlowPathStatus.INACTIVE);
             }
         }
     }
@@ -137,11 +145,23 @@ public class RerouteService {
 
         for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
             Flow flow = entry.getKey();
+            Set<IslEndpoint> allAffectedIslEndpoints = new HashSet<>();
             transactionManager.doInTransaction(() -> {
                 for (FlowPath flowPath : flow.getPaths()) {
+                    Set<IslEndpoint> affectedIslEndpoints = new HashSet<>();
+                    PathSegment firstSegment = null;
                     int failedSegmentsCount = 0;
                     for (PathSegment pathSegment : flowPath.getSegments()) {
+                        if (firstSegment == null) {
+                            firstSegment = pathSegment;
+                        }
+
                         if (pathSegment.isFailed()) {
+                            affectedIslEndpoints.add(new IslEndpoint(
+                                    pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort()));
+                            affectedIslEndpoints.add(new IslEndpoint(
+                                    pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort()));
+
                             if (pathSegment.containsNode(switchId, port)) {
                                 pathSegment.setFailed(false);
                                 pathSegmentRepository.updateFailedStatus(flowPath.getPathId(), pathSegment, false);
@@ -150,10 +170,18 @@ public class RerouteService {
                             }
                         }
                     }
+
                     if (flowPath.getStatus().equals(FlowPathStatus.INACTIVE) && failedSegmentsCount == 0) {
-                        flowPath.setStatus(FlowPathStatus.ACTIVE);
-                        flowPathRepository.updateStatus(flowPath.getPathId(), FlowPathStatus.ACTIVE);
+                        updateFlowPathStatus(flowPath, FlowPathStatus.ACTIVE);
+
+                        // force reroute of failed path only (required due to inaccurate path/segment state management)
+                        if (affectedIslEndpoints.isEmpty() && firstSegment != null) {
+                            affectedIslEndpoints.add(new IslEndpoint(
+                                    firstSegment.getSrcSwitch().getSwitchId(), firstSegment.getSrcPort()));
+                        }
                     }
+
+                    allAffectedIslEndpoints.addAll(affectedIslEndpoints);
                 }
                 flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
             });
@@ -161,8 +189,10 @@ public class RerouteService {
             if (flow.isPinned()) {
                 log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
             } else {
-                sender.emitRerouteCommand(correlationId, entry.getKey(), entry.getValue(),
-                        command.getReason());
+                log.info("Produce reroute(attempt to restore inactive flows) request for {} (affected ISL "
+                                + "endpoints: {})",
+                        flow.getFlowId(), allAffectedIslEndpoints);
+                sender.emitRerouteCommand(correlationId, flow, allAffectedIslEndpoints, command.getReason());
             }
         }
     }
@@ -202,11 +232,17 @@ public class RerouteService {
      *
      * @return map with flow for reroute and set of reroute pathId.
      */
-    public Map<Flow, Set<PathId>> groupFlowsForRerouting(Collection<FlowPath> paths) {
-        return paths.stream()
-                .filter(path -> !path.getFlow().isPinned())
-                .collect(Collectors.groupingBy(FlowPath::getFlow,
-                        Collectors.mapping(FlowPath::getPathId, Collectors.toSet())));
+    public List<FlowWithAffectedPaths> groupPathsForRerouting(Collection<FlowPath> paths) {
+        Map<String, FlowWithAffectedPaths> results = new HashMap<>();
+        for (FlowPath entry : paths) {
+            Flow flow = entry.getFlow();
+            if (flow.isPinned()) {
+                continue;
+            }
+            results.computeIfAbsent(flow.getFlowId(), key -> new FlowWithAffectedPaths(flow))
+                    .getAffectedPaths().add(entry);
+        }
+        return new ArrayList<>(results.values());
     }
 
     /**
@@ -233,5 +269,21 @@ public class RerouteService {
                         .map(FlowPath::getPathId)
                         .collect(Collectors.toSet()))
                 );
+    }
+
+    private void updateFlowPathStatus(FlowPath path, FlowPathStatus status) {
+        try {
+            flowPathRepository.updateStatus(path.getPathId(), status);
+            path.setStatus(status);
+        } catch (PersistenceException e) {
+            log.error("Unable to set path {} status to {}: {}", path.getPathId(), status, e.getMessage());
+        }
+    }
+
+    @Value
+    private static class FlowWithAffectedPaths {
+        private Flow flow;
+
+        private List<FlowPath> affectedPaths = new ArrayList<>();
     }
 }

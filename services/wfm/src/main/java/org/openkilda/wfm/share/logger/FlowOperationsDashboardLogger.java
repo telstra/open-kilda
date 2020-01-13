@@ -17,7 +17,7 @@ package org.openkilda.wfm.share.logger;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathId;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.reporting.AbstractDashboardLogger;
 
@@ -312,13 +312,13 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a flow-paths-reroute event.
      */
-    public void onFlowPathReroute(String flowId, Collection<PathId> pathIds, boolean forceToReroute) {
+    public void onFlowPathReroute(String flowId, Collection<IslEndpoint> affectedIsl, boolean forceToReroute) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-paths-reroute");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_EVENT);
         data.put("forced_reroute", Boolean.toString(forceToReroute));
-        invokeLogger(Level.INFO, String.format("Reroute paths %s of the flow %s", pathIds, flowId), data);
+        invokeLogger(Level.INFO, String.format("Reroute due to failure on %s ISLs flow %s", affectedIsl, flowId), data);
     }
 
     /**

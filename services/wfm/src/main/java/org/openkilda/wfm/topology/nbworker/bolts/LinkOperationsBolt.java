@@ -35,7 +35,9 @@ import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequ
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -62,8 +64,10 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier {
@@ -318,17 +322,21 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                         .map(FeatureToggles::getFlowsRerouteViaFlowHs)
                         .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
 
-                flowOperationsService.groupFlowIdWithPathIdsForRerouting(
-                        flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort)
-                ).forEach((flowId, pathIds) -> {
-                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds,
-                            format("evacuated due to link maintenance %s_%d - %s_%d",
-                                    srcSwitch, srcPort, dstSwitch, dstPort));
-                    CommandContext forkedContext = getCommandContext().fork(flowId);
+                Set<IslEndpoint> affectedIslEndpoints = new HashSet<>();
+                affectedIslEndpoints.add(new IslEndpoint(srcSwitch, srcPort));
+                affectedIslEndpoints.add(new IslEndpoint(dstSwitch, dstPort));
+                String reason = format("evacuated due to link maintenance %s_%d - %s_%d",
+                        srcSwitch, srcPort, dstSwitch, dstPort);
+                Collection<FlowPath> targetPaths = flowOperationsService.getFlowPathsForLink(
+                        srcSwitch, srcPort, dstSwitch, dstPort);
+
+                for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
+                        targetPaths, affectedIslEndpoints, reason)) {
+                    CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
                     getOutput().emit(
                             flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
-                            getCurrentTuple(), new Values(rerouteRequest, forkedContext.getCorrelationId()));
-                });
+                            getCurrentTuple(), new Values(reroute, forkedContext.getCorrelationId()));
+                }
             }
 
         } catch (IslNotFoundException e) {

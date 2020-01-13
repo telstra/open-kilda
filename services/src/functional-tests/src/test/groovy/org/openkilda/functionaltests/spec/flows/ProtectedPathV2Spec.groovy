@@ -191,6 +191,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue("No suiting switches found", false)
+        def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -230,8 +231,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
 
             assert pathHelper.convert(flowPathInfoAfterRerouting) == currentProtectedPath
-            assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentPath
-            assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentProtectedPath
+            if (4 <= uniquePathCount) {
+                assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentPath
+                assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentProtectedPath
+            }
         }
 
         when: "Restore port status"
@@ -320,6 +323,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue("No suiting switches found", false)
 
+        def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
+
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = bandwidth
@@ -352,8 +357,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
             def newCurrentProtectedPath = pathHelper.convert(newPathInfo.protectedPath)
             assert newCurrentPath == currentProtectedPath
-            assert newCurrentProtectedPath != currentPath
-            assert newCurrentProtectedPath != currentProtectedPath
+            if (4 <= uniquePathCount) {
+                assert newCurrentProtectedPath != currentPath
+                assert newCurrentProtectedPath != currentProtectedPath
+            }
         }
 
         when: "Restore port status"
