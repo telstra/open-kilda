@@ -50,7 +50,7 @@ clean-sources:
 
 compile: update-props
 	cd src-java && ./gradlew build
-	$(MAKE) -C services/lab-service/lab test
+	$(MAKE) -C src-python/lab-service/lab test
 	$(MAKE) -C services/src/openkilda-gui build
 
 .PHONY: unit
