@@ -35,6 +35,7 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.cypher.query.SortOrder;
+import org.neo4j.ogm.exception.CypherException;
 import org.neo4j.ogm.exception.core.MappingException;
 import org.neo4j.ogm.session.Session;
 
@@ -79,6 +80,12 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
             getSession().save(entity, getDepthCreateUpdateEntity());
         } catch (ClientException ex) {
             if (ex.code().endsWith("ConstraintValidationFailed")) {
+                throw new ConstraintViolationException("Unable to create/update " + getEntityType(), ex);
+            } else {
+                throw ex;
+            }
+        } catch (CypherException ex) {
+            if (ex.getCode().endsWith("ConstraintValidationFailed")) {
                 throw new ConstraintViolationException("Unable to create/update " + getEntityType(), ex);
             } else {
                 throw ex;

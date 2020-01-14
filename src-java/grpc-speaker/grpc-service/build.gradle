@@ -1,5 +1,8 @@
-description = 'GRPC service'
+plugins {
+    id 'org.springframework.boot' version '2.2.1.RELEASE'
+}
 
+description = 'GRPC service'
 dependencies {
     implementation project(':grpc-api')
     implementation project(':kilda-configuration')
@@ -49,4 +52,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 }
 
-build.dependsOn collectDependencyJars
+bootJar {
+    mainClassName = 'org.openkilda.grpc.speaker.GrpcSpeaker'
+    archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}

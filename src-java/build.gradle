@@ -25,10 +25,9 @@ subprojects {
 
     dependencies {
         implementation(platform("com.fasterxml.jackson:jackson-bom:2.10.0"))
-        implementation(platform('org.springframework:spring-framework-bom:4.2.3.RELEASE'))
-        implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.6.RELEASE')) {
-            // The older version conflicts with another from org.neo4j:neo4j-ogm-test
-            exclude group: 'org.eclipse.jetty'
+        implementation(platform('org.springframework:spring-framework-bom:4.3.25.RELEASE'))
+        implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.22.RELEASE')) {
+            exclude group: 'org.projectlombok'
         }
 
         constraints {
@@ -41,21 +40,21 @@ subprojects {
 
             implementation 'org.squirrelframework:squirrel-foundation:0.3.8'
 
-            implementation 'org.neo4j.driver:neo4j-java-driver:1.5.1'
-            implementation 'org.neo4j:neo4j-ogm-core:3.1.3'
-            implementation 'org.neo4j:neo4j-ogm-bolt-driver:3.1.3'
-            testImplementation 'org.neo4j:neo4j-ogm-test:3.1.3'
-            testImplementation 'org.neo4j:neo4j:3.3.3'
-            testImplementation 'org.neo4j:neo4j-bolt:3.3.3'
+            implementation 'org.neo4j.driver:neo4j-java-driver:1.6.4'
+            implementation 'org.neo4j:neo4j-ogm-core:3.1.16'
+            implementation 'org.neo4j:neo4j-ogm-bolt-driver:3.1.16'
+            testImplementation 'org.neo4j:neo4j-ogm-test:3.1.16'
+            testImplementation 'org.neo4j:neo4j:3.4.17'
+            testImplementation 'org.neo4j:neo4j-bolt:3.4.17'
 
             implementation 'com.google.guava:guava:20.0'
             implementation 'net.jodah:failsafe:1.0.5'
             implementation 'io.github.classgraph:classgraph:4.8.14'
-            implementation 'org.apache.commons:commons-collections4:4.1'
-            implementation 'org.apache.commons:commons-lang3:3.7'
+            implementation 'org.apache.commons:commons-collections4:4.4'
+            implementation 'org.apache.commons:commons-lang3:3.9'
             implementation 'org.apache.commons:commons-io:1.3.2'
             implementation 'commons-lang:commons-lang:2.6'
-            implementation 'commons-io:commons-io:2.5'
+            implementation 'commons-io:commons-io:2.6'
             implementation 'com.auth0:java-jwt:3.2.0'
             implementation 'args4j:args4j:2.33'
             implementation 'com.google.code.gson:gson:2.8.2'
@@ -73,9 +72,9 @@ subprojects {
             annotationProcessor 'org.projectlombok:lombok:1.18.10'
             testAnnotationProcessor 'org.projectlombok:lombok:1.18.10'
 
-            implementation 'org.slf4j:slf4j-api:1.7.25'
-            testRuntimeOnly 'org.slf4j:slf4j-api:1.7.25'
-            testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.25'
+            implementation 'org.slf4j:slf4j-api:1.7.30'
+            testRuntimeOnly 'org.slf4j:slf4j-api:1.7.30'
+            testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.30'
             implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.8'
             testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl:2.8'
             implementation 'org.apache.logging.log4j:log4j-api:2.8'
@@ -104,12 +103,12 @@ subprojects {
             testImplementation 'org.glassfish:javax.el:3.0.1-b09'
 
             implementation 'org.aspectj:aspectjrt:1.8.13'
-            implementation 'org.mapstruct:mapstruct-jdk8:1.3.0.Final'
-            implementation 'org.mapstruct:mapstruct-processor:1.3.0.Final'
-            annotationProcessor 'org.mapstruct:mapstruct-processor:1.3.0.Final'
-            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.3.0.Final'
+            implementation 'org.mapstruct:mapstruct-jdk8:1.3.1.Final'
+            implementation 'org.mapstruct:mapstruct-processor:1.3.1.Final'
+            annotationProcessor 'org.mapstruct:mapstruct-processor:1.3.1.Final'
+            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.3.1.Final'
 
-            implementation 'org.springframework.kafka:spring-kafka:1.2.2.RELEASE'
+            implementation 'org.springframework.kafka:spring-kafka:1.3.10.RELEASE'
 
             implementation 'io.grpc:grpc-protobuf:1.18.0'
             implementation 'io.grpc:grpc-stub:1.18.0'

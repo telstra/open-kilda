@@ -1,3 +1,7 @@
+plugins {
+    id 'org.springframework.boot' version '2.2.1.RELEASE'
+}
+
 description = 'Northbound Service'
 dependencies {
     implementation project(':base-messaging')
@@ -49,4 +53,7 @@ dependencies {
     testImplementation 'org.neo4j:neo4j-ogm-test'
 }
 
-build.dependsOn collectDependencyJars
+bootJar {
+    mainClassName = 'org.openkilda.northbound.Application'
+    archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}

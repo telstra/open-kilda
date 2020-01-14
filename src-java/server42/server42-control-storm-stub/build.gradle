@@ -1,5 +1,4 @@
 description = 'server42-control-storm-stub'
-
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
     implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.1.RELEASE'))

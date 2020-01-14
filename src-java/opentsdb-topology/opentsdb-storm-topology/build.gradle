@@ -53,3 +53,9 @@ dependencies {
 }
 
 build.dependsOn collectDependencyJars
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology'
+    }
+}
