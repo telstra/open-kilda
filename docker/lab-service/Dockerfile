@@ -16,12 +16,13 @@
 ARG base_image=kilda/base-lab-service
 FROM ${base_image}
 
-ADD traffexam/ /exam
+ADD src-python/lab-service/traffexam  /exam
 WORKDIR /exam
 RUN make install
 
-ADD lab/ /app/lab
-ADD run.sh /app
+ADD src-python/lab-service/ /app
+ADD docker/lab-service/run.sh /app
+
 WORKDIR /app/lab
 RUN make install
 

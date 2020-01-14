@@ -1,6 +1,13 @@
 # 'make' will build the latest and try to run it.
 default: build-latest run-dev
 
+java_version := "1.8"
+
+check-java-version:
+	if  [ `java -version 2>&1 | awk -F '"' '/version/ { print $$2 }' | awk -F'.' '{ print $$1"."$$2 }'` != "$(java_version)" ]; then false; fi
+
+build-base: update-props check-java-version
+
 build-base: update-props
 	docker/base/hacks/storm.requirements.download.sh
 	docker build -t kilda/base-ubuntu:latest docker/base/kilda-base-ubuntu/
