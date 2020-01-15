@@ -10,8 +10,8 @@ runcharts:
         color: 178
         sample: docker stats floodlight_one --format {{.CPUPerc}} --no-stream | awk
             '{print substr($1, 1, length($1)-1)}'
-      - label: floodlight_second
-        sample: docker stats floodlight_second --format {{.CPUPerc}} --no-stream |
+      - label: floodlight_two
+        sample: docker stats floodlight_two --format {{.CPUPerc}} --no-stream |
             awk '{print substr($1, 1, length($1)-1)}'
       - label: openkilda-northbound
         sample: docker stats openkilda-northbound --format {{.CPUPerc}} --no-stream
@@ -27,8 +27,8 @@ runcharts:
         color: 178
         sample: docker stats floodlight_one --format {{.MemUsage}} --no-stream | awk
             '{print substr($1, 1, length($1)-3)}'
-      - label: floodlight_second
-        sample: docker stats floodlight_second --format {{.MemUsage}} --no-stream
+      - label: floodlight_two
+        sample: docker stats floodlight_two --format {{.MemUsage}} --no-stream
             | awk '{print substr($1, 1, length($1)-3)}'
       - label: openkilda-northbound
         sample: docker stats openkilda-northbound --format {{.MemUsage}} --no-stream

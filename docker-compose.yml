@@ -4,6 +4,7 @@ services:
   lab-api:
     container_name: lab-api
     image: kilda_lab-service
+    build:
       context: .
       dockerfile: docker/lab-service/Dockerfile
     ports:
@@ -103,19 +104,20 @@ services:
       KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
     mem_limit: ${KAFKA_MEM_LIMIT:-1073741824}
 
-  wfm:
-    container_name: wfm
-    build:
-      context: docker/wfm
-    depends_on:
-      kafka:
-        condition: service_healthy
-      zookeeper:
-        condition: service_healthy
-      storm-nimbus:
-        condition: service_healthy
-      storm-supervisor:
-        condition: service_healthy
+#  wfm:
+#    container_name: wfm
+#    build:
+#      context: .
+#      dockerfile: docker/wfm/Dockerfile
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
+#      zookeeper:
+#        condition: service_healthy
+#      storm-nimbus:
+#        condition: service_healthy
+#      storm-supervisor:
+#        condition: service_healthy
 
 
   hbase:
@@ -245,7 +247,8 @@ services:
   floodlight_one:
     container_name: floodlight_one
     build:
-      context: docker/floodlight-modules
+      context: .
+      dockerfile: docker/floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
@@ -266,10 +269,11 @@ services:
          - kilda
     mem_limit: ${FL_1_MEM_LIMIT:-1073741824}
 
-  floodlight_second:
-    container_name: floodlight_second
+  floodlight_two:
+    container_name: floodlight_two
     build:
-      context: docker/floodlight-modules
+      context: .
+      dockerfile: docker/floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
@@ -285,13 +289,14 @@ services:
     networks:
       default:
         aliases:
-          - floodlight_second.pendev
+          - floodlight_two.pendev
     mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
 
   northbound:
     container_name: openkilda-northbound
     build:
-      context: docker/northbound/
+      context: .
+      dockerfile: docker/northbound/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -313,7 +318,8 @@ services:
   grpc-speaker:
     container_name: grpc-speaker
     build:
-      context: docker/grpc-service/
+      context: .
+      dockerfile: docker/grpc-service/Dockerfile
     ports:
     - "8091:8091"
     depends_on:
@@ -350,7 +356,8 @@ services:
   gui:
     container_name: gui
     build:
-      context: services/src/openkilda-gui
+      context: .
+      dockerfile: services/src/openkilda-gui/Dockerfile
     ports:
       - "8010:1010"
     depends_on:
@@ -368,8 +375,8 @@ services:
     container_name: elasticsearch
     image: "kilda/elasticsearch:${full_build_number:-latest}"
     build:
-      context: docker/elasticsearch/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/elasticsearch/Dockerfile
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
