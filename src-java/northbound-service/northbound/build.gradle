@@ -57,3 +57,5 @@ bootJar {
     mainClassName = 'org.openkilda.northbound.Application'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
+
+bootJar.dependsOn generateVersionTxt

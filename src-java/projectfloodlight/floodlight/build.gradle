@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.ajoberstar.grgit' version '4.0.1'
+    id 'org.ajoberstar.grgit' version '4.0.1' apply false
 }
 
 group = 'org.projectfloodlight'
@@ -15,8 +15,10 @@ task cloneFloodlightRepo {
         def grgit = Grgit.open(currentDir: repo.absolutePath)
         grgit.checkout(branch: 'STABLE')
         grgit.pull(rebase: false)
+        grgit.close()
     } else {
-        Grgit.clone(dir: repo.absolutePath, uri: 'https://github.com/kilda/floodlight.git', refToCheckout: 'STABLE')
+        def grgit = Grgit.clone(dir: repo.absolutePath, uri: 'https://github.com/kilda/floodlight.git', refToCheckout: 'STABLE')
+        grgit.close()
     }
 }
 

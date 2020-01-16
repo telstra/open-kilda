@@ -1,11 +1,12 @@
 description = 'Flow H&S Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-pce')
     implementation project(':kilda-reporting')
     implementation project(':floodlight-api')
-    testImplementation project(':kilda-persistence-neo4j')
+    implementation project(':kilda-persistence-neo4j')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')

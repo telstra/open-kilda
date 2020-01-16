@@ -56,3 +56,5 @@ bootJar {
     mainClassName = 'org.openkilda.grpc.speaker.GrpcSpeaker'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
+
+bootJar.dependsOn generateVersionTxt

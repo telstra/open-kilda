@@ -18,13 +18,13 @@ extra_params=${@:2}
 
 if [ "$1" = 'floodlight' ]; then
   exec java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap \
-    -Dlogback.configurationFile=/app/logback.xml ${extra_params} -cp /app/floodlight.jar:/app/floodlight-modules.jar \
+    -Dlogback.configurationFile=/app/logback.xml ${extra_params} -cp "/app/floodlight.jar:/app/floodlight-modules.jar:/app/dependency-jars/*" \
     net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
 fi
 
 if [ "$1" = 'floodlightStats' ]; then
   exec java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap \
-    -Dlogback.configurationFile=/app/logback.xml ${extra_params} -cp /app/floodlight.jar:/app/floodlight-modules.jar \
+    -Dlogback.configurationFile=/app/logback.xml ${extra_params} -cp "/app/floodlight.jar:/app/floodlight-modules.jar:/app/dependency-jars/*" \
     net.floodlightcontroller.core.Main -cf /app/floodlightkildaStats.properties
 fi
 

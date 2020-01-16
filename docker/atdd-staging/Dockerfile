@@ -16,10 +16,10 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ADD target/atdd-staging-*.jar /app/atdd-staging.jar
-ADD target/lib/*.jar /app/lib/
+ADD src-java/testing/atdd-staging/build/dependency-jars/* /app/lib/
 ADD log4j2.xml /app/
 ADD kilda.properties /app/
+ADD src-java/testing/atdd-staging/build/libs/atdd-staging-*.jar /app/atdd-staging.jar
 
 WORKDIR /app
 

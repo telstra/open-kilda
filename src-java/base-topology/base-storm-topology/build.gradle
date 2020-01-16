@@ -40,6 +40,7 @@ dependencies {
     api 'com.fasterxml.uuid:java-uuid-generator'
     api 'net.jodah:failsafe'
     api 'org.hibernate.validator:hibernate-validator'
+    runtimeOnly 'org.glassfish:javax.el'
 
     implementation 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct-jdk8'

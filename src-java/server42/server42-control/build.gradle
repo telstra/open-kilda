@@ -37,3 +37,5 @@ bootJar {
     mainClassName = 'org.openkilda.server42.control.ControlApplication'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
+
+bootJar.dependsOn generateVersionTxt
