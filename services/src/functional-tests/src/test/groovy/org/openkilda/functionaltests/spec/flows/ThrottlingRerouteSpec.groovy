@@ -79,7 +79,8 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             flowPaths[1..-1].each { flowPath ->
                 assert northbound.getFlowStatus(flowPath.id).status == FlowState.DOWN ||
-                        northbound.getFlowPath(flowPath.id) != flowPath
+                        (northbound.getFlowPath(flowPath.id) != flowPath &&
+                                northbound.getFlowStatus(flowPath.id).status == FlowState.UP)
             }
         }
 

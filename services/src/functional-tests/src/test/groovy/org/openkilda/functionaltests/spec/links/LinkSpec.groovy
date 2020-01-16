@@ -323,8 +323,10 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "The link is actually deleted"
         response.size() == 2
-        !islUtils.getIslInfo(isl)
-        !islUtils.getIslInfo(isl.reversed)
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(isl)
+            assert !islUtils.getIslInfo(isl.reversed)
+        }
 
         when: "Removed link becomes active again (port brought UP)"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
