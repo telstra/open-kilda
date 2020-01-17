@@ -46,9 +46,9 @@ class StatsHelper {
         Wrappers.wait(STATS_INTERVAL) {
             def dps = otsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
             if(expectTraffic) {
-                assert dps.values().any { it > 0 }
+                assert dps.values().any { it > 0 }, flowId
             } else {
-                assert dps.size() > 0
+                assert dps.size() > 0, flowId
             }
         }
     }
