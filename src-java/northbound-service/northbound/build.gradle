@@ -10,7 +10,9 @@ dependencies {
     implementation project(':kilda-persistence-neo4j')
     implementation project(':kilda-configuration')
 
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation('org.springframework.boot:spring-boot-starter-web') {
+        exclude(module: 'spring-boot-starter-logging')
+    }
     implementation('org.springframework.boot:spring-boot-starter') {
         exclude(module: 'spring-boot-starter-logging')
     }
@@ -18,9 +20,7 @@ dependencies {
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-tomcat'
-    implementation('org.springframework.kafka:spring-kafka') {
-        exclude(module: 'kafka-clients')
-    }
+    implementation('org.springframework.kafka:spring-kafka')
     implementation 'org.springframework:spring-webmvc'
     implementation('org.apache.kafka:kafka_2.11') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'

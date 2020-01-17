@@ -39,6 +39,7 @@ dependencies {
     implementation 'com.google.guava:guava'
     implementation 'org.restlet.jse:org.restlet:2.3.2'
     compileOnly 'com.google.code.findbugs:jsr305:2.0.1'
+    implementation 'args4j:args4j'
 
     testImplementation 'junit:junit'
     testImplementation 'org.easymock:easymock'
