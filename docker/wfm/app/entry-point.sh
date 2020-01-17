@@ -14,10 +14,19 @@
 #   limitations under the License.
 #
 
-set -e
+set -eu ${DEBUG:+-x}
 
 PATH=${PATH}:/opt/storm/bin
 
 cd /app
-make kill-all
-exec make deploy-all
+#make kill-all
+#exec make deploy-all
+
+/app/deploy_topology.sh
+
+while true;
+do
+    sleep 300
+    date
+done
+

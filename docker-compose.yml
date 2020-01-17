@@ -104,20 +104,20 @@ services:
       KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
     mem_limit: ${KAFKA_MEM_LIMIT:-1073741824}
 
-#  wfm:
-#    container_name: wfm
-#    build:
-#      context: .
-#      dockerfile: docker/wfm/Dockerfile
-#    depends_on:
-#      kafka:
-#        condition: service_healthy
-#      zookeeper:
-#        condition: service_healthy
-#      storm-nimbus:
-#        condition: service_healthy
-#      storm-supervisor:
-#        condition: service_healthy
+  wfm:
+    container_name: wfm
+    build:
+      context: .
+      dockerfile: docker/wfm/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      zookeeper:
+        condition: service_healthy
+      storm-nimbus:
+        condition: service_healthy
+      storm-supervisor:
+        condition: service_healthy
 
 
   hbase:
