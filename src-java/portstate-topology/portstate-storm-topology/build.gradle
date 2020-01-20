@@ -17,6 +17,6 @@ build.dependsOn collectDependencyJars
 
 jar {
     manifest {
-        attributes 'Main-Class': 'org.openkilda.wfm.topology.portstate.PortStateTopolog'
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.portstate.PortStateTopology'
     }
 }

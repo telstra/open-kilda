@@ -79,11 +79,14 @@ update-props-dryrun:
 #   make func-tests PARAMS='-Dtest=spec.links.**'  // run all tests from 'spec.links' package
 #   make func-tests PARAMS='-Dtest=LinkSpec'  // run all tests from 'LinkSpec' class
 #   make func-tests PARAMS='-Dtest="LinkSpec#Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
-
-func-tests:
+copy-test-props:
 	cp src-java/testing/functional-tests/kilda.properties.example src-java/testing/functional-tests/kilda.properties
 	cp src-java/testing/functional-tests/src/test/resources/topology.yaml src-java/testing/functional-tests/topology.yaml
-	cd src-java && ./gradlew :functional-tests:functionalTest --stacktrace $(PARAMS)
+
+run-func-tests:
+	cd src-java && ./gradlew :functional-tests:functionalTest $(PARAMS)
+
+func-tests: copy-test-props run-func-tests
 
 .PHONY: default run-dev build-latest build-base	
 .PHONY: up-test-mode up-log-mode run-test clean-test	
