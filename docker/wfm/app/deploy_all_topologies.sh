@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2018 Telstra Open Source
+# Copyright 2020 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -39,11 +39,10 @@ for TOPOLOGY in $(find . -name "*-topology" -type d); do
     MAIN_CLASS=$(grep 'Main-Class' /app/${TOPOLOGY_NAME}-storm-topology/build.gradle  | awk -F ':' '{ print $2}' | awk -F "'" '{ print $2 }')
 
 
-    # TO be fixed
+    # Kill all topologies bvefore deploy
      /app/kill-topology.sh ${TOPOLOGY_NAME} || true
 
-    #  To be fixed here
-    # now ignoring all errors during deployment
+    # now ignoring all errors during deployment (for tests only)
     storm \
         jar /app/${TOPOLOGY_NAME}-storm-topology/libs/${TOPOLOGY_JAR} \
         ${MAIN_CLASS} \
@@ -52,3 +51,4 @@ for TOPOLOGY in $(find . -name "*-topology" -type d); do
         --name ${TOPOLOGY_NAME} \
         /app/topology.properties || true
 done
+

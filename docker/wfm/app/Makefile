@@ -38,7 +38,8 @@ $(status_location)/$(prefix)%.alive:
 	touch $@
 
 $(deploy_targets):
-	storm jar $(TOPOLOGY_JAR) $(entry_point) --name=$(prefix)$(deploy_topology_name) ${TOPOLOGY_CONFIG}
+	./deploy_single_topology.sh $(deploy_topology_name) ${TOPOLOGY_CONFIG} $(prefix)
+
 
 $(kill_targets): alive-list
 	if [ -e $(status_location)/$(prefix)$(kill_topology_name).alive ]; then ./kill-topology.sh $(prefix)$(kill_topology_name); fi
