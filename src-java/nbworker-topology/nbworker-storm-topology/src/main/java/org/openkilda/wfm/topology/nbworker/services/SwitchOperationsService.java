@@ -288,26 +288,57 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                     .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
-            if (!update.isMultiTable() && update.isSwitchLldp()) {
-                throw new IllegalSwitchPropertiesException(
-                        String.format("Illegal switch properties combination for switch %s. 'switchLldp' property "
-                                + "can be set to 'true' only if 'multiTable' property is 'true'.", switchId));
-            }
+            validateSwitchProperties(switchId, update);
 
-            final boolean previousMultiTableFlag = switchProperties.isMultiTable();
-            final boolean previousLldpFlag = switchProperties.isSwitchLldp();
+            // must be called before updating of switchProperties object
+            final boolean isSwitchSyncNeeded = isSwitchSyncNeeded(switchProperties, update);
 
             switchProperties.setMultiTable(update.isMultiTable());
             switchProperties.setSwitchLldp(update.isSwitchLldp());
+            switchProperties.setSwitchArp(update.isSwitchArp());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
 
             switchPropertiesRepository.createOrUpdate(switchProperties);
-            if (previousMultiTableFlag != update.isMultiTable() || previousLldpFlag != update.isSwitchLldp()) {
+            if (isSwitchSyncNeeded) {
                 carrier.requestSwitchSync(switchId);
             }
 
             return SwitchPropertiesMapper.INSTANCE.map(switchProperties);
         });
+    }
+
+    private boolean isSwitchSyncNeeded(SwitchProperties current, SwitchProperties updated) {
+        return current.isMultiTable() != updated.isMultiTable()
+                || current.isSwitchLldp() != updated.isSwitchLldp()
+                || current.isSwitchArp() != updated.isSwitchArp();
+    }
+
+    private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
+        if (!updatedSwitchProperties.isMultiTable()) {
+            String propertyErrorMessage = "Illegal switch properties combination for switch %s. '%s' property "
+                    + "can be set to 'true' only if 'multiTable' property is 'true'.";
+            if (updatedSwitchProperties.isSwitchLldp()) {
+                throw new IllegalSwitchPropertiesException(String.format(propertyErrorMessage, switchId, "switchLldp"));
+            }
+
+            if (updatedSwitchProperties.isSwitchArp()) {
+                throw new IllegalSwitchPropertiesException(String.format(propertyErrorMessage, switchId, "switchArp"));
+            }
+
+            List<String> flowsWithEnabledArp = flowRepository.findByEndpointSwitchWithEnabledArp(switchId).stream()
+                    .map(Flow::getFlowId)
+                    .collect(Collectors.toList());
+
+            if (!flowsWithEnabledArp.isEmpty()) {
+                throw new IllegalSwitchPropertiesException(
+                        String.format("Illegal switch properties combination for switch %s. "
+                              + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
+                              + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
+                              + "Please disable detecting of connected devices via ARP for each flow before set "
+                              + "'multiTable' property to 'false'",
+                                switchId, String.join(", ", flowsWithEnabledArp)));
+            }
+        }
     }
 
     /**

@@ -64,6 +64,8 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     static final String DST_MULTI_TABLE_PROPERTY_NAME = "dst_with_multi_table";
     static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
     static final String STATUS_PROPERTY_NAME = "status";
+    static final String SRC_ARP_PROPERTY_NAME = "detect_src_arp_connected_devices";
+    static final String DST_ARP_PROPERTY_NAME = "detect_dst_arp_connected_devices";
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
     private final InstantStringConverter instantStringConverter = new InstantStringConverter();
@@ -231,6 +233,19 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 loadAll(srcSwitchFilter.and(srcMultiTableFilter)).stream(),
                 loadAll(dstSwitchFilter.and(dstMultiTableFilter)).stream())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<Flow> findByEndpointSwitchWithEnabledArp(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter srcArpFilter = new Filter(SRC_ARP_PROPERTY_NAME, ComparisonOperator.IS_TRUE);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+        Filter dstArpFilter = new Filter(DST_ARP_PROPERTY_NAME, ComparisonOperator.IS_TRUE);
+
+        return Stream.concat(
+                loadAll(srcSwitchFilter.and(srcArpFilter)).stream(),
+                loadAll(dstSwitchFilter.and(dstArpFilter)).stream())
+                .collect(Collectors.toSet()); // to do not return one flow twice (one switch flow with ARP)
     }
 
     @Override

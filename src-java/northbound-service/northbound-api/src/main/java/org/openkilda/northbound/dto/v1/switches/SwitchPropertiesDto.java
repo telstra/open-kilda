@@ -32,4 +32,7 @@ public class SwitchPropertiesDto {
 
     @JsonProperty("switch_lldp")
     private boolean switchLldp;
+
+    @JsonProperty("switch_arp")
+    private boolean switchArp;
 }
