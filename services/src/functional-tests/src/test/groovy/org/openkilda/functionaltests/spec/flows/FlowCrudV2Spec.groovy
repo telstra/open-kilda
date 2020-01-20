@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -51,7 +52,6 @@ import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
-import java.time.Instant
 import javax.inject.Provider
 
 @Slf4j
@@ -70,6 +70,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
+            @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex =
+                    /transit switch and random vlans|transit switch and no vlans|single-switch flow with vlans/),
             @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
@@ -319,7 +321,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to create single switch single port flow with different vlan (#flow.source.switchId)"(
             FlowRequestV2 flow) {
         given: "A flow"
@@ -739,57 +741,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
         database.resetCosts()
-    }
-
-    @Tidy
-    def "Able to CRUD unmetered one-switch pinned flow"() {
-        when: "Create a flow"
-        def sw = topology.getActiveSwitches().first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flow.maximumBandwidth = 0
-        flow.ignoreBandwidth = true
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
-
-        then: "Pinned flow is created"
-        def flowInfo = northbound.getFlow(flow.flowId)
-        flowInfo.pinned
-
-        when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
-
-        then: "The pinned option is disabled"
-        def newFlowInfo = northbound.getFlow(flow.flowId)
-        !newFlowInfo.pinned
-        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    @Tidy
-    @Unroll
-    def "Able to CRUD pinned flow"() {
-        when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
-
-        then: "Pinned flow is created"
-        def flowInfo = northbound.getFlow(flow.flowId)
-        flowInfo.pinned
-
-        when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
-
-        then: "The pinned option is disabled"
-        def newFlowInfo = northbound.getFlow(flow.flowId)
-        !newFlowInfo.pinned
-        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
