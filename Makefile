@@ -59,7 +59,7 @@ unit: update-props
 
 .PHONY: sonar
 sonar: update-props
-	cd src-java && ./gradlew sonarqube --stacktrace
+	cd src-java && ./gradlew test jacocoTestReport sonarqube --stacktrace
 
 clean-test:
 	docker-compose down
