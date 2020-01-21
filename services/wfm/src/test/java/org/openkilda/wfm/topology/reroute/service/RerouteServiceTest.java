@@ -315,4 +315,31 @@ public class RerouteServiceTest {
                 eq(Collections.singleton(new IslEndpoint(islSide.getSwitchId(), islSide.getPortNo()))),
                 any(String.class));
     }
+
+    @Test
+    public void handleRerouteInactiveAffectedFlows() {
+        FlowPathRepository pathRepository = mock(FlowPathRepository.class);
+        when(pathRepository.findInactiveBySegmentSwitch(regularFlow.getSrcSwitch().getSwitchId()))
+                .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createFlowPathRepository())
+                .thenReturn(pathRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        regularFlow.setStatus(FlowStatus.DOWN);
+        rerouteService.rerouteInactiveAffectedFlows(carrier, CORRELATION_ID, regularFlow.getSrcSwitch().getSwitchId());
+
+        verify(carrier).emitRerouteCommand(
+                eq(CORRELATION_ID), eq(regularFlow),
+                eq(Collections.emptySet()),
+                any(String.class));
+
+        regularFlow.setStatus(FlowStatus.UP);
+    }
 }

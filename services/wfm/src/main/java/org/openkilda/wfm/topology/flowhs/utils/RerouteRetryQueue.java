@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.utils;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -77,8 +78,13 @@ public class RerouteRetryQueue {
         boolean isForced = pending.isForceReroute() || reroute.isForceReroute();
         boolean isEffectivelyDown = pending.isEffectivelyDown() || reroute.isEffectivelyDown();
 
-        Set<IslEndpoint> affectedIsl = new HashSet<>(pending.getAffectedIsl());
-        affectedIsl.addAll(reroute.getAffectedIsl());
+        Set<IslEndpoint> affectedIsl;
+        if (pending.getAffectedIsl().isEmpty() || reroute.getAffectedIsl().isEmpty()) {
+            affectedIsl = Collections.emptySet();
+        } else {
+            affectedIsl = new HashSet<>(pending.getAffectedIsl());
+            affectedIsl.addAll(reroute.getAffectedIsl());
+        }
 
         return new FlowRerouteFact(
                 reroute.getKey(), reroute.getCommandContext(), reroute.getFlowId(), affectedIsl,

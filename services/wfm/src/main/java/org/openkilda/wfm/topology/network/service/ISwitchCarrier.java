@@ -38,4 +38,6 @@ public interface ISwitchCarrier {
     void setBfdPortOnlineMode(Endpoint endpoint, boolean mode);
 
     void sendSwitchSynchronizeRequest(String key, SwitchId switchId);
+
+    void sendAffectedFlowRerouteRequest(SwitchId switchId);
 }

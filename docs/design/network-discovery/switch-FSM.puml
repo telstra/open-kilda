@@ -47,6 +47,7 @@ SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports
 SETUP : enter / emit port-down for DOWN ports
 SETUP : enter / emit port-up for UP ports
+SETUP : enter / send reroute affected flows command
 SETUP --> ONLINE : next
 
 ONLINE : port-add / setup port FSM
