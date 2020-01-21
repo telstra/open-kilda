@@ -84,7 +84,7 @@ copy-test-props:
 	cp src-java/testing/functional-tests/src/test/resources/topology.yaml src-java/testing/functional-tests/topology.yaml
 
 run-func-tests:
-	cd src-java && ./gradlew :functional-tests:functionalTest $(PARAMS)
+	cd src-java && ./gradlew :functional-tests:functionalTest $(PARAMS) --stacktrace --info
 
 func-tests: copy-test-props run-func-tests
 
