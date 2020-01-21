@@ -28,6 +28,8 @@ endlegend
 
 [*] --> INIT
 
+INIT : set wasOffline = false
+
 INIT --> OFFLINE : history / setup port workers
 INIT --> SYNC : online
 
@@ -47,6 +49,8 @@ SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports
 SETUP : enter / emit port-down for DOWN ports
 SETUP : enter / emit port-up for UP ports
+SETUP : enter / [wasOffline] send reroute affected flows command
+SETUP : enter / [wasOffline] wasOffline = false
 SETUP --> ONLINE : next
 
 ONLINE : port-add / setup port FSM
@@ -60,6 +64,7 @@ ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB
 OFFLINE : enter / emit offline for portAll()
+OFFLINE : enter / set wasOffline = true
 OFFLINE --> SYNC : online
 OFFLINE --> DELETED: switch-remove / kill ports FSM
 DELETED -> [*]
