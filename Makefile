@@ -83,7 +83,7 @@ update-props-dryrun:
 func-tests:
 	cp src-java/testing/functional-tests/kilda.properties.example src-java/testing/functional-tests/kilda.properties
 	cp src-java/testing/functional-tests/src/test/resources/topology.yaml src-java/testing/functional-tests/topology.yaml
-	cd src-java && ./gradlew :functional-tests:functionalTest --info --stacktrace $(PARAMS)
+	cd src-java && ./gradlew :functional-tests:functionalTest --info $(PARAMS)
 
 .PHONY: default run-dev build-latest build-base	
 .PHONY: up-test-mode up-log-mode run-test clean-test	
