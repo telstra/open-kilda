@@ -30,12 +30,15 @@ public class GetExpectedDefaultMetersRequest extends CommandData {
     private SwitchId switchId;
     private boolean multiTable;
     private boolean switchLldp;
+    private boolean switchArp;
 
     public GetExpectedDefaultMetersRequest(@JsonProperty("switch_id") SwitchId switchId,
                                            @JsonProperty("multi_table") boolean multiTable,
-                                           @JsonProperty("switch_lldp") boolean switchLldp) {
+                                           @JsonProperty("switch_lldp") boolean switchLldp,
+                                           @JsonProperty("switch_arp") boolean switchArp) {
         this.switchId = switchId;
         this.multiTable = multiTable;
         this.switchLldp = switchLldp;
+        this.switchArp = switchArp;
     }
 }
