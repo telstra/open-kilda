@@ -76,9 +76,9 @@ update-props-dryrun:
 
 # EXAMPLES:
 #   make func-tests  // run all tests
-#   make func-tests PARAMS='-Dtest=spec.links.**'  // run all tests from 'spec.links' package
-#   make func-tests PARAMS='-Dtest=LinkSpec'  // run all tests from 'LinkSpec' class
-#   make func-tests PARAMS='-Dtest="LinkSpec#Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
+#   make func-tests PARAMS='--tests spec.links.**'  // run all tests from 'spec.links' package
+#   make func-tests PARAMS='--tests LinkSpec'  // run all tests from 'LinkSpec' class
+#   make func-tests PARAMS='--tests LinkSpec."Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
 
 func-tests:
 	cp src-java/testing/functional-tests/kilda.properties.example src-java/testing/functional-tests/kilda.properties
