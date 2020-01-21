@@ -59,7 +59,7 @@ unit: update-props
 
 .PHONY: sonar
 sonar: update-props
-	cd src-java && ./gradlew sonarqube --stacktrace
+	cd src-java && ./gradlew test jacocoTestReport sonarqube --stacktrace
 
 clean-test:
 	docker-compose down
@@ -84,7 +84,7 @@ copy-test-props:
 	cp src-java/testing/functional-tests/src/test/resources/topology.yaml src-java/testing/functional-tests/topology.yaml
 
 run-func-tests:
-	cd src-java && ./gradlew :functional-tests:functionalTest $(PARAMS) --stacktrace --info
+	cd src-java && ./gradlew :functional-tests:functionalTest --info $(PARAMS)
 
 func-tests: copy-test-props run-func-tests
 
