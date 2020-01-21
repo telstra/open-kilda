@@ -36,7 +36,7 @@ public class FlowMapperTest {
     private static final int SRC_VLAN = 3;
     private static final int DST_VLAN = 4;
     private static final int BANDWIDTH = 1000;
-    private static final Integer LATENCY = 10;
+    private static final Long LATENCY = 10L;
     private static final Integer PRIORITY = 15;
     private static final String DESCRIPTION = "Description";
     private static final String ENCAPSULATION_TYPE = "transit_vlan";

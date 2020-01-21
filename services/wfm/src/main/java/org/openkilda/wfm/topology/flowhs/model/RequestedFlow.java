@@ -44,7 +44,7 @@ public class RequestedFlow {
     private long bandwidth;
     private boolean ignoreBandwidth;
     private boolean periodicPings;
-    private Integer maxLatency;
+    private Long maxLatency;
     private FlowEncapsulationType flowEncapsulationType;
     private PathComputationStrategy pathComputationStrategy;
 }

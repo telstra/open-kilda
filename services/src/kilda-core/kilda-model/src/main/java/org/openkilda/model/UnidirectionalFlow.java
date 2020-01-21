@@ -182,7 +182,7 @@ public class UnidirectionalFlow implements Serializable {
         return getFlow().getTimeCreate();
     }
 
-    public Integer getMaxLatency() {
+    public Long getMaxLatency() {
         return getFlow().getMaxLatency();
     }
 

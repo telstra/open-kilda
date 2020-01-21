@@ -32,11 +32,21 @@ public interface PathFinder {
     /**
      * Find a path from the start to the end switch.
      *
-     * @return an ordered list that represents the path from start to end, or an empty list if no path found.
+     * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
      */
     Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
                                                    SwitchId startSwitchId, SwitchId endSwitchId,
                                                    WeightFunction weightFunction)
+            throws UnroutableFlowException;
+
+    /**
+     * Finds a path whose weight is less than maxWeight and as close to maxWeight as possible.
+     *
+     * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
+     */
+    Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
+                                                   SwitchId startSwitchId, SwitchId endSwitchId,
+                                                   WeightFunction weightFunction, long maxWeight)
             throws UnroutableFlowException;
 
     /**

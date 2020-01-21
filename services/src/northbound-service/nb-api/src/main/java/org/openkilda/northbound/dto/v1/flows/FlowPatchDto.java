@@ -23,13 +23,13 @@ import lombok.Data;
 public class FlowPatchDto {
 
     @JsonProperty("max-latency")
-    private Integer maxLatency;
+    private Long maxLatency;
 
     @JsonProperty("priority")
     private Integer priority;
 
     @JsonCreator
-    public FlowPatchDto(@JsonProperty("max-latency") Integer maxLatency,
+    public FlowPatchDto(@JsonProperty("max-latency") Long maxLatency,
                         @JsonProperty("priority") Integer priority) {
         this.maxLatency = maxLatency;
         this.priority = priority;

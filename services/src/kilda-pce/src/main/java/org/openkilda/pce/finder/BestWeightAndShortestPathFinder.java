@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -79,12 +80,30 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             throws UnroutableFlowException {
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
+        return findPath(network, startSwitchId, endSwitchId, () -> getPath(start, end, weightFunction));
+    }
+
+    @Override
+    public Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
+                                                          SwitchId startSwitchId, SwitchId endSwitchId,
+                                                          WeightFunction weightFunction, long maxWeight)
+            throws UnroutableFlowException {
+        Node start = network.getSwitch(startSwitchId);
+        Node end = network.getSwitch(endSwitchId);
+        return findPath(network, startSwitchId, endSwitchId, () -> getPath(start, end, weightFunction, maxWeight));
+    }
+
+    private Pair<List<Edge>, List<Edge>> findPath(AvailableNetwork network, SwitchId startSwitchId,
+                                                  SwitchId endSwitchId, Supplier<List<Edge>> getPath)
+            throws UnroutableFlowException {
+        Node start = network.getSwitch(startSwitchId);
+        Node end = network.getSwitch(endSwitchId);
         if (start == null || end == null) {
             throw new UnroutableFlowException(format("Switch %s doesn't have links with enough bandwidth",
                     start == null ? startSwitchId : endSwitchId));
         }
 
-        List<Edge> forwardPath = getPath(start, end, weightFunction);
+        List<Edge> forwardPath = getPath.get();
         if (forwardPath.isEmpty()) {
             throw new UnroutableFlowException(format("Can't find a path from %s to %s", start, end));
         }
@@ -233,7 +252,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      * Call this method to find a path from start to end (srcDpid to dstDpid), particularly if you have no idea if the
      * path exists or what the best path is.
      *
-     * @return An ordered list that represents the path from start to end, or an empty list
+     * @return A pair of ordered lists that represents the path from start to end, or an empty list
      */
     private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction) {
         long bestWeight = Long.MAX_VALUE; // Need to be long because it stores sum of ints.
@@ -284,6 +303,82 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         }
 
         return (bestPath != null) ? bestPath.parentPath : new LinkedList<>();
+    }
+
+    private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
+        SearchNode desiredPath = getDesiredPath(start, end, weightFunction, maxWeight);
+        SearchNode desiredReversePath = getDesiredPath(end, start, weightFunction, maxWeight);
+
+        if (desiredReversePath != null) {
+            if (desiredPath == null || desiredReversePath.parentWeight > desiredPath.parentWeight) {
+                desiredPath = desiredReversePath;
+            }
+        }
+
+        return (desiredPath != null) ? desiredPath.parentPath : new LinkedList<>();
+    }
+
+    /**
+     * Finds a path whose weight is less than maxWeight and as close to maxWeight as possible.
+     *
+     * @return A desired path from start to end as SearchNode representation, or null
+     */
+    private SearchNode getDesiredPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
+        long desiredWeight = Long.MAX_VALUE;
+        SearchNode desiredPath = null;
+
+        Deque<SearchNode> toVisit = new LinkedList<>();
+        Map<Node, SearchNode> visited = new HashMap<>();
+
+        toVisit.add(new SearchNode(weightFunction, start, allowedDepth, 0, emptyList()));
+
+        while (!toVisit.isEmpty()) {
+            SearchNode current = toVisit.pop();
+
+            // Leave if the path contains this node
+            if (current.containsSwitch(current.dstSw.getSwitchId())) {
+                continue;
+            }
+
+            // Shift the current weight relative to maxWeight
+            long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight);
+
+            // Determine if this node is the destination node.
+            if (current.dstSw.equals(end)) {
+                // We found the destination
+                if (shiftedCurrentWeight < desiredWeight && current.parentWeight < maxWeight) {
+                    // We found a best path. If we don't get here, then the entire graph will be
+                    // searched until we run out of nodes or the depth is reached.
+                    desiredWeight = shiftedCurrentWeight;
+                    desiredPath = current;
+                }
+                // We found dest, no need to keep processing
+                continue;
+            }
+
+            // Stop processing entirely if we've gone too far, or over maxWeight
+            if (current.allowedDepth <= 0 || current.parentWeight >= maxWeight) {
+                continue;
+            }
+
+            // Otherwise, if we've been here before, see if this path is better
+            SearchNode prior = visited.get(current.dstSw);
+            if (prior != null && shiftedCurrentWeight >= Math.abs(maxWeight - prior.parentWeight)) {
+                continue;
+            }
+
+            // Either this is the first time, or this one has less weight .. either way, this node should
+            // be the one in the visited list
+            visited.put(current.dstSw, current);
+
+            // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
+            // So, add the outbound isls.
+            current.dstSw.getOutgoingLinks().stream()
+                    .sorted(Comparator.comparing(edge -> edge.getDestSwitch().getSwitchId()))
+                    .forEach(edge -> toVisit.add(current.addNode(edge)));
+        }
+
+        return desiredPath;
     }
 
     /**
@@ -392,6 +487,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     allowedDepth - 1,
                     weight,
                     newParentPath);
+        }
+
+        boolean containsSwitch(SwitchId switchId) {
+            return parentPath.stream().anyMatch(s -> s.getSrcSwitch().getSwitchId().equals(switchId));
         }
     }
 }
