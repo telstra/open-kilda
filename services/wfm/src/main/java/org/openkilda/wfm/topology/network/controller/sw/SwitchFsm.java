@@ -84,6 +84,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private String awaitingResponseKey;
 
     private SpeakerSwitchView speakerData;
+    private boolean wasOffline;
 
     public static SwitchFsmFactory factory() {
         return new SwitchFsmFactory();
@@ -145,6 +146,10 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.ACTIVE));
         updatePorts(context, speakerData, true);
         speakerData = null;
+        if (wasOffline) {
+            context.getOutput().sendAffectedFlowRerouteRequest(switchId);
+            wasOffline = false;
+        }
     }
 
     public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
@@ -155,6 +160,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                              SwitchFsmContext context) {
         logWrapper.onSwitchOffline(switchId);
         transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.INACTIVE));
+        wasOffline = true;
 
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, false);

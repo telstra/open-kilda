@@ -405,6 +405,7 @@ public class NetworkSwitchServiceTest {
                                         LinkStatus.of(ports2.get(0).getState()));
         verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(1).getNumber()),
                                            LinkStatus.of(ports2.get(0).getState()));
+        verify(carrier).sendAffectedFlowRerouteRequest(alphaDatapath);
     }
 
     @Test

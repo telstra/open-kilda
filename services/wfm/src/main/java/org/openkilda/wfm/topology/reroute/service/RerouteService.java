@@ -15,6 +15,10 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import static java.lang.String.format;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
+
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
@@ -127,6 +131,28 @@ public class RerouteService {
             }
             if (failedFlowPath) {
                 updateFlowPathStatus(fp, FlowPathStatus.INACTIVE);
+            }
+        }
+    }
+
+    /**
+     * Handles reroute on switch up events.
+     * @param sender transport sender
+     * @param correlationId correlation id to pass through
+     * @param switchId switch id
+     */
+    public void rerouteInactiveAffectedFlows(MessageSender sender, String correlationId,
+                                             SwitchId switchId) {
+        Set<Flow> flowsForRerouting = getAffectedInactiveFlowsForRerouting(switchId);
+
+        for (Flow flow : flowsForRerouting) {
+            if (flow.isPinned()) {
+                log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
+            } else {
+                log.info("Produce reroute(attempt to restore inactive flow) request for {}",
+                        flow.getFlowId());
+                sender.emitRerouteCommand(correlationId, flow, Collections.emptySet(),
+                        format("Switch '%s' online", switchId));
             }
         }
     }
@@ -263,12 +289,22 @@ public class RerouteService {
     public Map<Flow, Set<PathId>> getInactiveFlowsForRerouting() {
         log.info("Get inactive flows");
         return flowRepository.findDownFlows().stream()
-                .collect(Collectors.toMap(Function.identity(),
+                .collect(toMap(Function.identity(),
                         flow -> flow.getPaths().stream()
                         .filter(path -> FlowPathStatus.INACTIVE.equals(path.getStatus()))
                         .map(FlowPath::getPathId)
                         .collect(Collectors.toSet()))
                 );
+    }
+
+    /**
+     * Returns affected inactive flow set for rerouting.
+     */
+    public Set<Flow> getAffectedInactiveFlowsForRerouting(SwitchId switchId) {
+        log.info("Get affected inactive flows for switch {}", switchId);
+        return flowPathRepository.findInactiveBySegmentSwitch(switchId).stream()
+                .map(FlowPath::getFlow)
+                .collect(toSet());
     }
 
     private void updateFlowPathStatus(FlowPath path, FlowPathStatus status) {

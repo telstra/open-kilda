@@ -60,6 +60,7 @@ ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB
 OFFLINE : enter / emit offline for portAll()
+OFFLINE : online / send reroute affected flows
 OFFLINE --> SYNC : online
 OFFLINE --> DELETED: switch-remove / kill ports FSM
 DELETED -> [*]

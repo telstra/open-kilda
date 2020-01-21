@@ -335,6 +335,30 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindInactivePathBySegmentSwitch() {
+        Flow activeFlow = Flow.builder()
+                .flowId("active flow")
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .destSwitch(switchB)
+                .destPort(2)
+                .status(FlowStatus.UP)
+                .build();
+        flowRepository.createOrUpdate(activeFlow);
+        FlowPath activeFlowPath = buildFlowPath(activeFlow, "active", 100L, 200L, switchA, switchB);
+        activeFlowPath.getFlow().setStatus(FlowStatus.DOWN);
+        FlowPath expectedFlowPath = buildTestFlowPathWithIntermediate(switchC, 100);
+        expectedFlowPath.getFlow().setStatus(FlowStatus.DOWN);
+        flowPathRepository.createOrUpdate(activeFlowPath);
+        flowPathRepository.createOrUpdate(expectedFlowPath);
+
+        Collection<FlowPath> foundPaths = flowPathRepository.findInactiveBySegmentSwitch(switchA.getSwitchId());
+        assertThat(foundPaths, hasSize(1));
+        FlowPath actualFlowPath = foundPaths.stream().findFirst().orElse(null);
+        assertEquals(expectedFlowPath, actualFlowPath);
+    }
+
+    @Test
     public void shouldFindPathBySegmentDestSwitch() {
         FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
         flowPathRepository.createOrUpdate(flowPath);
