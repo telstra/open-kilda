@@ -85,6 +85,24 @@ public enum DeleteRulesAction {
     // Remove Transit table LLDP rule
     REMOVE_LLDP_TRANSIT,
 
+    // Remove Input table ARP pre drop rule
+    REMOVE_ARP_INPUT_PRE_DROP,
+
+    // Remove Ingress Table ARP rule
+    REMOVE_ARP_INGRESS,
+
+    // Remove Post Ingress Table ARP rule
+    REMOVE_ARP_POST_INGRESS,
+
+    // Remove Post Ingress Table ARP vxlan rule
+    REMOVE_ARP_POST_INGRESS_VXLAN,
+
+    // Remove Post Ingress Table ARP one switch rule
+    REMOVE_ARP_POST_INGRESS_ONE_SWITCH,
+
+    // Remove Transit table ARP rule
+    REMOVE_ARP_TRANSIT,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 

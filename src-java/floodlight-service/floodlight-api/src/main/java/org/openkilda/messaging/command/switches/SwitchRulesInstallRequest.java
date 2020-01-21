@@ -49,6 +49,9 @@ public class SwitchRulesInstallRequest extends CommandData {
     @JsonProperty("switch_lldp")
     private boolean switchLldp = false;
 
+    @JsonProperty("switch_arp")
+    private boolean switchArp = false;
+
     @JsonProperty("isl_ports")
     private List<Integer> islPorts = new ArrayList<>();
 
@@ -57,6 +60,9 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     @JsonProperty("flow_lldp_ports")
     private Set<Integer> flowLldpPorts = new HashSet<>();
+
+    @JsonProperty("flow_arp_ports")
+    private Set<Integer> flowArpPorts = new HashSet<>();
 
     /**
      * Constructs an install switch rules request.

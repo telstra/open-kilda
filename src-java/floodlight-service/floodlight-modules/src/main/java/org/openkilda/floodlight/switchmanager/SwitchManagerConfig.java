@@ -40,6 +40,10 @@ public interface SwitchManagerConfig {
     @Default("1")
     int getLldpRateLimit(); // rate in packets per second
 
+    @Key("arp-rate-limit")
+    @Default("1")
+    int getArpRateLimit(); // rate in packets per second
+
     @Key("disco-packet-size")
     @Default("250")
     int getDiscoPacketSize();
@@ -47,6 +51,10 @@ public interface SwitchManagerConfig {
     @Key("lldp-packet-size")
     @Default("300")
     int getLldpPacketSize(); // rate in bytes
+
+    @Key("arp-packet-size")
+    @Default("100")
+    int getArpPacketSize(); // rate in bytes
 
     @Key("flow-meter-burst-coefficient")
     @Default("1.05")
@@ -74,6 +82,12 @@ public interface SwitchManagerConfig {
     @Min(0)
     @Description("This is burst size for LLDP rule meters in packets.")
     long getLldpMeterBurstSizeInPackets();
+
+    @Key("arp-meter-burst-size-in-packets")
+    @Default("4096")
+    @Min(0)
+    @Description("This is burst size for ARP rule meters in packets.")
+    long getArpMeterBurstSizeInPackets();
 
     @Key("ovs-meters-enabled")
     @Default("false")
