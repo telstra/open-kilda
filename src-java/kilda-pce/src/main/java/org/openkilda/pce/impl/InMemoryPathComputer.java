@@ -83,8 +83,7 @@ public class InMemoryPathComputer implements PathComputer {
         try {
             network.reduceByWeight(weightFunction);
 
-            biPath = pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
-                    flow.getDestSwitch().getSwitchId(), weightFunction);
+            biPath = findPathInNetwork(flow, network, weightFunction);
         } catch (UnroutableFlowException e) {
             String message = format("Failed to find path with requested bandwidth=%s: %s",
                     flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
@@ -92,6 +91,29 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         return convertToPathPair(flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId(), biPath);
+    }
+
+    private Pair<List<Edge>, List<Edge>> findPathInNetwork(Flow flow, AvailableNetwork network,
+                                                           WeightFunction weightFunction)
+            throws UnroutableFlowException {
+        PathComputationStrategy strategy = flow.getPathComputationStrategy();
+
+        if (PathComputationStrategy.MAX_LATENCY.equals(strategy)
+                && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
+            strategy = PathComputationStrategy.LATENCY;
+        }
+
+        switch (strategy) {
+            case COST:
+            case LATENCY:
+                return pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
+                        flow.getDestSwitch().getSwitchId(), weightFunction);
+            case MAX_LATENCY:
+                return pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
+                        flow.getDestSwitch().getSwitchId(), weightFunction, flow.getMaxLatency());
+            default:
+                throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+        }
     }
 
     @Override
@@ -127,6 +149,7 @@ public class InMemoryPathComputer implements PathComputer {
             case COST:
                 return this::weightByCost;
             case LATENCY:
+            case MAX_LATENCY:
                 return this::weightByLatency;
             default:
                 throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));

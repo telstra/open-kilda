@@ -49,7 +49,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
     @Test
     public void shouldUpdateMaxLatencyAndPriorityFlowFields() throws FlowNotFoundException {
         String testFlowId = "flow_id";
-        Integer maxLatency = 555;
+        Long maxLatency = 555L;
         Integer priority = 777;
 
         Switch switchA = new Switch();

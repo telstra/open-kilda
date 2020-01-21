@@ -58,7 +58,7 @@ public class FlowRequest extends CommandData {
     boolean allocateProtectedPath;
     String description;
     int transitEncapsulationId;
-    Integer maxLatency;
+    Long maxLatency;
     Integer priority;
     boolean pinned;
     String diverseFlowId;

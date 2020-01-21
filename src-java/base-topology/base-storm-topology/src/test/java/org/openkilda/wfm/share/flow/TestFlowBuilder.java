@@ -55,7 +55,7 @@ public class TestFlowBuilder {
     private int transitEncapsulationId = 0;
     private Integer meterId = null;
     private FlowStatus status = FlowStatus.UP;
-    private Integer maxLatency = null;
+    private Long maxLatency = null;
     private Integer priority = null;
     private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
             false, false, false, false, false, false);

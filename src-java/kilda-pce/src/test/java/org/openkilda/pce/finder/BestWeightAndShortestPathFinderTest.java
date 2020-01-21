@@ -135,6 +135,71 @@ public class BestWeightAndShortestPathFinderTest {
         assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
+    @Test
+    public void shouldChooseCheaperOverTooDeepMaxWeightStrategy() throws  UnroutableFlowException {
+        AvailableNetwork network = buildLongAndExpensivePathsNetwork();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(2);
+        Pair<List<Edge>, List<Edge>> pairPath =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3, WEIGHT_FUNCTION, Long.MAX_VALUE);
+        List<Edge> fpath = pairPath.getLeft();
+        assertThat(fpath, Matchers.hasSize(2));
+        assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
+
+        List<Edge> rpath = pairPath.getRight();
+        assertThat(rpath, Matchers.hasSize(2));
+        assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldChooseCheaperOverTooDeepForReverseOrderMaxWeightStrategy()
+            throws  UnroutableFlowException {
+        AvailableNetwork network = buildLongAndExpensivePathsNetwork();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(2);
+        Pair<List<Edge>, List<Edge>> pairPath =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_3, SWITCH_ID_1, WEIGHT_FUNCTION, Long.MAX_VALUE);
+        List<Edge> fpath = pairPath.getLeft();
+        assertThat(fpath, Matchers.hasSize(2));
+        assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
+
+        List<Edge> rpath = pairPath.getRight();
+        assertThat(rpath, Matchers.hasSize(2));
+        assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldChooseDeeperOverCheaperMaxWeightStrategy() throws  UnroutableFlowException {
+        AvailableNetwork network = buildLongAndExpensivePathsNetwork();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(4);
+        Pair<List<Edge>, List<Edge>> pairPath =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3, WEIGHT_FUNCTION, Long.MAX_VALUE);
+        List<Edge> fpath = pairPath.getLeft();
+        assertThat(fpath, Matchers.hasSize(4));
+        assertEquals(SWITCH_ID_5, fpath.get(3).getSrcSwitch().getSwitchId());
+
+        List<Edge> rpath = pairPath.getRight();
+        assertThat(rpath, Matchers.hasSize(4));
+        assertEquals(SWITCH_ID_5, rpath.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldChooseExpensiveWithSameDepthMaxWeightStrategy() throws  UnroutableFlowException {
+        AvailableNetwork network = buildLongAndExpensivePathsNetwork();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(3);
+        Pair<List<Edge>, List<Edge>> pairPath =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5, WEIGHT_FUNCTION, Long.MAX_VALUE);
+        List<Edge> fpath = pairPath.getLeft();
+        assertThat(fpath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_4, fpath.get(2).getSrcSwitch().getSwitchId());
+
+        List<Edge> rpath = pairPath.getRight();
+        assertThat(rpath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_4, rpath.get(0).getDestSwitch().getSwitchId());
+    }
+
     private AvailableNetwork buildLongAndExpensivePathsNetwork() {
         /*
          *   Topology:
@@ -164,6 +229,14 @@ public class BestWeightAndShortestPathFinderTest {
         pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION);
     }
 
+    @Test(expected = UnroutableFlowException.class)
+    public void shouldFailWhenPathIsLongerThenAllowedDepthMaxWeightStrategy() throws UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(1);
+        pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION, Long.MAX_VALUE);
+    }
+
     @Test
     public void shouldReturnTheShortestPath() throws  UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
@@ -182,6 +255,27 @@ public class BestWeightAndShortestPathFinderTest {
         assertEquals(SWITCH_ID_E, rpath.get(1).getDestSwitch().getSwitchId());
     }
 
+    @Test
+    public void shouldReturnThePathClosestToMaxWeight() throws  UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+        // found path should be E -10-> A -40-> C -10-> F
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
+        Pair<List<Edge>, List<Edge>> pairPath =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_E, SWITCH_ID_F, WEIGHT_FUNCTION, 65L);
+        List<Edge> fpath = pairPath.getLeft();
+        assertThat(fpath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_E, fpath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_C, fpath.get(1).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_F, fpath.get(2).getDestSwitch().getSwitchId());
+
+        List<Edge> rpath = pairPath.getRight();
+        assertThat(rpath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_F, rpath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_C, fpath.get(1).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_E, rpath.get(2).getDestSwitch().getSwitchId());
+    }
+
     @Test(expected = UnroutableFlowException.class)
     public void failToFindASwitch() throws  UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
@@ -190,6 +284,16 @@ public class BestWeightAndShortestPathFinderTest {
 
         BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
         pathFinder.findPathInNetwork(network, srcDpid, SWITCH_ID_F, WEIGHT_FUNCTION);
+    }
+
+    @Test(expected = UnroutableFlowException.class)
+    public void failToFindASwitchMaxWeightStrategy() throws  UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+
+        SwitchId srcDpid = new SwitchId("00:00:00:00:00:00:00:ff");
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
+        pathFinder.findPathInNetwork(network, srcDpid, SWITCH_ID_F, WEIGHT_FUNCTION, Long.MAX_VALUE);
     }
 
     @Test
@@ -215,6 +319,20 @@ public class BestWeightAndShortestPathFinderTest {
                 pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION);
 
         assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_A, SWITCH_ID_F), getSwitchIdsFlowPath(paths.getLeft()));
+    }
+
+    @Test
+    public void shouldAddIntermediateSwitchWeightOnceMaxWeightStrategy() throws UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+        // shouldn't affect path if added once
+        network.getSwitch(SWITCH_ID_A).increaseDiversityGroupUseCounter();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
+        Pair<List<Edge>, List<Edge>> paths =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION, Long.MAX_VALUE);
+
+        assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_A, SWITCH_ID_E, SWITCH_ID_B, SWITCH_ID_F),
+                getSwitchIdsFlowPath(paths.getLeft()));
     }
 
     @Test
