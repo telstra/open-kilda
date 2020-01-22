@@ -28,6 +28,7 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +43,9 @@ import java.util.Set;
 public class AvailableNetwork {
     @VisibleForTesting
     final Map<SwitchId, Node> switches = new HashMap<>();
+
+    @VisibleForTesting
+    final Set<Edge> edges = new HashSet<>();
 
     public Node getSwitch(SwitchId dpid) {
         return switches.get(dpid);
@@ -68,6 +72,7 @@ public class AvailableNetwork {
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .build();
+        edges.add(edge);
         boolean srcAdded = srcSwitch.getOutgoingLinks().add(edge);
         boolean dstAdded = dstSwitch.getIncomingLinks().add(edge);
         if (errorOnDuplicates && !(srcAdded && dstAdded)) {
@@ -76,8 +81,8 @@ public class AvailableNetwork {
         }
     }
 
-    private Node getOrInitSwitch(Switch sw) {
-        return switches.computeIfAbsent(sw.getSwitchId(), Node::fromSwitchId);
+    private Node getOrInitSwitch(final Switch sw) {
+        return switches.computeIfAbsent(sw.getSwitchId(), switchId ->  Node.fromSwitch(sw));
     }
 
     /**
@@ -111,6 +116,44 @@ public class AvailableNetwork {
                 }
             }
         }
+    }
+
+    /**
+     * Adds diversity weights into {@link AvailableNetwork} based on passed path segments and configuration.
+     */
+    public void processDiversitySegmentsWithPop(List<PathSegment> segments) {
+        if (segments.size() <= 1) {
+            return;
+        }
+
+        Set<String> allocatedPopSet = new HashSet<>();
+
+        for (PathSegment ps : segments) {
+            allocatedPopSet.add(ps.getSrcSwitch().getPop());
+            allocatedPopSet.add(ps.getDestSwitch().getPop());
+        }
+
+        String inPop = segments.get(0).getSrcSwitch().getPop();
+        allocatedPopSet.remove(inPop);
+
+        String outPop = segments.get(segments.size() - 1).getDestSwitch().getPop();
+        allocatedPopSet.remove(outPop);
+
+
+        for (Edge edge : edges) {
+            String srcPop = edge.getSrcSwitch().getPop();
+            if (srcPop != null && allocatedPopSet.contains(srcPop)) {
+                edge.increaseDiversityGroupPerPopUseCounter();
+                continue;
+            }
+            String dstPop = edge.getDestSwitch().getPop();
+            if (dstPop != null && allocatedPopSet.contains(dstPop)) {
+                edge.increaseDiversityGroupPerPopUseCounter();
+                continue;
+            }
+        }
+
+
     }
 
     /**

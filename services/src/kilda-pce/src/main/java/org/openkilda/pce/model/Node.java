@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.minBy;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Sets;
@@ -45,6 +46,8 @@ public class Node {
     @NonNull
     private final SwitchId switchId;
 
+    private final String pop;
+
     @NonNull
     private Set<Edge> incomingLinks;
     @NonNull
@@ -62,12 +65,13 @@ public class Node {
     /**
      * Constructs {@link Node} instance with passed {@link SwitchId}.
      *
-     * @param swId the {@link SwitchId} instance.
+     * @param sw the {@link Switch} instance.
      * @return new {@link Node} instance.
      */
-    public static Node fromSwitchId(SwitchId swId) {
+    public static Node fromSwitch(Switch sw) {
         return Node.builder()
-                .switchId(swId)
+                .switchId(sw.getSwitchId())
+                .pop(sw.getPop())
                 .incomingLinks(new HashSet<>())
                 .outgoingLinks(new HashSet<>())
                 .build();

@@ -36,6 +36,10 @@ public interface PathComputerConfig extends Serializable {
     @Default("1000")
     int getDiversityIslCost();
 
+    @Key("diversity.pop.isl.cost")
+    @Default("1000")
+    int getDiversityPopIslCost();
+
     @Key("diversity.switch.cost")
     @Default("100")
     int getDiversitySwitchCost();
