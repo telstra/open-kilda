@@ -97,42 +97,6 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void mustHaveLldpRuleWithConnectedDevices() {
-        Flow flow = createFlowForConnectedDevices(true, true);
-
-        ValidationServiceImpl validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(1).build(), topologyConfig);
-
-        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getForwardPath()));
-        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getReversePath()));
-        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedForwardPath()));
-        assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedReversePath()));
-
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getForwardPath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getReversePath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedForwardPath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedReversePath()));
-    }
-
-    @Test
-    public void mustHaveLldpRuleWithOutConnectedDevices() {
-        Flow flow = createFlowForConnectedDevices(false, false);
-
-        ValidationServiceImpl validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(1).build(), topologyConfig);
-
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getForwardPath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getReversePath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedForwardPath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedReversePath()));
-
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getForwardPath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getReversePath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedForwardPath()));
-        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedReversePath()));
-    }
-
-    @Test
     public void validateRulesSimpleSegmentCookies() {
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig);
@@ -154,34 +118,6 @@ public class ValidationServiceImplTest {
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
-        assertTrue(response.getExcessRules().isEmpty());
-    }
-
-    @Test
-    public void validateRulesSegmentAndIngressLldpCookiesProper() {
-        PersistenceManager persistenceManager = persistenceManager()
-                .withIngressCookies(1L)
-                .withDetectConnectedDevices(detectConnectedDevices)
-                .build();
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(1L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertTrue(response.getMissingRules().isEmpty());
-        assertEquals(ImmutableSet.of(1L), new HashSet<>(response.getProperRules()));
-        assertTrue(response.getExcessRules().isEmpty());
-    }
-
-    @Test
-    public void validateRulesSegmentAndIngressLldpCookiesMissing() {
-        PersistenceManager persistenceManager = persistenceManager()
-                .withIngressCookies(1L)
-                .withDetectConnectedDevices(new DetectConnectedDevices(true, false, true, false, false, false))
-                .build();
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
-        assertEquals(ImmutableSet.of(1L), new HashSet<>(response.getMissingRules()));
-        assertTrue(response.getProperRules().isEmpty());
         assertTrue(response.getExcessRules().isEmpty());
     }
 
@@ -346,30 +282,6 @@ public class ValidationServiceImplTest {
         assertEquals(expectedRate, (long) meterInfoEntry.getRate());
         assertEquals(expectedBurstSize, (long) meterInfoEntry.getBurstSize());
         assertEquals(Sets.newHashSet(expectedFlags), Sets.newHashSet(meterInfoEntry.getFlags()));
-    }
-
-    private Flow createFlowForConnectedDevices(boolean detectSrcLldp,
-                                               boolean detectDstLldp) {
-        Flow flow = Flow.builder()
-                .flowId("flow")
-                .srcSwitch(switchA)
-                .destSwitch(switchB)
-                .detectConnectedDevices(new DetectConnectedDevices(
-                        detectSrcLldp, false, detectDstLldp, false, false, false))
-                .build();
-
-        FlowPath forwardPath = buildFlowPath(flow, switchA, switchB, "1", 1);
-        FlowPath reversePath = buildFlowPath(flow, switchB, switchA, "2", 2);
-        FlowPath protectedForwardPath = buildFlowPath(flow, switchA, switchB, "3", 3);
-        FlowPath protectedReversePath = buildFlowPath(flow, switchB, switchA, "4", 4);
-
-
-        flow.setForwardPath(forwardPath);
-        flow.setReversePath(reversePath);
-        flow.setProtectedForwardPath(protectedForwardPath);
-        flow.setProtectedReversePath(protectedReversePath);
-
-        return flow;
     }
 
     private static FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, String pathId, long cookie) {

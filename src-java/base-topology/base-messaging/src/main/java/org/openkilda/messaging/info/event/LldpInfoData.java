@@ -32,7 +32,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 @AllArgsConstructor
-public class SwitchLldpInfoData extends InfoData {
+public class LldpInfoData extends InfoData {
 
     private static final long serialVersionUID = 7963516610743491465L;
 

@@ -22,7 +22,6 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
@@ -38,7 +37,6 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
@@ -58,18 +56,12 @@ public class ValidationServiceImpl implements ValidationService {
     private SwitchRepository switchRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
-    private final int lldpRateLimit;
-    private final int lldpPacketSize;
-    private final long lldpMeterBurstSizeInPackets;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
-        this.lldpRateLimit = topologyConfig.getLldpRateLimit();
-        this.lldpPacketSize = topologyConfig.getLldpPacketSize();
-        this.lldpMeterBurstSizeInPackets = topologyConfig.getLldpMeterBurstSizeInPackets();
     }
 
     @Override
@@ -91,23 +83,6 @@ public class ValidationServiceImpl implements ValidationService {
 
         return makeRulesResponse(
                 expectedCookies, presentRules, expectedDefaultRules, switchId);
-    }
-
-    @VisibleForTesting
-    boolean mustHaveLldpRule(SwitchId switchId, FlowPath path) {
-        Flow flow = path.getFlow();
-
-        if (flow.getDetectConnectedDevices().isSrcLldp() && flow.getSrcSwitch().getSwitchId().equals(switchId)
-                && flow.isForward(path)) {
-            return true;
-        }
-
-        if (flow.getDetectConnectedDevices().isDstLldp() && flow.getDestSwitch().getSwitchId().equals(switchId)
-                && flow.isReverse(path)) {
-            return true;
-        }
-
-        return false;
     }
 
     private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,
