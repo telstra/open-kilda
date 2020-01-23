@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 
 package org.openkilda.messaging.info.event;
 
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,22 +31,56 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-@AllArgsConstructor
-public class LldpInfoData extends InfoData {
+public class LldpInfoData extends ConnectedDevicePacketBase {
 
     private static final long serialVersionUID = 7963516610743491465L;
 
-    private SwitchId switchId;
-    private int portNumber;
-    private List<Integer> vlans;
-    private long cookie;
-    private String macAddress;
+    @JsonProperty("chassis_id")
     private String chassisId;
+
+    @JsonProperty("port_id")
     private String portId;
+
+    @JsonProperty("ttl")
     private Integer ttl;
+
+    @JsonProperty("port_description")
     private String portDescription;
+
+    @JsonProperty("system_name")
     private String systemName;
+
+    @JsonProperty("system_description")
     private String systemDescription;
+
+    @JsonProperty("system_capabilities")
     private String systemCapabilities;
+
+    @JsonProperty("management_address")
     private String managementAddress;
+
+    @JsonCreator
+    public LldpInfoData(@JsonProperty("switch_id") SwitchId switchId,
+                              @JsonProperty("port_number") int portNumber,
+                              @JsonProperty("vlans") List<Integer> vlans,
+                              @JsonProperty("cookie") long cookie,
+                              @JsonProperty("mac_address") String macAddress,
+                              @JsonProperty("chassis_id") String chassisId,
+                              @JsonProperty("port_id") String portId,
+                              @JsonProperty("ttl") Integer ttl,
+                              @JsonProperty("port_description") String portDescription,
+                              @JsonProperty("system_name") String systemName,
+                              @JsonProperty("system_description") String systemDescription,
+                              @JsonProperty("system_capabilities") String systemCapabilities,
+                              @JsonProperty("management_address") String managementAddress) {
+        super(switchId, portNumber, vlans, cookie, macAddress);
+        this.chassisId = chassisId;
+        this.portId = portId;
+        this.ttl = ttl;
+        this.portDescription = portDescription;
+        this.systemName = systemName;
+        this.systemDescription = systemDescription;
+        this.systemCapabilities = systemCapabilities;
+        this.managementAddress = managementAddress;
+    }
 }
