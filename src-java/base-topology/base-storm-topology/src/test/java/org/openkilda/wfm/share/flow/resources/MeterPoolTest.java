@@ -96,10 +96,9 @@ public class MeterPoolTest extends Neo4jBasedTest {
     @Test
     public void deallocateMetersByPathTest() {
         meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1);
-        meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1);
         meterPool.allocate(SWITCH_ID, FLOW_2, PATH_ID_2);
         long meterId = meterPool.allocate(SWITCH_ID, FLOW_3, PATH_ID_3).getValue();
-        assertEquals(4, flowMeterRepository.findAll().size());
+        assertEquals(3, flowMeterRepository.findAll().size());
 
         meterPool.deallocate(PATH_ID_1, PATH_ID_2);
         Collection<FlowMeter> flowMeters = flowMeterRepository.findAll();
