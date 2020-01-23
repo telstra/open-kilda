@@ -20,7 +20,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.SwitchLldpInfoData;
+import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -52,8 +52,8 @@ public class PacketBolt extends AbstractBolt {
         if (message instanceof InfoMessage) {
             log.debug("Received info message {}", message);
             InfoData data = ((InfoMessage) message).getData();
-            if (data instanceof SwitchLldpInfoData) {
-                packetService.handleSwitchLldpData((SwitchLldpInfoData) data);
+            if (data instanceof LldpInfoData) {
+                packetService.handleLldpData((LldpInfoData) data);
             } else {
                 unhandledInput(input);
             }
