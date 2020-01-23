@@ -15,12 +15,16 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
@@ -31,10 +35,12 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
@@ -46,12 +52,17 @@ import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+@RunWith(MockitoJUnitRunner.class)
 public class RerouteServiceTest {
 
     private static final SwitchId SWITCH_ID_A = new SwitchId(1L);
@@ -73,11 +84,23 @@ public class RerouteServiceTest {
     private static final String FLOW_ID = "TEST_FLOW";
     private static final String CORRELATION_ID = "CORRELATION_ID";
 
+    private Flow regularFlow;
     private Flow pinnedFlow;
-    private Flow unpinnedFlow;
+
+    @Mock
+    private TransactionManager transactionManager;
+
+    @Mock
+    MessageSender carrier;
 
     @Before
-    public void setup() {
+    public void setup() throws Throwable {
+        doAnswer(invocation -> {
+            TransactionCallbackWithoutResult<?> arg = invocation.getArgument(0);
+            arg.doInTransaction();
+            return null;
+        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult<?>>any());
+
         pinnedFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(true).build();
         FlowPath pinnedFlowForwardPath = FlowPath.builder().pathId(new PathId("1"))
@@ -116,10 +139,11 @@ public class RerouteServiceTest {
         pinnedFlow.setForwardPath(pinnedFlowForwardPath);
         pinnedFlow.setReversePath(pinnedFlowReversePath);
 
-        unpinnedFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
+        regularFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(false).build();
-        FlowPath unpinnedFlowForwardPath = FlowPath.builder().pathId(new PathId("3"))
-                .flow(unpinnedFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(3))
+        FlowPath regularFlowForwardPath = FlowPath.builder().pathId(new PathId("3"))
+                .flow(regularFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(3))
+                .status(FlowPathStatus.ACTIVE)
                 .build();
         List<PathSegment> unpinnedFlowForwardSegments = new ArrayList<>();
         unpinnedFlowForwardSegments.add(PathSegment.builder()
@@ -134,10 +158,11 @@ public class RerouteServiceTest {
                 .destSwitch(SWITCH_C)
                 .destPort(1)
                 .build());
-        unpinnedFlowForwardPath.setSegments(unpinnedFlowForwardSegments);
+        regularFlowForwardPath.setSegments(unpinnedFlowForwardSegments);
 
-        FlowPath unpinnedFlowReversePath = FlowPath.builder().pathId(new PathId("4"))
-                .flow(unpinnedFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A).cookie(Cookie.buildReverseCookie(3))
+        FlowPath regularFlowReversePath = FlowPath.builder().pathId(new PathId("4"))
+                .flow(regularFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A).cookie(Cookie.buildReverseCookie(3))
+                .status(FlowPathStatus.ACTIVE)
                 .build();
         List<PathSegment> unpinnedFlowReverseSegments = new ArrayList<>();
         unpinnedFlowReverseSegments.add(PathSegment.builder()
@@ -152,9 +177,9 @@ public class RerouteServiceTest {
                 .destSwitch(SWITCH_A)
                 .destPort(1)
                 .build());
-        unpinnedFlowReversePath.setSegments(unpinnedFlowReverseSegments);
-        unpinnedFlow.setForwardPath(unpinnedFlowForwardPath);
-        unpinnedFlow.setReversePath(unpinnedFlowReversePath);
+        regularFlowReversePath.setSegments(unpinnedFlowReverseSegments);
+        regularFlow.setForwardPath(regularFlowForwardPath);
+        regularFlow.setReversePath(regularFlowReversePath);
     }
 
 
@@ -177,7 +202,7 @@ public class RerouteServiceTest {
             FlowStatus status = invocation.getArgument(1);
             pinnedFlow.setStatus(status);
             return null;
-        }).when(flowRepository).updateStatus(eq(pinnedFlow.getFlowId()), any());
+        }).when(flowRepository).updateStatusSafe(eq(pinnedFlow.getFlowId()), any());
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
         doAnswer(invocation -> {
@@ -202,9 +227,9 @@ public class RerouteServiceTest {
         RerouteService rerouteService = new RerouteService(persistenceManager);
         rerouteService.rerouteInactiveFlows(messageSender, CORRELATION_ID,
                 REROUTE_INACTIVE_FLOWS_COMMAND);
-        assertTrue(FlowStatus.UP.equals(pinnedFlow.getStatus()));
+        assertEquals(FlowStatus.UP, pinnedFlow.getStatus());
         for (FlowPath fp : pinnedFlow.getPaths()) {
-            assertTrue(FlowPathStatus.ACTIVE.equals(fp.getStatus()));
+            assertEquals(FlowPathStatus.ACTIVE, fp.getStatus());
             for (PathSegment ps : fp.getSegments()) {
                 if (ps.containsNode(SWITCH_ID_A, PORT)) {
                     assertFalse(ps.isFailed());
@@ -228,28 +253,19 @@ public class RerouteServiceTest {
                 .thenReturn(Collections.singletonList(pinnedFlow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
-        doAnswer(invocation -> {
-            PathId pathId = invocation.getArgument(0);
-            FlowPathStatus status = invocation.getArgument(1);
-            pinnedFlow.getPath(pathId).get().setStatus(status);
-            return null;
-        }).when(pathRepository).updateStatus(any(), any());
         when(repositoryFactory.createFlowPathRepository()).thenReturn(pathRepository);
         PathSegmentRepository pathSegmentRepository = mock(PathSegmentRepository.class);
         when(repositoryFactory.createPathSegmentRepository()).thenReturn(pathSegmentRepository);
         MessageSender messageSender = mock(MessageSender.class);
         PersistenceManager persistenceManager = mock(PersistenceManager.class);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-        TransactionManager transactionManager = mock(TransactionManager.class);
-        doAnswer(invocation -> {
-            TransactionCallbackWithoutResult arg = invocation.getArgument(0);
-            arg.doInTransaction();
-            return null;
-        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult>any());
+
         when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
         RerouteService rerouteService = new RerouteService(persistenceManager);
         rerouteService.rerouteInactiveFlows(messageSender, CORRELATION_ID,
                 REROUTE_INACTIVE_FLOWS_COMMAND);
+
+        verify(pathRepository, times(0)).updateStatus(any(), any());
         assertTrue(FlowStatus.DOWN.equals(pinnedFlow.getStatus()));
         for (FlowPath fp : pinnedFlow.getPaths()) {
             assertTrue(FlowPathStatus.INACTIVE.equals(fp.getStatus()));
@@ -261,6 +277,42 @@ public class RerouteServiceTest {
                 }
             }
         }
+    }
 
+    @Test
+    public void handlePathNoFoundException() {
+        PathNode islSide = new PathNode(SWITCH_A.getSwitchId(), 1, 0);
+
+        FlowPathRepository pathRepository = mock(FlowPathRepository.class);
+        when(pathRepository.findBySegmentEndpoint(eq(islSide.getSwitchId()), eq(islSide.getPortNo())))
+                .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
+
+        FlowRepository flowRepository = mock(FlowRepository.class);
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createPathSegmentRepository())
+                .thenReturn(mock(PathSegmentRepository.class));
+        when(repositoryFactory.createFlowPathRepository())
+                .thenReturn(pathRepository);
+        when(repositoryFactory.createFlowRepository())
+                .thenReturn(flowRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        doThrow(new PersistenceException("Path not found exception (dummy)"))
+                .when(pathRepository).updateStatus(eq(regularFlow.getForwardPath().getPathId()), any());
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        RerouteAffectedFlows request = new RerouteAffectedFlows(islSide, "dummy-reason - unittest");
+        rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
+
+        verify(flowRepository).updateStatusSafe(eq(regularFlow.getFlowId()), eq(FlowStatus.DOWN));
+        verify(carrier).emitRerouteCommand(
+                eq(CORRELATION_ID), eq(regularFlow),
+                eq(Collections.singleton(new IslEndpoint(islSide.getSwitchId(), islSide.getPortNo()))),
+                any(String.class));
     }
 }

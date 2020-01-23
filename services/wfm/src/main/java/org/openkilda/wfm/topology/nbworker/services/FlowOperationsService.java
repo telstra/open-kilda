@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static org.apache.commons.collections4.ListUtils.union;
 
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
@@ -25,7 +26,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
@@ -49,8 +50,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -135,18 +136,6 @@ public class FlowOperationsService {
             return flowPaths;
         }
 
-    }
-
-    /**
-     * Groups passed flow paths by flow id.
-     *
-     * @param paths the flow paths for grouping.
-     * @return map with grouped grouped flow paths.
-     */
-    public Map<String, Set<PathId>> groupFlowIdWithPathIdsForRerouting(Collection<FlowPath> paths) {
-        return paths.stream()
-                .collect(Collectors.groupingBy(path -> path.getFlow().getFlowId(),
-                        Collectors.mapping(FlowPath::getPathId, Collectors.toSet())));
     }
 
     public Optional<FlowPair> getFlowPairById(String flowId) {
@@ -298,5 +287,24 @@ public class FlowOperationsService {
 
             return switchConnectedDeviceRepository.findByFlowId(flowId);
         });
+    }
+
+    /**
+     * Produce reroute request for all affected paths/flows.
+     */
+    public List<FlowRerouteRequest> makeRerouteRequests(
+            Collection<FlowPath> targetPaths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
+        List<FlowRerouteRequest> results = new ArrayList<>();
+        Set<String> processed = new HashSet<>();
+        for (FlowPath entry : targetPaths) {
+            Flow flow = entry.getFlow();
+            if (processed.add(flow.getFlowId())) {
+                FlowRerouteRequest request = new FlowRerouteRequest(
+                        flow.getFlowId(), false, false, affectedIslEndpoints, reason);
+                results.add(request);
+            }
+        }
+
+        return results;
     }
 }

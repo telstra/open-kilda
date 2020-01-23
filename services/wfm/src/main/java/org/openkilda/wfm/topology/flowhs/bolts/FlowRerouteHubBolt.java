@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
@@ -29,6 +30,7 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -36,6 +38,7 @@ import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -45,6 +48,7 @@ import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+import org.slf4j.MDC;
 
 public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier {
 
@@ -83,8 +87,10 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
         FlowRerouteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowRerouteRequest.class);
-        service.handleRequest(currentKey, pullContext(input), request.getFlowId(), request.getPathIds(),
-                request.isForce(), request.getReason());
+        FlowRerouteFact reroute = new FlowRerouteFact(
+                currentKey, getCommandContext(), request.getFlowId(), request.getAffectedIsl(), request.isForce(),
+                request.isEffectivelyDown(), request.getReason());
+        service.handleRequest(reroute);
     }
 
     @Override
@@ -122,6 +128,31 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     @Override
     public void cancelTimeoutCallback(String key) {
         cancelCallback(key);
+    }
+
+    @Override
+    public void setupTimeoutCallback(String key) {
+        registerCallback(key);
+    }
+
+    /**
+     * "Hack" required to propagate execution context for postponed requests up to transport/carrier level.
+     */
+    @Override
+    public void injectRetry(FlowRerouteFact reroute) {
+        String originalKey = currentKey;
+        CommandContext originalCommandContext = getCommandContext();
+        try {
+            MDC.put(CORRELATION_ID, reroute.getCommandContext().getCorrelationId());
+            setCommandContext(reroute.getCommandContext());
+            currentKey = reroute.getKey();
+
+            service.handlePostponedRequest(reroute);
+        } finally {
+            currentKey = originalKey;
+            setCommandContext(originalCommandContext);
+            MDC.put(CORRELATION_ID, originalCommandContext.getCorrelationId());
+        }
     }
 
     @Override

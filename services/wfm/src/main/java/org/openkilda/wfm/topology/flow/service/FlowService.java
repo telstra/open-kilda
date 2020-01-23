@@ -38,6 +38,7 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -98,6 +99,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -523,17 +525,28 @@ public class FlowService extends BaseFlowService {
      *
      * @param flowId the flow to be rerouted.
      * @param forceToReroute if true the flow will be recreated even there's no better path found.
-     * @param pathIds the set of path if to reroute.
+     * @param affectedIsl the set of path if to reroute.
      * @param sender the command sender for flow rules installation and deletion.
      */
-    public ReroutedFlowPaths rerouteFlow(String flowId, boolean forceToReroute, Set<PathId> pathIds,
+    public ReroutedFlowPaths rerouteFlow(String flowId, boolean forceToReroute, Set<IslEndpoint> affectedIsl,
                                          FlowCommandSender sender) throws RecoverableException, UnroutableFlowException,
             FlowNotFoundException, ResourceAllocationException {
-        dashboardLogger.onFlowPathReroute(flowId, pathIds, forceToReroute);
+        // due to completely switch on H&S flow's CRUD implementation goal new features are not backported
+        // into old/this implementation, including reroute targeting based on affected ISL set
+        if (affectedIsl != null && ! affectedIsl.isEmpty()) {
+            log.warn("Pre H&S reroute implementation do not support reroute flow path targeting based on affected ISLs "
+                            + "set, provided set of affected ISLs {} are ignored, all path(s) belongs to flows {} will "
+                            + "be rerouted",
+                    affectedIsl.stream().map(IslEndpoint::toString).collect(Collectors.joining(", ")),
+                    flowId);
+        }
+        Set<PathId> affectedPaths = Collections.emptySet();
+
+        dashboardLogger.onFlowPathReroute(flowId, affectedIsl, forceToReroute);
 
         RerouteResult result;
         try {
-            result = doRerouteWithRetries(flowId, forceToReroute, pathIds);
+            result = doRerouteWithRetries(flowId, forceToReroute, affectedPaths);
         } catch (UnroutableFlowException e) {
             dashboardLogger.onFailedFlowReroute(flowId, "Path was not found. " + e.getMessage());
             throw e;

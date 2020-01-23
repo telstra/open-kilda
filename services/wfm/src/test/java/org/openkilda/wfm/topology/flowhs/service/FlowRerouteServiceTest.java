@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +45,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -59,10 +63,12 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
+import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -70,7 +76,11 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -82,6 +92,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private static final String FLOW_ID = "TEST_FLOW";
     private static final SwitchId SWITCH_1 = new SwitchId(1);
     private static final SwitchId SWITCH_2 = new SwitchId(2);
+    private static final SwitchId SWITCH_3 = new SwitchId(3);
     private static final PathId OLD_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_forward_old");
     private static final PathId OLD_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse_old");
     private static final PathId NEW_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_forward_new");
@@ -91,8 +102,14 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private FlowRerouteHubCarrier carrier;
     @Mock
     private CommandContext commandContext;
+    @Mock
+    private FlowEventRepository flowEventRepository;
 
     private FlowRerouteService rerouteService;
+
+    private String currentRequestKey;
+
+    private Map<SwitchId, Switch> swMap = new HashMap<>();
 
     @Before
     public void setUp() {
@@ -116,7 +133,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                         .build()));
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
-        FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
 
@@ -124,9 +140,24 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
 
+        doAnswer(invocation -> {
+            FlowRerouteFact retry = invocation.getArgument(0);
+            currentRequestKey = retry.getKey();
+            rerouteService.handlePostponedRequest(retry);
+            return null;
+        }).when(carrier).injectRetry(any());
+
         rerouteService = new FlowRerouteService(carrier, persistenceManager,
                 pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
                 PATH_ALLOCATION_RETRIES_LIMIT, PATH_ALLOCATION_RETRY_DELAY, SPEAKER_COMMAND_RETRIES_LIMIT);
+
+        currentRequestKey = "test-key";
+
+        for (SwitchId id : new SwitchId[] {SWITCH_1, SWITCH_2, SWITCH_3}) {
+            Switch entry = makeSwitch(id);
+            swMap.put(id, entry);
+            when(switchRepository.findById(eq(id))).thenReturn(Optional.of(entry));
+        }
     }
 
     @Test
@@ -136,7 +167,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenThrow(new UnroutableFlowException("No path found"));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.DOWN, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -154,7 +186,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenThrow(new RecoverableException("PCE error"));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -175,7 +208,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(islRepository.updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong()))
                 .thenThrow(ResourceAllocationException.class);
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -196,7 +230,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(flowResourcesManager.allocateFlowResources(any()))
                 .thenThrow(new ResourceAllocationException("No resources"));
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -215,7 +250,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
         doThrow(new RuntimeException("Must fail")).when(flowPathRepository).lockInvolvedSwitches(any(), any());
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         verify(flowResourcesManager, times(0)).deallocatePathResources(any());
         verify(flowResourcesManager, times(0)).deallocatePathResources(any(), anyLong(), any());
@@ -228,7 +264,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -244,7 +281,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -283,7 +321,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -292,15 +331,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isRemoveRequest()) {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", request);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
@@ -315,7 +346,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -354,7 +386,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -386,7 +419,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -434,7 +468,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -474,7 +509,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -485,17 +521,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", request);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
@@ -510,7 +536,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -546,27 +573,20 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         flow.setStatus(FlowStatus.DOWN);
 
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any()))
+                .thenReturn(build2SwitchPathPair(2, 3))
+                .thenReturn(build3SwitchPathPair());
         buildFlowResources();
 
-        rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null, false, null);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
-            } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
-            }
+            produceAsyncResponse("test_key", request);
         }
 
         assertEquals(FlowStatus.UP, flow.getStatus());
@@ -574,36 +594,166 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
     }
 
-    private PathPair build2SwitchPathPair() {
-        return build2SwitchPathPair(1, 2);
+    @Test
+    public void shouldSuccessfullyHandleOverlappingRequests()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow();
+        flow.setStatus(FlowStatus.DOWN);
+
+        when(pathComputer.getPath(any(), any()))
+                .thenReturn(build2SwitchPathPair(2, 3))
+                .thenReturn(build3SwitchPathPair());
+
+        FlowResources resourcesOrigin = makeFlowResources(
+                flow.getFlowId(), flow.getForwardPathId(), flow.getReversePathId());
+
+        PathId pathForwardFirst = new PathId(flow.getFlowId() + "_forward_first");
+        PathId pathReverseFirst = new PathId(flow.getFlowId() + "_reverse_first");
+        FlowResources resourcesFirst = makeFlowResources(
+                flow.getFlowId(), pathForwardFirst, pathReverseFirst, resourcesOrigin);
+
+        PathId pathForwardSecond = new PathId(flow.getFlowId() + "_forward_second");
+        PathId pathReverseSecond = new PathId(flow.getFlowId() + "_reverse_second");
+        FlowResources resourcesSecond = makeFlowResources(
+                flow.getFlowId(), pathForwardSecond, pathReverseSecond, resourcesFirst);
+
+        when(flowResourcesManager.allocateFlowResources(any()))
+                .thenReturn(resourcesFirst)
+                .thenReturn(resourcesSecond);
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null));
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                "test_key2", commandContext, flow.getFlowId(), null, false, false, null));
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(currentRequestKey, request);
+        }
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(pathForwardSecond, flow.getForwardPathId());
+        assertEquals(pathReverseSecond, flow.getReversePathId());
     }
 
-    private PathPair build2SwitchPathPair(int srcPort, int destPort) {
-        return PathPair.builder()
-                .forward(Path.builder()
-                        .srcSwitchId(SWITCH_1).destSwitchId(SWITCH_2)
-                        .segments(Collections.singletonList(Segment.builder()
-                                .srcSwitchId(SWITCH_1)
-                                .srcPort(srcPort)
-                                .destSwitchId(SWITCH_2)
-                                .destPort(destPort)
-                                .build()))
-                        .build())
-                .reverse(Path.builder()
-                        .srcSwitchId(SWITCH_2).destSwitchId(SWITCH_1)
-                        .segments(Collections.singletonList(Segment.builder()
-                                .srcSwitchId(SWITCH_2)
-                                .srcPort(destPort)
-                                .destSwitchId(SWITCH_1)
-                                .destPort(srcPort)
-                                .build()))
-                        .build())
-                .build();
+    @Test
+    public void shouldFixFlowStatusOnRequestConflict() {
+        Flow flow = build2SwitchFlow();
+        flow.setStatus(FlowStatus.UP);
+
+        reset(flowEventRepository);
+        when(flowEventRepository.existsByTaskId(any()))
+                .thenReturn(true)
+                .thenReturn(true);
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null));
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(currentRequestKey, request);
+        }
+        assertEquals(FlowStatus.UP, flow.getStatus());
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, flow.getFlowId(), null, false, true, null));
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(currentRequestKey, request);
+        }
+        assertEquals(FlowStatus.DOWN, flow.getStatus());
+    }
+
+    @Test
+    public void shouldMakeFlowDontOnTimeoutIfEffectivelyDown()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow();
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        buildFlowResources();
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, FLOW_ID, null, false, true, null));
+
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+
+        rerouteService.handleTimeout(currentRequestKey);
+
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(currentRequestKey, request);
+        }
+
+        assertEquals(FlowStatus.DOWN, flow.getStatus());
+        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    @Test
+    public void shouldIgnoreEffectivelyDownStateIfSamePaths() throws RecoverableException, UnroutableFlowException {
+        Flow flow = build2SwitchFlow();
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
+
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, FLOW_ID, null, false, true, null));
+
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(currentRequestKey, request);
+        }
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    @Test
+    public void shouldProcessRerouteForValidRequest()
+            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+        Flow flow = build2SwitchFlow();
+        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        buildFlowResources();
+
+        IslEndpoint affectedEndpoint = extractIslEndpoint(flow);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, FLOW_ID, Collections.singleton(affectedEndpoint), false, true,
+                null));
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(currentRequestKey, request);
+        }
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    @Test
+    public void shouldSkipRerouteOnOutdatedRequest() {
+        Flow flow = build2SwitchFlow();
+
+        IslEndpoint affectedEndpoint = extractIslEndpoint(flow);
+        IslEndpoint notAffectedEndpoint = new IslEndpoint(
+                affectedEndpoint.getSwitchId(), affectedEndpoint.getPortNumber() + 1);
+        rerouteService.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, FLOW_ID, Collections.singleton(notAffectedEndpoint), false, true,
+                null));
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    protected void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
+        rerouteService.handleAsyncResponse(key, buildSpeakerResponse(flowRequest));
     }
 
     private Flow build2SwitchFlow() {
-        Switch src = Switch.builder().switchId(SWITCH_1).build();
-        Switch dst = Switch.builder().switchId(SWITCH_2).build();
+        Switch src = swMap.get(SWITCH_1);
+        Switch dst = swMap.get(SWITCH_2);
 
         Flow flow = Flow.builder().flowId(FLOW_ID)
                 .srcSwitch(src).destSwitch(dst)
@@ -641,14 +791,21 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .build()));
         flow.setReversePath(oldReversePath);
 
-        when(flowRepository.findById(any())).thenReturn(Optional.of(flow));
-        when(flowRepository.findById(any(), any())).thenReturn(Optional.of(flow));
+        when(flowRepository.findById(eq(flow.getFlowId()))).thenReturn(Optional.of(flow));
+        when(flowRepository.findById(eq(flow.getFlowId()), any())).thenReturn(Optional.of(flow));
 
         doAnswer(invocation -> {
             FlowStatus status = invocation.getArgument(1);
             flow.setStatus(status);
             return null;
-        }).when(flowRepository).updateStatus(any(), any());
+        }).when(flowRepository).updateStatus(eq(flow.getFlowId()), any());
+        doAnswer(invocation -> {
+            FlowStatus status = invocation.getArgument(1);
+            if (FlowStatus.IN_PROGRESS != flow.getStatus()) {
+                flow.setStatus(status);
+            }
+            return null;
+        }).when(flowRepository).updateStatusSafe(eq(flow.getFlowId()), any());
 
         doAnswer(invocation -> {
             PathId pathId = invocation.getArgument(0);
@@ -658,50 +815,165 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         doAnswer(invocation -> {
             PathId pathId = invocation.getArgument(0);
             FlowPathStatus status = invocation.getArgument(1);
-            flow.getPath(pathId).get().setStatus(status);
+            flow.getPath(pathId).ifPresent(entity -> entity.setStatus(status));
             return null;
         }).when(flowPathRepository).updateStatus(any(), any());
 
         return flow;
     }
 
-    private FlowResources buildFlowResources() throws ResourceAllocationException {
-        FlowResources flowResources = FlowResources.builder()
-                .unmaskedCookie(1)
-                .forward(PathResources.builder()
-                        .pathId(NEW_FORWARD_FLOW_PATH)
-                        .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 1))
+    private PathPair build2SwitchPathPair() {
+        return build2SwitchPathPair(1, 2);
+    }
+
+    private PathPair build2SwitchPathPair(int srcPort, int destPort) {
+        List<Segment> forwardSegments = Collections.singletonList(
+                Segment.builder()
+                        .srcSwitchId(SWITCH_1).srcPort(srcPort).destSwitchId(SWITCH_2).destPort(destPort).build());
+        List<Segment> reverseSegments = Collections.singletonList(
+                Segment.builder()
+                        .srcSwitchId(SWITCH_2).srcPort(destPort).destSwitchId(SWITCH_1).destPort(srcPort).build());
+        return buildPcePathPair(forwardSegments, reverseSegments);
+    }
+
+    private PathPair build3SwitchPathPair() {
+        return build3SwitchPathPair(3, 4);
+    }
+
+    private PathPair build3SwitchPathPair(int srcPort, int destPort) {
+        List<Segment> forwardSegments = new ArrayList<>();
+        forwardSegments.add(
+                Segment.builder()
+                        .srcSwitchId(SWITCH_1).srcPort(srcPort).destPort(destPort).destSwitchId(SWITCH_3).build());
+        forwardSegments.add(
+                Segment.builder()
+                        .srcSwitchId(SWITCH_3).srcPort(srcPort).destPort(destPort).destSwitchId(SWITCH_2).build());
+
+        List<Segment> reverseSegments = new ArrayList<>();
+        reverseSegments.add(
+                Segment.builder()
+                        .srcSwitchId(SWITCH_2).srcPort(destPort).destPort(srcPort).destSwitchId(SWITCH_3).build());
+        reverseSegments.add(
+                Segment.builder()
+                        .srcSwitchId(SWITCH_3).srcPort(destPort).destPort(srcPort).destSwitchId(SWITCH_1).build());
+
+        return buildPcePathPair(forwardSegments, reverseSegments);
+    }
+
+    private PathPair buildPcePathPair(List<Segment> forwardSegments, List<Segment> reverseSegments) {
+        return PathPair.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_1).destSwitchId(SWITCH_2)
+                        .segments(forwardSegments)
                         .build())
-                .reverse(PathResources.builder()
-                        .pathId(NEW_REVERSE_FLOW_PATH)
-                        .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 2))
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_2).destSwitchId(SWITCH_1)
+                        .segments(reverseSegments)
                         .build())
                 .build();
+    }
 
-        when(flowResourcesManager.allocateFlowResources(any())).thenReturn(flowResources);
+    private FlowResources buildFlowResources() throws ResourceAllocationException {
+        FlowResources original = makeFlowResources(FLOW_ID, OLD_FORWARD_FLOW_PATH, OLD_REVERSE_FLOW_PATH);
+        FlowResources target = makeFlowResources(FLOW_ID, NEW_FORWARD_FLOW_PATH, NEW_REVERSE_FLOW_PATH, original);
 
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
-                        .build()));
+        when(flowResourcesManager.allocateFlowResources(any())).thenReturn(target);
 
-        when(flowResourcesManager.getEncapsulationResources(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build())
-                        .build()));
+        return target;
+    }
 
-        return flowResources;
+    private Switch makeSwitch(SwitchId id) {
+        return Switch.builder().switchId(id).build();
+    }
+
+    private FlowResources makeFlowResources(String flowId, PathId forward, PathId reverse) {
+        return makeFlowResources(flowId, forward, reverse, null);
+    }
+
+    private FlowResources makeFlowResources(
+            String flowId, PathId forward, PathId reverse, FlowResources lastAllocated) {
+        FlowResources resources = FlowResources.builder()
+                .unmaskedCookie(extractLastAllocatedCookie(lastAllocated).getValue())
+                .forward(PathResources.builder()
+                                 .pathId(forward)
+                                 .meterId(allocateForwardMeterId(lastAllocated))
+                                 .encapsulationResources(
+                                         makeTransitVlanResources(flowId, forward,
+                                                                  allocateForwardTransitVlanId(lastAllocated)))
+                                 .build())
+                .reverse(PathResources.builder()
+                                 .pathId(reverse)
+                                 .meterId(allocateReverseMeterId(lastAllocated))
+                                 .encapsulationResources(
+                                         makeTransitVlanResources(flowId, reverse,
+                                                                  allocateReverseTransitVlanId(lastAllocated)))
+                                 .build())
+                .build();
+
+        when(flowResourcesManager.getEncapsulationResources(
+                eq(forward), eq(reverse), eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(resources.getForward().getEncapsulationResources()));
+        when(flowResourcesManager.getEncapsulationResources(
+                eq(reverse), eq(forward), eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(resources.getReverse().getEncapsulationResources()));
+
+        return resources;
+    }
+
+    private EncapsulationResources makeTransitVlanResources(String flowId, PathId pathId, int vlanId) {
+        TransitVlan entity = TransitVlan.builder()
+                .flowId(flowId).pathId(pathId)
+                .vlan(vlanId)
+                .build();
+        return TransitVlanEncapsulation.builder()
+                .transitVlan(entity)
+                .build();
+    }
+
+    private MeterId allocateForwardMeterId(FlowResources lastAllocated) {
+        return new MeterId(extractLastAllocatedMeterId(lastAllocated).getValue() + 1);
+    }
+
+    private MeterId allocateReverseMeterId(FlowResources lastAllocated) {
+        return new MeterId(extractLastAllocatedMeterId(lastAllocated).getValue() + 2);
+    }
+
+    private int allocateForwardTransitVlanId(FlowResources lastAllocated) {
+        return extractLastAllocatedVlanId(lastAllocated) + 1;
+    }
+
+    private int allocateReverseTransitVlanId(FlowResources lastAllocated) {
+        return extractLastAllocatedVlanId(lastAllocated) + 2;
+    }
+
+    private Cookie extractLastAllocatedCookie(FlowResources resources) {
+        if (resources == null) {
+            return new Cookie(1);
+        }
+        return new Cookie(resources.getUnmaskedCookie());
+    }
+
+    private MeterId extractLastAllocatedMeterId(FlowResources resources) {
+        if (resources == null) {
+            return new MeterId(MeterId.MIN_FLOW_METER_ID);
+        }
+        return resources.getForward().getMeterId();
+    }
+
+    private int extractLastAllocatedVlanId(FlowResources resources) {
+        if (resources == null) {
+            return 100;
+        }
+        return resources.getForward().getEncapsulationResources().getTransitEncapsulationId();
+    }
+
+    private IslEndpoint extractIslEndpoint(Flow flow) {
+        FlowPath forwardPath = flow.getForwardPath();
+        assertNotNull(forwardPath);
+        List<PathSegment> forwardSegments = forwardPath.getSegments();
+        assertFalse(forwardSegments.isEmpty());
+        PathSegment firstSegment = forwardSegments.get(0);
+
+        return new IslEndpoint(firstSegment.getSrcSwitch().getSwitchId(), firstSegment.getSrcPort());
     }
 }

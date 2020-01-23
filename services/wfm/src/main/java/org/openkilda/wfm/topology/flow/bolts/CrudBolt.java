@@ -111,6 +111,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -544,7 +545,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
         try {
             ReroutedFlowPaths reroutedFlowPaths = flowService.rerouteFlow(
-                    flowId, request.isForce(), request.getPathIds(),
+                    flowId, request.isForce(), request.getAffectedIsl(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.warn("Rerouted flow with new path: {}", reroutedFlowPaths.getNewFlowPaths());
@@ -553,7 +554,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
-            flowService.updateFlowStatus(flowId, FlowStatus.DOWN, request.getPathIds());
+            flowService.updateFlowStatus(flowId, FlowStatus.DOWN, Collections.emptySet());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Path was not found. " + e.getMessage());
         } catch (Exception e) {

@@ -72,4 +72,10 @@ public interface FlowRepository extends Repository<Flow> {
     Optional<String> getOrCreateFlowGroupId(String flowId);
 
     void updateStatus(String flowId, FlowStatus flowStatus);
+
+    /**
+     * Flow in "IN_PROGRESS" status can be switched to other status only inside flow CRUD handlers topology. All other
+     * components must use this method, which guarantee safety such flows status.
+     */
+    void updateStatusSafe(String flowId, FlowStatus flowStatus);
 }
