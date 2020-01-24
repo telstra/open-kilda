@@ -1374,24 +1374,24 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     } catch (e) {}
     var nodelength = this.nodes.length;
-    //var linklength = newLinks.length;
+    var linklength = newLinks.length;
     for (var i = 0; i < nodelength; i++) {
       this.optArray.push(this.nodes[i].name);
-      // for (var j = 0; j < linklength; j++) {
-      //   if (
-      //     this.nodes[i].switch_id == newLinks[j]["source_switch"] &&
-      //     this.nodes[i].switch_id == newLinks[j]["target_switch"]
-      //   ) {
-      //     newLinks[j].source = i;
-      //     newLinks[j].target = i;
-      //   } else {
-      //     if (this.nodes[i].switch_id == newLinks[j]["source_switch"]) {
-      //       newLinks[j].source = i;
-      //     } else if (this.nodes[i].switch_id == newLinks[j]["target_switch"]) {
-      //       newLinks[j].target = i;
-      //     }
-      //   }
-      // }
+      for (var j = 0; j < linklength; j++) {
+        if (
+          this.nodes[i].switch_id == newLinks[j]["source_switch"] &&
+          this.nodes[i].switch_id == newLinks[j]["target_switch"]
+        ) {
+          newLinks[j].source = i;
+          newLinks[j].target = i;
+        } else {
+          if (this.nodes[i].switch_id == newLinks[j]["source_switch"]) {
+            newLinks[j].source = i;
+          } else if (this.nodes[i].switch_id == newLinks[j]["target_switch"]) {
+            newLinks[j].target = i;
+          }
+        }
+      }
     }
     this.links = this.links.concat(newLinks);
     // splice removed links
