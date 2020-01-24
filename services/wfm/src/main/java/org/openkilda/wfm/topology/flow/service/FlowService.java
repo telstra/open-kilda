@@ -1539,6 +1539,12 @@ public class FlowService extends BaseFlowService {
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
     }
 
+    public void notifyOnPeriodicPingChanges(String flowId, FlowCommandSender sender) {
+        Flow flow = flowRepository.findById(flowId).get();
+
+        sender.sendPeriodicPingNotification(flowId, flow.isPeriodicPings());
+    }
+
     private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
                                                                 Flow updatingFlow, List<PathId> pathIds)
             throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
