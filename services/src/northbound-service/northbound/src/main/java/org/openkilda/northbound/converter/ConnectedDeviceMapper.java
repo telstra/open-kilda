@@ -15,14 +15,25 @@
 
 package org.openkilda.northbound.converter;
 
+import org.openkilda.messaging.nbtopology.response.SwitchPortConnectedDevicesDto;
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.TypedConnectedDevicesDto;
+import org.openkilda.northbound.dto.v2.switches.PortConnectedDevicesDto;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto;
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface ConnectedDeviceMapper {
+
+    PortConnectedDevicesDto map(SwitchPortConnectedDevicesDto switchPortConnectedDevicesDto);
+
+    SwitchConnectedDeviceDto map(org.openkilda.messaging.nbtopology.response.SwitchConnectedDeviceDto deviceDto);
+
+    SwitchConnectedDevicesResponse map(
+            org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse response);
 
     ConnectedDeviceDto map(org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto deviceDto);
 

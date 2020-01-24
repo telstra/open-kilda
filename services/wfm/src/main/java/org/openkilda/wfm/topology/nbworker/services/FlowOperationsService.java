@@ -23,20 +23,20 @@ import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.model.ConnectedDevice;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -65,7 +65,7 @@ public class FlowOperationsService {
     private FlowRepository flowRepository;
     private FlowPairRepository flowPairRepository;
     private FlowPathRepository flowPathRepository;
-    private ConnectedDeviceRepository connectedDeviceRepository;
+    private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
@@ -73,7 +73,7 @@ public class FlowOperationsService {
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
-        this.connectedDeviceRepository = repositoryFactory.createConnectedDeviceRepository();
+        this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.transactionManager = transactionManager;
     }
 
@@ -279,13 +279,13 @@ public class FlowOperationsService {
      * @param flowId flow ID
      * @return connected devices for flow
      */
-    public Collection<ConnectedDevice> getFlowConnectedDevice(String flowId) throws FlowNotFoundException {
+    public Collection<SwitchConnectedDevice> getFlowConnectedDevice(String flowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(() -> {
             if (!flowRepository.exists(flowId)) {
                 throw new FlowNotFoundException(flowId);
             }
 
-            return connectedDeviceRepository.findByFlowId(flowId);
+            return switchConnectedDeviceRepository.findByFlowId(flowId);
         });
     }
 

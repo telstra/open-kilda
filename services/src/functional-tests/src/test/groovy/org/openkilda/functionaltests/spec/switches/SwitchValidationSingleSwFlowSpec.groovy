@@ -79,10 +79,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.proper*.cookie.containsAll(createdCookies)
 
         switchValidateInfo.meters.proper.each {
-            assert it.rate == flow.maximumBandwidth
+            verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
@@ -143,15 +143,15 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         switchValidateInfo.meters.misconfigured*.cookie.containsAll(createdCookies)
         switchValidateInfo.meters.misconfigured.each {
-            assert it.rate == flow.maximumBandwidth
+            verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Reason is specified why meters are misconfigured"
         switchValidateInfo.meters.misconfigured.each {
-            assert it.actual.rate == flow.maximumBandwidth
+            verifyRateIsCorrect(sw, it.actual.rate, flow.maximumBandwidth)
             assert it.expected.rate == newBandwidth
         }
 
@@ -169,13 +169,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             def rate = direction.discrepancies[0]
             assert rate.field == "meterRate"
             assert rate.expectedValue == newBandwidth.toString()
-            assert rate.actualValue == flow.maximumBandwidth.toString()
+            verifyRateIsCorrect(sw, rate.actualValue.toLong(), flow.maximumBandwidth)
 
             def burst = direction.discrepancies[1]
             assert burst.field == "meterBurstSize"
             Long newBurstSize = switchHelper.getExpectedBurst(sw.dpId, newBandwidth)
-            verifyBurstSizeIsCorrect(newBurstSize, burst.expectedValue.toLong())
-            verifyBurstSizeIsCorrect(burstSize, burst.actualValue.toLong())
+            verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
+            verifyBurstSizeIsCorrect(sw, burstSize, burst.actualValue.toLong())
 
             assert direction.flowRulesTotal == 1
             assert direction.switchRulesTotal == amountOfRules + 2
@@ -240,10 +240,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.missing*.meterId.containsAll(meterIds)
         switchValidateInfo.meters.missing*.cookie.containsAll(createdCookies)
         switchValidateInfo.meters.missing.each {
-            assert it.rate == flow.maximumBandwidth
+            verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "The rest fields are empty"
@@ -308,20 +308,20 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.excess.meterId.size() == 2
         switchValidateInfo.meters.excess.collect { it.meterId }.containsAll(metersIds)
         switchValidateInfo.meters.excess.each {
-            assert it.rate == flow.maximumBandwidth
+            verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Updated meters are stored in the 'missing' section"
         def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.missing.collect { it.cookie }.containsAll(createdCookies)
         switchValidateInfo.meters.missing.each {
-            assert it.rate == flow.maximumBandwidth
+            verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert it.meterId == newMeterId.value
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Rules still exist in the 'proper' section"
@@ -440,10 +440,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         and: "System detects one meter as excess"
         switchValidateInfo.meters.excess.size() == 1
         switchValidateInfo.meters.excess.each {
-            assert it.rate == fakeBandwidth
+            verifyRateIsCorrect(sw, it.rate, fakeBandwidth)
             assert it.meterId == excessMeterId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         when: "Try to synchronize the switch"
@@ -566,8 +566,21 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }*.cookie
     }
 
-    void verifyBurstSizeIsCorrect(Long expected, Long actual) {
-        assert Math.abs(expected - actual) <= 1
+    void verifyBurstSizeIsCorrect(Switch sw, Long expected, Long actual) {
+        if(sw.isWb5164()) {
+            assert Math.abs(expected - actual) <= expected * 0.01
+        } else {
+            assert Math.abs(expected - actual) <= 1
+        }
+    }
+
+    void verifyRateIsCorrect(Switch sw, Long expected, Long actual) {
+        if(sw.isWb5164()) {
+            assert Math.abs(expected - actual) <= expected * 0.01
+        }
+        else {
+            assert expected == actual
+        }
     }
 
     private static Message buildMessage(final CommandData data) {

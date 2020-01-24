@@ -33,7 +33,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
+        def (FlowRequestV2 flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
@@ -49,6 +49,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
+
+        and: "Flow writes stats"
+        statsHelper.verifyFlowWritesStats(flow.flowId)
 
         and: "Revive the ISL back (bring switch port up) and delete the flow"
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)

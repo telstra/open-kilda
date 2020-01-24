@@ -26,6 +26,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.See
 import spock.lang.Unroll
 
@@ -134,6 +135,9 @@ class SwitchSyncSpec extends BaseSpecification {
             }
         }
 
+        and: "Flow continues to write stats"
+        statsHelper.verifyFlowWritesStats(flow.flowId)
+
         and: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
@@ -227,6 +231,7 @@ class SwitchSyncSpec extends BaseSpecification {
     }
 
     @Tags(HARDWARE)
+    @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
@@ -243,7 +248,7 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Reproduce situation when switches have missing rules and meters"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
-        def transitSwitchIds = involvedSwitches[-1..-2]*.dpId
+        def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)

@@ -34,8 +34,9 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     @Builder
     public OneSwitchFlowRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-            FlowEndpoint egressEndpoint) {
-        this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressEndpoint));
+            FlowEndpoint egressEndpoint, boolean removeCustomerPortSharedCatchRule) {
+        this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressEndpoint,
+                removeCustomerPortSharedCatchRule));
     }
 
     private OneSwitchFlowRequestFactory(OneSwitchFlowRequest requestBlank) {
@@ -61,8 +62,9 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     private static class RequestBlank extends OneSwitchFlowRequest {
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-                FlowEndpoint egressEndpoint) {
-            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint);
+                FlowEndpoint egressEndpoint, boolean removeCustomerPortSharedCatchRule) {
+            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint,
+                    removeCustomerPortSharedCatchRule);
         }
     }
 }

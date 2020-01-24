@@ -67,6 +67,9 @@ class ChaosSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "All flows are writing stats"
+        statsHelper.verifyFlowsWriteStats(flows*.flowId)
+
         and: "Cleanup: remove flows and reset costs"
         flows.each { northboundV2.deleteFlow(it.flowId) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.

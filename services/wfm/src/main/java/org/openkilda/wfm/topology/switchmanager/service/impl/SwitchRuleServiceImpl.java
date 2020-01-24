@@ -15,8 +15,13 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.model.FlowPath;
@@ -26,13 +31,16 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SwitchRuleServiceImpl implements SwitchRuleService {
@@ -41,31 +49,38 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
     private FlowPathRepository flowPathRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
     private IslRepository islRepository;
+    private SwitchRepository switchRepository;
 
     public SwitchRuleServiceImpl(SwitchManagerCarrier carrier, RepositoryFactory repositoryFactory) {
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         islRepository = repositoryFactory.createIslRepository();
+        switchRepository = repositoryFactory.createSwitchRepository();
         this.carrier = carrier;
     }
 
     @Override
     public void deleteRules(String key, SwitchRulesDeleteRequest data) {
-
         SwitchId switchId = data.getSwitchId();
+        if (!switchRepository.exists(switchId)) {
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
+                    "Error when deleting switch rules");
+            ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
+
+            carrier.response(key, errorMessage);
+            return;
+        }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
+            data.setSwitchLldp(switchProperties.get().isSwitchLldp());
             Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
             List<Integer> flowPorts = new ArrayList<>();
-            for (FlowPath flowPath : flowPaths) {
-                if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
-                    flowPorts.add(flowPath.getFlow().getSrcPort());
-                } else if (!flowPath.isForward() && flowPath.getFlow().isDestWithMultiTable()) {
-                    flowPorts.add(flowPath.getFlow().getDestPort());
-                }
-            }
+            Set<Integer> flowLldpPorts = new HashSet<>();
+            fillFlowPorts(switchProperties.get(), flowPaths, flowPorts, flowLldpPorts);
+
             data.setFlowPorts(flowPorts);
+            data.setFlowLldpPorts(flowLldpPorts);
             List<Integer> islPorts = islRepository.findBySrcSwitch(switchId).stream()
                     .map(isl -> isl.getSrcPort())
                     .collect(Collectors.toList());
@@ -76,27 +91,55 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
 
     @Override
     public void installRules(String key, SwitchRulesInstallRequest data) {
-
         SwitchId switchId = data.getSwitchId();
+        if (!switchRepository.exists(switchId)) {
+            ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, format("Switch %s not found", switchId),
+                    "Error when installing switch rules");
+            ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
+
+            carrier.response(key, errorMessage);
+            return;
+        }
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (switchProperties.isPresent()) {
             data.setMultiTable(switchProperties.get().isMultiTable());
+            data.setSwitchLldp(switchProperties.get().isSwitchLldp());
             Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
             List<Integer> flowPorts = new ArrayList<>();
-            for (FlowPath flowPath : flowPaths) {
-                if (flowPath.isForward() && flowPath.getFlow().isSrcWithMultiTable()) {
-                    flowPorts.add(flowPath.getFlow().getSrcPort());
-                } else if (!flowPath.isForward() && flowPath.getFlow().isDestWithMultiTable()) {
-                    flowPorts.add(flowPath.getFlow().getDestPort());
-                }
-            }
+            Set<Integer> flowLldpPorts = new HashSet<>();
+            fillFlowPorts(switchProperties.get(), flowPaths, flowPorts, flowLldpPorts);
+
             data.setFlowPorts(flowPorts);
+            data.setFlowLldpPorts(flowLldpPorts);
             List<Integer> islPorts = islRepository.findBySrcSwitch(switchId).stream()
                     .map(isl -> isl.getSrcPort())
                     .collect(Collectors.toList());
             data.setIslPorts(islPorts);
         }
         carrier.sendCommandToSpeaker(key, data);
+    }
+
+    private void fillFlowPorts(SwitchProperties switchProperties, Collection<FlowPath> flowPaths,
+                               List<Integer> flowPorts, Set<Integer> flowLldpPorts) {
+        for (FlowPath flowPath : flowPaths) {
+            if (flowPath.isForward()) {
+                if (flowPath.getFlow().isSrcWithMultiTable()) {
+                    flowPorts.add(flowPath.getFlow().getSrcPort());
+                }
+                if (flowPath.getFlow().getDetectConnectedDevices().isSrcLldp()
+                        || switchProperties.isSwitchLldp()) {
+                    flowLldpPorts.add(flowPath.getFlow().getSrcPort());
+                }
+            } else {
+                if (flowPath.getFlow().isDestWithMultiTable()) {
+                    flowPorts.add(flowPath.getFlow().getDestPort());
+                }
+                if (flowPath.getFlow().getDetectConnectedDevices().isDstLldp()
+                        || switchProperties.isSwitchLldp()) {
+                    flowLldpPorts.add(flowPath.getFlow().getDestPort());
+                }
+            }
+        }
     }
 
     @Override

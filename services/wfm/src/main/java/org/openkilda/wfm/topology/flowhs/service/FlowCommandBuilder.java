@@ -19,12 +19,17 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 
 import java.util.List;
 
 public interface FlowCommandBuilder {
     List<FlowSegmentRequestFactory> buildAll(
             CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath);
+
+    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow,
+                                             FlowPath forwardPath, FlowPath reversePath,
+                                             SpeakerRequestBuildContext speakerRequestBuildContext);
 
     /**
      * Build install commands for transit(if needed) and egress rules for active forward and reverse paths.

@@ -657,6 +657,7 @@ misconfigured"
     }
 
     @Tags(HARDWARE)
+    @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
@@ -673,7 +674,7 @@ misconfigured"
         and: "Remove required rules and meters from switches"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
-        def transitSwitchIds = involvedSwitches[-1..-2]*.dpId
+        def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)

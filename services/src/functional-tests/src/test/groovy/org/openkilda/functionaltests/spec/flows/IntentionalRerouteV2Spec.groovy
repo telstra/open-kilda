@@ -126,6 +126,9 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
+        and: "Flow statistic is working"
+        statsHelper.verifyFlowWritesStats(flow.flowId)
+
         and: "Remove the flow, restore bandwidths on ISLs, reset costs"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
         flowHelperV2.deleteFlow(flow.flowId)

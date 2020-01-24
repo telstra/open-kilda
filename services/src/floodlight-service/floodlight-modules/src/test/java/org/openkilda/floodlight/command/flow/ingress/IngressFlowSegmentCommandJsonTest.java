@@ -53,7 +53,8 @@ abstract class IngressFlowSegmentCommandJsonTest
                 new MeterConfig(new MeterId(6), 7000),
                 new SwitchId(20),
                 8,
-                new FlowTransitEncapsulation(9, FlowEncapsulationType.TRANSIT_VLAN));
+                new FlowTransitEncapsulation(9, FlowEncapsulationType.TRANSIT_VLAN),
+                false);
         return makeRequest(factory);
     }
 

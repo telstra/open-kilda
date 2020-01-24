@@ -254,7 +254,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 "test_key", commandContext, FLOW_ID, null, false, false, null));
 
         verify(flowResourcesManager, times(0)).deallocatePathResources(any());
-        verify(flowResourcesManager, times(0)).deallocatePathResources(any(), anyLong(), any(), any());
+        verify(flowResourcesManager, times(0)).deallocatePathResources(any(), anyLong(), any());
     }
 
     @Test

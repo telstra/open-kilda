@@ -20,6 +20,7 @@ import static java.util.Arrays.copyOfRange;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Builder.Default;
+import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv6Address;
@@ -75,8 +76,8 @@ public class LldpPacket {
     @Default
     private List<LLDPTLV> optionalTlvList = new ArrayList<>();
 
-    LldpPacket(byte[] data) {
-        deserialize(data);
+    LldpPacket(LLDP lldp) {
+        deserialize(lldp);
     }
 
     String getParsedChassisId() {
@@ -174,29 +175,16 @@ public class LldpPacket {
         }
     }
 
-    private void deserialize(byte[] data) {
+    private void deserialize(LLDP lldp) {
+        this.chassisId = lldp.getChassisId();
+        this.portId = lldp.getPortId();
+        this.ttl = lldp.getTtl();
         this.optionalTlvList = new ArrayList<>();
-        ByteBuffer bb = ByteBuffer.wrap(data, 0, data.length);
-        LLDPTLV tlv;
-        do {
-            tlv = new LLDPTLV().deserialize(bb);
 
-            // if there was a failure to deserialize stop processing TLVs
-            if (tlv == null) {
-                break;
-            }
+        for (LLDPTLV tlv : lldp.getOptionalTLVList()) {
             switch (tlv.getType()) {
                 case END_OF_LLDPTV_TYPE:
                     // can throw this one away, its just an end delimiter
-                    break;
-                case CHASSIS_ID_LLDPTV_TYPE:
-                    this.chassisId = tlv;
-                    break;
-                case PORT_ID_LLDPTV_TYPE:
-                    this.portId = tlv;
-                    break;
-                case TTL_LLDPTV_TYPE:
-                    this.ttl = tlv;
                     break;
                 case PORT_DESCRIPTION_TYPE:
                     this.portDescription = tlv;
@@ -217,7 +205,7 @@ public class LldpPacket {
                     this.optionalTlvList.add(tlv);
                     break;
             }
-        } while (tlv.getType() != 0 && bb.hasRemaining());
+        }
     }
 
     private String toHexString(LLDPTLV lldptlv) {

@@ -67,6 +67,24 @@ public enum DeleteRulesAction {
     // Remove  Transit Table Drop rule
     REMOVE_MULTITABLE_TRANSIT_DROP,
 
+    // Remove Input table LLDP pre drop rule
+    REMOVE_LLDP_INPUT_PRE_DROP,
+
+    // Remove Ingress Table LLDP rule
+    REMOVE_LLDP_INGRESS,
+
+    // Remove Post Ingress Table LLDP rule
+    REMOVE_LLDP_POST_INGRESS,
+
+    // Remove Post Ingress Table LLDP vxlan rule
+    REMOVE_LLDP_POST_INGRESS_VXLAN,
+
+    // Remove Post Ingress Table LLDP one switch rule
+    REMOVE_LLDP_POST_INGRESS_ONE_SWITCH,
+
+    // Remove Transit table LLDP rule
+    REMOVE_LLDP_TRANSIT,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 

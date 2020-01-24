@@ -22,9 +22,11 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -47,11 +49,13 @@ public class FlowValidator {
     private final FlowRepository flowRepository;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
 
     public FlowValidator(RepositoryFactory repositoryFactory) {
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.islRepository = repositoryFactory.createIslRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
     }
 
     /**
@@ -324,6 +328,7 @@ public class FlowValidator {
                     errorMessages.add(String.format("Source switch %s does not support catching of LLDP packets. "
                             + "It must have at least 2 OF tables.", sourceId));
                 }
+                validateMultiTableSupport(sourceId, errorMessages);
             }
         }
 
@@ -337,11 +342,25 @@ public class FlowValidator {
                     errorMessages.add(String.format("Destination switch %s does not support catching of LLDP packets. "
                             + "It must have at least 2 OF tables.", destinationId));
                 }
+                validateMultiTableSupport(destinationId, errorMessages);
             }
         }
 
         if (!errorMessages.isEmpty()) {
             throw new SwitchValidationException(String.join(" ", errorMessages));
+        }
+    }
+
+    private void validateMultiTableSupport(SwitchId switchId, List<String> errorMessages) {
+        Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
+        if (!switchProperties.isPresent()) {
+            errorMessages.add(String.format("Couldn't get switch properties for switch %s.", switchId));
+        } else {
+            if (!switchProperties.get().isMultiTable()) {
+                errorMessages.add(String.format("Catching of LLDP packets supported only on switches with "
+                                + "enabled 'multiTable' switch feature. This feature is disabled on switch %s.",
+                        switchId));
+            }
         }
     }
 

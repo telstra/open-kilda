@@ -55,7 +55,7 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
     /**
      * Maximum meter id value for system rules.
      */
-    public static final int MAX_SYSTEM_RULE_METER_ID = 10;
+    public static final int MAX_SYSTEM_RULE_METER_ID = 31;
 
     private final long value;
 

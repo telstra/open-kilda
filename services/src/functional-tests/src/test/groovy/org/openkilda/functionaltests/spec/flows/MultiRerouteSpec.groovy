@@ -10,16 +10,19 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
+import spock.lang.Ignore
+
 import java.util.concurrent.TimeUnit
 
 class MultiRerouteSpec extends HealthCheckSpecification {
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/3047")
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Two flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:
                 assumeTrue("No suiting switches found", false)
         List<FlowRequestV2> flows = []
-        20.times {
+        30.times {
             def flow = flowHelperV2.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
             flowHelperV2.addFlow(flow)

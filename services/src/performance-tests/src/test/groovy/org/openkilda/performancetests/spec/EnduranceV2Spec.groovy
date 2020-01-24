@@ -8,6 +8,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.helpers.Dice
 import org.openkilda.functionaltests.helpers.Dice.Face
 import org.openkilda.functionaltests.helpers.FlowHelperV2
+import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -37,6 +38,8 @@ class EnduranceV2Spec extends BaseSpecification {
     NorthboundServiceV2 northboundV2
     @Autowired
     FlowHelperV2 flowHelperV2
+    @Autowired
+    StatsHelper statsHelper
 
     @Shared
     List<FlowRequestV2> flows = Collections.synchronizedList(new ArrayList<FlowRequestV2>())
@@ -97,9 +100,12 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
             assert northbound.getAllFlows().findAll { it.status == FlowState.IN_PROGRESS.toString() }.empty
         }
 
-        then: "All Up flows are pingable"
-        def pingVerifications = new SoftAssertions()
+        then: "All flows are writting stats"
         def allFlows = northbound.getAllFlows()
+        statsHelper.verifyFlowsWriteStats(allFlows.findAll { it.status == FlowState.UP.toString() }*.id)
+
+        and: "All Up flows are pingable"
+        def pingVerifications = new SoftAssertions()
         allFlows.findAll { it.status == FlowState.UP.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
                 def ping = northbound.pingFlow(flow.id, new PingInput())

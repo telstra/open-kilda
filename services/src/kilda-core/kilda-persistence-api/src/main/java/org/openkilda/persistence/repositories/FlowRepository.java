@@ -47,6 +47,20 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findByEndpoint(SwitchId switchId, int port);
 
+    /**
+     * Find flow by endpoint (SwitchId, port and vlan).
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
+     */
+    Optional<Flow> findByEndpointAndVlan(SwitchId switchId, int port, int vlan);
+
+    /**
+     * Find flow by SwitchId, input port and output vlan.
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
+     */
+    Optional<Flow> findBySwitchIdInPortAndOutVlan(SwitchId switchId, int inPort, int outVlan);
+
     Collection<Flow> findByEndpointWithMultiTableSupport(SwitchId switchId, int port);
 
     Collection<Flow> findByEndpointSwitch(SwitchId switchId);

@@ -15,6 +15,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
@@ -23,6 +24,7 @@ Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
 Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/3059")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
@@ -99,6 +101,24 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         ["test"]                      | "Unable to parse request payload"
         []                            | "Supported transit encapsulations should not be null or empty"
         null                          | "Supported transit encapsulations should not be null or empty"
+    }
+
+    def "Unable to turn on switchLldp property without turning on multiTable property"() {
+        given: "A switch"
+        def sw = topology.activeSwitches.first()
+
+        when: "Try to update set switchLldp property to True and multiTable property to False"
+        def switchProperties = new SwitchPropertiesDto()
+        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+        switchProperties.multiTable = false
+        switchProperties.switchLldp = true
+        northbound.updateSwitchProperties(sw.dpId, switchProperties)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains(
+                "Illegal switch properties combination for switch $sw.dpId.")
     }
 
     @Tidy

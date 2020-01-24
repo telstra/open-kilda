@@ -30,4 +30,7 @@ public class SwitchPropertiesDto implements Serializable {
 
     @JsonProperty("multi_table")
     private boolean multiTable;
+
+    @JsonProperty("switch_lldp")
+    private boolean switchLldp;
 }

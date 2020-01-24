@@ -29,4 +29,7 @@ public class DetectConnectedDevices implements Serializable {
     private boolean srcArp;
     private boolean dstLldp;
     private boolean dstArp;
+
+    private boolean srcSwitchLldp;
+    private boolean dstSwitchLldp;
 }

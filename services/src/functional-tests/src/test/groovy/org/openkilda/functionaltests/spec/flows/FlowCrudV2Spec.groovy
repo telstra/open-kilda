@@ -10,6 +10,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -31,6 +32,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -106,6 +108,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             //flow is not applicable for traff exam. That's fine, just inform
             log.warn(e.message)
         }
+
+        and: "Flow writes stats"
+        def isSingleSwitch = flow.source.switchId == flow.destination.switchId
+        statsHelper.verifyFlowWritesStats(flow.flowId, !isSingleSwitch)
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -538,6 +544,41 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
+
+    def "Unable to create a flow with invalid encapsulation type"() {
+        given: "A flow with invalid encapsulation type"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.setEncapsulationType("fake")
+
+        when: "Try to create a flow"
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorDescription == "Can not parse arguments of the create flow request"
+    }
+
+	def "Unable to update a flow with invalid encapsulation type"() {
+		given: "A flow with invalid encapsulation type"
+		def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+		def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+		flowHelperV2.addFlow(flow)
+
+		when: "Try to update the flow (faked encapsulation type)"
+		def flowInfo = northbound.getFlow(flow.flowId)
+		northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = "fake" }))
+
+		then: "Flow is not updated"
+		def exc = thrown(HttpClientErrorException)
+		exc.rawStatusCode == 400
+		exc.responseBodyAsString.to(MessageError).errorDescription \
+				== "Can not parse arguments of the update flow request"
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+	}
 
     @Unroll
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
@@ -1029,6 +1070,127 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         cleanup: 
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         flow && !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/3049")
+    @Tidy
+    def "Able to update a flow endpoint"() {
+        given: "Three active switches"
+        def allSwitches = topology.activeSwitches
+        assumeTrue("Unable to find three active switches", allSwitches.size() >= 3)
+        def srcSwitch = allSwitches[0]
+        def dstSwitch = allSwitches[1]
+
+        and: "A vlan flow"
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "Update the flow: port number and vlan id on the src endpoint"
+        def flowInfoFromDb1 = database.getFlow(flow.flowId)
+        def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
+            it.dpId == flow.source.switchId
+        }).last()
+        def newVlanId = flow.destination.vlanId + 1
+        flowHelperV2.updateFlow(flow.flowId, flow.tap {
+            it.source.portNumber = newPortNumber
+            it.source.vlanId = newVlanId
+        })
+
+        then: "Flow is really updated"
+        with(northbound.getFlow(flow.flowId)) {
+            it.source.portNumber == newPortNumber
+            it.source.vlanId == newVlanId
+        }
+
+        and: "Flow rules are recreated"
+        def flowInfoFromDb2 = database.getFlow(flow.flowId)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }) { rules ->
+                rules.findAll {
+                    it.cookie in [flowInfoFromDb1.forwardPath.cookie.value, flowInfoFromDb1.reversePath.cookie.value]
+                }.empty
+                rules.findAll {
+                    it.cookie in [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value]
+                }.size() == 2
+                def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
+                ingressRule.match.inPort == newPortNumber.toString()
+                ingressRule.match.vlanVid == newVlanId.toString()
+            }
+        }
+
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        and: "The src switch passes switch validation"
+        with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+        def srcSwitchIsFine = true
+
+        when: "Update the flow: switch id on the dst endpoint"
+        def newDstSwitch = allSwitches[2]
+        flowHelperV2.updateFlow(flow.flowId, flow.tap {
+            it.destination.switchId = newDstSwitch.dpId
+            it.destination.portNumber = newPortNumber
+        })
+
+        then: "Flow is really updated"
+        with(northbound.getFlow(flow.flowId)) {
+            it.destination.switchDpId == newDstSwitch.dpId
+        }
+
+        and: "Flow rules are removed from the old dst switch"
+        def flowInfoFromDb3 = database.getFlow(flow.flowId)
+        Wrappers.wait(RULES_DELETION_TIME) {
+            with(northbound.getSwitchRules(dstSwitch.dpId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }) { rules ->
+                rules.findAll {
+                    it.cookie in [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value]
+                }.empty
+            }
+        }
+
+        and: "Flow rules are installed on the new dst switch"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            with(northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }) { rules ->
+                rules.findAll {
+                    it.cookie in [flowInfoFromDb3.forwardPath.cookie.value, flowInfoFromDb3.reversePath.cookie.value]
+                }.size() == 2
+            }
+        }
+
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        and: "The new and old dst switches pass switch validation"
+        [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
+            with(northbound.validateSwitch(switchId)) { validation ->
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            }
+        }
+        def dstSwitchesAreFine = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !srcSwitchIsFine && northbound.synchronizeSwitch(srcSwitch.dpId, true)
+        !dstSwitchesAreFine && dstSwitch && newDstSwitch && [dstSwitch, newDstSwitch]*.dpId.each {
+            northbound.synchronizeSwitch(it, true)
+        }
     }
 
     @Shared

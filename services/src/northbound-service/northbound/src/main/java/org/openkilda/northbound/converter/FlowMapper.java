@@ -206,6 +206,17 @@ public interface FlowMapper {
     }
 
     /**
+     * Convert {@link String} to {@link FlowEncapsulationType}.
+     */
+    default FlowEncapsulationType map(String encapsulationType) {
+        if (encapsulationType == null) {
+            return null;
+        }
+
+        return FlowEncapsulationType.valueOf(encapsulationType.toUpperCase());
+    }
+
+    /**
      * Convert {@link PathComputationStrategy} to {@link String}.
      */
     default String map(PathComputationStrategy pathComputationStrategy) {
