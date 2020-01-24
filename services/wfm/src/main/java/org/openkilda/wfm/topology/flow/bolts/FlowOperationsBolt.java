@@ -259,5 +259,10 @@ public class FlowOperationsBolt extends BaseRichBolt {
                     System.currentTimeMillis(), correlationId);
             outputCollector.emit(stream.toString(), tuple, new Values(message, flowId));
         }
+
+        @Override
+        public void sendPeriodicPingNotification(String flowId, boolean enabled) {
+
+        }
     }
 }

@@ -24,6 +24,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,8 +39,12 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowUpdateFsm, Stat
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         if (stateMachine.getNewFlowStatus() == FlowStatus.UP) {
+            RequestedFlow requestedFlow = context.getTargetFlow();
+            stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
+                    requestedFlow.isPeriodicPings());
             dashboardLogger.onSuccessfulFlowUpdate(stateMachine.getFlowId());
             stateMachine.saveActionToHistory("Flow was updated successfully");
+
         } else {
             stateMachine.saveActionToHistory("Flow update completed",
                     format("Flow update completed with status %s and error %s", stateMachine.getNewFlowStatus(),

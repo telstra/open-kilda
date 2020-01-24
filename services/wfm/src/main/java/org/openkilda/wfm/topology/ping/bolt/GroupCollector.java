@@ -70,7 +70,7 @@ public class GroupCollector extends Abstract {
         List<CollectorDescriptor> expired = cache.expire(now);
 
         if (!expired.isEmpty()) {
-            log.warn("Groups {} have been expired and dropped ", expired.stream()
+            log.debug("Groups {} have been expired and dropped ", expired.stream()
                     .map(CollectorDescriptor::getGroupId)
                     .map(GroupId::getId)
                     .collect(Collectors.toList()));
