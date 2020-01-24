@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.46.0 (24/01/2020)
+
+### Features:
+-  [#3022](https://github.com/telstra/open-kilda/pull/3022) Server42 Control application initial commit (Issues: [#1137](https://github.com/telstra/open-kilda/issues/1137) [#2998](https://github.com/telstra/open-kilda/issues/2998))
+-  [#3024](https://github.com/telstra/open-kilda/pull/3024) Feature: LLDP on switch (Issue: [#2917](https://github.com/telstra/open-kilda/issues/2917)) [**floodlight**][**northbound**][**storm-topologies**]
+-  [#2911](https://github.com/telstra/open-kilda/pull/2911) Switch LLDP 4: Added flow rules (Issues: [#2779](https://github.com/telstra/open-kilda/issues/2779) [#2827](https://github.com/telstra/open-kilda/issues/2827) [#2876](https://github.com/telstra/open-kilda/issues/2876) [#2917](https://github.com/telstra/open-kilda/issues/2917) [#2927](https://github.com/telstra/open-kilda/issues/2927)) [**floodlight**][**storm-topologies**]
+-  [#2914](https://github.com/telstra/open-kilda/pull/2914) Switch LLDP 3: catching on ISL ports (Issues: [#2917](https://github.com/telstra/open-kilda/issues/2917) [#2918](https://github.com/telstra/open-kilda/issues/2918)) [**floodlight**]
+-  [#2916](https://github.com/telstra/open-kilda/pull/2916) Switch LLDP 1: Isl rules (Issue: [#2917](https://github.com/telstra/open-kilda/issues/2917)) [**floodlight**][**northbound**]
+-  [#2918](https://github.com/telstra/open-kilda/pull/2918) Switch LLDP 2: switch connected device models (Issues: [#2916](https://github.com/telstra/open-kilda/issues/2916) [#2917](https://github.com/telstra/open-kilda/issues/2917))
+
+### Bug Fixes:
+-  [#3014](https://github.com/telstra/open-kilda/pull/3014) Fix NullPointerException [**storm-topologies**]
+-  [#2952](https://github.com/telstra/open-kilda/pull/2952) Fix validation of encapsulation_type in v2 FlowUpdate API (Issue: [#2937](https://github.com/telstra/open-kilda/issues/2937)) [**northbound**][**storm-topologies**]
+-  [#3025](https://github.com/telstra/open-kilda/pull/3025) Fix removing customer port rule when flow H&S delete. (Issue: [#2971](https://github.com/telstra/open-kilda/issues/2971)) [**floodlight**]
+-  [#2937](https://github.com/telstra/open-kilda/pull/2937) Handle invalid encapsulation_type in v2 FlowCreate API (Issues: [#2650](https://github.com/telstra/open-kilda/issues/2650) [#2952](https://github.com/telstra/open-kilda/issues/2952)) [**northbound**][**storm-topologies**]
+-  [#3002](https://github.com/telstra/open-kilda/pull/3002) Fix error message when switch not exist (Issue: [#2905](https://github.com/telstra/open-kilda/issues/2905)) [**storm-topologies**]
+-  [#3067](https://github.com/telstra/open-kilda/pull/3067) Fix fails of PacketServiceTest [**tests**]
+-  [#3068](https://github.com/telstra/open-kilda/pull/3068) Fixed missing @Ignore import [**tests**]
+
+### Improvements:
+-  [#2886](https://github.com/telstra/open-kilda/pull/2886) refactor tets with getSwithcFlow to cover #2885 (Issue: [#2885](https://github.com/telstra/open-kilda/issues/2885)) [**tests**]
+-  [#3023](https://github.com/telstra/open-kilda/pull/3023) Extend log message for missing rules [**floodlight**]
+-  [#3026](https://github.com/telstra/open-kilda/pull/3026) minor improvements in tests [**tests**]
+-  [#2986](https://github.com/telstra/open-kilda/pull/2986) Add test for devices interaction with default flow [**tests**]
+-  [#3054](https://github.com/telstra/open-kilda/pull/3054) add tests for 3049 issue (Issue: [#3049](https://github.com/telstra/open-kilda/issues/3049)) [**tests**]
+-  [#2927](https://github.com/telstra/open-kilda/pull/2927) Add func tests for detecting lldp connected devices per-switch (Issue: [#2914](https://github.com/telstra/open-kilda/issues/2914)) [**tests**]
+-  [#3058](https://github.com/telstra/open-kilda/pull/3058) add test "Flow ping can detect a broken path for a vxlan flow on an intermediate switch" (Issue: [#3069](https://github.com/telstra/open-kilda/issues/3069)) [**tests**]
+-  [#3060](https://github.com/telstra/open-kilda/pull/3060) ignore tests according to #3059 (Issue: [#3059](https://github.com/telstra/open-kilda/issues/3059)) [**tests**]
+-  [#3061](https://github.com/telstra/open-kilda/pull/3061) delete FlowPriorityRerouteSpec [**tests**]
+-  [#3063](https://github.com/telstra/open-kilda/pull/3063) improve flowHistorySpec, covers: 3031,3038 (Issues: [#3031](https://github.com/telstra/open-kilda/issues/3031) [#3038](https://github.com/telstra/open-kilda/issues/3038)) [**tests**]
+
+### Other changes:
+-  [#2951](https://github.com/telstra/open-kilda/pull/2951) Limit number of tables for ovs switches [**floodlight**]
+-  [#3017](https://github.com/telstra/open-kilda/pull/3017) Ignore port history tests due to #3007 [**tests**]
+-  [#3018](https://github.com/telstra/open-kilda/pull/3018) Add comment that single-switch flow pings are actually useless [**tests**]
+-  [#3042](https://github.com/telstra/open-kilda/pull/3042) Minor fixes in functional tests [**tests**]
+-  [#3057](https://github.com/telstra/open-kilda/pull/3057) Add more stats verifications to existing tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.45.2...v1.46.0).
+
+### Affected Components:
+router, nb, neo4j, flow-hs, nbworker, flow, fl, ping, connected
+
+### Upgrade notes:
+
+Consider using the following migration scripts to update db:
+
+- [1.19 migration-script](https://github.com/telstra/open-kilda/blob/v1.46.0/services/neo4j/migrations/1.19-switch-lldp-property/1-set-switch-lldp-switchproperty-flag.xml)
+- [1.20 migration-script](https://github.com/telstra/open-kilda/blob/v1.46.0/services/neo4j/migrations/1.20-switch-connected-devices/1-add-switch-connected-devices-index-and-constraint.xml)
+
+In case of issues these rollback scripts should be executed:
+
+- [1.20 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.46.0/services/neo4j/migrations/1.20-switch-connected-devices/rollback.cql)
+- [1.19 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.46.0/services/neo4j/migrations/1.19-switch-lldp-property/rollback.cql)
+
+---
+
 ## v1.45.2 (13/01/2020)
 
 ### Bug Fixes:
