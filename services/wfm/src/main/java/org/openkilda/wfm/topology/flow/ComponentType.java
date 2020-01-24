@@ -102,5 +102,10 @@ public enum ComponentType {
     /**
      * Flow operation bolt.
      */
-    FLOW_OPERATION_BOLT
+    FLOW_OPERATION_BOLT,
+
+    /**
+     * Flow ping kafka bolt.
+     */
+    FLOW_PING_KAFKA_BOLT
 }

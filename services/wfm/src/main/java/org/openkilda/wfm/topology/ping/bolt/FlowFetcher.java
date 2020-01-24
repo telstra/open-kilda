@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
+import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.model.FlowPair;
@@ -25,8 +26,6 @@ import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
-import org.openkilda.wfm.topology.ping.model.FlowRef;
-import org.openkilda.wfm.topology.ping.model.FlowsHeap;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
@@ -36,8 +35,9 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class FlowFetcher extends Abstract {
@@ -58,10 +58,13 @@ public class FlowFetcher extends Abstract {
 
     private final PersistenceManager persistenceManager;
     private transient FlowPairRepository flowPairRepository;
-    private FlowsHeap flowsHeap;
+    private Set<BidirectionalFlowDto> flowsSet;
+    private long periodicPingCacheExpiryInterval;
+    private long lastPeriodicPingCacheRefresh;
 
-    public FlowFetcher(PersistenceManager persistenceManager) {
+    public FlowFetcher(PersistenceManager persistenceManager, long periodicPingCacheExpiryInterval) {
         this.persistenceManager = persistenceManager;
+        this.periodicPingCacheExpiryInterval = TimeUnit.SECONDS.toMillis(periodicPingCacheExpiryInterval);
     }
 
     @Override
@@ -71,29 +74,55 @@ public class FlowFetcher extends Abstract {
         if (TickDeduplicator.BOLT_ID.equals(component)) {
             handlePeriodicRequest(input);
         } else if (InputRouter.BOLT_ID.equals(component)) {
-            handleOnDemandRequest(input);
+            String sourceStream = input.getSourceStreamId();
+            if (InputRouter.STREAM_ON_DEMAND_REQUEST_ID.equals(sourceStream)) {
+                handleOnDemandRequest(input);
+            } else if (InputRouter.STREAM_PERIODIC_PING_UPDATE_REQUEST_ID.equals(sourceStream)) {
+                updatePeriodicPingHeap(input);
+            }
         } else {
             unhandledInput(input);
         }
     }
 
+    private void updatePeriodicPingHeap(Tuple input) throws PipelineException {
+        PeriodicPingCommand periodicPingCommand = pullPeriodicPingRequest(input);
+        if (periodicPingCommand.isEnable()) {
+            Optional<FlowPair> flowPair = flowPairRepository.findById(periodicPingCommand.getFlowId());
+            if (flowPair.isPresent()) {
+                BidirectionalFlowDto flowDto = new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair.get()));
+                flowsSet.add(flowDto);
+            }
+        } else {
+            flowsSet.removeIf(flow -> flow.getFlowId().equals(periodicPingCommand.getFlowId()));
+        }
+    }
+
+    private void refreshHeap(Tuple input, boolean emitCacheExpiry) throws PipelineException {
+        log.debug("Handle periodic ping request");
+        final Set<BidirectionalFlowDto> flows = flowPairRepository.findWithPeriodicPingsEnabled().stream()
+                .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
+                .collect(Collectors.toSet());
+        if (emitCacheExpiry) {
+            final CommandContext commandContext = pullContext(input);
+            emitCacheExpire(input, commandContext, flows);
+        }
+        flowsSet = flows;
+        lastPeriodicPingCacheRefresh = System.currentTimeMillis();
+    }
+
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final List<BidirectionalFlowDto> flows = flowPairRepository.findWithPeriodicPingsEnabled().stream()
-                .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
-                .collect(Collectors.toList());
 
+        if (lastPeriodicPingCacheRefresh + periodicPingCacheExpiryInterval < System.currentTimeMillis()) {
+            refreshHeap(input, true);
+        }
         final CommandContext commandContext = pullContext(input);
-        final FlowsHeap heap = new FlowsHeap();
-        for (BidirectionalFlowDto flow : flows) {
+        for (BidirectionalFlowDto flow : flowsSet) {
             PingContext pingContext = new PingContext(Kinds.PERIODIC, flow);
             emit(input, pingContext, commandContext);
-
-            heap.add(flow);
         }
 
-        emitCacheExpire(input, commandContext, heap);
-        flowsHeap = heap;
     }
 
     private void handleOnDemandRequest(Tuple input) throws PipelineException {
@@ -128,16 +157,22 @@ public class FlowFetcher extends Abstract {
         getOutput().emit(STREAM_ON_DEMAND_RESPONSE_ID, input, output);
     }
 
-    private void emitCacheExpire(Tuple input, CommandContext commandContext, FlowsHeap heap) {
+    private void emitCacheExpire(Tuple input, CommandContext commandContext, Set<BidirectionalFlowDto> flows) {
         OutputCollector collector = getOutput();
-        for (FlowRef ref : flowsHeap.extra(heap)) {
-            Values output = new Values(ref, commandContext);
+        flowsSet.removeAll(flows);
+        for (BidirectionalFlowDto flow : flowsSet) {
+            Values output = new Values(flow, commandContext);
             collector.emit(STREAM_EXPIRE_CACHE_ID, input, output);
+
         }
     }
 
     private FlowPingRequest pullOnDemandRequest(Tuple input) throws PipelineException {
         return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, FlowPingRequest.class);
+    }
+
+    private PeriodicPingCommand pullPeriodicPingRequest(Tuple input) throws PipelineException {
+        return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, PeriodicPingCommand.class);
     }
 
     @Override
@@ -150,6 +185,10 @@ public class FlowFetcher extends Abstract {
     @Override
     public void init() {
         flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
-        flowsHeap = new FlowsHeap();
+        try {
+            refreshHeap(null, false);
+        } catch (PipelineException e) {
+            log.error("Failed to init periodic ping cache");
+        }
     }
 }

@@ -39,6 +39,10 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
         return getPingConfig().getTimeout();
     }
 
+    default long getPeriodicPingCacheExpirationInterval() {
+        return getPingConfig().getPeriodicPingCacheExpirySec();
+    }
+
     default int getFailDelay() {
         return getPingConfig().getFailDelay();
     }
@@ -93,5 +97,9 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
         @Key("fail.reset")
         @Default("1800")
         int getFailReset();
+
+        @Key("cache.expiry.sec")
+        @Default("60")
+        long getPeriodicPingCacheExpirySec();
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.ping.model;
+
+package org.openkilda.messaging.command.flow;
+
+import org.openkilda.messaging.command.CommandData;
 
 import lombok.Value;
 
 @Value
-public class FlowRef {
-    public final String flowId;
-    public final long cookie;
+public class PeriodicPingCommand  extends CommandData {
+    String flowId;
+    boolean enable;
 }

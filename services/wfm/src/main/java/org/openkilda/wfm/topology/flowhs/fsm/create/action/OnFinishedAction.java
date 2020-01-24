@@ -21,6 +21,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,6 +35,9 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowCreateFsm, Stat
 
     @Override
     public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        RequestedFlow requestedFlow = context.getTargetFlow();
+        stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
+                requestedFlow.isPeriodicPings());
         dashboardLogger.onSuccessfulFlowCreate(stateMachine.getFlowId());
         stateMachine.saveActionToHistory("Flow was created successfully");
     }
