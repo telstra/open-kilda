@@ -84,7 +84,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
     this.roleEditForm = new FormGroup({
       name: new FormControl({value: ''}, Validators.required),
       description: new FormControl({value: ''}, Validators.required),
-      permission: new FormControl({value: ''}) 
+      permission: new FormControl({value: ''}, Validators.required) 
     });
   }
 
@@ -95,6 +95,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
   submitform(){
     this.loaderService.show("Updating Role");
     if (this.roleEditForm.invalid) {
+      this.loaderService.hide();
       return;
     }
 

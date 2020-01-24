@@ -81,10 +81,11 @@ export class RoleAssignComponent implements OnInit, AfterViewInit {
     Description: Create User edit form
   */
   private createAssignForm() {
+    
     this.roleAssignForm = new FormGroup({
       name: new FormControl({value: '', disabled: true}, Validators.required),
       description: new FormControl({value: '', disabled: true}, Validators.required),
-      user: new FormControl() 
+      user: new FormControl({},Validators.required) 
     });
   }
 
@@ -96,6 +97,7 @@ export class RoleAssignComponent implements OnInit, AfterViewInit {
     this.loaderService.show("Assigning User");
     this.submitted = true;
     if (this.roleAssignForm.invalid) {
+      this.loaderService.hide();
       return;
     }
 
