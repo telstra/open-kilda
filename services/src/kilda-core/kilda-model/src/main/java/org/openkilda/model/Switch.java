@@ -106,10 +106,12 @@ public class Switch implements Serializable {
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
 
+    private String pop;
+
     @Builder(toBuilder = true)
     public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,
                   String hostname, String controller, String description, boolean underMaintenance,
-                  Instant timeCreate, Instant timeModify, Set<SwitchFeature> features) {
+                  Instant timeCreate, Instant timeModify, Set<SwitchFeature> features, String pop) {
         this.switchId = switchId;
         this.status = status;
         this.socketAddress = socketAddress;
@@ -120,6 +122,7 @@ public class Switch implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         setFeatures(features);
+        this.pop = pop;
     }
 
     /**

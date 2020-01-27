@@ -49,7 +49,9 @@ public class AvailableNetworkTest {
         if (edge.isUnstable()) {
             total += 10_000;
         }
-        total += edge.getDiversityGroupUseCounter() * 1000 + edge.getDestSwitch().getDiversityGroupUseCounter() * 100;
+        total += edge.getDiversityGroupUseCounter() * 1000
+                + edge.getDiversityGroupPerPopUseCounter() * 1000
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * 100;
         return total;
     };
 
@@ -167,6 +169,114 @@ public class AvailableNetworkTest {
                 weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()));
         assertEquals(expectedWeight,
                 weightFunction.apply(network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next()));
+    }
+
+    private static final SwitchId SWITCH_1 = new SwitchId("00:00:00:00:00:00:00:01");
+    private static final SwitchId SWITCH_2 = new SwitchId("00:00:00:00:00:00:00:02");
+    private static final SwitchId SWITCH_3 = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId SWITCH_4 = new SwitchId("00:00:00:00:00:00:00:04");
+    private static final SwitchId SWITCH_5 = new SwitchId("00:00:00:00:00:00:00:05");
+    private static final String POP_1 = "pop1";
+    private static final String POP_2 = "pop2";
+    private static final String POP_3 = "pop3";
+    private static final String POP_4 = "pop4";
+
+    @Test
+    public void shouldUpdateEdgeWeightWithPopDiversityPenalty() {
+        int cost = 700;
+        final WeightFunction weightFunction = WEIGHT_FUNCTION;
+
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5, POP_1, POP_2);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5, POP_1, POP_4);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5, POP_1, POP_4);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5, POP_3, POP_4);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5, POP_3, POP_4);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5, POP_3, POP_2);
+
+
+        network.processDiversitySegmentsWithPop(
+                asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, POP_4, 0),
+                        buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, POP_4, POP_3, 1)));
+        long expectedWeight = cost + 1000L;
+        for (Edge edge : network.edges) {
+            long currentWeight = weightFunction.apply(edge);
+            if (edge.getSrcSwitch().getPop().equals(POP_4)
+                    || edge.getDestSwitch().getPop().equals(POP_4)) {
+                assertEquals(expectedWeight, currentWeight);
+            } else {
+                assertEquals(cost, currentWeight);
+            }
+        }
+    }
+
+    @Test
+    public void shouldNotUpdateWeightsWhenTransitSegmentsNotInPop() {
+        int cost = 700;
+        final WeightFunction weightFunction = WEIGHT_FUNCTION;
+
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5, POP_1, POP_2);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5, POP_1, null);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5, POP_1, POP_4);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5, POP_3, POP_4);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5, POP_3, null);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5, POP_3, POP_2);
+
+
+        network.processDiversitySegmentsWithPop(
+                asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
+                        buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
+        for (Edge edge : network.edges) {
+            long currentWeight = weightFunction.apply(edge);
+            assertEquals(cost, currentWeight);
+        }
+    }
+
+    @Test
+    public void shouldNotUpdateWeightsWhenTransitSegmentsOnlyInPop() {
+        int cost = 700;
+        final WeightFunction weightFunction = WEIGHT_FUNCTION;
+
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5, null, null);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5, null, POP_4);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5, null, null);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5, null, null);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5, null, POP_4);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5, null, null);
+
+
+        network.processDiversitySegmentsWithPop(
+                asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
+                        buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
+        for (Edge edge : network.edges) {
+            long currentWeight = weightFunction.apply(edge);
+            assertEquals(cost, currentWeight);
+        }
+    }
+
+    @Test
+    public void shouldNotUpdateEdgeWeightWithPopDiversityPenaltyIfNoPop() {
+        int cost = 700;
+        final WeightFunction weightFunction = WEIGHT_FUNCTION;
+
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5);
+
+
+        network.processDiversitySegmentsWithPop(
+                asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, 0),
+                        buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, 1)));
+        for (Edge edge : network.edges) {
+            long currentWeight = weightFunction.apply(edge);
+            assertEquals(cost, currentWeight);
+        }
     }
 
     @Test
@@ -287,8 +397,13 @@ public class AvailableNetworkTest {
 
     private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
                          int cost, int latency) {
-        Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
-        Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
+        addLink(network, srcDpid, dstDpid, srcPort, dstPort, cost, latency, null, null);
+    }
+
+    private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
+                         int cost, int latency, String srcPop, String dstPop) {
+        Switch srcSwitch = Switch.builder().switchId(srcDpid).pop(srcPop).build();
+        Switch dstSwitch = Switch.builder().switchId(dstDpid).pop(dstPop).build();
 
         Isl isl = Isl.builder()
                 .srcSwitch(srcSwitch)
@@ -304,8 +419,13 @@ public class AvailableNetworkTest {
     }
 
     private PathSegment buildPathWithSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
-        Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
-        Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
+        return buildPathWithSegment(srcDpid, dstDpid, srcPort, dstPort, null, null, seqId);
+    }
+
+    private PathSegment buildPathWithSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
+                                             String srcPop, String dstPop, int seqId) {
+        Switch srcSwitch = Switch.builder().switchId(srcDpid).pop(srcPop).build();
+        Switch dstSwitch = Switch.builder().switchId(dstDpid).pop(dstPop).build();
 
         FlowPath flowPath = FlowPath.builder()
                 .flow(new Flow())
