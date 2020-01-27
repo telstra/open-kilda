@@ -83,11 +83,11 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
         int getScaleFactor();
 
         @Key("interval")
-        @Default("10")
+        @Default("1")
         int getPingInterval();
 
         @Key("timeout")
-        @Default("2")
+        @Default("10")
         int getTimeout();
 
         @Key("fail.delay")

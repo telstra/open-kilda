@@ -39,7 +39,7 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowUpdateFsm, Stat
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         if (stateMachine.getNewFlowStatus() == FlowStatus.UP) {
-            RequestedFlow requestedFlow = context.getTargetFlow();
+            RequestedFlow requestedFlow = stateMachine.getTargetFlow();
             stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
                     requestedFlow.isPeriodicPings());
             dashboardLogger.onSuccessfulFlowUpdate(stateMachine.getFlowId());

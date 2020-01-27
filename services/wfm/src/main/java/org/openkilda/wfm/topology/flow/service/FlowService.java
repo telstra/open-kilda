@@ -1546,8 +1546,12 @@ public class FlowService extends BaseFlowService {
      */
     public void notifyOnPeriodicPingChanges(String flowId,
                                             FlowCommandSender sender) {
-        Flow flow = flowRepository.findById(flowId).get();
-        sender.sendPeriodicPingNotification(flowId, flow.isPeriodicPings());
+        Optional<Flow> flow = flowRepository.findById(flowId);
+        if (flow.isPresent()) {
+            sender.sendPeriodicPingNotification(flowId, flow.get().isPeriodicPings());
+        } else {
+            log.warn("unable to send periodic ping update since the flow {} is not found", flowId);
+        }
     }
 
     private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
