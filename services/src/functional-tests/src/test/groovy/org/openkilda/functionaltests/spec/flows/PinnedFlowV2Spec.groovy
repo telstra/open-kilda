@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -62,8 +63,10 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
 
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            Wrappers.timedLoop(2) {
+                assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+                assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            }
         }
         islsToBreak[1..-1].each { islToBreak ->
             antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)

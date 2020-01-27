@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -93,7 +94,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def portDown = antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+        }
 
         when: "ISL goes back up"
         def portUp = antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
@@ -175,6 +179,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
         when: "Set flowsRerouteOnIslDiscovery=#flowsRerouteOnIslDiscovery"
@@ -187,11 +192,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches*.switchId.contains(flowPath[1].switchId) }
 
         then: "The flow is #flowStatus"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getLinks(flowPath[1].switchId, null, null, null)
-                      .each { assert it.state == IslChangeType.DISCOVERED }
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay + discoveryInterval) {
+            assert northbound.getFlowStatus(flow.flowId).status == flowStatus
         }
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) { assert northbound.getFlowStatus(flow.flowId).status == flowStatus }
 
         and: "Restore topology to the original state, remove the flow, reset toggles"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -224,7 +227,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         then: "The flow goes to 'Down' status"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+        }
 
         when: "Bring all ports up on the source switch that are involved in the alternative paths"
         broughtDownPorts.findAll {
@@ -394,6 +400,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
         and: "Flow is not rerouted"

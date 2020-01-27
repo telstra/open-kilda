@@ -28,7 +28,7 @@ class StatsHelper {
 
     void verifyFlowsWriteStats(List<String> flowIds) {
         def soft = new SoftAssertions()
-        withPool(flowIds.size()) {
+        withPool(Math.min(flowIds.size(), 15)) {
             flowIds.eachParallel { String flowId ->
                 soft.checkSucceeds { verifyFlowWritesStats(flowId) }
             }
