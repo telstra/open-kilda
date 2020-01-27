@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -135,47 +134,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
-    }
-
-    @Unroll
-    @Tags(VIRTUAL)
-    @IterationTag(tags=[LOW_PRIORITY], iterationNameRegex = /(\(intermediate|destination)/)
-    def "Flow goes to 'Down' status when #switchType switch is disconnected (#flowType)"() {
-        given: "#flowType.capitalize()"
-        //TODO(ylobankov): Remove this code once the issue #1464 is resolved.
-        assumeTrue("Test is skipped because of the issue #1464", switchType != "single")
-
-        flowHelper.addFlow(flow)
-
-        when: "The #switchType switch is disconnected"
-        lockKeeper.knockoutSwitch(findSw(sw))
-
-        then: "The flow becomes 'Down'"
-        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
-        }
-
-        when: "The #switchType switch is connected back"
-        lockKeeper.reviveSwitch(findSw(sw))
-
-        then: "The flow becomes 'Up'"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-        }
-
-        and: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
-
-        where:
-        flowType                      | switchType    | flow                       | sw
-        "single-switch flow"          | "single"      | singleSwitchFlow()         | flow.source.datapath
-        "no-intermediate-switch flow" | "source"      | noIntermediateSwitchFlow() | flow.source.datapath
-        "no-intermediate-switch flow" | "destination" | noIntermediateSwitchFlow() | flow.destination.datapath
-        "intermediate-switch flow"    | "source"      | intermediateSwitchFlow()   | flow.source.datapath
-        "intermediate-switch flow"    | "destination" | intermediateSwitchFlow()   | flow.destination.datapath
     }
 
     @Unroll
