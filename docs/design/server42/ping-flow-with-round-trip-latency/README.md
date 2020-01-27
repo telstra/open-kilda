@@ -31,18 +31,63 @@ Purposes:
 
 NOTE: `61235` is Kilda reserved UDP port for forward ping packets.
 
+```
+[FLOW_ID5]
+    ofp_version      = 4
+    ControllerGroup  = Management
+    Priority         = 24574
+    Cookie           = 80000000000000XX
+    [MATCHFIELDS]
+        OFPXMT_OFB_IN_PORT = XX (server 42 port)
+        OFPXMT_OFB_ETH_DST = XX:XX:XX:XX:XX:XX (server 42 mac)
+        OFPXMT_OFB_ETH_TYPE = 0x800
+        OFPXMT_OFB_IP_PROTO = 17
+        OFPXMT_OFB_UDP_SRC = 61235 (RTL forward ping UPD port)
+    [INSTRUCTIONS]
+        [OFPIT_APPLY_ACTIONS]
+             [ACTIONS]
+                [OFPAT_EXPERIMENTER]
+                    [SET_COPY_FIELD]
+                        n_bits = 64
+                        src_offset = 0
+                        dst_offset = XXX (offset in packet for first timestamp)
+                        src_oxm = NOVI_OXM_RX_TIMESTAMP
+                        dst_oxm = NOVI_OXM_PKT_OFFSET
+                [OFPAT_GO_TO_TABLE]
+                    table_id = 1 (pre-ingress table)
+```
+
 ## Pre Ingress Rule
 
 Quantity: One rule per QinQ Flow<br/>
 Table: Pre Ingress
 
 Purposes:
- * match packet by other Vlan
+ * match packet by outer Vlan
  * send in to Ingres table
  
 The only difference from other QinQ rules is in matching by Server 42 Port (other rules match packet by customer port).
 
 ![Pre Ingress Rule](pre_ingress_rule.png "Pre Ingress Rule") 
+
+```
+[FLOW_ID5]
+    ofp_version      = 4
+    ControllerGroup  = Management
+    Priority         = 24576
+    [MATCHFIELDS]
+        OFPXMT_OFB_IN_PORT = XX (server 42 port)
+        OFPXMT_OFB_VLAN = XXXX (outer VLAN)
+    [INSTRUCTIONS]
+        [OFPIT_APPLY_ACTIONS]
+             [ACTIONS]
+                [OFPAT_POP_VLAN]
+                [OFPAT_WRITE_METADATA]
+                    value = 0xXXXXX (VLAN)
+                    mask = 0x1FFFF
+                [OFPAT_GO_TO_TABLE]
+                    table_id = 2 (ingress table)
+```
 
 ## Ingress Rule
 
@@ -60,6 +105,28 @@ For Vlan encapsulation we do not need to set `UDP_SRC` port because it will be s
  
 ![Vlan Encapsulation](vlan_encapsulation.png "Vlan Encapsulation")  
 
+```
+[FLOW_ID5]
+    ofp_version      = 4
+    ControllerGroup  = Management
+    Priority         = 24577
+    [MATCHFIELDS]
+        OFPXMT_OFB_IN_PORT = XX (server 42 port)
+        OFPXMT_OFB_METADATA = XXXX (outer VLAN)
+        OFPXMT_OFB_VLAN = XXXX (inner VLAN)
+    [INSTRUCTIONS]
+        [OFPIT_APPLY_ACTIONS]
+             [ACTIONS]
+                [OFPAT_PUSH_VLAN]
+                    vlan = YYYY (transit vlan)
+                [OFPAT_SET_FIELD]
+                    eth_src = XX:XX:XX:XX:XX:XX (src switch mac)
+                    eth_dst = YY:YY:YY:YY:YY:YY (dst switch mac)
+                [OFPAT_OUTPUT] (sent to the next switch)
+                    port = YY
+                    mlen = 65535
+```
+
 VXLAN encapsulation wraps ethernet frame to another frame, so we have to set `UDP_SRC` port in this case 
 
 ![Vxlan Encapsulation](vxlan_encapsulation.png "Vxlan Encapsulation")
@@ -76,6 +143,31 @@ Purposes of this rule are:
  * send packet back to `IN_PORT`
  
 ![Turning Rule](turning_rule.png "Turning Rule")
+
+ ```
+ [FLOW_ID5]
+     ofp_version      = 4
+     ControllerGroup  = Management
+     Priority         = 31768
+     Cookie           = 80000000000000XX
+     [MATCHFIELDS]
+         OFPXMT_OFB_ETH_DST = XX:XX:XX:XX:XX:XX (switch mac)
+         OFPXMT_OFB_ETH_TYPE = 0x800
+         OFPXMT_OFB_IP_PROTO = 17
+         OFPXMT_OFB_UDP_SRC = 61235 (RTL forward ping UPD port)
+     [INSTRUCTIONS]
+         [OFPIT_APPLY_ACTIONS]
+              [ACTIONS]
+                 [OFPAT_EXPERIMENTER]
+                     [SWAP_FIELDS]
+                         src_field = ETH_SRC
+                         dst_field = ETH_DST
+                 [OFPAT_SET_FIELD]
+                     udp_src = 61236 (RTL reverse ping UPD port)
+                 [OFPAT_OUTPUT] (sent packet back)
+                     port = IN_PORT
+                     mlen = 65535
+ ```
  
 ## Catch Rule
 
@@ -89,6 +181,35 @@ Purposes of this rule are:
  * send packet into Server 42 Port
  
 ![Catch Rule](catch_rule.png "Catch Rule") 
+
+ ```
+ [FLOW_ID5]
+     ofp_version      = 4
+     ControllerGroup  = Management
+     Priority         = 24577
+     Cookie           = 80000000000000XX
+     [MATCHFIELDS]
+         OFPXMT_OFB_ETH_DST = XX:XX:XX:XX:XX:XX (switch mac)
+         OFPXMT_OFB_ETH_TYPE = 0x800
+         OFPXMT_OFB_IP_PROTO = 17
+         OFPXMT_OFB_UDP_SRC = 61236 (RTL reverse ping UPD port)
+     [INSTRUCTIONS]
+         [OFPIT_APPLY_ACTIONS]
+             [ACTIONS]
+                 [OFPAT_EXPERIMENTER]
+                     [SET_COPY_FIELD]
+                         n_bits = 64
+                         src_offset = 0
+                         dst_offset = XXX (offset in packet for second timestamp)
+                         src_oxm = NOVI_OXM_TX_TIMESTAMP
+                         dst_oxm = NOVI_OXM_PKT_OFFSET
+                 [OFPAT_SET_FIELD]
+                     eth_src = XX:XX:XX:XX:XX:XX (server 42 mac)
+                     eth_dst = YY:YY:YY:YY:YY:YY (server 42 mac)
+                 [OFPAT_OUTPUT] (sent packet to server 42)
+                     port = XX (server 42 port)
+                     mlen = 65535
+ ```
 
 ## Changing of Transit VXLAN rule
 
