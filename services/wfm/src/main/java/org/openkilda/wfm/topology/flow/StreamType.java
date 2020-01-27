@@ -96,7 +96,7 @@ public enum StreamType {
 
 
     /**
-     * Ping messages
+     * Ping messages.
      */
     PING;
 }

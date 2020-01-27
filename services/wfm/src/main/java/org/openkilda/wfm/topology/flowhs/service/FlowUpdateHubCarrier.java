@@ -29,4 +29,11 @@ public interface FlowUpdateHubCarrier extends FlowGenericCarrier {
      * @param key operation identifier.
      */
     void cancelTimeoutCallback(String key);
+
+    /**
+     * Sends update on periodic ping status for the flow.
+     * @param flowId flow id
+     * @param enabled flag
+     */
+    void sendPeriodicPingNotification(String flowId, boolean enabled);
 }
