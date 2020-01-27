@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service;
+package org.openkilda.wfm.topology.nbworker.bolts;
 
-import org.openkilda.messaging.Message;
-
-public interface FlowUpdateHubCarrier extends FlowGenericCarrier {
+public interface FlowOperationsCarrier {
     /**
-     * Sends response to northbound component.
+     * Sends update for periodic ping.
+     * @param flowId flow id
+     * @param enabled flag
      */
-    void sendNorthboundResponse(Message message);
 
-    /**
-     * Cancels timeout callback.
-     *
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
+    void emitPeriodicPingUpdate(String flowId, boolean enabled);
 }

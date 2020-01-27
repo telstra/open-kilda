@@ -35,7 +35,7 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowCreateFsm, Stat
 
     @Override
     public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        RequestedFlow requestedFlow = context.getTargetFlow();
+        RequestedFlow requestedFlow = stateMachine.getTargetFlow();
         stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
                 requestedFlow.isPeriodicPings());
         dashboardLogger.onSuccessfulFlowCreate(stateMachine.getFlowId());

@@ -404,7 +404,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             Values values = new Values(new InfoMessage(new FlowResponse(deletedFlow),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-            Values pingValues = new Values(new CommandMessage(new PeriodicPingCommand(flowId, false),
+            Values pingValues = new Values(message.getCorrelationId(),
+                    new CommandMessage(new PeriodicPingCommand(flowId, false),
                     System.currentTimeMillis(), message.getCorrelationId()));
             outputCollector.emit(StreamType.PING.toString(), tuple, pingValues);
         } catch (FlowNotFoundException e) {

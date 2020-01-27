@@ -44,6 +44,7 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
+import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -248,7 +249,7 @@ public class FlowOperationsService {
      * @param flow flow.
      * @return updated flow.
      */
-    public UnidirectionalFlow updateFlow(FlowDto flow) throws FlowNotFoundException {
+    public UnidirectionalFlow updateFlow(FlowOperationsCarrier carrier, FlowDto flow) throws FlowNotFoundException {
         return transactionManager.doInTransaction(() -> {
             Optional<FlowPair> foundFlow = flowPairRepository.findById(flow.getFlowId());
             if (!foundFlow.isPresent()) {
@@ -262,6 +263,13 @@ public class FlowOperationsService {
             }
             if (flow.getPriority() != null) {
                 currentFlow.setPriority(flow.getPriority());
+            }
+            if (flow.getPeriodicPings() != null) {
+                boolean oldPeriodicPings = currentFlow.isPeriodicPings();
+                currentFlow.setPeriodicPings(flow.getPeriodicPings());
+                if (oldPeriodicPings != currentFlow.isPeriodicPings()) {
+                    carrier.emitPeriodicPingUpdate(flow.getFlowId(), flow.getPeriodicPings());
+                }
             }
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);

@@ -126,6 +126,11 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
+    public void sendPeriodicPingNotification(String flowId, boolean enabled) {
+
+    }
+
+    @Override
     public void cancelTimeoutCallback(String key) {
         cancelCallback(key);
     }
