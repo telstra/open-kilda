@@ -262,7 +262,7 @@ public class FlowOperationsBolt extends BaseRichBolt {
 
         @Override
         public void sendPeriodicPingNotification(String flowId, boolean enabled) {
-
+            logger.info("Not implemented for flow operations bolt. Skipping for the flow {}", flowId);
         }
     }
 }

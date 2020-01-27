@@ -32,5 +32,6 @@ public enum StreamType {
     ERROR,
     HISTORY,
     FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER
+    METER_MODIFY_WORKER,
+    PING
 }

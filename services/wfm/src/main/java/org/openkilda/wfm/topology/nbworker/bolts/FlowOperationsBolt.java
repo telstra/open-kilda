@@ -18,7 +18,9 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -67,7 +69,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class FlowOperationsBolt extends PersistenceOperationsBolt {
+public class FlowOperationsBolt extends PersistenceOperationsBolt implements FlowOperationsCarrier {
     private transient FlowOperationsService flowOperationsService;
     private transient FeatureTogglesRepository featureTogglesRepository;
 
@@ -198,7 +200,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         FlowDto flowDto = request.getFlow();
 
         try {
-            UnidirectionalFlow flow = flowOperationsService.updateFlow(flowDto);
+            UnidirectionalFlow flow = flowOperationsService.updateFlow(this, flowDto);
             return Collections.singletonList(new FlowResponse(FlowMapper.INSTANCE.map(flow)));
 
         } catch (FlowNotFoundException e) {
@@ -247,5 +249,14 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.FLOWHS.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.PING.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+    }
+
+    @Override
+    public void emitPeriodicPingUpdate(String flowId, boolean enabled) {
+        CommandMessage command = new CommandMessage(new PeriodicPingCommand(flowId, enabled),
+                System.currentTimeMillis(), getCorrelationId());
+        getOutput().emit(StreamType.PING.toString(), getCurrentTuple(), new Values(command, getCommandContext()));
     }
 }

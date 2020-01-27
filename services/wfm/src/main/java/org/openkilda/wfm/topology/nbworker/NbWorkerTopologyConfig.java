@@ -47,6 +47,10 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
+    default String getKafkaPingTopic() {
+        return getKafkaTopics().getPingTopic();
+    }
+
     default String getKafkaSpeakerTopic() {
         return getKafkaTopics().getSpeakerTopic();
     }
