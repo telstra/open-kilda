@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -1301,6 +1302,134 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+    }
+
+    @Tidy
+    def "Protected path is created in different POP even if this path is not preferable"(){
+        given: "Not neighboring switch pair with three diverse paths at least"
+        def allPaths // all possible paths
+        def allPathsWithThreeSwitches //all possible paths with 3 involved switches
+        def allPathCandidates // 3 diverse paths at least
+        def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            allPaths = swP.paths
+            allPathsWithThreeSwitches = allPaths.findAll { pathHelper.getInvolvedSwitches(it).size() == 3 }
+            allPathCandidates = allPathsWithThreeSwitches.unique(false) { a, b ->
+                a.intersect(b) == [] ? 1 : 0
+            } // just to avoid parallel links
+            allPathsWithThreeSwitches.unique(false) { a, b ->
+                def p1 = pathHelper.getInvolvedSwitches(a)[1..-2]*.dpId
+                def p2 = pathHelper.getInvolvedSwitches(b)[1..-2]*.dpId
+                p1.intersect(p2) == [] ? 1 : 0
+            }.size() >= 3
+        } ?: assumeTrue("No suiting switches found", false)
+
+        //select paths for further manipulations
+        def mainPath1 = allPathCandidates.first()
+        def mainPath2 = allPathCandidates.find { it != mainPath1 }
+        def protectedPath = allPathCandidates.find { it != mainPath1 && it != mainPath2}
+        def involvedSwP1 = pathHelper.getInvolvedSwitches(mainPath1)*.dpId
+        def involvedSwP2 = pathHelper.getInvolvedSwitches(mainPath2)*.dpId
+        def involvedSwProtected = pathHelper.getInvolvedSwitches(protectedPath)*.dpId
+
+        and: "Src, dst and transit switches belongs to different POPs(src:1, dst:4, tr1/tr2:2, tr3:3)"
+        // tr1/tr2 for the main path and tr3 for the protected path
+        database.setSwitchPop(swPair.src.dpId, "1")
+        [involvedSwP1[1], involvedSwP2[1]].each { swId -> database.setSwitchPop(swId, "2") }
+        database.setSwitchPop(swPair.dst.dpId, "4")
+        database.setSwitchPop(involvedSwProtected[1], "3")
+
+        and: "Path which contains tr3 is non preferable"
+        /** There is not possibility to use the 'makePathNotPreferable' method,
+         * because it sets too high value for protectedPath.
+         *
+         *  totalCostOFProtectedPath should be the following:
+         *  totalCostOfMainPath + (amountOfInvolvedIsls * diversity.pop.isl.cost * diversityGroupPerPopUseCounter) - 1,
+         *  where:
+         *  diversity.pop.isl.cost = 1000
+         *  diversityGroupPerPopUseCounter = amount of switches in the same POP
+         *  (in this test there are two switches in the same POP) */
+        List<Isl> islsToUpdate = []
+        allPathsWithThreeSwitches.findAll { involvedSwProtected[1] in pathHelper.getInvolvedSwitches(it)*.dpId }.each {
+            pathHelper.getInvolvedIsls(it).each {
+                islsToUpdate << it
+            }
+        }
+        def involvedIslsOfMainPath = pathHelper.getInvolvedIsls(mainPath1)
+        def defaultIslCost = 700
+        def totalCostOfMainPath = involvedIslsOfMainPath.sum { northbound.getLink(it).cost ?: defaultIslCost }
+        def amountOfIlslsOnMainPath = involvedIslsOfMainPath.size()
+        def diversityPopIslCost = 1000
+        def diversityGroupPerPopUseCounter = 2
+        Integer newIslCost = ((totalCostOfMainPath +
+                (amountOfIlslsOnMainPath * diversityPopIslCost * diversityGroupPerPopUseCounter) - 1) /
+                pathHelper.getInvolvedIsls(protectedPath).size()).toInteger()
+        log.debug("newCost: $newIslCost")
+
+        islsToUpdate.unique().each { isl ->
+            northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newIslCost.toString()])])
+        }
+
+        and: "All alternative paths unavailable (bring ports down on the source switch)"
+        List<PathNode> broughtDownPorts = []
+        def altPaths = allPaths.findAll { !(it in allPathsWithThreeSwitches) }
+        altPaths*.first().unique().findAll {
+            !(it in allPathsWithThreeSwitches*.first().unique())
+        }.each { broughtDownPorts.add(it) }
+        altPaths*.last().unique().findAll {
+            !(it in allPathsWithThreeSwitches*.last().unique())
+        }.each { broughtDownPorts.add(it) }
+        broughtDownPorts.each {
+            antiflap.portDown(it.switchId, it.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        when: "Create a protected flow"
+        /** At this point we have the following topology:
+         *
+         *             srcSwitch_POP_1
+         *             /       |       \
+         *            / 700    | 700    \ newIslCost
+         *           /         |         \
+         *   trSw1_POP_2   trSw2_POP_2   trSw3_POP_3
+         *          \          |         /
+         *           \ 700     | 700    / newIslCost
+         *            \        |       /
+         *             dstSwitch_POP_4
+         *
+         *  In the topology above the system is going to choose trSw1 or trSw2 for main path,
+         *  because these path are more preferable that the path with trSw3.
+         *
+         *  System takes into account PoP and try not to place protected path into the same transit PoPs.
+         *  So, the protected path will be built through the trSw3 because trSw1 and trSw2 are in the same PoP zone.
+         * */
+        def flow = flowHelperV2.randomFlow(swPair)
+        flow.allocateProtectedPath = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Main path is built through the preferable path(tr1 or tr2)"
+        def flowPaths = northbound.getFlowPath(flow.flowId)
+        def realFlowPathInvolvedSwitches = pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths))*.dpId
+        realFlowPathInvolvedSwitches == involvedSwP1 || realFlowPathInvolvedSwitches == involvedSwP2
+
+        and: "Protected path is built through the non preferable path(tr3)"
+        pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths.protectedPath))*.dpId == involvedSwProtected
+
+        cleanup:
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+        withPool {
+            (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
+                database.setSwitchPop(swId, null)
+            }
+        }
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
