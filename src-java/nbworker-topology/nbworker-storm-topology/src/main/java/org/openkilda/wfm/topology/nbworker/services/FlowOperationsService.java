@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static java.lang.String.format;
 import static org.apache.commons.collections4.ListUtils.union;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -26,6 +27,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.TransactionManager;
@@ -43,6 +45,10 @@ import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
+import lombok.Builder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -240,12 +246,14 @@ public class FlowOperationsService {
      * @return updated flow.
      */
     public Flow updateFlow(FlowOperationsCarrier carrier, FlowDto flow) throws FlowNotFoundException {
-        return transactionManager.doInTransaction(() -> {
+        UpdateFlowResult updateFlowResult = transactionManager.doInTransaction(() -> {
             Optional<Flow> foundFlow = flowRepository.findById(flow.getFlowId());
             if (!foundFlow.isPresent()) {
-                return Optional.<Flow>empty();
+                return Optional.<UpdateFlowResult>empty();
             }
             Flow currentFlow = foundFlow.get();
+
+            final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flow, currentFlow);
 
             if (flow.getMaxLatency() != null) {
                 currentFlow.setMaxLatency(flow.getMaxLatency());
@@ -265,9 +273,44 @@ public class FlowOperationsService {
 
             flowRepository.createOrUpdate(currentFlow);
 
-            return Optional.of(currentFlow);
+            return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flow.getFlowId()));
+
+        if (updateFlowResult.isNeedRerouteFlow()) {
+            Flow updatedFlow = updateFlowResult.getUpdatedFlow();
+            Set<IslEndpoint> affectedIslEndpoints =
+                    Sets.newHashSet(new IslEndpoint(flow.getSourceSwitch(), flow.getSourcePort()),
+                            new IslEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()));
+            carrier.sendRerouteRequest(updatedFlow.getPaths(), affectedIslEndpoints,
+                    updateFlowResult.getRerouteReason());
+        }
+
+        return updateFlowResult.getUpdatedFlow();
+    }
+
+    @VisibleForTesting
+    UpdateFlowResult.UpdateFlowResultBuilder prepareFlowUpdateResult(FlowDto flowDto, Flow flow) {
+        boolean changedStrategy = flowDto.getPathComputationStrategy() != null
+                && !flowDto.getPathComputationStrategy().equals(flow.getPathComputationStrategy());
+        boolean changedMaxLatency = flowDto.getMaxLatency() != null
+                && !flowDto.getMaxLatency().equals(flow.getMaxLatency());
+        boolean strategyIsMaxLatency = PathComputationStrategy.MAX_LATENCY.equals(flowDto.getPathComputationStrategy())
+                || flowDto.getPathComputationStrategy() == null
+                && PathComputationStrategy.MAX_LATENCY.equals(flow.getPathComputationStrategy());
+
+        String reason = null;
+        if (changedStrategy) {
+            reason = format("initiated via Northbound, path computation strategy was changed from %s to %s",
+                    flow.getPathComputationStrategy(), flowDto.getPathComputationStrategy());
+        } else if (changedMaxLatency && strategyIsMaxLatency) {
+            reason = format("initiated via Northbound, max latency was changed from %d to %d",
+                    flow.getMaxLatency(), flowDto.getMaxLatency());
+        }
+
+        return UpdateFlowResult.builder()
+                .needRerouteFlow(changedStrategy || changedMaxLatency && strategyIsMaxLatency)
+                .rerouteReason(reason);
     }
 
     /**
@@ -303,5 +346,13 @@ public class FlowOperationsService {
         }
 
         return results;
+    }
+
+    @Data
+    @Builder
+    static class UpdateFlowResult {
+        private Flow updatedFlow;
+        private boolean needRerouteFlow;
+        private String rerouteReason;
     }
 }

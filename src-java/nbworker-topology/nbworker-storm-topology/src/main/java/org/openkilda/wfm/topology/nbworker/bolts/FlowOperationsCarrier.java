@@ -15,12 +15,22 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.IslEndpoint;
+
+import java.util.Collection;
+import java.util.Set;
+
 public interface FlowOperationsCarrier {
     /**
      * Sends update for periodic ping.
      * @param flowId flow id
      * @param enabled flag
      */
-
     void emitPeriodicPingUpdate(String flowId, boolean enabled);
+
+    /**
+     * Sends reroute request.
+     */
+    void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason);
 }
