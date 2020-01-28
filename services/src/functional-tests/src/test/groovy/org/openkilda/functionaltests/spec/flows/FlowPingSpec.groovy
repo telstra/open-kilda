@@ -39,6 +39,8 @@ class FlowPingSpec extends HealthCheckSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
+    @Value('${flow.ping.interval}')
+    int pingInterval
 
     @Tidy
     @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
@@ -258,7 +260,7 @@ class FlowPingSpec extends HealthCheckSpecification {
                     )
                 }
             }.size() >= 1
-        } ?: assumeTrue("Unable to find required switches in topology",false)
+        } ?: assumeTrue("Unable to find required switches in topology", false)
 
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
@@ -286,6 +288,31 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.reverse.pingSuccess
 
         cleanup: "Delete the flow"
+    }
+
+    def "Able to turn on periodic pings on a flow"() {
+        when: "Create a flow with periodic pings turned on"
+        def flow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair).tap {
+            it.periodicPings = true
+        }
+        flowHelperV2.addFlow(flow)
+
+        then: "Packet counter on flow rules grows due to pings happening"
+        def initialCounts = northbound.validateFlow(flow.flowId)
+        Wrappers.wait(pingInterval + WAIT_OFFSET / 2) {
+            with(northbound.validateFlow(flow.flowId)) {
+                //forward
+                [it[0].pktCounts[0..-2], initialCounts[0].pktCounts[0..-2]].transpose().every { now, initial ->
+                    now > initial
+                }
+                //reverse
+                [it[1].pktCounts[0..-2], initialCounts[1].pktCounts[0..-2]].transpose().every { now, initial ->
+                    now > initial
+                }
+            }
+        }
+
+        cleanup: "Remove flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
