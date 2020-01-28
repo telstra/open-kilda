@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,25 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    TO_SWITCH_MANAGER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY,
-    FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER,
-    PING
+package org.openkilda.messaging.command.flow;
+
+import org.openkilda.messaging.command.CommandData;
+
+import lombok.Value;
+
+@Value
+public class PeriodicPingCommand  extends CommandData {
+    String flowId;
+    boolean enable;
 }

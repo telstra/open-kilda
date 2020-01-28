@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flow.service;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandGroup;
 
+import lombok.NonNull;
+
 import java.util.List;
 
 public interface FlowCommandSender {
@@ -32,4 +34,11 @@ public interface FlowCommandSender {
     void sendFlowCommands(String flowId, List<CommandGroup> commandGroups,
                           List<? extends CommandData> onSuccessCommands,
                           List<? extends CommandData> onFailureCommands);
+
+    /**
+     * Send periodic ping update notification.
+     * @param flowId the flow to update on
+     * @param enabled flag
+     */
+    void sendPeriodicPingNotification(@NonNull String flowId, boolean enabled);
 }

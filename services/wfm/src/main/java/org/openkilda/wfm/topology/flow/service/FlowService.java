@@ -1539,6 +1539,21 @@ public class FlowService extends BaseFlowService {
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
     }
 
+    /**
+     * Fetch flow and provide update on it's periodic pings.
+     * @param flowId flow id
+     * @param sender interface
+     */
+    public void notifyOnPeriodicPingChanges(String flowId,
+                                            FlowCommandSender sender) {
+        Optional<Flow> flow = flowRepository.findById(flowId);
+        if (flow.isPresent()) {
+            sender.sendPeriodicPingNotification(flowId, flow.get().isPeriodicPings());
+        } else {
+            log.warn("unable to send periodic ping update since the flow {} is not found", flowId);
+        }
+    }
+
     private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
                                                                 Flow updatingFlow, List<PathId> pathIds)
             throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,

@@ -29,6 +29,7 @@ import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
+import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
@@ -165,6 +166,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
         outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), MessageKafkaTranslator.STREAM_FIELDS);
+        outputFieldsDeclarer.declareStream(StreamType.PING.toString(), FlowTopology.fieldsKeyMessage);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -402,6 +404,10 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             Values values = new Values(new InfoMessage(new FlowResponse(deletedFlow),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+            Values pingValues = new Values(message.getCorrelationId(),
+                    new CommandMessage(new PeriodicPingCommand(flowId, false),
+                    System.currentTimeMillis(), message.getCorrelationId()));
+            outputCollector.emit(StreamType.PING.toString(), tuple, pingValues);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
@@ -709,7 +715,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             flowService.updateFlowPathStatus(request.getFlowId(), request.getPathId(), request.getFlowPathStatus());
 
             logger.info("Flow status updated: {}", request);
-
+            flowService.notifyOnPeriodicPingChanges(request.getFlowId(),
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.PING));
         } catch (Exception e) {
             logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -794,6 +801,15 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     new BatchCommandsRequest(commandGroups, onSuccessCommands, onFailureCommands),
                     System.currentTimeMillis(), correlationId);
             outputCollector.emit(stream.toString(), tuple, new Values(message, flowId));
+        }
+
+        @Override
+        public void sendPeriodicPingNotification(@NonNull String flowId, boolean enabled) {
+            CommandMessage message = new CommandMessage(
+                    new PeriodicPingCommand(flowId, enabled),
+                    System.currentTimeMillis(), correlationId);
+
+            outputCollector.emit(stream.toString(), tuple, new Values(correlationId, message));
         }
     }
 }

@@ -126,6 +126,11 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
+    public void sendPeriodicPingNotification(String flowId, boolean enabled) {
+        log.info("Not implemented for re-route operation. Skipping for the flow {}", flowId);
+    }
+
+    @Override
     public void cancelTimeoutCallback(String key) {
         cancelCallback(key);
     }

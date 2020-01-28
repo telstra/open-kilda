@@ -92,6 +92,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         coordinator(tb);
 
         northboundOutput(tb);
+        pingOutput(tb);
 
         history(tb, persistenceManager);
 
@@ -315,6 +316,14 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
     }
 
+    private void pingOutput(TopologyBuilder topologyBuilder) {
+        KafkaBolt pingKafkaBolt = buildKafkaBolt(getConfig().getKafkaPingTopic());
+        topologyBuilder.setBolt(ComponentId.FLOW_PING_SENDER.name(), pingKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_PING_SENDER.name());
+    }
+
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         topologyBuilder.setBolt(ComponentId.HISTORY_BOLT.name(), historyBolt, parallelism)
@@ -340,6 +349,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FLOW_DELETE_SPEAKER_WORKER("flow.delete.worker.bolt"),
 
         NB_RESPONSE_SENDER("nb.kafka.bolt"),
+        FLOW_PING_SENDER("ping.kafka.bolt"),
+
         SPEAKER_REQUEST_SENDER("speaker.kafka.bolt"),
 
         HISTORY_BOLT("flow.history.bolt");
@@ -372,7 +383,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         SPEAKER_WORKER_TO_HUB_DELETE,
 
         SPEAKER_WORKER_REQUEST_SENDER,
-        HUB_TO_NB_RESPONSE_SENDER
+        HUB_TO_NB_RESPONSE_SENDER,
+        HUB_TO_PING_SENDER
     }
 
     /**

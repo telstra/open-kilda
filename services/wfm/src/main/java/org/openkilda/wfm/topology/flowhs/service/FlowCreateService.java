@@ -95,7 +95,7 @@ public class FlowCreateService {
         FlowCreateContext context = FlowCreateContext.builder()
                 .targetFlow(requestedFlow)
                 .build();
-
+        fsm.setTargetFlow(requestedFlow);
         fsm.start();
         processNext(fsm, context);
         removeIfFinished(fsm, key);

@@ -48,6 +48,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocation
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
@@ -75,6 +76,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
 
     private final FlowCreateHubCarrier carrier;
 
+    private RequestedFlow targetFlow;
     private final String flowId;
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;

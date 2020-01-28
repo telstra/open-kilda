@@ -282,7 +282,7 @@ public abstract class FlowMapper {
                 .description(flow.getDescription())
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
-                .periodicPings(flow.isPeriodicPings())
+                .periodicPings(Boolean.TRUE.equals(flow.getPeriodicPings()))
                 .allocateProtectedPath(flow.isAllocateProtectedPath())
                 .encapsulationType(Optional.ofNullable(flow.getEncapsulationType())
                     .map(encapsulationType -> FlowEncapsulationType.valueOf(encapsulationType.name()))

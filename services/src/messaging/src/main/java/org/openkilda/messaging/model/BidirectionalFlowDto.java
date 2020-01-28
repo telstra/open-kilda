@@ -70,7 +70,7 @@ public class BidirectionalFlowDto implements Serializable {
         this(forward.getFlowId(),
                 forward.getBandwidth(),
                 forward.isIgnoreBandwidth(),
-                forward.isPeriodicPings(),
+                Boolean.TRUE.equals(forward.getPeriodicPings()),
                 forward.getFlagglessCookie(),
                 forward.getDescription(),
                 forward.getState(),
