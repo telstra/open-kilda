@@ -107,7 +107,20 @@ public class FlowFetcher extends Abstract {
             try {
                 flows.add(new BidirectionalFlowDto(FlowMapper.INSTANCE.map(fp)));
             } catch (Exception e) {
-                log.info("Failed to build flow for path. Skipping. ");
+                String forwardPathId = null;
+                if (fp != null && fp.forward != null && fp.forward.getFlowPath() != null
+                        && fp.forward.getFlowPath().getPathId() != null) {
+                    forwardPathId = fp.forward.getFlowPath().getPathId().getId();
+                }
+                String reversePathId = null;
+                if (fp != null && fp.reverse != null && fp.reverse.getFlowPath() != null
+                        && fp.reverse.getFlowPath().getPathId() != null) {
+                    reversePathId = fp.reverse.getFlowPath().getPathId().getId();
+                }
+
+                String message = String.format("Failed to build flow from paths. Forward path id '%s', "
+                        + "reverse path id '%s'. Skipping.", forwardPathId, reversePathId);
+                log.info(message, e);
             }
         }
         if (emitCacheExpiry) {
