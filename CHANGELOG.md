@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.47.0 (29/01/2020)
+
+### Bug Fixes:
+-  [#3148](https://github.com/telstra/open-kilda/pull/3148) Periodic pings perf [**northbound**][**storm-topologies**]
+-  [#3006](https://github.com/telstra/open-kilda/pull/3006) Fix periodic pings (Issue: [#2873](https://github.com/telstra/open-kilda/issues/2873)) [**storm-topologies**]
+
+### Improvements:
+-  [#3138](https://github.com/telstra/open-kilda/pull/3138) Introduce PoP for the switch and take it into account in pce [**pce**] 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v.1.46.0...v1.47.0).
+
+### Affected Components:
+ping, nbworker, flow, nb, flow-hs
+
+---
+
 ## v1.46.0 (24/01/2020)
 
 ### Features:
