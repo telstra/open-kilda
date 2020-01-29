@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service;
+package org.openkilda.persistence.dummy;
 
-public interface FlowUpdateHubCarrier extends FlowGenericCarrier {
-    /**
-     * Cancels timeout callback.
-     *
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
+
+import lombok.Data;
+
+@Data
+public class FlowPathDefaults {
+    private FlowPathStatus status = FlowPathStatus.ACTIVE;
+
+    public FlowPath.FlowPathBuilder fill(FlowPath.FlowPathBuilder flowPath) {
+        flowPath.status(status);
+        return flowPath;
+    }
 }

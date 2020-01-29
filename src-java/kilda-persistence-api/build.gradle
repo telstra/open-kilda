@@ -10,5 +10,21 @@ dependencies {
     implementation 'net.jodah:failsafe'
 
     compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+configurations {
+    testArtifacts
+}
+
+task testJar(type: Jar) {
+    dependsOn compileTestJava
+    classifier 'test'
+    from sourceSets.test.output
+}
+
+artifacts {
+    testArtifacts testJar
 }
