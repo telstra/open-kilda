@@ -142,6 +142,7 @@ public class InMemoryPathComputer implements PathComputer {
             total += config.getUnstableCostRaise();
         }
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
+                + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
                 + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
         return total;
     }
@@ -155,6 +156,7 @@ public class InMemoryPathComputer implements PathComputer {
             total += config.getUnstableLatencyRaise();
         }
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency()
+                + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
                 + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
         return total;
     }

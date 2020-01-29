@@ -28,10 +28,15 @@ public class FlowPatchDto {
     @JsonProperty("priority")
     private Integer priority;
 
+    @JsonProperty("periodic_pings")
+    private Boolean periodicPings;
+
     @JsonCreator
     public FlowPatchDto(@JsonProperty("max-latency") Integer maxLatency,
-                        @JsonProperty("priority") Integer priority) {
+                        @JsonProperty("priority") Integer priority,
+                        @JsonProperty("periodic_pings") Boolean periodicPings) {
         this.maxLatency = maxLatency;
         this.priority = priority;
+        this.periodicPings = periodicPings;
     }
 }

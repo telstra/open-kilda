@@ -80,6 +80,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
     private static final String FLOW_HS_KAFKA_BOLT_NAME = "flowhs-kafka-bolt";
     private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
+    private static final String PING_KAFKA_BOLT_NAME = "ping-kafka-bolt";
     private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
@@ -249,6 +250,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic());
         tb.setBolt(DISCO_KAFKA_BOLT_NAME, kafkaDiscoBolt, parallelism)
                 .shuffleGrouping(DISCOVERY_ENCODER_BOLT_NAME);
+
+        KafkaBolt kafkaPingBolt = buildKafkaBolt(topologyConfig.getKafkaPingTopic());
+        tb.setBolt(PING_KAFKA_BOLT_NAME, kafkaPingBolt, parallelism)
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.PING.toString());
 
         tb.setBolt(SPEAKER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()))
                 .shuffleGrouping(VALIDATION_WORKER_BOLT, StreamType.TO_SPEAKER.toString())

@@ -29,4 +29,11 @@ public interface FlowGenericCarrier {
      * Sends main events to history bolt.
      */
     void sendHistoryUpdate(FlowHistoryHolder historyHolder);
+
+    /**
+     * Sends update on periodic ping status for the flow.
+     * @param flowId flow id
+     * @param enabled flag
+     */
+    void sendPeriodicPingNotification(String flowId, boolean enabled);
 }

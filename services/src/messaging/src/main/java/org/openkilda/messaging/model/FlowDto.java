@@ -62,7 +62,7 @@ public class FlowDto implements Serializable {
     private boolean ignoreBandwidth;
 
     @JsonProperty("periodic-pings")
-    private boolean periodicPings;
+    private Boolean periodicPings;
 
     @JsonProperty("allocate_protected_path")
     private boolean allocateProtectedPath;
@@ -200,7 +200,7 @@ public class FlowDto implements Serializable {
     public FlowDto(@JsonProperty(Utils.FLOW_ID) final String flowId,
                    @JsonProperty("bandwidth") final long bandwidth,
                    @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
-                   @JsonProperty("periodic-pings") boolean periodicPings,
+                   @JsonProperty("periodic-pings") Boolean periodicPings,
                    @JsonProperty("allocate_protected_path") boolean allocateProtectedPath,
                    @JsonProperty("cookie") final long cookie,
                    @JsonProperty("description") final String description,

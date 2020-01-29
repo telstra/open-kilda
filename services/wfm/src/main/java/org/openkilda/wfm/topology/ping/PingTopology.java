@@ -124,10 +124,12 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
 
-        FlowFetcher bolt = new FlowFetcher(persistenceManager);
+        FlowFetcher bolt = new FlowFetcher(persistenceManager, topologyConfig.getPeriodicPingCacheExpirationInterval());
         topology.setBolt(FlowFetcher.BOLT_ID, bolt, scaleFactor)
+                // NOTE(tdurakov): global grouping is responsible for proper handling parallelism of 2
                 .globalGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_PING_ID)
-                .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID);
+                .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID)
+                .allGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_PERIODIC_PING_UPDATE_REQUEST_ID);
     }
 
     private void periodicPingShaping(TopologyBuilder topology) {

@@ -81,7 +81,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .priority(priority)
                 .build();
 
-        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(receivedFlow);
+        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
@@ -89,7 +89,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         receivedFlow = FlowDto.builder()
                 .flowId(testFlowId)
                 .build();
-        updatedFlow = flowOperationsService.updateFlow(receivedFlow);
+        updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());

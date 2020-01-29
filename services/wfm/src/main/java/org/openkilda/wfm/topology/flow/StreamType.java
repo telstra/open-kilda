@@ -92,5 +92,11 @@ public enum StreamType {
     /**
      * Swap endpoint messages.
      */
-    SWAP_ENDPOINT;
+    SWAP_ENDPOINT,
+
+
+    /**
+     * Ping messages.
+     */
+    PING;
 }

@@ -51,6 +51,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
             new Fields(Utils.FLOW_ID, FLOW_STATUS_FIELD, FIELD_ID_CONTEXT);
     public static final Fields fieldsMessageFlowId = new Fields(MESSAGE_FIELD, Utils.FLOW_ID);
     public static final Fields fieldsMessageErrorType = new Fields(MESSAGE_FIELD, ERROR_TYPE_FIELD);
+    public static final Fields fieldsKeyMessage = new Fields(KEY_FIELD, MESSAGE_FIELD);
 
     public FlowTopology(LaunchEnvironment env) {
         super(env, FlowTopologyConfig.class);
@@ -172,6 +173,13 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         builder.setBolt(ComponentType.HISTORY_BOLT.toString(), historyBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.HISTORY.toString());
+
+        /*
+         * Bolt to schedule periodic pings
+         */
+        KafkaBolt pingKafkaBolt = buildKafkaBolt(topologyConfig.getKafkaPingTopic());
+        builder.setBolt(ComponentType.FLOW_PING_KAFKA_BOLT.toString(), pingKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.PING.toString());
 
         return builder.createTopology();
     }

@@ -42,9 +42,14 @@ public class Edge {
     private boolean unstable;
 
     private int diversityGroupUseCounter;
+    private int diversityGroupPerPopUseCounter;
 
     public void increaseDiversityGroupUseCounter() {
         diversityGroupUseCounter++;
+    }
+
+    public void increaseDiversityGroupPerPopUseCounter() {
+        diversityGroupPerPopUseCounter++;
     }
 
     /**
