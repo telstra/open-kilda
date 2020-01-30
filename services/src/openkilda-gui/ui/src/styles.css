@@ -1297,8 +1297,9 @@ path.link {
   stroke-width:5px!important;
 }
 .dashed_maintenance_path{
-  stroke-dasharray: 5,10;
+  stroke-dasharray: 15,20;
   /* stroke:#008000; */
+  stroke-width: 6px !important;
 }
 .dashed_path_protected{
   stroke-dasharray: 20,29;
