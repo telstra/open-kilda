@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.PingReport;
 import org.openkilda.messaging.model.PingReport.State;
+import org.openkilda.model.Flow;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.FlowObserver;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -100,11 +100,11 @@ public class FailReporter extends Abstract {
     }
 
     private void handleCacheExpiration(Tuple input) throws PipelineException {
-        BidirectionalFlowDto ref = pullFlowDto(input);
+        Flow ref = pullFlow(input);
         FlowObserver status = flowsStatusMap.get(ref.getFlowId());
         if (status != null) {
-            status.remove(ref.getForward().getCookie());
-            status.remove(ref.getReverse().getCookie());
+            status.remove(ref.getForwardPath().getCookie().getValue());
+            status.remove(ref.getReversePath().getCookie().getValue());
         }
     }
 
@@ -138,8 +138,8 @@ public class FailReporter extends Abstract {
         getOutput().emit(input, output);
     }
 
-    private BidirectionalFlowDto pullFlowDto(Tuple input) throws PipelineException {
-        return pullValue(input, FlowFetcher.FIELD_FLOW_REF, BidirectionalFlowDto.class);
+    private Flow pullFlow(Tuple input) throws PipelineException {
+        return pullValue(input, FlowFetcher.FIELD_FLOW_REF, Flow.class);
     }
 
     @Override

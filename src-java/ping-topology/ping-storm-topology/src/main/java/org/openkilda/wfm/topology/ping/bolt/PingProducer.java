@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDirection;
-import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.GroupId;
@@ -45,9 +45,7 @@ public class PingProducer extends Abstract {
     }
 
     private PingContext produce(PingContext pingContext, GroupId group, FlowDirection direction) {
-        FlowDto flow = getFlowThread(pingContext.getFlow(), direction);
-        Ping ping = new Ping(flow);
-
+        Ping ping = buildPing(pingContext, direction);
         return pingContext.toBuilder()
                 .ping(ping)
                 .direction(direction)
@@ -61,19 +59,22 @@ public class PingProducer extends Abstract {
         getOutput().emit(input, output);
     }
 
-    private FlowDto getFlowThread(BidirectionalFlowDto flow, FlowDirection direction) {
-        FlowDto result;
-
+    private Ping buildPing(PingContext pingContext, FlowDirection direction) {
+        Flow flow = pingContext.getFlow();
         if (FlowDirection.FORWARD == direction) {
-            result = flow.getForward();
+            FlowPath flowPath = flow.getForwardPath();
+            return new Ping((short) flow.getSrcVlan(),
+                    flowPath.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
+                    flowPath.getDestSwitch().getSwitchId(), flow.getDestPort());
         } else if (FlowDirection.REVERSE == direction) {
-            result = flow.getReverse();
+            FlowPath flowPath = flow.getReversePath();
+            return new Ping((short) flow.getDestVlan(),
+                    flowPath.getSrcSwitch().getSwitchId(), flow.getDestPort(),
+                    flowPath.getDestSwitch().getSwitchId(), flow.getSrcPort());
         } else {
             throw new IllegalArgumentException(String.format(
                     "Unexpected %s value: %s", FlowDirection.class.getCanonicalName(), direction));
         }
-
-        return result;
     }
 
     @Override

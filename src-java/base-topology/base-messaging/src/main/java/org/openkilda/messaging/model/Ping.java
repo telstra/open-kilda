@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
@@ -71,6 +73,12 @@ public class Ping implements Serializable {
         this(UUID.randomUUID(), (short) flow.getSourceVlan(),
                 new NetworkEndpoint(flow.getSourceSwitch(), flow.getSourcePort()),
                 new NetworkEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()));
+    }
+
+    public Ping(Short srcVlanId, SwitchId srcSwitchId, int srsPort, SwitchId dstSwitchId, int dstPort) {
+        this(UUID.randomUUID(), srcVlanId,
+                new NetworkEndpoint(srcSwitchId, srsPort),
+                new NetworkEndpoint(dstSwitchId, dstPort));
     }
 
     @Override
