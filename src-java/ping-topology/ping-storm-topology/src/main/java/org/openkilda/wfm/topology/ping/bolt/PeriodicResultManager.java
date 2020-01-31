@@ -39,13 +39,13 @@ public class PeriodicResultManager extends ResultManager {
     public static final String STREAM_BLACKLIST_ID = "blacklist";
 
     @Override
-    protected void handle(Tuple input, PingContext pingContext) throws Exception {
+    protected void handle(Tuple input, PingContext pingContext) throws PipelineException {
         updateFailReporter(input, pingContext);
         super.handle(input, pingContext);
     }
 
     @Override
-    protected void handleSuccess(Tuple input, PingContext pingContext) throws PipelineException {
+    protected void handleResponse(Tuple input, PingContext pingContext) throws PipelineException {
         Values output = new Values(pingContext, pullContext(input));
         getOutput().emit(STREAM_STATS_ID, input, output);
     }

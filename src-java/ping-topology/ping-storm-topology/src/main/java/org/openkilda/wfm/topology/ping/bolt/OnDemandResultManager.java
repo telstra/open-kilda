@@ -37,7 +37,7 @@ public class OnDemandResultManager extends ResultManager {
     public static final Fields STREAM_FIELDS = new Fields(NorthboundEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     @Override
-    protected void handle(Tuple input, PingContext pingContext) throws Exception {
+    protected void handle(Tuple input, PingContext pingContext) throws PipelineException {
         collectGroup(input, pingContext);
         super.handle(input, pingContext);
     }

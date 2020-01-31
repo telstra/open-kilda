@@ -28,6 +28,7 @@ import org.apache.storm.tuple.Values;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class StatsProducer extends Abstract {
     public static final String BOLT_ID = ComponentId.STATS_PRODUCER.toString();
@@ -35,6 +36,10 @@ public class StatsProducer extends Abstract {
     public static final String FIELD_ID_STATS_DATAPOINT = OtsdbEncoder.FIELD_ID_STATS_DATAPOINT;
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_STATS_DATAPOINT, FIELD_ID_CONTEXT);
+
+    public static final long ERROR_PING_LATENCY_VALUE = -1L;
+    public static final String SUCCESS_STATUS_TAG_VALUE = "success";
+    public static final String ERROR_STATUS_TAG_VALUE = "error";
 
     private MetricFormatter metricFormatter;
 
@@ -55,10 +60,13 @@ public class StatsProducer extends Abstract {
     private void produceMetersStats(Tuple input, Map<String, String> tags, PingContext pingContext)
             throws PipelineException {
         tags.put("direction", pingContext.getDirection().name().toLowerCase());
+        tags.put("status", pingContext.getError() == null ? SUCCESS_STATUS_TAG_VALUE : ERROR_STATUS_TAG_VALUE);
 
-        PingMeters meters = pingContext.getMeters();
+        long networkLatency = Optional.ofNullable(pingContext.getMeters())
+                .map(PingMeters::getNetworkLatency)
+                .orElse(ERROR_PING_LATENCY_VALUE);
         Datapoint datapoint = new Datapoint(
-                metricFormatter.format("flow.latency"), pingContext.getTimestamp(), tags, meters.getNetworkLatency());
+                metricFormatter.format("flow.latency"), pingContext.getTimestamp(), tags, networkLatency);
         emit(input, datapoint);
     }
 
