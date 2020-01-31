@@ -978,8 +978,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public Map<DatapathId, IOFSwitch> getAllSwitchMap() {
-        return ofSwitchService.getAllSwitchMap();
+    public Map<DatapathId, IOFSwitch> getAllSwitchMap(boolean visible) {
+        return ofSwitchService.getAllSwitchMap().entrySet()
+                .stream()
+                .filter(e -> visible == e.getValue().getStatus().isVisible())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     /**

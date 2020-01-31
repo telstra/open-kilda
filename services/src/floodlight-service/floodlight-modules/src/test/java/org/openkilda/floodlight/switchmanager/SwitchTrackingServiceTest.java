@@ -331,7 +331,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
             expect(sw.getConnectionByCategory(eq(LogicalOFMessageCategory.MAIN))).andReturn(connect);
         }
 
-        expect(switchManager.getAllSwitchMap()).andReturn(switches);
+        expect(switchManager.getAllSwitchMap(true)).andReturn(switches);
 
         expect(switchManager.getPhysicalPorts(eq(iofSwitch1))).andReturn(ImmutableList.of(
                 makePhysicalPortMock(1, true),

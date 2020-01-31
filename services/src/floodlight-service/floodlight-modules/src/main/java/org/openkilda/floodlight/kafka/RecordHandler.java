@@ -1238,7 +1238,7 @@ class RecordHandler implements Runnable {
         try {
             PortsCommandData request = (PortsCommandData) message.getData();
             logger.info("Getting ports data. Requester: {}", request.getRequester());
-            Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap();
+            Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap(true);
             for (Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
                 SwitchId switchId = new SwitchId(entry.getKey().toString());
                 try {
