@@ -35,7 +35,7 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowDeleteFsm, Stat
     @Override
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getFlowId(), false);
-        dashboardLogger.onSuccessfulFlowReroute(stateMachine.getFlowId());
+        dashboardLogger.onSuccessfulFlowDelete(stateMachine.getFlowId());
         stateMachine.saveActionToHistory("Flow was deleted successfully");
     }
 }
