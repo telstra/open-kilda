@@ -1,15 +1,19 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
@@ -281,5 +285,71 @@ feature toogle"() {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
         flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "System doesn't reroute flow when flows_reroute_on_isl_discovery: false"() {
+        given: "A flow with alternative paths"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+        def allFlowPaths = switchPair.paths
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+
+        //you have to break all altPaths to avoid rerouting when flowPath is broken
+        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def altPaths = allFlowPaths.findAll { it != flowPath && it.first().portNo != flowPath.first().portNo }
+        List<PathNode> broughtDownPorts = []
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            antiflap.portDown(src.switchId, src.portNo)
+        }
+        def altPortsAreDown = true
+
+        and: "Set flowsRerouteOnIslDiscovery=false"
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteOnIslDiscoveryEnabled(false)
+                .build())
+        def featureToogleIsUpdated = true
+
+        when: "Break the flow path(bring port down on the src switch)"
+        def getInvolvedIsls = pathHelper.getInvolvedIsls(flowPath)
+        def islToBreak = getInvolvedIsls.first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def mainPortIsDown = true
+
+        then: "The flow becomes 'Down'"
+        Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        }
+
+        when: "Restore all possible flow paths"
+        withPool {
+            broughtDownPorts.everyParallel { antiflap.portUp(it.switchId, it.portNo) }
+        }
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        altPortsAreDown = false
+        mainPortIsDown = false
+
+        then: "The flow is still in 'Down' status, because flows_reroute_on_isl_discovery: false"
+        assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+
+        and: "Flow is not rerouted"
+        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+
+        cleanup: "Restore topology to the original state, remove the flow, reset toggles"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        altPortsAreDown && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        mainPortIsDown && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        featureToogleIsUpdated && northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowsRerouteOnIslDiscoveryEnabled(true)
+                .build())
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        database.resetCosts()
     }
 }
