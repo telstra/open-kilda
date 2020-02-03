@@ -33,5 +33,7 @@ public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
 
     void setupTimeoutCallback(String key);
 
+    void handlePostponedRequest(FlowRerouteFact retry);
+
     void injectRetry(FlowRerouteFact retry);
 }

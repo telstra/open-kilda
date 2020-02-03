@@ -164,7 +164,7 @@ public class FlowRerouteService {
 
         final String flowId =  reroute.getFlowId();
         final String key = reroute.getKey();
-        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId, reroute.getRerouteCounter());
         fsms.put(key, fsm);
 
         FlowRerouteContext context = FlowRerouteContext.builder()
@@ -200,7 +200,7 @@ public class FlowRerouteService {
             performHousekeeping(fsm.getFlowId(), key);
 
             // use some sort of recursion here, because iterative way require too complex scheme to clean/use retryQueue
-            retryManager.read(fsm.getFlowId()).ifPresent(carrier::injectRetry);
+            retryManager.read(fsm.getFlowId()).ifPresent(carrier::handlePostponedRequest);
         }
     }
 

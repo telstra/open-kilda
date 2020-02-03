@@ -34,13 +34,13 @@ public class RerouteRetryQueueTest {
 
     private final String flowId = "flowA";
     private final FlowRerouteFact rerouteEmpty = new FlowRerouteFact(
-            "empty", context, flowId, null, false, false, "reason 1");
+            "empty", context, flowId, null, false, false, "reason 1", 0);
     private final FlowRerouteFact reroutePathA = new FlowRerouteFact(
-            "pathA", context, flowId, Collections.singleton(new IslEndpoint(switchId, 1)), false, false, "reason 2");
+            "pathA", context, flowId, Collections.singleton(new IslEndpoint(switchId, 1)), false, false, "reason 2", 0);
     private final FlowRerouteFact reroutePathB = new FlowRerouteFact(
-            "pathB", context, flowId, Collections.singleton(new IslEndpoint(switchId, 2)), false, false, "reason 3");
+            "pathB", context, flowId, Collections.singleton(new IslEndpoint(switchId, 2)), false, false, "reason 3", 0);
     private final FlowRerouteFact rerouteForced = new FlowRerouteFact(
-            "forced", context, flowId, null, true, true, "reason 4");
+            "forced", context, flowId, null, true, true, "reason 4", 0);
 
     @Test
     public void addAndSizeOperations() {

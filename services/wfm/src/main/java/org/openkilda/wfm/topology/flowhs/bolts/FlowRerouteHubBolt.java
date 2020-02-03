@@ -89,7 +89,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         FlowRerouteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowRerouteRequest.class);
         FlowRerouteFact reroute = new FlowRerouteFact(
                 currentKey, getCommandContext(), request.getFlowId(), request.getAffectedIsl(), request.isForce(),
-                request.isEffectivelyDown(), request.getReason());
+                request.isEffectivelyDown(), request.getReason(), 0);
         service.handleRequest(reroute);
     }
 
@@ -144,7 +144,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
      * "Hack" required to propagate execution context for postponed requests up to transport/carrier level.
      */
     @Override
-    public void injectRetry(FlowRerouteFact reroute) {
+    public void handlePostponedRequest(FlowRerouteFact reroute) {
         String originalKey = currentKey;
         CommandContext originalCommandContext = getCommandContext();
         try {
@@ -153,6 +153,26 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
             currentKey = reroute.getKey();
 
             service.handlePostponedRequest(reroute);
+        } finally {
+            currentKey = originalKey;
+            setCommandContext(originalCommandContext);
+            MDC.put(CORRELATION_ID, originalCommandContext.getCorrelationId());
+        }
+    }
+
+    /**
+     * "Hack" required to inject reroute retry initiated by FlowRerouteFsm up to transport/carrier level.
+     */
+    @Override
+    public void injectRetry(FlowRerouteFact reroute) {
+        String originalKey = currentKey;
+        CommandContext originalCommandContext = getCommandContext();
+        try {
+            MDC.put(CORRELATION_ID, reroute.getCommandContext().getCorrelationId());
+            setCommandContext(reroute.getCommandContext());
+            currentKey = reroute.getKey();
+
+            service.handleRequest(reroute);
         } finally {
             currentKey = originalKey;
             setCommandContext(originalCommandContext);

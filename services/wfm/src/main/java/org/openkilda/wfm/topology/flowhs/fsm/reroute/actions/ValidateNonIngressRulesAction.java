@@ -16,16 +16,24 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.REROUTE_RETRY_LIMIT;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.model.Flow;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
@@ -34,9 +42,20 @@ import java.util.UUID;
 public class ValidateNonIngressRulesAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final int speakerCommandRetriesLimit;
+    private FlowRepository flowRepository;
+    private FlowRerouteHubCarrier carrier;
+
+    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
 
     public ValidateNonIngressRulesAction(int speakerCommandRetriesLimit) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+    }
+
+    public ValidateNonIngressRulesAction(int speakerCommandRetriesLimit, PersistenceManager persistenceManager,
+                                         FlowRerouteHubCarrier carrier) {
+        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.carrier = carrier;
     }
 
     @Override
@@ -77,6 +96,24 @@ public class ValidateNonIngressRulesAction extends
                                 commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
                 stateMachine.getFailedValidationResponses().put(commandId, response);
+
+                int rerouteCounter = stateMachine.getRerouteCounter();
+                String flowId = stateMachine.getFlowId();
+                Flow flow = flowRepository.findById(flowId)
+                        .orElseThrow(() -> new IllegalStateException(format("Flow %s not found", flowId)));
+                boolean isTerminatingSwitch = errorResponse.getSwitchId().equals(flow.getSrcSwitch().getSwitchId())
+                        || errorResponse.getSwitchId().equals(flow.getDestSwitch().getSwitchId());
+                if (!isTerminatingSwitch && carrier != null && rerouteCounter < REROUTE_RETRY_LIMIT) {
+                    rerouteCounter += 1;
+                    String newReason = format("%s: retry #%d", context.getRerouteReason(), rerouteCounter);
+                    FlowRerouteFact flowRerouteFact = new FlowRerouteFact(commandIdGenerator.generate().toString(),
+                            stateMachine.getCommandContext().fork(format("retry #%d", rerouteCounter)),
+                            stateMachine.getFlowId(), context.getAffectedIsl(), context.isForceReroute(),
+                            context.isEffectivelyDown(), newReason, rerouteCounter);
+                    carrier.injectRetry(flowRerouteFact);
+                    stateMachine.saveActionToHistory("Inject reroute retry",
+                            format("Reroute counter %d", rerouteCounter));
+                }
             }
         }
 

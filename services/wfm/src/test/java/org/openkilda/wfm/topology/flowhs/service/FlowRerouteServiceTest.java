@@ -145,7 +145,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
             currentRequestKey = retry.getKey();
             rerouteService.handlePostponedRequest(retry);
             return null;
-        }).when(carrier).injectRetry(any());
+        }).when(carrier).handlePostponedRequest(any());
 
         rerouteService = new FlowRerouteService(carrier, persistenceManager,
                 pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
@@ -168,7 +168,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.DOWN, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -187,7 +187,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -209,7 +209,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .thenThrow(ResourceAllocationException.class);
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -231,7 +231,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .thenThrow(new ResourceAllocationException("No resources"));
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -251,7 +251,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         doThrow(new RuntimeException("Must fail")).when(flowPathRepository).lockInvolvedSwitches(any(), any());
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         verify(flowResourcesManager, times(0)).deallocatePathResources(any());
         verify(flowResourcesManager, times(0)).deallocatePathResources(any(), anyLong(), any());
@@ -265,7 +265,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
@@ -282,7 +282,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -322,7 +322,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -347,7 +347,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -387,7 +387,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -420,7 +420,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -469,7 +469,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -510,7 +510,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -537,7 +537,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -579,7 +579,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+                "test_key", commandContext, FLOW_ID, null, false, false, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -622,11 +622,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .thenReturn(resourcesSecond);
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null));
+                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null, 0));
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key2", commandContext, flow.getFlowId(), null, false, false, null));
+                "test_key2", commandContext, flow.getFlowId(), null, false, false, null, 0));
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
 
         FlowSegmentRequest request;
@@ -650,7 +650,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .thenReturn(true);
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null));
+                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null, 0));
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
             produceAsyncResponse(currentRequestKey, request);
@@ -658,7 +658,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.UP, flow.getStatus());
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, flow.getFlowId(), null, false, true, null));
+                currentRequestKey, commandContext, flow.getFlowId(), null, false, true, null, 0));
         while ((request = requests.poll()) != null) {
             produceAsyncResponse(currentRequestKey, request);
         }
@@ -673,7 +673,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         buildFlowResources();
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, FLOW_ID, null, false, true, null));
+                currentRequestKey, commandContext, FLOW_ID, null, false, true, null, 0));
 
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -696,7 +696,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
 
         rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, FLOW_ID, null, false, true, null));
+                currentRequestKey, commandContext, FLOW_ID, null, false, true, null, 0));
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
@@ -718,7 +718,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         IslEndpoint affectedEndpoint = extractIslEndpoint(flow);
         rerouteService.handleRequest(new FlowRerouteFact(
                 currentRequestKey, commandContext, FLOW_ID, Collections.singleton(affectedEndpoint), false, true,
-                null));
+                null, 0));
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
 
         FlowSegmentRequest request;
@@ -740,7 +740,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 affectedEndpoint.getSwitchId(), affectedEndpoint.getPortNumber() + 1);
         rerouteService.handleRequest(new FlowRerouteFact(
                 currentRequestKey, commandContext, FLOW_ID, Collections.singleton(notAffectedEndpoint), false, true,
-                null));
+                null, 0));
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());

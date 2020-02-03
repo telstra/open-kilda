@@ -88,6 +88,6 @@ public class RerouteRetryQueue {
 
         return new FlowRerouteFact(
                 reroute.getKey(), reroute.getCommandContext(), reroute.getFlowId(), affectedIsl,
-                isForced, isEffectivelyDown, reroute.getRerouteReason());
+                isForced, isEffectivelyDown, reroute.getRerouteReason(), 0);
     }
 }
