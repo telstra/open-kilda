@@ -405,6 +405,7 @@ public class NetworkSwitchServiceTest {
                                         LinkStatus.of(ports2.get(0).getState()));
         verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(1).getNumber()),
                                            LinkStatus.of(ports2.get(0).getState()));
+        verify(carrier).sendAffectedFlowRerouteRequest(alphaDatapath);
     }
 
     @Test
@@ -608,6 +609,7 @@ public class NetworkSwitchServiceTest {
         verify(carrier).setupPortHandler(endpoint, null);
         verify(carrier).setOnlineMode(endpoint, true);
         verify(carrier).setPortLinkMode(endpoint, LinkStatus.UP);
+        verify(carrier).sendAffectedFlowRerouteRequest(alphaDatapath);
 
         verifyNoMoreInteractions(carrier);
     }
@@ -900,6 +902,7 @@ public class NetworkSwitchServiceTest {
                 LinkStatus.of(ports.get(0).getState()));
         verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
                 LinkStatus.of(ports.get(0).getState()));
+        verify(carrier).sendAffectedFlowRerouteRequest(alphaDatapath);
 
         verify(switchRepository).createOrUpdate(argThat(sw ->
                 sw.getStatus() == SwitchStatus.INACTIVE && sw.getSwitchId() == alphaDatapath));
