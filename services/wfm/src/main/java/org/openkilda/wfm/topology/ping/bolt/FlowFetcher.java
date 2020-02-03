@@ -21,6 +21,9 @@ import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.wfm.CommandContext;
@@ -35,10 +38,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class FlowFetcher extends Abstract {
     public static final String BOLT_ID = ComponentId.FLOW_FETCHER.toString();
@@ -100,9 +104,30 @@ public class FlowFetcher extends Abstract {
 
     private void refreshHeap(Tuple input, boolean emitCacheExpiry) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final Set<BidirectionalFlowDto> flows = flowPairRepository.findWithPeriodicPingsEnabled().stream()
-                .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
-                .collect(Collectors.toSet());
+        final Set<BidirectionalFlowDto> flows = new HashSet<>();
+        Collection<FlowPair> flowPairs = flowPairRepository.findWithPeriodicPingsEnabled();
+        for (FlowPair fp : flowPairs) {
+            try {
+                flows.add(new BidirectionalFlowDto(FlowMapper.INSTANCE.map(fp)));
+            } catch (Exception e) {
+                String forwardPathId = Optional.ofNullable(fp)
+                        .map(FlowPair::getForward)
+                        .map(UnidirectionalFlow::getFlowPath)
+                        .map(FlowPath::getPathId)
+                        .map(PathId::getId)
+                        .orElse(null);
+                String reversePathId = Optional.ofNullable(fp)
+                        .map(FlowPair::getReverse)
+                        .map(UnidirectionalFlow::getFlowPath)
+                        .map(FlowPath::getPathId)
+                        .map(PathId::getId)
+                        .orElse(null);
+
+                String message = String.format("Failed to build flow from paths. Forward path id '%s', "
+                        + "reverse path id '%s'. Skipping.", forwardPathId, reversePathId);
+                log.info(message, e);
+            }
+        }
         if (emitCacheExpiry) {
             final CommandContext commandContext = pullContext(input);
             emitCacheExpire(input, commandContext, flows);
