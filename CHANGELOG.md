@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.47.1 (03/02/2020)
+
+### Bug Fixes:
+-  [#3158](https://github.com/telstra/open-kilda/pull/3158) Skip corrupted flow while doing periodic pings invalidation. [**storm-topologies**]
+-  [#3133](https://github.com/telstra/open-kilda/pull/3133) Reroute affected flows on switch up event. (Issue: [#3131](https://github.com/telstra/open-kilda/issues/3131)) [**storm-topologies**]
+-  [#3159](https://github.com/telstra/open-kilda/pull/3159) Fixed incorrect log message in case of v2 FlowDelete. [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.47.0...v1.47.1).
+
+### Affected Components:
+ping, reroute, network
+
+---
+
 ## v1.47.0 (29/01/2020)
 
 ### Bug Fixes:
