@@ -22,7 +22,6 @@ import static org.openkilda.testing.Constants.DEFAULT_COST;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
@@ -31,7 +30,6 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -47,9 +45,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
 import org.neo4j.ogm.model.Property;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.response.model.RelationshipModel;
@@ -57,7 +52,6 @@ import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -426,33 +420,5 @@ public class DatabaseSupportImpl implements Database {
                 .map(r -> ((RelationshipModel) r.get("i")).getPropertyList().stream()
                         .collect(toMap(Property::getKey, Property::getValue)))
                 .collect(toList());
-    }
-
-    private FlowDto convert(UnidirectionalFlow flow) {
-        return flowMapper.map(flow);
-    }
-
-    private static final FlowMapper flowMapper = Mappers.getMapper(FlowMapper.class);
-
-    @Mapper
-    public interface FlowMapper {
-        @Mapping(source = "srcPort", target = "sourcePort")
-        @Mapping(source = "srcVlan", target = "sourceVlan")
-        @Mapping(source = "destPort", target = "destinationPort")
-        @Mapping(source = "destVlan", target = "destinationVlan")
-        @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
-        @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
-        @Mapping(source = "status", target = "state")
-        FlowDto map(UnidirectionalFlow flow);
-
-        /**
-         * Convert {@link Instant} to {@link String}.
-         */
-        default String map(Instant time) {
-            if (time == null) {
-                return null;
-            }
-            return DateTimeFormatter.ISO_INSTANT.format(time);
-        }
     }
 }

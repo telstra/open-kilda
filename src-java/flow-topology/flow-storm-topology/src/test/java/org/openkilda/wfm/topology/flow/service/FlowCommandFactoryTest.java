@@ -31,12 +31,12 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.PathSegment.PathSegmentBuilder;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
@@ -422,19 +422,19 @@ public class FlowCommandFactoryTest {
                 .destSwitch(dstSwitch)
                 .destPort(21);
 
-        UnidirectionalFlow flow = buildFlow(srcSwitch, 1, 101,
+        Flow flow = buildFlow(srcSwitch, 1, 101,
                 dstSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2), encapsulationType);
-        flow.getFlowPath().setMeterId(null);
+        flow.getForwardPath().setMeterId(null);
 
-        RemoveFlow command = factory.createRemoveIngressRulesForFlow(flow.getFlowPath(), false, false);
+        RemoveFlow command = factory.createRemoveIngressRulesForFlow(flow.getForwardPath(), false, false);
 
         assertEquals(SWITCH_ID_1, command.getSwitchId());
         assertEquals(1, (int) command.getCriteria().getInPort());
         assertEquals(11, (int) command.getCriteria().getOutPort());
         assertEquals(101, (int) command.getCriteria().getEncapsulationId());
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, command.getCriteria().getEncapsulationType());
-        assertEquals(null, command.getCriteria().getEgressSwitchId());
+        assertNull(command.getCriteria().getEgressSwitchId());
         assertNull(command.getMeterId());
     }
 
@@ -442,18 +442,18 @@ public class FlowCommandFactoryTest {
     public void shouldCreateInstallRulesForSingleSwitch() {
         Switch theSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
 
-        UnidirectionalFlow flow = buildFlow(theSwitch, 1, 101,
+        Flow flow = buildFlow(theSwitch, 1, 101,
                 theSwitch, 2, 201, 0, 0, true,
                 Collections.emptyList(), null);
 
         FlowCommandFactory factory = new FlowCommandFactory();
         List<BaseInstallFlow> rules =
                 factory.createInstallLldpTransitAndEgressRulesForFlow(
-                        flow.getFlowPath(), null);
+                        flow.getForwardPath(), null);
         assertThat(rules, hasSize(0));
 
         BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(
-                flow.getFlowPath(), null);
+                flow.getForwardPath(), null);
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getInputPort());
@@ -466,29 +466,29 @@ public class FlowCommandFactoryTest {
     public void shouldCreateRemoveRulesForSingleSwitch() {
         Switch theSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
 
-        UnidirectionalFlow flow = buildFlow(theSwitch, 1, 101,
+        Flow flow = buildFlow(theSwitch, 1, 101,
                 theSwitch, 2, 201, 0, 0, true,
                 Collections.emptyList(), null);
 
         List<RemoveFlow> rules = factory.createRemoveLldpTransitAndEgressRulesForFlow(
-                flow.getFlowPath(), null);
+                flow.getForwardPath(), null);
         assertThat(rules, hasSize(0));
 
-        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlowPath(), false, false);
+        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getForwardPath(), false, false);
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
         assertNull(ingressRule.getCriteria().getOutPort());
         assertEquals(101, (int) ingressRule.getCriteria().getEncapsulationId());
-        assertEquals(null, ingressRule.getCriteria().getEgressSwitchId());
+        assertNull(ingressRule.getCriteria().getEgressSwitchId());
     }
 
-    private UnidirectionalFlow buildFlow(Switch srcSwitch, int srcPort, int srcVlan,
+    private Flow buildFlow(Switch srcSwitch, int srcPort, int srcVlan,
                                          Switch destSwitch, int destPort, int destVlan,
                                          int transitEncapsulationId, int bandwidth,
                                          boolean ignoreBandwidth, List<PathSegment.PathSegmentBuilder> pathSegments,
                                          FlowEncapsulationType flowEncapsulationType) {
-        UnidirectionalFlow flow = new TestFlowBuilder(TEST_FLOW)
+        Flow flow = new TestFlowBuilder(TEST_FLOW)
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .srcVlan(srcVlan)
@@ -501,9 +501,9 @@ public class FlowCommandFactoryTest {
                 .meterId(METER_ID)
                 .transitEncapsulationId(transitEncapsulationId)
                 .encapsulationType(flowEncapsulationType)
-                .buildUnidirectionalFlow();
+                .build();
 
-        flow.getFlowPath().setSegments(pathSegments.stream()
+        flow.getForwardPath().setSegments(pathSegments.stream()
                 .map(PathSegmentBuilder::build)
                 .collect(Collectors.toList()));
 

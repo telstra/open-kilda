@@ -34,7 +34,6 @@ import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 
 import org.junit.Test;
 
@@ -164,15 +163,6 @@ public class FlowMapperTest {
         assertNotNull(flowDto.getFlowStatusDetails());
         assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
         assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
-
-        UnidirectionalFlow unidirectionalFlow = new UnidirectionalFlow(forwardFlowPath, null, true);
-
-        flowDto = FlowMapper.INSTANCE.map(unidirectionalFlow);
-
-        assertNotNull(flowDto.getFlowStatusDetails());
-        assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
-        assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
-        assertDetectConnectedDevices(flowDto.getDetectConnectedDevices(),
-                unidirectionalFlow.getDetectConnectedDevices());
+        assertDetectConnectedDevices(flowDto.getDetectConnectedDevices(), flow.getDetectConnectedDevices());
     }
 }

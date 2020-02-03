@@ -32,7 +32,6 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
@@ -46,50 +45,12 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Convert {@link UnidirectionalFlow} to {@link FlowDto} and back.
+ * Convert {@link Flow} to {@link FlowDto} and back.
  */
 @Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class}, imports = {FlowStatusDetails.class})
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
-
-    /**
-     * Builds a {@link UnidirectionalFlow} with provided data from {@link FlowDto}.
-     * <p/>
-     * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
-     * with only switchId filled.</strong>
-     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
-     * will be used.
-     */
-    public UnidirectionalFlow mapToUnidirectionalFlow(FlowDto flowDto,
-                                                      Supplier<KildaConfiguration> kildaConfiguration) {
-        Flow flow = map(flowDto, kildaConfiguration);
-
-        FlowPath flowPath = buildPath(flow, flowDto);
-        flow.setForwardPath(flowPath);
-        EncapsulationId encapsulationId = convertToEncapsulationId(flow, flowPath, flowDto);
-
-        return new UnidirectionalFlow(flowPath, encapsulationId, true);
-    }
-
-    /**
-     * Convert {@link UnidirectionalFlow} to {@link FlowDto}.
-     */
-    @Mapping(source = "srcPort", target = "sourcePort")
-    @Mapping(source = "srcVlan", target = "sourceVlan")
-    @Mapping(source = "destPort", target = "destinationPort")
-    @Mapping(source = "destVlan", target = "destinationVlan")
-    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
-    @Mapping(source = "status", target = "state")
-    @Mapping(source = "timeModify", target = "lastUpdated")
-    @Mapping(source = "timeCreate", target = "createdTime")
-    @Mapping(source = "pinned", target = "pinned")
-    @Mapping(target = "flowStatusDetails",
-            expression = "java(flow.getFlow().isAllocateProtectedPath() ? "
-                    + "new FlowStatusDetails(flow.getFlow().getMainFlowPrioritizedPathsStatus(), "
-                    + "flow.getFlow().getProtectedFlowPrioritizedPathsStatus()) : null)")
-    public abstract FlowDto map(UnidirectionalFlow flow);
 
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
