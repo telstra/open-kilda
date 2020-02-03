@@ -34,8 +34,6 @@ public interface RepositoryFactory {
 
     FlowRepository createFlowRepository();
 
-    FlowPairRepository createFlowPairRepository();
-
     IslRepository createIslRepository();
 
     LinkPropsRepository createLinkPropsRepository();
@@ -63,7 +61,6 @@ public interface RepositoryFactory {
     KildaConfigurationRepository createKildaConfigurationRepository();
 
     SwitchPropertiesRepository createSwitchPropertiesRepository();
-
 
     SwitchConnectedDeviceRepository createSwitchConnectedDeviceRepository();
 
