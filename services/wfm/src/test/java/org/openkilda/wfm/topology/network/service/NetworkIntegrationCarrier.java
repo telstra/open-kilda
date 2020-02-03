@@ -186,6 +186,10 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
+    public void sendAffectedFlowRerouteRequest(SwitchId switchId) {
+    }
+
+    @Override
     public void setupIslFromHistory(Endpoint endpoint, IslReference islReference, Isl history) {
         islService.islSetupFromHistory(endpoint, islReference, history);
     }

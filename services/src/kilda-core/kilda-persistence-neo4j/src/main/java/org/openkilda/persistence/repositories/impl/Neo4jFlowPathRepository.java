@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.openkilda.persistence.repositories.impl.Neo4jFlowRepository.FLOW_ID_PROPERTY_NAME;
 
@@ -23,6 +24,7 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
@@ -195,6 +197,29 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         queryForStrings("MATCH (ps_src:switch)-[:source]-(ps:path_segment)-[:destination]-(ps_dst:switch) "
                 + "WHERE ps_src.name = $switch_id OR ps_dst.name = $switch_id "
                 + "MATCH (fp:flow_path)-[:owns]-(ps)"
+                + "RETURN fp.path_id as path_id", parameters, "path_id").forEach(pathIds::add);
+
+        if (pathIds.isEmpty()) {
+            return emptyList();
+        }
+
+        Filter pathIdsFilter = new Filter(PATH_ID_PROPERTY_NAME, new InOperatorWithNoConverterComparison(pathIds));
+
+        return loadAll(pathIdsFilter);
+    }
+
+    @Override
+    public Collection<FlowPath> findInactiveBySegmentSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId),
+                "statuses", asList(FlowStatus.DOWN.toString().toLowerCase(),
+                        FlowStatus.DEGRADED.toString().toLowerCase()));
+
+        Set<String> pathIds = new HashSet<>();
+        queryForStrings("MATCH (ps_src:switch)-[:source]-(ps:path_segment)-[:destination]-(ps_dst:switch) "
+                + "WHERE ps_src.name = $switch_id OR ps_dst.name = $switch_id "
+                + "MATCH (f:flow)-[:owns]-(fp:flow_path)-[:owns]-(ps) "
+                + "WHERE f.status in $statuses "
                 + "RETURN fp.path_id as path_id", parameters, "path_id").forEach(pathIds::add);
 
         if (pathIds.isEmpty()) {

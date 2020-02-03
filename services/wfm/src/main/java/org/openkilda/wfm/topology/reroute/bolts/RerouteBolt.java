@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
+import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -76,6 +77,9 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
         String correlationId = message.getCorrelationId();
         if (commandData instanceof RerouteAffectedFlows) {
             rerouteService.rerouteAffectedFlows(this, correlationId, (RerouteAffectedFlows) commandData);
+        } else if (commandData instanceof RerouteAffectedInactiveFlows) {
+            rerouteService.rerouteInactiveAffectedFlows(this, correlationId,
+                    ((RerouteAffectedInactiveFlows) commandData).getSwitchId());
         } else if (commandData instanceof RerouteInactiveFlows) {
             rerouteService.rerouteInactiveFlows(this, correlationId, (RerouteInactiveFlows) commandData);
         } else {

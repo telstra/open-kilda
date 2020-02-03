@@ -142,7 +142,6 @@ public class RerouteRetryQueueTest {
         RerouteRetryQueue queue = new RerouteRetryQueue();
         queue.add(rerouteEmpty);
         queue.add(reroutePathA);
-        queue.add(rerouteForced);
         queue.add(reroutePathB);
 
         Optional<FlowRerouteFact> potential;
@@ -158,6 +157,30 @@ public class RerouteRetryQueueTest {
         Set<IslEndpoint> expectedIslEndpoints = new HashSet<>();
         expectedIslEndpoints.addAll(reroutePathA.getAffectedIsl());
         expectedIslEndpoints.addAll(reroutePathB.getAffectedIsl());
+
+        Assert.assertEquals(expectedIslEndpoints, reroute.getAffectedIsl());
+        Assert.assertEquals(reroutePathB.getRerouteReason(), reroute.getRerouteReason());
+    }
+
+    @Test
+    public void mergeOperationWhenAffectedIslsEmpty() {
+        RerouteRetryQueue queue = new RerouteRetryQueue();
+        queue.add(rerouteEmpty);
+        queue.add(reroutePathA);
+        queue.add(rerouteForced);
+        queue.add(reroutePathB);
+
+        Optional<FlowRerouteFact> potential;
+        queue.remove();
+        potential = queue.get();
+        Assert.assertTrue(potential.isPresent());
+
+        FlowRerouteFact reroute = potential.get();
+        Assert.assertEquals(reroutePathB.getKey(), reroute.getKey());
+        Assert.assertSame(reroutePathB.getCommandContext(), reroute.getCommandContext());
+        Assert.assertEquals(reroutePathB.getFlowId(), reroute.getFlowId());
+
+        Set<IslEndpoint> expectedIslEndpoints = Collections.emptySet();
 
         Assert.assertEquals(expectedIslEndpoints, reroute.getAffectedIsl());
         Assert.assertTrue(reroute.isForceReroute());

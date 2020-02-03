@@ -329,7 +329,8 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     private void outputReroute(TopologyBuilder topology, int scaleFactor) {
         RerouteEncoder bolt = new RerouteEncoder();
         topology.setBolt(RerouteEncoder.BOLT_ID, bolt, scaleFactor)
-                .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_REROUTE_ID);
+                .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_REROUTE_ID)
+                .shuffleGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_REROUTE_ID);
 
         KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaTopoRerouteTopic());
         topology.setBolt(ComponentId.REROUTE_OUTPUT.toString(), output, scaleFactor)
