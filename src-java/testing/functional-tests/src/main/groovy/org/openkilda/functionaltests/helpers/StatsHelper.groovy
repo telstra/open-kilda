@@ -36,16 +36,16 @@ class StatsHelper {
         soft.verify()
     }
 
-    void verifyFlowWritesStats(String flowId, boolean mustHaveTraffic = true) {
+    void verifyFlowWritesStats(String flowId, boolean pingFlow = true) {
         def beforePing = new Date()
-        mustHaveTraffic && northbound.pingFlow(flowId, new PingInput())
-        verifyFlowWritesStats(flowId, beforePing, mustHaveTraffic)
+        pingFlow && northbound.pingFlow(flowId, new PingInput())
+        verifyFlowWritesStats(flowId, beforePing, pingFlow)
     }
 
-    void verifyFlowWritesStats(String flowId, Date from, boolean mustHaveTraffic) {
+    void verifyFlowWritesStats(String flowId, Date from, boolean expectTraffic) {
         Wrappers.wait(STATS_INTERVAL) {
             def dps = otsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
-            if(mustHaveTraffic) {
+            if(expectTraffic) {
                 assert dps.values().any { it > 0 }
             } else {
                 assert dps.size() > 0

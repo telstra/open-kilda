@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
@@ -81,6 +82,10 @@ class TopologyHelper {
         //get deep copy
         def mapper = new ObjectMapper()
         return mapper.readValue(mapper.writeValueAsString(getSwitchPairsCached()), SwitchPair[]).toList()
+    }
+
+    Switch findSwitch(SwitchId swId) {
+        topology.switches.find { it.dpId == swId }
     }
 
     TopologyDefinition readCurrentTopology() {
