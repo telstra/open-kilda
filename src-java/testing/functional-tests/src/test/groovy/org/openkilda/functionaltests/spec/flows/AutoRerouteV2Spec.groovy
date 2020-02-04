@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -22,14 +23,17 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import groovy.util.logging.Slf4j
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
+@Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 class AutoRerouteV2Spec extends HealthCheckSpecification {
 
@@ -545,6 +549,100 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         broughtDownPorts && broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != FAILED }
+        }
+    }
+
+    @Tidy
+    def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
+        given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
+        List<PathNode> mainPath, backupPath, thirdPath
+        List<Isl> mainIsls, backupIsls
+        Isl mainPathUniqueIsl, commonIsl
+        def swPair = topologyHelper.switchPairs.find { pair ->
+            //we are looking for 2 paths that have a common isl. This ISL should not be used in third path
+            mainPath = pair.paths.find { path ->
+                mainIsls = pathHelper.getInvolvedIsls(path)
+                //look for a backup path with a common isl
+                backupPath = pair.paths.findAll { it != path }.find { currentBackupPath ->
+                    backupIsls = pathHelper.getInvolvedIsls(currentBackupPath)
+                    def mainPathUniqueIsls = mainIsls.findAll {
+                        !backupIsls.contains(it)
+                    }
+                    def commonIsls = backupIsls.findAll {
+                        it in mainIsls
+                    }
+                    //given possible mainPath isls to break and available common isls
+                    List<Isl> result = [mainPathUniqueIsls, commonIsls].combinations().find { unique, common ->
+                        //there should be a safe third path that does not involve any of them
+                        thirdPath = pair.paths.findAll { it != path && it != currentBackupPath }.find {
+                            def isls = pathHelper.getInvolvedIsls(it)
+                            !isls.contains(common) && !isls.contains(unique)
+                        }
+                    }
+                    if(result) {
+                        mainPathUniqueIsl = result[0]
+                        commonIsl = result[1]
+                    }
+                    thirdPath
+                }
+            }
+        }
+        assert swPair, "Not able to find a switch pair with suitable paths"
+        log.debug("main isls: $mainIsls")
+        log.debug("backup isls: $backupIsls")
+
+        and: "A flow over these switches that uses one of the desired paths that have common ISL"
+        swPair.paths.findAll { it != mainPath }.each { pathHelper.makePathMorePreferable(mainPath, it) }
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        and: "A potential 'backup' path that shares common isl has the preferred cost (will be preferred during reroute)"
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        swPair.paths.findAll { it != backupPath }.each { pathHelper.makePathMorePreferable(backupPath, it) }
+
+        when: "An ISL which is unique for current path breaks, leading to a flow reroute"
+        antiflap.portDown(mainPathUniqueIsl.srcSwitch.dpId, mainPathUniqueIsl.srcPort)
+        Wrappers.wait(3, 0) {
+            assert northbound.getLink(mainPathUniqueIsl).state == IslChangeType.FAILED
+        }
+
+        and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
+triggering one more reroute of the current path"
+        //do the 2nd portdown a little bit earlier, since there is an antiflapMin time before the actual port down
+        //and we want to break the second ISL right when the first reroute starts and is in progress. race here
+        //below '+750ms' correction was found experimentally to reproduce the race more often on local env
+        sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000 + 750 as long))
+        antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
+
+        then: "Flow is UP"
+        Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
+            //we need a stable UP state, since it may temporary switch to UP and then again to In Progress
+            Wrappers.timedLoop(2) {
+                assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+                sleep(500)
+            }
+        }
+
+        and: "New flow path avoids both main and backup paths as well as broken ISLs"
+        def actualIsls = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId))
+        !actualIsls.contains(commonIsl)
+        !actualIsls.contains(mainPathUniqueIsl)
+
+        and: "Flow is pingable"
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        withPool {
+            [mainPathUniqueIsl, commonIsl].eachParallel { Isl isl ->
+                antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+                Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                    assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
+                }
+            }
         }
     }
 
