@@ -162,10 +162,6 @@ public interface OutputCommands {
                 matchBuilder.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(tunnelId));
                 break;
             case VXLAN:
-                if (dpid != null) {
-                    matchBuilder.setExact(MatchField.ETH_DST,
-                            MacAddress.of(Arrays.copyOfRange(dpid.getBytes(), 2, 8)));
-                }
                 matchBuilder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
                 matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
                 break;

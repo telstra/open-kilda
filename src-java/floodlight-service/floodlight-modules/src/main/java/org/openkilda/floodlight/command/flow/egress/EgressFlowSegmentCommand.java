@@ -32,8 +32,6 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -79,7 +77,6 @@ abstract class EgressFlowSegmentCommand extends NotIngressFlowSegmentCommand {
 
     @Override
     protected void makeTransitVxLanMatch(OFFactory of, Match.Builder match) {
-        match.setExact(MatchField.ETH_DST, MacAddress.of(getSw().getId()));
         super.makeTransitVxLanMatch(of, match);
     }
 
