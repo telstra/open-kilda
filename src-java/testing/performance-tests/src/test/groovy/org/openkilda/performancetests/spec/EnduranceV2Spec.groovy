@@ -53,7 +53,7 @@ class EnduranceV2Spec extends BaseSpecification {
 
     @Override
     def setupOnce() {
-        northbound.getAllFlows().each { northbound.deleteFlow(it.id) }
+        northbound.getAllFlows().each { northboundV2.deleteFlow(it.id) }
         topoHelper.purgeTopology()
     }
 
@@ -102,7 +102,10 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
 
         then: "All flows are writting stats"
         def allFlows = northbound.getAllFlows()
-        statsHelper.verifyFlowsWriteStats(allFlows.findAll { it.status == FlowState.UP.toString() }*.id)
+        def assertions = new SoftAssertions()
+        assertions.checkSucceeds {
+            statsHelper.verifyFlowsWriteStats(allFlows.findAll { it.status == FlowState.UP.toString() }*.id)
+        } ?: true
 
         and: "All Up flows are pingable"
         def pingVerifications = new SoftAssertions()
@@ -124,19 +127,27 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         }
 
         and: "There are no rule discrepancies on switches"
-        Wrappers.wait(60 + preset.switchesAmount) {
-            def soft = new SoftAssertions()
-            topology.switches.each { sw ->
-                def validation = northbound.validateSwitch(sw.dpId)
-                soft.checkSucceeds { assert validation.rules.missing.empty, sw }
-                soft.checkSucceeds { assert validation.rules.excess.empty, sw }
-                soft.checkSucceeds { assert validation.meters.missing.empty, sw }
-                soft.checkSucceeds { assert validation.meters.misconfigured.empty, sw }
-                soft.checkSucceeds { assert validation.meters.excess.empty, sw }
+        assertions.checkSucceeds {
+            Wrappers.wait(60 + preset.switchesAmount) {
+                def soft = new SoftAssertions()
+                topology.switches.each { sw ->
+                    def validation = northbound.validateSwitch(sw.dpId)
+                    soft.checkSucceeds { assert validation.rules.missing.empty, sw }
+                    soft.checkSucceeds { assert validation.rules.excess.empty, sw }
+                    soft.checkSucceeds { assert validation.meters.missing.empty, sw }
+                    soft.checkSucceeds { assert validation.meters.misconfigured.empty, sw }
+                    soft.checkSucceeds { assert validation.meters.excess.empty, sw }
+                }
+                soft.verify()
             }
-            soft.verify()
+        } ?: true
+
+        and: "There are no oversubscribed ISLs"
+        northbound.getAllLinks().forEach { isl ->
+            assertions.checkSucceeds { isl.availableBandwidth >= 0 }
         }
-        pingVerifications.verify()
+        assertions.checkSucceeds { pingVerifications.verify() } ?: true
+        assertions.verify()
 
         cleanup: "delete flows and purge topology"
         flows.each { northboundV2.deleteFlow(it.flowId) }
@@ -149,7 +160,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
                         switchesAmount    : 30,
                         islsAmount        : 60,
                         eventsAmount      : 40,
-                        flowsToStartWith  : 200,
+                        flowsToStartWith  : 300,
                         pauseBetweenEvents: 1, //seconds
                 ],
                 [
@@ -164,18 +175,18 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         //define payload generating method that will be called each time flow creation is issued
         makeFlowPayload = {
             def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
-            flow.maximumBandwidth = 500000
+            flow.maximumBandwidth = 100000
             return flow
         }
         //'dice' below defines events and their chances to appear
         dice = new Dice([
-                new Face(name: "delete flow", chance: 19, event: { deleteFlow() }),
-                new Face(name: "update flow", chance: 0, event: { updateFlow() }),
-                new Face(name: "create flow", chance: 19, event: { createFlow(makeFlowPayload(), true) }),
-                new Face(name: "blink isl", chance: 22, event: { blinkIsl() }),
+                new Face(name: "delete flow", chance: 10, event: { deleteFlow() }),
+                new Face(name: "update flow", chance: 20, event: { updateFlow() }),
+                new Face(name: "create flow", chance: 10, event: { createFlow(makeFlowPayload(), true) }),
+                new Face(name: "blink isl", chance: 25, event: { blinkIsl() }),
                 new Face(name: "idle", chance: 0, event: { TimeUnit.SECONDS.sleep(3) }),
-                new Face(name: "manual reroute 25% of flows", chance: 12, event: { massReroute() }),
-                new Face(name: "break isl", chance: 28, event: { breakIsl() })
+                new Face(name: "manual reroute 5% of flows", chance: 10, event: { massReroute() }),
+                new Face(name: "break isl", chance: 25, event: { breakIsl() })
         ])
         debugText = preset.debug ? " (debug mode)" : ""
     }
@@ -219,7 +230,9 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         def flowToUpdate = flows[r.nextInt(flows.size())]
         log.info "updating flow $flowToUpdate.flowId"
         Wrappers.silent {
-            northboundV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.maximumBandwidth = r.nextInt(10000) })
+            northboundV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap {
+                it.maximumBandwidth = it.maximumBandwidth + r.nextInt(10000)
+            })
         }
         return flowToUpdate
     }
@@ -254,7 +267,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         Collections.shuffle(flows)
         task {
             withPool {
-                flows[0..flows.size() / 4].eachParallel { flow ->
+                flows[0..flows.size() / 20].eachParallel { flow ->
                     Wrappers.silent {
                         //may fail due to 'in progress' status, just retry
                         Wrappers.retry(5, 1, {}) {
