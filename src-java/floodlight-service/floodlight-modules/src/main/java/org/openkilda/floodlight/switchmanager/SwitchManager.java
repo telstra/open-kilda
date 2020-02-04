@@ -234,7 +234,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int INGRESS_TABLE_ID = 2;
     public static final int POST_INGRESS_TABLE_ID = 3;
     public static final int EGRESS_TABLE_ID = 4;
-    public static final int TRANSIT_TABLE_ID = 6;
+    public static final int TRANSIT_TABLE_ID = 5;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
