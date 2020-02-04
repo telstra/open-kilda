@@ -145,7 +145,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
             currentRequestKey = retry.getKey();
             rerouteService.handlePostponedRequest(retry);
             return null;
-        }).when(carrier).injectRetry(any());
+        }).when(carrier).injectPostponedRequest(any());
 
         rerouteService = new FlowRerouteService(carrier, persistenceManager,
                 pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,

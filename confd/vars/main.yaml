@@ -76,7 +76,7 @@ kilda_kafka_te_consumer_group: "kilda-tpe"
 # interval in ticks (seconds) between sending disco packets
 kilda_discovery_interval: 3
 kilda_discovery_packet_ttl: 5
-kilda_discovery_timeout: "9"
+kilda_discovery_timeout: "15"
 kilda_discovery_db_write_repeats_time_frame: 30
 
 kilda_worker_pool_size: 512
