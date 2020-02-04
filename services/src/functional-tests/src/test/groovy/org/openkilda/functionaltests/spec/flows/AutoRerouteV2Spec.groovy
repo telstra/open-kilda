@@ -483,8 +483,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flows are not rerouted and flows status are 'Down'"
         def flowPathMap = [(firstFlow.flowId): firstFlowMainPath, (secondFlow.flowId): secondFlowPath]
-        TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
-        Wrappers.wait(WAIT_OFFSET / 2) {
+        TimeUnit.SECONDS.sleep(rerouteDelay * 3) // it helps to be sure that the auto-reroute operation is completed
+        Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(islToBreak).state == FAILED
             // just to be sure that backup ISL is not failed
             assert northbound.getLink(islToReroute).state == DISCOVERED
@@ -518,7 +518,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         //TODO(andriidovhan) specify flow history verification(it is not implemented yet) Reroute reason: switchUp event
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 2
-            assert northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 2
+            // we are waiting for 5 'Flow rerouting' because of fix #3162
+            // 2 normal reroutes + 3 attempts to rerun reroute because Kilda can't install rules on Offline switch
+            assert northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 5
         }
 
         cleanup: "Restore topology, delete the flow and reset costs"
