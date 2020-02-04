@@ -62,12 +62,26 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
     }
 
     @Override
+    public Optional<TransitVlan> findByPathId(PathId pathId) {
+        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
+        Collection<TransitVlan> transitVlans = loadAll(pathIdFilter);
+        if (transitVlans.size() > 1) {
+            throw new PersistenceException(format("Found more than 1 Transit VLAN entity for path ID '%s'", pathId));
+        }
+        if (transitVlans.size() == 1) {
+            return Optional.of(transitVlans.iterator().next());
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public Optional<TransitVlan> findByVlan(int vlan) {
         Filter vlanFilter = new Filter(VLAN_PROPERTY_NAME, ComparisonOperator.EQUALS, vlan);
         Collection<TransitVlan> transitVlans = loadAll(vlanFilter);
 
         if (transitVlans.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Transit VLAN entity by vlan ID '%s'", vlan));
+            throw new PersistenceException(format("Found more than 1 Transit VLAN entity for vlan ID '%s'", vlan));
         }
         if (transitVlans.size() == 1) {
             return Optional.of(transitVlans.iterator().next());

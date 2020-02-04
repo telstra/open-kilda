@@ -341,6 +341,11 @@ public class DatabaseSupportImpl implements Database {
         return transitVlanRepository.findByPathId(forwardPathId, reversePathId);
     }
 
+    @Override
+    public Optional<TransitVlan> getTransitVlan(PathId pathId) {
+        return transitVlanRepository.findByPathId(pathId);
+    }
+
     /**
      * Update flow bandwidth.
      *

@@ -72,6 +72,11 @@ class TopologyHelper {
         }
     }
 
+    def traffgenEnabled = { SwitchPair swPair ->
+        def tgSwitches = topology.activeTraffGens*.switchConnected
+        swPair.src in tgSwitches && swPair.dst in tgSwitches
+    }
+
     List<SwitchPair> getSwitchPairs() {
         //get deep copy
         def mapper = new ObjectMapper()
