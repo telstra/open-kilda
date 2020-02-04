@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -67,6 +68,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @Slf4j
@@ -88,6 +91,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private FlowEncapsulationType newEncapsulationType;
 
     private int rerouteCounter;
+    private String rerouteReason;
+    private Set<IslEndpoint> affectedIsls;
+    private boolean forceReroute;
 
     public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId,
                           Integer rerouteCounter) {
