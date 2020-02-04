@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.toggles
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -24,14 +23,11 @@ import spock.lang.Narrative
 Feature Toggles is a special lever that allows to turn on/off certain Kilda features. For example, we can disable
 creation of new flows via Northbound API. This spec verifies that Feature Toggle restrictions are applied correctly.
 """)
-/*Note that the 'flowReroute' toggle is tested under AutoRerouteSpec#"Flow goes to 'Down' status when an intermediate
+/*Note that the 'flowReroute' toggle is tested under AutoRerouteV2Spec#"Flow goes to 'Down' status when an intermediate
 switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
 @Tags(SMOKE)
 class FeatureTogglesV2Spec extends HealthCheckSpecification {
-    @Tags(VIRTUAL)
-    //TODO (andriidovhan) remove VIRTUAL tag and add new message when Issue 2797 is fixed
-    // new error message in APIv2 "Could not create flow: Flow create feature is disabled"
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flow = flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
