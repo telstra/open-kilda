@@ -116,11 +116,11 @@ public class OnReceivedInstallResponseAction extends
                 int rerouteCounter = stateMachine.getRerouteCounter();
                 if (!isTerminatingSwitchFailed && rerouteCounter < REROUTE_RETRY_LIMIT) {
                     rerouteCounter += 1;
-                    String newReason = format("%s: retry #%d", context.getRerouteReason(), rerouteCounter);
+                    String newReason = format("%s: retry #%d", stateMachine.getRerouteReason(), rerouteCounter);
                     FlowRerouteFact flowRerouteFact = new FlowRerouteFact(commandIdGenerator.generate().toString(),
                             stateMachine.getCommandContext().fork(format("retry #%d", rerouteCounter)),
-                            stateMachine.getFlowId(), context.getAffectedIsl(), context.isForceReroute(),
-                            context.isEffectivelyDown(), newReason, rerouteCounter);
+                            stateMachine.getFlowId(), stateMachine.getAffectedIsls(), stateMachine.isForceReroute(),
+                            stateMachine.isEffectivelyDown(), newReason, rerouteCounter);
                     carrier.injectRetry(flowRerouteFact);
                     stateMachine.saveActionToHistory("Inject reroute retry",
                             format("Reroute counter %d", rerouteCounter));
