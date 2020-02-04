@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.payload.history.FlowEventPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -28,6 +29,7 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         timestampBefore = System.currentTimeSeconds() - 5
     }
 
+    @Tidy
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -78,14 +80,18 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         def flowHistory3 = northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterUpdate)
         assert flowHistory3.size() == 2
         checkHistoryDeleteAction(flowHistory3, flow.flowId)
+
+        cleanup:
+        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "History records are created for the create/update actions using custom timeline (v2)"() {
         when: "Create a flow"
@@ -117,12 +123,16 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         northbound.getFlowHistory(flow.flowId, timestampBefore, timestampAfterUpdate).size() == 2
+
+        cleanup:
+        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "History records are created for the create/update actions using default timeline"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -143,14 +153,18 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
 
         when: "Delete the updated flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         def flowHistory3 = northbound.getFlowHistory(flow.flowId)
         assert flowHistory3.size() == 3
         checkHistoryDeleteAction(flowHistory3, flow.flowId)
+
+        cleanup:
+        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "History should not be returned in case timeline is incorrect (timeBefore > timeAfter)"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -169,10 +183,11 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         then: "History record is NOT returned"
         flowH.isEmpty()
 
-        and: "Cleanup: restore default state(remove created flow)"
+        cleanup: "Restore default state(remove created flow)"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "History should not be returned in case flow was never created"() {
         when: "Try to get history for incorrect flowId"
         def flowHistory = northbound.getFlowHistory(NON_EXISTENT_FLOW_ID)

@@ -139,6 +139,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flow = data.flow as FlowRequestV2
     }
 
+    @Tidy
     @Unroll("Able to create a second flow if #data.description")
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
         given: "Two potential flows that should not conflict"
@@ -153,7 +154,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         then: "Both flows are successfully created"
         northbound.getAllFlows()*.id.containsAll(flows*.flowId)
 
-        and: "Cleanup: delete flows"
+        cleanup: "Delete flows"
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
 
         where:
@@ -344,6 +345,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flow << getSingleSwitchSinglePortFlows()
     }
 
+    @Tidy
     def "Able to validate flow with zero bandwidth"() {
         given: "A flow with zero bandwidth"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -356,10 +358,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         then: "Validation of flow with zero bandwidth must be succeed"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelperV2.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -374,8 +377,12 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and vlans"
+
+        cleanup:
+        !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Unroll("Unable to create flow with #data.conflict")
     def "Unable to create flow with conflicting vlans or flow IDs"() {
         given: "A potential flow"
@@ -399,8 +406,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == data.getErrorMessage(flow, conflictingFlow)
         errorDetails.errorDescription == data.getErrorDescription(flow, conflictingFlow)
 
-        and: "Cleanup: delete the dominant flow"
+        cleanup: "Delete the dominant flow"
         flowHelperV2.deleteFlow(flow.flowId)
+        !error && flowHelperV2.deleteFlow(conflictingFlow.flowId)
 
         where:
         data << getConflictingData() + [
@@ -417,6 +425,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
         List<List<PathNode>> possibleFlowPaths = []
@@ -447,8 +456,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
-        and: "Delete the flow and reset costs"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup: "Delete the flow and reset costs"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         database.resetCosts()
     }
 
@@ -545,6 +554,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to create a flow with invalid encapsulation type"() {
         given: "A flow with invalid encapsulation type"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -558,8 +568,12 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorDescription == "Can not parse arguments of the create flow request"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
 	def "Unable to update a flow with invalid encapsulation type"() {
 		given: "A flow with invalid encapsulation type"
 		def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -580,6 +594,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
 	}
 
+    @Tidy
     @Unroll
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
@@ -597,6 +612,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == data.errorMessage(isl)
         errorDetails.errorDescription == data.errorDescription(isl)
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -623,6 +641,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll
     def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
         given: "An isl"
@@ -643,7 +662,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         error.errorMessage == "Could not update flow"
         error.errorDescription == data.message(isl)
 
-        and: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -665,6 +684,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -684,10 +704,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
 
-        and: "Cleanup: Restore state of the ISL"
+        cleanup: "Restore state of the ISL"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         database.resetCosts()
+        !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
@@ -721,6 +742,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "Able to CRUD unmetered one-switch pinned flow"() {
         when: "Create a flow"
         def sw = topology.getActiveSwitches().first()
@@ -742,10 +764,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Unroll
     def "Able to CRUD pinned flow"() {
         when: "Create a flow"
@@ -766,7 +789,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
@@ -800,6 +823,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "System allows to CRUD protected flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -844,37 +868,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    def "System allows to create diverse flows"() {
-        given: "Two active not neighboring switches with three diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue("No suiting switches found", false)
-
-        when: "Create three flows with diversity enabled"
-        def flow1 = flowHelperV2.randomFlow(switchPair, false)
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.flowId }
-        [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
-
-        then: "All flows have diverse flow IDs in response"
-        northbound.getFlow(flow1.flowId).diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
-        northbound.getFlow(flow2.flowId).diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
-        northbound.getFlow(flow3.flowId).diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
-
-        and: "All flows have different paths"
-        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
-            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.flowId)))
-        }
-        allInvolvedIsls.unique(false) == allInvolvedIsls
-
-        and: "Delete flows"
-        [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
-    }
-
+    @Tidy
     def "System allows to set/update description/priority/max-latency for a flow"(){
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -918,10 +916,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         newFlowInfo.description == newDescription
         newFlowInfo.periodicPings == newPeriodicPing
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -999,8 +998,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flows"
-        [vlanFlow, defaultFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
+        cleanup: "Delete the flows"
+        [vlanFlow, defaultFlow].each { flow -> flow && flowHelperV2.deleteFlow(flow.flowId) }
     }
 
     @Tidy

@@ -27,13 +27,15 @@ connected to controller, allows to change ISLs between switches) or controlling 
 switches (bring ports down to fail certain ISLs).
 It is required to bring the topology to the original state afterwards.
 
-### Failfast with no cleanup
-We do not do a 'finally' cleanup. Any cleanup steps are usually part of the test itself and they
-are **not** run if the test fails somewhere in the middle.  
-In case of failure, any subsequent tests are skipped. This allows to diagnose the 'broken' system state when the test failed.  
-The drawback is that the engineer will have to manually bring the system/topology back to its original
-state after analysing the test failure (usually not an issue for virtual topology since it is
-recreated at the start of the test run).  
+### Test execution may be aborted due to 'uncleanupable contamination'
+Due to the fact that we use single topology for the whole suite, sometimes it is very difficult to
+compile a comprehensive cleanup code for the test that will cover any failure scenario (especially for long, complex 
+test cases). Such tests
+are __not__ marked as `@Tidy`, failure of such tests will abort further execution of any subsequent tests
+ because at this point system is considered as contaminated.
+On the other hand, if the test is supplied with a bullet-proof cleanup code, then it should have a
+`@Tidy` annotation above it, meaning that in case of failure no 'failfast' policy should be applied, allowing
+execution of subsequent tests.
 
 # How to run
 ### Virtual (local Kilda)

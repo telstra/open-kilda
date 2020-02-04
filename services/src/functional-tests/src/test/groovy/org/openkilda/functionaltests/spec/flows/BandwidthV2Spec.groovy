@@ -22,6 +22,7 @@ import spock.lang.Narrative
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
 class BandwidthV2Spec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags(SMOKE)
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
@@ -61,13 +62,17 @@ class BandwidthV2Spec extends HealthCheckSpecification {
                 maximumBandwidth - maximumBandwidthUpdated)
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Available bandwidth on ISLs is changed to the initial value before flow creation"
         def linksAfterFlowDelete = northbound.getAllLinks()
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowDelete)
+
+        cleanup:
+        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
         given: "Two active switches with two possible flow paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -102,10 +107,13 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
 
-        and: "Delete created flows"
-        [flow1.flowId, flow2.flowId].each { flowHelperV2.deleteFlow(it) }
+        cleanup: "Delete created flows"
+        [flow1?.flowId, flow2?.flowId].each {
+            it && flowHelperV2.deleteFlow(it)
+        }
     }
 
+    @Tidy
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -125,8 +133,12 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to exceed bandwidth limit on ISL when updating a flow"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -154,10 +166,11 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.rawStatusCode == 404
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -194,10 +207,11 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -235,7 +249,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         and: "The same path is used by updated flow"
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 

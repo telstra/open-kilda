@@ -5,6 +5,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
@@ -108,6 +109,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "System is able to reroute(intentionally) pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -132,12 +134,13 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == newPath
         }
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
 
+    @Tidy
     def "System doesn't allow to create pinned and protected flow at the same time"() {
         when: "Try to create pinned and protected flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -153,8 +156,12 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "System doesn't allow to enable the protected path flag on a pinned flow"() {
         given: "A pinned flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -173,7 +180,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 }
