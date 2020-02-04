@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -841,6 +842,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //flow is pinned, so that's why the flow is not rerouted
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
 

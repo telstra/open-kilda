@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -157,7 +158,10 @@ class SwitchesSpec extends HealthCheckSpecification {
         }
 
         and: "Get all flows going through the src switch"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(protectedFlow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+        }
         def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)
 
         then: "The created flows are in the response list"

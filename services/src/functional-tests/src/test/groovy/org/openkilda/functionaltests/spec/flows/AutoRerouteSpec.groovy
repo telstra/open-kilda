@@ -174,11 +174,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches*.switchId.contains(flowPath[1].switchId) }
 
         then: "The flow is #flowStatus"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getLinks(flowPath[1].switchId, null, null, null)
-                      .each { assert it.state == IslChangeType.DISCOVERED }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET + rerouteDelay) {
+            assert northbound.getFlowStatus(flow.id).status == flowStatus
         }
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) { assert northbound.getFlowStatus(flow.id).status == flowStatus }
 
         and: "Restore topology to the original state, remove the flow, reset toggles"
         flowHelper.deleteFlow(flow.id)

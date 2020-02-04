@@ -1,6 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_ACTION
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -17,11 +21,6 @@ import java.util.concurrent.TimeUnit
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
 class FlowHistoryV2Spec extends HealthCheckSpecification {
-    String createAction = "Flow creating"
-    String updateAction = "Flow updating"
-    String updateHistoryAction = "Flow was updated successfully"
-    String createHistoryActionV2 = "Flow was created successfully"
-
     @Shared
     Long timestampBefore
 
@@ -197,14 +196,14 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
     }
 
     void checkHistoryCreateV2Action(FlowEventPayload flowHistory, String flowId) {
-        assert flowHistory.action == createAction
-        assert flowHistory.histories.action[-1] == createHistoryActionV2
+        assert flowHistory.action == CREATE_ACTION
+        assert flowHistory.histories.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
     void checkHistoryUpdateAction(FlowEventPayload flowHistory, String flowId) {
-        assert flowHistory.action == updateAction
-        assert flowHistory.histories.action[-1] == updateHistoryAction
+        assert flowHistory.action == UPDATE_ACTION
+        assert flowHistory.histories.action[-1] == UPDATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 

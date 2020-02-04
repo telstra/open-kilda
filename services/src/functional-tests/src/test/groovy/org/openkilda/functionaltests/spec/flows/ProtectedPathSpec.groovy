@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
@@ -911,7 +912,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         antiflap.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is changed to DOWN"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.id).last().histories.find { it.action == REROUTE_FAIL }
+        }
         verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {
             mainFlowPathStatus == "Down"
             protectedFlowPathStatus == "Down"

@@ -198,9 +198,9 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
         def statAfterDeletingControllers
         Wrappers.timedLoop(statsRouterInterval) {
+            sleep((waitInterval * 1000).toLong())
             statAfterDeletingControllers = otsdb.query(startTime, metric, tags).dps
             assert statAfterDeletingControllers.size() == statFromStatsController.size()
-            sleep((waitInterval * 1000).toLong())
         }
 
         when: "Restore default controllers on the src switches"
