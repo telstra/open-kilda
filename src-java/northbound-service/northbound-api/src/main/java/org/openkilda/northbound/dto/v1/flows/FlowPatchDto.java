@@ -18,8 +18,10 @@ package org.openkilda.northbound.dto.v1.flows;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class FlowPatchDto {
 
     @JsonProperty("max-latency")
