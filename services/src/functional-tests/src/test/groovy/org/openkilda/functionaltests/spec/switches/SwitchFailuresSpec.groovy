@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -59,7 +60,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
-            assert pathChanged || northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert pathChanged || (northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
+                    northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL })
         }
 
         and: "Cleanup: restore connection, remove the flow"

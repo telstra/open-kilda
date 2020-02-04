@@ -142,7 +142,6 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
      * reroute and expect no packet loss.
      */
     @Tidy
-    @Tags(HARDWARE)
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images
@@ -155,7 +154,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
         def changedIsls = allPaths.findAll { it != longestPath }
-                .collect { pathHelper.makePathMorePreferable(longestPath, it) }
+                .collect { pathHelper.makePathMorePreferable(longestPath, it) }.findAll()
         //and create the flow that uses the long path
         def flow = flowHelperV2.randomFlow(src, dst)
         flow.maximumBandwidth = 0

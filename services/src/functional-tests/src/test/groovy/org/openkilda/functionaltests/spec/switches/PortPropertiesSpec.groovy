@@ -131,8 +131,9 @@ class PortPropertiesSpec extends HealthCheckSpecification {
 
         // Bring port down on the src switch
         antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            islUtils.getIslInfo(islToManipulate).get().state == IslChangeType.FAILED
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(islToManipulate).actualState == IslChangeType.FAILED
+            assert northbound.getLink(islToManipulate.reversed).actualState == IslChangeType.FAILED
         }
 
         // delete link

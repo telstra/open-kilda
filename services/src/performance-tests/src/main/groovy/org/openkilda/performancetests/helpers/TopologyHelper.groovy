@@ -43,6 +43,10 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
     List<String> statControllers
 
+    /**
+     * First connect all switches in a 'line'. Then start randomly adding hordes.
+     * Requested amount of isls must be >= (switchesAmount - 1) in order to guarantee the initial 'line'
+     */
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
         if (islsAmount < (switchesAmount - 1)) {
             throw new RuntimeException("Not enough ISLs were requested. islsAmount should be >= (switchesAmount - 1)")
@@ -52,7 +56,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
             def region = i % regions.take(2).size() //TODO(rtretiak): to remove 'take' when stage env deals with '3' region
             topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}")
         }
-        //create links between neighbor switches
+        //form a line of switches
         def allSwitches = topo.getSwitches()
         for (def i = 0; i < allSwitches.size() - 1; i++) {
             topo.addIsl(allSwitches[i], allSwitches[i + 1])
