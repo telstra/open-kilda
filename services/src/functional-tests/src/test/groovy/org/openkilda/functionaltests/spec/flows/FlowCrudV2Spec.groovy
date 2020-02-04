@@ -1201,6 +1201,57 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "System reroutes flow to more preferable path while updating"() {
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Make the current path less preferable than alternatives"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+
+        and: "Update the flow"
+        def newFlowDescr = flow.description + " updated"
+        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = newFlowDescr })
+
+        then: "Flow is rerouted"
+        def newCurrentPath
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+            assert newCurrentPath != currentPath
+        }
+
+        and: "Flow is updated"
+        northbound.getFlow(flow.flowId).description == newFlowDescr
+
+        and: "All involved switches pass switch validation"
+        def involvedSwitchIds = (currentPath*.switchId + newCurrentPath*.switchId).unique()
+        withPool {
+            involvedSwitchIds.eachParallel { SwitchId swId ->
+                with(northbound.validateSwitch(swId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
+        def involvedSwitchesPassSwValidation = true
+
+        cleanup: "Revert system to original state"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        !involvedSwitchesPassSwValidation && involvedSwitchIds.each { SwitchId swId ->
+            northbound.synchronizeSwitch(swId, true)
+        }
+    }
+
     @Shared
     def errorDescription = { String operation, FlowRequestV2 flow, String endpoint, FlowRequestV2 conflictingFlow,
                              String conflictingEndpoint ->
