@@ -18,7 +18,6 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 import javax.inject.Provider
@@ -129,7 +128,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
      * Select a longest available path between 2 switches, then reroute to another long path. Run traffexam during the
      * reroute and expect no packet loss.
      */
-    @Tags(HARDWARE)
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images
@@ -142,7 +140,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
         def changedIsls = allPaths.findAll { it != longestPath }
-                                  .collect { pathHelper.makePathMorePreferable(longestPath, it) }
+                                  .collect { pathHelper.makePathMorePreferable(longestPath, it) }.findAll()
         //and create the flow that uses the long path
         def flow = flowHelper.randomFlow(src, dst)
         flow.maximumBandwidth = 0

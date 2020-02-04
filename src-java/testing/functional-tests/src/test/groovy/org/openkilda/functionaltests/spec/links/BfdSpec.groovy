@@ -155,7 +155,10 @@ class BfdSpec extends HealthCheckSpecification {
         assumeTrue("Require at least one a-switch BFD ISL between Noviflow switches", isl as boolean)
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+            assert northbound.getLink(isl.reversed).actualState == IslChangeType.FAILED
+        }
 
         when: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
