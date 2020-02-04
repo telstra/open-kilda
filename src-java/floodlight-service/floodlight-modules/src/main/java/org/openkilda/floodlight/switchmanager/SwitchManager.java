@@ -226,7 +226,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int ETH_SRC_OFFSET = 48;
     public static final int INTERNAL_ETH_SRC_OFFSET = 448;
     public static final int MAC_ADDRESS_SIZE_IN_BITS = 48;
-    public static final String LLDP_MAC = "01:80:c2:00:00:0e";
     public static final int TABLE_1 = 1;
 
     public static final int INPUT_TABLE_ID = 0;
@@ -458,7 +457,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // build match by input port and input vlan id, it's always transit vlan type, since kilda doesn't allow
         // other flow endpoints
-        Match match = matchFlow(ofFactory, inputPort, inputVlanId, FlowEncapsulationType.TRANSIT_VLAN, null);
+        Match match = matchFlow(ofFactory, inputPort, inputVlanId, FlowEncapsulationType.TRANSIT_VLAN);
 
         int flowPriority = getFlowPriority(inputVlanId);
 
@@ -518,7 +517,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY,
                 multiTable ? EGRESS_TABLE_ID : INPUT_TABLE_ID)
-                .setMatch(matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType, dpid))
+                .setMatch(matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType))
                 .setInstructions(ImmutableList.of(actions))
                 .build();
 
@@ -537,7 +536,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         // build match by input port and transit vlan id
-        Match match = matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType, null);
+        Match match = matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType);
 
         // transmit packet from outgoing port
         actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
@@ -584,8 +583,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
 
         // build match by input port and transit vlan id
-        Match match = matchFlow(ofFactory, inputPort, inputVlanId, FlowEncapsulationType.TRANSIT_VLAN,
-                null);
+        Match match = matchFlow(ofFactory, inputPort, inputVlanId, FlowEncapsulationType.TRANSIT_VLAN);
 
         int flowPriority = getFlowPriority(inputVlanId);
         List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, multiTable);
@@ -711,9 +709,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
         if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
             flows.add(buildEgressIslVxlanRule(ofFactory, dpid, port));
-            flows.add(buildTransitIslVxlanRule(ofFactory, dpid, port));
+            flows.add(buildTransitIslVxlanRule(ofFactory, port));
         }
-        flows.add(buildEgressIslVlanRule(ofFactory, dpid, port));
+        flows.add(buildEgressIslVlanRule(ofFactory, port));
         return flows;
     }
 
@@ -1608,14 +1606,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installTransitIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, dpid, port);
+        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, port);
         String flowName = "--Isl transit rule for VXLAN--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
         return flowMod.getCookie().getValue();
     }
 
-    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, DatapathId dpid, int port) {
-        Match match = buildTransitIslVxlanRuleMatch(dpid, port, ofFactory);
+    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, int port) {
+        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(TRANSIT_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeIslVxlanTransit(port),
@@ -1632,14 +1630,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeIslVxlanTransit(port);
         builder.setCookie(U64.of(cookie));
         builder.setCookieMask(U64.NO_MASK);
-        Match match = buildTransitIslVxlanRuleMatch(dpid, port, ofFactory);
+        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
         builder.setMatch(match);
         builder.setPriority(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE);
         removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
         return cookie;
     }
 
-    private Match buildTransitIslVxlanRuleMatch(DatapathId dpid, int port, OFFactory ofFactory) {
+    private Match buildTransitIslVxlanRuleMatch(int port, OFFactory ofFactory) {
         return ofFactory.buildMatch()
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
@@ -1652,13 +1650,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installEgressIslVlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildEgressIslVlanRule(ofFactory, dpid, port);
+        OFFlowMod flowMod = buildEgressIslVlanRule(ofFactory, port);
         String flowName = "--Isl egress rule for VLAN--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
         return flowMod.getCookie().getValue();
     }
 
-    private OFFlowMod buildEgressIslVlanRule(OFFactory ofFactory, DatapathId dpid, int port) {
+    private OFFlowMod buildEgressIslVlanRule(OFFactory ofFactory, int port) {
         Match match = buildInPortMatch(port, ofFactory);
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(EGRESS_TABLE_ID));
         return prepareFlowModBuilder(
@@ -1684,7 +1682,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private OFFlowMod buildLldpTransitFlow(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
         Match match = ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
                 .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                 .build();
 
@@ -1715,7 +1712,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private OFFlowMod buildLldpInputPreDropRule(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
         Match match = ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
                 .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                 .build();
 
@@ -1819,7 +1815,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         Match match = ofFactory.buildMatch()
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
-                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
                 .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                 .build();
 
@@ -2189,28 +2184,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         if (criteria.getInPort() != null) {
-            DatapathId egressSwitchId = criteria.getEgressSwitchId() != null
-                    ? DatapathId.of(criteria.getEgressSwitchId().toLong())
-                    : null;
             // Match either In Port or both Port & Vlan criteria.
             Match match = matchFlow(ofFactory, criteria.getInPort(),
-                    Optional.ofNullable(criteria.getEncapsulationId()).orElse(0), criteria.getEncapsulationType(),
-                    egressSwitchId);
+                    Optional.ofNullable(criteria.getEncapsulationId()).orElse(0), criteria.getEncapsulationType());
             builder.setMatch(match);
 
         } else if (criteria.getEncapsulationId() != null) {
             // Match In Vlan criterion if In Port is not specified
             Match.Builder matchBuilder = ofFactory.buildMatch();
-            MacAddress egressSwitchMac = criteria.getEgressSwitchId() != null
-                    ? dpIdToMac(DatapathId.of(criteria.getEgressSwitchId().toLong()))
-                    : null;
             switch (criteria.getEncapsulationType()) {
                 case TRANSIT_VLAN:
                     matchVlan(ofFactory, matchBuilder, criteria.getEncapsulationId());
                     break;
                 case VXLAN:
-                    matchVxlan(ofFactory, matchBuilder, criteria.getEncapsulationId(),
-                            egressSwitchMac);
+                    matchVxlan(ofFactory, matchBuilder, criteria.getEncapsulationId());
                     break;
                 default:
                     throw new UnsupportedOperationException(
@@ -2289,32 +2276,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param ofFactory OF factory for the switch
      * @param inputPort input port for the match
      * @param tunnelId tunnel id to match on; 0 means match on port
-     * @param egressSwitchId id of egress flow switch
      * @return {@link Match}
      */
-    private Match matchFlow(OFFactory ofFactory, int inputPort, int tunnelId, FlowEncapsulationType encapsulationType,
-                            DatapathId egressSwitchId) {
+    private Match matchFlow(OFFactory ofFactory, int inputPort, int tunnelId, FlowEncapsulationType encapsulationType) {
         Match.Builder mb = ofFactory.buildMatch();
-        addMatchFlowToBuilder(mb, ofFactory, inputPort, tunnelId, encapsulationType, egressSwitchId);
-        return mb.build();
-    }
-
-    private Match getLldpMatch(OFFactory ofFactory, int inputPort, int transitTunnelId,
-                               FlowEncapsulationType encapsulationType) {
-        Builder mb = ofFactory.buildMatch();
-        addMatchFlowToBuilder(mb, ofFactory, inputPort, transitTunnelId, encapsulationType, null);
-        mb.setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC));
-        mb.setExact(MatchField.ETH_TYPE, EthType.LLDP);
+        addMatchFlowToBuilder(mb, ofFactory, inputPort, tunnelId, encapsulationType);
         return mb.build();
     }
 
     private void addMatchFlowToBuilder(Builder builder, OFFactory ofFactory, int inputPort, int tunnelId,
-                                       FlowEncapsulationType encapsulationType, DatapathId egressSwitchId) {
+                                       FlowEncapsulationType encapsulationType) {
         builder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
-        MacAddress ethDstMac = null;
-        if (egressSwitchId != null) {
-            ethDstMac = dpIdToMac(egressSwitchId);
-        }
         // NOTE: vlan of 0 means match on port on not VLAN.
         if (tunnelId > 0) {
             switch (encapsulationType) {
@@ -2323,7 +2295,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
                     break;
                 case VXLAN:
-                    matchVxlan(ofFactory, builder, tunnelId, ethDstMac);
+                    matchVxlan(ofFactory, builder, tunnelId);
                     break;
                 default:
                     throw new UnsupportedOperationException(
@@ -2341,11 +2313,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
-    private void matchVxlan(OFFactory ofFactory, Match.Builder matchBuilder, long tunnelId,
-                            MacAddress ethDst) {
-        if (ethDst != null) {
-            matchBuilder.setExact(MatchField.ETH_DST, ethDst);
-        }
+    private void matchVxlan(OFFactory ofFactory, Match.Builder matchBuilder, long tunnelId) {
         if (OF_12.compareTo(ofFactory.getVersion()) >= 0) {
             throw new UnsupportedOperationException("Switch doesn't support tunnel_id match");
         } else {
