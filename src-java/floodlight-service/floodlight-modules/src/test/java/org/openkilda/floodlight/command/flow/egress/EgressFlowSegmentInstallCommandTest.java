@@ -29,7 +29,6 @@ import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -138,7 +137,6 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                        .setExact(MatchField.ETH_DST, MacAddress.of(command.getSwitchId().toLong()))
                         .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                         .setExact(MatchField.UDP_DST, TransportPort.of(4789))
                         .build())
@@ -164,7 +162,6 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                        .setExact(MatchField.ETH_DST, MacAddress.of(command.getSwitchId().toLong()))
                         .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                         .setExact(MatchField.UDP_DST, TransportPort.of(4789))
                         .build())
@@ -192,7 +189,6 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                        .setExact(MatchField.ETH_DST, MacAddress.of(command.getSwitchId().toLong()))
                         .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                         .setExact(MatchField.UDP_DST, TransportPort.of(4789))
                         .build())
@@ -219,7 +215,6 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                        .setExact(MatchField.ETH_DST, MacAddress.of(command.getSwitchId().toLong()))
                         .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                         .setExact(MatchField.UDP_DST, TransportPort.of(4789))
                         .build())
