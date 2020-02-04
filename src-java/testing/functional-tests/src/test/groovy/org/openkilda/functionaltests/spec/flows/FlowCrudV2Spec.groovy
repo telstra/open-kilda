@@ -1003,7 +1003,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         [vlanFlow, defaultFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2904")
+    @Tidy
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
@@ -1023,8 +1023,16 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        //TODO(andriidovhan) check error message when the issue is fixed
+        exc.statusCode == HttpStatus.NOT_FOUND
+        //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
+                "Failed to find path with requested bandwidth= ignored: Switch $swPair.src.dpId" +
+                " doesn't have links with enough bandwidth"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
