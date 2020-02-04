@@ -25,7 +25,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
                 assumeTrue("No suiting switches found", false)
         List<FlowRequestV2> flows = []
         30.times {
-            def flow = flowHelperV2.randomFlow(switchPair)
+            def flow = flowHelperV2.randomFlow(switchPair, false, flows)
             flow.maximumBandwidth = 10000
             flowHelperV2.addFlow(flow)
             flows << flow
