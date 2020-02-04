@@ -138,6 +138,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
         stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.REROUTE,
                 rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
                 rerouteReason == null ? null : "Reason: " + rerouteReason);
+        stateMachine.setInitialContext(context);
 
         return Optional.empty();
     }

@@ -88,6 +88,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private FlowEncapsulationType newEncapsulationType;
 
     private int rerouteCounter;
+    private FlowRerouteContext initialContext;
 
     public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId,
                           Integer rerouteCounter) {
