@@ -1,8 +1,12 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import org.openkilda.functionaltests.extension.failfast.Tidy
+
 import spock.lang.Unroll
 
 class GrpcCommonSpec extends GrpcBaseSpecification {
+
+    @Tidy
     @Unroll
     def "Able to get switch status on the #switches.switchId switch"() {
         when: "Get switch status"

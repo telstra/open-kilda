@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 class AutoRerouteV2Spec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags(SMOKE)
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
@@ -56,7 +57,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         and: "Flow writes stats"
         statsHelper.verifyFlowWritesStats(flow.flowId)
 
-        and: "Revive the ISL back (bring switch port up) and delete the flow"
+        cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -65,6 +66,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"
@@ -82,13 +84,13 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         when: "One of the flow ISLs goes down"
         def isl = pathHelper.getInvolvedIsls(flowPath).first()
-        antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
+        def portDown = antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN }
 
         when: "ISL goes back up"
-        antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
+        def portUp = antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
@@ -98,7 +100,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
-        and: "Restore topology to the original state, remove the flow"
+        cleanup: "Restore topology to the original state, remove the flow"
+        portDown && !portUp && antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {

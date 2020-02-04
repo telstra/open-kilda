@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -23,6 +24,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -96,10 +98,11 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flows"
-        [vlanFlow, defaultFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
+        cleanup: "Delete the flows"
+        [vlanFlow, defaultFlow].each { flow -> flow && flowHelperV2.deleteFlow(flow.flowId) }
     }
 
+    @Tidy
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         when: "Create a default flow"
@@ -124,10 +127,11 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flows"
+        cleanup: "Delete the flows"
         flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
+    @Tidy
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "A default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
@@ -156,10 +160,11 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
             assert !traffExam.waitExam(direction).hasTraffic()
         }
 
-        and: "Cleanup: Delete the flows"
-        [defaultFlow, simpleflow].each { flowHelperV2.deleteFlow(it.flowId) }
+        cleanup: "Delete the flows"
+        [defaultFlow, simpleflow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tidy
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
@@ -182,7 +187,8 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
 port=$defaultFlow2.source.portNumber vlan=0, existing flow '$defaultFlow1.flowId' \
 source: switch=$defaultFlow1.source.switchId port=$defaultFlow1.source.portNumber vlan=0"
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(defaultFlow1.flowId)
+        defaultFlow2 && !exc && flowHelperV2.deleteFlow(defaultFlow2.flowId)
     }
 }

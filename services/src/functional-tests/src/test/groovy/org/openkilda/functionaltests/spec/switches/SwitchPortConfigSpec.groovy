@@ -8,6 +8,7 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -27,6 +28,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     def otsdbPortUp = 1
     def otsdbPortDown = 0
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
@@ -69,13 +71,22 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         }
         statsData.values().first() == otsdbPortUp
 
-        and: "Cleanup: reset costs"
+        cleanup:
+        if (portDownTime && !portUpTime) {
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def links = northbound.getAllLinks()
+                assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            }
+        }
         database.resetCosts()
 
         where:
         isl << uniqueIsls
     }
 
+    @Tidy
     @Unroll
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
     def "Able to bring ISL-free port down/up on an #sw.ofVersion switch(#sw.dpId)"() {
@@ -89,10 +100,13 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
 
         when: "Bring port up on the switch"
-        antiflap.portUp(sw.dpId, port)
+        def portUp = antiflap.portUp(sw.dpId, port)
 
         then: "Port is really UP"
         Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }
+
+        cleanup:
+        !portUp && antiflap.portUp(sw.dpId, port)
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.

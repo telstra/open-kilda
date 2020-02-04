@@ -240,7 +240,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(updatedFlow.flowId)
 
         and: "Restore initial switch properties"
@@ -360,7 +360,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(swappedFlow.flowId)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
@@ -802,7 +802,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             verifyEquals(it[0].lldp.first(), dstData)
         }
 
-        cleanup: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
         and: "Restore initial switch properties"
