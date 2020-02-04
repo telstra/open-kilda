@@ -15,6 +15,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -96,6 +97,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Unroll
     @Tags([SMOKE])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
@@ -116,10 +118,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
             compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow and install default rules if necessary"
         flowHelperV2.deleteFlow(flow.flowId)
-
-        and: "Install default rules if necessary"
         if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
             northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -162,6 +162,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll
     @Tags([SMOKE])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
@@ -196,10 +197,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
             compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow and install default rules if necessary"
         flowHelperV2.deleteFlow(flow.flowId)
-
-        and: "Install default rules if necessary"
         if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
             northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
             Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -242,6 +241,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll("Able to delete switch rules by #data.description")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
@@ -270,7 +270,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert actualRules.findAll { it.cookie in deletedRules }.empty
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -287,6 +287,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
     def "Attempt to delete switch rules by supplying non-existing cookie/priority leaves all rules intact"() {
         given: "A switch with some flow rules installed"
@@ -313,7 +314,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         deletedRules.size() == 0
         northbound.getSwitchRules(data.switch.dpId).flowEntries.size() == data.defaultRules.size() + flowRulesCount
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -330,6 +331,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll("Able to delete switch rules by #data.description")
     @Tags(SMOKE_SWITCHES)
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inPort/)
@@ -360,7 +362,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert filterRules(actualRules, data.inPort, data.inVlan, data.outPort).empty
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -404,6 +406,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inVlan/)
     def "Attempt to delete switch rules by supplying non-existing inPort/inVlan/outPort leaves all rules intact"() {
@@ -429,7 +432,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         deletedRules.size() == 0
         northbound.getSwitchRules(data.switch.dpId).flowEntries.size() == data.defaultRules.size() + flowRulesCount
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -468,6 +471,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
@@ -486,7 +490,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow.ignoreBandwidth = maximumBandwidth ? false : true
         flowHelperV2.addFlow(flow)
 
-        and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
+        and: "Remove flow rules so that they become 'missing'"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
@@ -521,7 +525,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: delete the flow and reset costs"
+        cleanup: "Delete the flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
@@ -531,6 +535,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         "an unmetered flow" | 0
     }
 
+    @Tidy
     @Unroll
     def "Unable to #action rules on a non-existent switch"() {
         when: "Try to #action rules on a non-existent switch"
@@ -547,6 +552,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         "validate"    | "validateSwitchRules"
     }
 
+    @Tidy
     @Tags([LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with protected path"() {
         given: "Two active not neighboring switches"
@@ -614,10 +620,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
         given: "Two active neighboring switches and two possible flow paths at least"
@@ -649,7 +656,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         // Switches may have parallel links, so we need to get involved ISLs.
         def islToFail = pathHelper.getInvolvedIsls(flowPath).first()
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        def portDown = antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -662,8 +669,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         checkTrafficCountersInRules(flow.source, false)
         checkTrafficCountersInRules(flow.destination, false)
 
-        and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
+        portDown && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -671,6 +678,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Tags([HARDWARE, LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
@@ -686,7 +694,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow.encapsulationType = FlowEncapsulationType.VXLAN
         flowHelperV2.addFlow(flow)
 
-        and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
+        and: "Delete flow rules so that they become 'missing'"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def transitSwitchIds = involvedSwitches[1..-2]
@@ -755,7 +763,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: delete the flow and reset costs"
+        cleanup: "Delete the flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 

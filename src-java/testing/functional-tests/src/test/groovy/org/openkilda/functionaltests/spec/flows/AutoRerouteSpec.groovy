@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit
 @Tags([LOW_PRIORITY])
 class AutoRerouteSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags(SMOKE)
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
@@ -47,7 +49,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             assert PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
         }
 
-        and: "Revive the ISL back (bring switch port up) and delete the flow"
+        cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -73,13 +75,13 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "One of the flow ISLs goes down"
         def isl = pathHelper.getInvolvedIsls(flowPath).first()
-        antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
+        def portDown = antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "ISL goes back up"
-        antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
+        def portUp = antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
@@ -90,6 +92,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Restore topology to the original state, remove the flow"
+        portDown && !portUp && antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
