@@ -2,8 +2,10 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -25,6 +27,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
+    @Tags([SMOKE_SWITCHES])
     def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
