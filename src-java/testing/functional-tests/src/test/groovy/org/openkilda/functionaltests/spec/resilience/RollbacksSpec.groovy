@@ -112,9 +112,9 @@ and at least 1 path must remain safe"
         }
         if(portDown) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert northbound.getLink(islToBreak).state == IslChangeType.DISCOVERED
-            }
+        }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()

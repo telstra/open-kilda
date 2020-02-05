@@ -133,11 +133,14 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(islToManipulate).actualState == IslChangeType.FAILED
-            assert northbound.getLink(islToManipulate.reversed).actualState == IslChangeType.FAILED
         }
 
         // delete link
         northbound.deleteLink(islUtils.toLinkParameters(islToManipulate))
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(islToManipulate)
+            assert !islUtils.getIslInfo(islToManipulate.reversed)
+        }
 
         when: "Disable port discovery property on the src and dst switches"
         northboundV2.updatePortProperties(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort,

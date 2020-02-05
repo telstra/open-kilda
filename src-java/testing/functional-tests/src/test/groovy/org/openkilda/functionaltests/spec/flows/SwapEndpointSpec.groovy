@@ -11,6 +11,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -212,6 +213,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /src1/)
     def "Able to swap #endpointsPart (#description) for two flows with the same source and different destination \
 switches"() {
         given: "Two flows with the same source and different destination switches"
@@ -270,6 +272,7 @@ switches"() {
 
     @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /src1/)
     def "Able to swap endpoints (#description) for two flows with the same source and different destination \
 switches"() {
         given: "Two flows with the same source and different destination switches"
@@ -376,6 +379,7 @@ switches"() {
 
     @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /dst1/)
     def "Able to swap #endpointsPart (#description) for two flows with different source and destination switches"() {
         given: "Two flows with different source and destination switches"
         flowHelper.addFlow(flow1)
@@ -511,6 +515,7 @@ switches"() {
 
     @Tidy
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Unable to swap #endpointsPart for two flows (#description)"() {
         given: "Three active flows"
         flowHelper.addFlow(flow1)
@@ -590,6 +595,7 @@ switches"() {
 
     @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /the same src endpoint for flows/)
     def "Unable to swap endpoints for two flows (#description)"() {
         given: "Two active flows"
         flowHelper.addFlow(flow1)
@@ -627,6 +633,7 @@ switches"() {
 
     @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /dst/)
     def "Unable to swap ports for two flows (port is occupied by ISL on #switchType switch)"() {
         given: "Two active flows"
         flowHelper.addFlow(flow1)

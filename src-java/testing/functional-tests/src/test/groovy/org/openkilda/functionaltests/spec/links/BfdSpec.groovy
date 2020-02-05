@@ -157,11 +157,14 @@ class BfdSpec extends HealthCheckSpecification {
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
-            assert northbound.getLink(isl.reversed).actualState == IslChangeType.FAILED
         }
 
         when: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(isl)
+            assert !islUtils.getIslInfo(isl.reversed)
+        }
 
         and: "Discover the removed link again"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
