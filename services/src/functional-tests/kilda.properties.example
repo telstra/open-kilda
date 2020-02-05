@@ -36,7 +36,7 @@ reroute.delay=2
 reroute.hardtimeout=8
 
 discovery.interval=3
-discovery.timeout=9
+discovery.timeout=15
 
 antiflap.min=1
 antiflap.warmup=3

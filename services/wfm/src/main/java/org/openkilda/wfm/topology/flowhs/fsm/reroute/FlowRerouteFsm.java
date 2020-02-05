@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -67,10 +68,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @Slf4j
 public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+
+    public static final int REROUTE_RETRY_LIMIT = 3;
 
     private final FlowRerouteHubCarrier carrier;
 
@@ -85,9 +90,16 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private FlowStatus newFlowStatus;
     private FlowEncapsulationType newEncapsulationType;
 
-    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
+    private int rerouteCounter;
+    private String rerouteReason;
+    private Set<IslEndpoint> affectedIsls;
+    private boolean forceReroute;
+
+    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId,
+                          Integer rerouteCounter) {
         super(commandContext, flowId);
         this.carrier = carrier;
+        this.rerouteCounter = rerouteCounter;
     }
 
     @Override
@@ -151,7 +163,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
-                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class);
+                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class,
+                    Integer.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
@@ -198,9 +211,11 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit, persistenceManager,
+                            carrier));
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit, persistenceManager,
+                            carrier));
             builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
@@ -216,9 +231,11 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit, persistenceManager,
+                            carrier));
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit, persistenceManager,
+                            carrier));
             builder.transition().from(State.VALIDATING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
@@ -364,8 +381,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId) {
-            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId, int rerouteCounter) {
+            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId, rerouteCounter);
         }
     }
 

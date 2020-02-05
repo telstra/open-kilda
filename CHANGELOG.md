@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.47.2 (05/02/2020)
+
+### Bug Fixes:
+-  [#3162](https://github.com/telstra/open-kilda/pull/3162) Add reroute retries when transit rules can't be installed or verified (Issue: [#3128](https://github.com/telstra/open-kilda/issues/3128)) 
+-  [#3156](https://github.com/telstra/open-kilda/pull/3156) Dump all switches to return visible switches [**floodlight**]
+-  [#3132](https://github.com/telstra/open-kilda/pull/3132) Add test for #3128 (Issue: [#3128](https://github.com/telstra/open-kilda/issues/3128)) [**tests**]
+-  [#3167](https://github.com/telstra/open-kilda/pull/3167) Fix reroute request filling in Flow H&S topology. (Issue: [#3128](https://github.com/telstra/open-kilda/issues/3128)) 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.47.1...v1.47.2).
+
+### Affected Components:
+fl, flow-hs
+
+---
+
 ## v1.47.1 (03/02/2020)
 
 ### Bug Fixes:

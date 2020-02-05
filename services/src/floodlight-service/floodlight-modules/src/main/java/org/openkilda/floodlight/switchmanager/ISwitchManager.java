@@ -498,7 +498,7 @@ public interface ISwitchManager extends IFloodlightService {
     void deleteMeter(final DatapathId dpid, final long meterId) throws SwitchOperationException;
 
 
-    Map<DatapathId, IOFSwitch> getAllSwitchMap();
+    Map<DatapathId, IOFSwitch> getAllSwitchMap(boolean visible);
 
     /**
      * Wrap IOFSwitchService.getSwitch call to check protect from null return value.

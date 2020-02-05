@@ -168,7 +168,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     }
 
     private void dumpAllSwitchesAction(String correlationId) {
-        Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap().values();
+        Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap(true).values();
         int switchCounter = 0;
         for (IOFSwitch sw : iofSwitches) {
             try {
