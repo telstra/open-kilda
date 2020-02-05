@@ -9,12 +9,14 @@ Input signals:
 * offline (switch)
 * poll-discovery (poll)
 * poll-fail (poll)
+* round-trip-status
 
 Output signals:
 * physical-down (isl/2)
 * uni-isl-setup (isl/2)
 * discovery (isl/2)
 * fail (isl/2)
+* isl-round-trip
 
 @startuml
 title Port FSM
@@ -42,6 +44,7 @@ state OPERATIONAL {
     UP : enter[discovery-enabled] / issue addWatch
     UP : poll-discovery / emit discovery
     UP : poll-fail / emit fail
+    UP : round-trip-status / emit round-trip-status
     UP : enable-discovery / issue addWatch
     UP : disable-discovery / issue delWatch
     UP : disable-discovery / issue notifyUniIslFail
