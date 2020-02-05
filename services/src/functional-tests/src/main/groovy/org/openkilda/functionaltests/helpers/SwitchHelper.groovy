@@ -14,6 +14,7 @@ import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
+import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
@@ -73,6 +74,38 @@ class SwitchHelper {
     @Memoized
     static Set<SwitchFeature> getFeatures(Switch sw) {
         database.getSwitch(sw.dpId).features
+    }
+
+    static List<Long> getDefaultMeters(Switch sw) {
+        if (!sw.features.contains(SwitchFeature.METERS)) {
+            return []
+        }
+
+        def meters = [
+                MeterId.createMeterIdForDefaultRule(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE),
+                MeterId.createMeterIdForDefaultRule(Cookie.VERIFICATION_UNICAST_RULE_COOKIE)]
+
+        if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+            meters.add(MeterId.createMeterIdForDefaultRule(Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE))
+        }
+
+        def swProps = northbound.getSwitchProperties(sw.dpId)
+        if (swProps.multiTable) {
+            meters.add(MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE))
+            meters.add(MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)
+            )
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
+                meters.add(MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE))
+            }
+        }
+        if (swProps.switchLldp) {
+            meters.addAll(
+                    MeterId.createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE),
+                    MeterId.createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE),
+                    MeterId.createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE))
+        }
+
+        return meters*.value
     }
 
     static List<Long> getDefaultCookies(Switch sw) {
@@ -154,11 +187,31 @@ class SwitchHelper {
     }
 
     /**
-     * The same as direct northbound call, but additionally waits that default rules are indeed reinstalled according
-     * to config
+     * The same as direct northbound call, but additionally waits that default rules and default meters are indeed
+     * reinstalled according to config
      */
     static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
         def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
+
+        // TODO(snikitin) Remove when feature https://github.com/telstra/open-kilda/issues/2969 will be implemented
+        // For now need to clean LLDP meters manually
+        def metersToDelete = []
+        if (!switchProperties.multiTable) {
+            metersToDelete.add(MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).value)
+            metersToDelete.add(MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).value)
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
+                metersToDelete.add(MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE).value)
+            }
+        }
+        if (!switchProperties.switchLldp) {
+            metersToDelete.add(MeterId.createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).value)
+            metersToDelete.add(MeterId.createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE).value)
+            metersToDelete.add(MeterId.createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE).value)
+        }
+        for (long meterId : metersToDelete) {
+            northbound.deleteMeter(sw.dpId, meterId)
+        }
+
         Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
             def actualHexCookie = []
             for (long cookie : northbound.getSwitchRules(sw.dpId).flowEntries*.cookie) {
@@ -169,6 +222,11 @@ class SwitchHelper {
                 expectedHexCookie.add(Cookie.decode(cookie).toString())
             }
             assert actualHexCookie.sort() == expectedHexCookie.sort()
+
+            def actualDefaultMetersIds = northbound.getAllMeters(sw.dpId).meterEntries*.meterId.findAll {
+                MeterId.isMeterIdOfDefaultRule((long) it)
+            }
+            assert actualDefaultMetersIds.sort() == sw.defaultMeters.sort()
         }
         return response
     }

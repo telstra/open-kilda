@@ -46,6 +46,7 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
 
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
@@ -284,7 +285,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             throw new IllegalSwitchPropertiesException("Supported transit encapsulations should not be null or empty");
         }
         SwitchProperties update = SwitchPropertiesMapper.INSTANCE.map(switchPropertiesDto);
-        return transactionManager.doInTransaction(() -> {
+        UpdateSwitchPropertiesResult result = transactionManager.doInTransaction(() -> {
             SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                     .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
@@ -302,12 +303,18 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
 
             switchPropertiesRepository.createOrUpdate(switchProperties);
-            if (previousMultiTableFlag != update.isMultiTable() || previousLldpFlag != update.isSwitchLldp()) {
-                carrier.requestSwitchSync(switchId);
-            }
 
-            return SwitchPropertiesMapper.INSTANCE.map(switchProperties);
+            boolean switchSyncRequired = previousMultiTableFlag != update.isMultiTable()
+                    || previousLldpFlag != update.isSwitchLldp();
+
+            return new UpdateSwitchPropertiesResult(
+                    SwitchPropertiesMapper.INSTANCE.map(switchProperties), switchSyncRequired);
         });
+
+        if (result.isSwitchSyncRequired()) {
+            carrier.requestSwitchSync(switchId);
+        }
+        return result.switchPropertiesDto;
     }
 
     /**
@@ -348,5 +355,12 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         return islRepository.findBySrcSwitch(switchId).stream()
                 .map(isl -> new IslEndpoint(switchId, isl.getSrcPort()))
                 .collect(Collectors.toList());
+    }
+
+    @Value
+    private class UpdateSwitchPropertiesResult {
+        private SwitchPropertiesDto switchPropertiesDto;
+        private boolean switchSyncRequired;
+
     }
 }
