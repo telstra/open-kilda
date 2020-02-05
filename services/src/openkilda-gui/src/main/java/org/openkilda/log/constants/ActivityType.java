@@ -58,8 +58,8 @@ public enum ActivityType {
     ISL_MAINTENANCE(37L),
     DELETE_ISL(38L),
     UPDATE_ISL_BANDWIDTH(39L),
-    DELETE_SWITCH(40L);
-
+    DELETE_SWITCH(40L),
+    UPDATE_ISL_BFD_FLAG(41L);
     private Long id;
     private ActivityTypeEntity activityTypeEntity;
 

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -99,6 +99,7 @@ public class IslLinkConverter {
         islLinkInfo.setState(islLink.getState());
         islLinkInfo.setUnderMaintenance(islLink.isUnderMaintenance());
         islLinkInfo.setEvacuate(islLink.isEvacuate());
+        islLinkInfo.setEnableBfd(islLink.isEnableBfd());
         List<IslPath> islPaths = islLink.getPath();
         if (islPaths != null && !islPaths.isEmpty()) {
             if (islPaths.get(0) != null) {
@@ -118,6 +119,7 @@ public class IslLinkConverter {
                 if (islPaths.get(1).getSegmentLatency() > 0) {
                     islLinkInfo.setLatency(islPaths.get(1).getSegmentLatency());
                 }
+                
             }
         }
         // set isl cost

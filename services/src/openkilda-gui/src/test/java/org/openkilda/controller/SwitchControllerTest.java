@@ -226,6 +226,27 @@ public class SwitchControllerTest {
         assertEquals(200, status);
     }
     
+    @Test
+    public void testUpdateIslBfdFlag() throws Exception {
+        LinkParametersDto linkParametersDto = new LinkParametersDto();
+        linkParametersDto.setSrcPort(Integer.valueOf(TestIslMock.SRC_PORT));
+        linkParametersDto.setSrcSwitch(TestIslMock.SRC_SWITCH);
+        linkParametersDto.setDstPort(Integer.valueOf(TestIslMock.DST_PORT));
+        linkParametersDto.setDstSwitch(TestIslMock.DST_SWITCH);
+        linkParametersDto.setEnableBfd(TestIslMock.ENABLE_BFD_FLAG);
+        String inputJson = mapToJson(linkParametersDto);
+        
+        MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
+                .patch("/api/switch/link/enable-bfd")
+                .content(inputJson)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+                .andReturn();
+        int status = mvcResult.getResponse().getStatus();
+        assertEquals(200, status);
+
+    }
+    
     protected String mapToJson(Object obj) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writeValueAsString(obj);
