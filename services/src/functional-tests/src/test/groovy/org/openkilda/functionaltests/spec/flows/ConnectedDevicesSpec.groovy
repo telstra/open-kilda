@@ -846,6 +846,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         if (oneSwitch) {
             flow = flowHelper.singleSwitchSinglePortFlow(switchPair.src)
         } else {
+            assert switchPair.src.dpId != switchPair.dst.dpId
             flow = flowHelper.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
