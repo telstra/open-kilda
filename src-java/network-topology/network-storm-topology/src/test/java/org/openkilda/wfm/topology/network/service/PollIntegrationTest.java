@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import lombok.Data;
 import org.junit.Assert;
@@ -35,6 +36,8 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.time.Duration;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PollIntegrationTest {
@@ -76,7 +79,8 @@ public class PollIntegrationTest {
         IWatcherCarrier watcherCarrier = mock(IWatcherCarrier.class);
 
         NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10);
-        NetworkWatcherService watcherService = new NetworkWatcherService(integrationCarrier, 100, taskId);
+        NetworkWatcherService watcherService = new NetworkWatcherService(
+                integrationCarrier, Duration.ofSeconds(1), 100, taskId);
         NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier,
                                                                                            200, 100);
 
@@ -119,7 +123,8 @@ public class PollIntegrationTest {
         };
 
         NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10);
-        NetworkWatcherService watcherService = new NetworkWatcherService(integrationCarrier, 100, taskId);
+        NetworkWatcherService watcherService = new NetworkWatcherService(
+                integrationCarrier, Duration.ofSeconds(1), 100, taskId);
         NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier,
                                                                                            200, 100);
 
@@ -170,6 +175,10 @@ public class PollIntegrationTest {
         @Override
         public void discoveryFailed(Endpoint endpoint, long packetNo, long currentTime) {
             decisionMakerService.failed(endpoint, currentTime);
+        }
+
+        public void sendRoundTripStatus(RoundTripStatus status) {
+            // send round-trip-status notification into ISL handler (outside discovery poll system)
         }
 
         public abstract void sendDiscovery(DiscoverIslCommandData discoveryRequest);

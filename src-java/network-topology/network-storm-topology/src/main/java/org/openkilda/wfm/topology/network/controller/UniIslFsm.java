@@ -26,6 +26,7 @@ import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmState;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IUniIslCarrier;
 
 import lombok.Builder;
@@ -92,6 +93,11 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         }
     }
 
+    public void proxyRoundTripStatus(
+            UniIslFsmState from, UniIslFsmState to, UniIslFsm event, UniIslFsmContext context) {
+        emitRoundTripStatus(context.getOutput(), context.getRoundTripStatus());
+    }
+
     public void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         IslInfoData discovery = context.getDiscoveryEvent();
         if (discovery != null) {
@@ -106,6 +112,14 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
             emitIslDown(context, mapDownReason(event));
         }
     }
+
+    public void downProxyRoundTripStatus(
+            UniIslFsmState from, UniIslFsmState to, UniIslFsm event, UniIslFsmContext context) {
+        if (!islReference.isIncomplete()) {
+            emitRoundTripStatus(context.getOutput(), context.getRoundTripStatus());
+        }
+    }
+
 
     public void bfdEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         emitIslUp(context);
@@ -123,6 +137,10 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
 
     private void emitIslMove(UniIslFsmContext context) {
         context.getOutput().notifyIslMove(endpoint, islReference);
+    }
+
+    private void emitRoundTripStatus(IUniIslCarrier carrier, RoundTripStatus status) {
+        carrier.notifyIslRoundTripStatus(islReference, status);
     }
 
     private IslDownReason mapDownReason(UniIslFsmEvent event) {
@@ -157,6 +175,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
                     UniIslFsm.class, UniIslFsmState.class, UniIslFsmEvent.class, UniIslFsmContext.class,
                     // extra parameters
                     Endpoint.class);
+
+            final String proxyRoundTripStatusMethod = "proxyRoundTripStatus";
 
             // INIT
             builder.transition()
@@ -203,6 +223,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
                     .from(UniIslFsmState.UP).to(UniIslFsmState.BFD).on(UniIslFsmEvent.BFD_UP);
             builder.onEntry(UniIslFsmState.UP)
                     .callMethod("upEnter");
+            builder.internalTransition().within(UniIslFsmState.UP).on(UniIslFsmEvent.ROUND_TRIP_STATUS)
+                    .callMethod(proxyRoundTripStatusMethod);
 
             // DOWN
             builder.transition()
@@ -211,6 +233,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
                     .from(UniIslFsmState.DOWN).to(UniIslFsmState.BFD).on(UniIslFsmEvent.BFD_UP);
             builder.onEntry(UniIslFsmState.DOWN)
                     .callMethod("downEnter");
+            builder.internalTransition().within(UniIslFsmState.DOWN).on(UniIslFsmEvent.ROUND_TRIP_STATUS)
+                    .callMethod("downProxyRoundTripStatus");
 
             // BFD
             builder.transition()
@@ -221,6 +245,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
                     .from(UniIslFsmState.BFD).to(UniIslFsmState.UP).on(UniIslFsmEvent.BFD_KILL);
             builder.onEntry(UniIslFsmState.BFD)
                     .callMethod("bfdEnter");
+            builder.internalTransition().within(UniIslFsmState.BFD).on(UniIslFsmEvent.ROUND_TRIP_STATUS)
+                    .callMethod(proxyRoundTripStatusMethod);
         }
 
         public FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> produceExecutor() {
@@ -239,6 +265,7 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
 
         private Isl history;
         private IslInfoData discoveryEvent;
+        private RoundTripStatus roundTripStatus;
 
         public static UniIslFsmContextBuilder builder(IUniIslCarrier carrier) {
             return new UniIslFsmContextBuilder()
@@ -250,7 +277,7 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         NEXT, ACTIVATE,
 
         PHYSICAL_DOWN,
-        DISCOVERY, FAIL,
+        DISCOVERY, FAIL, ROUND_TRIP_STATUS,
         BFD_UP, BFD_DOWN, BFD_KILL,
 
         _DISCOVERY_CHOICE_SAME, _DISCOVERY_CHOICE_MOVED,

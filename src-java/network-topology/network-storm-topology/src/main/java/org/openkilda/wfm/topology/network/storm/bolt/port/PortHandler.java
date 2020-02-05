@@ -33,6 +33,7 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IAntiFlapCarrier;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkAntiFlapService;
@@ -50,6 +51,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslDiscov
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslFailCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslPhysicalDownCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslRemoveCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslRoundTripStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslSetupCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListPollAddCommand;
@@ -204,6 +206,11 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         emit(STREAM_NORTHBOUND_ID, getCurrentTuple(), makePortPropertiesTuple(payload));
     }
 
+    @Override
+    public void notifyPortRoundTripStatus(RoundTripStatus roundTripStatus) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslRoundTripStatusCommand(roundTripStatus)));
+    }
+
     // IAntiFlapCarrier
 
     @Override
@@ -252,6 +259,10 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     public void updatePortProperties(Endpoint endpoint, boolean discoveryEnabled) {
         portService.updatePortProperties(endpoint, discoveryEnabled);
+    }
+
+    public void processRoundTripStatus(RoundTripStatus status) {
+        portService.roundTripStatusNotification(status);
     }
 
     // Private
