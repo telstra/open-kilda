@@ -23,6 +23,7 @@ import org.openkilda.wfm.topology.network.controller.UniIslFsm;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmState;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -84,6 +85,17 @@ public class NetworkUniIslService {
         log.debug("Uni-ISL service receive PHYSICAL-DOWN notification for {}", endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.PHYSICAL_DOWN, context);
+    }
+
+    /**
+     * Process round trip status notification.
+     */
+    public void roundTripStatusNotification(RoundTripStatus status) {
+        log.debug("Uni-ISL service receive ROUND TRIP STATUS notification");
+        UniIslFsmContext context = UniIslFsmContext.builder(carrier)
+                .roundTripStatus(status)
+                .build();
+        controllerExecutor.fire(locateController(status.getEndpoint()), UniIslFsmEvent.ROUND_TRIP_STATUS, context);
     }
 
     /**

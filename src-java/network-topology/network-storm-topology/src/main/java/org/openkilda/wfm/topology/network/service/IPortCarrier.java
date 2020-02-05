@@ -20,6 +20,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.PortProperties;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import java.time.Instant;
 
@@ -41,4 +42,6 @@ public interface IPortCarrier {
     void removeUniIslHandler(Endpoint endpoint);
 
     void notifyPortPropertiesChanged(PortProperties portProperties);
+
+    void notifyPortRoundTripStatus(RoundTripStatus roundTripStatus);
 }
