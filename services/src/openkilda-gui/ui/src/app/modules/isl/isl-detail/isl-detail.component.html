@@ -145,8 +145,8 @@
     
               </div>
     
-              <div class="col-sm-4" *ngIf="commonService.hasPermission('isl_update_maintenance')">
-                  <div class='row isl_sbl_details'>
+              <div class="col-sm-4" >
+                  <div class='row isl_sbl_details' *ngIf="commonService.hasPermission('isl_update_maintenance')">
                       <label class='col-sm-6 col-form-label'>Maintenance Mode:
                       </label>
                           <div class='col-sm-6'>
@@ -161,7 +161,7 @@
                               </div>
                             </div>
                     </div>
-                    <div class='row isl_sbl_details mt-3'>
+                    <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_maintenance')">
                         <label class='col-sm-6 col-form-label'>Evacuate All Flows:
                         </label>
                             <div class='col-sm-6'>
@@ -169,6 +169,21 @@
                                   <div class="onoffswitch">
                                     <input type="checkbox" (change)="evacuateIsl($event)" name="isl-evacuate" class="onoffswitch-checkbox" id="onoffevacuateisl" [checked]="evacuate">
                                     <label class="onoffswitch-label" for="onoffevacuateisl">
+                                      <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
+                                      <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                      </div>
+                      <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_bfd_flag')">
+                        <label class='col-sm-6 col-form-label'>Enable BFD:
+                        </label>
+                            <div class='col-sm-6'>
+                                <div class="pull-left">
+                                  <div class="onoffswitch">
+                                    <input type="checkbox" (change)="enablebfd_flag($event)" name="enable_bfd" class="onoffswitch-checkbox" id="onoffenablebfd" [checked]="enable_bfd">
+                                    <label class="onoffswitch-label" for="onoffenablebfd">
                                       <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
                                       <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
                                     </label>

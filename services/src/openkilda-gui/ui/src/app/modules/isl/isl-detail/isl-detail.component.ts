@@ -40,6 +40,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     speed:string = '';
     latency:string = '';
     state:string = '';
+    enable_bfd : boolean = false;
     evacuate:boolean=false;
     under_maintenance:boolean=false;
     loadingData = true;
@@ -162,6 +163,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
           this.available_bandwidth = retrievedObject.available_bandwidth;
           this.under_maintenance = retrievedObject.under_maintenance;
           this.evacuate = retrievedObject.evacuate;
+          this.enable_bfd = retrievedObject.enable_bfd;
           this.clipBoardItems = Object.assign(this.clipBoardItems,{
               sourceSwitchName: retrievedObject.source_switch_name,
               sourceSwitch: retrievedObject.source_switch,
@@ -306,6 +308,34 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       }
     );
     
+  }
+
+  enablebfd_flag(e){
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    this.enable_bfd = e.target.checked;
+    if(this.enable_bfd){      
+     modalRef.componentInstance.content = 'Are you sure you want to enable BFD flag?';
+    }else{
+      modalRef.componentInstance.content = 'Are you sure you want to disable BFD flag ?';
+    }
+     modalRef.result.then((response)=>{
+      if(response && response == true){
+        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,enable_bfd:this.enable_bfd};
+        this.islListService.updateBFDflag(data).subscribe(response=>{
+          this.toastr.success('BFD flag updated successfully!','Success');
+          location.reload();
+        },error => {
+          this.enable_bfd = false;
+          var errMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : 'Error in updating BFD flag! ';
+          this.toastr.error(errMsg,'Error');
+        })
+      }else{
+        this.enable_bfd = false;
+      }
+    },error => {
+      this.enable_bfd = false;
+    })
   }
 
   evacuateIsl(e){

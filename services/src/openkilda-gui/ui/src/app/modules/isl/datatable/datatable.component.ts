@@ -54,6 +54,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
   expandedAvailableBandwidth : boolean = false;
   expandedLatency : boolean = false;
   expandedUnidirectional : boolean = false;
+  expandedBfd : boolean = false;
   clipBoardItems = [];
   showIslDetail = function(data) {
      this.router.navigate(["/isl/switch/isl/"+data.source_switch+"/"+data.src_port+"/"+data.target_switch+"/"+data.dst_port]);
@@ -143,6 +144,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
         { sWidth: '12%' },
         { sWidth: '12%' },
         { sWidth: '12%' },
+        { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '8%' }
       ],
