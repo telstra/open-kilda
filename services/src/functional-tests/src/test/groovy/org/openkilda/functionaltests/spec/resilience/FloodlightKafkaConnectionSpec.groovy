@@ -24,6 +24,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
     def "System survives temporary connection outage between Floodlight and Kafka"() {
         when: "Controller loses connection to Kafka"
+        sleep(3000) //Not respecting this 'sleep' may lead to subsequent tests instability
         def flOut = false
         lockKeeper.knockoutFloodlight()
         flOut = true
@@ -98,5 +99,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
     }
 }

@@ -54,6 +54,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -150,6 +151,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Unable to create a single switch flow with protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -171,6 +173,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Unable to update a single switch flow to enable protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -467,6 +470,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Unable to update a flow to enable protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -883,6 +887,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -908,6 +913,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Unable to swap paths for a non-existent flow"() {
         when: "Try to swap path on a non-existent flow"
         northbound.swapFlowPath(NON_EXISTENT_FLOW_ID)
@@ -919,6 +925,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
+    @Tags(LOW_PRIORITY)
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -1132,7 +1139,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         then: "Flow status is DEGRADED"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
+        }
+
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = false })
@@ -1155,6 +1166,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "System doesn't allow to enable the pinned flag on a protected flow"() {
         given: "A protected flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:

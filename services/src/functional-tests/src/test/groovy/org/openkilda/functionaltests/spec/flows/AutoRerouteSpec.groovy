@@ -58,6 +58,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"
@@ -91,7 +92,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         }
 
-        and: "Restore topology to the original state, remove the flow"
+        cleanup: "Restore topology to the original state, remove the flow"
         portDown && !portUp && antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)

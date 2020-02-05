@@ -206,13 +206,15 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
-            assert northbound.getLink(isl.reversed).actualState == IslChangeType.FAILED
         }
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        assert !islUtils.getIslInfo(isl)
-        assert !islUtils.getIslInfo(isl.reversed)
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(isl)
+            assert !islUtils.getIslInfo(isl.reversed)
+        }
+
 
         and: "Set cost and max bandwidth on the deleted link via link props"
         def costValue = "12345"
