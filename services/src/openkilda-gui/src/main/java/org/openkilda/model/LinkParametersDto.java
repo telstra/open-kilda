@@ -43,6 +43,9 @@ public class LinkParametersDto {
     @JsonProperty("dst_port")
     private int dstPort;
     
+    @JsonProperty("enable_bfd")
+    private boolean enableBfd;
+    
     @JsonProperty("code")
     private String code;
     
