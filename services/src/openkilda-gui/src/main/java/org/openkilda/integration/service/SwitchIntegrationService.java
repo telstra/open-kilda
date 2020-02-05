@@ -662,4 +662,41 @@ public class SwitchIntegrationService {
         } 
         return null;
     }
+        
+    /**
+     * Gets the isl links.
+     *
+     * @return the IslLinkInfo
+     */
+    public List<IslLinkInfo> updateIslBfdFlag(final LinkParametersDto linkParametersDto) {
+        List<IslLink> links = updateLinkBfdFlag(linkParametersDto);
+        if (CollectionUtil.isEmpty(links)) {
+            throw new ContentNotFoundException();
+        }
+        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
+    }
+    
+    /**
+     * Updates the isl bfd flag.
+     *
+     * @return the IslLink
+     */
+    public List<IslLink> updateLinkBfdFlag(final LinkParametersDto linkParametersDto) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_LINK_BFD_FLAG, 
+                    HttpMethod.PATCH, objectMapper.writeValueAsString(linkParametersDto), 
+                    "application/json", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, IslLink.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while updating isl bfd-flag", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error occurred while updating isl bfd-flag", e);
+            throw new IntegrationException(e);
+        }
+        return null;
+    }
 }

@@ -216,6 +216,21 @@ public class SwitchController {
     }
 
     /**
+     * Update isl bfd-flag.
+     *
+     * @param linkParametersDto
+     *            the link parameters
+     * @return the IslLinkInfo
+     */
+    @RequestMapping(path = "/link/enable-bfd", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.ISL_UPDATE_BFD_FLAG})
+    public @ResponseBody List<IslLinkInfo> updateEnableBfdFlag(@RequestBody LinkParametersDto linkParametersDto) {
+        activityLogger.log(ActivityType.UPDATE_ISL_BFD_FLAG, linkParametersDto.toString());
+        return serviceSwitch.updateLinkBfdFlag(linkParametersDto);
+    }
+    
+    /**
      * Get Link Props.
      *
      * @param keys the link properties
@@ -338,10 +353,6 @@ public class SwitchController {
     @Permissions(values = { IConstants.Permission.SW_SWITCH_DELETE })
     public @ResponseBody SwitchInfo deleteSwitch(@PathVariable final String switchId,
             @RequestParam(name = "force", required = false) boolean force) {
-        //        Long userId = null;
-        //        if (serverContext.getRequestContext() != null) {
-        //            userId = serverContext.getRequestContext().getUserId();
-        //        }
         activityLogger.log(ActivityType.DELETE_SWITCH, switchId);
         return serviceSwitch.deleteSwitch(switchId, force);
     }
