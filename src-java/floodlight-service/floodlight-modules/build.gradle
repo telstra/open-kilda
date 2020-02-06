@@ -5,18 +5,12 @@ plugins {
 compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
 compileJava.ajc.options.compilerArgs += '-verbose'
 
-configurations {
-    floodlightArtifact
-}
-
 description = 'Floodlight Service Modules'
 dependencies {
     implementation project(':floodlight-api')
     implementation project(':kilda-configuration')
     implementation project(':kilda-model')
     implementation project(':kilda-reporting')
-
-    floodlightArtifact  'org.projectfloodlight:floodlight'
 
     implementation('org.projectfloodlight:openflowj')
     compileOnly('org.projectfloodlight:floodlight')
@@ -72,18 +66,9 @@ repositories {
 }
 
 build.dependsOn collectDependencyJars
+build.dependsOn generateVersionTxt
 
 jar {
     // Omit version in the jar file name. This is for Docker image build purpose.
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
-
-buildAndCopyArtifacts {
-    from floodlightArtifact  { into "${project.name}/floodlight" }
-    from("$buildDir/resources/main/floodlightkilda.properties") { into "${project.name}" }
-    from("$buildDir/resources/main/floodlightkildaStats.properties") { into "${project.name}" }
-    from("$buildDir/resources/main/logback.xml") { into "${project.name}" }
-
-}
-
-jar.dependsOn generateVersionTxt

@@ -113,5 +113,5 @@ artifacts {
 }
 
 buildAndCopyArtifacts {
-    from("$buildDir/resources/release/topology.properties") { into "${project.name}" }
+    from("${project.buildDir}/resources/release/topology.properties") { into "${project.name}/resources" }
 }

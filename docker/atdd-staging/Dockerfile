@@ -16,11 +16,11 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-COPY src-java/testing/atdd-staging/build/dependency-jars/* /app/atdd/dependency-jars/
-COPY src-java/testing/atdd-staging/build/libs/*            /app/atdd/libs/
-COPY src-java/testing/atdd-staging/build.gradle            /app/atdd/
-COPY src-java/testing/atdd-staging/log4j2.xml              /app/
-COPY src-java/testing/atdd-staging/kilda.properties        /app/
+COPY BUILD/atdd-staging/dependency-jars/*                 /app/atdd/dependency-jars/
+COPY BUILD/atdd-staging/libs/*                            /app/atdd/libs/
+COPY BUILD/atdd-staging/build.gradle                      /app/atdd/
+COPY BUILD/atdd-staging/resources/log4j2.xml              /app/
+COPY BUILD/atdd-staging/resources/kilda.properties        /app/
 
 WORKDIR /app
 

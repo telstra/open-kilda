@@ -15,13 +15,13 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ADD BUILD/floodlight-modules/floodlight.jar                     /app/floodlight.jar
-ADD BUILD/floodlight-modules/dependency-jars/*                  /app/dependency-jars/
-ADD BUILD/floodlight-modules/floodlightkilda.properties         /app/floodlightkilda.properties
-ADD BUILD/floodlight-modules/floodlightkildaStats.properties    /app/floodlightkildaStats.properties
-ADD BUILD/floodlight-modules/logback.xml                        /app
-ADD BUILD/floodlight-modules/libs/floodlight-modules.jar        /app/floodlight-modules.jar
-ADD floodlight-modules/entrypoint.sh                            /entrypoint.sh
+ADD BUILD/floodlight/libs/floodlight.jar                                  /app/floodlight.jar
+ADD BUILD/floodlight-modules/dependency-jars/*                            /app/dependency-jars/
+ADD BUILD/floodlight-modules/resources/floodlightkilda.properties         /app/floodlightkilda.properties
+ADD BUILD/floodlight-modules/resources/floodlightkildaStats.properties    /app/floodlightkildaStats.properties
+ADD BUILD/floodlight-modules/resources/logback.xml                        /app
+ADD BUILD/floodlight-modules/libs/floodlight-modules.jar                  /app/floodlight-modules.jar
+ADD floodlight-modules/entrypoint.sh                                      /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["floodlight"]
