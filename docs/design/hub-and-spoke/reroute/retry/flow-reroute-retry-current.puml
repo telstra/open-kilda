@@ -1,0 +1,45 @@
+@startuml
+title Current flow reroute retry
+
+participant NetworkTopology
+participant Northbound
+box "Reroute Topology" #LightGreen
+    participant RerouteBolt
+    participant FlowThrottlingBolt
+end box
+box "Flow H&S Topology" #LightBlue
+    participant FlowRerouteHubBolt
+    participant FlowRerouteService
+    participant RerouteRetryManager
+end box
+
+    NetworkTopology -> RerouteBolt : network events
+activate RerouteBolt
+    RerouteBolt -> RerouteBolt : get affected and/or inactive flows
+    RerouteBolt -> FlowThrottlingBolt : flow reroute commands
+deactivate RerouteBolt
+
+activate FlowThrottlingBolt
+    FlowThrottlingBolt -> FlowThrottlingBolt : delay and merge reroute commands
+    FlowThrottlingBolt -> FlowRerouteHubBolt : send reroute commands
+deactivate FlowThrottlingBolt
+
+activate FlowRerouteHubBolt
+    Northbound -> FlowRerouteHubBolt : send manual reroute commands
+    FlowRerouteHubBolt -> FlowRerouteService : handle reroute
+    FlowRerouteService -> RerouteRetryManager : check retry queue state
+    RerouteRetryManager -> RerouteRetryManager : postpone and merge requests
+alt queue is empty
+    RerouteRetryManager -> FlowRerouteService : init reroute
+else request is postponed
+    RerouteRetryManager -> FlowRerouteService : cancel timeout
+    FlowRerouteService -> FlowRerouteHubBolt : cancel timeout
+end
+deactivate FlowRerouteHubBolt
+
+==Reroute finished==
+    FlowRerouteService -> RerouteRetryManager : remove active reroute from queue
+    RerouteRetryManager -> FlowRerouteService : get new reroute from queue
+    FlowRerouteService -> FlowRerouteHubBolt : inject reroute from queue and setup timeout
+
+@enduml
