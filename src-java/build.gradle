@@ -131,6 +131,25 @@ subprojects {
         from configurations.runtimeClasspath
     }
 
+    task buildAndCopyArtifacts(type: Copy, dependsOn: 'build') {
+        onlyIf {
+            project.hasProperty('destPath')
+        }
+        into rootProject.file("${project.findProperty('destPath') ?: ''}")
+
+        from("${project.buildDir}/libs") { into "${project.name}/libs" }
+        from("${project.buildDir}/dependency-jars") { into "${project.name}/dependency-jars" }
+        from("src/main/resources/*.properties") {
+             into "${project.name}/src/main/resources"
+        }
+        from("${project.file('build.gradle')}") { into "${project.name}" }
+        from("${project.file('floodlightkilda.properties')}") { into "${project.name}" }
+        from("${project.file('floodlightkildaStats.properties')}") { into "${project.name}" }
+        from("${project.file('logback.xml')}") { into "${project.name}" }
+        from("projectfloodlight/floodlight/build/${file('floodlight.jar')}") { into 'floodlight' }
+
+    }
+
     checkstyle {
         toolVersion '8.18'
         configDirectory = rootProject.file('checkstyle')
@@ -180,4 +199,6 @@ subprojects {
             grgit.close()
         }
     }
+
+
 }

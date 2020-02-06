@@ -16,3 +16,6 @@
 
 # VSCode specific files/directories
 .vscode/
+
+# Docker build foilder
+docker/BUILD/*

@@ -16,6 +16,6 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ADD src-java/northbound-service/northbound/build/libs/northbound.jar /app/
+ADD BUILD/northbound/libs/northbound.jar /app/
 WORKDIR /app
 CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "northbound.jar"]

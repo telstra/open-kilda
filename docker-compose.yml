@@ -107,8 +107,8 @@ services:
   wfm:
     container_name: wfm
     build:
-      context: .
-      dockerfile: docker/wfm/Dockerfile
+      context: docker
+      dockerfile: wfm/Dockerfile
     depends_on:
       kafka:
         condition: service_healthy
@@ -247,8 +247,8 @@ services:
   floodlight_one:
     container_name: floodlight_one
     build:
-      context: .
-      dockerfile: docker/floodlight-modules/Dockerfile
+      context: docker
+      dockerfile: floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
@@ -272,8 +272,8 @@ services:
   floodlight_two:
     container_name: floodlight_two
     build:
-      context: .
-      dockerfile: docker/floodlight-modules/Dockerfile
+      context: docker
+      dockerfile: floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
@@ -295,8 +295,8 @@ services:
   northbound:
     container_name: openkilda-northbound
     build:
-      context: .
-      dockerfile: docker/northbound/Dockerfile
+      context: docker
+      dockerfile: northbound/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -318,8 +318,8 @@ services:
   grpc-speaker:
     container_name: grpc-speaker
     build:
-      context: .
-      dockerfile: docker/grpc-service/Dockerfile
+      context: docker
+      dockerfile: grpc-service/Dockerfile
     ports:
     - "8091:8091"
     depends_on:
@@ -374,9 +374,6 @@ services:
   elasticsearch:
     container_name: elasticsearch
     image: "kilda/elasticsearch:${full_build_number:-latest}"
-    build:
-      context: .
-      dockerfile: docker/elasticsearch/Dockerfile
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
