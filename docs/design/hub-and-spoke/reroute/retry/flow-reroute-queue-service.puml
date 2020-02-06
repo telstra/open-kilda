@@ -1,0 +1,59 @@
+@startuml
+title Flow reroute queue processing
+
+participant FlowRerouteQueueBolt
+participant FlowRerouteQueueService
+participant FlowRerouteQueue
+participant TimeWindowBolt
+
+==Manual reroute request==
+    FlowRerouteQueueBolt -> FlowRerouteQueueService : manual reroute request
+    FlowRerouteQueueService -> FlowRerouteQueue : check in-progress reroute
+alt no in-progress reroute
+    FlowRerouteQueue -> FlowRerouteQueueService : no in-progress reroute
+    FlowRerouteQueueService -> FlowRerouteQueueService : start reroute
+    FlowRerouteQueueService -> FlowRerouteQueue : save in-progress reroute
+else reroute is in-progress
+    FlowRerouteQueue -> FlowRerouteQueueService : reroute is in-progress
+    FlowRerouteQueueService -> FlowRerouteQueueBolt : send error to northbound
+end
+
+==Auto reroute request==
+    FlowRerouteQueueBolt -> FlowRerouteQueueService : auto reroute request
+    FlowRerouteQueueService -> FlowRerouteQueue : add reroute request to throttling
+    FlowRerouteQueue -> FlowRerouteQueue : merge request if throttling is not empty
+    FlowRerouteQueueService -> FlowRerouteQueueBolt : send event to time window bolt
+    FlowRerouteQueueBolt -> TimeWindowBolt : extend time window
+
+==Time window closed==
+    TimeWindowBolt -> TimeWindowBolt : tick
+    TimeWindowBolt -> FlowRerouteQueueBolt : emit reroutes command
+    FlowRerouteQueueBolt -> FlowRerouteQueueService : emit reroutes command
+    FlowRerouteQueueService -> FlowRerouteQueue : check in-progress reroute
+        note right: for each flow id
+alt no in-progress reroute
+    FlowRerouteQueue -> FlowRerouteQueueService : no in-progress reroute
+    FlowRerouteQueueService -> FlowRerouteQueueService : start reroute
+    FlowRerouteQueueService -> FlowRerouteQueue : move throttled reroute to in-progress
+else reroute is in-progress
+    FlowRerouteQueue -> FlowRerouteQueueService : reroute is in-progress
+    FlowRerouteQueueService -> FlowRerouteQueue : move throttled reroute to pending reroute
+    FlowRerouteQueue -> FlowRerouteQueue : merge requests if pending is not empty
+end
+
+==Reroute finished or timed out==
+    FlowRerouteQueueService -> FlowRerouteQueueService : check finish state and decide if retry is required
+alt retry required
+    FlowRerouteQueueService -> FlowRerouteQueue : retry request
+    FlowRerouteQueue -> FlowRerouteQueue : merge retry request with pending if it is not empty
+    FlowRerouteQueue -> FlowRerouteQueue : move pending to in-progress
+    FlowRerouteQueue -> FlowRerouteQueueService : next reroute request
+    FlowRerouteQueueService -> FlowRerouteQueueService : start reroute
+else no retry required
+    FlowRerouteQueueService -> FlowRerouteQueue : get pending request
+    FlowRerouteQueue -> FlowRerouteQueue : move pending to in-progress
+    FlowRerouteQueue -> FlowRerouteQueueService : next reroute request
+    FlowRerouteQueueService -> FlowRerouteQueueService : start reroute
+end
+
+@enduml
