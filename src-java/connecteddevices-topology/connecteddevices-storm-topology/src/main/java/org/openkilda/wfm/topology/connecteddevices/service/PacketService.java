@@ -310,8 +310,8 @@ public class PacketService {
 
     private SwitchConnectedDevice getOrBuildSwitchDevice(SwitchLldpInfoData data, int vlan) {
         Optional<SwitchConnectedDevice> device = switchConnectedDeviceRepository
-                .findByUniqueFieldCombination(
-                        data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(), LLDP,
+                .findLldpByUniqueFieldCombination(
+                        data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
                         data.getChassisId(), data.getPortId());
 
         if (device.isPresent()) {

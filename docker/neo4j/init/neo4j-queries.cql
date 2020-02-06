@@ -51,3 +51,4 @@ CREATE INDEX ON :`switch_connected_device` (`mac_address`);
 CREATE INDEX ON :`switch_connected_device` (`type`);
 CREATE INDEX ON :`switch_connected_device` (`chassis_id`);
 CREATE INDEX ON :`switch_connected_device` (`port_id`);
+CREATE INDEX ON :`switch_connected_device` (`ip_address`);
