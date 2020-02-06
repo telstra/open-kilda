@@ -28,4 +28,5 @@ import java.util.List;
 public class PortConnectedDevicesDto {
     private int portNumber;
     private List<SwitchConnectedDeviceDto> lldp;
+    private List<SwitchConnectedDeviceDto> arp;
 }

@@ -27,6 +27,7 @@ import lombok.Value;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class ConnectedDeviceDto {
     private String macAddress;
+    private String ipAddress;
     private String chassisId;
     private String portId;
     private Integer ttl;

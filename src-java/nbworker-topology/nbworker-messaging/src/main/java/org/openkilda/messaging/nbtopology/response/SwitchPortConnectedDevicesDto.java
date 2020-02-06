@@ -36,4 +36,5 @@ public class SwitchPortConnectedDevicesDto extends InfoData {
 
     private int portNumber;
     private List<SwitchConnectedDeviceDto> lldp;
+    private List<SwitchConnectedDeviceDto> arp;
 }

@@ -106,7 +106,7 @@ public class PacketService {
     /**
      * Handle Arp info data.
      */
-    public void handleArpData (ArpInfoData data) {
+    public void handleArpData(ArpInfoData data) {
         transactionManager.doInTransaction(() -> {
 
             FlowRelatedData flowRelatedData = findFlowRelatedData(data);

@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import static java.lang.String.format;
+import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -261,13 +262,17 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
 
         for (Entry<Integer, List<SwitchConnectedDevice>> entry : deviceByPort.entrySet()) {
             List<SwitchConnectedDeviceDto> lldpDevices = new ArrayList<>();
+            List<SwitchConnectedDeviceDto> arpDevices = new ArrayList<>();
             for (SwitchConnectedDevice device : entry.getValue()) {
                 if (device.getType() == LLDP) {
                     lldpDevices.add(ConnectedDeviceMapper.INSTANCE.map(device));
+                } else if (device.getType() == ARP) {
+                    arpDevices.add(ConnectedDeviceMapper.INSTANCE.map(device));
                 }
             }
             lldpDevices.sort(Comparator.comparing(o -> Instant.parse(o.getTimeLastSeen())));
-            ports.add(new SwitchPortConnectedDevicesDto(entry.getKey(), lldpDevices));
+            arpDevices.sort(Comparator.comparing(o -> Instant.parse(o.getTimeLastSeen())));
+            ports.add(new SwitchPortConnectedDevicesDto(entry.getKey(), lldpDevices, arpDevices));
         }
         return new SwitchConnectedDevicesResponse(ports);
     }

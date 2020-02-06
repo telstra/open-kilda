@@ -29,6 +29,7 @@ public class SwitchConnectedDeviceDto {
     private int vlan;
     private String flowId;
     private String macAddress;
+    private String ipAddress;
     private String chassisId;
     private String portId;
     private Integer ttl;
