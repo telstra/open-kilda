@@ -17,9 +17,3 @@
 # VSCode specific files/directories
 .vscode/
 
-# Docker build foilder
-docker/BUILD/*
-docker/base/kilda-base-lab-service/requirements
-docker/lab-service/*.whl
-docker/lock-keeper/README.md
-docker/lock-keeper/*.py

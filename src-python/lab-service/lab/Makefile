@@ -18,3 +18,4 @@ clean:
 	rm -rf .eggs .tox build dist
 
 .PHONY: all
+.PHONY: deploy-wheel wheel

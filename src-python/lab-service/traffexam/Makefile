@@ -11,3 +11,4 @@ deploy-wheel: wheel
 	cp dist/kilda_traffexam-*.whl ../../../docker/lab-service
 
 .PHONY: all
+.PHONY: deploy-wheel wheel
