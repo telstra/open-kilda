@@ -16,15 +16,15 @@
 ARG base_image=kilda/base-lab-service
 FROM ${base_image}
 
-ADD src-python/lab-service/traffexam  /exam
+ADD kilda_traffexam-*whl /exam/
 WORKDIR /exam
-RUN make install
+RUN for WHEEL_FILE in $(ls -1   *.whl); do pip3 install ${WHEEL_FILE}; done
 
-ADD src-python/lab-service/ /app
-ADD docker/lab-service/run.sh /app
+ADD run.sh /app/
 
+ADD kilda_lab-*whl /app/lab/
 WORKDIR /app/lab
-RUN make install
+RUN for WHEEL_FILE in $(ls -1   *.whl); do pip3 install ${WHEEL_FILE}; done
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8

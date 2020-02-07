@@ -5,8 +5,8 @@ services:
     container_name: lab-api
     image: kilda_lab-service
     build:
-      context: .
-      dockerfile: docker/lab-service/Dockerfile
+      context: docker/lab-service/
+      dockerfile: Dockerfile
     ports:
     - "8288:8288"
     privileged: true
@@ -356,7 +356,7 @@ services:
   gui:
     container_name: gui
     build:
-      context: services/src/openkilda-gui/
+      context: services/src/openkilda-gui
       dockerfile: Dockerfile
     ports:
       - "8010:1010"

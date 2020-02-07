@@ -17,6 +17,7 @@ FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
 
+
 RUN apt update \
     && apt install -y --no-install-recommends \
         software-properties-common \
@@ -44,3 +45,7 @@ RUN apt update \
     && make \
     && make install \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY requirements /requirements
+
+RUN for requirements_file in $(find /requirements/ -name  requirements.txt); do pip3 install -r ${requirements_file}; done

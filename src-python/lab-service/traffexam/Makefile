@@ -7,4 +7,7 @@ install:
 wheel:
 	python3 setup.py bdist_wheel
 
+deploy-wheel: wheel
+	cp dist/kilda_traffexam-*.whl ../../../docker/lab-service
+
 .PHONY: all

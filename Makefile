@@ -6,7 +6,7 @@ java_version := "1.8"
 check-java-version:
 	if  [ `java -version 2>&1 | awk -F '"' '/version/ { print $$2 }' | awk -F'.' '{ print $$1"."$$2 }'` != "$(java_version)" ]; then false; fi
 
-build-base: update-props docker/storm/lib
+build-base: find-python-requirements build-lock-keeper update-props docker/storm/lib
 	docker build -t kilda/base-ubuntu:latest docker/base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest docker/zookeeper
 	docker build -t kilda/kafka:latest docker/kafka
@@ -16,6 +16,20 @@ build-base: update-props docker/storm/lib
 	docker build -t kilda/opentsdb:latest docker/opentsdb
 	docker build -t kilda/logstash:latest docker/logstash
 	docker build -t kilda/base-lab-service:latest docker/base/kilda-base-lab-service/
+
+build-lock-keeper:
+	cp src-python/lock-keeper/* docker/lock-keeper/
+	docker build -t kilda/lock-keeper:latest docker/lock-keeper/
+
+.PHONY: build-lock-keeper
+
+find-python-requirements:
+	for requirements_file in $$(find src-python/  -name requirements.txt); do\
+            mkdir -p docker/base/kilda-base-lab-service/requirements/$$(dirname $${requirements_file}); \
+            cp $${requirements_file} docker/base/kilda-base-lab-service/requirements/$$(dirname $${requirements_file})/; \
+        done
+
+.PHONY: find-python-requirements
 
 docker/storm/lib:
 	docker/base/hacks/storm.requirements.download.sh
@@ -52,6 +66,8 @@ clean-sources:
 compile: update-props check-java-version
 	cd src-java && ./gradlew buildAndCopyArtifacts -PdestPath=../docker/BUILD --info --stacktrace $(GRADLE_COMPILE_PARAMS)
 	$(MAKE) -C src-python/lab-service/lab test
+	$(MAKE) -C src-python/lab-service/lab deploy-wheel
+	$(MAKE) -C src-python/lab-service/traffexam deploy-wheel
 	$(MAKE) -C services/src/openkilda-gui build
 
 .PHONY: unit
