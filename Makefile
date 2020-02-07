@@ -87,14 +87,17 @@ $(FUNC_TESTS)/topology.yaml:
 
 copy-test-props: $(FUNC_TESTS)/kilda.properties $(FUNC_TESTS)/topology.yaml
 
-.PHONY: run-func-tests
+.PHONY: run-func-tests func-tests test-topology
 run-func-tests:
-	cd src-java && ./gradlew :functional-tests:functionalTest --info $(PARAMS)
+	cd src-java && ./gradlew :functional-tests:$(TASK) --info $(PARAMS)
 
 # EXAMPLES:
-#   make func-tests  // run all tests
+#   make func-tests  // run all functional tests
 #   make func-tests PARAMS='--tests spec.links.**'  // run all tests from 'spec.links' package
 #   make func-tests PARAMS='--tests LinkSpec'  // run all tests from 'LinkSpec' class
 #   make func-tests PARAMS='--tests LinkSpec."Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
-.PHONY: func-tests
-func-tests: copy-test-props run-func-tests
+func-tests: TASK=functionalTest
+# test-topology creates a virtual topology ready for testing, ensures that it is properly discovered
+test-topology: TASK=runTest
+test-topology: PARAMS=--tests HealthCheckSpecification
+func-tests test-topology: copy-test-props run-func-tests
