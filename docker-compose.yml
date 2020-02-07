@@ -356,8 +356,8 @@ services:
   gui:
     container_name: gui
     build:
-      context: .
-      dockerfile: services/src/openkilda-gui/Dockerfile
+      context: services/src/openkilda-gui/
+      dockerfile: Dockerfile
     ports:
       - "8010:1010"
     depends_on:
