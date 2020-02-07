@@ -10,6 +10,7 @@ Note that the build process will install additional packages. It is recommended 
 ### Prerequisites
 
 The followings are required for building Kilda controller:
+ - Gradle 6.0+
  - Maven 3.3.9+
  - JDK8
  - Python 2.7+

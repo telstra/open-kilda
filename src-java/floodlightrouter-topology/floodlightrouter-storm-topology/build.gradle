@@ -1,0 +1,50 @@
+plugins {
+    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
+}
+
+compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
+compileJava.ajc.options.compilerArgs += '-verbose'
+
+description = 'Floodlight Router Storm Topology'
+dependencies {
+    implementation project(':base-storm-topology')
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
+    implementation project(':floodlight-api')
+    implementation project(':kilda-persistence-neo4j')
+
+    compileOnly('org.apache.storm:storm-core')
+    testImplementation('org.apache.storm:storm-core')
+
+    testImplementation 'junit:junit'
+    testImplementation 'pl.pragmatists:JUnitParams'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.clojure:clojure'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.neo4j:neo4j'
+    testImplementation 'org.neo4j:neo4j-bolt'
+    testImplementation 'org.neo4j:neo4j-ogm-core'
+    testImplementation 'org.neo4j.driver:neo4j-java-driver'
+    testImplementation 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.openkilda.wfm.topology.floodlightrouter.FloodlightRouterTopology'
+    }
+
+    classifier = 'original'
+}
+
+shadowJar {
+    classifier = ''
+    mergeServiceFiles()
+}
+
+build.dependsOn shadowJar

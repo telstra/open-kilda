@@ -1,0 +1,51 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Test-Library'
+dependencies {
+    implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
+
+    api project(':base-messaging')
+    api project(':flow-messaging')
+    api project(':nbworker-messaging')
+    api project(':grpc-api')
+    api project(':northbound-api')
+    api project(':floodlight-api')
+    api project(':kilda-persistence-api')
+    implementation project(':kilda-persistence-neo4j')
+    implementation project(':kilda-configuration')
+
+    api 'org.springframework:spring-beans'
+    api 'org.springframework:spring-context'
+    api 'org.springframework:spring-test'
+    api 'org.springframework:spring-web'
+
+    implementation('com.fasterxml.jackson.core:jackson-databind')
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+
+    implementation 'org.neo4j.driver:neo4j-java-driver'
+    implementation 'org.neo4j:neo4j-ogm-core'
+
+    implementation 'org.apache.httpcomponents:httpclient:4.4.1'
+    implementation 'com.google.guava:guava'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'commons-lang:commons-lang'
+    implementation 'commons-io:commons-io'
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'net.jodah:failsafe'
+    implementation 'org.apache.kafka:kafka-clients'
+    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    api 'junit:junit'
+    api 'com.github.javafaker:javafaker:0.18'
+    implementation 'com.nitorcreations:matchers'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
