@@ -24,8 +24,8 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.model.SwitchStatus
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
@@ -260,7 +260,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(switchToDisconnect)
 
         then: "The switch is really connected to the controller"
-        Wrappers.wait(WAIT_OFFSET) { assert switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
