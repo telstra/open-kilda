@@ -59,3 +59,10 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
         }
     }
 }
+
+task runTest(type: Test) {
+    //usually used together with `--tests`
+    description = 'Includes all tests from functional-tests module.'
+    include '**/functionaltests/**'
+    systemProperty 'tags', System.getProperty('tags')
+}
