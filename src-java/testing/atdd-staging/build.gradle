@@ -34,3 +34,7 @@ dependencies {
 }
 
 build.dependsOn collectDependencyJars
+
+buildAndCopyArtifacts {
+    from("${project.file("kilda.properties")}") { into "${project.name}/resources" }
+}
