@@ -35,6 +35,8 @@ import java.util.Collection;
 public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
     static final String TEST_PATH_ID = "test_path";
+    static final MeterId MIN_METER_ID = new MeterId(5);
+    static final MeterId MAX_METER_ID = new MeterId(25);
 
     static FlowMeterRepository flowMeterRepository;
     static SwitchRepository switchRepository;
@@ -99,6 +101,50 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
         flowMeterRepository.delete(foundMeter);
 
         assertEquals(0, flowMeterRepository.findAll().size());
+    }
+
+    @Test
+    public void shouldSelectNextInOrderResourceWhenFindUnassignedMeter() {
+        long first = findUnassignedMeterAndCreate("flow_1");
+        assertEquals(5, first);
+
+        long second = findUnassignedMeterAndCreate("flow_2");
+        assertEquals(6, second);
+
+        long third = findUnassignedMeterAndCreate("flow_3");
+        assertEquals(7, third);
+
+        flowMeterRepository.findAll().stream()
+                .filter(flowMeter -> flowMeter.getMeterId().getValue() == second)
+                .forEach(flowMeterRepository::delete);
+        long fourth = findUnassignedMeterAndCreate("flow_4");
+        assertEquals(6, fourth);
+
+        long fifth = findUnassignedMeterAndCreate("flow_5");
+        assertEquals(8, fifth);
+    }
+
+    @Test
+    public void shouldAssignTwoMetersForOneFlow() {
+        String flowId = "flow_1";
+        long flowCookie = findUnassignedMeterAndCreate(flowId);
+        assertEquals(5, flowCookie);
+
+        long secondCookie = findUnassignedMeterAndCreate(flowId);
+        assertEquals(6, secondCookie);
+    }
+
+    private long findUnassignedMeterAndCreate(String flowId) {
+        MeterId availableMeterId = flowMeterRepository
+                .findUnassignedMeterId(theSwitch.getSwitchId(), MIN_METER_ID, MAX_METER_ID).get();
+        FlowMeter flowMeterId = FlowMeter.builder()
+                .switchId(theSwitch.getSwitchId())
+                .meterId(availableMeterId)
+                .pathId(new PathId(TEST_PATH_ID))
+                .flowId(flowId)
+                .build();
+        flowMeterRepository.createOrUpdate(flowMeterId);
+        return availableMeterId.getValue();
     }
 
     private FlowMeter createFlowMeter(int meterId, PathId pathId) {

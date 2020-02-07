@@ -30,10 +30,11 @@ public interface TransitVlanRepository extends Repository<TransitVlan> {
 
     /**
      * Find a transit vlan which is not assigned to any flow.
-     * Use the provided defaultVlan as the first candidate.
+     * Use the provided minVlan as the first candidate.
      *
-     * @param defaultVlan the potential vlan to be checked first.
+     * @param minVlan the potential vlan to be checked first.
+     * @param maxVlan the max value of vlan.
      * @return a transit vlan or {@link Optional#empty()} if no vlan available.
      */
-    Optional<Integer> findUnassignedTransitVlan(int defaultVlan);
+    Optional<Integer> findUnassignedTransitVlan(int minVlan, int maxVlan);
 }

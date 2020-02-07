@@ -77,16 +77,17 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
     }
 
     @Override
-    public Optional<MeterId> findUnassignedMeterId(SwitchId switchId, MeterId defaultMeterId) {
+    public Optional<MeterId> findUnassignedMeterId(SwitchId switchId, MeterId minMeterId, MeterId maxMeterId) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "default_meter", defaultMeterId.getValue(),
+                "min_meter", minMeterId.getValue(),
+                "max_meter", maxMeterId.getValue(),
                 "switch_id", switchId.toString()
         );
 
-        // The query returns the default_meter if it's not used in any flow_meter,
+        // The query returns the min_meter if it's not used in any flow_meter,
         // otherwise locates a gap between / after the values used in flow_meter entities.
 
-        String query = "UNWIND [$default_meter] AS meter "
+        String query = "UNWIND [$min_meter] AS meter "
                 + "OPTIONAL MATCH (n:flow_meter {switch_id: $switch_id}) "
                 + "WHERE meter = n.meter_id "
                 + "WITH meter, n "
@@ -94,7 +95,7 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
                 + "RETURN meter "
                 + "UNION ALL "
                 + "MATCH (n1:flow_meter {switch_id: $switch_id}) "
-                + "WHERE n1.meter_id >= $default_meter "
+                + "WHERE n1.meter_id >= $min_meter AND n1.meter_id < $max_meter "
                 + "OPTIONAL MATCH (n2:flow_meter {switch_id: $switch_id}) "
                 + "WHERE (n1.meter_id + 1) = n2.meter_id "
                 + "WITH n1, n2 "

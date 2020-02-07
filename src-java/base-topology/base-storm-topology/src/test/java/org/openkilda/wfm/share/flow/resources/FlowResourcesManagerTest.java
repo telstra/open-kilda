@@ -17,6 +17,7 @@ package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
@@ -249,17 +250,27 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     }
 
     private void verifyCommonAllocation(FlowResources resources) {
-        assertEquals(1, resources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanEncapsulation) resources.getForward().getEncapsulationResources())
-                .getTransitVlan().getVlan());
+        assertTrue(resources.getUnmaskedCookie() >= flowResourcesConfig.getMinFlowCookie()
+                && resources.getUnmaskedCookie() <= flowResourcesConfig.getMaxFlowCookie());
+        int forwardVlan = ((TransitVlanEncapsulation) resources.getForward().getEncapsulationResources())
+                .getTransitVlan().getVlan();
+        assertTrue(forwardVlan >= flowResourcesConfig.getMinFlowTransitVlan()
+                && forwardVlan <= flowResourcesConfig.getMaxFlowTransitVlan());
 
-        assertEquals(2, ((TransitVlanEncapsulation) resources.getReverse().getEncapsulationResources())
-                .getTransitVlan().getVlan());
+        int reverseVlan = ((TransitVlanEncapsulation) resources.getReverse().getEncapsulationResources())
+                .getTransitVlan().getVlan();
+        assertTrue(reverseVlan >= flowResourcesConfig.getMinFlowTransitVlan()
+                && reverseVlan <= flowResourcesConfig.getMaxFlowTransitVlan());
+        assertEquals(forwardVlan, reverseVlan);
     }
 
     private void verifyMetersAllocation(FlowResources resources) {
-        assertEquals(32, resources.getForward().getMeterId().getValue());
-        assertEquals(32, resources.getReverse().getMeterId().getValue());
+        long forwardMeterId = resources.getForward().getMeterId().getValue();
+        assertTrue(forwardMeterId >= flowResourcesConfig.getMinFlowMeterId()
+                && forwardMeterId <= flowResourcesConfig.getMaxFlowMeterId());
+        long reverseMeterId = resources.getReverse().getMeterId().getValue();
+        assertTrue(reverseMeterId >= flowResourcesConfig.getMinFlowMeterId()
+                && reverseMeterId <= flowResourcesConfig.getMaxFlowMeterId());
     }
 
     private void verifyResourcesDeallocation() {

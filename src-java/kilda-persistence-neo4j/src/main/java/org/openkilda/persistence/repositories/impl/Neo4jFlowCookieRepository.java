@@ -52,14 +52,15 @@ public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie
     }
 
     @Override
-    public Optional<Long> findUnassignedCookie(long defaultCookie) {
+    public Optional<Long> findUnassignedCookie(long minCookie, long maxCookie) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "default_cookie", defaultCookie);
+                "min_cookie", minCookie,
+                "max_cookie", maxCookie);
 
-        // The query returns the default_cookie if it's not used in any flow_cookie,
+        // The query returns the min_cookie if it's not used in any flow_cookie,
         // otherwise locates a gap between / after the values used in flow_cookie entities.
 
-        String query = "UNWIND [$default_cookie] AS cookie "
+        String query = "UNWIND [$min_cookie] AS cookie "
                 + "OPTIONAL MATCH (n:flow_cookie) "
                 + "WHERE cookie = n.unmasked_cookie "
                 + "WITH cookie, n "
@@ -67,7 +68,7 @@ public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie
                 + "RETURN cookie "
                 + "UNION ALL "
                 + "MATCH (n1:flow_cookie) "
-                + "WHERE n1.unmasked_cookie >= $default_cookie "
+                + "WHERE n1.unmasked_cookie >= $min_cookie AND n1.unmasked_cookie < $max_cookie "
                 + "OPTIONAL MATCH (n2:flow_cookie) "
                 + "WHERE (n1.unmasked_cookie + 1) = n2.unmasked_cookie "
                 + "WITH n1, n2 "

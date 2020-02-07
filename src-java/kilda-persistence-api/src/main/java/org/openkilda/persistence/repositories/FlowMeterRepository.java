@@ -37,11 +37,12 @@ public interface FlowMeterRepository extends Repository<FlowMeter> {
 
     /**
      * Find a meter id which is not assigned to any flow.
-     * Use the provided {@code defaultMeterId} as the first candidate.
+     * Use the provided {@code minMeterId} as the first candidate.
      *
      * @param switchId       the switch defines where the meter is applied on.
-     * @param defaultMeterId the potential meter to be checked first.
+     * @param minMeterId the potential meter to be checked first.
+     * @param maxMeterId the max value of meter.
      * @return a meter id or {@link Optional#empty()} if no meter available.
      */
-    Optional<MeterId> findUnassignedMeterId(SwitchId switchId, MeterId defaultMeterId);
+    Optional<MeterId> findUnassignedMeterId(SwitchId switchId, MeterId minMeterId, MeterId maxMeterId);
 }

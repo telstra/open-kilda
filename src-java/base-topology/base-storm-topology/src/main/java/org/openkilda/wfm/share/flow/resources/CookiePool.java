@@ -50,8 +50,10 @@ public class CookiePool {
      */
     public long allocate(String flowId) {
         return transactionManager.doInTransaction(() -> {
-            long availableCookie = flowCookieRepository.findUnassignedCookie(minCookie)
-                    .orElseThrow(() -> new ResourceNotAvailableException("No cookie available"));
+            long startCookie = ResourceUtils.computeStartValue(minCookie, maxCookie);
+            long availableCookie = flowCookieRepository.findUnassignedCookie(startCookie, maxCookie)
+                    .orElse(flowCookieRepository.findUnassignedCookie(minCookie, maxCookie)
+                            .orElseThrow(() -> new ResourceNotAvailableException("No cookie available")));
             if (availableCookie > maxCookie) {
                 throw new ResourceNotAvailableException("No cookie available");
             }

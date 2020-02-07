@@ -142,6 +142,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private FlowPathRepository flowPathRepository;
     private FlowMeterRepository flowMeterRepository;
     private FlowCookieRepository flowCookieRepository;
+    private FlowResourcesConfig flowResourcesConfig;
 
     private FlowService flowService;
     private PathComputer pathComputer;
@@ -162,7 +163,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
         FlowValidator flowValidator = new FlowValidator(persistenceManager.getRepositoryFactory());
         when(pathComputerFactory.getPathComputer()).thenReturn(pathComputer);
 
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         flowService = new FlowService(persistenceManager,
                 pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator,
                 new FlowCommandFactory());
@@ -377,8 +378,12 @@ public class FlowServiceTest extends Neo4jBasedTest {
         assertEquals(getExpectedMeterCount(flow), flowMeterRepository.findAll().size());
         assertEquals(getExpectedCookieCount(flow), flowCookieRepository.findAll().size());
 
-        assertEquals(METER_32, createdFlow.getForwardPath().getMeterId());
-        assertEquals(METER_32, createdFlow.getReversePath().getMeterId());
+        long forwardMeterId = createdFlow.getForwardPath().getMeterId().getValue();
+        assertTrue(forwardMeterId >= flowResourcesConfig.getMinFlowMeterId()
+                && forwardMeterId <= flowResourcesConfig.getMaxFlowMeterId());
+        long reverseMeterId = createdFlow.getReversePath().getMeterId().getValue();
+        assertTrue(reverseMeterId >= flowResourcesConfig.getMinFlowMeterId()
+                && reverseMeterId <= flowResourcesConfig.getMaxFlowMeterId());
     }
 
     private int getExpectedMeterCount(Flow flow) {
