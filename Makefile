@@ -50,6 +50,10 @@ up-log-mode: up-test-mode
 # keeping run-test for backwards compatibility (documentation) .. should deprecate
 run-test: up-log-mode
 
+.PHONY: clean-docker-files
+clean-docker-files:
+	if [ -d docker/BUILD ]; then rm -rf docker/BUILD; fi
+
 .PHONY: clean-sources
 clean-sources:
 	$(MAKE) -C services/src/openkilda-gui clean-java
@@ -78,7 +82,7 @@ clean-test:
 	docker volume list -q | grep kilda | xargs -r docker volume  rm
 
 .PHONY: clean
-clean: clean-sources clean-test
+clean: clean-sources clean-test clean-docker-files
 
 update-props:
 	confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -sync-only
