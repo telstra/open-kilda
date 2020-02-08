@@ -1,7 +1,9 @@
+ROOT=../..
+
 find-python-requirements:
-	for requirements_file in $$(find src-python/  -name requirements.txt); do\
-            mkdir -p docker/base/kilda-base-lab-service/requirements/$$(dirname $${requirements_file}); \
-            cp $${requirements_file} docker/base/kilda-base-lab-service/requirements/$$(dirname $${requirements_file})/; \
-        done
+	for requirements_file in $$(find . -name requirements.txt); do\
+		echo; echo "# $$requirements_file"; echo; \
+		cat "$${requirements_file}"; \
+	done > "$(ROOT)/docker/base/kilda-base-lab-service/merged-requirements.txt"
 
 .PHONY: find-python-requirements

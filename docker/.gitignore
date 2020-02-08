@@ -1,6 +1,6 @@
 # Docker build foilder
 BUILD/*
-base/kilda-base-lab-service/requirements
+base/kilda-base-lab-service/merged-requirements.txt
 lab-service/*.whl
 lock-keeper/README.md
 lock-keeper/*.py

@@ -46,6 +46,5 @@ RUN apt update \
     && make install \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-COPY requirements /requirements
-
-RUN for requirements_file in $(find /requirements/ -name  requirements.txt); do pip3 install -r ${requirements_file}; done
+ADD merged-requirements.txt /
+RUN pip3 install -r merged-requirements.txt
