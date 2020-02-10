@@ -23,6 +23,7 @@ RUN for WHEEL_FILE in $(ls -1   *.whl); do pip3 install ${WHEEL_FILE}; done
 ADD run.sh /app/
 
 ADD kilda_lab-*whl /app/lab/
+ADD log.json /app/lab/
 WORKDIR /app/lab
 RUN for WHEEL_FILE in $(ls -1   *.whl); do pip3 install ${WHEEL_FILE}; done
 
