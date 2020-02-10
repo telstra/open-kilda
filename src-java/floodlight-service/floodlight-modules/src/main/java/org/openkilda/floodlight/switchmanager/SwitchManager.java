@@ -1445,7 +1445,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeLldpInputCustomer(port);
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
 
         OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
         builder.setCookie(U64.of(cookie));
@@ -1496,7 +1496,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMetadata(U64.of(METADATA_LLDP_VALUE))
                 .setMetadataMask(U64.of(METADATA_LLDP_MASK)).build();
 
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeLldpInputCustomer(port),
                 LLDP_INPUT_CUSTOMER_PRIORITY, INPUT_TABLE_ID)

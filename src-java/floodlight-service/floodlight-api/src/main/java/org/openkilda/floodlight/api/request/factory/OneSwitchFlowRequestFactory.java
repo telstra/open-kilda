@@ -20,6 +20,7 @@ import org.openkilda.floodlight.api.request.OneSwitchFlowRemoveRequest;
 import org.openkilda.floodlight.api.request.OneSwitchFlowRequest;
 import org.openkilda.floodlight.api.request.OneSwitchFlowVerifyRequest;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
@@ -34,9 +35,9 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     @Builder
     public OneSwitchFlowRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-            FlowEndpoint egressEndpoint, boolean removeCustomerPortSharedCatchRule) {
+            FlowEndpoint egressEndpoint, RemoveSharedRulesContext removeSharedRulesContext) {
         this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressEndpoint,
-                removeCustomerPortSharedCatchRule));
+                removeSharedRulesContext));
     }
 
     private OneSwitchFlowRequestFactory(OneSwitchFlowRequest requestBlank) {
@@ -62,9 +63,8 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     private static class RequestBlank extends OneSwitchFlowRequest {
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-                FlowEndpoint egressEndpoint, boolean removeCustomerPortSharedCatchRule) {
-            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint,
-                    removeCustomerPortSharedCatchRule);
+                FlowEndpoint egressEndpoint, RemoveSharedRulesContext removeSharedRulesContext) {
+            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint, removeSharedRulesContext);
         }
     }
 }

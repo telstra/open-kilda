@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.api.request;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -48,9 +49,9 @@ public class IngressFlowSegmentInstallRequest extends IngressFlowSegmentRequest 
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
-            @JsonProperty("remove_customer_port_shared_catch_rule") boolean removeCustomerPortSharedCatchRule) {
+            @JsonProperty("remove_shared_rules_context") RemoveSharedRulesContext removeSharedRulesContext) {
         super(messageContext, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                removeCustomerPortSharedCatchRule);
+                removeSharedRulesContext);
     }
 
     public IngressFlowSegmentInstallRequest(IngressFlowSegmentRequest other, UUID commandId) {

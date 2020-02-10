@@ -25,12 +25,14 @@ import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -108,5 +110,10 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
     @Override
     protected OFAction makeOutputAction() {
         return super.makeOutputAction(OFPort.of(command.getIslPort()));
+    }
+
+    @Override
+    protected List<OFInstruction> makeMetadataInstructions() {
+        return Collections.emptyList();
     }
 }

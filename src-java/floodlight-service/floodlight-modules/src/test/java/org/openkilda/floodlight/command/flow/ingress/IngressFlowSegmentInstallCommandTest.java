@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -81,7 +82,7 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
         UUID commandId = UUID.randomUUID();
         return new CommandStub(
                 new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint.getSwitchId(), 6, encapsulationVlan, false);
+                egressEndpoint.getSwitchId(), 6, encapsulationVlan, new RemoveSharedRulesContext(false, false));
     }
 
     static class CommandStub extends IngressFlowSegmentInstallCommand implements IFlowModFactoryOverride {
@@ -91,9 +92,9 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
         public CommandStub(
                 MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
                 MeterConfig meterConfig, SwitchId egressSwitchId, Integer islPort,
-                FlowTransitEncapsulation encapsulation, boolean removeCustomerPortSharedCatchRule) {
+                FlowTransitEncapsulation encapsulation, RemoveSharedRulesContext removeSharedRulesContext) {
             super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                    removeCustomerPortSharedCatchRule);
+                    removeSharedRulesContext);
         }
 
         @Override

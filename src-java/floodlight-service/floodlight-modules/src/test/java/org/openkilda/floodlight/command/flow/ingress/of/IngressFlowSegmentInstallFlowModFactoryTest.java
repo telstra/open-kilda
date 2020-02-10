@@ -17,7 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -41,6 +42,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowModFactoryTest {
@@ -99,8 +101,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         IngressFlowSegmentInstallCommand command = makeCommand(endpoint, meterConfig, encapsulationVlan);
 
         IngressFlowModFactory factory = makeFactory(command);
-        verifyGoToTableInstruction(factory.makeOuterVlanOnlyForwardMessage(meterConfig.getId()), TableId.of(
-                SwitchManager.POST_INGRESS_TABLE_ID));
+        verifyGoToTableInstruction(getGoToTableInstruction().map(OFInstructionGotoTable::getTableId),
+                factory.makeOuterVlanOnlyForwardMessage(meterConfig.getId()));
     }
 
     // --- makeDefaultPortFlowMatchAndForward
@@ -131,8 +133,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         IngressFlowSegmentInstallCommand command = makeCommand(endpoint, meterConfig, encapsulationVlan);
 
         IngressFlowModFactory factory = makeFactory(command);
-        verifyGoToTableInstruction(factory.makeDefaultPortFlowMatchAndForwardMessage(meterConfig.getId()), TableId.of(
-                SwitchManager.POST_INGRESS_TABLE_ID));
+        verifyGoToTableInstruction(getGoToTableInstruction().map(OFInstructionGotoTable::getTableId),
+                factory.makeDefaultPortFlowMatchAndForwardMessage(meterConfig.getId()));
     }
 
     public void processMakeDefaultPortFlowMatchAndForwardMessageVlan(IngressFlowSegmentInstallCommand command) {
@@ -168,6 +170,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
             OfAdapter.INSTANCE.makeMeterCall(of, command.getMeterConfig().getId(), applyActions, instructions);
         }
         instructions.add(of.instructions().applyActions(applyActions));
+        getGoToTableInstruction().ifPresent(instructions::add);
         if (! FlowEndpoint.isVlanIdSet(command.getEndpoint().getVlanId())) {
             applyActions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
         }
@@ -208,6 +211,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                 .build());
         applyActions.add(of.actions().buildOutput().setPort(OFPort.of(command.getIslPort())).build());
         instructions.add(of.instructions().applyActions(applyActions));
+        getGoToTableInstruction().ifPresent(instructions::add);
 
         return of.buildFlowAdd()
                 .setTableId(tableId)
@@ -234,10 +238,12 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         UUID commandId = UUID.randomUUID();
         return new IngressFlowSegmentInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
-                new SwitchId(datapathIdBeta.getLong()), 1, encapsulation, false);
+                new SwitchId(datapathIdBeta.getLong()), 1, encapsulation, new RemoveSharedRulesContext(false, false));
     }
 
     abstract FlowSegmentMetadata makeMetadata();
 
     abstract TableId getTargetTableId();
+
+    abstract Optional<OFInstructionGotoTable> getGoToTableInstruction();
 }

@@ -25,13 +25,12 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,14 +44,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     private final FlowResourcesManager resourcesManager;
-    private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public RemoveRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
-        super(persistenceManager);
+        super(persistenceManager, resourcesManager);
         this.resourcesManager = resourcesManager;
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
@@ -89,6 +86,9 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                                 .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
                                 .removeOppositeCustomerPortRule(
                                         isRemoveCustomerPortSharedCatchRule(flow, oppositePath))
+                                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
+                                .removeOppositeCustomerPortLldpRule(
+                                        isRemoveCustomerPortSharedLldpCatchRule(flow, oppositePath))
                                 .build();
                         commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
                                 path, oppositePath, speakerRequestBuildContext));
@@ -104,6 +104,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                     } else {
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
+                                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                                 .build();
                         commands.addAll(commandBuilder.buildAll(
                                 stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
@@ -157,6 +158,12 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
     private boolean isRemoveCustomerPortSharedCatchRule(Flow flow, FlowPath path) {
         boolean isForward = flow.isForward(path);
         return isRemoveCustomerPortSharedCatchRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+                isForward ? flow.getSrcPort() : flow.getDestPort());
+    }
+
+    private boolean isRemoveCustomerPortSharedLldpCatchRule(Flow flow, FlowPath path) {
+        boolean isForward = flow.isForward(path);
+        return isFlowTheLastUserOfSharedLldpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 }

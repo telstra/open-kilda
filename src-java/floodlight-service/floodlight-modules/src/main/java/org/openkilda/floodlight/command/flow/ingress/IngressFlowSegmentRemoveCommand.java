@@ -20,6 +20,7 @@ import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveSingleTableFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -45,9 +46,9 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
             @JsonProperty("egress_switch") SwitchId egressSwitchId,
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
-            @JsonProperty("remove_customer_port_shared_catch_rule") boolean removeCustomerPortSharedCatchRule) {
+            @JsonProperty("remove_shared_rules_context") RemoveSharedRulesContext removeSharedRulesContext) {
         super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                removeCustomerPortSharedCatchRule);
+                removeSharedRulesContext);
     }
 
     @Override
@@ -69,8 +70,13 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
     @Override
     protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
-        if (removeCustomerPortSharedCatchRule) {
-            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+        if (removeSharedRulesContext != null) {
+            if (removeSharedRulesContext.isRemoveCustomerCatchRule()) {
+                ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+            }
+            if (removeSharedRulesContext.isRemoveCustomerLldpRule()) {
+                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
+            }
         }
         return ofMessages;
     }

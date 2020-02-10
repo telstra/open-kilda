@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
@@ -38,8 +39,8 @@ public class OneSwitchFlowVerifyCommand extends OneSwitchFlowInstallCommand {
             @JsonProperty("endpoint") FlowEndpoint endpoint,
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
-            @JsonProperty("remove_customer_port_shared_catch_rule") boolean removeCustomerPortSharedCatchRule) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, removeCustomerPortSharedCatchRule);
+            @JsonProperty("remove_shared_rules_context") RemoveSharedRulesContext removeSharedRulesContext) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, removeSharedRulesContext);
     }
 
     @Override
