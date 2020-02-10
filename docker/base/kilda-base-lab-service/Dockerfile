@@ -17,6 +17,7 @@ FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
 
+
 RUN apt update \
     && apt install -y --no-install-recommends \
         software-properties-common \
@@ -44,3 +45,6 @@ RUN apt update \
     && make \
     && make install \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+ADD merged-requirements.txt /
+RUN pip3 install -r merged-requirements.txt

@@ -66,10 +66,9 @@ repositories {
 }
 
 build.dependsOn collectDependencyJars
+build.dependsOn generateVersionTxt
 
 jar {
     // Omit version in the jar file name. This is for Docker image build purpose.
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
-
-jar.dependsOn generateVersionTxt

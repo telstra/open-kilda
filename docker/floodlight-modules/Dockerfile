@@ -15,13 +15,13 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ADD src-java/projectfloodlight/floodlight/build/libs/floodlight.jar /app/floodlight.jar
-ADD src-java/floodlight-service/floodlight-modules/build/dependency-jars/* /app/dependency-jars/
-ADD src-java/floodlight-service/floodlight-modules/src/main/resources/floodlightkilda.properties /app/floodlightkilda.properties
-ADD src-java/floodlight-service/floodlight-modules/src/main/resources/floodlightkildaStats.properties /app/floodlightkildaStats.properties
-ADD src-java/floodlight-service/floodlight-modules/src/main/resources/logback.xml /app
-ADD src-java/floodlight-service/floodlight-modules/build/libs/floodlight-modules.jar /app/floodlight-modules.jar
-ADD docker/floodlight-modules/entrypoint.sh /entrypoint.sh
+ADD BUILD/floodlight/libs/floodlight.jar                                  /app/floodlight.jar
+ADD BUILD/floodlight-modules/dependency-jars/*                            /app/dependency-jars/
+ADD BUILD/floodlight-modules/resources/floodlightkilda.properties         /app/floodlightkilda.properties
+ADD BUILD/floodlight-modules/resources/floodlightkildaStats.properties    /app/floodlightkildaStats.properties
+ADD BUILD/floodlight-modules/resources/logback.xml                        /app
+ADD BUILD/floodlight-modules/libs/floodlight-modules.jar                  /app/floodlight-modules.jar
+ADD floodlight-modules/entrypoint.sh                                      /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["floodlight"]

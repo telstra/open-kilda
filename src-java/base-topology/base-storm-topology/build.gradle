@@ -111,3 +111,7 @@ artifacts {
     testArtifacts testJar
     releaseArtifacts releaseJar
 }
+
+buildAndCopyArtifacts {
+    from("${project.buildDir}/resources/release/topology.properties") { into "${project.name}/resources" }
+}
