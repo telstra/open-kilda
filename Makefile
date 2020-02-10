@@ -54,6 +54,7 @@ run-test: up-log-mode
 clean-docker-files:
 	if [ -d docker/BUILD ]; then rm -rf docker/BUILD; fi
 	if [ -f docker/base/kilda-base-lab-service/merged-requirements.txt ]; then rm docker/base/kilda-base-lab-service/merged-requirements.txt; fi
+	if [ -f docker/base-lab-service/log.json ]; then rm docker/base-lab-service/log.json; fi
 
 .PHONY: clean-sources
 clean-sources:

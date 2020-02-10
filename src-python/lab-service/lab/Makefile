@@ -1,3 +1,5 @@
+ROOT := ../../..
+
 all: install
 
 test:
@@ -11,8 +13,8 @@ wheel:
 	python3 setup.py bdist_wheel
 
 deploy-wheel: wheel
-	cp dist/kilda_lab-*.whl ../../../docker/lab-service
-
+	cp dist/kilda_lab-*.whl $(ROOT)/docker/lab-service
+	cp log.json $(ROOT)/docker/lab-service
 
 clean:
 	rm -rf .eggs .tox build dist
