@@ -57,7 +57,7 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
 
         if (meters.size() > 1) {
             throw new PersistenceException(
-                    format("Found more that 1 LLDP Meter entities by meter id '%s', switch id '%s' and flow id '%s'",
+                    format("Found more that 1 LLDP Meter entitiesdd by meter id '%s', switch id '%s' and flow id '%s'",
                             meterId, switchId, flowId));
         }
 
