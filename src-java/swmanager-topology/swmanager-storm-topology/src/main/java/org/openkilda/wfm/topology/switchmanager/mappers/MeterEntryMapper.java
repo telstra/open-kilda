@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.mappers;
+package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
