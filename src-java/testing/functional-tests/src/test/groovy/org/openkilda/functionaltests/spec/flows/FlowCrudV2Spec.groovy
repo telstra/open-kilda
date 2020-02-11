@@ -462,10 +462,12 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Unroll
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
-        def isolatedSwitch = topology.activeSwitches[1]
+        def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
+        def flow = data.getFlow(isolatedSwitch)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portDown(isolatedSwitch.dpId, port)
         }
@@ -478,7 +480,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         when: "Try building a flow using the isolated switch"
-        def flow = data.getFlow(isolatedSwitch)
         northboundV2.addFlow(flow)
 
         then: "Error is returned, stating that there is no path found for such flow"
@@ -490,7 +491,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth"
 
-        and: "Cleanup: restore connection to the isolated switch and reset costs"
+        cleanup: "Restore connection to the isolated switch and reset costs"
+        !error && flowHelperV2.deleteFlow(flow.flowId)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portUp(isolatedSwitch.dpId, port)
         }
@@ -504,15 +506,19 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(theSwitch, getTopology()
-                                    .activeSwitches.find { it != theSwitch })
+                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
+                                .collectMany { [it, it.reversed] }.find {
+                                    it.src == theSwitch
+                            })
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopology()
-                                    .activeSwitches.find { it != theSwitch }, theSwitch)
+                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
+                                .collectMany { [it, it.reversed] }.find {
+                                    it.dst == theSwitch
+                            })
                         }
                 ]
         ]

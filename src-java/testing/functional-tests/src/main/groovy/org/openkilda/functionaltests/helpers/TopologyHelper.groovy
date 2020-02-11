@@ -51,25 +51,25 @@ class TopologyHelper {
 
     SwitchPair getNeighboringSwitchPair() {
         getSwitchPairs().find {
-            it.paths.min { it.size() }.size() == 2
+            it.paths.min { it.size() }?.size() == 2
         }
     }
 
     SwitchPair getNotNeighboringSwitchPair() {
         getSwitchPairs().find {
-            it.paths.min { it.size() }.size() > 2
+            it.paths.min { it.size() }?.size() > 2
         }
     }
 
     List<SwitchPair> getAllNeighboringSwitchPairs() {
         getSwitchPairs().findAll {
-            it.paths.min { it.size() }.size() == 2
+            it.paths.min { it.size() }?.size() == 2
         }
     }
 
     List<SwitchPair> getAllNotNeighboringSwitchPairs() {
         getSwitchPairs().findAll {
-            it.paths.min { it.size() }.size() > 2
+            it.paths.min { it.size() }?.size() > 2
         }
     }
 
