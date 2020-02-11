@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -127,6 +128,9 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+        } // make sure that flow is UP after switchUP event
         flowHelper.deleteFlow(flow.id)
     }
 
@@ -218,6 +222,14 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        } // make sure that flow is UP after switchUP event
+        Wrappers.retry(3, 2){
+            /*we expect that the flow is UP at this point,
+            but sometimes for no good reason the flow is IN_PROGRESS
+            then as a result system can't delete the flow*/
+            flowHelperV2.deleteFlow(flow.flowId)
+        }
     }
 }
