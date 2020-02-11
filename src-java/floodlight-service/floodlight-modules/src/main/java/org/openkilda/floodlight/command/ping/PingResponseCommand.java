@@ -49,6 +49,7 @@ public class PingResponseCommand extends PingCommand {
             return null;
         }
 
+        log.info("Receive flow ping packet from switch {} OF-xid:{}", input.getDpId(), input.getMessage().getXid());
         try {
             PingData pingData = decode(payload);
             getContext().setCorrelationId(pingData.getPingId().toString());
