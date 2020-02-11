@@ -216,11 +216,11 @@ class SwitchesSpec extends HealthCheckSpecification {
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
 
         cleanup: "Revive the src switch and delete the flows"
+        [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
         lockKeeper.reviveSwitch(switchToDisconnect)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }
-        [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy

@@ -145,10 +145,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Connect the intermediate switch back and delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
         lockKeeper.reviveSwitch(findSw(flowPath[1].switchId))
         Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northbound.getActiveSwitches()*.switchId }
         northbound.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
-        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
