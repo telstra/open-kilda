@@ -74,7 +74,8 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
                 CommandContext forkedContext = new CommandContext(throttlingData.getCorrelationId()).fork(flowId);
 
                 FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, true,
-                        throttlingData.getAffectedIsl(), "initiated by Reroute topology");
+                        throttlingData.getAffectedIsl(),
+                        "initiated by Reroute topology: " + throttlingData.getReason());
                 outputCollector.emit(flowsRerouteViaFlowHs ? STREAM_FLOWHS_ID : STREAM_FLOW_ID,
                         tuple, new Values(forkedContext.getCorrelationId(),
                                 new CommandMessage(request, System.currentTimeMillis(),
