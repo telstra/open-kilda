@@ -97,7 +97,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      */
     public void emitRerouteCommand(String correlationId, Flow flow, Set<IslEndpoint> affectedIsl, String reason) {
         getOutput().emit(getCurrentTuple(), new Values(flow.getFlowId(),
-                new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate(), affectedIsl)));
+                new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate(), affectedIsl, reason)));
 
         log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
                 flow.getFlowId(), correlationId, reason);
