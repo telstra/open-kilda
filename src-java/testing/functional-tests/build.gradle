@@ -44,5 +44,6 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
             exclude excludeTerm
          }
     }
-    systemProperties System.properties
+
+    systemProperty 'tags', System.getProperty('tags')
 }
