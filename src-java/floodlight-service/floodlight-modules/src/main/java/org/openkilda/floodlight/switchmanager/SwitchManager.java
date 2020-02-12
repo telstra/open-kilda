@@ -240,6 +240,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final IPv4Address STUB_VXLAN_IPV4_SRC = IPv4Address.of("127.0.0.1");
     public static final IPv4Address STUB_VXLAN_IPV4_DST = IPv4Address.of("127.0.0.2");
     public static final int STUB_VXLAN_UDP_SRC = 4500;
+    public static final int ARP_VXLAN_UDP_SRC = 4501;
     public static final int VXLAN_UDP_DST = 4789;
     public static final int ETH_SRC_OFFSET = 48;
     public static final int INTERNAL_ETH_SRC_OFFSET = 448;
