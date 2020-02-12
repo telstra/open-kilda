@@ -355,11 +355,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Restore topology, delete flow and reset costs/bandwidth"
+        flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         altIsls.each {
             database.resetIslBandwidth(it)
