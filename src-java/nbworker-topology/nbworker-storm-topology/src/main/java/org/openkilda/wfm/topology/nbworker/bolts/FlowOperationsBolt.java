@@ -131,8 +131,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         Integer srcPort = request.getPort();
 
         try {
-            return flowOperationsService.getFlowPathsForEndpoint(srcSwitch, srcPort).stream()
-                    .map(FlowPath::getFlow)
+            return flowOperationsService.getFlowsForEndpoint(srcSwitch, srcPort).stream()
                     .distinct()
                     .map(FlowMapper.INSTANCE::map)
                     .map(FlowResponse::new)
