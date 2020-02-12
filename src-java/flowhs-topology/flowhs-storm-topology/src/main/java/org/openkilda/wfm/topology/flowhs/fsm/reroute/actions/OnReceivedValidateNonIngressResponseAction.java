@@ -13,34 +13,50 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.REROUTE_RETRY_LIMIT;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.model.Flow;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
 import java.util.UUID;
 
 @Slf4j
 public class ValidateNonIngressRulesAction extends
-        HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+        HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final int speakerCommandRetriesLimit;
+    private FlowRepository flowRepository;
+    private FlowRerouteHubCarrier carrier;
 
-    public ValidateNonIngressRulesAction(int speakerCommandRetriesLimit) {
+    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
+
+    public ValidateNonIngressRulesAction(int speakerCommandRetriesLimit, PersistenceManager persistenceManager,
+                                         FlowRerouteHubCarrier carrier) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.carrier = carrier;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getNonIngressCommands().get(commandId);
@@ -51,6 +67,7 @@ public class ValidateNonIngressRulesAction extends
 
         if (response.isSuccess()) {
             stateMachine.getPendingCommands().remove(commandId);
+
             stateMachine.saveActionToHistory("Rule was validated",
                     format("The non ingress rule has been validated successfully: switch %s, cookie %s",
                             command.getSwitchId(), command.getCookie()));
@@ -80,13 +97,34 @@ public class ValidateNonIngressRulesAction extends
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getFailedValidationResponses().isEmpty()) {
+            Collection<SpeakerFlowSegmentResponse> failedValidationResponses
+                    = stateMachine.getFailedValidationResponses().values();
+            if (failedValidationResponses.isEmpty()) {
                 log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_VALIDATED);
             } else {
+                String flowId = stateMachine.getFlowId();
+                Flow flow = flowRepository.findById(flowId)
+                        .orElseThrow(() -> new IllegalStateException(format("Flow %s not found", flowId)));
+                boolean isTerminatingSwitchFailed = failedValidationResponses.stream()
+                        .anyMatch(errorResponse -> errorResponse.getSwitchId().equals(flow.getSrcSwitch().getSwitchId())
+                                || errorResponse.getSwitchId().equals(flow.getDestSwitch().getSwitchId()));
+                int rerouteCounter = stateMachine.getRerouteCounter();
+                if (!isTerminatingSwitchFailed && rerouteCounter < REROUTE_RETRY_LIMIT) {
+                    rerouteCounter += 1;
+                    String newReason = format("%s: retry #%d", stateMachine.getRerouteReason(), rerouteCounter);
+                    FlowRerouteFact flowRerouteFact = new FlowRerouteFact(commandIdGenerator.generate().toString(),
+                            stateMachine.getCommandContext().fork(format("retry #%d", rerouteCounter)),
+                            stateMachine.getFlowId(), stateMachine.getAffectedIsls(), stateMachine.isForceReroute(),
+                            stateMachine.isEffectivelyDown(), newReason, rerouteCounter);
+                    carrier.injectRetry(flowRerouteFact);
+                    stateMachine.saveActionToHistory("Inject reroute retry",
+                            format("Reroute counter %d", rerouteCounter));
+                }
+
                 stateMachine.saveErrorToHistory(format(
                         "Found missing rules or received error response(s) on %d validation commands",
-                        stateMachine.getFailedValidationResponses().size()));
+                        failedValidationResponses.size()));
                 stateMachine.fire(Event.MISSING_RULE_FOUND);
             }
         }
