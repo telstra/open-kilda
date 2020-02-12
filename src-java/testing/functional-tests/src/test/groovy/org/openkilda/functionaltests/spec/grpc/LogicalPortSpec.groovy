@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.error.MessageError
 
@@ -17,6 +18,7 @@ a list of BFD ports to them to create a LAG for fast-failover for BFD sessions.
 NOTE: The GRPC implementation supports the LAG type only and it is set by default.""")
 class LogicalPortSpec extends GrpcBaseSpecification {
 
+    @Tidy
     @Unroll
     def "Able to create/read/delete logicalport on the #switches.switchId switch"() {
         /**the update action is not working(issue on a Noviflow switch side)*/
@@ -92,6 +94,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
                 ], noviflowSwitches].combinations()
     }
 
+    @Tidy
     @Unroll
     def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"

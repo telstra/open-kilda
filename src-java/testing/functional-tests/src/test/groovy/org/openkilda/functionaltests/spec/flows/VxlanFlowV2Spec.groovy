@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -12,9 +13,12 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -29,9 +33,12 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -47,32 +54,28 @@ flow with protected path, default flow) for a flow with VXLAN encapsulation.
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
 class VxlanFlowV2Spec extends HealthCheckSpecification {
+    static Logger logger = LoggerFactory.getLogger(VxlanFlowV2Spec.class)
+
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2995")
     @Unroll
     @Tags(HARDWARE)
+    @IterationTags([
+            @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
+    ])
     def "System allows to create/update encapsulation type for a flow\
-(#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
-        given: "Two active neighboring Noviflow switches with traffgens"
-        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            it.noviflow && !it.wb5164
-        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches",
-                false)
-
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            allTraffgenSwitchIds.contains(it.src.dpId) && allTraffgenSwitchIds.contains(it.dst.dpId)
-        } ?: assumeTrue("Unable to find required switches in topology", false)
-
+(#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair)"(Map data, SwitchPair swPair) {
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = encapsulationCreate
+        def flow = flowHelperV2.randomFlow(swPair)
+        flow.encapsulationType = data.encapsulationCreate
         flowHelperV2.addFlow(flow)
 
         then: "Flow is created with the #encapsulationCreate.toString() encapsulation type"
         def flowInfo = northbound.getFlow(flow.flowId)
-        flowInfo.encapsulationType == encapsulationCreate.toString().toLowerCase()
+        flowInfo.encapsulationType == data.encapsulationCreate.toString().toLowerCase()
 
         and: "Correct rules are installed"
         def vxlanRule = (flowInfo.encapsulationType == FlowEncapsulationType.VXLAN.toString().toLowerCase())
@@ -80,7 +83,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            verifyAll(northbound.getSwitchRules(swPair.src.dpId).flowEntries) { rules ->
                 rules.find {
                     it.cookie == flowInfoFromDb.forwardPath.cookie.value
                 }.instructions.applyActions.pushVxlan as boolean == vxlanRule
@@ -89,7 +92,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 }.match.tunnelId as boolean == vxlanRule
             }
 
-            verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            verifyAll(northbound.getSwitchRules(swPair.dst.dpId).flowEntries) { rules ->
                 rules.find {
                     it.cookie == flowInfoFromDb.forwardPath.cookie.value
                 }.match.tunnelId as boolean == vxlanRule
@@ -106,13 +109,20 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 5)
-        withPool {
-            [exam.forward, exam.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
+        def exam
+        try {
+            exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 5)
+            withPool {
+                [exam.forward, exam.reverse].eachParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    assert traffExam.waitExam(direction).hasTraffic()
+                }
             }
+        } catch (FlowNotApplicableException e) {
+            //flow is not applicable for traff exam. That's fine, just inform
+            logger.warn(e.message)
+            exam = null
         }
 
         and: "Flow is pingable"
@@ -123,11 +133,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         northboundV2.updateFlow(flowInfo.id,
-                flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = encapsulationUpdate }))
+                flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = data.encapsulationUpdate }))
 
         then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
         def flowInfo2 = northbound.getFlow(flow.flowId)
-        flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
+        flowInfo2.encapsulationType == data.encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
@@ -135,11 +145,13 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "The flow allows traffic"
-        withPool {
-            [exam.forward, exam.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
+        if(exam) {
+            withPool {
+                [exam.forward, exam.reverse].eachParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    assert traffExam.waitExam(direction).hasTraffic()
+                }
             }
         }
 
@@ -156,7 +168,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
 
         and: "New rules are installed correctly"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            verifyAll(northbound.getSwitchRules(swPair.src.dpId).flowEntries) { rules ->
                 rules.find {
                     it.cookie == flowInfoFromDb2.forwardPath.cookie.value
                 }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
@@ -165,7 +177,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 }.match.tunnelId as boolean == !vxlanRule
             }
 
-            verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            verifyAll(northbound.getSwitchRules(swPair.dst.dpId).flowEntries) { rules ->
                 rules.find {
                     it.cookie == flowInfoFromDb2.forwardPath.cookie.value
                 }.match.tunnelId as boolean == !vxlanRule
@@ -175,15 +187,25 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        encapsulationCreate                | encapsulationUpdate
-        FlowEncapsulationType.TRANSIT_VLAN | FlowEncapsulationType.VXLAN
-        FlowEncapsulationType.VXLAN        | FlowEncapsulationType.TRANSIT_VLAN
+        [data, swPair] << ([
+                [
+                        [
+                                encapsulationCreate: FlowEncapsulationType.TRANSIT_VLAN,
+                                encapsulationUpdate: FlowEncapsulationType.VXLAN
+                        ],
+                        [
+                                encapsulationCreate: FlowEncapsulationType.VXLAN,
+                                encapsulationUpdate: FlowEncapsulationType.TRANSIT_VLAN
+                        ]
+                ], getUniqueVxlanSwitchPairs()
+        ].combinations() ?: assumeTrue("Not enough VXLAN-enabled switches in topology", false))
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
@@ -212,10 +234,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active Noviflow switches with two available path at least"
@@ -329,10 +352,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        and: "Cleanup: Delete the flow and reset costs"
+        cleanup: "Delete the flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
@@ -367,7 +391,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
@@ -486,6 +510,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         initNoVxlanSwProps && SwitchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps)
     }
 
+    @Tidy
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "Noviflow and non-Noviflow switches"
@@ -508,8 +533,12 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: " +
                 "Switch $switchPair.dst.dpId doesn't have links with enough bandwidth"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Unroll
     @Tags(HARDWARE)
     def "System allows to create/update encapsulation type for a one-switch flow\
@@ -585,7 +614,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -608,5 +637,28 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                    .maximumBandwidth(flow.maximumBandwidth)
                    .ignoreBandwidth(flow.ignoreBandwidth)
                    .build()
+    }
+
+    /**
+     * Get minimum amount of switchPairs that will use every unique legal switch as src or dst at least once
+     */
+    List<SwitchPair> getUniqueVxlanSwitchPairs() {
+        def vxlanEnabledSwitches = topology.activeSwitches.findAll {
+            northbound.getSwitchProperties(it.dpId).supportedTransitEncapsulation
+                      .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
+        }
+        def vxlanSwitchPairs = topologyHelper.getSwitchPairs().findAll { swPair ->
+            swPair.paths.find { pathHelper.getInvolvedSwitches(it).every { it in vxlanEnabledSwitches } }
+        }
+        def switchesToPick = vxlanSwitchPairs.collectMany { [it.src, it.dst] }
+                                             .unique { it.details.hardware + it.details.software }
+        return vxlanSwitchPairs.inject([]) { r, switchPair ->
+            if (switchPair.src in switchesToPick || switchPair.dst in switchesToPick ) {
+                r << switchPair
+                switchesToPick.remove(switchPair.src)
+                switchesToPick.remove(switchPair.dst)
+            }
+            r
+        } as List<SwitchPair>
     }
 }

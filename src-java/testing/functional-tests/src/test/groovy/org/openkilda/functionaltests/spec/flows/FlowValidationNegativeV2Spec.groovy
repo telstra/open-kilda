@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
@@ -26,6 +27,7 @@ import spock.lang.Unroll
             """)
 class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
@@ -80,7 +82,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
             assert nonAffectedSwitches.every { sw -> northbound.validateSwitchRules(sw).excessRules.size() == 0 }
         }
 
-        and: "Delete the flows"
+        cleanup: "Delete the flows"
         [flowToBreak.flowId, intactFlow.flowId].each { flowHelperV2.deleteFlow(it) }
 
         where:
@@ -99,6 +101,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
     }
 
+    @Tidy
     @Unroll
     def "Unable to #action a non-existent flow"() {
         when: "Trying to #action a non-existent flow"
@@ -117,6 +120,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
+    @Tidy
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
@@ -163,7 +167,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         def responseValidateFlow2 = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow2.size() == 4
 
-        and: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 

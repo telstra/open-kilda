@@ -28,7 +28,7 @@ class StatsHelper {
 
     void verifyFlowsWriteStats(List<String> flowIds) {
         def soft = new SoftAssertions()
-        withPool(flowIds.size()) {
+        withPool(Math.min(flowIds.size(), 15)) {
             flowIds.eachParallel { String flowId ->
                 soft.checkSucceeds { verifyFlowWritesStats(flowId) }
             }
@@ -36,19 +36,19 @@ class StatsHelper {
         soft.verify()
     }
 
-    void verifyFlowWritesStats(String flowId, boolean mustHaveTraffic = true) {
+    void verifyFlowWritesStats(String flowId, boolean pingFlow = true) {
         def beforePing = new Date()
-        mustHaveTraffic && northbound.pingFlow(flowId, new PingInput())
-        verifyFlowWritesStats(flowId, beforePing, mustHaveTraffic)
+        pingFlow && northbound.pingFlow(flowId, new PingInput())
+        verifyFlowWritesStats(flowId, beforePing, pingFlow)
     }
 
-    void verifyFlowWritesStats(String flowId, Date from, boolean mustHaveTraffic) {
+    void verifyFlowWritesStats(String flowId, Date from, boolean expectTraffic) {
         Wrappers.wait(STATS_INTERVAL) {
             def dps = otsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
-            if(mustHaveTraffic) {
-                assert dps.values().any { it > 0 }
+            if(expectTraffic) {
+                assert dps.values().any { it > 0 }, flowId
             } else {
-                assert dps.size() > 0
+                assert dps.size() > 0, flowId
             }
         }
     }

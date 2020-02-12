@@ -2,6 +2,10 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
@@ -17,7 +21,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
-import org.openkilda.functionaltests.extension.tags.Tag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -70,10 +73,10 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Unroll
-    @Tags([Tag.TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
-            @IterationTag(tags = [Tag.SMOKE], iterationNameRegex = /srcLldp=true and dstLldp=true/),
-            @IterationTag(tags = [Tag.HARDWARE], iterationNameRegex = /VXLAN/)
+            @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /srcLldp=true and dstLldp=true/),
+            @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     ])
     def "Able to create a #flowDescr flow with srcLldp=#data.srcEnabled and dstLldp=#data.dstEnabled"() {
         given: "A flow with enabled or disabled connected devices"
@@ -240,7 +243,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(updatedFlow.flowId)
 
         and: "Restore initial switch properties"
@@ -268,6 +271,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
     /**
      * This is an edge case. Other tests for 'oneSwitch' only test single-switch single-port scenarios
      */
+    @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
         def sw = topology.activeTraffGens*.switchConnected.first()
@@ -360,7 +364,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(swappedFlow.flowId)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
@@ -802,7 +806,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             verifyEquals(it[0].lldp.first(), dstData)
         }
 
-        cleanup: "Cleanup: delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
         and: "Restore initial switch properties"

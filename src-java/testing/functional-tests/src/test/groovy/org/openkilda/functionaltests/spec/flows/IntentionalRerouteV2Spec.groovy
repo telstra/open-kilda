@@ -9,6 +9,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -32,6 +33,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -72,7 +74,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
 
-        and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
@@ -80,6 +82,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -129,8 +132,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         and: "Flow statistic is working"
         statsHelper.verifyFlowWritesStats(flow.flowId)
 
-        and: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
@@ -139,7 +141,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
      * Select a longest available path between 2 switches, then reroute to another long path. Run traffexam during the
      * reroute and expect no packet loss.
      */
-    @Tags(HARDWARE)
+    @Tidy
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images
@@ -152,7 +154,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
         def changedIsls = allPaths.findAll { it != longestPath }
-                .collect { pathHelper.makePathMorePreferable(longestPath, it) }
+                .collect { pathHelper.makePathMorePreferable(longestPath, it) }.findAll()
         //and create the flow that uses the long path
         def flow = flowHelperV2.randomFlow(src, dst)
         flow.maximumBandwidth = 0
@@ -191,10 +193,11 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
             assert it.consumerReport.lostPercent < 1
         }
 
-        and: "Remove the flow"
+        cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -230,7 +233,6 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "The flow is rerouted because ignoreBandwidth=true"
-
         rerouteResponse.rerouted
         rerouteResponse.path.nodes != currentPathNodesV2
 
@@ -248,7 +250,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
             }
         }
 
-        and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
@@ -256,6 +258,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2996")
     @Tags(HARDWARE)
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
@@ -306,7 +309,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
             assert it.consumerReport.lostPercent < 1
         }
 
-        and: "Remove the flow"
+        cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 

@@ -8,6 +8,7 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -21,16 +22,17 @@ import spock.lang.Ignore
 
 class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular switch"() {
         given: "An active switch"
         def sw = topology.activeSwitches.first()
 
         when: "Set maintenance mode for the switch"
-        def response = northbound.setSwitchMaintenance(sw.dpId, true, false)
+        def setMaintenance = northbound.setSwitchMaintenance(sw.dpId, true, false)
 
         then: "Maintenance flag for the switch is really set"
-        response.underMaintenance
+        setMaintenance.underMaintenance
         northbound.getSwitch(sw.dpId).underMaintenance
 
         and: "Maintenance flag for all ISLs going through the switch is set as well"
@@ -45,10 +47,10 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         }
 
         when: "Unset maintenance mode from the switch"
-        response = northbound.setSwitchMaintenance(sw.dpId, false, false)
+        def unsetMaintenance = northbound.setSwitchMaintenance(sw.dpId, false, false)
 
         then: "Maintenance flag for the switch is really unset"
-        !response.underMaintenance
+        !unsetMaintenance.underMaintenance
         !northbound.getSwitch(sw.dpId).underMaintenance
 
         and: "Maintenance flag for all ISLs going through the switch is unset as well"
@@ -61,8 +63,12 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
             assert database.getIslCost(it) == DEFAULT_COST
             assert database.getIslCost(it.reversed) == DEFAULT_COST
         }
+
+        cleanup:
+        setMaintenance && !unsetMaintenance && northbound.setSwitchMaintenance(sw.dpId, false, false)
     }
 
+    @Tidy
     @Tags(VIRTUAL) //TODO (andriidovhan) select two path with different transit switches, then set the SMOKE tag
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
@@ -107,7 +113,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !(sw in pathHelper.getInvolvedSwitches(flow1PathUpdated))
         !(sw in pathHelper.getInvolvedSwitches(flow2PathUpdated))
 
-        and: "Delete flows and unset maintenance mode"
+        cleanup: "Delete flows and unset maintenance mode"
         [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
     }

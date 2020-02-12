@@ -4,6 +4,7 @@ plugins {
 
 description = 'Functional-Tests'
 dependencies {
+    implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
     implementation project(':test-library')
 
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
@@ -34,9 +35,15 @@ test {
 
 task functionalTest(type: Test, dependsOn: 'compileGroovy') {
     description = 'Runs functional tests.'
-    failFast = true
-
     include '**/functionaltests/spec/**/*Spec.*'
+    if (System.getProperty('excludeTests')) {
+        def excludes = System.getProperty('excludeTests').split(',')
+        excludes.each {
+            def excludeTerm = "**/${it.trim()}*"
+            logger.info "exclude $excludeTerm"
+            exclude excludeTerm
+         }
+    }
 
     systemProperty 'tags', System.getProperty('tags')
 }

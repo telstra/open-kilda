@@ -1,20 +1,24 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 @Narrative("""A new flag of flow that indicates that flow shouldn't be rerouted in case of auto-reroute.
@@ -22,6 +26,56 @@ import java.util.concurrent.TimeUnit
 - On Isl up event such flow shouldn't be re-routed as well.
   Instead kilda should verify that it's path is online and mark flow as UP.""")
 class PinnedFlowV2Spec extends HealthCheckSpecification {
+
+    @Tidy
+    def "Able to CRUD pinned flow"() {
+        when: "Create a flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.pinned = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Pinned flow is created"
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.pinned
+
+        when: "Update the flow (pinned=false)"
+        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
+
+        then: "The pinned option is disabled"
+        def newFlowInfo = northbound.getFlow(flow.flowId)
+        !newFlowInfo.pinned
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
+
+        cleanup: "Delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "Able to CRUD unmetered one-switch pinned flow"() {
+        when: "Create a flow"
+        def sw = topology.getActiveSwitches().first()
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.maximumBandwidth = 0
+        flow.ignoreBandwidth = true
+        flow.pinned = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Pinned flow is created"
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.pinned
+
+        when: "Update the flow (pinned=false)"
+        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
+
+        then: "The pinned option is disabled"
+        def newFlowInfo = northbound.getFlow(flow.flowId)
+        !newFlowInfo.pinned
+        Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
+
+        cleanup: "Delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+    }
 
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"
@@ -61,8 +115,10 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
 
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            Wrappers.timedLoop(2) {
+                assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+                assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            }
         }
         islsToBreak[1..-1].each { islToBreak ->
             antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
@@ -108,6 +164,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "System is able to reroute(intentionally) pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -132,12 +189,13 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == newPath
         }
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
 
+    @Tidy
     def "System doesn't allow to create pinned and protected flow at the same time"() {
         when: "Try to create pinned and protected flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -153,8 +211,12 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+
+        cleanup:
+        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "System doesn't allow to enable the protected path flag on a pinned flow"() {
         given: "A pinned flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -173,7 +235,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 }

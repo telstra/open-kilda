@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -33,6 +34,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
     @Value('${use.multitable}')
     boolean useMultitable
 
+    @Tidy
     @Tags(HARDWARE)
     def "System takes into account default flow encapsulation type while creating a flow"() {
         when: "Create a flow without encapsulation type"
@@ -71,6 +73,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         [flow1.flowId, flow2.flowId].each { flowHelper.deleteFlow(it) }
     }
 
+    @Tidy
     @Tags(LOW_PRIORITY)
     def "System doesn't allow to update kilda configuration with wrong flow encapsulation type"() {
         when: "Try to set wrong flow encapsulation type"
@@ -82,10 +85,9 @@ class ConfigurationSpec extends HealthCheckSpecification {
         e.statusCode == HttpStatus.BAD_REQUEST
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "No enum constant org.openkilda.model.FlowEncapsulationType.$incorrectValue"
-        def testIsCompleted = true
 
         cleanup: "Restore default configuration"
-        if (!testIsCompleted) {
+        if (!e) {
             northbound.updateKildaConfiguration(
                     new KildaConfigurationDto(flowEncapsulationType: defaultEncapsulationType))
         }
