@@ -36,6 +36,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.Every.everyItem;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.floodlight.Constants.inputPort;
@@ -152,6 +153,7 @@ import org.projectfloodlight.openflow.types.U64;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -751,8 +753,46 @@ public class SwitchManagerTest {
     }
 
     @Test
-    public void dumpMeters() {
-        // TODO
+    public void dumpMeters() throws InterruptedException, ExecutionException, TimeoutException,
+            SwitchOperationException {
+        OFMeterConfig firstMeter = ofFactory.buildMeterConfig().setMeterId(1).build();
+        OFMeterConfig secondMeter = ofFactory.buildMeterConfig().setMeterId(2).build();
+
+        ListenableFuture<List<OFMeterConfigStatsReply>> ofStatsFuture = createMock(ListenableFuture.class);
+        expect(ofStatsFuture.get(anyLong(), anyObject())).andStubReturn(Lists.newArrayList(
+                        ofFactory.buildMeterConfigStatsReply().setEntries(Lists.newArrayList(firstMeter)).build(),
+                        ofFactory.buildMeterConfigStatsReply().setEntries(Lists.newArrayList(secondMeter)).build()));
+
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(switchDescription.getManufacturerDescription()).andStubReturn("");
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.writeStatsRequest(isA(OFMeterConfigStatsRequest.class))).andStubReturn(ofStatsFuture);
+
+        replay(ofSwitchService, iofSwitch, switchDescription, ofStatsFuture);
+
+        List<OFMeterConfig> meters = switchManager.dumpMeters(dpid);
+        assertNotNull(meters);
+        assertEquals(2, meters.size());
+        assertEquals(Sets.newHashSet(firstMeter, secondMeter), new HashSet<>(meters));
+    }
+
+    @Test
+    public void dumpMetersTimeoutException() throws SwitchOperationException, InterruptedException, ExecutionException,
+            TimeoutException {
+        ListenableFuture<List<OFMeterConfigStatsReply>> ofStatsFuture = createMock(ListenableFuture.class);
+        expect(ofStatsFuture.get(anyLong(), anyObject())).andThrow(new TimeoutException());
+        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
+        expect(switchDescription.getManufacturerDescription()).andStubReturn("");
+        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
+        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
+        expect(iofSwitch.writeStatsRequest(isA(OFMeterConfigStatsRequest.class))).andStubReturn(ofStatsFuture);
+
+        replay(ofSwitchService, iofSwitch, switchDescription, ofStatsFuture);
+
+        List<OFMeterConfig> meters = switchManager.dumpMeters(dpid);
+        assertNotNull(meters);
+        assertTrue(meters.isEmpty());
     }
 
     @Test
