@@ -18,12 +18,10 @@ package org.openkilda.floodlight.switchmanager.factory.generator.arp;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSendToController;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ARP_POST_INGRESS_VXLAN_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.ARP_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
 import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
-import static org.openkilda.model.Metadata.METADATA_ARP_MASK;
-import static org.openkilda.model.Metadata.METADATA_ARP_VALUE;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
@@ -39,8 +37,8 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyAct
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.List;
@@ -60,11 +58,11 @@ public class ArpPostIngressVxlanFlowGenerator extends ArpFlowGenerator {
             return null;
         }
 
+        // TODO(snikitin): add match by metadata after fixing of https://github.com/telstra/open-kilda/issues/3199
         Match match = ofFactory.buildMatch()
-                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(METADATA_ARP_VALUE),
-                        OFMetadata.ofRaw(METADATA_ARP_MASK))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(ARP_VXLAN_UDP_SRC))
                 .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
                 .build();
 
