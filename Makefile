@@ -15,6 +15,7 @@ build-base: build-lock-keeper update-props docker/storm/lib
 	docker build -t kilda/neo4j:latest docker/neo4j
 	docker build -t kilda/opentsdb:latest docker/opentsdb
 	docker build -t kilda/logstash:latest docker/logstash
+	docker build -t kilda/elasticsearch:latest docker/elasticsearch
 	$(MAKE) -C src-python/lab-service find-python-requirements
 	docker build -t kilda/base-lab-service:latest docker/base/kilda-base-lab-service/
 
