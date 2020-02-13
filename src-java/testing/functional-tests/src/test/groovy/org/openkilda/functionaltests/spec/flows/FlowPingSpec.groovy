@@ -288,6 +288,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.reverse.pingSuccess
 
         cleanup: "Delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to turn on periodic pings on a flow"() {
