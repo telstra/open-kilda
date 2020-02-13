@@ -77,6 +77,9 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
             if (removeSharedRulesContext.isRemoveCustomerLldpRule()) {
                 ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
             }
+            if (removeSharedRulesContext.isRemoveCustomerArpRule()) {
+                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
         }
         return ofMessages;
     }

@@ -72,6 +72,9 @@ public class OneSwitchFlowRemoveCommand extends OneSwitchFlowCommand {
             if (removeSharedRulesContext.isRemoveCustomerLldpRule()) {
                 ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
             }
+            if (removeSharedRulesContext.isRemoveCustomerArpRule()) {
+                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
         }
         return ofMessages;
     }

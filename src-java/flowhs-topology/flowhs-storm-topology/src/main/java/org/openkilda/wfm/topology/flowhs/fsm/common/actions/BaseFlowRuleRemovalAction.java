@@ -51,24 +51,44 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
 
     protected boolean isFlowTheLastUserOfSharedLldpPortRule(
             String flowId, SwitchId ingressSwitchId, int ingressPort) {
-        List<Flow> flows = flowRepository.findByEndpoint(ingressSwitchId, ingressPort).stream()
-                .filter(f -> !f.getFlowId().equals(flowId))
-                .collect(Collectors.toList());
+        List<Flow> flows = getFlowsOnSwitchEndpointExcludeCurrentFlow(flowId, ingressSwitchId, ingressPort);
 
-        SwitchProperties properties = switchPropertiesRepository.findBySwitchId(ingressSwitchId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Properties for switch %s not found", ingressSwitchId)));
-
-        if (properties.isSwitchLldp()) {
+        if (getSwitchProperties(ingressSwitchId).isSwitchLldp()) {
             return flows.isEmpty();
         }
 
-        List<Flow> flowsWitchLldp = flows.stream()
+        List<Flow> flowsWithLldp = flows.stream()
                 .filter(f -> f.getSrcPort() == ingressPort && f.getDetectConnectedDevices().isSrcLldp()
                         || f.getDestPort() == ingressPort && f.getDetectConnectedDevices().isDstLldp())
                 .collect(Collectors.toList());
 
-        return flowsWitchLldp.isEmpty();
+        return flowsWithLldp.isEmpty();
+    }
+
+    protected boolean isFlowTheLastUserOfSharedArpPortRule(
+            String flowId, SwitchId ingressSwitchId, int ingressPort) {
+        List<Flow> flows = getFlowsOnSwitchEndpointExcludeCurrentFlow(flowId, ingressSwitchId, ingressPort);
+
+        if (getSwitchProperties(ingressSwitchId).isSwitchArp()) {
+            return flows.isEmpty();
+        }
+
+        return flows.stream()
+                .noneMatch(f -> f.getSrcPort() == ingressPort && f.getDetectConnectedDevices().isSrcArp()
+                        || f.getDestPort() == ingressPort && f.getDetectConnectedDevices().isDstArp());
+    }
+
+    private List<Flow> getFlowsOnSwitchEndpointExcludeCurrentFlow(
+            String flowId, SwitchId ingressSwitchId, int ingressPort) {
+        return flowRepository.findByEndpoint(ingressSwitchId, ingressPort).stream()
+                .filter(f -> !f.getFlowId().equals(flowId))
+                .collect(Collectors.toList());
+    }
+
+    private SwitchProperties getSwitchProperties(SwitchId ingressSwitchId) {
+        return switchPropertiesRepository.findBySwitchId(ingressSwitchId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Properties for switch %s not found", ingressSwitchId)));
     }
 
     protected boolean removeForwardSharedLldpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
@@ -84,6 +104,22 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
                 && !newFlow.getDetectConnectedDevices().isDstLldp();
 
         return dstLldpWasSwitchedOff && isFlowTheLastUserOfSharedLldpPortRule(
+                oldFlow.getFlowId(), oldFlow.getDestSwitch(), oldFlow.getDestPort());
+    }
+
+    protected boolean removeForwardSharedArpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
+        boolean srcArpWasSwitchedOff = oldFlow.getDetectConnectedDevices().isSrcArp()
+                && !newFlow.getDetectConnectedDevices().isSrcArp();
+
+        return srcArpWasSwitchedOff && isFlowTheLastUserOfSharedArpPortRule(
+                oldFlow.getFlowId(), oldFlow.getSrcSwitch(), oldFlow.getSrcPort());
+    }
+
+    protected boolean removeReverseSharedArpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
+        boolean dstArpWasSwitchedOff = oldFlow.getDetectConnectedDevices().isDstArp()
+                && !newFlow.getDetectConnectedDevices().isDstArp();
+
+        return dstArpWasSwitchedOff && isFlowTheLastUserOfSharedArpPortRule(
                 oldFlow.getFlowId(), oldFlow.getDestSwitch(), oldFlow.getDestPort());
     }
 }

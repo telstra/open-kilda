@@ -82,7 +82,7 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
         UUID commandId = UUID.randomUUID();
         return new CommandStub(
                 new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint.getSwitchId(), 6, encapsulationVlan, new RemoveSharedRulesContext(false, false));
+                egressEndpoint.getSwitchId(), 6, encapsulationVlan, new RemoveSharedRulesContext(false, false, false));
     }
 
     static class CommandStub extends IngressFlowSegmentInstallCommand implements IFlowModFactoryOverride {

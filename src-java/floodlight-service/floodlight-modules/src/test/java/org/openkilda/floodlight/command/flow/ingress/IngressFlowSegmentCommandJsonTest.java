@@ -56,7 +56,7 @@ abstract class IngressFlowSegmentCommandJsonTest
                 new SwitchId(20),
                 8,
                 new FlowTransitEncapsulation(9, FlowEncapsulationType.TRANSIT_VLAN),
-                new RemoveSharedRulesContext(false, false));
+                new RemoveSharedRulesContext(false, false, false));
         return makeRequest(factory);
     }
 
