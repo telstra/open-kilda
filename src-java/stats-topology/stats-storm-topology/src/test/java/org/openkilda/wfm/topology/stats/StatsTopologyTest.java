@@ -544,7 +544,9 @@ public class StatsTopologyTest extends AbstractStormTest {
                 flowPath.getMeterId().getValue(),
                 false,
                 (isForward && flow.getDetectConnectedDevices().isSrcLldp())
-                        || (!isForward && flow.getDetectConnectedDevices().isDstLldp()));
+                        || (!isForward && flow.getDetectConnectedDevices().isDstLldp()),
+                false
+        );
         sendFlowCommand(installOneSwitchFlow);
     }
 

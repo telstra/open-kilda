@@ -391,6 +391,9 @@ class RecordHandler implements Runnable {
         if (command.isEnableLldp()) {
             context.getSwitchManager().installLldpInputCustomerFlow(dpid, command.getInputPort());
         }
+        if (command.isEnableArp()) {
+            context.getSwitchManager().installArpInputCustomerFlow(dpid, command.getInputPort());
+        }
         context.getSwitchManager().installIngressFlow(
                 dpid,
                 DatapathId.of(command.getEgressSwitchId().toLong()),
@@ -737,6 +740,9 @@ class RecordHandler implements Runnable {
         }
         if (command.isCleanUpIngressLldp()) {
             context.getSwitchManager().removeLldpInputCustomerFlow(dpid, command.getCriteria().getInPort());
+        }
+        if (command.isCleanUpIngressArp()) {
+            context.getSwitchManager().removeArpInputCustomerFlow(dpid, command.getCriteria().getInPort());
         }
         DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
                 .orElseGet(() -> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
