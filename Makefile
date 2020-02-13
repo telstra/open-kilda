@@ -27,7 +27,9 @@ build-lock-keeper:
 docker/storm/lib:
 	docker/base/hacks/storm.requirements.download.sh
 
-build-latest: build-base compile
+build-no-test: GRADLE_COMPILE_PARAMS=-x test
+
+build-latest build-no-test: build-base compile
 	docker-compose build
 
 run-dev:

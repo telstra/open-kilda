@@ -25,8 +25,11 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         30.times {
             def flow = flowHelperV2.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
-            flowHelperV2.addFlow(flow)
+            northboundV2.addFlow(flow)
             flows << flow
+        }
+        Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
+            northbound.getAllFlows().each { assert it.status == FlowState.UP.toString() }
         }
         def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].flowId))
         //ensure all flows are on the same path
