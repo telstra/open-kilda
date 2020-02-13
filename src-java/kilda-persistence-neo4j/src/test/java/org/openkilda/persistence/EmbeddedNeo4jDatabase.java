@@ -18,9 +18,16 @@ package org.openkilda.persistence;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseFactoryState;
 import org.neo4j.kernel.configuration.BoltConnector;
+import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.impl.factory.CommunityEditionModule;
+import org.neo4j.kernel.impl.factory.DatabaseInfo;
+import org.neo4j.kernel.impl.factory.GraphDatabaseFacadeFactory;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A wrapper for {@link GraphDatabaseBuilder} that builds an embedded instance of {@link GraphDatabaseService}.
@@ -48,12 +55,18 @@ public class EmbeddedNeo4jDatabase {
         }
 
         BoltConnector bolt = new BoltConnector("0");
-        GraphDatabaseBuilder dbBuilder = new GraphDatabaseFactory()
-                .newEmbeddedDatabaseBuilder(contentDirectory)
-                .setConfig(bolt.type, "BOLT")
-                .setConfig(bolt.enabled, "true")
-                .setConfig(bolt.listen_address, this.listenAddress);
-        dbInstance = dbBuilder.newGraphDatabase();
+
+        Map<String, String> config = new HashMap<>();
+        config.put(bolt.type.name(), "BOLT");
+        config.put(bolt.enabled.name(), "true");
+        config.put(bolt.listen_address.name(), this.listenAddress);
+        config.put(GraphDatabaseFacadeFactory.Configuration.ephemeral.name(), "true");
+
+        dbInstance = new GraphDatabaseFacadeFactory(DatabaseInfo.COMMUNITY, CommunityEditionModule::new)
+                .newFacade(contentDirectory, Config.defaults(config),
+                        new GraphDatabaseFactoryState().databaseDependencies());
+
+        Runtime.getRuntime().addShutdownHook(new Thread(dbInstance::shutdown));
     }
 
     /**
