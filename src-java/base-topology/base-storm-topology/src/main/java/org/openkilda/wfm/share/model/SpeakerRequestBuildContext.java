@@ -29,4 +29,6 @@ public class SpeakerRequestBuildContext {
     private boolean removeOppositeCustomerPortRule;
     private boolean removeCustomerPortLldpRule;
     private boolean removeOppositeCustomerPortLldpRule;
+    private boolean removeCustomerPortArpRule;
+    private boolean removeOppositeCustomerPortArpRule;
 }

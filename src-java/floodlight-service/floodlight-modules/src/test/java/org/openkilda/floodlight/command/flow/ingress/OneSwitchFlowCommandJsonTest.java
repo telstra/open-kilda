@@ -51,7 +51,7 @@ abstract class OneSwitchFlowCommandJsonTest
                 new FlowEndpoint(swId, 3, 4),
                 new MeterConfig(new MeterId(6), 7000),
                 new FlowEndpoint(swId, 8, 9),
-                new RemoveSharedRulesContext(false, false));
+                new RemoveSharedRulesContext(false, false, false));
         return makeRequest(factory);
     }
 

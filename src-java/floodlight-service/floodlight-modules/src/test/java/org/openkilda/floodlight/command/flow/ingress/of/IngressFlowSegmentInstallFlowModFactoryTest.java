@@ -238,7 +238,8 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         UUID commandId = UUID.randomUUID();
         return new IngressFlowSegmentInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
-                new SwitchId(datapathIdBeta.getLong()), 1, encapsulation, new RemoveSharedRulesContext(false, false));
+                new SwitchId(datapathIdBeta.getLong()), 1, encapsulation,
+                new RemoveSharedRulesContext(false, false, false));
     }
 
     abstract FlowSegmentMetadata makeMetadata();

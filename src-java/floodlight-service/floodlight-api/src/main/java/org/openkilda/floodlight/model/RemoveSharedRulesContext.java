@@ -30,4 +30,5 @@ import java.io.Serializable;
 public class RemoveSharedRulesContext implements Serializable {
     private boolean removeCustomerCatchRule;
     private boolean removeCustomerLldpRule;
+    private boolean removeCustomerArpRule;
 }

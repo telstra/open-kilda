@@ -103,6 +103,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         flow.setSrcPort(targetFlow.getSrcPort());
         flow.setSrcVlan(targetFlow.getSrcVlan());
         flow.getDetectConnectedDevices().setSrcLldp(targetFlow.getDetectConnectedDevices().isSrcLldp());
+        flow.getDetectConnectedDevices().setSrcArp(targetFlow.getDetectConnectedDevices().isSrcArp());
         Switch destSwitch = switchRepository.findById(targetFlow.getDestSwitch())
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Switch %s not found", targetFlow.getDestSwitch())));
@@ -110,6 +111,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         flow.setDestPort(targetFlow.getDestPort());
         flow.setDestVlan(targetFlow.getDestVlan());
         flow.getDetectConnectedDevices().setDstLldp(targetFlow.getDetectConnectedDevices().isDstLldp());
+        flow.getDetectConnectedDevices().setDstArp(targetFlow.getDetectConnectedDevices().isDstArp());
 
         if (targetFlow.getPriority() != null) {
             flow.setPriority(targetFlow.getPriority());

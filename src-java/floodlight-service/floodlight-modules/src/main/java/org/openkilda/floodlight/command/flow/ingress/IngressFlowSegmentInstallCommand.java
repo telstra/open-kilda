@@ -92,6 +92,10 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
             if (getEndpoint().isTrackLldpConnectedDevices()) {
                 ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
             }
+
+            if (getEndpoint().isTrackArpConnectedDevices()) {
+                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
         }
         return ofMessages;
     }

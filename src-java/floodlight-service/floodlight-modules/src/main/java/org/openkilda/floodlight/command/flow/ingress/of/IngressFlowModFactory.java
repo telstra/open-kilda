@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.model.Metadata.METADATA_ARP_MASK;
+import static org.openkilda.model.Metadata.METADATA_ARP_VALUE;
 import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
 import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
 
@@ -134,6 +136,31 @@ public abstract class IngressFlowModFactory {
                 .setMatch(of.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .setExact(MatchField.ETH_TYPE, EthType.LLDP)
+                        .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
+                        writeMetadata))
+                .build();
+    }
+
+    /**
+     * Route all ARP traffic for specific physical port into pre-ingress table and mark it by metadata. Shared across
+     * all flows for this physical (if OF flow-mod ADD message use same match and priority fields with existing OF flow,
+     * existing OF flow will be replaced/not added).
+     */
+    public OFFlowMod makeArpInputCustomerFlowMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
+                .setMetadata(U64.of(METADATA_ARP_VALUE))
+                .setMetadataMask(U64.of(METADATA_ARP_MASK)).build();
+
+        return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
+                .setPriority(SwitchManager.ARP_INPUT_CUSTOMER_PRIORITY)
+                .setCookie(U64.of(Cookie.encodeArpInputCustomer(endpoint.getPortNumber())))
+                .setCookieMask(U64.NO_MASK)
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setExact(MatchField.ETH_TYPE, EthType.ARP)
                         .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),

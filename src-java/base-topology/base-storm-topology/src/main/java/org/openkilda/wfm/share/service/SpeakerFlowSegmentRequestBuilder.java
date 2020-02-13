@@ -106,6 +106,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .removeOppositeCustomerPortRule(speakerRequestBuildContext.isRemoveCustomerPortRule())
                     .removeCustomerPortLldpRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule())
                     .removeOppositeCustomerPortLldpRule(speakerRequestBuildContext.isRemoveCustomerPortLldpRule())
+                    .removeCustomerPortArpRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortArpRule())
+                    .removeOppositeCustomerPortArpRule(speakerRequestBuildContext.isRemoveCustomerPortArpRule())
                     .build();
         }
         if (path == null) {
@@ -122,7 +124,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(path, context, encapsulation,
                 doIngress, doTransit, doEgress, new RemoveSharedRulesContext(
                         speakerRequestBuildContext.isRemoveCustomerPortRule(),
-                        speakerRequestBuildContext.isRemoveCustomerPortLldpRule())));
+                        speakerRequestBuildContext.isRemoveCustomerPortLldpRule(),
+                        speakerRequestBuildContext.isRemoveCustomerPortArpRule())));
         if (oppositePath != null) {
             if (!flow.isOneSwitchFlow()) {
                 encapsulation = getEncapsulation(
@@ -130,8 +133,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             }
             requests.addAll(makePathRequests(oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
                     new RemoveSharedRulesContext(
-                    speakerRequestBuildContext.isRemoveOppositeCustomerPortRule(),
-                    speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule())));
+                            speakerRequestBuildContext.isRemoveOppositeCustomerPortRule(),
+                            speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule(),
+                            speakerRequestBuildContext.isRemoveOppositeCustomerPortArpRule())));
         }
         return requests;
     }
