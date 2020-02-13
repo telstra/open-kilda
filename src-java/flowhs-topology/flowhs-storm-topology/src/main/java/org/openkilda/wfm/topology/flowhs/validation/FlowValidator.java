@@ -68,7 +68,7 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExistsAndActive(flow);
-        checkSwitchesSupportLldpIfNeeded(flow);
+        checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
@@ -255,7 +255,7 @@ public class FlowValidator {
      * @param requestedFlow a flow to be validated.
      */
     @VisibleForTesting
-    void checkSwitchesSupportLldpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
+    void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
         SwitchId sourceId = requestedFlow.getSrcSwitch();
         SwitchId destinationId = requestedFlow.getDestSwitch();
 

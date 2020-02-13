@@ -165,7 +165,7 @@ public class FlowValidatorTest {
                         true, false, true, false, false, false, false, false))
                 .build();
 
-        target.checkSwitchesSupportLldpIfNeeded(flow);
+        target.checkSwitchesSupportLldpAndArpIfNeeded(flow);
     }
 
     @Test(expected = SwitchValidationException.class)
@@ -215,7 +215,7 @@ public class FlowValidatorTest {
                         srcLldpRequested, false, dstLldpRequested, false, false, false, false, false))
                 .build();
 
-        target.checkSwitchesSupportLldpIfNeeded(flow);
+        target.checkSwitchesSupportLldpAndArpIfNeeded(flow);
     }
 
     @Test(expected = FlowValidationException.class)

@@ -29,6 +29,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -40,6 +42,8 @@ import java.util.UUID;
  * Input vlan id is optional, because flow could be untagged on ingoing side.
  * Bandwidth and meter id are used for flow throughput limitation.
  */
+@Getter
+@Setter
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
@@ -93,6 +97,12 @@ public class InstallIngressFlow extends InstallTransitFlow {
     protected boolean enableLldp;
 
     /**
+     * ARP flag. Packets will be send to ARP rule if True.
+     */
+    @JsonProperty("enable_arp")
+    protected boolean enableArp;
+
+    /**
      * id of the egress switch.
      */
     @JsonProperty("egress_switch_id")
@@ -134,7 +144,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("meter_id") final Long meterId,
                               @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
                               @JsonProperty("multi_table") final boolean multiTable,
-                              @JsonProperty("enable_lldp") final boolean enableLldp) {
+                              @JsonProperty("enable_lldp") final boolean enableLldp,
+                              @JsonProperty("enable_arp") final boolean enableArp) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
         setInputVlanId(inputVlanId);
@@ -143,6 +154,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
         setMeterId(meterId);
         setEnableLldp(enableLldp);
         setEgressSwitchId(egressSwitchId);
+        this.enableArp = enableArp;
     }
 
     /**
@@ -290,6 +302,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 .add("egress_switch_id", egressSwitchId)
                 .add("multi_table", multiTable)
                 .add("enable_lldp", enableLldp)
+                .add("enable_arp", enableArp)
                 .toString();
     }
 
@@ -320,6 +333,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getMeterId(), that.getMeterId())
                 && Objects.equals(isMultiTable(), that.isMultiTable())
                 && Objects.equals(isEnableLldp(), that.isEnableLldp())
+                && Objects.equals(isEnableArp(), that.isEnableArp())
                 && Objects.equals(getEgressSwitchId(), that.getEgressSwitchId());
     }
 
@@ -330,6 +344,6 @@ public class InstallIngressFlow extends InstallTransitFlow {
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
                 inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId,
-                multiTable, enableLldp, egressSwitchId);
+                multiTable, enableLldp, enableArp, egressSwitchId);
     }
 }

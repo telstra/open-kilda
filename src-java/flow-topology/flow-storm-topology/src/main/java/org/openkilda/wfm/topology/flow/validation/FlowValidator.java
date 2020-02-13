@@ -68,7 +68,7 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
-        checkSwitchesSupportLldpIfNeeded(flow);
+        checkSwitchesSupportLldpAndArpIfNeeded(flow);
     }
 
     /**
@@ -311,7 +311,7 @@ public class FlowValidator {
      * @throws SwitchValidationException if LLDP/ARP is enabled for switch but switch doesn't support it.
      */
     @VisibleForTesting
-    void checkSwitchesSupportLldpIfNeeded(Flow requestedFlow) throws SwitchValidationException {
+    void checkSwitchesSupportLldpAndArpIfNeeded(Flow requestedFlow) throws SwitchValidationException {
         SwitchId sourceId = requestedFlow.getSrcSwitch().getSwitchId();
         SwitchId destinationId = requestedFlow.getDestSwitch().getSwitchId();
 

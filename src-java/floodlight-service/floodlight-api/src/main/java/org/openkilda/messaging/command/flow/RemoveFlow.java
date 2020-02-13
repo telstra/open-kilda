@@ -66,6 +66,8 @@ public class RemoveFlow extends BaseFlow {
     @JsonProperty("clean_up_ingress_lldp")
     private boolean cleanUpIngressLldp;
 
+    @JsonProperty("clean_up_ingress_arp")
+    private boolean cleanUpIngressArp;
 
     /**
      * Instance constructor.
@@ -92,7 +94,8 @@ public class RemoveFlow extends BaseFlow {
                       @JsonProperty("multi_table") boolean multiTable,
                       @JsonProperty("rule_type") RuleType ruleType,
                       @JsonProperty("clean_up_ingress") boolean cleanUpIngress,
-                      @JsonProperty("clean_up_ingress_lldp") boolean cleanUpIngressLldp) {
+                      @JsonProperty("clean_up_ingress_lldp") boolean cleanUpIngressLldp,
+                      @JsonProperty("clean_up_ingress_arp") boolean cleanUpIngressArp) {
         super(transactionId, flowId, cookie, switchId);
 
         if (meterId != null && meterId <= 0L) {
@@ -104,5 +107,6 @@ public class RemoveFlow extends BaseFlow {
         this.ruleType = ruleType;
         this.cleanUpIngress = cleanUpIngress;
         this.cleanUpIngressLldp = cleanUpIngressLldp;
+        this.cleanUpIngressArp = cleanUpIngressArp;
     }
 }

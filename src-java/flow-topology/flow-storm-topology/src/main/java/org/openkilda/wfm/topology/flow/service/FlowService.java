@@ -175,22 +175,28 @@ public class FlowService extends BaseFlowService {
                                 flow.getSrcSwitch().getSwitchId());
                         boolean srcWithMultiTable = false;
                         boolean srcWithSwitchLldp = false;
+                        boolean srcWithSwitchArp = false;
                         if (srcSwitchProperties.isPresent()) {
                             srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
                             srcWithSwitchLldp = srcSwitchProperties.get().isSwitchLldp();
+                            srcWithSwitchArp = srcSwitchProperties.get().isSwitchArp();
                         }
                         flow.setSrcWithMultiTable(srcWithMultiTable);
                         flow.getDetectConnectedDevices().setSrcSwitchLldp(srcWithSwitchLldp);
+                        flow.getDetectConnectedDevices().setSrcSwitchArp(srcWithSwitchArp);
                         Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
                                 flow.getDestSwitch().getSwitchId());
                         boolean destWithMultiTable = false;
                         boolean destWithSwitchLldp = false;
+                        boolean destWithSwitchArp = false;
                         if (destSwitchProperties.isPresent()) {
                             destWithMultiTable = destSwitchProperties.get().isMultiTable();
                             destWithSwitchLldp = destSwitchProperties.get().isSwitchLldp();
+                            destWithSwitchArp = destSwitchProperties.get().isSwitchArp();
                         }
                         flow.setDestWithMultiTable(destWithMultiTable);
                         flow.getDetectConnectedDevices().setDstSwitchLldp(destWithSwitchLldp);
+                        flow.getDetectConnectedDevices().setDstSwitchArp(destWithSwitchArp);
 
                         // TODO: the strategy is defined either per flow or system-wide.
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -428,22 +434,28 @@ public class FlowService extends BaseFlowService {
                                 updatingFlow.getSrcSwitch().getSwitchId());
                         boolean srcWithMultiTable = false;
                         boolean srcWithSwitchLldp = false;
+                        boolean srcWithSwitchArp = false;
                         if (srcSwitchProperties.isPresent()) {
                             srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
                             srcWithSwitchLldp = srcSwitchProperties.get().isSwitchLldp();
+                            srcWithSwitchArp = srcSwitchProperties.get().isSwitchArp();
                         }
                         updatingFlow.setSrcWithMultiTable(srcWithMultiTable);
                         updatingFlow.getDetectConnectedDevices().setSrcSwitchLldp(srcWithSwitchLldp);
+                        updatingFlow.getDetectConnectedDevices().setSrcSwitchArp(srcWithSwitchArp);
                         Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
                                 updatingFlow.getDestSwitch().getSwitchId());
                         boolean destWithMultiTable = false;
                         boolean destWithSwitchLldp = false;
+                        boolean destWithSwitchArp = false;
                         if (destSwitchProperties.isPresent()) {
                             destWithMultiTable = destSwitchProperties.get().isMultiTable();
                             destWithSwitchLldp = destSwitchProperties.get().isSwitchLldp();
+                            destWithSwitchArp = destSwitchProperties.get().isSwitchArp();
                         }
                         updatingFlow.setDestWithMultiTable(destWithMultiTable);
                         updatingFlow.getDetectConnectedDevices().setDstSwitchLldp(destWithSwitchLldp);
+                        updatingFlow.getDetectConnectedDevices().setDstSwitchArp(destWithSwitchArp);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair newPathPair = pathComputer.getPath(updatingFlow,
                                 currentFlow.getFlow().getFlowPathIds());
@@ -654,28 +666,35 @@ public class FlowService extends BaseFlowService {
                         flow.getSrcSwitch().getSwitchId());
                 boolean srcWithMultiTable = false;
                 boolean srcWithLldp = false;
+                boolean srcWithArp = false;
                 if (srcSwitchProperties.isPresent()) {
                     srcWithMultiTable = srcSwitchProperties.get().isMultiTable();
                     srcWithLldp = srcSwitchProperties.get().isSwitchLldp();
+                    srcWithArp = srcSwitchProperties.get().isSwitchArp();
                 }
 
                 flow.setSrcWithMultiTable(srcWithMultiTable);
                 flow.getDetectConnectedDevices().setSrcSwitchLldp(srcWithLldp);
+                flow.getDetectConnectedDevices().setSrcSwitchArp(srcWithArp);
 
                 if (flow.isOneSwitchFlow()) {
                     flow.setDestWithMultiTable(srcWithMultiTable);
                     flow.getDetectConnectedDevices().setDstLldp(srcWithLldp);
+                    flow.getDetectConnectedDevices().setDstArp(srcWithArp);
                 } else {
                     Optional<SwitchProperties> dstSwitchProperties = switchPropertiesRepository.findBySwitchId(
                             flow.getDestSwitch().getSwitchId());
                     boolean dstWithMultiTable = false;
                     boolean dstWithLldp = false;
+                    boolean dstWithArp = false;
                     if (dstSwitchProperties.isPresent()) {
                         dstWithMultiTable = dstSwitchProperties.get().isMultiTable();
                         dstWithLldp = dstSwitchProperties.get().isSwitchLldp();
+                        dstWithArp = dstSwitchProperties.get().isSwitchArp();
                     }
                     flow.setDestWithMultiTable(dstWithMultiTable);
                     flow.getDetectConnectedDevices().setDstSwitchLldp(dstWithLldp);
+                    flow.getDetectConnectedDevices().setDstSwitchArp(dstWithArp);
                 }
 
 
@@ -1312,8 +1331,11 @@ public class FlowService extends BaseFlowService {
         boolean cleanUpIngress = flowWithMultiTable.isEmpty();
         boolean cleanUpIngressLldp = flowWithMultiTable.stream()
                 .noneMatch(flow -> isLldpEnabledOnFlowEndpoint(flow, ingressSwitchId, ingressPort));
+        boolean cleanUpIngressArp = flowWithMultiTable.stream()
+                .noneMatch(flow -> isArpEnabledOnFlowEndpoint(flow, ingressSwitchId, ingressPort));
         return new CommandGroup(singletonList(
-                flowCommandFactory.createRemoveIngressRulesForFlow(flowPath, cleanUpIngress, cleanUpIngressLldp)),
+                flowCommandFactory.createRemoveIngressRulesForFlow(flowPath, cleanUpIngress, cleanUpIngressLldp,
+                        cleanUpIngressArp)),
                 FailureReaction.IGNORE);
     }
 
@@ -1325,6 +1347,16 @@ public class FlowService extends BaseFlowService {
                 || (flow.getDestSwitch().getSwitchId().equals(switchId)
                 && flow.getDestPort() == port
                 && (detect.isDstLldp() || detect.isDstSwitchLldp()));
+    }
+
+    private boolean isArpEnabledOnFlowEndpoint(Flow flow, SwitchId switchId, int port) {
+        DetectConnectedDevices detect = flow.getDetectConnectedDevices();
+        return (flow.getSrcSwitch().getSwitchId().equals(switchId)
+                && flow.getSrcPort() == port
+                && (detect.isSrcArp() || detect.isSrcSwitchArp()))
+                || (flow.getDestSwitch().getSwitchId().equals(switchId)
+                && flow.getDestPort() == port
+                && (detect.isDstArp() || detect.isDstSwitchArp()));
     }
 
     private Optional<CommandGroup> createRemoveLldpTransitAndEgressRules(
