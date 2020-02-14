@@ -15,34 +15,43 @@
 
 package org.openkilda.model;
 
-import lombok.Value;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 
 /**
  * Represents information about a metadata.
- * Uses 64 bit to encode information about the packet:
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * Uses 32 bit to encode information about the packet:
+ * 0                   1                   2                   3
+ * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |L|O|                      Reserved Prefix                      |
+ * |L|O|A                       Reserved Prefix                      |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                          Reserved Prefix                      |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
  * <p>
  * L - flag indicates LLDP packet
  * O - flag indicates packet received by one switch flow
  * </p>
  */
-@Value
+@Data
+@EqualsAndHashCode(callSuper = false)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+
 public class Metadata implements Serializable {
     private static final long serialVersionUID = 5505079196135886296L;
 
-    public static final long METADATA_LLDP_VALUE = 0x0000_0000_0000_0001L;
-    public static final long METADATA_LLDP_MASK =  0x0000_0000_0000_0001L;
+    public static final long METADATA_LLDP_VALUE = 0x0000_0000_0020_0000L;
+    public static final long METADATA_LLDP_MASK = 0x0000_0000_0020_0000L;
 
-    public static final long METADATA_ONE_SWITCH_FLOW_VALUE = 0x0000_0000_0000_0002L;
-    public static final long METADATA_ONE_SWITCH_FLOW_MASK =  0x0000_0000_0000_0002L;
+    public static final long METADATA_ONE_SWITCH_FLOW_VALUE = 0x0000_0000_0040_0000L;
+    public static final long METADATA_ONE_SWITCH_FLOW_MASK = 0x0000_0000_0040_0000L;
+    private static final long ENCAPSULATION_ID_MASK = 0x0000_0000_000FF_FFFFL;
+    private static final long FORWARD_METADATA_FLAG = 0x0000_0000_0010_0000L;
 
     public static final long METADATA_ARP_VALUE = 0x0000_0000_0000_0004L;
     public static final long METADATA_ARP_MASK =  0x0000_0000_0000_0004L;
@@ -63,6 +72,28 @@ public class Metadata implements Serializable {
 
     public static long getOneSwitchFlowArpMask() {
         return METADATA_ARP_MASK | METADATA_ONE_SWITCH_FLOW_MASK;
+    }
+
+    public static long getTunnelIdValue(long tunnelId) {
+        return tunnelId | ENCAPSULATION_ID_MASK;
+    }
+
+    public static long markAsForward(long metadata) {
+        return metadata | FORWARD_METADATA_FLAG;
+    }
+
+    /**
+     * Encode metadata for the mirroring.
+     * @param tunnelId target tunnel id
+     * @param forward forward flag
+     * @return metadata value
+     */
+    public static long getAppForwardingValue(long tunnelId, boolean forward) {
+        long metadata = getTunnelIdValue(tunnelId);
+        if (forward) {
+            metadata = markAsForward(metadata);
+        }
+        return metadata;
     }
 
     @Override
