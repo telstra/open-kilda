@@ -18,7 +18,9 @@ package org.openkilda.persistence.repositories.impl;
 import org.openkilda.model.IslConfig;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
+import org.openkilda.persistence.repositories.ExclusionIdRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
@@ -27,6 +29,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -170,5 +173,20 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public PathSegmentRepository createPathSegmentRepository() {
         return new Neo4jPathSegmentRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public ApplicationRepository createApplicationRepository() {
+        return new Neo4jApplicationRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public ExclusionIdRepository createExclusionIdRepository() {
+        return new Neo4jExclusionIdRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public MirrorGroupRepository createMirrorGroupRepository() {
+        return new Neo4JMirrorGroupRepository(sessionFactory, transactionManager);
     }
 }

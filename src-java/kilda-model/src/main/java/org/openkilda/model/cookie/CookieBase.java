@@ -163,7 +163,9 @@ public abstract class CookieBase implements Serializable {
         MULTI_TABLE_INGRESS_RULES(0x005),
         ARP_INPUT_CUSTOMER_TYPE(0x006),
         INGRESS_SEGMENT(0x007),   // used for ingress flow segment and for one switch flow segments
-        SHARED_OF_FLOW(0x008);
+        SHARED_OF_FLOW(0x008),
+        APPLICATION_MIRROR_FLOW(0x009),
+        EXCLUSION_FLOW(0x0A);
 
         private int value;
 

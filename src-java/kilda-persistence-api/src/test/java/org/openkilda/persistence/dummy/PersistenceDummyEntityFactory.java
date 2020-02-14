@@ -206,12 +206,14 @@ public class PersistenceDummyEntityFactory {
         List<PathSegment> forwardSegments = makePathSegments(source.getSwitchId(), dest.getSwitchId(), forwardPathHint);
         flow.setForwardPath(makePath(
                 flow, source, dest, forwardSegments,
-                new FlowSegmentCookie(FlowPathDirection.FORWARD, flowEffectiveId), tags, "forward"));
+                new FlowSegmentCookie(FlowPathDirection.FORWARD, flowEffectiveId),
+                tags, "forward"));
 
         List<PathSegment> reverseSegments = makePathSegments(dest.getSwitchId(), source.getSwitchId(), reversePathHint);
         flow.setReversePath(makePath(
                 flow, dest, source, reverseSegments,
-                new FlowSegmentCookie(FlowPathDirection.REVERSE, flowEffectiveId), tags, "reverse"));
+                new FlowSegmentCookie(FlowPathDirection.REVERSE, flowEffectiveId),
+                tags, "reverse"));
     }
 
     private FlowPath makePath(

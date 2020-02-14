@@ -145,6 +145,7 @@ public class ServiceCookie extends CookieBase implements Comparable<ServiceCooki
         SERVER_42_OUTPUT_VLAN_COOKIE(0x19),
         SERVER_42_OUTPUT_VXLAN_COOKIE(0x1A);
 
+
         private int value;
 
         ServiceCookieTag(int value) {
