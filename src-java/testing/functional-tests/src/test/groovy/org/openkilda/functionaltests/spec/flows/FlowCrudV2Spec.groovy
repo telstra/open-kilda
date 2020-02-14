@@ -1035,7 +1035,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flow && !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3049")
     @Tidy
     def "Able to update a flow endpoint"() {
         given: "Three active switches"
