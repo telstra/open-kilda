@@ -47,7 +47,7 @@ import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.OVS_MANUFACTURER;
-import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMode;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMod;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
@@ -1392,7 +1392,7 @@ public class SwitchManagerTest {
         long rate = 100L;
         long burstSize = 1000L;
         Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMode(iofSwitch.getOFFactory(), rate, burstSize, unicastMeterId, flags);
+        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), rate, burstSize, unicastMeterId, flags);
         switchManager.processMeter(iofSwitch, ofMeterMod);
 
         // then
@@ -1430,7 +1430,7 @@ public class SwitchManagerTest {
 
         // when
         Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMode(iofSwitch.getOFFactory(), expectedRate,
+        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), expectedRate,
                 config.getSystemMeterBurstSizeInPackets(), unicastMeterId, flags);
         switchManager.processMeter(iofSwitch, ofMeterMod);
 
@@ -1469,7 +1469,7 @@ public class SwitchManagerTest {
 
         //when
         Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMode(iofSwitch.getOFFactory(), updatedRate,
+        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), updatedRate,
                 config.getSystemMeterBurstSizeInPackets(), unicastMeter, flags);
         switchManager.processMeter(iofSwitch, ofMeterMod);
 

@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.switchmanager.factory.generator;
 
-import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMode;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMod;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -45,23 +45,31 @@ public abstract class MeteredFlowGenerator implements SwitchFlowGenerator {
 
     protected OFMeterMod generateMeterForDefaultRule(IOFSwitch sw, long meterId, long rateInPackets,
                                                      long burstSizeInPackets, long packetSizeInBytes) {
+        //FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
+        if (sw.getOFFactory().getVersion().compareTo(OF_12) <= 0) {
+            return null;
+        }
         long rate;
         long burstSize;
         Set<OFMeterFlags> flags;
+        Set<SwitchFeature> switchFeatures = featureDetectorService.detectSwitch(sw);
 
-        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.PKTPS_FLAG)) {
+        if (switchFeatures.contains(SwitchFeature.PKTPS_FLAG)) {
             flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
             // With PKTPS flag rate and burst size is in packets
             rate = rateInPackets;
-            burstSize = burstSizeInPackets;
+            burstSize = Meter.calculateBurstSizeConsideringHardwareLimitations(rate, burstSizeInPackets,
+                    switchFeatures);
         } else {
             flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
             // With KBPS flag rate and burst size is in Kbits
             rate = Meter.convertRateToKiloBits(rateInPackets, packetSizeInBytes);
-            burstSize = Meter.convertBurstSizeToKiloBits(burstSizeInPackets, packetSizeInBytes);
+            long burstSizeInKiloBits = Meter.convertBurstSizeToKiloBits(burstSizeInPackets, packetSizeInBytes);
+            burstSize = Meter.calculateBurstSizeConsideringHardwareLimitations(rate, burstSizeInKiloBits,
+                    switchFeatures);
         }
 
-        return buildMeterMode(sw.getOFFactory(), rate, burstSize, meterId, flags);
+        return buildMeterMod(sw.getOFFactory(), rate, burstSize, meterId, flags);
     }
 
     protected OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, List<OFAction> actionList) {

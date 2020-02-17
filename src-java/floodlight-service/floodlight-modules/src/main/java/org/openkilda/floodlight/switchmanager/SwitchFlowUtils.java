@@ -120,8 +120,8 @@ public final class SwitchFlowUtils {
      * @param flags flags
      * @return OpenFlow command
      */
-    public static OFMeterMod buildMeterMode(OFFactory ofFactory, long bandwidth, long burstSize,
-                                            long meterId, Set<OFMeterFlags> flags) {
+    public static OFMeterMod buildMeterMod(OFFactory ofFactory, long bandwidth, long burstSize,
+                                           long meterId, Set<OFMeterFlags> flags) {
         OFMeterBandDrop.Builder bandBuilder = ofFactory.meterBands()
                 .buildDrop()
                 .setRate(bandwidth)

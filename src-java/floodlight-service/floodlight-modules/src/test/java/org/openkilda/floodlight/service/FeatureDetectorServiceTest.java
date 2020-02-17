@@ -139,7 +139,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "WB5164-E", OFVersion.OF_13, 2),
                 ImmutableSet.of(
                         GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, INACCURATE_METER, MATCH_UDP_PORT,
-                        MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN));
+                        MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN));
     }
 
     @Test

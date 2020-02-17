@@ -31,8 +31,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -44,7 +44,6 @@ import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -244,11 +243,10 @@ public class ValidationServiceImpl implements ValidationService {
         return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
     }
 
-    private boolean flagsAreEqual(String[] present, String[] expected) {
-        Set<String> left = Sets.newHashSet(present);
-        Set<String> right = Sets.newHashSet(expected);
+    private boolean flagsAreEqual(String[] present, Set<String> expected) {
+        Set<String> actual = Sets.newHashSet(present);
 
-        return left.size() == right.size() && left.containsAll(right);
+        return actual.size() == expected.size() && actual.containsAll(expected);
     }
 
     private List<MeterInfoEntry> getExcessMeters(List<MeterEntry> presented, List<SimpleMeterEntry> expected) {
@@ -283,7 +281,7 @@ public class ValidationServiceImpl implements ValidationService {
                     .cookie(path.getCookie().getValue())
                     .rate(path.getBandwidth())
                     .burstSize(calculatedBurstSize)
-                    .flags(Meter.getMeterKbpsFlags())
+                    .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()))
                     .build();
             expectedMeters.add(expectedMeter);
         }
@@ -297,7 +295,7 @@ public class ValidationServiceImpl implements ValidationService {
                 .flowId(meter.getFlowId())
                 .rate(meter.getRate())
                 .burstSize(meter.getBurstSize())
-                .flags(meter.getFlags())
+                .flags(meter.getFlags().toArray(new String[0]))
                 .build();
     }
 
@@ -334,9 +332,9 @@ public class ValidationServiceImpl implements ValidationService {
             actual.setBurstSize(actualMeter.getBurstSize());
             expected.setBurstSize(expectedMeter.getBurstSize());
         }
-        if (!Arrays.equals(actualMeter.getFlags(), expectedMeter.getFlags())) {
+        if (!Sets.newHashSet(actualMeter.getFlags()).equals(expectedMeter.getFlags())) {
             actual.setFlags(actualMeter.getFlags());
-            expected.setFlags(expectedMeter.getFlags());
+            expected.setFlags(expectedMeter.getFlags().toArray(new String[0]));
         }
 
         return MeterInfoEntry.builder()

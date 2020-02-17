@@ -91,7 +91,8 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
         actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
         actionList.add(actionSendToController(sw.getOFFactory()));
 
-        actionList.add(actionSetDstMac(sw.getOFFactory(), convertDpIdToMac(sw.getId())));
+        MacAddress macAddress = convertDpIdToMac(sw.getId());
+        actionList.add(actionSetDstMac(sw.getOFFactory(), macAddress));
         List<OFInstruction> instructions = new ArrayList<>(2);
         if (meter != null) {
             instructions.add(meter);
@@ -101,6 +102,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredFlowGenerator 
         MacAddress srcMac = MacAddress.of(kildaCore.getConfig().getFlowPingMagicSrcMacAddress());
         Match.Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_SRC, srcMac, MacAddress.NO_MASK);
+        builder.setMasked(MatchField.ETH_DST, macAddress, MacAddress.NO_MASK);
         builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         builder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
         builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));

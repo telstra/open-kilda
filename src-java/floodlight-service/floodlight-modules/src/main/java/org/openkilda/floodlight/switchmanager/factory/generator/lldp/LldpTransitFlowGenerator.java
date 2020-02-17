@@ -17,7 +17,6 @@ package org.openkilda.floodlight.switchmanager.factory.generator.lldp;
 
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSendToController;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_MAC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_TRANSIT_ISL_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.TRANSIT_TABLE_ID;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
@@ -37,7 +36,6 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.util.List;
 
@@ -52,7 +50,6 @@ public class LldpTransitFlowGenerator extends LldpFlowGenerator {
     OFFlowMod getLldpFlowMod(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
         Match match = ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
                 .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                 .build();
 

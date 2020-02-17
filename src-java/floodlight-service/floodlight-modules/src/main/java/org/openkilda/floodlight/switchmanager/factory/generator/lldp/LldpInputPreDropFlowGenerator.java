@@ -19,7 +19,6 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSendT
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_INPUT_PRE_DROP_PRIORITY;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_MAC;
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
@@ -36,7 +35,6 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.util.List;
 
@@ -52,7 +50,6 @@ public class LldpInputPreDropFlowGenerator extends LldpFlowGenerator {
                                     List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
         Match match = ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, MacAddress.of(LLDP_MAC))
                 .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                 .build();
 

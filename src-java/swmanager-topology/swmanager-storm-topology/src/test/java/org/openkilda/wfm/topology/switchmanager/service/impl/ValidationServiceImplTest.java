@@ -51,6 +51,7 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -344,7 +345,7 @@ public class ValidationServiceImplTest {
         assertEquals(expectedId, (long) meterInfoEntry.getMeterId());
         assertEquals(expectedRate, (long) meterInfoEntry.getRate());
         assertEquals(expectedBurstSize, (long) meterInfoEntry.getBurstSize());
-        assertEquals(expectedFlags, meterInfoEntry.getFlags());
+        assertEquals(Sets.newHashSet(expectedFlags), Sets.newHashSet(meterInfoEntry.getFlags()));
     }
 
     private Flow createFlowForConnectedDevices(boolean detectSrcLldp,
