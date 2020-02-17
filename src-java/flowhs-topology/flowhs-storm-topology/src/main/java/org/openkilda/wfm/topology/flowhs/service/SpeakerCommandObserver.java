@@ -17,10 +17,14 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.Event;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Collections;
+import java.util.Set;
 
 @Slf4j
 public class SpeakerCommandObserver {
@@ -28,7 +32,12 @@ public class SpeakerCommandObserver {
     private final SpeakerCommandFsm commandExecutor;
 
     public SpeakerCommandObserver(SpeakerCommandFsm.Builder builder, FlowSegmentRequest request) {
-        commandExecutor = builder.newInstance(request);
+        this(builder, Collections.emptySet(), request);
+    }
+
+    public SpeakerCommandObserver(
+            SpeakerCommandFsm.Builder builder, Set<ErrorCode> giveUpErrors, FlowSegmentRequest request) {
+        commandExecutor = builder.newInstance(giveUpErrors, request);
     }
 
     /**
