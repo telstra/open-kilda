@@ -203,12 +203,12 @@ public class SwitchValidateFsm
             sendException(format("Switch properties not found for switch '%s'", switchId), ErrorType.NOT_FOUND);
             return;
         }
-        log.info("Key: {}, validate FSM initialized", key);
+        log.info("The switch sync process for {} has been started (key={})", switchId, key);
     }
 
     protected void receiveData(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, sending requests to get switch rules and meters", key);
+        log.info("Sending requests to get switch rules and meters (switch={}, key={})", switchId, key);
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
@@ -226,28 +226,28 @@ public class SwitchValidateFsm
 
     protected void rulesReceived(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, switch rules received", key);
+        log.info("Switch rules received (switch={}, key={})", switchId, key);
         this.flowEntries = (List<FlowEntry>) context;
         checkAllDataReceived();
     }
 
     protected void expectedDefaultRulesReceived(SwitchValidateState from, SwitchValidateState to,
                                                 SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, switch expected default rules received", key);
+        log.info("Switch expected default rules received (switch={}, key={})", switchId, key);
         this.expectedDefaultFlowEntries = (List<FlowEntry>) context;
         checkAllDataReceived();
     }
 
     protected void metersReceived(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, switch meters received", key);
+        log.info("Switch meters received (switch={}, key={})", switchId, key);
         this.presentMeters = (List<MeterEntry>) context;
         checkAllDataReceived();
     }
 
     protected void metersUnsupported(SwitchValidateState from, SwitchValidateState to,
                                      SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, switch meters unsupported", key);
+        log.info("Switch meters unsupported (switch={}, key={})", switchId, key);
         this.presentMeters = emptyList();
         this.processMeters = false;
         checkAllDataReceived();
@@ -271,7 +271,7 @@ public class SwitchValidateFsm
 
     protected void validateRules(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, validate rules", key);
+        log.info("Validate rules (switch={}, key={})", switchId, key);
         try {
             validateRulesResult = validationService.validateRules(switchId, flowEntries, expectedDefaultFlowEntries);
         } catch (Exception e) {
@@ -283,7 +283,7 @@ public class SwitchValidateFsm
                                   SwitchValidateEvent event, Object context) {
         try {
             if (processMeters) {
-                log.info("Key: {}, validate meters", key);
+                log.info("Validate meters (switch={}, key={})", switchId, key);
                 validateMetersResult = validationService.validateMeters(switchId, presentMeters);
             }
 
