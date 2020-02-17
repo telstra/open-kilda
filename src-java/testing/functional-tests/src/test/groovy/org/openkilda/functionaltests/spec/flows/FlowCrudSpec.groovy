@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowApplication
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
@@ -799,7 +800,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
             producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                     new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, null, sw.dpId,
                             5, 6, 5, meterId, FlowEncapsulationType.TRANSIT_VLAN,
-                            OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false, false)).toJson()))
+                            OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false, false,
+                            new HashSet<FlowApplication>(), 0L, null)).toJson()))
         }
         producer.close()
 

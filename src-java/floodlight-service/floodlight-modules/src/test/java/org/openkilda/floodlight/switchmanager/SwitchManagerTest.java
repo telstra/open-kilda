@@ -441,7 +441,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false);
+                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false,
+                new HashSet<>(), 0L, null);
 
         assertEquals(
                 scheme.ingressReplaceFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -456,7 +457,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false);
+                inputVlanId, transitVlanId, OutputVlanType.REPLACE, meterId, encapsulationType, false,
+                new HashSet<>(), 0L, null);
 
         assertEquals(
                 scheme.ingressReplaceFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -471,7 +473,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false);
+                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false,
+                new HashSet<>(), 0L, null);
 
         assertEquals(
                 scheme.ingressPopFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -486,7 +489,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false);
+                inputVlanId, transitVlanId, OutputVlanType.POP, meterId, encapsulationType, false,
+                new HashSet<>(), 0L, null);
 
         assertEquals(
                 scheme.ingressPopFlowMod(dpid, inputPort, outputPort, inputVlanId, transitVlanId, meterId, cookie,
@@ -501,7 +505,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false);
+                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false, new HashSet<>(),
+                0L, null);
 
         assertEquals(
                 scheme.ingressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -516,7 +521,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false);
+                0, transitVlanId, OutputVlanType.PUSH, meterId, encapsulationType, false, new HashSet<>(),
+                0L, null);
 
         assertEquals(
                 scheme.ingressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -531,7 +537,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false);
+                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false, new HashSet<>(),
+                0L, null);
 
         assertEquals(
                 scheme.ingressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -546,7 +553,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false);
+                0, transitVlanId, OutputVlanType.NONE, meterId, encapsulationType, false, new HashSet<>(),
+                0L, null);
 
         assertEquals(
                 scheme.ingressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, meterId, cookie,
@@ -559,7 +567,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest(true);
 
         switchManager.installIngressFlow(dpid, EGRESS_SWITCH_DP_ID, cookieHex, cookie, inputPort, outputPort,
-                0, transitVlanId, OutputVlanType.NONE, meterId, FlowEncapsulationType.TRANSIT_VLAN, false);
+                0, transitVlanId, OutputVlanType.NONE, meterId, FlowEncapsulationType.TRANSIT_VLAN, false,
+                new HashSet<>(), 0L, null);
 
         final OFFlowMod actual = capture.getValue();
         assertThat(actual.getFlags().isEmpty(), is(true));
@@ -572,7 +581,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.NONE, encapsulationType, false);
+                OutputVlanType.NONE, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
@@ -586,7 +596,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.NONE, encapsulationType, false);
+                OutputVlanType.NONE, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressNoneFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
@@ -600,7 +611,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.PUSH, encapsulationType, false);
+                OutputVlanType.PUSH, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
@@ -615,7 +627,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.PUSH, encapsulationType, false);
+                OutputVlanType.PUSH, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressPushFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
@@ -630,7 +643,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.POP, encapsulationType, false);
+                OutputVlanType.POP, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressPopFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
@@ -644,7 +658,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, 0,
-                OutputVlanType.POP, encapsulationType, false);
+                OutputVlanType.POP, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressPopFlowMod(dpid, inputPort, outputPort, transitVlanId, cookie, encapsulationType),
@@ -658,7 +673,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.REPLACE, encapsulationType, false);
+                OutputVlanType.REPLACE, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressReplaceFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
@@ -673,7 +689,8 @@ public class SwitchManagerTest {
         FlowEncapsulationType encapsulationType = FlowEncapsulationType.VXLAN;
 
         switchManager.installEgressFlow(dpid, cookieHex, cookie, inputPort, outputPort, transitVlanId, outputVlanId,
-                OutputVlanType.REPLACE, encapsulationType, false);
+                OutputVlanType.REPLACE, encapsulationType, false, new HashSet<>(),
+                0L);
 
         assertEquals(
                 scheme.egressReplaceFlowMod(dpid, inputPort, outputPort, transitVlanId, outputVlanId, cookie,
@@ -714,7 +731,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, outputVlanId, OutputVlanType.REPLACE, meterId, false);
+                inputPort, outputPort, inputVlanId, outputVlanId, OutputVlanType.REPLACE, meterId,
+                false, new HashSet<>(), 0L);
 
         assertEquals(
                 scheme.oneSwitchReplaceFlowMod(inputPort, outputPort, inputVlanId, outputVlanId, meterId, cookie),
@@ -726,7 +744,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, outputVlanId, OutputVlanType.PUSH, meterId, false);
+                inputPort, outputPort, 0, outputVlanId, OutputVlanType.PUSH, meterId, false,
+                new HashSet<>(), 0L);
 
         assertEquals(
                 scheme.oneSwitchPushFlowMod(inputPort, outputPort, outputVlanId, meterId, cookie),
@@ -738,7 +757,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, 0, OutputVlanType.POP, meterId, false);
+                inputPort, outputPort, inputVlanId, 0, OutputVlanType.POP, meterId, false,
+                new HashSet<>(), 0L);
 
         assertEquals(
                 scheme.oneSwitchPopFlowMod(inputPort, outputPort, inputVlanId, meterId, cookie),
@@ -750,7 +770,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false);
+                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false,
+                new HashSet<>(), 0L);
 
         assertEquals(
                 scheme.oneSwitchNoneFlowMod(inputPort, outputPort, meterId, cookie),
@@ -762,7 +783,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest(true);
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false);
+                inputPort, outputPort, 0, 0, OutputVlanType.NONE, meterId, false, new HashSet<>(),
+                0L);
 
         final OFFlowMod actual = capture.getValue();
         assertThat(actual.getFlags().isEmpty(), is(true));

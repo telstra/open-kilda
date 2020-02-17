@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -30,6 +31,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -101,6 +103,19 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     private boolean enableArp;
 
     /**
+     * Enabled applications.
+     */
+    @JsonProperty("applications")
+    private Set<FlowApplication> applications;
+
+    /**
+     * Applications metadata.
+     */
+    @JsonProperty("app_metadata")
+    private long appMetadata;
+
+
+    /**
      * Instance constructor.
      *
      * @param transactionId transaction id
@@ -116,6 +131,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param meterId source meter id
      * @param enableLldp install LLDP shared rule if True
      * @param enableArp install ARP shared rule if True
+     * @param multiTable multitable flag
+     * @param applications   the applications on which the actions is performed.
+     * @param appMetadata    applications metadata.
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -132,7 +150,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("meter_id") final Long meterId,
                                 @JsonProperty("multi_table") final boolean multiTable,
                                 @JsonProperty("enable_lldp") final boolean enableLldp,
-                                @JsonProperty("enable_arp") final boolean enableArp) {
+                                @JsonProperty("enable_arp") final boolean enableArp,
+                                @JsonProperty("applications") Set<FlowApplication> applications,
+                                @JsonProperty("app_metadata") long appMetadata) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
@@ -141,6 +161,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
         setMeterId(meterId);
         setEnableLldp(enableLldp);
         setEnableArp(enableArp);
+        setApplications(applications);
+        setAppMetadata(appMetadata);
     }
 
     /**
@@ -285,6 +307,34 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      */
     public void setEnableArp(boolean enableArp) {
         this.enableArp = enableArp;
+    }
+
+    /**
+     * Get applications.
+     */
+    public Set<FlowApplication> getApplications() {
+        return applications;
+    }
+
+    /**
+     * Set applications.
+     */
+    public void setApplications(Set<FlowApplication> applications) {
+        this.applications = applications;
+    }
+
+    /**
+     * Get applications metadata.
+     */
+    public long getAppMetadata() {
+        return appMetadata;
+    }
+
+    /**
+     * Set applications metadata.
+     */
+    public void setAppMetadata(long appMetadata) {
+        this.appMetadata = appMetadata;
     }
 
     /**

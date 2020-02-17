@@ -16,6 +16,7 @@
 package org.openkilda.wfm;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.wfm.topology.applications.AppMessage;
 
 import lombok.Data;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -49,6 +50,10 @@ public class CommandContext implements Serializable {
 
     public CommandContext(Message message, ConsumerRecord<?, ?> kafkaRecord) {
         this(message.getCorrelationId(), message.getTimestamp(), kafkaRecord);
+    }
+
+    public CommandContext(AppMessage message) {
+        this(message.getCorrelationId(), message.getTimestamp(), null);
     }
 
     public CommandContext(String correlationId) {

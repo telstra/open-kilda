@@ -3,6 +3,8 @@ rootProject.name = 'kilda-parent'
 includeBuild('projectfloodlight/floodlight')
 includeBuild('projectfloodlight/openflowj')
 
+include 'applications'
+include 'applications-storm-topology'
 include 'base-messaging'
 include 'base-storm-topology'
 include 'connecteddevices-storm-topology'
@@ -51,6 +53,7 @@ project(':base-messaging').projectDir = "$rootDir/base-topology/base-messaging" 
 project(':base-storm-topology').projectDir = "$rootDir/base-topology/base-storm-topology" as File
 project(':connecteddevices-storm-topology').projectDir = "$rootDir/connecteddevices-topology/connecteddevices-storm-topology" as File
 project(':floodlightrouter-storm-topology').projectDir = "$rootDir/floodlightrouter-topology/floodlightrouter-storm-topology" as File
+project(':applications-storm-topology').projectDir = "$rootDir/applications-topology/applications-storm-topology" as File
 project(':floodlight-api').projectDir = "$rootDir/floodlight-service/floodlight-api" as File
 project(':floodlight-modules').projectDir = "$rootDir/floodlight-service/floodlight-modules" as File
 project(':flowhs-storm-topology').projectDir = "$rootDir/flowhs-topology/flowhs-storm-topology" as File

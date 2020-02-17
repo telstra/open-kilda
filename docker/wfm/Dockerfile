@@ -29,6 +29,10 @@ ADD wfm/app /app
 COPY BUILD/base-storm-topology/resources/topology.properties /app/
 
 
+#applications
+COPY BUILD/applications-storm-topology/libs/*               /app/applications-storm-topology/libs/
+COPY BUILD/applications-storm-topology/build.gradle         /app/applications-storm-topology/
+
 
 #connecteddevices
 COPY BUILD/connecteddevices-storm-topology/libs/*               /app/connecteddevices-storm-topology/libs/

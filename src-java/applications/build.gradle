@@ -1,0 +1,16 @@
+description = 'Kilda Applications Model'
+dependencies {
+    implementation 'com.google.guava:guava'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    testImplementation 'junit:junit'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

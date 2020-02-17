@@ -35,4 +35,16 @@ public class SwitchPropertiesDto {
 
     @JsonProperty("switch_arp")
     private boolean switchArp;
+
+    @JsonProperty("inbound_telescope_port")
+    private Integer inboundTelescopePort;
+
+    @JsonProperty("outbound_telescope_port")
+    private Integer outboundTelescopePort;
+
+    @JsonProperty("telescope_ingress_vlan")
+    private Integer telescopeIngressVlan;
+
+    @JsonProperty("telescope_egress_vlan")
+    private Integer telescopeEgressVlan;
 }

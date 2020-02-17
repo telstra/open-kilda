@@ -8,6 +8,7 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Base Storm Topology'
 dependencies {
+    api project(':applications')
     api project(':base-messaging')
     api project(':kilda-configuration')
     api project(':kilda-persistence-api')

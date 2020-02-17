@@ -134,7 +134,7 @@ public abstract class AbstractSerializerTest {
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, false);
+                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, false, new HashSet<>(), 0L);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -156,7 +156,8 @@ public abstract class AbstractSerializerTest {
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallIngressFlow data = new InstallIngressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID,
                 INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, EGRESS_SWITCH_ID, false, false, false);
+                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, EGRESS_SWITCH_ID, false, false, false, new HashSet<>(),
+                        0L, null);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -198,7 +199,8 @@ public abstract class AbstractSerializerTest {
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallOneSwitchFlow data = new InstallOneSwitchFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
-                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, false, false, false);
+                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, false, false, false,
+                        new HashSet<>(), 0L);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

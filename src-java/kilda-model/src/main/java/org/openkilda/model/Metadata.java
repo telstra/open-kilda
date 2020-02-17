@@ -50,8 +50,8 @@ public class Metadata implements Serializable {
 
     public static final long METADATA_ONE_SWITCH_FLOW_VALUE = 0x0000_0000_0040_0000L;
     public static final long METADATA_ONE_SWITCH_FLOW_MASK = 0x0000_0000_0040_0000L;
-    private static final long ENCAPSULATION_ID_MASK = 0x0000_0000_000FF_FFFFL;
-    private static final long FORWARD_METADATA_FLAG = 0x0000_0000_0010_0000L;
+    public static final long ENCAPSULATION_ID_MASK = 0x0000_0000_000FF_FFFFL;
+    public static final long FORWARD_METADATA_FLAG = 0x0000_0000_0010_0000L;
 
     public static final long METADATA_ARP_VALUE = 0x0000_0000_0000_0004L;
     public static final long METADATA_ARP_MASK =  0x0000_0000_0000_0004L;

@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -72,6 +74,18 @@ public class InstallEgressFlow extends InstallTransitFlow {
     protected Integer outputVlanId;
 
     /**
+     * Enabled applications.
+     */
+    @JsonProperty("applications")
+    protected Set<FlowApplication> applications;
+
+    /**
+     * Applications metadata.
+     */
+    @JsonProperty("app_metadata")
+    private long appMetadata;
+
+    /**
      * Instance constructor.
      *
      * @param transactionId  transaction id
@@ -85,6 +99,8 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @param outputVlanId   output vlan id value
      * @param outputVlanType output vlan tag action
      * @param multiTable     multitable flag
+     * @param applications   the applications on which the actions is performed.
+     * @param appMetadata    applications metadata.
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -99,11 +115,15 @@ public class InstallEgressFlow extends InstallTransitFlow {
                                          transitEncapsulationType,
                              @JsonProperty("output_vlan_id") final Integer outputVlanId,
                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
-                             @JsonProperty("multi_table") final boolean multiTable) {
+                             @JsonProperty("multi_table") final boolean multiTable,
+                             @JsonProperty("applications") Set<FlowApplication> applications,
+                             @JsonProperty("app_metadata") long appMetadata) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
+        setApplications(applications);
+        setAppMetadata(appMetadata);
     }
 
     /**
@@ -155,6 +175,34 @@ public class InstallEgressFlow extends InstallTransitFlow {
     }
 
     /**
+     * Get applications.
+     */
+    public Set<FlowApplication> getApplications() {
+        return applications;
+    }
+
+    /**
+     * Set applications.
+     */
+    public void setApplications(Set<FlowApplication> applications) {
+        this.applications = applications;
+    }
+
+    /**
+     * Get applications metadata.
+     */
+    public long getAppMetadata() {
+        return appMetadata;
+    }
+
+    /**
+     * Set applications metadata.
+     */
+    public void setAppMetadata(long appMetadata) {
+        this.appMetadata = appMetadata;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -171,6 +219,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 .add("output_vlan_id", outputVlanId)
                 .add("output_vlan_type", outputVlanType)
                 .add("multi_table", multiTable)
+                .add("applications", applications)
                 .toString();
     }
 
@@ -197,7 +246,8 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
-                && Objects.equals(isMultiTable(), that.isMultiTable());
+                && Objects.equals(isMultiTable(), that.isMultiTable())
+                && Objects.equals(getApplications(), that.getApplications());
     }
 
     /**
@@ -206,6 +256,6 @@ public class InstallEgressFlow extends InstallTransitFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, outputVlanType, outputVlanId, multiTable);
+                transitEncapsulationType, outputVlanType, outputVlanId, multiTable, applications);
     }
 }

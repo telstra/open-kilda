@@ -78,6 +78,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -545,8 +546,8 @@ public class StatsTopologyTest extends AbstractStormTest {
                 false,
                 (isForward && flow.getDetectConnectedDevices().isSrcLldp())
                         || (!isForward && flow.getDetectConnectedDevices().isDstLldp()),
-                false
-        );
+                false,
+                new HashSet<>(), 0L);
         sendFlowCommand(installOneSwitchFlow);
     }
 

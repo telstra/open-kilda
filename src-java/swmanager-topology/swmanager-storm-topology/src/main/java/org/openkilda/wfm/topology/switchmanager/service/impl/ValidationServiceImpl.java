@@ -21,12 +21,15 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.model.ApplicationRule;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -54,12 +57,15 @@ import java.util.stream.Collectors;
 public class ValidationServiceImpl implements ValidationService {
     private FlowPathRepository flowPathRepository;
     private SwitchRepository switchRepository;
+    private ApplicationRepository applicationRepository;
+
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        this.applicationRepository = persistenceManager.getRepositoryFactory().createApplicationRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
     }
@@ -80,6 +86,25 @@ public class ValidationServiceImpl implements ValidationService {
         paths.stream()
                 .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                 .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
+                .forEach(expectedCookies::add);
+
+        paths.stream()
+                .filter(path -> path.getApplications() != null
+                        && path.getApplications().contains(FlowApplication.TELESCOPE))
+                .map(FlowPath::getCookie)
+                .forEach(cookie -> {
+                    expectedCookies.add(
+                            Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(),
+                                    true).getValue());
+                    expectedCookies.add(
+                            Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(),
+                                    false).getValue());
+
+                });
+
+        applicationRepository.findBySwitchId(switchId).stream()
+                .map(ApplicationRule::getCookie)
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 

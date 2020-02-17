@@ -24,7 +24,9 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowApplication
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.Metadata
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -583,7 +585,8 @@ misconfigured"
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1,
-                        OutputVlanType.REPLACE, false)).toJson()))
+                        OutputVlanType.REPLACE, false, new HashSet<FlowApplication>(),
+                        Metadata.builder().build())).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.flowId, 1L, transitSw, 1, 2, 1,
@@ -593,7 +596,8 @@ misconfigured"
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
-                        switchPair.dst.dpId, false, false, false)).toJson()))
+                        switchPair.dst.dpId, false, false, false, new HashSet<FlowApplication>(), 0L, null
+                )).toJson()))
         producer.flush()
 
         then: "Switch validation shows excess rules and store them in the 'excess' section"
