@@ -18,7 +18,7 @@ import pathlib
 import operator
 
 import nsenter
-from scapy.all import Ether, sendp
+from scapy.all import ARP, Ether, sendp
 from scapy.contrib import lldp
 
 from kilda.traffexam import context as context_module
@@ -63,6 +63,25 @@ class LLDPPush(Abstract):
         return Ether(src=entry.mac_address, dst=self.lldp_bcast_mac) / payload
 
 
+class ARPPush(Abstract):
+    ns_fs_location = pathlib.Path('/var/run/netns')
+    dst_ipv4 = "8.8.8.9"
+    eth_broadcast = "FF:FF:FF:FF:FF:FF"
+
+    def __call__(self, iface, push_entry):
+        pkt = self._encode(push_entry)
+
+        ns_name = self.context.make_network_namespace_name()
+        ns_fd = self.ns_fs_location / ns_name
+        with nsenter.Namespace(str(ns_fd), 'net'):
+            sendp(pkt, iface=iface.name, verbose=False, promisc=False)
+
+    def _encode(self, entry):
+        arp = ARP(hwsrc=entry.src_mac, psrc=entry.src_ipv4, pdst=self.dst_ipv4)
+        return Ether(src=entry.src_mac, dst=self.eth_broadcast) / arp
+
+
 class Adapter(object):
     def __init__(self, context):
         self.lldp_push = LLDPPush(context)
+        self.arp_push = ARPPush(context)
