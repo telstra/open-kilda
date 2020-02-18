@@ -19,16 +19,11 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
-import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
@@ -38,7 +33,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -61,8 +55,8 @@ public class FlowFetcher extends Abstract {
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
     private final PersistenceManager persistenceManager;
-    private transient FlowPairRepository flowPairRepository;
-    private Set<BidirectionalFlowDto> flowsSet;
+    private transient FlowRepository flowRepository;
+    private Set<Flow> flowsSet;
     private long periodicPingCacheExpiryInterval;
     private long lastPeriodicPingCacheRefresh;
 
@@ -92,11 +86,7 @@ public class FlowFetcher extends Abstract {
     private void updatePeriodicPingHeap(Tuple input) throws PipelineException {
         PeriodicPingCommand periodicPingCommand = pullPeriodicPingRequest(input);
         if (periodicPingCommand.isEnable()) {
-            Optional<FlowPair> flowPair = flowPairRepository.findById(periodicPingCommand.getFlowId());
-            if (flowPair.isPresent()) {
-                BidirectionalFlowDto flowDto = new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair.get()));
-                flowsSet.add(flowDto);
-            }
+            flowRepository.findById(periodicPingCommand.getFlowId()).ifPresent(value -> flowsSet.add(value));
         } else {
             flowsSet.removeIf(flow -> flow.getFlowId().equals(periodicPingCommand.getFlowId()));
         }
@@ -104,30 +94,7 @@ public class FlowFetcher extends Abstract {
 
     private void refreshHeap(Tuple input, boolean emitCacheExpiry) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final Set<BidirectionalFlowDto> flows = new HashSet<>();
-        Collection<FlowPair> flowPairs = flowPairRepository.findWithPeriodicPingsEnabled();
-        for (FlowPair fp : flowPairs) {
-            try {
-                flows.add(new BidirectionalFlowDto(FlowMapper.INSTANCE.map(fp)));
-            } catch (Exception e) {
-                String forwardPathId = Optional.ofNullable(fp)
-                        .map(FlowPair::getForward)
-                        .map(UnidirectionalFlow::getFlowPath)
-                        .map(FlowPath::getPathId)
-                        .map(PathId::getId)
-                        .orElse(null);
-                String reversePathId = Optional.ofNullable(fp)
-                        .map(FlowPair::getReverse)
-                        .map(UnidirectionalFlow::getFlowPath)
-                        .map(FlowPath::getPathId)
-                        .map(PathId::getId)
-                        .orElse(null);
-
-                String message = String.format("Failed to build flow from paths. Forward path id '%s', "
-                        + "reverse path id '%s'. Skipping.", forwardPathId, reversePathId);
-                log.info(message, e);
-            }
-        }
+        final Set<Flow> flows = new HashSet<>(flowRepository.findWithPeriodicPingsEnabled());
         if (emitCacheExpiry) {
             final CommandContext commandContext = pullContext(input);
             emitCacheExpire(input, commandContext, flows);
@@ -143,7 +110,7 @@ public class FlowFetcher extends Abstract {
             refreshHeap(input, true);
         }
         final CommandContext commandContext = pullContext(input);
-        for (BidirectionalFlowDto flow : flowsSet) {
+        for (Flow flow : flowsSet) {
             PingContext pingContext = new PingContext(Kinds.PERIODIC, flow);
             emit(input, pingContext, commandContext);
         }
@@ -153,21 +120,21 @@ public class FlowFetcher extends Abstract {
     private void handleOnDemandRequest(Tuple input) throws PipelineException {
         log.debug("Handle on demand ping request");
         FlowPingRequest request = pullOnDemandRequest(input);
-        BidirectionalFlowDto flow;
 
-        Optional<FlowPair> flowPair = flowPairRepository.findById(request.getFlowId());
-        if (!flowPair.isPresent()) {
+        Optional<Flow> optionalFlow = flowRepository.findById(request.getFlowId());
+
+        if (optionalFlow.isPresent()) {
+            Flow flow = optionalFlow.get();
+
+            PingContext pingContext = new PingContext(Kinds.ON_DEMAND, flow).toBuilder()
+                    .timeout(request.getTimeout())
+                    .build();
+            emit(input, pingContext, pullContext(input));
+
+        } else {
             emitOnDemandResponse(input, request, String.format(
                     "Flow %s does not exist", request.getFlowId()));
-            return;
         }
-
-        flow = new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair.get()));
-
-        PingContext pingContext = new PingContext(Kinds.ON_DEMAND, flow).toBuilder()
-                .timeout(request.getTimeout())
-                .build();
-        emit(input, pingContext, pullContext(input));
     }
 
     private void emit(Tuple input, PingContext pingContext, CommandContext commandContext) {
@@ -182,10 +149,10 @@ public class FlowFetcher extends Abstract {
         getOutput().emit(STREAM_ON_DEMAND_RESPONSE_ID, input, output);
     }
 
-    private void emitCacheExpire(Tuple input, CommandContext commandContext, Set<BidirectionalFlowDto> flows) {
+    private void emitCacheExpire(Tuple input, CommandContext commandContext, Set<Flow> flows) {
         OutputCollector collector = getOutput();
         flowsSet.removeAll(flows);
-        for (BidirectionalFlowDto flow : flowsSet) {
+        for (Flow flow : flowsSet) {
             Values output = new Values(flow, commandContext);
             collector.emit(STREAM_EXPIRE_CACHE_ID, input, output);
 
@@ -209,7 +176,7 @@ public class FlowFetcher extends Abstract {
 
     @Override
     public void init() {
-        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         try {
             refreshHeap(null, false);
         } catch (PipelineException e) {

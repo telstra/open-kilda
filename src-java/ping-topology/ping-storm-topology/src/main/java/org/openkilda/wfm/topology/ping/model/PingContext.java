@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDirection;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
+import org.openkilda.model.Flow;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -40,7 +40,7 @@ public class PingContext implements Serializable {
     private Kinds kind;
     private GroupId group;
 
-    private BidirectionalFlowDto flow;
+    private Flow flow;
     private FlowDirection direction;
     private Long timeout;
 
@@ -50,7 +50,7 @@ public class PingContext implements Serializable {
     private Ping.Errors error;
     private PingMeters meters;
 
-    public PingContext(Kinds kind, BidirectionalFlowDto flow) {
+    public PingContext(Kinds kind, Flow flow) {
         this.kind = kind;
         this.flow = flow;
     }
@@ -104,11 +104,11 @@ public class PingContext implements Serializable {
     public long getCookie() {
         long value;
         if (direction == null) {
-            value = flow.getCookie();
+            value = flow.getForwardPath().getCookie().getUnmaskedValue();
         } else if (direction == FlowDirection.FORWARD) {
-            value = flow.getForward().getCookie();
+            value = flow.getForwardPath().getCookie().getValue();
         } else if (direction == FlowDirection.REVERSE) {
-            value = flow.getReverse().getCookie();
+            value = flow.getReversePath().getCookie().getValue();
         } else {
             throw new IllegalArgumentException(String.format(
                     "Unsupported %s.%s value", FlowDirection.class.getName(), direction));
