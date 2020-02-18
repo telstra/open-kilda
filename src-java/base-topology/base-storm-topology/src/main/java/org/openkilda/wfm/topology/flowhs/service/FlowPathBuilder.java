@@ -137,7 +137,7 @@ public class FlowPathBuilder {
             switchProperties.put(flow.getDestSwitch().getSwitchId(), dstSwitchProperties.get());
             flow.setDestWithMultiTable(dstSwitchProperties.get().isMultiTable());
             flow.getDetectConnectedDevices().setDstSwitchLldp(dstSwitchProperties.get().isSwitchLldp());
-            flow.getDetectConnectedDevices().setDstSwitchLldp(dstSwitchProperties.get().isSwitchLldp());
+            flow.getDetectConnectedDevices().setDstSwitchArp(dstSwitchProperties.get().isSwitchArp());
         }
         FlowPath flowPath = FlowPath.builder()
                 .flow(flow)

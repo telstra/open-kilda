@@ -532,6 +532,9 @@ class RecordHandler implements Runnable {
         if (command.isEnableLldp()) {
             context.getSwitchManager().installLldpInputCustomerFlow(dpid, command.getInputPort());
         }
+        if (command.isEnableArp()) {
+            context.getSwitchManager().installArpInputCustomerFlow(dpid, command.getInputPort());
+        }
 
         OutputVlanType directOutputVlanType = command.getOutputVlanType();
         context.getSwitchManager().installOneSwitchFlow(
