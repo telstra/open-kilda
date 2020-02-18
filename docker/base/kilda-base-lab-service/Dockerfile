@@ -17,7 +17,7 @@ FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
 
-
+# setuptools, wheel and tox should be installed one by one otherwise it is going to fail with no good reason
 RUN apt update \
     && apt install -y --no-install-recommends \
         software-properties-common \
@@ -34,7 +34,9 @@ RUN apt update \
         gcc \
         build-essential \
         automake \
-    && pip3 install setuptools wheel tox \
+    && pip3 install setuptools==45.2.0 \
+    && pip3 install wheel==0.34.2 \
+    && pip3 install tox==3.14.4 \
     && cd /root \
     && curl  https://www.openvswitch.org/releases/openvswitch-2.12.0.tar.gz -o openvswitch-2.12.0.tar.gz \
     && tar -xvf openvswitch-2.12.0.tar.gz \
