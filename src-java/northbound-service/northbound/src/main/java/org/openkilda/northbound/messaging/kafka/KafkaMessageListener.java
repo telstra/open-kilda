@@ -30,7 +30,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 /**
  * Kafka message receiver.
  */
-@KafkaListener(id = "northbound-listener", topics = "#{kafkaTopicsConfig.getNorthboundTopic()}")
+@KafkaListener(topics = "#{kafkaTopicsConfig.getNorthboundTopic()}")
 public class KafkaMessageListener {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessageListener.class);
