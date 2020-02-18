@@ -25,7 +25,7 @@ Note: For now it is only runnable on virtual env due to no ability to disconnect
 """)
 @Tags(VIRTUAL)
 class SwitchFailuresSpec extends HealthCheckSpecification {
-    @Tags(SMOKE)
+    @Tags([SMOKE, VIRTUAL])
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
