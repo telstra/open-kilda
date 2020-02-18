@@ -139,7 +139,7 @@ subprojects {
 
         from("${project.buildDir}/libs") { into "${project.name}/libs" }
         from("${project.buildDir}/dependency-jars") { into "${project.name}/dependency-jars" }
-        from(processResources) { into "${project.name}/resources" }
+        from(tasks.processResources) { into "${project.name}/resources" }
         from("${project.file('build.gradle')}") { into "${project.name}" }
     }
 
