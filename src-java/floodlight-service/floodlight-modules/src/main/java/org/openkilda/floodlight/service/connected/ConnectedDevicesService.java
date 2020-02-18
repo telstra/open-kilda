@@ -67,6 +67,14 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
     private String topic;
     private String region;
 
+    static {
+        try {
+            logger.info("Force loading of {}", Class.forName(VlanTag.class.getName()));
+        } catch (ClassNotFoundException e) {
+            logger.error(String.format("Couldn't load class VlanTag %s", e.getMessage()), e);
+        }
+    }
+
     @Override
     public Command makeCommand(CommandContext context, OfInput input) {
         return new Command(context) {
