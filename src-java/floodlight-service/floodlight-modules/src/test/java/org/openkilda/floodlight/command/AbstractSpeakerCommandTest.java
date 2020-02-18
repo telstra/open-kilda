@@ -39,6 +39,7 @@ import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -59,7 +60,6 @@ import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -240,13 +240,15 @@ public abstract class AbstractSpeakerCommandTest extends EasyMockSupport {
     }
 
     protected void switchFeaturesSetup(IOFSwitch target, boolean metersSupport) {
-        Set<SwitchFeature> features = new HashSet<>();
-
         if (metersSupport) {
-            features.add(SwitchFeature.METERS);
+            switchFeaturesSetup(target, SwitchFeature.METERS);
+        } else {
+            switchFeaturesSetup(target);
         }
+    }
 
-        switchFeaturesSetup(target, features);
+    protected void switchFeaturesSetup(IOFSwitch target, SwitchFeature... switchFeatures) {
+        switchFeaturesSetup(target, Sets.newHashSet(switchFeatures));
     }
 
     protected void switchFeaturesSetup(IOFSwitch target, Set<SwitchFeature> features) {

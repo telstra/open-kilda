@@ -25,6 +25,7 @@ import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -100,6 +101,64 @@ public class MeterVerifyCommandTest extends AbstractSpeakerCommandTest {
         statsReplyProxy.set(wrapMeterStatsReply(reply));
 
         verifyErrorCompletion(result, SwitchIncorrectMeterException.class);
+    }
+
+    @Test
+    public void shouldVerifyInaccurateMeterBandwidth() throws Exception {
+        MeterConfig validConfig = new MeterConfig(new MeterId(1), 100);
+        MeterVerifyCommand command1 = new MeterVerifyCommand(
+                new MessageContext(), mapSwitchId(dpId), validConfig);
+
+        switchFeaturesSetup(sw, SwitchFeature.METERS, SwitchFeature.INACCURATE_METER);
+        SettableFuture<List<OFMeterConfigStatsReply>> statsReplyProxy = setupMeterConfigStatsReply();
+        setupMeterConfigStatsReply();  // for command2
+        replayAll();
+
+        CompletableFuture<MeterVerifyReport> result = command1.execute(commandProcessor);
+
+        // make one more command with altered config, to produce meter config flags/bands
+        MeterConfig invalidConfig = new MeterConfig(validConfig.getId(), validConfig.getBandwidth() + 1);
+        MeterVerifyCommand command2 = new MeterVerifyCommand(
+                command1.getMessageContext(), command1.getSwitchId(), invalidConfig);
+        command2.execute(commandProcessor);  // must be executed, for let .setup() method to initialize all dependencies
+
+        OFMeterConfig reply = sw.getOFFactory().buildMeterConfig()
+                .setMeterId(validConfig.getId().getValue())
+                .setFlags(command2.makeMeterFlags())
+                .setEntries(command2.makeMeterBands())
+                .build();
+        statsReplyProxy.set(wrapMeterStatsReply(reply));
+
+        verifySuccessCompletion(result);
+    }
+
+    @Test
+    public void shouldVerifyInaccurateMeterBurst() throws Exception {
+        MeterConfig validConfig = new MeterConfig(new MeterId(1), (long) (100 / 1.05));
+        MeterVerifyCommand command1 = new MeterVerifyCommand(
+                new MessageContext(), mapSwitchId(dpId), validConfig);
+
+        switchFeaturesSetup(sw, SwitchFeature.METERS, SwitchFeature.INACCURATE_METER);
+        SettableFuture<List<OFMeterConfigStatsReply>> statsReplyProxy = setupMeterConfigStatsReply();
+        setupMeterConfigStatsReply();  // for command2
+        replayAll();
+
+        CompletableFuture<MeterVerifyReport> result = command1.execute(commandProcessor);
+
+        // make one more command with altered config, to produce meter config flags/bands
+        MeterConfig invalidConfig = new MeterConfig(validConfig.getId(), validConfig.getBandwidth() + 1);
+        MeterVerifyCommand command2 = new MeterVerifyCommand(
+                command1.getMessageContext(), command1.getSwitchId(), invalidConfig);
+        command2.execute(commandProcessor);  // must be executed, for let .setup() method to initialize all dependencies
+
+        OFMeterConfig reply = sw.getOFFactory().buildMeterConfig()
+                .setMeterId(validConfig.getId().getValue())
+                .setFlags(command2.makeMeterFlags())
+                .setEntries(command2.makeMeterBands())
+                .build();
+        statsReplyProxy.set(wrapMeterStatsReply(reply));
+
+        verifySuccessCompletion(result);
     }
 
     @Test

@@ -23,9 +23,11 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 @Value
 @Builder
 public class MeterSchemaBand {
-    private static final float INACCURATE_RATE_DEVIATION = 0.01f;
-    private static final float INACCURATE_BURST_DEVIATION = 0.01f;
-    private static final long ACCURATE_BURST_DEVIATION = 1;
+    private static final long INACCURATE_RATE_ALLOWED_DEVIATION = 1;
+    private static final long INACCURATE_BURST_ALLOWED_DEVIATION = 1;
+    private static final float INACCURATE_RATE_ALLOWED_RELATIVE_DEVIATION = 0.01f;
+    private static final float INACCURATE_BURST_ALLOWED_RELATIVE_DEVIATION = 0.01f;
+    private static final long ACCURATE_BURST_ALLOWED_DEVIATION = 1;
 
     private final int type;
 
@@ -51,11 +53,13 @@ public class MeterSchemaBand {
 
         if (inaccurate || that.inaccurate) {
             return equals.isEquals()
-                    && inaccurateEquals(rate, that.rate, INACCURATE_RATE_DEVIATION)
-                    && inaccurateEquals(burstSize, that.burstSize, INACCURATE_BURST_DEVIATION);
+                    && isEqualOrWithinDeviation(rate, that.rate, INACCURATE_RATE_ALLOWED_DEVIATION,
+                    INACCURATE_RATE_ALLOWED_RELATIVE_DEVIATION)
+                    && isEqualOrWithinDeviation(burstSize, that.burstSize, INACCURATE_BURST_ALLOWED_DEVIATION,
+                    INACCURATE_BURST_ALLOWED_RELATIVE_DEVIATION);
         } else {
             return equals.append(rate, that.rate).isEquals()
-                    && inaccurateEquals(burstSize, that.burstSize, ACCURATE_BURST_DEVIATION);
+                    && inaccurateEquals(burstSize, that.burstSize, ACCURATE_BURST_ALLOWED_DEVIATION);
         }
     }
 
@@ -66,6 +70,12 @@ public class MeterSchemaBand {
                 .append(rate)
                 .append(burstSize)
                 .toHashCode();
+    }
+
+    private boolean isEqualOrWithinDeviation(long left, long right,
+                                             long allowedDeviation, float allowedRelativeDeviation) {
+        return inaccurateEquals(left, right, allowedDeviation)
+                || inaccurateEquals(left, right, allowedRelativeDeviation);
     }
 
     private boolean inaccurateEquals(long left, long right, long deviation) {
