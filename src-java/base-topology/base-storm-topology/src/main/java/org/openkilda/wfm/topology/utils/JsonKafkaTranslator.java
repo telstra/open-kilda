@@ -18,16 +18,12 @@ package org.openkilda.wfm.topology.utils;
 import org.openkilda.wfm.CommandContext;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 @Slf4j
-public class JsonKafkaTranslator extends GenericKafkaRecordTranslator<String, String> {
+public class JsonKafkaTranslator extends GenericKafkaRecordTranslator<String> {
     @Override
-    protected String decodePayload(String payload) {
-        return payload;
-    }
-
-    @Override
-    protected CommandContext makeContext(String payload) {
+    protected CommandContext makeContext(ConsumerRecord<?, ?> record, String payload) {
         return new CommandContext();
     }
 }

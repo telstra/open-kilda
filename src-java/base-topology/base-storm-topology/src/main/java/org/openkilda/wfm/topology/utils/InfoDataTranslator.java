@@ -16,23 +16,32 @@
 package org.openkilda.wfm.topology.utils;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.CommandContext;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
-import java.util.List;
-
-public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData> {
-
-    @Override
-    public List<Object> apply(ConsumerRecord<String, InfoData> record) {
-        InfoData data = record.value();
-        return new Values(record.key(), data);
-    }
+public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData, InfoData> {
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD);
 
     @Override
     public Fields getFieldsFor(String stream) {
-        return new Fields(MessageKafkaTranslator.KEY_FIELD, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
+        return STREAM_FIELDS;
+    }
+
+    @Override
+    protected InfoData decodePayload(InfoData payload) {
+        return payload;
+    }
+
+    @Override
+    protected CommandContext makeContext(ConsumerRecord<?, ?> record, InfoData payload) {
+        return null;  // there is no context in output stream
+    }
+
+    @Override
+    protected Values makeTuple(ConsumerRecord<String, InfoData> record, InfoData payload, CommandContext context) {
+        return new Values(record.key(), payload);
     }
 }

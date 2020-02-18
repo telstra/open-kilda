@@ -15,32 +15,14 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
-
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.wfm.CommandContext;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Values;
 
-import java.util.List;
-
-public class AbstractMessageTranslator extends KafkaRecordTranslator<String, AbstractMessage> {
-
-    public static final String KEY_FIELD = "key";
-    public static final Fields STREAM_FIELDS = new Fields(KEY_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
-
+public class AbstractMessageTranslator extends GenericKafkaRecordTranslator<AbstractMessage> {
     @Override
-    public List<Object> apply(ConsumerRecord<String, AbstractMessage> record) {
-        AbstractMessage message = record.value();
-
-        //fixme: should be replaced by new command context
-        return new Values(record.key(), message, new CommandContext(message.getMessageContext().getCorrelationId()));
-    }
-
-    @Override
-    public Fields getFieldsFor(String stream) {
-        return STREAM_FIELDS;
+    protected CommandContext makeContext(ConsumerRecord<?, ?> record, AbstractMessage payload) {
+        return new CommandContext(payload.getMessageContext().getCorrelationId());
     }
 }
