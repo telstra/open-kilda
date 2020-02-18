@@ -312,12 +312,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 }
 
                 if (result) {
-                    logIsl.info("push discovery package via: {}-{} id:{}", srcSwitch.getId(), port.getPortNumber(),
-                            packetId);
+                    logIsl.info("push discovery package via: {}-{} id:{} OF-xid:{}", srcSwitch.getId(),
+                                port.getPortNumber(), packetId, ofPacketOut.getXid());
                 } else {
                     logger.error(
-                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{} id: {}",
-                            srcSwitch.getId(), port.getPortNumber(), packetId);
+                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{} id:{} OF-xid:{}",
+                            srcSwitch.getId(), port.getPortNumber(), packetId, ofPacketOut.getXid());
                 }
             }
         } catch (Exception exception) {
@@ -570,8 +570,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private void handleDiscoveryPacket(OfInput input, IOFSwitch destSwitch, DiscoveryPacketData data) {
         OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
         long latency = measureLatency(input, data.getTimestamp());
-        logIsl.info("link discovered: {}-{} ===( {} ns )===> {}-{} id:{}",
-                data.getRemoteSwitchId(), data.getRemotePort(), latency, input.getDpId(), inPort, data.getPacketId());
+        logIsl.info("link discovered: {}-{} ===( {} ns )===> {}-{} id:{} OF-xid:{}",
+                    data.getRemoteSwitchId(), data.getRemotePort(), latency, input.getDpId(), inPort,
+                    data.getPacketId(), input.getMessage().getXid());
 
         // this discovery packet was sent from remote switch/port to received switch/port
         // so the link direction is from remote switch/port to received switch/port
