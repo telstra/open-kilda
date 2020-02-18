@@ -1445,13 +1445,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public Long installArpTransitFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory::getArpTransitFlowGenerator,
+        return installDefaultFlow(dpid, switchFlowFactory.getArpTransitFlowGenerator(),
                 "--Isl ARP transit rule for VLAN--");
     }
 
     @Override
     public Long installArpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory::getArpInputPreDropFlowGenerator,
+        return installDefaultFlow(dpid, switchFlowFactory.getArpInputPreDropFlowGenerator(),
                 "--Isl ARP input pre drop rule--");
     }
 
@@ -1521,7 +1521,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeArpInputCustomer(port);
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
 
         OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
         builder.setCookie(U64.of(cookie));
@@ -1626,7 +1626,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMetadata(U64.of(METADATA_ARP_VALUE))
                 .setMetadataMask(U64.of(METADATA_ARP_MASK)).build();
 
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeArpInputCustomer(port),
                 ARP_INPUT_CUSTOMER_PRIORITY, INPUT_TABLE_ID)
@@ -1636,24 +1636,24 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public Long installArpIngressFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory::getArpIngressFlowGenerator, "--ARP ingress rule--");
+        return installDefaultFlow(dpid, switchFlowFactory.getArpIngressFlowGenerator(), "--ARP ingress rule--");
     }
 
     @Override
     public Long installArpPostIngressFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory::getArpPostIngressFlowGenerator,
+        return installDefaultFlow(dpid, switchFlowFactory.getArpPostIngressFlowGenerator(),
                 "--ARP post ingress rule--");
     }
 
     @Override
     public Long installArpPostIngressVxlanFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory::getArpPostIngressVxlanFlowGenerator,
+        return installDefaultFlow(dpid, switchFlowFactory.getArpPostIngressVxlanFlowGenerator(),
                 "--ARP post ingress VXLAN rule--");
     }
 
     @Override
     public Long installArpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory::getArpPostIngressOneSwitchFlowGenerator,
+        return installDefaultFlow(dpid, switchFlowFactory.getArpPostIngressOneSwitchFlowGenerator(),
                 "--ARP post ingress one switch rule--");
     }
 
