@@ -51,4 +51,6 @@ shadowJar {
     mergeServiceFiles()
 }
 
-build.dependsOn shadowJar
+artifacts {
+    archives shadowJar
+}
