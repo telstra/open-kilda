@@ -15,7 +15,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -230,6 +229,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Unroll
     def "Unable to get flows for NOT existing link (#item doesn't exist)"() {
         when: "Get flows for NOT existing link"
@@ -249,6 +249,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
+    @Tidy
     @Unroll
     def "Unable to get flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Get flows with specifying invalid #item"
@@ -285,6 +286,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
+    @Tidy
     def "Unable to delete a nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
@@ -316,15 +318,19 @@ class LinkSpec extends HealthCheckSpecification {
         given: "An inactive link"
         assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+        }
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
 
         then: "The link is actually deleted"
         response.size() == 2
-        !islUtils.getIslInfo(isl)
-        !islUtils.getIslInfo(isl.reversed)
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(isl)
+            assert !islUtils.getIslInfo(isl.reversed)
+        }
 
         when: "Removed link becomes active again (port brought UP)"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
@@ -389,6 +395,7 @@ class LinkSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tidy
     @Unroll
     def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist)"() {
         when: "Reroute flows with specifying NOT existing link"
@@ -408,6 +415,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
+    @Tidy
     @Unroll
     def "Unable to reroute flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Reroute flows with specifying invalid #item"
@@ -425,6 +433,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    @Tidy
     @Unroll
     def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
         when: "Reroute flows without specifying #item"
@@ -443,6 +452,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
+    @Tidy
     @Unroll
     def "Get links with specifying query parameters"() {
         when: "Get links with specifying query parameters"
@@ -460,6 +470,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort
     }
 
+    @Tidy
     @Unroll
     def "Get links with specifying NOT existing query parameters (#item doesn't exist)"() {
         when: "Get links with specifying NOT existing query parameters"
@@ -476,6 +487,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
+    @Tidy
     @Unroll
     def "Unable to get links with specifying invalid query parameters (#item is invalid)"() {
         when: "Get links with specifying invalid #item"

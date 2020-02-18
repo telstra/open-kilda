@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -42,6 +43,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
     @Value('${diversity.switch.cost}')
     int diversitySwitchCost
 
+    @Tidy
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
@@ -64,10 +66,11 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tidy
     def "Able to update flows to become diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
@@ -107,10 +110,11 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Able to update flows to become not diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
@@ -150,10 +154,11 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         and: "The 'diverse_with' field is removed"
         !northbound.getFlow(flow3.flowId).diverseWith
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -185,8 +190,8 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         then: "The second flow is built through the same path as the first flow"
         flow2Path == flow1Path
 
-        and: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        cleanup: "Restore topology, delete flows and reset costs"
+        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -194,6 +199,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Links and switches get extra cost that is considered while calculating diverse flow paths"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
@@ -238,11 +244,12 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         flow3Path != flow2Path
         involvedIsls.unique(false) == involvedIsls
 
-        and: "Delete flows and link props"
+        cleanup: "Delete flows and link props"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Tidy
     def "Able to get flow paths with correct overlapping segments stats (casual flows)"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
@@ -288,7 +295,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         ]
         verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 

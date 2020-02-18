@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
@@ -98,6 +99,7 @@ timeout"() {
         blinker?.isRunning() && blinker.stop(true)
     }
 
+    @Tidy
     def "Port goes down in 'antiflap.min' seconds if no flapping occurs"() {
         given: "Switch, port and ISL related to that port"
         def sw = topology.activeSwitches.first()
@@ -113,7 +115,7 @@ timeout"() {
             islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
-        and: "Cleanup: bring port up"
+        cleanup: "Bring port up"
         antiflap.portUp(sw.dpId, islPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED

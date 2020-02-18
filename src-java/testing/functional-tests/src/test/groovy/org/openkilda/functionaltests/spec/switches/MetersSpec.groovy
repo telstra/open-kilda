@@ -11,6 +11,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -50,6 +51,7 @@ class MetersSpec extends HealthCheckSpecification {
     @Value('${burst.coefficient}')
     double burstCoefficient
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete a meter from a #switchType switch"() {
@@ -70,13 +72,16 @@ class MetersSpec extends HealthCheckSpecification {
         deleteResult.deleted
         !northbound.getAllMeters(sw.dpId).meterEntries.find { it.meterId == meterToDelete }
 
-        and: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        when: "Delete the flow"
+        def flowDelete = flowHelperV2.deleteFlow(flow.flowId)
 
-        and: "Check if no excessive meters are installed on the switch"
+        then: "No excessive meters are installed on the switch"
         Wrappers.wait(WAIT_OFFSET) {
             defaultMeters.meterEntries == northbound.getAllMeters(sw.dpId).meterEntries
         }
+
+        cleanup:
+        !flowDelete && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -86,6 +91,7 @@ class MetersSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
@@ -114,6 +120,7 @@ class MetersSpec extends HealthCheckSpecification {
      * Default meters should be set in PKTPS by default in Kilda, but Centec switches only allow KBPS flag.
      * System should recalculate the PKTPS value to KBPS on Centec switches.
      */
+    @Tidy
     @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switch(#sw.dpId)"() {
@@ -134,6 +141,7 @@ class MetersSpec extends HealthCheckSpecification {
                 ?: assumeTrue("Unable to find Centec switches in topology", false))
     }
 
+    @Tidy
     @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in pktps on Noviflow switch(#sw.dpId)"() {
@@ -153,6 +161,7 @@ class MetersSpec extends HealthCheckSpecification {
                 ?: assumeTrue("Unable to find Noviflow switch in topology", false))
     }
 
+    @Tidy
     @Unroll
     @Tags(HARDWARE)
     def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
@@ -176,6 +185,7 @@ class MetersSpec extends HealthCheckSpecification {
                 assumeTrue("Unable to find Noviflow Wb5164 switches in topology", false))
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /ignore_bandwidth=false/)
@@ -217,7 +227,7 @@ on a #switchType switch"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "New meters should disappear from the switch"
         Wrappers.wait(WAIT_OFFSET) {
@@ -225,6 +235,9 @@ on a #switchType switch"() {
             newestMeters.meterEntries.containsAll(defaultMeters.meterEntries)
             newestMeters.meterEntries.size() == defaultMeters.meterEntries.size()
         }
+
+        cleanup:
+        !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches              | ignoreBandwidth
@@ -238,6 +251,7 @@ on a #switchType switch"() {
         "OVS"              | getVirtualSwitches()  | true
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     def "Meters are not created when creating a single-switch flow with maximum_bandwidth=0 on a #switchType switch"() {
@@ -261,7 +275,7 @@ on a #switchType switch"() {
         def newMeterEntries = newMeters.meterEntries.findAll { !defaultMeters.meterEntries.contains(it) }
         newMeterEntries.empty
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -272,6 +286,7 @@ on a #switchType switch"() {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
@@ -312,7 +327,7 @@ meters in flow rules at all (#data.flowType flow)"() {
             flowRules.each { assert !it.instructions.goToMeter }
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -354,6 +369,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Meter burst size is correctly set on #data.switchType switches for #flowRate flow rate"() {
@@ -409,6 +425,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
     }
 
+    @Tidy
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
     def "Flow burst is correctly set on Centec switches"() {
@@ -465,6 +482,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
+    @Tidy
     @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
     @Ignore("https://github.com/telstra/open-kilda/issues/3027")
@@ -518,6 +536,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
+    @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     @Ignore("https://github.com/telstra/open-kilda/issues/2740")
@@ -587,7 +606,7 @@ meters in flow rules at all (#data.flowType flow)"() {
                     .ignoring("flowEntries.packetCount"))
         }
 
-        and: "Cleanup: delete flow"
+        cleanup: "Delete flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
@@ -617,6 +636,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "Try to reset meters for unmetered flow"() {
         given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
@@ -637,7 +657,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.flowId' is unmetered"
 
-        then: "Delete the created flow"
+        cleanup: "Delete the created flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 

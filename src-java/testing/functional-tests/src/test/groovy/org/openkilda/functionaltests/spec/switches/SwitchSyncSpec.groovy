@@ -8,6 +8,7 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -41,6 +42,7 @@ class SwitchSyncSpec extends BaseSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    @Tidy
     @Unroll
     def "Able to synchronize switch without any rule and meter discrepancies (removeExcess=#removeExcess)"() {
         given: "An active switch"
@@ -66,6 +68,7 @@ class SwitchSyncSpec extends BaseSpecification {
         removeExcess << [false, true]
     }
 
+    @Tidy
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
@@ -138,7 +141,7 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Flow continues to write stats"
         statsHelper.verifyFlowWritesStats(flow.flowId)
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
@@ -230,6 +233,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
@@ -328,7 +332,7 @@ class SwitchSyncSpec extends BaseSpecification {
             }
         }
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 

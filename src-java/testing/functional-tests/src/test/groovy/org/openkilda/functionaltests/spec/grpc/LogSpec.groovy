@@ -5,6 +5,7 @@ import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_OF_MESSAGES_STATE
 import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_IP
 import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_PORT
 
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.grpc.speaker.model.LogMessagesDto
 import org.openkilda.grpc.speaker.model.LogOferrorsDto
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto
@@ -27,6 +28,7 @@ class LogSpec extends GrpcBaseSpecification {
     @Value('${grpc.remote.log.server.port}')
     Integer defaultRemoteLogServerPort
 
+    @Tidy
     @Unroll
     def "Able to enable 'log messages' on the #switches.switchId switch"() {
         when: "Try to turn on 'log messages'"
@@ -49,6 +51,7 @@ class LogSpec extends GrpcBaseSpecification {
         switches << getNoviflowSwitches()
     }
 
+    @Tidy
     @Unroll
     def "Able to enable 'OF log messages'  on the #switches.switchId switch"() {
         when: "Try to turn on 'OF log messages'"
@@ -72,6 +75,7 @@ class LogSpec extends GrpcBaseSpecification {
         switches << getNoviflowSwitches()
     }
 
+    @Tidy
     @Unroll
     def "Able to manipulate(CRUD) with a remote log server on the #switches.switchId switch"() {
         when: "Remove current remote log server configuration"
