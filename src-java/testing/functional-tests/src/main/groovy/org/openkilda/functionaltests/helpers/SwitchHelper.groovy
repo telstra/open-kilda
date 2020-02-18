@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE
+import static org.openkilda.model.Cookie.DROP_RULE_COOKIE
+import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE
 import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
@@ -11,9 +14,14 @@ import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
+import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
@@ -31,7 +39,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 import java.math.RoundingMode
-
 /**
  * Provides helper operations for some Switch-related content.
  * This helper is also injected as a Groovy Extension Module, so methods can be called in two ways:
@@ -85,7 +92,7 @@ class SwitchHelper {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                     MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE]
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 multiTableRules.add(LLDP_POST_INGRESS_VXLAN_COOKIE)
             }
             northbound.getLinks(sw.dpId, null, null, null).each {
@@ -114,21 +121,47 @@ class SwitchHelper {
             switchLldpRules.addAll([LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE])
         }
         if (sw.noviflow && !sw.wb5164) {
-            return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
-                    Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                    Cookie.CATCH_BFD_RULE_COOKIE, Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE,
-                    Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + switchLldpRules)
+            return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
+                    VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
+                    CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE,
+                    VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + switchLldpRules)
         } else if((sw.noviflow || sw.details.manufacturer == "E") && sw.wb5164){
-            return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
-                    Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                    Cookie.CATCH_BFD_RULE_COOKIE] + multiTableRules + switchLldpRules)
+            return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
+                    VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
+                    CATCH_BFD_RULE_COOKIE] + multiTableRules + switchLldpRules)
         } else if (sw.ofVersion == "OF_12") {
-            return [Cookie.VERIFICATION_BROADCAST_RULE_COOKIE]
+            return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
-            return ([Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
-                    Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE]
+            return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
+                    VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
             + multiTableRules + switchLldpRules)
         }
+    }
+
+    static List<Long> getDefaultMeters(Switch sw) {
+        if (sw.ofVersion == "OF_12") {
+            return []
+        }
+        def swProps = northbound.getSwitchProperties(sw.dpId)
+        List<MeterId> result = []
+        result << MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE) //2
+        result << MeterId.createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE) //3
+        if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+            result << MeterId.createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) //7
+        }
+        if (swProps.multiTable) {
+            result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE) //16
+            result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE) //18
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
+                result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE) //17
+            }
+        }
+        if (swProps.switchLldp) {
+            result << MeterId.createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE) //13
+            result << MeterId.createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE) //14
+            result << MeterId.createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE) //15
+        }
+        return result*.getValue().sort()
     }
 
     static boolean isCentec(Switch sw) {
@@ -208,17 +241,26 @@ class SwitchHelper {
         }
     }
 
+    /**
+     * Verifies that specified meter sections in the validation response are empty.
+     * NOTE: will filter out default meters for 'proper' section, so that switch without flow meters, but only with
+     * default meters in 'proper' section is considered 'empty'
+     */
     static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                                            List<String> sections = ["missing", "misconfigured", "excess"]) {
+                                            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
         if (switchValidateInfo.meters) {
-            sections.each {
-                assert switchValidateInfo.meters."$it".empty
+            sections.each { section ->
+                if (section == "proper") {
+                    assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
+                } else {
+                    assert switchValidateInfo.meters."$section".empty
+                }
             }
         }
     }
 
     /**
-     * Verifies that specified sections in the validation response are empty.
+     * Verifies that specified rule sections in the validation response are empty.
      * NOTE: will filter out default rules, except default flow rules(multiTable flow)
      * Default flow rules for the system looks like as a simple default rule.
      * Based on that you have to use extra filter to detect these rules in missing/excess/misconfigured sections.
@@ -236,7 +278,7 @@ class SwitchHelper {
         }
     }
 
-    public static boolean isDefaultMeter(MeterInfoDto dto) {
+    static boolean isDefaultMeter(MeterInfoDto dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
 }

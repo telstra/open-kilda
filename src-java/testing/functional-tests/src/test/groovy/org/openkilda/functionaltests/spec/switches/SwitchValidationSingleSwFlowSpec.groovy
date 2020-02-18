@@ -79,7 +79,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.proper*.cookie.containsAll(createdCookies)
 
-        def properMeters = switchValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        def properMeters = switchValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
         properMeters.each {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
@@ -158,7 +158,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         and: "The rest fields are empty"
-        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["proper", "missing", "excess"])
 
         and: "Created rules are still stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
@@ -250,7 +250,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         and: "The rest fields are empty"
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
-        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["misconfigured", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["proper", "misconfigured", "excess"])
 
         when: "Try to synchronize the switch"
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
@@ -298,7 +298,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         then: "Rules and meters are created"
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
-        def properMeters = swValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
         properMeters.meterId.size() == 2
         swValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
 
