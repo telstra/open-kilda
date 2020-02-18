@@ -23,6 +23,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public class AbstractMessageTranslator extends GenericKafkaRecordTranslator<AbstractMessage> {
     @Override
     protected CommandContext makeContext(ConsumerRecord<?, ?> record, AbstractMessage payload) {
-        return new CommandContext(payload.getMessageContext().getCorrelationId());
+        return new CommandContext(payload.getMessageContext().getCorrelationId(), record);
     }
 }

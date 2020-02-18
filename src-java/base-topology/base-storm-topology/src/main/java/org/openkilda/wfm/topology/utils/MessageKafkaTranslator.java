@@ -25,6 +25,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 public class MessageKafkaTranslator extends GenericKafkaRecordTranslator<Message> {
     @Override
     protected CommandContext makeContext(ConsumerRecord<?, ?> record, Message payload) {
-        return new CommandContext(payload);
+        return new CommandContext(payload, record);
     }
 }
