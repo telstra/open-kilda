@@ -44,7 +44,7 @@ public class NetworkController extends BaseController {
     private NetworkService networkService;
 
     @GetMapping(path = "/paths")
-    @ApiOperation(value = "Get paths between two switches")
+    @ApiOperation(value = "Get paths between two switches", response = PathsDto.class)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PathsDto> getPaths(
             @RequestParam("src_switch") SwitchId srcSwitchId, @RequestParam("dst_switch") SwitchId dstSwitchId) {

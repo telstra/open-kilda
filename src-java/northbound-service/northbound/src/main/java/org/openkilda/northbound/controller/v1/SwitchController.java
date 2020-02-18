@@ -298,7 +298,7 @@ public class SwitchController extends BaseController {
      *
      * @return the synchronization result.
      */
-    @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
+    @ApiOperation(value = "Synchronize rules on the switch", response = SwitchSyncResult.class)
     @PatchMapping(path = "/{switch_id}/synchronize")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchSyncResult> syncSwitch(@PathVariable(name = "switch_id") SwitchId switchId,
