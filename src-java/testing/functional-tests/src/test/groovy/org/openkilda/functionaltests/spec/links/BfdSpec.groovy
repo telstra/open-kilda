@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -22,6 +23,7 @@ controller-involved discovery mechanism""")
 @Tags([HARDWARE])
 @Ignore("Temporary disabled because of problems with bfd")
 class BfdSpec extends HealthCheckSpecification {
+    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to create a valid BFD session between two Noviflow switches"() {
         given: "An a-switch ISL between two Noviflow switches"
@@ -84,7 +86,8 @@ class BfdSpec extends HealthCheckSpecification {
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
         }
 
-        and: "Cleanup: restore broken ISL"
+        cleanup: "Restore broken ISL"
+        createBfdResponse && !removeBfdResponse && northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, false))
         lockKeeper.addFlows([isl.aswitch])
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
@@ -92,6 +95,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Reacting on BFD events can be turned on/off by a feature toggle"() {
         given: "An a-switch ISL between two Noviflow switches with BFD enabled"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
@@ -100,7 +104,7 @@ class BfdSpec extends HealthCheckSpecification {
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
 
         when: "Set BFD toggle to 'off' state"
-        northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(false).build())
+        def toggleOff = northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(false).build())
 
         and: "Interrupt ISL connection by breaking rule on a-switch"
         lockKeeper.removeFlows([isl.aswitch])
@@ -119,7 +123,7 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Set BFD toggle back to 'on' state and restore the ISL"
         lockKeeper.addFlows([isl.aswitch])
-        northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())
+        def toggleOn = northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
@@ -134,7 +138,8 @@ class BfdSpec extends HealthCheckSpecification {
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
         }
 
-        and: "Cleanup: restore ISL and remove BFD session"
+        cleanup: "Restore ISL and remove BFD session"
+        toggleOff && !toggleOn && northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())
         lockKeeper.addFlows([isl.aswitch])
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, false))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -150,10 +155,16 @@ class BfdSpec extends HealthCheckSpecification {
         assumeTrue("Require at least one a-switch BFD ISL between Noviflow switches", isl as boolean)
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+        }
 
         when: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(isl)
+            assert !islUtils.getIslInfo(isl.reversed)
+        }
 
         and: "Discover the removed link again"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)

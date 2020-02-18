@@ -139,7 +139,7 @@ subprojects {
 
         from("${project.buildDir}/libs") { into "${project.name}/libs" }
         from("${project.buildDir}/dependency-jars") { into "${project.name}/dependency-jars" }
-        from(processResources) { into "${project.name}/resources" }
+        from(tasks.processResources) { into "${project.name}/resources" }
         from("${project.file('build.gradle')}") { into "${project.name}" }
     }
 
@@ -204,4 +204,21 @@ task buildAndCopyArtifacts(type: Copy) {
     from(new File(floodlightBuild.projectDir, "build")) { into floodlightBuild.name }
 
     dependsOn floodlightBuild.task(':build')
+}
+
+configure(subprojects.findAll {it.name.endsWith("-topology")}) {
+    configurations {
+        localStormRuntime
+    }
+
+    dependencies {
+        localStormRuntime 'org.apache.storm:storm-core:1.1.0'
+    }
+
+    sourceSets {
+        main {
+            // Allow to run a topology in the local mode (via the main method of the topology definition class).
+            runtimeClasspath += project.configurations.localStormRuntime
+        }
+    }
 }

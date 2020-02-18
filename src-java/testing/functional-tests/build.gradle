@@ -36,9 +36,26 @@ test {
 
 task functionalTest(type: Test, dependsOn: 'compileGroovy') {
     description = 'Runs functional tests.'
-    failFast = true
-
     include '**/functionaltests/spec/**/*Spec.*'
+    if (System.getProperty('excludeTests')) {
+        def excludes = System.getProperty('excludeTests').split(',')
+        excludes.each {
+            def excludeTerm = "**/${it.trim()}*"
+            logger.info "exclude $excludeTerm"
+            exclude excludeTerm
+         }
+    }
 
     systemProperty 'tags', System.getProperty('tags')
+
+    Properties properties = new Properties()
+    File propertiesFile = file("kilda.properties.example")
+    propertiesFile.withInputStream {
+        properties.load(it)
+    }
+    properties.keys().each { k ->
+        if (System.getProperty(k)) {
+            systemProperty k, System.getProperty(k)
+        }
+    }
 }

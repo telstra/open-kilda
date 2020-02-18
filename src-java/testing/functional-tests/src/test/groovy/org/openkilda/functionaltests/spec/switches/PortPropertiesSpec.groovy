@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -31,6 +32,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
     @Autowired
     NorthboundServiceV2 northboundV2
 
+    @Tidy
     def "Able to manipulate port properties"() {
         given: "A port with port properties"
         // can't use `getAllowedPortsForSwitch` for virtual env in this test,
@@ -70,6 +72,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 new PortPropertiesDto(discoveryEnabled: DISCOVERY_ENABLED_DEFAULT))
     }
 
+    @Tidy
     def "Informative error is returned when trying to get/update port properties with non-existing switch"() {
         when: "Try to get port properties info for non-existing switch"
         //assume port 10 is always exist on a switch
@@ -94,6 +97,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
  Switch ${NON_EXISTENT_SWITCH_ID} not found."
     }
 
+    @Tidy
     def "Informative error is returned when trying to update port properties with non-existing port number"() {
         when: "Try to get port properties info for non-existing port"
         // Actually we have strange behaviour here, we can get port property for a non-existent port, but can't update
@@ -127,12 +131,16 @@ class PortPropertiesSpec extends HealthCheckSpecification {
 
         // Bring port down on the src switch
         antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            islUtils.getIslInfo(islToManipulate).get().state == IslChangeType.FAILED
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(islToManipulate).actualState == IslChangeType.FAILED
         }
 
         // delete link
         northbound.deleteLink(islUtils.toLinkParameters(islToManipulate))
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(islToManipulate)
+            assert !islUtils.getIslInfo(islToManipulate.reversed)
+        }
 
         when: "Disable port discovery property on the src and dst switches"
         northboundV2.updatePortProperties(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort,
@@ -197,6 +205,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Link is stopped from being discovered after disabling port discovery property"() {
         given: "An active link"
         def islToManipulate = topology.islsForActiveSwitches.first()

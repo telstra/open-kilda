@@ -24,6 +24,7 @@ Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
 Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3059")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to manipulate with switch properties"() {
@@ -59,6 +60,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         SwitchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
 
+    @Tidy
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
         when: "Try to get switch properties info for non-existing switch"
         northbound.getSwitchProperties(NON_EXISTENT_SWITCH_ID)
@@ -82,6 +84,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                 "Switch properties for switch id '$NON_EXISTENT_SWITCH_ID' not found."
     }
 
+    @Tidy
     def "Informative error is returned when trying to update switch properties with incorrect information"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -103,6 +106,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         null                          | "Supported transit encapsulations should not be null or empty"
     }
 
+    @Tidy
     def "Unable to turn on switchLldp property without turning on multiTable property"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()

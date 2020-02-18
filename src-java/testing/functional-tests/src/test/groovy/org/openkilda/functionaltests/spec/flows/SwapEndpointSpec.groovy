@@ -3,12 +3,15 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -39,6 +42,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    @Tidy
     @Unroll
     def "Able to swap endpoints(#data.description)"() {
         given: "Some flows in the system according to preconditions"
@@ -64,7 +68,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
             [it.source.datapath, it.destination.datapath].collect { findSw(it) }
         }.unique())
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         flows.each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -207,7 +211,9 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         secondSwap = data.secondSwap as SwapFlowPayload
     }
 
+    @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /src1/)
     def "Able to swap #endpointsPart (#description) for two flows with the same source and different destination \
 switches"() {
         given: "Two flows with the same source and different destination switches"
@@ -229,19 +235,23 @@ switches"() {
         validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        validateSwitches(flow1SwitchPair)
-        validateSwitches(flow2SwitchPair)
+        validateSwitches(switchPairs[0])
+        validateSwitches(switchPairs[1])
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
         description << ["src1 <-> dst2, dst1 <-> src2"] * 3
-        flow1SwitchPair << [getTopologyHelper().getNotNeighboringSwitchPair()] * 3
-        flow2SwitchPair << [getHalfDifferentNotNeighboringSwitchPair(flow1SwitchPair, "src")] * 3
-        flow1 << [getFirstFlow(flow1SwitchPair, flow2SwitchPair)] * 3
-        flow2 << [getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)] * 3
+        switchPairs << [getTopologyHelper().getAllNotNeighboringSwitchPairs().inject(null) { result, switchPair ->
+            if (result) return result
+            def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
+            if (halfDifferent) result = [switchPair, halfDifferent]
+            return result
+        }] * 3
+        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 3
+        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 3
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [changePropertyValue(flow1.source, "vlanId", flow2.destination.vlanId),
                  changePropertyValue(flow1.destination, "vlanId", flow2.source.vlanId),
@@ -260,7 +270,9 @@ switches"() {
         ]
     }
 
+    @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /src1/)
     def "Able to swap endpoints (#description) for two flows with the same source and different destination \
 switches"() {
         given: "Two flows with the same source and different destination switches"
@@ -282,18 +294,22 @@ switches"() {
         validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        validateSwitches(flow1SwitchPair)
-        validateSwitches(flow2SwitchPair)
+        validateSwitches(switchPairs[0])
+        validateSwitches(switchPairs[1])
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2", "src1 <-> dst2", "dst1 <-> src2"]
-        flow1SwitchPair << [getTopologyHelper().getNotNeighboringSwitchPair()] * 4
-        flow2SwitchPair << [getHalfDifferentNotNeighboringSwitchPair(flow1SwitchPair, "src")] * 4
-        flow1 << [getFirstFlow(flow1SwitchPair, flow2SwitchPair)] * 4
-        flow2 << [getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)] * 4
+        switchPairs << [getTopologyHelper().getAllNotNeighboringSwitchPairs().inject(null) { result, switchPair ->
+            if (result) return result
+            def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
+            if (halfDifferent) result = [switchPair, halfDifferent]
+            return result
+        }] * 4
+        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 4
+        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 4
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [flow2.source, flow1.destination, flow1.source, flow2.destination],
                 [flow1.source, flow2.destination, flow2.source, flow1.destination],
@@ -302,6 +318,7 @@ switches"() {
         ]
     }
 
+    @Tidy
     @Unroll
     @Tags(LOW_PRIORITY)
     def "Able to swap #endpointsPart (#description) for two flows with different source and the same destination \
@@ -328,7 +345,7 @@ switches"() {
         validateSwitches(switchPairs[0])
         validateSwitches(switchPairs[1])
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -360,7 +377,9 @@ switches"() {
         ]
     }
 
+    @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /dst1/)
     def "Able to swap #endpointsPart (#description) for two flows with different source and destination switches"() {
         given: "Two flows with different source and destination switches"
         flowHelper.addFlow(flow1)
@@ -384,7 +403,7 @@ switches"() {
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -412,6 +431,7 @@ switches"() {
         ]
     }
 
+    @Tidy
     @Unroll
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#description) for two flows with different source and destination switches"() {
@@ -437,7 +457,7 @@ switches"() {
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -467,6 +487,7 @@ switches"() {
         ]
     }
 
+    @Tidy
     def "Unable to swap endpoints for existing flow and non-existing flow"() {
         given: "An active flow"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -488,11 +509,13 @@ switches"() {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
                 "Flow ${flow2.id} not found"
 
-        and: "Delete the flow"
+        cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow1.id)
     }
 
+    @Tidy
     @Unroll
+    @Tags(LOW_PRIORITY)
     def "Unable to swap #endpointsPart for two flows (#description)"() {
         given: "Three active flows"
         flowHelper.addFlow(flow1)
@@ -512,7 +535,7 @@ switches"() {
         exc.responseBodyAsString.to(MessageError).errorMessage.contains("Can not swap endpoints for flows: " +
                 "Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -570,7 +593,9 @@ switches"() {
         conflictingEndpoint << ["source", "destination"] * 3
     }
 
+    @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /the same src endpoint for flows/)
     def "Unable to swap endpoints for two flows (#description)"() {
         given: "Two active flows"
         flowHelper.addFlow(flow1)
@@ -589,7 +614,7 @@ switches"() {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
                 "New requested endpoint for '$flow2.id' conflicts with existing endpoint for '$flow1.id'"
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -606,7 +631,9 @@ switches"() {
         ]
     }
 
+    @Tidy
     @Unroll
+    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /dst/)
     def "Unable to swap ports for two flows (port is occupied by ISL on #switchType switch)"() {
         given: "Two active flows"
         flowHelper.addFlow(flow1)
@@ -625,7 +652,7 @@ switches"() {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
                 "The port $islPort on the switch '${switchPair."$switchType".dpId}' is occupied by an ISL."
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -648,6 +675,7 @@ switches"() {
         ]
     }
 
+    @Tidy
     def "Able to swap endpoints for two flows when all bandwidth on ISL is consumed"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -725,7 +753,7 @@ switches"() {
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
 
-        and: "Restore topology and delete flows"
+        cleanup: "Restore topology and delete flows"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
@@ -735,6 +763,7 @@ switches"() {
         database.resetCosts()
     }
 
+    @Tidy
     def "Unable to swap endpoints for two flows when not enough bandwidth on ISL"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -808,7 +837,7 @@ switches"() {
                 "Failed to find path with requested bandwidth=${flow1.maximumBandwidth}: " +
                 "Switch ${flow2SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
-        and: "Restore topology and delete flows"
+        cleanup: "Restore topology and delete flows"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
@@ -818,6 +847,7 @@ switches"() {
         database.resetCosts()
     }
 
+    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
@@ -896,7 +926,7 @@ switches"() {
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
 
-        and: "Restore topology and delete flows"
+        cleanup: "Restore topology and delete flows"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
@@ -906,6 +936,7 @@ switches"() {
         database.resetCosts()
     }
 
+    @Tidy
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -934,6 +965,7 @@ switches"() {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
             assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow1.id).last().histories.find { it.action == REROUTE_FAIL }
         }
 
         when: "Try to swap endpoints for two flows"
@@ -950,7 +982,7 @@ switches"() {
                 "Failed to find path with requested bandwidth=${flow2.maximumBandwidth}: " +
                 "Switch ${flow1SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
-        and: "Restore topology and delete flows"
+        cleanup: "Restore topology and delete flows"
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -959,6 +991,7 @@ switches"() {
         database.resetCosts()
     }
 
+    @Tidy
     @Unroll
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#description) for two protected flows"() {
@@ -984,7 +1017,7 @@ switches"() {
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -1001,6 +1034,7 @@ switches"() {
         ]
     }
 
+    @Tidy
     @Unroll
     def "A protected flow with swapped endpoint allows traffic on main and protected paths"() {
         given: "Two protected flows with different source and destination switches"
@@ -1066,10 +1100,11 @@ switches"() {
             assert traffExam.waitExam(direction).hasTraffic()
         }
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
     }
 
+    @Tidy
     @Unroll
     @Tags(HARDWARE)
     def "Able to swap endpoints (#description) for two vxlan flows with the same source and destination switches"() {
@@ -1096,7 +1131,7 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
 
-        and: "Delete flows"
+        cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:

@@ -24,6 +24,8 @@ import java.util.Optional;
 public interface TransitVlanRepository extends Repository<TransitVlan> {
     Collection<TransitVlan> findByPathId(PathId pathId, PathId oppositePathId);
 
+    Optional<TransitVlan> findByPathId(PathId pathId);
+
     Optional<TransitVlan> findByVlan(int vlan);
 
     /**
