@@ -57,12 +57,16 @@ public class ReroutesThrottling {
      * @param throttlingData the correlation ID and flow priority.
      */
     public void putRequest(String flowId, FlowThrottlingData throttlingData) {
-        log.info("Puts flow {} with correlationId {}", flowId, throttlingData.getCorrelationId());
+        log.info("Puts reroute request for flow {} with correlationId {}", flowId, throttlingData.getCorrelationId());
         FlowThrottlingData prevThrottlingData = reroutes.put(flowId, throttlingData);
         if (prevThrottlingData != null) {
-            throttlingData.getAffectedIsl().addAll(prevThrottlingData.getAffectedIsl());
+            if (prevThrottlingData.getAffectedIsl().isEmpty()) {
+                throttlingData.setAffectedIsl(Collections.emptySet());
+            } else if (!throttlingData.getAffectedIsl().isEmpty()) {
+                throttlingData.getAffectedIsl().addAll(prevThrottlingData.getAffectedIsl());
+            }
 
-            log.info("Previous flow {} with correlationId {} was dropped.",
+            log.info("Previous reroute request for flow {} with correlationId {} was dropped.",
                     flowId, prevThrottlingData.getCorrelationId());
         }
         extendableTimeWindow.registerEvent();

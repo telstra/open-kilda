@@ -21,6 +21,8 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
 import com.google.common.collect.ImmutableMap;
@@ -34,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class ReroutesThrottlingTest {
 
@@ -51,11 +54,16 @@ public class ReroutesThrottlingTest {
 
     private static final String FLOW_ID_3 = "flow3";
 
+    private static final IslEndpoint ISL_ENDPOINT = IslEndpoint.builder()
+            .switchId(new SwitchId(1))
+            .portNumber(2)
+            .build();
+
     private static final FlowThrottlingData THROTTLING_DATA_1 =
             new FlowThrottlingData("corrId1", 1, null, Collections.emptySet());
 
     private static final FlowThrottlingData THROTTLING_DATA_2 =
-            new FlowThrottlingData("corrId2", 1, null, Collections.emptySet());
+            new FlowThrottlingData("corrId2", 1, null, Collections.singleton(ISL_ENDPOINT));
 
     @Before
     public void init() {
@@ -127,6 +135,35 @@ public class ReroutesThrottlingTest {
         assertEquals(1, reroutesThrottling.getReroutes().size());
     }
 
+    @Test
+    public void wipeAffectedIslsIfFirstRequestHasEmptyAffectedIsls() {
+        Instant event = Instant.now();
+        Instant afterTimeout = event.plusSeconds(minDelay + 1);
+
+        when(clock.instant()).thenReturn(event, event, afterTimeout);
+
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_1);
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_2);
+
+        List<Entry<String, FlowThrottlingData>> reroutes = reroutesThrottling.getReroutes();
+        assertEquals(1, reroutes.size());
+        assertTrue(reroutes.get(0).getValue().getAffectedIsl().isEmpty());
+    }
+
+    @Test
+    public void wipeAffectedIslsIfSecondRequestHasEmptyAffectedIsls() {
+        Instant event = Instant.now();
+        Instant afterTimeout = event.plusSeconds(minDelay + 1);
+
+        when(clock.instant()).thenReturn(event, event, afterTimeout);
+
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_2);
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_1);
+
+        List<Entry<String, FlowThrottlingData>> reroutes = reroutesThrottling.getReroutes();
+        assertEquals(1, reroutes.size());
+        assertTrue(reroutes.get(0).getValue().getAffectedIsl().isEmpty());
+    }
 
     @Test
     public void priority() {
