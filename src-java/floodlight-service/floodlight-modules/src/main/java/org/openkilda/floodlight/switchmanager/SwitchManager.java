@@ -1182,6 +1182,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         MacAddress srcMac = MacAddress.of(kildaCore.getConfig().getFlowPingMagicSrcMacAddress());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_SRC, srcMac, MacAddress.NO_MASK);
+        builder.setMasked(MatchField.ETH_DST, dpIdToMac(sw.getId()), MacAddress.NO_MASK);
         builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
         builder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
         builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
