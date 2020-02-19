@@ -53,6 +53,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslPhysic
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslRemoveCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslRoundTripStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslSetupCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListPollAddCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListPollRemoveCommand;
@@ -103,10 +104,12 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
-        if (DecisionMakerHandler.BOLT_ID.equals(source)) {
-            handleDecisionMakerCommand(input);
-        } else if (CoordinatorSpout.ID.equals(source)) {
+        if (CoordinatorSpout.ID.equals(source)) {
             handleTimer();
+        } else if (WatcherHandler.BOLT_ID.equals(source)) {
+            handleWatcherCommand(input);
+        } else if (DecisionMakerHandler.BOLT_ID.equals(source)) {
+            handleDecisionMakerCommand(input);
         } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
@@ -114,6 +117,10 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         } else {
             unhandledInput(input);
         }
+    }
+
+    private void handleWatcherCommand(Tuple input) throws PipelineException {
+        handleCommand(input, WatcherHandler.FIELD_ID_COMMAND);
     }
 
     private void handleDecisionMakerCommand(Tuple input) throws PipelineException {
