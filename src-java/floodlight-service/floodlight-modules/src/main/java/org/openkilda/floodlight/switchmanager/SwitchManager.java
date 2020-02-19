@@ -854,7 +854,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public List<OFMeterConfig> dumpMeters(final DatapathId dpid) throws SwitchOperationException {
-        List<OFMeterConfig> result = null;
+        List<OFMeterConfig> result = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
         if (sw == null) {
             throw new IllegalArgumentException(format("Switch %s was not found", dpid));
