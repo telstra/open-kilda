@@ -35,7 +35,6 @@ import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -76,7 +75,6 @@ public class DatabaseSupportImpl implements Database {
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
-    private final FlowPairRepository flowPairRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
 
@@ -87,7 +85,6 @@ public class DatabaseSupportImpl implements Database {
         switchRepository = repositoryFactory.createSwitchRepository();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
-        flowPairRepository = repositoryFactory.createFlowPairRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
     }

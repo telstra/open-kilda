@@ -51,12 +51,10 @@ import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.model.Cookie;
-import org.openkilda.model.FlowPair;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -315,7 +313,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("PUSH flow: {} :: {}", flowId, message);
             FlowInfoData fid = (FlowInfoData) message.getData();
-            FlowPair flow = FlowMapper.INSTANCE.map(fid.getPayload(), () -> kildaConfigurationRepository.get());
+            Flow flow = FlowMapper.INSTANCE.map(fid.getPayload(), () -> kildaConfigurationRepository.get());
 
             FlowStatus flowStatus = (fid.getOperation() == FlowOperation.PUSH_PROPAGATE)
                     ? FlowStatus.IN_PROGRESS : FlowStatus.UP;
@@ -432,19 +430,17 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 throw  new FlowValidationException("Flow flags are not valid, unable to create pinned protected flow",
                         ErrorType.DATA_INVALID);
             }
-            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload(),
-                    () -> kildaConfigurationRepository.get());
+            Flow flow = FlowMapper.INSTANCE.map(request.getPayload(), () -> kildaConfigurationRepository.get());
             saveEvent(Event.CREATE, flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
-            FlowPair createdFlow = flowService.createFlow(flow.getFlow(),
-                    request.getDiverseFlowId(),
+            Flow createdFlow = flowService.createFlow(flow, request.getDiverseFlowId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
             saveHistory("Created the flow", "", message.getCorrelationId(), tuple);
             saveDump(createdFlow, DumpType.STATE_AFTER, message.getCorrelationId(), tuple);
 
-            Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
+            Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
@@ -504,36 +500,32 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 new CommandContext(correlationId)));
     }
 
-    private void saveDump(FlowPair flowPair, DumpType type, String correlationId, Tuple tuple)
+    private void saveDump(Flow flow, DumpType type, String correlationId, Tuple tuple)
             throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
 
-        UnidirectionalFlow forward = flowPair.forward;
-        UnidirectionalFlow reverse = flowPair.reverse;
+        FlowPath forwardPath = flow.getForwardPath();
+        FlowPath reversePath = flow.getReversePath();
 
         FlowDumpData flowDump = FlowDumpData.builder()
-                .flowId(flowPair.forward.getFlowId())
+                .flowId(flow.getFlowId())
                 .dumpType(type)
-                .bandwidth(forward.getBandwidth())
-                .ignoreBandwidth(forward.isIgnoreBandwidth())
-                .forwardCookie(new Cookie(forward.getCookie()))
-                .reverseCookie(new Cookie(reverse.getCookie()))
-                .sourceSwitch(forward.getSrcSwitch().getSwitchId())
-                .destinationSwitch(forward.getDestSwitch().getSwitchId())
-                .sourcePort(forward.getSrcPort())
-                .destinationPort(forward.getDestPort())
-                .sourceVlan(forward.getSrcVlan())
-                .destinationVlan(forward.getDestVlan())
-                .forwardMeterId(Optional.ofNullable(forward.getMeterId()).map(MeterId::new).orElse(null))
-                .reverseMeterId(Optional.ofNullable(reverse.getMeterId()).map(MeterId::new).orElse(null))
-                .forwardPath(
-                        objectMapper.writeValueAsString(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(forward.getFlowPath())))
-                .reversePath(
-                        objectMapper.writeValueAsString(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(reverse.getFlowPath())))
-                .forwardStatus(forward.getFlowPath().getStatus())
-                .reverseStatus(reverse.getFlowPath().getStatus())
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .forwardCookie(forwardPath.getCookie())
+                .reverseCookie(reversePath.getCookie())
+                .sourceSwitch(flow.getSrcSwitch().getSwitchId())
+                .destinationSwitch(flow.getDestSwitch().getSwitchId())
+                .sourcePort(flow.getSrcPort())
+                .destinationPort(flow.getDestPort())
+                .sourceVlan(flow.getSrcVlan())
+                .destinationVlan(flow.getDestVlan())
+                .forwardMeterId(Optional.ofNullable(forwardPath.getMeterId()).orElse(null))
+                .reverseMeterId(Optional.ofNullable(reversePath.getMeterId()).orElse(null))
+                .forwardPath(objectMapper.writeValueAsString(FlowPathMapper.INSTANCE.mapToPathNodes(forwardPath)))
+                .reversePath(objectMapper.writeValueAsString(FlowPathMapper.INSTANCE.mapToPathNodes(reversePath)))
+                .forwardStatus(forwardPath.getStatus())
+                .reverseStatus(reversePath.getStatus())
                 .build();
 
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
@@ -587,7 +579,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         final String flowId = request.getFlowId();
 
         try {
-            UnidirectionalFlow flow = flowService.pathSwap(flowId, request.getPathId(),
+            Flow flow = flowService.pathSwap(flowId, request.getPathId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             Values values = new Values(new InfoMessage(buildFlowResponse(flow),
@@ -617,25 +609,24 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 throw  new FlowValidationException("Flow flags are not valid, unable to update pinned protected flow",
                         ErrorType.DATA_INVALID);
             }
-            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload(),
+            Flow flow = FlowMapper.INSTANCE.map(request.getPayload(),
                     () -> kildaConfigurationRepository.get());
             saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
 
             //TODO: this is extra fetch of the flow entity, must be moved into the service method.
-            Optional<FlowPair> flowPair = repositoryFactory.createFlowPairRepository().findById(flow.getFlowId());
-            if (flowPair.isPresent()) {
-                saveDump(flowPair.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
+            Optional<Flow> foundFlow = repositoryFactory.createFlowRepository().findById(flow.getFlowId());
+            if (foundFlow.isPresent()) {
+                saveDump(foundFlow.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
             }
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlow(),
-                    request.getDiverseFlowId(),
+            Flow updatedFlow = flowService.updateFlow(flow, request.getDiverseFlowId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
             saveHistory("Updated the flow", "", message.getCorrelationId(), tuple);
             saveDump(updatedFlow, DumpType.STATE_AFTER, message.getCorrelationId(), tuple);
 
-            Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
+            Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
@@ -730,9 +721,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
      * @param flow a flow for payload
      * @return flow response entity
      */
-    private FlowResponse buildFlowResponse(UnidirectionalFlow flow) {
+    private FlowResponse buildFlowResponse(Flow flow) {
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
-        flowDto.setCookie(flow.getCookie() & Cookie.FLOW_COOKIE_VALUE_MASK);
+        flowDto.setCookie(flow.getForwardPath().getCookie().getUnmaskedValue());
         return new FlowResponse(flowDto);
     }
 

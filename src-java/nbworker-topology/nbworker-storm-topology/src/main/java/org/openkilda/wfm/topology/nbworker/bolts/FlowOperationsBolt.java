@@ -44,7 +44,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
@@ -200,7 +199,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         FlowDto flowDto = request.getFlow();
 
         try {
-            UnidirectionalFlow flow = flowOperationsService.updateFlow(this, flowDto);
+            Flow flow = flowOperationsService.updateFlow(this, flowDto);
             return Collections.singletonList(new FlowResponse(FlowMapper.INSTANCE.map(flow)));
 
         } catch (FlowNotFoundException e) {

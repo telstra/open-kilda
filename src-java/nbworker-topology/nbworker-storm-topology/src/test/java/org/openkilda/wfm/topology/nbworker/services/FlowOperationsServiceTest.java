@@ -18,12 +18,12 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -62,7 +62,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         switchB.setStatus(SwitchStatus.ACTIVE);
         switchRepository.createOrUpdate(switchB);
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(testFlowId)
                 .srcSwitch(switchA)
                 .srcPort(1)
@@ -71,9 +71,9 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .buildUnidirectionalFlow();
+                .build();
         flow.setStatus(FlowStatus.UP);
-        flowRepository.createOrUpdate(flow.getFlow());
+        flowRepository.createOrUpdate(flow);
 
         FlowDto receivedFlow = FlowDto.builder()
                 .flowId(testFlowId)
@@ -81,7 +81,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .priority(priority)
                 .build();
 
-        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
+        Flow updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
