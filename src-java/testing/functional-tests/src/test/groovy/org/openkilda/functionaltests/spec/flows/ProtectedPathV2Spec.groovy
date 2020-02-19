@@ -1096,11 +1096,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         cleanup: "Restore topology, delete flow and reset costs"
+        flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(protectedIslToBreak).get().state != IslChangeType.FAILED
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
