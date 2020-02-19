@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-ARG base_image=ubuntu:cosmic
+ARG base_image=ubuntu:eoan
 FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
