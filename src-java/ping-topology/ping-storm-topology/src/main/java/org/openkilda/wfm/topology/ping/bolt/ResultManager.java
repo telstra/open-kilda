@@ -41,15 +41,15 @@ public abstract class ResultManager extends Abstract {
 
     protected void handleGroup(Tuple input) throws PipelineException {}
 
-    protected void handle(Tuple input, PingContext pingContext) throws Exception {
+    protected void handle(Tuple input, PingContext pingContext) throws PipelineException {
         if (pingContext.isError()) {
             handleError(input, pingContext);
-        } else {
-            handleSuccess(input, pingContext);
         }
+
+        handleResponse(input, pingContext);
     }
 
-    protected void handleSuccess(Tuple input, PingContext pingContext) throws PipelineException {}
+    protected void handleResponse(Tuple input, PingContext pingContext) throws PipelineException {}
 
     protected void handleError(Tuple input, PingContext pingContext) throws PipelineException {}
 
