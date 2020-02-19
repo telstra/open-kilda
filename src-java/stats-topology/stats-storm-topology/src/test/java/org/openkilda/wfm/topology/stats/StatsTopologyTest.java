@@ -44,11 +44,11 @@ import org.openkilda.messaging.info.stats.TableStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.EmbeddedNeo4jDatabase;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -161,7 +161,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         // need clear data in CacheBolt
         for (Flow flow : flowRepository.findAll()) {
-            sendRemoveFlowCommand(new UnidirectionalFlow(flow.getForwardPath(), null, false));
+            sendRemoveFlowCommand(flow, flow.getForwardPath());
             flowRepository.delete(flow);
         }
 
@@ -268,10 +268,11 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void meterFlowRulesStatsTest() throws IOException {
-        UnidirectionalFlow flow = createFlow(switchId, flowId);
-        sendInstallOneSwitchFlowCommand(flow);
+        Flow flow = createFlow(switchId, flowId);
+        FlowPath flowPath = flow.getForwardPath();
+        sendInstallOneSwitchFlowCommand(flow, flowPath);
 
-        MeterStatsEntry meterStats = new MeterStatsEntry(flow.getMeterId(), 500L, 700L);
+        MeterStatsEntry meterStats = new MeterStatsEntry(flowPath.getMeterId().getValue(), 500L, 700L);
 
         sendStatsMessage(new MeterStatsData(switchId, Collections.singletonList(meterStats)));
 
@@ -290,10 +291,10 @@ public class StatsTopologyTest extends AbstractStormTest {
         datapoints.forEach(datapoint -> {
             assertEquals(5, datapoint.getTags().size());
             assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
-            assertEquals(String.valueOf(flow.getMeterId()), datapoint.getTags().get("meterid"));
+            assertEquals(String.valueOf(flowPath.getMeterId().getValue()), datapoint.getTags().get("meterid"));
             assertEquals("forward", datapoint.getTags().get("direction"));
             assertEquals(flowId, datapoint.getTags().get("flowid"));
-            assertEquals(String.valueOf(flow.getCookie()), datapoint.getTags().get("cookie"));
+            assertEquals(String.valueOf(flowPath.getCookie().getValue()), datapoint.getTags().get("cookie"));
             assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
@@ -331,8 +332,8 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void flowStatsTest() throws Exception {
-        UnidirectionalFlow flow = createFlow(switchId, flowId);
-        sendInstallOneSwitchFlowCommand(flow);
+        Flow flow = createFlow(switchId, flowId);
+        sendInstallOneSwitchFlowCommand(flow, flow.getForwardPath());
 
         FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L, 10, 10);
 
@@ -486,13 +487,13 @@ public class StatsTopologyTest extends AbstractStormTest {
         });
     }
 
-    private UnidirectionalFlow createFlow(SwitchId switchId, String flowId) {
+    private Flow createFlow(SwitchId switchId, String flowId) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
         Switch sw = Switch.builder().switchId(switchId).build();
         switchRepository.createOrUpdate(sw);
 
-        UnidirectionalFlow flow = new TestFlowBuilder(flowId)
+        Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(sw)
                 .srcPort(1)
                 .srcVlan(5)
@@ -503,10 +504,10 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .meterId(456)
                 .transitEncapsulationId(ENCAPSULATION_ID)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .buildUnidirectionalFlow();
+                .build();
 
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
-        flowRepository.createOrUpdate(flow.getFlow());
+        flowRepository.createOrUpdate(flow);
         return flow;
     }
 
@@ -516,22 +517,23 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
-    private void sendRemoveFlowCommand(UnidirectionalFlow flow) throws IOException {
+    private void sendRemoveFlowCommand(Flow flow, FlowPath flowPath) throws IOException {
         RemoveFlow removeFlow = RemoveFlow.builder()
                 .transactionId(TRANSACTION_ID)
                 .flowId(flow.getFlowId())
-                .cookie(flow.getCookie())
+                .cookie(flowPath.getCookie().getValue())
                 .switchId(flow.getSrcSwitch().getSwitchId())
-                .meterId(flow.getMeterId())
+                .meterId(flowPath.getMeterId().getValue())
                 .build();
         sendFlowCommand(removeFlow);
     }
 
-    private void sendInstallOneSwitchFlowCommand(UnidirectionalFlow flow) throws IOException {
+    private void sendInstallOneSwitchFlowCommand(Flow flow, FlowPath flowPath) throws IOException {
+        boolean isForward = flow.isForward(flowPath);
         InstallOneSwitchFlow installOneSwitchFlow = new InstallOneSwitchFlow(
                 TRANSACTION_ID,
                 flow.getFlowId(),
-                flow.getCookie(),
+                flowPath.getCookie().getValue(),
                 flow.getSrcSwitch().getSwitchId(),
                 flow.getSrcPort(),
                 flow.getDestPort(),
@@ -539,10 +541,10 @@ public class StatsTopologyTest extends AbstractStormTest {
                 flow.getDestVlan(),
                 OutputVlanType.PUSH,
                 flow.getBandwidth(),
-                flow.getMeterId().longValue(),
+                flowPath.getMeterId().getValue(),
                 false,
-                (flow.isForward() && flow.getDetectConnectedDevices().isSrcLldp())
-                        || (!flow.isForward() && flow.getDetectConnectedDevices().isDstLldp()));
+                (isForward && flow.getDetectConnectedDevices().isSrcLldp())
+                        || (!isForward && flow.getDetectConnectedDevices().isDstLldp()));
         sendFlowCommand(installOneSwitchFlow);
     }
 

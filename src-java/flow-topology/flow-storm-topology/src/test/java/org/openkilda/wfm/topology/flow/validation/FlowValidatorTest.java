@@ -28,7 +28,6 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -76,20 +75,20 @@ public class FlowValidatorTest {
         when(islRepository.findByEndpoint(eq(srcSwitchId), eq(srtPort))).thenReturn(singletonList(isl));
         when(islRepository.findByEndpoint(eq(dstSwitchId), eq(dstPort))).thenReturn(singletonList(isl));
 
-        UnidirectionalFlow flow = new TestFlowBuilder(flowId)
+        Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(srcSwitch)
                 .srcPort(srtPort)
                 .srcVlan(srcVlan)
                 .destSwitch(dstSwitch)
                 .destPort(dstPort)
                 .destVlan(dstVlan)
-                .buildUnidirectionalFlow();
+                .build();
 
         FlowRepository flowRepository = mock(FlowRepository.class);
         when(flowRepository.findByEndpoint(eq(srcSwitchId), eq(srtPort)))
-                .thenReturn(singletonList(flow.getFlow()));
+                .thenReturn(singletonList(flow));
         when(flowRepository.findByEndpoint(eq(dstSwitchId), eq(dstPort)))
-                .thenReturn(singletonList(flow.getFlow()));
+                .thenReturn(singletonList(flow));
 
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
@@ -159,13 +158,13 @@ public class FlowValidatorTest {
     private void runFailLldpIfSwitchDoesntNotExist(SwitchId srcSwitchId, SwitchId dstSwitchId)
             throws SwitchValidationException {
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                 .destSwitch(Switch.builder().switchId(dstSwitchId).build())
                 .detectConnectedDevices(new DetectConnectedDevices(true, false, true, false, false, false))
-                .buildUnidirectionalFlow();
+                .build();
 
-        target.checkSwitchesSupportLldpIfNeeded(flow.getFlow());
+        target.checkSwitchesSupportLldpIfNeeded(flow);
     }
 
     @Test(expected = SwitchValidationException.class)
@@ -208,14 +207,14 @@ public class FlowValidatorTest {
             throws SwitchValidationException {
         setUpWithLldp(srcSwitchSupportsLldp, dstSwitchSupportsLldp);
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
                 .detectConnectedDevices(new DetectConnectedDevices(
                         srcLldpRequested, false, dstLldpRequested, false, false, false))
-                .buildUnidirectionalFlow();
+                .build();
 
-        target.checkSwitchesSupportLldpIfNeeded(flow.getFlow());
+        target.checkSwitchesSupportLldpIfNeeded(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -225,15 +224,15 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT + 1)
-                .buildUnidirectionalFlow();
+                .build();
 
-        target.checkFlowForIslConflicts(flow.getFlow());
+        target.checkFlowForIslConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -243,15 +242,15 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT + 1)
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
-                .buildUnidirectionalFlow();
+                .build();
 
-        target.checkFlowForIslConflicts(flow.getFlow());
+        target.checkFlowForIslConflicts(flow);
     }
 
     @Test
@@ -261,15 +260,15 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT + 1)
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT + 1)
-                .buildUnidirectionalFlow();
+                .build();
 
-        target.checkFlowForIslConflicts(flow.getFlow());
+        target.checkFlowForIslConflicts(flow);
     }
 
     @Test
@@ -279,14 +278,14 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(new SwitchId("de:ad:be:af:de:ad:be:af")).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
                 .srcVlan(SRC_VLAN)
                 .destSwitch(dstSwitch)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -296,14 +295,14 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(new SwitchId("de:ad:be:af:de:ad:be:af")).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
                 .srcVlan(0)
                 .destSwitch(dstSwitch)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -392,14 +391,14 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(new SwitchId("de:ad:be:af:de:ad:be:af")).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
                 .srcVlan(SRC_VLAN)
                 .destSwitch(dstSwitch)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test
@@ -409,13 +408,13 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(new SwitchId("de:ad:be:af:de:ad:be:af")).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
                 .destSwitch(dstSwitch)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test
@@ -425,7 +424,7 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -433,8 +432,8 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
                 .destVlan(DST_VLAN + 1)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test
@@ -444,7 +443,7 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -452,8 +451,8 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(0)
                 .destVlan(DST_VLAN)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test
@@ -463,7 +462,7 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -471,8 +470,8 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
                 .destVlan(DST_VLAN)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -482,7 +481,7 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -490,8 +489,8 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
                 .destVlan(0)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -501,7 +500,7 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -509,8 +508,8 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
                 .destVlan(DST_VLAN)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test
@@ -520,7 +519,7 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -528,8 +527,8 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
                 .destVlan(DST_VLAN + 1)
-                .buildUnidirectionalFlow();
-        target.checkFlowForEndpointConflicts(flow.getFlow());
+                .build();
+        target.checkFlowForEndpointConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)
@@ -539,13 +538,13 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .bandwidth(-1)
-                .buildUnidirectionalFlow();
-        target.checkBandwidth(flow.getFlow());
+                .build();
+        target.checkBandwidth(flow);
     }
 
     @Test
@@ -555,12 +554,12 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
-                .buildUnidirectionalFlow();
-        target.checkSwitchesExists(flow.getFlow());
+                .build();
+        target.checkSwitchesExists(flow);
     }
 
     @Test
@@ -569,12 +568,12 @@ public class FlowValidatorTest {
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .destSwitch(srcSwitch)
-                .buildUnidirectionalFlow();
-        target.checkSwitchesExists(flow.getFlow());
+                .build();
+        target.checkSwitchesExists(flow);
     }
 
     @Test
@@ -584,18 +583,18 @@ public class FlowValidatorTest {
         Switch failSrcSwitch = Switch.builder().switchId(FAIL_SRC_SWITCH_ID).build();
         Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(failSrcSwitch)
                 .destSwitch(dstSwitch)
-                .buildUnidirectionalFlow();
+                .build();
 
         String expectedMessage = String.format("Source switch %s is not connected to the controller",
                 FAIL_SRC_SWITCH_ID);
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
-        target.checkSwitchesExists(flow.getFlow());
+        target.checkSwitchesExists(flow);
     }
 
     @Test
@@ -605,11 +604,11 @@ public class FlowValidatorTest {
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
         Switch failDestSwitch = Switch.builder().switchId(FAIL_DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .destSwitch(failDestSwitch)
-                .buildUnidirectionalFlow();
+                .build();
 
         String expectedMessage =
                 String.format("Destination switch %s is not connected to the controller", FAIL_DST_SWITCH_ID);
@@ -617,7 +616,7 @@ public class FlowValidatorTest {
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
 
-        target.checkSwitchesExists(flow.getFlow());
+        target.checkSwitchesExists(flow);
     }
 
     @Test
@@ -627,11 +626,11 @@ public class FlowValidatorTest {
         Switch failSrcSwitch = Switch.builder().switchId(FAIL_SRC_SWITCH_ID).build();
         Switch failDestSwitch = Switch.builder().switchId(FAIL_DST_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(ANOTHER_FLOW_ID)
                 .srcSwitch(failSrcSwitch)
                 .destSwitch(failDestSwitch)
-                .buildUnidirectionalFlow();
+                .build();
 
         String expectedMessage =
                 String.format("Source switch %s and Destination switch %s are not connected to the controller",
@@ -640,7 +639,7 @@ public class FlowValidatorTest {
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
 
-        target.checkSwitchesExists(flow.getFlow());
+        target.checkSwitchesExists(flow);
     }
 
     @Test
@@ -650,7 +649,7 @@ public class FlowValidatorTest {
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -658,14 +657,14 @@ public class FlowValidatorTest {
                 .destSwitch(srcSwitch)
                 .destPort(SRC_PORT)
                 .destVlan(SRC_VLAN)
-                .buildUnidirectionalFlow();
+                .build();
 
         String expectedMessage = "It is not allowed to create one-switch flow for the same ports and vlans";
 
         thrown.expect(SwitchValidationException.class);
         thrown.expectMessage(expectedMessage);
 
-        target.checkOneSwitchFlowHasNoConflicts(flow.getFlow());
+        target.checkOneSwitchFlowHasNoConflicts(flow);
     }
 
     @Test
@@ -675,7 +674,7 @@ public class FlowValidatorTest {
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -683,8 +682,8 @@ public class FlowValidatorTest {
                 .destSwitch(srcSwitch)
                 .destPort(SRC_PORT)
                 .destVlan(DST_VLAN)
-                .buildUnidirectionalFlow();
-        target.checkOneSwitchFlowHasNoConflicts(flow.getFlow());
+                .build();
+        target.checkOneSwitchFlowHasNoConflicts(flow);
     }
 
     @Test
@@ -694,7 +693,7 @@ public class FlowValidatorTest {
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
 
-        UnidirectionalFlow flow = new TestFlowBuilder()
+        Flow flow = new TestFlowBuilder()
                 .flowId(FLOW_ID)
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
@@ -702,9 +701,9 @@ public class FlowValidatorTest {
                 .destSwitch(srcSwitch)
                 .destPort(DST_PORT)
                 .destVlan(SRC_VLAN)
-                .buildUnidirectionalFlow();
+                .build();
 
-        target.checkOneSwitchFlowHasNoConflicts(flow.getFlow());
+        target.checkOneSwitchFlowHasNoConflicts(flow);
     }
 
     @Test

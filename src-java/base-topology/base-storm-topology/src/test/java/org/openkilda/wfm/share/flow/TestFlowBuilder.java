@@ -17,7 +17,6 @@ package org.openkilda.wfm.share.flow;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
-import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -26,7 +25,6 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.model.Vxlan;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
@@ -102,29 +100,6 @@ public class TestFlowBuilder {
         flow.setReversePath(reversePath);
 
         return flow;
-    }
-
-    /**
-     * Build a UnidirectionalFlow with set properties.
-     */
-    public UnidirectionalFlow buildUnidirectionalFlow() {
-        Flow flow = build();
-        EncapsulationId forwardEncapsulationId = null;
-        if (FlowEncapsulationType.TRANSIT_VLAN.equals(encapsulationType)) {
-            //TODO: hard-coded encapsulation will be removed in Flow H&S
-            forwardEncapsulationId = TransitVlan.builder()
-                    .flowId(flowId)
-                    .pathId(flow.getForwardPath().getPathId())
-                    .vlan(transitEncapsulationId > 0 ? transitEncapsulationId : srcVlan + destVlan + 1)
-                    .build();
-        } else if (FlowEncapsulationType.VXLAN.equals(encapsulationType)) {
-            forwardEncapsulationId = Vxlan.builder()
-                    .flowId(flowId)
-                    .pathId(flow.getForwardPath().getPathId())
-                    .vni(transitEncapsulationId > 0 ? transitEncapsulationId : srcVlan + destVlan + 1)
-                    .build();
-        }
-        return new UnidirectionalFlow(flow.getForwardPath(), forwardEncapsulationId, true);
     }
 
     /**

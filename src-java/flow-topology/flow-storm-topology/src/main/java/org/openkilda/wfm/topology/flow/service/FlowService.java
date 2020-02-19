@@ -31,7 +31,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
-import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -43,7 +42,6 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
@@ -1165,14 +1163,6 @@ public class FlowService extends BaseFlowService {
         return !IntersectionComputer.isProtectedPathOverlaps(primaryFlowSegments, segments);
     }
 
-    private UnidirectionalFlow buildForwardUnidirectionalFlow(FlowPathWithEncapsulation flowPath) {
-        EncapsulationId encapsulationId = null;
-        if (flowPath.getEncapsulation() != null) {
-            encapsulationId = flowPath.getEncapsulation().getEncapsulation();
-        }
-        return new UnidirectionalFlow(flowPath.getFlowPath(), encapsulationId, true);
-    }
-
     private FlowPathsWithEncapsulation buildFlowPathsWithEncapsulation(Flow flow, FlowResources primaryResources,
                                                                        FlowResources protectedResources) {
         FlowPathsWithEncapsulationBuilder builder =
@@ -1190,28 +1180,6 @@ public class FlowService extends BaseFlowService {
                     .protectedReverseEncapsulation(protectedResources.getReverse().getEncapsulationResources());
         }
         return builder.build();
-    }
-
-    private FlowPathWithEncapsulation getFlowPathWithEncapsulation(Flow flow, FlowPath flowPath) {
-        EncapsulationResources encapResources;
-        if (flow.isOneSwitchFlow()) {
-            encapResources = null;
-        } else {
-            FlowEncapsulationType encapType = flowPath.getFlow().getEncapsulationType();
-            PathId forwardPathId = flowPath.getPathId();
-            PathId reversePathId = flow.getOppositePathId(flowPath.getPathId())
-                    .orElseThrow(() -> new IllegalStateException(
-                            format("Flow %s does not have reverse path for %s", flow.getFlowId(),
-                                    flowPath.getPathId())));
-            encapResources = flowResourcesManager.getEncapsulationResources(forwardPathId, reversePathId, encapType)
-                    .orElseThrow(() ->
-                            new ResourceNotAvailableException(format("Failed to find resources for flow path %s",
-                                    flowPath.getPathId())));
-        }
-        return FlowPathWithEncapsulation.builder()
-                .flowPath(flowPath)
-                .encapsulation(encapResources)
-                .build();
     }
 
     private List<CommandGroup> createSwapIngressCommand(FlowPathsWithEncapsulation pathsToSwap) {
