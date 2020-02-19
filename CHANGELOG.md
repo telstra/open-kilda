@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.48.1 (19/02/2020)
+
+### Bug Fixes:
+-  [#3204](https://github.com/telstra/open-kilda/pull/3204) Downgrade Kafka and Spring dependencies to pre-restructuring versions
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.48.0...v1.48.1).
+
+### Affected Components:
+nb
+
+---
+
+## v1.48.0 (13/02/2020)
+
+### Bug Fixes:
+-  [#3181](https://github.com/telstra/open-kilda/pull/3181) Restore RollbacksSpec [**tests**]
+-  [#3195](https://github.com/telstra/open-kilda/pull/3195) Fix elasticsearch image build 
+
+### Improvements:
+-  [#3178](https://github.com/telstra/open-kilda/pull/3178) reorganize-project-change-docker-context: Change docker build context… 
+-  [#3180](https://github.com/telstra/open-kilda/pull/3180) Test/fixes and improvements rebase [**tests**]
+-  [#3095](https://github.com/telstra/open-kilda/pull/3095) Reorganize the project (Issue: [#1137](https://github.com/telstra/open-kilda/issues/1137)) 
+
+### Other changes:
+-  [#3172](https://github.com/telstra/open-kilda/pull/3172) Add gradle compile params 
+-  [#3189](https://github.com/telstra/open-kilda/pull/3189) Copy log config to lab-api container [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.47.2...v1.48.0).
+
+---
+
 ## v1.47.2 (05/02/2020)
 
 ### Bug Fixes:
@@ -168,7 +199,6 @@ Consider using the following migration scripts to update db:
 In case of issues these rollback scripts should be executed:
 
 - [1.18 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.45.0/services/neo4j/migrations/1.18-path-computation-strategy/rollback.cql)
-
 
 ---
 
