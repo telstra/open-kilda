@@ -19,16 +19,12 @@ import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 @Slf4j
-public class MessageKafkaTranslator extends GenericKafkaRecordTranslator<Message, Message> {
+public class MessageKafkaTranslator extends GenericKafkaRecordTranslator<Message> {
     @Override
-    protected Message decodePayload(Message payload) {
-        return payload;
-    }
-
-    @Override
-    protected CommandContext makeContext(Message payload) {
-        return new CommandContext(payload);
+    protected CommandContext makeContext(ConsumerRecord<?, ?> record, Message payload) {
+        return new CommandContext(payload, record);
     }
 }

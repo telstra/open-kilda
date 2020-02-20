@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
+import org.openkilda.wfm.CommandContext;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +34,7 @@ import org.junit.Test;
 import java.util.Optional;
 import java.util.UUID;
 
-public class CorrelationContextTest {
+public class LoggerContextInitializerTest {
 
     @Test
     public void shouldParseMessageAndExtractCorrelationId() {
@@ -47,10 +48,10 @@ public class CorrelationContextTest {
         when(tuple.getValueByField(eq("message"))).thenReturn(message);
 
         // when
-        Optional<CorrelationContext> result = CorrelationContext.extractFrom(tuple);
+        Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
-        assertEquals(correlationId, result.get().getId());
+        assertEquals(correlationId, result.get().getCorrelationId());
     }
 
     @Test
@@ -66,10 +67,10 @@ public class CorrelationContextTest {
         when(tuple.getValueByField(eq("message"))).thenReturn(mapper.writeValueAsString(message));
 
         // when
-        Optional<CorrelationContext> result = CorrelationContext.extractFrom(tuple);
+        Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
-        assertEquals(correlationId, result.get().getId());
+        assertEquals(correlationId, result.get().getCorrelationId());
     }
 
     @Test
@@ -82,7 +83,7 @@ public class CorrelationContextTest {
         when(tuple.getValueByField(eq("message"))).thenReturn("{fake:\"value\"}");
 
         // when
-        Optional<CorrelationContext> result = CorrelationContext.extractFrom(tuple);
+        Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
         assertFalse(result.isPresent());

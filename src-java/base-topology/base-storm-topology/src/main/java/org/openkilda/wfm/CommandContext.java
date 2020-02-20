@@ -18,35 +18,56 @@ package org.openkilda.wfm;
 import org.openkilda.messaging.Message;
 
 import lombok.Data;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.io.Serializable;
 import java.util.UUID;
 
 /**
  * Class that contains command context information.
- * @deprecated {@link org.openkilda.messaging.MessageContext} should be used instead.
  */
 @Data
-@Deprecated
 public class CommandContext implements Serializable {
     private final String correlationId;
     private final long createTime;
 
+    private String kafkaTopic = null;
+    private Integer kafkaPartition = null;
+    private Long kafkaOffset = null;
+
     public CommandContext() {
-        this(UUID.randomUUID().toString());
+        this(UUID.randomUUID().toString(), null);
+    }
+
+    public CommandContext(ConsumerRecord<?, ?> kafkaRecord) {
+        this(UUID.randomUUID().toString(), kafkaRecord);
     }
 
     public CommandContext(Message message) {
-        this(message.getCorrelationId(), message.getTimestamp());
+        this(message.getCorrelationId(), message.getTimestamp(), null);
+    }
+
+    public CommandContext(Message message, ConsumerRecord<?, ?> kafkaRecord) {
+        this(message.getCorrelationId(), message.getTimestamp(), kafkaRecord);
     }
 
     public CommandContext(String correlationId) {
-        this(correlationId, System.currentTimeMillis());
+        this(correlationId, System.currentTimeMillis(), null);
     }
 
-    protected CommandContext(String correlationId, long createTime) {
+    public CommandContext(String correlationId, ConsumerRecord<?, ?> kafkaRecord) {
+        this(correlationId, kafkaRecord != null ? kafkaRecord.timestamp() : System.currentTimeMillis(), kafkaRecord);
+    }
+
+    protected CommandContext(String correlationId, long createTime, ConsumerRecord<?, ?> kafkaRecord) {
         this.correlationId = correlationId;
         this.createTime = createTime;
+
+        if (kafkaRecord != null) {
+            kafkaTopic = kafkaRecord.topic();
+            kafkaPartition = kafkaRecord.partition();
+            kafkaOffset = kafkaRecord.offset();
+        }
     }
 
     /**
