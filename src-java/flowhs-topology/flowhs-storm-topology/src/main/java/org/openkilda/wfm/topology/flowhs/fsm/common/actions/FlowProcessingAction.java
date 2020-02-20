@@ -101,4 +101,11 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
         return flowIds.size() == 1 && flowIds.iterator().next().equals(flowId);
     }
+
+    protected Set<String> getDiverseWithFlowIds(Flow flow) {
+        return flowRepository.findByGroupId(flow.getGroupId()).stream()
+                .map(Flow::getFlowId)
+                .filter(flowId -> !flowId.equals(flow.getFlowId()))
+                .collect(Collectors.toSet());
+    }
 }

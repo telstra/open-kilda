@@ -22,6 +22,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import java.util.Set;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -44,7 +46,7 @@ public class FlowResponseV2 {
     private Long maxLatency;
     private Integer priority;
 
-    private String[] diverseWith;
+    private Set<String> diverseWith;
     private boolean pinned;
     private boolean allocateProtectedPath;
     private String encapsulationType;
