@@ -49,7 +49,7 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
             FlowEndpoint endpoint, FlowEndpoint egressEndpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
         UUID commandId = UUID.randomUUID();
         return new CommandStub(new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint, new RemoveSharedRulesContext(false, false, false));
+                egressEndpoint, RemoveSharedRulesContext.builder().build());
     }
 
     static class CommandStub extends OneSwitchFlowRemoveCommand implements IFlowModFactoryOverride {

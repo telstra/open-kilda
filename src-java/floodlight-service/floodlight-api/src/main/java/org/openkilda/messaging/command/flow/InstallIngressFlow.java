@@ -29,8 +29,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -42,8 +40,6 @@ import java.util.UUID;
  * Input vlan id is optional, because flow could be untagged on ingoing side.
  * Bandwidth and meter id are used for flow throughput limitation.
  */
-@Getter
-@Setter
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
@@ -154,7 +150,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
         setMeterId(meterId);
         setEnableLldp(enableLldp);
         setEgressSwitchId(egressSwitchId);
-        this.enableArp = enableArp;
+        setEnableArp(enableArp);
     }
 
     /**
@@ -261,6 +257,20 @@ public class InstallIngressFlow extends InstallTransitFlow {
      */
     public void setEnableLldp(boolean enableLldp) {
         this.enableLldp = enableLldp;
+    }
+
+    /**
+     * Get enable ARP flag.
+     */
+    public boolean isEnableArp() {
+        return enableArp;
+    }
+
+    /**
+     * Set enable ARP flag.
+     */
+    public void setEnableArp(boolean enableArp) {
+        this.enableArp = enableArp;
     }
 
     /**

@@ -239,7 +239,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         return new IngressFlowSegmentInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
                 new SwitchId(datapathIdBeta.getLong()), 1, encapsulation,
-                new RemoveSharedRulesContext(false, false, false));
+                RemoveSharedRulesContext.builder().build());
     }
 
     abstract FlowSegmentMetadata makeMetadata();
