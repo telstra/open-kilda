@@ -1,14 +1,18 @@
 # Changelog
 
-## v1.48.1 (19/02/2020)
+## v1.48.1 (20/02/2020)
 
 ### Bug Fixes:
 -  [#3204](https://github.com/telstra/open-kilda/pull/3204) Downgrade Kafka and Spring dependencies to pre-restructuring versions
 
+### Improvements:
+-  [#3213](https://github.com/telstra/open-kilda/pull/3213) Extend detaild of swmanager log messages
+-  [#3219](https://github.com/telstra/open-kilda/pull/3219) Expose processed kafka record reference
+
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.48.0...v1.48.1).
 
 ### Affected Components:
-nb
+nb, swmanager
 
 ---
 
