@@ -125,16 +125,16 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     public void knockoutSwitch(Switch sw) {
         log.debug("Block Floodlight access to switch '{}' by adding iptables rules", sw.getName());
         String swIp = northbound.getSwitch(sw.getDpId()).getAddress();
-        restTemplate.exchange(labService.getLab().getLabId() + "/block-floodlight-access", HttpMethod.POST,
-                new HttpEntity<>(new InetAddress(swIp), buildJsonHeaders()), String.class);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/block-floodlight-access",
+                HttpMethod.POST, new HttpEntity<>(new InetAddress(swIp), buildJsonHeaders()), String.class);
     }
 
     @Override
     public void reviveSwitch(Switch sw) {
         log.debug("Unblock Floodlight access to switch '{}' by removing iptables rules", sw.getName());
         String swIp = northbound.getSwitch(sw.getDpId()).getAddress();
-        restTemplate.exchange(labService.getLab().getLabId() + "/unblock-floodlight-access", HttpMethod.POST,
-                new HttpEntity<>(new InetAddress(swIp), buildJsonHeaders()), String.class);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/unblock-floodlight-access",
+                HttpMethod.POST, new HttpEntity<>(new InetAddress(swIp), buildJsonHeaders()), String.class);
     }
 
     @Override
@@ -146,21 +146,21 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void blockFloodlightAccessToPort(Integer port) {
         log.debug("Block floodlight access to {} by adding iptables rules", port);
-        restTemplate.exchange(labService.getLab().getLabId() + "/block-floodlight-access", HttpMethod.POST,
-                new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/block-floodlight-access",
+                HttpMethod.POST, new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
     }
 
     @Override
     public void unblockFloodlightAccessToPort(Integer port) {
         log.debug("Unblock floodlight access to {} by removing iptables rules", port);
-        restTemplate.exchange(labService.getLab().getLabId() + "/unblock-floodlight-access", HttpMethod.POST,
-                new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/unblock-floodlight-access",
+                HttpMethod.POST, new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
     }
 
     @Override
     public void removeFloodlightAccessRestrictions() {
         log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
-        restTemplate.exchange(labService.getLab().getLabId() + "/remove-floodlight-access-restrictions",
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/remove-floodlight-access-restrictions",
                 HttpMethod.POST, new HttpEntity(buildJsonHeaders()), String.class);
     }
 
