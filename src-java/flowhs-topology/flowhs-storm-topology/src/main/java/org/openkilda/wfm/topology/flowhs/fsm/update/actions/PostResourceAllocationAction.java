@@ -51,7 +51,7 @@ public class PostResourceAllocationAction extends
     }
 
     private Message buildResponseMessage(Flow flow, CommandContext commandContext) {
-        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow));
+        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());
     }

@@ -85,7 +85,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowDeleteFsm, State, 
 
         stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.DELETE);
 
-        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow));
+        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
         CommandContext commandContext = stateMachine.getCommandContext();
         return Optional.of(new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId()));
