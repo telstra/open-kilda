@@ -87,7 +87,8 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         if (request != null) {
             onAsyncResponse(request, input);
         } else {
-            unhandledInput(input);
+            log.error("{} drop worker async response. because {} key is not listed in pending response list [{}]",
+                      getTaskId(), key, formatTuplePayload(input));
         }
     }
 
