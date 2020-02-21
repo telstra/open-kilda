@@ -189,7 +189,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
         return LoggerFactory.getLogger(getClass());
     }
 
-    private static String formatTuplePayload(Tuple input) {
+    protected static String formatTuplePayload(Tuple input) {
         Iterator<String> fields = input.getFields().iterator();
         Iterator<Object> values = input.getValues().iterator();
         StringBuilder payload = new StringBuilder();
@@ -204,7 +204,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
             payload.append(name != null ? name : "(unknown)");
             payload.append(": ");
             Object v = values.next();
-            payload.append(v != null ? v.getClass().getName() : "null");
+            payload.append(v != null ? v.toString() : "null");
         }
 
         return payload.toString();
