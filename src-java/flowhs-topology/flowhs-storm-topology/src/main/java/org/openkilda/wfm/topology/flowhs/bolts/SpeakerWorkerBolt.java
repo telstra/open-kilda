@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_REQUEST_SENDER;
-import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
@@ -64,11 +63,9 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    protected void unhandledInput(Tuple input) {
-        if (log.isDebugEnabled()) {
-            log.trace("Received a response from {} for non-pending task {}: {}", input.getSourceComponent(),
-                    input.getStringByField(FIELD_ID_KEY), input.getValueByField(FIELD_ID_PAYLOAD));
-        }
+    protected void unhandledInput(String key, Tuple input) {
+        log.warn("{} drop worker async response. because {} key is not listed in pending response list [{}]",
+                getComponentId(), key, formatTuplePayload(input));
     }
 
     @Override
