@@ -148,15 +148,15 @@ public class PacketService {
             int vlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
             return new FlowRelatedData(vlan, null, null);
         }
-        log.warn("Got LLDP or ARP packet from unknown rule with cookie {}. Switch {}, port {}, vlans {}",
-                data.getCookie(), data.getSwitchId(), data.getPortNumber(), data.getVlans());
+        log.warn("Got {} packet from unknown rule with cookie {}. Switch {}, port {}, vlans {}",
+                getPacketName(data), data.getCookie(), data.getSwitchId(), data.getPortNumber(), data.getVlans());
         return null;
     }
 
     @VisibleForTesting
     FlowRelatedData findFlowRelatedDataForVlanFlow(ConnectedDevicePacketBase data) {
         if (data.getVlans().isEmpty()) {
-            log.warn("Got LLDP or ARP packet without transit VLAN: {}", data);
+            log.warn("Got {} packet without transit VLAN: {}", getPacketName(data), data);
             return null;
         }
         int transitVlan = data.getVlans().get(0);
@@ -186,8 +186,8 @@ public class PacketService {
                 return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
             }
         } else {
-            log.warn("Got LLDP or ARP packet from Flow {} on non-src/non-dst switch {}. Transit vlan: {}",
-                    flow.getFlowId(), data.getSwitchId(), transitVlan);
+            log.warn("Got {} packet from Flow {} on non-src/non-dst switch {}. Transit vlan: {}",
+                    getPacketName(data), flow.getFlowId(), data.getSwitchId(), transitVlan);
             return null;
         }
     }
@@ -195,7 +195,8 @@ public class PacketService {
     @VisibleForTesting
     FlowRelatedData findFlowRelatedDataForVxlanFlow(ConnectedDevicePacketBase data) {
         int inputVlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
-        Flow flow = getFlowBySwitchIdPortAndVlan(data.getSwitchId(), data.getPortNumber(), inputVlan);
+        Flow flow = getFlowBySwitchIdPortAndVlan(
+                data.getSwitchId(), data.getPortNumber(), inputVlan, getPacketName(data));
 
         if (flow == null) {
             return null;
@@ -206,8 +207,8 @@ public class PacketService {
         } else if (data.getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
             return new FlowRelatedData(inputVlan, flow.getFlowId(), false);
         } else {
-            log.warn("Got LLDP or ARP packet from Flow {} on non-src/non-dst switch {}. Port number {}, input vlan {}",
-                    flow.getFlowId(), data.getSwitchId(), data.getPortNumber(), inputVlan);
+            log.warn("Got {} packet from Flow {} on non-src/non-dst switch {}. Port number {}, input vlan {}",
+                    getPacketName(data), flow.getFlowId(), data.getSwitchId(), data.getPortNumber(), inputVlan);
             return null;
         }
     }
@@ -218,15 +219,16 @@ public class PacketService {
         int outputVlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
         // second vlan with which we got LLDP packet in Floodlight. Exists only for some full port flows.
         int customerVlan = data.getVlans().size() > 1 ? data.getVlans().get(1) : 0;
-        Flow flow = getFlowBySwitchIdInPortAndOutVlan(data.getSwitchId(), data.getPortNumber(), outputVlan);
+        Flow flow = getFlowBySwitchIdInPortAndOutVlan(
+                data.getSwitchId(), data.getPortNumber(), outputVlan, getPacketName(data));
 
         if (flow == null) {
             return null;
         }
 
         if (!flow.isOneSwitchFlow()) {
-            log.warn("Found NOT one switch flow {} by SwitchId {}, port number {}, vlan {} from LLDP or ARP packet",
-                    flow.getFlowId(), data.getSwitchId(), data.getPortNumber(), outputVlan);
+            log.warn("Found NOT one switch flow {} by SwitchId {}, port number {}, vlan {} from {} packet",
+                    flow.getFlowId(), data.getSwitchId(), data.getPortNumber(), outputVlan, getPacketName(data));
             return null;
         }
 
@@ -292,8 +294,8 @@ public class PacketService {
                 return new FlowRelatedData(flow.getDestVlan(), flow.getFlowId(), false);
             }
         }
-        log.warn("Got LLDP or ARP data for one switch one Flow with unknown output vlan {}. Flow {} Data {}",
-                outputVlan, flow.getFlowId(), data);
+        log.warn("Got {} data for one switch one Flow with unknown output vlan {}. Flow {} Data {}",
+                getPacketName(data), outputVlan, flow.getFlowId(), data);
         return null;
     }
 
@@ -312,7 +314,7 @@ public class PacketService {
         return flow.get();
     }
 
-    private Flow getFlowBySwitchIdPortAndVlan(SwitchId switchId, int portNumber, int vlan) {
+    private Flow getFlowBySwitchIdPortAndVlan(SwitchId switchId, int portNumber, int vlan, String packetName) {
         Optional<Flow> flow = flowRepository.findByEndpointAndVlan(switchId, portNumber, vlan);
 
         if (flow.isPresent()) {
@@ -323,14 +325,14 @@ public class PacketService {
             if (fullPortFlow.isPresent()) {
                 return fullPortFlow.get();
             } else {
-                log.warn("Couldn't find Flow for LLDP or ARP packet on endpoint: Switch {}, port {}, vlan {}",
-                        switchId, portNumber, vlan);
+                log.warn("Couldn't find Flow for {} packet on endpoint: Switch {}, port {}, vlan {}",
+                        packetName, switchId, portNumber, vlan);
                 return null;
             }
         }
     }
 
-    private Flow getFlowBySwitchIdInPortAndOutVlan(SwitchId switchId, int inPort, int outVlan) {
+    private Flow getFlowBySwitchIdInPortAndOutVlan(SwitchId switchId, int inPort, int outVlan, String packetName) {
         Optional<Flow> flow = flowRepository.findBySwitchIdInPortAndOutVlan(switchId, inPort, outVlan);
 
         if (flow.isPresent()) {
@@ -342,8 +344,8 @@ public class PacketService {
             if (fullPortFlow.isPresent()) {
                 return fullPortFlow.get();
             } else {
-                log.warn("Couldn't find Flow for LLDP or ARP packet by: Switch {}, InPort {}, OutVlan {}",
-                        switchId, inPort, outVlan);
+                log.warn("Couldn't find Flow for {} packet by: Switch {}, InPort {}, OutVlan {}",
+                        packetName, switchId, inPort, outVlan);
                 return null;
             }
         }
@@ -407,6 +409,16 @@ public class PacketService {
                 .ipAddress(data.getIpAddress())
                 .timeFirstSeen(Instant.ofEpochMilli(data.getTimestamp()))
                 .build();
+    }
+
+    private String getPacketName(ConnectedDevicePacketBase data) {
+        if (data instanceof LldpInfoData) {
+            return "LLDP";
+        } else if (data instanceof ArpInfoData) {
+            return "ARP";
+        } else {
+            return "unknown";
+        }
     }
 
     @Value
