@@ -1,0 +1,9 @@
+---
+#no_gui: true
+#no_kibana: true
+#no_floodlight_two: true
+#no_grpc_speaker: true
+#no_storm_ui: true
+#no_opentsdb: true
+#no_elasticsearch: true
+#no_logstash: true
