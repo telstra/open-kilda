@@ -87,14 +87,30 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         if (request != null) {
             onAsyncResponse(request, input);
         } else {
-            unhandledInput(input);
+            unhandledInput(key, input);
         }
     }
 
     @Override
-    protected void handleInput(Tuple input) throws Exception {
+    protected final void handleInput(Tuple input) {
         // all possible branching was done into `dispatch` nothing should hit here
         unhandledInput(input);
+    }
+
+    @Override
+    protected final void unhandledInput(Tuple input) {
+        String key = null;
+        try {
+            key = pullKey(input);
+        } catch (PipelineException ex) {
+            log.error("Unable to fetch a key from the tuple", ex);
+        }
+        unhandledInput(key, input);
+    }
+
+    protected void unhandledInput(String key, Tuple input) {
+        log.error("{} drop worker async response. because {} key is not listed in pending response list [{}]",
+                getComponentId(), key, formatTuplePayload(input));
     }
 
     /**

@@ -26,7 +26,11 @@ task cloneFloodlightRepo {
         grgit.pull(rebase: false)
         grgit.close()
     } else {
-        def grgit = Grgit.clone(dir: repo.absolutePath, uri: 'https://github.com/kilda/floodlight.git', refToCheckout: 'STABLE')
+        def repoUri = 'https://github.com/kilda/floodlight.git'
+        if (project.hasProperty("floodlightGitRepo")) {
+            repoUri = project.property("floodlightGitRepo")
+        }
+        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'STABLE')
         grgit.close()
     }
 }

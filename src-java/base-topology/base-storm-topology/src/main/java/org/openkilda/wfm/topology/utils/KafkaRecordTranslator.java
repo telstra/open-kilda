@@ -15,33 +15,37 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import org.openkilda.wfm.CommandContext;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.kafka.spout.RecordTranslator;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
 
-public class KafkaRecordTranslator<K, V> implements RecordTranslator<K, V> {
+public abstract class KafkaRecordTranslator<K, V, D> implements RecordTranslator<K, V> {
     private static final long serialVersionUID = 1L;
 
     public static final String FIELD_ID_KEY = "key";
     public static final String FIELD_ID_PAYLOAD = "message";
     // FIXME(surabujin): keep payload at index 0 because some code grab it in following way: `tuple.getString(0)`
-    public static final Fields FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_KEY);
+    // public static final Fields FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_KEY);
 
     @Override
     public List<Object> apply(ConsumerRecord<K, V> record) {
-        return new Values(record.value(), record.key());
-    }
-
-    @Override
-    public Fields getFieldsFor(String stream) {
-        return FIELDS;
+        D payload = decodePayload(record.value());
+        CommandContext context = makeContext(record, payload);
+        return makeTuple(record, payload, context);
     }
 
     @Override
     public List<String> streams() {
         return DEFAULT_STREAM;
     }
+
+    protected abstract D decodePayload(V payload);
+
+    protected abstract CommandContext makeContext(ConsumerRecord<?, ?> record, D payload);
+
+    protected abstract Values makeTuple(ConsumerRecord<K, V> record, D payload, CommandContext context);
 }

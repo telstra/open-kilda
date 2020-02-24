@@ -171,7 +171,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void initialized(SwitchSyncState from, SwitchSyncState to,
                                SwitchSyncEvent event, Object context) {
-        log.info("Key: {}, sync FSM initialized", key);
+        log.info("The switch sync process for {} has been started (key={})", switchId, key);
     }
 
     protected void computeInstallRules(SwitchSyncState from, SwitchSyncState to,
@@ -179,7 +179,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         installRules = new ArrayList<>(validationResult.getValidateRulesResult().getMissingRules());
 
         if (!installRules.isEmpty()) {
-            log.info("Key: {}, compute install rules", key);
+            log.info("Compute install rules (switch={}, key={})", switchId, key);
             try {
                 missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, installRules);
             } catch (Exception e) {
@@ -193,7 +193,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         removeFlowRules = new ArrayList<>(validationResult.getValidateRulesResult().getExcessRules());
 
         if (request.isRemoveExcess() && !removeFlowRules.isEmpty()) {
-            log.info("Key: {}, compute remove rules", key);
+            log.info("Compute remove rules (switch={}, key={})", switchId, key);
             try {
                 excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
                         switchId, validationResult.getFlowEntries(), removeFlowRules);
@@ -209,7 +209,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
 
             if (!validateMetersResult.getExcessMeters().isEmpty()) {
-                log.info("Key: {}, compute remove meters", key);
+                log.info("Compute remove meters (switch={}, key={})", switchId, key);
                 try {
                     excessMeters = validateMetersResult.getExcessMeters().stream()
                             .map(MeterInfoEntry::getMeterId)
@@ -224,12 +224,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void sendRulesCommands(SwitchSyncState from, SwitchSyncState to,
                                 SwitchSyncEvent event, Object context) {
         if (missingRules.isEmpty() && excessRules.isEmpty()) {
-            log.info("Key: {}, nothing to do with rules", key);
+            log.info("Nothing to do with rules (switch={}, key={})", switchId, key);
             fire(NEXT);
         }
 
         if (!missingRules.isEmpty()) {
-            log.info("Key: {}, request to install switch rules has been sent", key);
+            log.info("Request to install switch rules has been sent (switch={}, key={})", switchId, key);
             missingRulesPendingResponsesCount = missingRules.size();
 
             for (BaseInstallFlow command : missingRules) {
@@ -238,7 +238,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         }
 
         if (!excessRules.isEmpty()) {
-            log.info("Key: {}, request to remove switch rules has been sent", key);
+            log.info("Request to remove switch rules has been sent (switch={}, key={})", switchId, key);
             excessRulesPendingResponsesCount = excessRules.size();
 
             for (RemoveFlow command : excessRules) {
@@ -248,7 +248,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
         List<Long> reinstallRules = getReinstallDefaultRules();
         if (!reinstallRules.isEmpty()) {
-            log.info("Key: {}, request to reinstall default switch rules has been sent", key);
+            log.info("Request to reinstall default switch rules has been sent (switch={}, key={})", switchId, key);
             reinstallDefaultRulesPendingResponsesCount = reinstallRules.size();
 
             for (Long rule : reinstallRules) {
@@ -270,10 +270,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void sendMetersCommands(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
         if (excessMeters.isEmpty()) {
-            log.info("Key: {}, nothing to do with meters", key);
+            log.info("Nothing to do with meters (switch={}, key={})", switchId, key);
             fire(NEXT);
         } else {
-            log.info("Key: {}, request to remove switch meters has been sent", key);
+            log.info("Request to remove switch meters has been sent (switch={}, key={})", switchId, key);
             excessMetersPendingResponsesCount = excessMeters.size();
 
             for (Long meterId : excessMeters) {
@@ -284,21 +284,21 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void ruleInstalled(SwitchSyncState from, SwitchSyncState to,
                                  SwitchSyncEvent event, Object context) {
-        log.info("Key: {}, switch rule installed", key);
+        log.info("Switch rule installed (switch={}, key={})", switchId, key);
         missingRulesPendingResponsesCount--;
         continueIfRulesSynchronized();
     }
 
     protected void ruleRemoved(SwitchSyncState from, SwitchSyncState to,
                                SwitchSyncEvent event, Object context) {
-        log.info("Key: {}, switch rule removed", key);
+        log.info("Switch rule removed (switch={}, key={})", switchId, key);
         excessRulesPendingResponsesCount--;
         continueIfRulesSynchronized();
     }
 
     protected void defaultRuleReinstalled(SwitchSyncState from, SwitchSyncState to,
                                           SwitchSyncEvent event, Object context) {
-        log.info("Key: {}, default switch rule reinstalled", key);
+        log.info("Default switch rule reinstalled (switch={}, key={})", switchId, key);
         FlowReinstallResponse response = (FlowReinstallResponse) context;
 
         Long removedRule = response.getRemovedRule();
@@ -317,7 +317,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void meterRemoved(SwitchSyncState from, SwitchSyncState to,
                                 SwitchSyncEvent event, Object context) {
-        log.info("Key: {}, switch meter removed", key);
+        log.info("Switch meter removed (switch={}, key={})", switchId, key);
         excessMetersPendingResponsesCount--;
         continueIfMetersCommandsDone();
     }
