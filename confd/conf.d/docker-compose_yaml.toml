@@ -1,0 +1,5 @@
+[template]
+src = "docker-compose/docker-compose.tmpl"
+dest = "docker-compose.yaml"
+keys = [ "/" ]
+mode = "0644"
