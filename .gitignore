@@ -15,5 +15,7 @@
 .metadata
 
 # VSCode specific files/directories
-.vscode/
+.vscod,me/
 
+./generated.mk
+./docker-compose.yaml

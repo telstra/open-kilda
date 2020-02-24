@@ -1,0 +1,5 @@
+[template]
+src = "makefile/makefile.tmpl"
+dest = "generated.mk"
+keys = [ "/" ]
+mode = "0644"
