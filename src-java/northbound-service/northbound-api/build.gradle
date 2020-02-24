@@ -1,0 +1,13 @@
+description = 'Northbound Service API'
+dependencies {
+    implementation project(':kilda-model')
+
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+
+    testImplementation 'junit:junit'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

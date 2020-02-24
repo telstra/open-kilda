@@ -1,0 +1,62 @@
+plugins {
+    id 'base'
+    id 'org.ajoberstar.grgit' version '4.0.1' apply false
+}
+
+group = 'org.projectfloodlight'
+
+import org.ajoberstar.grgit.Grgit
+
+configurations {
+    'default'
+}
+
+task cloneLoxigenRepo {
+    def repo = file('loxigen')
+    outputs.dir(repo)
+
+    if (repo.exists()) {
+        def grgit = Grgit.open(currentDir: repo.absolutePath)
+        grgit.checkout(branch: 'STABLE')
+        grgit.pull(rebase: false)
+        grgit.close()
+    } else {
+        def grgit = Grgit.clone(dir: repo.absolutePath, uri: 'https://github.com/kilda/loxigen.git', refToCheckout: 'STABLE')
+        grgit.close()
+    }
+}
+
+task cleanSources(type: Exec) {
+    workingDir 'loxigen'
+    commandLine 'make', 'clean'
+}
+clean.dependsOn(cleanSources)
+
+task generateSources(type: Exec, dependsOn: cloneLoxigenRepo) {
+    outputs.dir('loxigen/loxi_output/openflowj')
+
+    workingDir 'loxigen'
+    commandLine 'make', 'java'
+}
+
+task compileMavenProject(type: Exec, dependsOn: generateSources) {
+    inputs.file('loxigen/loxi_output/openflowj/pom.xml')
+    inputs.dir('loxigen/loxi_output/openflowj/gen-src')
+    inputs.dir('loxigen/loxi_output/openflowj/src')
+    outputs.file('loxigen/loxi_output/openflowj/target/openflowj-3.2.0-kilda-2.jar')
+
+    workingDir 'loxigen/loxi_output/openflowj'
+    // Install is invoked to share the result artifact with the floodlight build.
+    commandLine 'mvn', '-B', 'clean', 'install', '-DskipTests'
+}
+
+task copyJar(type: Copy, dependsOn: compileMavenProject) {
+    ext.destFile = file("$buildDir/libs/openflowj-3.2.0-kilda-2.jar")
+
+    from(compileMavenProject)
+    into "$buildDir/libs"
+}
+
+artifacts {
+    'default' file: copyJar.destFile, builtBy: copyJar
+}

@@ -1,5 +1,5 @@
 [template]
-src = "floodlight/logback.xml.tmpl"
-dest = "services/src/floodlight-service/floodlight-modules/src/main/resources/logback.xml"
+src = "floodlight-modules/logback.xml.tmpl"
+dest = "src-java/floodlight-service/floodlight-modules/src/main/resources/logback.xml"
 keys = [ "/" ]
 mode = "0644"

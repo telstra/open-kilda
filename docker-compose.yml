@@ -5,7 +5,8 @@ services:
     container_name: lab-api
     image: kilda_lab-service
     build:
-      context: services/lab-service/
+      context: docker/lab-service/
+      dockerfile: Dockerfile
     ports:
     - "8288:8288"
     privileged: true
@@ -106,7 +107,8 @@ services:
   wfm:
     container_name: wfm
     build:
-      context: services/wfm
+      context: docker
+      dockerfile: wfm/Dockerfile
     depends_on:
       kafka:
         condition: service_healthy
@@ -245,7 +247,8 @@ services:
   floodlight_one:
     container_name: floodlight_one
     build:
-      context: services/src/floodlight-service/floodlight-modules
+      context: docker
+      dockerfile: floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
@@ -266,10 +269,11 @@ services:
          - kilda
     mem_limit: ${FL_1_MEM_LIMIT:-1073741824}
 
-  floodlight_second:
-    container_name: floodlight_second
+  floodlight_two:
+    container_name: floodlight_two
     build:
-      context: services/src/floodlight-service/floodlight-modules
+      context: docker
+      dockerfile: floodlight-modules/Dockerfile
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
@@ -285,13 +289,14 @@ services:
     networks:
       default:
         aliases:
-          - floodlight_second.pendev
+          - floodlight_two.pendev
     mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
 
   northbound:
     container_name: openkilda-northbound
     build:
-      context: services/src/northbound-service/northbound/
+      context: docker
+      dockerfile: northbound/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -313,7 +318,8 @@ services:
   grpc-speaker:
     container_name: grpc-speaker
     build:
-      context: services/src/grpc-speaker/grpc-service/
+      context: docker
+      dockerfile: grpc-service/Dockerfile
     ports:
     - "8091:8091"
     depends_on:
@@ -351,6 +357,7 @@ services:
     container_name: gui
     build:
       context: services/src/openkilda-gui
+      dockerfile: Dockerfile
     ports:
       - "8010:1010"
     depends_on:
@@ -367,9 +374,6 @@ services:
   elasticsearch:
     container_name: elasticsearch
     image: "kilda/elasticsearch:${full_build_number:-latest}"
-    build:
-      context: services/elasticsearch/
-      dockerfile: Dockerfile
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
