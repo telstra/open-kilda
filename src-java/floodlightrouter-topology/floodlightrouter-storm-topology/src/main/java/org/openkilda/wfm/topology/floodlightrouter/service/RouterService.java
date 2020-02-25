@@ -81,25 +81,6 @@ public class RouterService {
         }
     }
 
-    /**
-     * Process request to speaker disco.
-     * @param routerMessageSender callback to be used for message sending
-     * @param message message to be handled and resend
-     */
-    public void processDiscoSpeakerRequest(MessageSender routerMessageSender, Message message) {
-        SwitchId switchId = RouterUtils.lookupSwitchId(message);
-        if (switchId != null) {
-            String region = floodlightTracker.lookupRegion(switchId);
-            if (region == null) {
-                log.error("Received command message for the untracked switch: {} {}", switchId, message);
-            } else {
-                routerMessageSender.emitSpeakerMessage(message, region);
-            }
-        } else {
-            log.warn("Received message without target switch from SPEAKER_DISCO stream: {}", message);
-        }
-    }
-
     private void handleResponseFromSpeaker(MessageSender routerMessageSender, String region, long timestamp) {
         boolean requireSync = floodlightTracker.handleAliveResponse(region, timestamp);
         if (requireSync) {
