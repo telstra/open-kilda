@@ -20,7 +20,20 @@ dependencies {
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
 
+    // Dependencies added to be aligned with pre-restructuring version.
     implementation 'commons-lang:commons-lang'
+    implementation 'commons-codec:commons-codec'
+    implementation 'commons-io:commons-io'
+    implementation 'commons-logging:commons-logging'
+    implementation 'org.apache.httpcomponents:httpclient'
+    implementation 'org.apache.commons:commons-lang3'
+    implementation 'jline:jline'
+    implementation 'io.netty:netty:3.10.5.Final'
+    implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.26'
+    implementation 'org.glassfish.jersey.core:jersey-client:2.26'
+    implementation 'org.glassfish.jersey.inject:jersey-hk2:2.26'
+    implementation 'org.glassfish.jersey.core:jersey-common:2.26'
+    implementation 'org.glassfish.jersey.connectors:jersey-apache-connector:2.26'
 
     testImplementation 'junit:junit'
     testImplementation 'pl.pragmatists:JUnitParams'

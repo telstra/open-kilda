@@ -4,6 +4,13 @@ plugins {
 
 description = 'GRPC service'
 dependencies {
+    implementation(platform('org.springframework:spring-framework-bom:4.3.10.RELEASE'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.6.RELEASE')) {
+        exclude group: 'org.projectlombok'
+        exclude group: 'org.slf4j'
+        exclude group: 'ch.qos.logback'
+    }
+
     implementation project(':grpc-api')
     implementation project(':kilda-configuration')
 
