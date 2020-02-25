@@ -197,6 +197,10 @@ public class FlowRerouteService {
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
+
+            fsms.remove(key);
+            carrier.cancelTimeoutCallback(key);
+
             performHousekeeping(fsm.getFlowId(), key);
 
             // use some sort of recursion here, because iterative way require too complex scheme to clean/use retryQueue
@@ -205,9 +209,6 @@ public class FlowRerouteService {
     }
 
     private void performHousekeeping(String flowId, String key) {
-        fsms.remove(key);
-        carrier.cancelTimeoutCallback(key);
-
         FlowRerouteFact reroute = retryManager.discard(flowId)
                 .orElseThrow(() -> new IllegalStateException(String.format(
                         "There is no current reroute into retry queue (flow=\"%s\", key=\"%s\")",

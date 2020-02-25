@@ -31,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
@@ -39,6 +40,7 @@ import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
+import org.openkilda.messaging.Message;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -745,6 +747,40 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+    }
+
+    @Test
+    public void doNotInterruptRerouteOnRequestKeyCollision() throws Exception {
+        Flow flow = build2SwitchFlow();
+        flow.setStatus(FlowStatus.DOWN);
+
+        when(pathComputer.getPath(any(), any()))
+                .thenReturn(build2SwitchPathPair(2, 3))
+                .thenReturn(build3SwitchPathPair());
+        buildFlowResources();
+
+        final String requestKey = "test_key";
+        rerouteService.handleRequest(new FlowRerouteFact(
+                requestKey, commandContext, FLOW_ID, null, false, false, null));
+
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        verify(carrier, times(1)).sendNorthboundResponse(any());
+
+        final String otherFlowId = FLOW_ID + ".other";
+        rerouteService.handleRequest(new FlowRerouteFact(
+                requestKey, commandContext, otherFlowId, null, false, false, null));
+
+        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+
+        // original reroute should proceed on responses from speaker
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            produceAsyncResponse(requestKey, request);
+        }
+
+        assertEquals(FlowStatus.UP, flow.getStatus());
+        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
+        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
     }
 
     protected void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
