@@ -227,9 +227,27 @@ public class SwitchController {
     @Permissions(values = {IConstants.Permission.ISL_UPDATE_BFD_FLAG})
     public @ResponseBody List<IslLinkInfo> updateEnableBfdFlag(@RequestBody LinkParametersDto linkParametersDto) {
         activityLogger.log(ActivityType.UPDATE_ISL_BFD_FLAG, linkParametersDto.toString());
-        return serviceSwitch.updateLinkBfdFlag(linkParametersDto);
+        String response = validateRequest(linkParametersDto);
+        if (response != null) {
+            throw new RequestValidationException(response + " is mandatory");
+        }
+        List<IslLinkInfo> islLinkInfos = serviceSwitch.updateLinkBfdFlag(linkParametersDto);
+        return islLinkInfos;
     }
     
+    private String validateRequest(LinkParametersDto linkParametersDto) {
+        if (StringUtil.isNullOrEmpty(linkParametersDto.getSrcSwitch())) {
+            return "src_switch";
+        } else if (linkParametersDto.getSrcPort() == null) {
+            return "src_port";
+        } else if (StringUtil.isNullOrEmpty(linkParametersDto.getDstSwitch())) {
+            return "dst_switch";
+        } else if (linkParametersDto.getDstPort() == null) {
+            return "dst_port";
+        } 
+        return null;
+    }
+
     /**
      * Get Link Props.
      *
