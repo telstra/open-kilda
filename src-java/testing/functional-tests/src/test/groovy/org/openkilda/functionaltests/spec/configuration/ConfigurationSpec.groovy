@@ -112,11 +112,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
 
         when: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
-        }
+        switchHelper.knockoutSwitch(sw, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         northbound.deleteSwitch(sw.dpId, false)
 
@@ -127,15 +123,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         })
 
         and: "New switch connects"
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def allIsls = northbound.getAllLinks()
-            isls.each {
-                assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
-                assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        switchHelper.reviveSwitch(sw, true)
 
         then: "Switch is added with switch property according to the kilda configuration"
         northbound.getSwitchProperties(sw.dpId).multiTable == newMultiTableValue

@@ -204,10 +204,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
-        lockKeeper.knockoutSwitch(switchToDisconnect)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        switchHelper.knockoutSwitch(switchToDisconnect)
 
         and: "Get all flows going through the deactivated src switch"
         def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
@@ -217,10 +214,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         cleanup: "Revive the src switch and delete the flows"
         [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        lockKeeper.reviveSwitch(switchToDisconnect)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
-        }
+        switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect)
     }
 
     @Tidy

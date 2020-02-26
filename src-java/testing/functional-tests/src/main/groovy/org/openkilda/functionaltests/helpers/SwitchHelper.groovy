@@ -11,7 +11,10 @@ import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
 import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchFeature
@@ -19,9 +22,12 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.Constants
+import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.IslUtils
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
@@ -54,11 +60,29 @@ class SwitchHelper {
     @Value('${burst.coefficient}')
     double burstCoefficient
 
+    @Value('${spring.profiles.active}')
+    String profile
+
+    @Value('${discovery.interval}')
+    int discoveryInterval
+
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
+
     @Autowired
     SwitchHelper(NorthboundService northbound, Database database) {
         this.northbound = northbound
         this.database = database
     }
+
+    @Autowired
+    TopologyDefinition topology
+
+    @Autowired
+    IslUtils islUtils
+
+    @Autowired
+    LockKeeperService lockKeeper
 
     @Memoized
     static SpeakerSwitchDescription getDetails(Switch sw) {
@@ -232,5 +256,61 @@ class SwitchHelper {
                 }.empty
             }
         }
+    }
+
+    /**
+     * Disconnect a switch from controller either removing controller settings inside an OVS switch
+     * or blocking access to floodlight via iptables for a hardware switch.
+     * NOTE: it takes around 30 seconds to deactivate a switch via iptables.
+     *
+     * @param sw - switch which is going to be disconnected.
+     * @param waitForRelatedLinks - it is an optional parameter. Please, use this parameter if you want to be sure
+     * that all switch related ISLs are FAILED.
+     */
+    void knockoutSwitch(Switch sw, boolean waitForRelatedLinks) {
+        lockKeeper.knockoutSwitch(sw)
+        def customWait = (profile == "virtual") ? WAIT_OFFSET : WAIT_OFFSET * 4
+        Wrappers.wait(customWait) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+        if (waitForRelatedLinks) {
+            def swIsls = topology.getRelatedIsls(sw)
+            Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+                swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
+            }
+        }
+    }
+    void knockoutSwitch(Switch sw) {
+        knockoutSwitch(sw, false)
+    }
+
+    /**
+     * Connect a switch to controller either adding controller settings inside an OVS switch
+     * or setting proper iptables to allow access to floodlight for a hardware switch.
+     *
+     * @param sw - switch which is going to be connected.
+     * @param waitForRelatedLinks - it is an optional parameter. Please, use this parameter if you want to be sure
+     * that all switch related ISLs are DISCOVERED.
+     */
+    void reviveSwitch(Switch sw, boolean waitForRelatedLinks) {
+        lockKeeper.reviveSwitch(sw)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+        }
+        if (waitForRelatedLinks) {
+            def swIsls = topology.getRelatedIsls(sw)
+
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def allIsls = northbound.getAllLinks()
+                swIsls.each {
+                    assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
+                    assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
+                }
+            }
+        }
+    }
+
+    void reviveSwitch(Switch sw) {
+        reviveSwitch(sw, false)
     }
 }

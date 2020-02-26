@@ -98,8 +98,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         when: "Disconnect the src switch from the management and statistic controllers"
-        lockKeeper.knockoutSwitch(srcSwitch)
-        Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
+        switchHelper.knockoutSwitch(srcSwitch)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -114,11 +113,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         when: "Restore default controllers on the src switches"
-        lockKeeper.reviveSwitch(srcSwitch)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
-            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
-        }
+        switchHelper.reviveSwitch(srcSwitch, true)
 
         then: "Old statistic should be collected"
         Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
@@ -192,8 +187,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         when: "Disconnect the src switch from the management and statistic controllers"
-        lockKeeper.knockoutSwitch(srcSwitch)
-        Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
+        switchHelper.knockoutSwitch(srcSwitch)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -208,11 +202,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         when: "Restore default controllers on the src switches"
-        lockKeeper.reviveSwitch(srcSwitch)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
-            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
-        }
+        switchHelper.reviveSwitch(srcSwitch, true)
 
         then: "Old statistic should be collected"
         Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {

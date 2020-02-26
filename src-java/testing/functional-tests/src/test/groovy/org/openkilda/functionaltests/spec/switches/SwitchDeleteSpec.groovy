@@ -49,8 +49,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
+        switchHelper.knockoutSwitch(sw)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
@@ -62,13 +61,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
                 "Unplug and remove them first.*")
 
         and: "Cleanup: activate the switch back"
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.activeSwitches.any { it.switchId == sw.dpId }
-
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
-        }
+        switchHelper.reviveSwitch(sw, true)
     }
 
     @Tags(VIRTUAL)
@@ -84,8 +77,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
+        switchHelper.knockoutSwitch(sw)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
@@ -97,8 +89,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
                 "Remove them first.*")
 
         and: "Cleanup: activate the switch back and reset costs"
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
+        switchHelper.reviveSwitch(sw)
 
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -116,8 +107,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         when: "Deactivate the switch"
         def swToDeactivate = topology.switches.find { it.dpId == flow.source.switchId }
-        lockKeeper.knockoutSwitch(swToDeactivate)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == flow.source.switchId } }
+        switchHelper.knockoutSwitch(swToDeactivate)
 
         and: "Try to delete the switch"
         northbound.deleteSwitch(flow.source.switchId, false)
@@ -129,8 +119,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         and: "Cleanup: activate the switch back and remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        lockKeeper.reviveSwitch(swToDeactivate)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == flow.source.switchId } }
+        switchHelper.reviveSwitch(swToDeactivate)
 
         where:
         flowType        | flow
@@ -156,8 +145,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
+        switchHelper.knockoutSwitch(sw)
 
         when: "Try to delete the switch"
         def response = northbound.deleteSwitch(sw.dpId, false)
@@ -168,8 +156,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         and: "Cleanup: activate the switch back, restore ISLs and reset costs"
         // restore switch
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
+        switchHelper.reviveSwitch(sw)
 
         // restore ISLs
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }

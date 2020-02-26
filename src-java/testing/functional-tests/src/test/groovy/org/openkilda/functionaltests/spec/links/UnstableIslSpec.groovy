@@ -71,23 +71,13 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         when: "Deactivate the switch"
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == FAILED }
-        }
+        switchHelper.knockoutSwitch(sw, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }
 
         when: "Activate the switch"
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
-        }
+        switchHelper.reviveSwitch(sw, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }

@@ -194,16 +194,14 @@ class LinkSpec extends HealthCheckSpecification {
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
-        lockKeeper.knockoutSwitch(isl.srcSwitch)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED }
+        switchHelper.knockoutSwitch(isl.srcSwitch)
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
         lockKeeper.portsDown([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being down"
-        lockKeeper.reviveSwitch(isl.srcSwitch)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+        switchHelper.reviveSwitch(isl.srcSwitch)
 
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {

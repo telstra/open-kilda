@@ -65,12 +65,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        lockKeeper.knockoutSwitch(switchPair.src)
-        Wrappers.wait(WAIT_OFFSET) { assert !(switchPair.src.dpId in northbound.getActiveSwitches()*.switchId) }
+        switchHelper.knockoutSwitch(switchPair.src)
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(switchPair.src)
-        Wrappers.wait(WAIT_OFFSET) { assert switchPair.src.dpId in northbound.getActiveSwitches()*.switchId }
+        switchHelper.reviveSwitch(switchPair.src)
 
         then: "Missing flow rules/meters were synced during switch activation"
         verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
@@ -118,12 +116,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert !(sw.dpId in northbound.getActiveSwitches()*.switchId) }
+        switchHelper.knockoutSwitch(sw)
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northbound.getActiveSwitches()*.switchId }
+        switchHelper.reviveSwitch(sw)
 
         then: "Excess meters/rules were synced during switch activation"
         verifyAll(northbound.validateSwitch(sw.dpId)) {
@@ -140,11 +136,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
-        }
+        switchHelper.knockoutSwitch(sw, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         northbound.deleteSwitch(sw.dpId, false)
 

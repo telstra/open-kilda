@@ -760,10 +760,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A deactivated switch"
         def sw = topology.getActiveSwitches().first()
         def swIsls = topology.getRelatedIsls(sw)
-        lockKeeper.knockoutSwitch(sw)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        switchHelper.knockoutSwitch(sw)
 
         when: "Create a flow"
         def flow = flowHelper.singleSwitchFlow(sw)
@@ -775,12 +772,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
 
         and: "Cleanup: Activate the switch and reset costs"
-        lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
-        }
+        switchHelper.reviveSwitch(sw, true)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")

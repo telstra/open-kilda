@@ -187,10 +187,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "Deactivate the src switch"
         def switchToDisconnect = isl.srcSwitch
-        lockKeeper.knockoutSwitch(switchToDisconnect)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        switchHelper.knockoutSwitch(switchToDisconnect)
 
         then: "Port history on the src switch is still available"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
@@ -202,10 +199,7 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
-        switchToDisconnect && lockKeeper.reviveSwitch(switchToDisconnect)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
-        }
+        switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect)
     }
 
     def "Port history is able to show ANTI_FLAP statistic"() {
