@@ -63,10 +63,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         statsHelper.verifyFlowWritesStats(flow.flowId)
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
     }
@@ -113,7 +113,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
     }
@@ -150,7 +150,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northbound.getActiveSwitches()*.switchId }
         northbound.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
     }
 
@@ -195,7 +195,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
     }
@@ -495,7 +495,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         islToBreak && antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
         broughtDownPorts && broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
     }
 
@@ -559,7 +559,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
         broughtDownPorts && broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != FAILED }
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
     }
 
