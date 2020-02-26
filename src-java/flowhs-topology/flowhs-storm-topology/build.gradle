@@ -72,7 +72,10 @@ jar {
 
 shadowJar {
     classifier = ''
-    mergeServiceFiles()
+    mergeServiceFiles {
+        exclude 'META-INF/services/com.fasterxml.jackson.databind.Module'
+        exclude 'META-INF/services/org.glassfish.jersey.internal.spi.AutoDiscoverable'
+    }
 }
 
 build.dependsOn shadowJar
