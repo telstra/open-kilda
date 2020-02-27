@@ -203,7 +203,7 @@ public class SwitchValidateFsm
             sendException(format("Switch properties not found for switch '%s'", switchId), ErrorType.NOT_FOUND);
             return;
         }
-        log.info("The switch sync process for {} has been started (key={})", switchId, key);
+        log.info("The switch validate process for {} has been started (key={})", switchId, key);
     }
 
     protected void receiveData(SwitchValidateState from, SwitchValidateState to,
