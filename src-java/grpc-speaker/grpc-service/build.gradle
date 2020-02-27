@@ -4,6 +4,13 @@ plugins {
 
 description = 'GRPC service'
 dependencies {
+    implementation(platform('org.springframework:spring-framework-bom:4.3.10.RELEASE'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.6.RELEASE')) {
+        exclude group: 'org.projectlombok'
+        exclude group: 'org.slf4j'
+        exclude group: 'ch.qos.logback'
+    }
+
     implementation project(':grpc-api')
     implementation project(':kilda-configuration')
 
@@ -16,8 +23,18 @@ dependencies {
     }
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
-    implementation('org.springframework.kafka:spring-kafka')
+    implementation('org.springframework.kafka:spring-kafka:1.2.2.RELEASE') {
+        exclude(group: 'org.apache.kafka', module: 'kafka-clients')
+    }
+    implementation('org.apache.kafka:kafka-clients') {
+        version {
+            strictly '0.10.2.1'
+        }
+    }
     implementation('org.apache.kafka:kafka_2.11') {
+        version {
+            strictly '0.10.2.1'
+        }
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
     }
