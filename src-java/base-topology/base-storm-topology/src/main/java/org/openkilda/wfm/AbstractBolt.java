@@ -43,6 +43,9 @@ public abstract class AbstractBolt extends BaseRichBolt {
     private transient OutputCollector output;
 
     @Getter(AccessLevel.PROTECTED)
+    private transient String componentId;
+
+    @Getter(AccessLevel.PROTECTED)
     private transient Integer taskId;
 
     @Getter(AccessLevel.PROTECTED)
@@ -122,6 +125,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.output = collector;
         this.taskId = context.getThisTaskId();
+        this.componentId = String.format("%s:%d", context.getThisComponentId(), this.taskId);
 
         init();
     }

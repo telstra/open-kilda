@@ -210,7 +210,7 @@ public class WorkerBoltTest {
         }
 
         @Override
-        protected void unhandledInput(Tuple input) {
+        protected void unhandledInput(String key, Tuple input) {
             throw new IllegalStateException(String.format("Unhandled input %s", input));
         }
     }
