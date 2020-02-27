@@ -13,6 +13,8 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
@@ -53,9 +55,14 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
         def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
         def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.flowId }
-        [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
+        Map<SwitchId, FlowResponseV2> responseMap = [flow1, flow2, flow3].collectEntries{ [(it.flowId): flowHelperV2.addFlow(it)] }
 
-        then: "All flows have diverse flow IDs in response"
+        then: "Flow create response contains information about diverse flow"
+        !responseMap[flow1.flowId].diverseWith
+        responseMap[flow2.flowId].diverseWith.sort() == [flow1.flowId]
+        responseMap[flow3.flowId].diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
+
+        and: "All flows have diverse flow IDs in response"
         northbound.getFlow(flow1.flowId).diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
         northbound.getFlow(flow2.flowId).diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
         northbound.getFlow(flow3.flowId).diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
@@ -87,9 +94,13 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         assert [flow1Path, flow2Path, flow3Path].toSet().size() == 1
 
         when: "Update the second flow to become diverse"
-        flowHelperV2.updateFlow(flow2.flowId, flow2.tap { it.diverseFlowId = flow1.flowId })
+        FlowResponseV2 updateResponse = flowHelperV2.updateFlow(flow2.flowId,
+                                                                flow2.tap { it.diverseFlowId = flow1.flowId })
 
-        then: "The flow became diverse and changed the path"
+        then: "Update response contains information about diverse flow"
+        updateResponse.diverseWith.sort() == [flow1.flowId]
+
+        and: "The flow became diverse and changed the path"
         def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
         flow2PathUpdated != flow2Path
 

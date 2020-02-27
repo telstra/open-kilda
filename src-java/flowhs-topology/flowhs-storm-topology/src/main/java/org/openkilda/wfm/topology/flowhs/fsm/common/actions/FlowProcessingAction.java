@@ -35,6 +35,7 @@ import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -103,9 +104,9 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     }
 
     protected Set<String> getDiverseWithFlowIds(Flow flow) {
-        return flowRepository.findByGroupId(flow.getGroupId()).stream()
-                .map(Flow::getFlowId)
-                .filter(flowId -> !flowId.equals(flow.getFlowId()))
-                .collect(Collectors.toSet());
+        return flow.getGroupId() == null ? Collections.emptySet() :
+                flowRepository.findFlowsIdByGroupId(flow.getGroupId()).stream()
+                        .filter(flowId -> !flowId.equals(flow.getFlowId()))
+                        .collect(Collectors.toSet());
     }
 }
