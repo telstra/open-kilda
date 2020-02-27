@@ -530,9 +530,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
         TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
-        Wrappers.timedLoop(rerouteDelay) { // just in case
-            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == "Flow rerouting" }.size() == 1
-        }
+        northbound.getFlowHistory(flow.flowId).findAll { it.action == "Flow rerouting" }.size() == 1
 
         cleanup: "Restore topology, delete the flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
