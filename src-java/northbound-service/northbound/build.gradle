@@ -4,6 +4,13 @@ plugins {
 
 description = 'Northbound Service'
 dependencies {
+    implementation(platform('org.springframework:spring-framework-bom:4.3.10.RELEASE'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:1.5.6.RELEASE')) {
+        exclude group: 'org.projectlombok'
+        exclude group: 'org.slf4j'
+        exclude group: 'ch.qos.logback'
+    }
+
     implementation project(':northbound-api')
     implementation project(':flow-messaging')
     implementation project(':nbworker-messaging')
@@ -23,7 +30,7 @@ dependencies {
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-tomcat'
-    implementation('org.springframework.kafka:spring-kafka') {
+    implementation('org.springframework.kafka:spring-kafka:1.2.2.RELEASE') {
         exclude(group: 'org.apache.kafka', module: 'kafka-clients')
     }
     implementation 'org.springframework:spring-webmvc'
