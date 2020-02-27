@@ -90,9 +90,9 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         meterEntries = getWrongSwitchMeterEntries();
         result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
         assertEquals(4, result.size());
-        assertEquals(6, result.get(0).getDiscrepancies().size());
+        assertEquals(7, result.get(0).getDiscrepancies().size());
         assertEquals(3, result.get(1).getDiscrepancies().size());
-        assertEquals(2, result.get(2).getDiscrepancies().size());
+        assertEquals(3, result.get(2).getDiscrepancies().size());
         assertEquals(2, result.get(3).getDiscrepancies().size());
 
         List<String> forwardDiscrepancies = result.get(0).getDiscrepancies().stream()

@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.model;
 
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.SharedOfFlow;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 
 import lombok.Builder;
@@ -35,5 +36,21 @@ public class FlowPathSnapshot {
     public static FlowPathSnapshotBuilder builder(FlowPath path) {
         return new FlowPathSnapshotBuilder()
                 .path(path);
+    }
+
+    public static class FlowPathSnapshotBuilder {
+        /**
+         * Map {@code SharedOfFlow.SharedOfFlowType} to one of the fields.
+         */
+        public FlowPathSnapshotBuilder sharedOfReference(
+                SharedOfFlow.SharedOfFlowType type, SharedOfFlowStatus status) {
+            if (type == SharedOfFlow.SharedOfFlowType.INGRESS_OUTER_VLAN_MATCH) {
+                sharedIngressSegmentOuterVlanMatchStatus(status);
+            } else {
+                throw new IllegalArgumentException(String.format("Unknown shared OF Flow type %s", type));
+            }
+
+            return this;
+        }
     }
 }

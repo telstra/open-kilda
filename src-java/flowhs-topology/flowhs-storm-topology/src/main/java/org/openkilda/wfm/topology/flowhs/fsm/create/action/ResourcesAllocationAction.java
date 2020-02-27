@@ -97,7 +97,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
         this.flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
-        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        this.commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override

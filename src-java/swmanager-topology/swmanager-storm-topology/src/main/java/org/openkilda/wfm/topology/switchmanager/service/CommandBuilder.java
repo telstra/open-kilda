@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.model.SwitchId;
@@ -23,8 +22,6 @@ import org.openkilda.model.SwitchId;
 import java.util.List;
 
 public interface CommandBuilder {
-
-    List<BaseInstallFlow> buildCommandsToSyncMissingRules(SwitchId switchId, List<Long> switchRules);
 
     List<RemoveFlow> buildCommandsToRemoveExcessRules(SwitchId switchId,
                                                       List<FlowEntry> flows,

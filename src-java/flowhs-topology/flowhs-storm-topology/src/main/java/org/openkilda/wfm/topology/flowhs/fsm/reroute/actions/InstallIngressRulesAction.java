@@ -41,7 +41,7 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowRerouteF
 
     public InstallIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override

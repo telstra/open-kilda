@@ -153,10 +153,10 @@ public class Switch implements Serializable {
     /**
      * Checks Noviflow E switch by the manufacturer and hardware description.
      */
-    public static boolean isNoviflowESwitch(String manufacturerDescription, String hardwareDescription) {
-        return E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(manufacturerDescription)
-                || hardwareDescription != null
-                && E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(hardwareDescription).matches();
+    public boolean isNoviflowESwitch() {
+        return E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(ofDescriptionManufacturer)
+                || ofDescriptionHardware != null
+                && E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(ofDescriptionHardware).matches();
     }
 
     @JsonIgnore

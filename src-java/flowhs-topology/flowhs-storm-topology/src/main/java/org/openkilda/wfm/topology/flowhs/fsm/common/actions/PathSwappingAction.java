@@ -18,17 +18,13 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Optional;
 
 @Slf4j
 public abstract class PathSwappingAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
@@ -44,7 +40,7 @@ public abstract class PathSwappingAction<T extends FlowProcessingFsm<T, S, E, C>
             FlowPathSwappingFsm<?, ?, ?, ?> stateMachine, Flow flow, FlowPath forwardPath, FlowPath reversePath,
             FlowEncapsulationType encapsulationType) {
 
-        FlowResources resources = fetchFlowResources(forwardPath, reversePath, encapsulationType);
+        FlowResources resources = resourcesManager.fetchResources(forwardPath, reversePath, encapsulationType);
 
         log.debug("Save old primary paths resources: {}", resources);
         if (forwardPath != null && resources.getForward() != null) {
@@ -65,7 +61,7 @@ public abstract class PathSwappingAction<T extends FlowProcessingFsm<T, S, E, C>
             FlowPathSwappingFsm<?, ?, ?, ?> stateMachine, Flow flow, FlowPath forwardPath, FlowPath reversePath,
             FlowEncapsulationType encapsulationType) {
 
-        FlowResources resources = fetchFlowResources(forwardPath, reversePath, encapsulationType);
+        FlowResources resources = resourcesManager.fetchResources(forwardPath, reversePath, encapsulationType);
 
         log.debug("Save old protected paths resources: {}", resources);
         if (forwardPath != null && resources.getForward() != null) {
@@ -99,47 +95,5 @@ public abstract class PathSwappingAction<T extends FlowProcessingFsm<T, S, E, C>
                 .forward(forward)
                 .reverse(reverse)
                 .build();
-    }
-
-    private FlowResources fetchFlowResources(
-            FlowPath forwardPath, FlowPath reversePath, FlowEncapsulationType encapsulationType) {
-        EncapsulationResources forwardEncapsulationResources = fetchPathResources(
-                forwardPath, reversePath, encapsulationType)
-                .orElse(null);
-        EncapsulationResources reverseEncapsulationResources = fetchPathResources(
-                reversePath, forwardPath, encapsulationType)
-                .orElse(forwardEncapsulationResources);
-
-        if (forwardEncapsulationResources == null) {
-            forwardEncapsulationResources = reverseEncapsulationResources;
-        }
-
-        return FlowResources.builder()
-                .forward(makePathResources(forwardPath, forwardEncapsulationResources).orElse(null))
-                .reverse(makePathResources(reversePath, reverseEncapsulationResources).orElse(null))
-                .build();
-    }
-
-    private Optional<EncapsulationResources> fetchPathResources(
-            FlowPath path, FlowPath oppositePath, FlowEncapsulationType encapsulationType) {
-        if (path == null) {
-            return Optional.empty();
-        }
-
-        PathId oppositePathId = oppositePath != null ? oppositePath.getPathId() : null;
-        return resourcesManager.getEncapsulationResources(path.getPathId(), oppositePathId, encapsulationType);
-    }
-
-    private Optional<FlowResources.PathResources> makePathResources(
-            FlowPath path, EncapsulationResources encapsulationResources) {
-        if (path == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(FlowResources.PathResources.builder()
-                .pathId(path.getPathId())
-                .meterId(path.getMeterId())
-                .encapsulationResources(encapsulationResources)
-                .build());
     }
 }

@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
@@ -43,8 +42,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.switches.MetersValidationEntry;
-import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
@@ -56,12 +53,12 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.mappers.ValidationMapper;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
@@ -76,6 +73,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+// FIXME - connected-devices
 @Slf4j
 public class SwitchValidateFsm
         extends AbstractBaseFsm<SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, Object> {
@@ -84,40 +82,43 @@ public class SwitchValidateFsm
     private static final String FINISHED_METHOD_NAME = "finished";
     private static final String ERROR_LOG_MESSAGE = "Key: {}, message: {}";
 
+    private final CommandContext commandContext;
     private final String key;
     private final SwitchValidateRequest request;
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
-    private SwitchId switchId;
+
     private boolean switchExists;
+
     private SwitchProperties switchProperties;
     private List<Integer> islPorts;
     private List<Integer> flowPorts;
     private Set<Integer> flowLldpPorts;
     private Set<Integer> flowArpPorts;
     private boolean hasMultiTableFlows;
-    private boolean processMeters;
-    private List<FlowEntry> flowEntries;
-    private List<FlowEntry> expectedDefaultFlowEntries;
-    private List<MeterEntry> presentMeters;
-    private List<MeterEntry> expectedDefaultMetersEntries;
-    private ValidateRulesResult validateRulesResult;
-    private ValidateMetersResult validateMetersResult;
 
-    public SwitchValidateFsm(SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
-                             ValidationService validationService, RepositoryFactory repositoryFactory) {
+    private SwitchValidationContext validationContext;
+    private Set<ExternalResources> pendingRequests = new HashSet<>();
+
+    public SwitchValidateFsm(
+            CommandContext commandContext, SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
+            ValidationService validationService, RepositoryFactory repositoryFactory) {
+        this.commandContext = commandContext;
         this.carrier = carrier;
         this.key = key;
         this.request = request;
         this.validationService = validationService;
-        this.processMeters = request.isProcessMeters();
-        this.switchId = request.getSwitchId();
         this.flowPorts = new ArrayList<>();
         this.flowLldpPorts = new HashSet<>();
         this.flowArpPorts = new HashSet<>();
 
+        SwitchId switchId = request.getSwitchId();
+        this.validationContext = SwitchValidationContext.builder(switchId).build();
+
+        // FIXME
         SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
         this.switchExists = switchRepository.exists(switchId);
+
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
         boolean switchLldp = switchProperties != null && switchProperties.isSwitchLldp();
@@ -170,6 +171,7 @@ public class SwitchValidateFsm
                         SwitchValidateState.class,
                         SwitchValidateEvent.class,
                         Object.class,
+                        CommandContext.class,
                         SwitchManagerCarrier.class,
                         String.class,
                         SwitchValidateRequest.class,
@@ -217,60 +219,88 @@ public class SwitchValidateFsm
 
     protected void initialized(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
+        SwitchId switchId = validationContext.getSwitchId();
         if (!switchExists) {
             sendException(format("Switch '%s' not found", switchId), ErrorType.NOT_FOUND);
             return;
         }
         if (switchProperties == null) {
             sendException(format("Switch properties not found for switch '%s'", switchId), ErrorType.NOT_FOUND);
-            return;
+            return; // TODO(surabujin): em???... and what?..
         }
         log.info("The switch validate process for {} has been started (key={})", switchId, key);
     }
 
     protected void receiveData(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
+        SwitchId switchId = validationContext.getSwitchId();
         log.info("Sending requests to get switch rules and meters (switch={}, key={})", switchId, key);
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
+        pendingRequests.add(ExternalResources.ACTUAL_OF_FLOWS);
+
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
         boolean switchLldp = switchProperties.isSwitchLldp();
         boolean switchArp = switchProperties.isSwitchArp();
 
         carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp,
                 switchArp, islPorts, flowPorts, flowLldpPorts, flowArpPorts));
+        pendingRequests.add(ExternalResources.EXPECTED_DEFAULT_OF_FLOWS);
 
-        if (processMeters) {
+        if (request.isProcessMeters()) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
             carrier.sendCommandToSpeaker(key, new GetExpectedDefaultMetersRequest(
                     switchId, multiTable, switchLldp, switchArp));
         } else {
-            presentMeters = emptyList();
+            // FIXME
             expectedDefaultMetersEntries = emptyList();
+            pendingRequests.add(ExternalResources.ACTUAL_METERS);
         }
     }
 
     protected void rulesReceived(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, Object context) {
-        log.info("Switch rules received (switch={}, key={})", switchId, key);
-        this.flowEntries = (List<FlowEntry>) context;
-        checkAllDataReceived();
+        log.info("Switch rules received (switch={}, key={})", validationContext.getSwitchId(), key);
+
+        @SuppressWarnings("unchecked")
+        List<FlowEntry> flowEntries = (List<FlowEntry>) context;
+        validationContext = validationContext.toBuilder()
+                .actualOfFlows(flowEntries)
+                .build();
+        pendingRequests.remove(ExternalResources.ACTUAL_OF_FLOWS);
+
+        fireNextIfAllResourcesReceived();
     }
 
     protected void expectedDefaultRulesReceived(SwitchValidateState from, SwitchValidateState to,
                                                 SwitchValidateEvent event, Object context) {
-        log.info("Switch expected default rules received (switch={}, key={})", switchId, key);
-        this.expectedDefaultFlowEntries = (List<FlowEntry>) context;
-        checkAllDataReceived();
+        log.info("Switch expected default rules received (switch={}, key={})", validationContext.getSwitchId(), key);
+
+        @SuppressWarnings("unchecked")
+        List<FlowEntry> flowEntries = (List<FlowEntry>) context;
+        validationContext = validationContext.toBuilder()
+                .expectedDefaultOfFlows(flowEntries)
+                .build();
+        pendingRequests.remove(ExternalResources.EXPECTED_DEFAULT_OF_FLOWS);
+
+        fireNextIfAllResourcesReceived();
     }
 
     protected void metersReceived(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, Object context) {
-        log.info("Switch meters received (switch={}, key={})", switchId, key);
-        this.presentMeters = (List<MeterEntry>) context;
-        checkAllDataReceived();
+        log.info("Switch meters received (switch={}, key={})", validationContext.getSwitchId(), key);
+
+        @SuppressWarnings("unchecked")
+        List<MeterEntry> meterEntries = (List<MeterEntry>) context;
+        validationContext = validationContext.toBuilder()
+                .actualMeters(meterEntries)
+                .build();
+        pendingRequests.remove(ExternalResources.ACTUAL_METERS);
+
+        fireNextIfAllResourcesReceived();
     }
 
+    // FIXME
     protected void expectedDefaultMetersReceived(SwitchValidateState from, SwitchValidateState to,
                                                  SwitchValidateEvent event, Object context) {
         log.info("Key: {}, switch expected default meters received", key);
@@ -280,16 +310,13 @@ public class SwitchValidateFsm
 
     protected void metersUnsupported(SwitchValidateState from, SwitchValidateState to,
                                      SwitchValidateEvent event, Object context) {
-        log.info("Switch meters unsupported (switch={}, key={})", switchId, key);
-        this.presentMeters = emptyList();
-        this.expectedDefaultMetersEntries = emptyList();
-        this.processMeters = false;
-        checkAllDataReceived();
+        log.info("Switch meters unsupported (switch={}, key={})", validationContext.getSwitchId(), key);
+        pendingRequests.remove(ExternalResources.ACTUAL_METERS);
+        fireNextIfAllResourcesReceived();
     }
 
-    private void checkAllDataReceived() {
-        if (flowEntries != null && presentMeters != null && expectedDefaultFlowEntries != null
-                && expectedDefaultMetersEntries != null) {
+    private void fireNextIfAllResourcesReceived() {
+        if (pendingRequests.isEmpty()) {
             fire(NEXT);
         }
     }
@@ -306,9 +333,9 @@ public class SwitchValidateFsm
 
     protected void validateRules(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, Object context) {
-        log.info("Validate rules (switch={}, key={})", switchId, key);
+        log.info("Validate rules (switch={}, key={})", validationContext.getSwitchId(), key);
         try {
-            validateRulesResult = validationService.validateRules(switchId, flowEntries, expectedDefaultFlowEntries);
+            validationContext = validationService.validateRules(commandContext, validationContext);
         } catch (Exception e) {
             sendException(e.getMessage());
         }
@@ -316,13 +343,13 @@ public class SwitchValidateFsm
 
     protected void validateMeters(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, Object context) {
-        try {
-            if (processMeters) {
-                log.info("Validate meters (switch={}, key={})", switchId, key);
-                validateMetersResult = validationService.validateMeters(switchId, presentMeters,
-                        expectedDefaultMetersEntries);
-            }
+        if (! request.isProcessMeters() || validationContext.getActualMeters() == null) {
+            return;
+        }
 
+        try {
+            log.info("Key: {}, validate meters", key);
+            validationContext = validationService.validateMeters(validationContext);
         } catch (Exception e) {
             sendException(e.getMessage());
         }
@@ -331,22 +358,9 @@ public class SwitchValidateFsm
     protected void finished(SwitchValidateState from, SwitchValidateState to,
                             SwitchValidateEvent event, Object context) {
         if (request.isPerformSync()) {
-            carrier.runSwitchSync(key, request,
-                    new ValidationResult(flowEntries, processMeters, validateRulesResult, validateMetersResult));
+            carrier.runSwitchSync(key, request, validationContext);
         } else {
-            RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(
-                    validateRulesResult.getMissingRules(), validateRulesResult.getMisconfiguredRules(),
-                    validateRulesResult.getProperRules(), validateRulesResult.getExcessRules());
-
-            MetersValidationEntry metersValidationEntry = null;
-            if (processMeters) {
-                metersValidationEntry = new MetersValidationEntry(
-                        validateMetersResult.getMissingMeters(), validateMetersResult.getMisconfiguredMeters(),
-                        validateMetersResult.getProperMeters(), validateMetersResult.getExcessMeters());
-            }
-
-            SwitchValidationResponse response = new SwitchValidationResponse(
-                    rulesValidationEntry, metersValidationEntry);
+            SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
             InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
             carrier.cancelTimeoutCallback(key);
@@ -394,5 +408,11 @@ public class SwitchValidateFsm
         METERS_UNSUPPORTED,
         TIMEOUT,
         ERROR
+    }
+
+    private enum ExternalResources {
+        ACTUAL_OF_FLOWS,
+        ACTUAL_METERS,
+        EXPECTED_DEFAULT_OF_FLOWS
     }
 }

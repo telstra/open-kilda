@@ -15,20 +15,20 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
-import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 
 public interface SwitchManagerCarrier {
     void sendCommandToSpeaker(String key, CommandData command);
+
+    void sendCommandToSpeaker(String key, FlowSegmentRequest request);
 
     void response(String key, Message message);
 
     void cancelTimeoutCallback(String key);
 
-    SwitchManagerTopologyConfig getTopologyConfig();
-
-    void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
+    void runSwitchSync(String key, SwitchValidateRequest request, SwitchValidationContext validationContext);
 }

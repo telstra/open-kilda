@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.share.utils.rule.validation;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -23,24 +24,35 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+// TODO: reuse OF flows mod generation code to produce validation artefacts and drop this class completely
 public class SimpleSwitchRuleConverter {
 
     private static final String VLAN_VID = "vlan_vid";
     private static final String IN_PORT = "in_port";
+
+    private final SwitchPropertiesRepository switchPropertiesRepository;
+
+    public SimpleSwitchRuleConverter(SwitchPropertiesRepository switchPropertiesRepository) {
+        this.switchPropertiesRepository = switchPropertiesRepository;
+    }
 
     /**
      * Convert {@link FlowPath} to list of {@link SimpleSwitchRule}.
@@ -62,28 +74,28 @@ public class SimpleSwitchRuleConverter {
                                                           EncapsulationId encapsulationId,
                                                           long flowMeterMinBurstSizeInKbits,
                                                           double flowMeterBurstCoefficient) {
-        boolean forward = flow.isForward(flowPath);
-        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
-        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
-        int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
-        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
-
-        SimpleSwitchRule rule = SimpleSwitchRule.builder()
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        SimpleSwitchRule.SimpleSwitchRuleBuilder rule = SimpleSwitchRule.builder()
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
                 .cookie(flowPath.getCookie().getValue())
-                .inPort(inPort)
-                .inVlan(inVlan)
+                .inPort(ingressEndpoint.getPortNumber())
                 .meterId(flowPath.getMeterId() != null ? flowPath.getMeterId().getValue() : null)
                 .meterRate(flow.getBandwidth())
                 .meterBurstSize(Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
                         flowMeterBurstCoefficient, flowPath.getSrcSwitch().getDescription()))
-                .meterFlags(Meter.getMeterKbpsFlags())
-                .build();
+                .meterFlags(Meter.getMeterKbpsFlags());
+
+        if (isMultiTableSwitch(ingressEndpoint.getSwitchId())) {
+            addMultiTableIngressMatch(rule, ingressEndpoint);
+        } else {
+            rule.inVlan(ingressEndpoint.getOuterVlanId());
+        }
 
         if (flow.isOneSwitchFlow()) {
-            rule.setOutPort(outPort);
-            rule.setOutVlan(outVlan);
-
+            FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+            rule.outPort(egressEndpoint.getPortNumber());
+            rule.outVlan(egressEndpoint.getOuterVlanId());
+            addVlanEncapsulationActions(rule, ingressEndpoint.getVlanStack(), egressEndpoint.getVlanStack());
         } else {
             PathSegment ingressSegment = flowPath.getSegments().stream()
                     .filter(segment -> segment.getSrcSwitch().getSwitchId()
@@ -93,15 +105,19 @@ public class SimpleSwitchRuleConverter {
                             String.format("PathSegment was not found for ingress flow rule, flowId: %s",
                                     flow.getFlowId())));
 
-            rule.setOutPort(ingressSegment.getSrcPort());
+            rule.outPort(ingressSegment.getSrcPort());
             if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-                rule.setOutVlan(encapsulationId.getEncapsulationId());
+                int vlanId = encapsulationId.getEncapsulationId();
+                rule.outVlan(vlanId);
+                addVlanEncapsulationActions(
+                        rule, ingressEndpoint.getVlanStack(),
+                        Collections.singletonList(vlanId));
             } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
-                rule.setTunnelId(encapsulationId.getEncapsulationId());
+                rule.tunnelId(encapsulationId.getEncapsulationId());
             }
         }
 
-        return rule;
+        return rule.build();
     }
 
     private List<SimpleSwitchRule> buildTransitAndEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
@@ -154,24 +170,25 @@ public class SimpleSwitchRuleConverter {
     private SimpleSwitchRule buildEgressSimpleSwitchRule(Flow flow, FlowPath flowPath,
                                                          PathSegment egressSegment,
                                                          EncapsulationId encapsulationId) {
-        boolean forward = flow.isForward(flowPath);
-        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
-        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
-
-        SimpleSwitchRule rule = SimpleSwitchRule.builder()
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+        SimpleSwitchRule.SimpleSwitchRuleBuilder rule = SimpleSwitchRule.builder()
                 .switchId(flowPath.getDestSwitch().getSwitchId())
-                .outPort(outPort)
-                .outVlan(outVlan)
+                .outPort(egressEndpoint.getPortNumber())
+                .outVlan(egressEndpoint.getOuterVlanId())
                 .inPort(egressSegment.getDestPort())
-                .cookie(flowPath.getCookie().getValue())
-                .build();
+                .cookie(flowPath.getCookie().getValue());
+
         if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-            rule.setInVlan(encapsulationId.getEncapsulationId());
+            int vlanId = encapsulationId.getEncapsulationId();
+            rule.inVlan(vlanId);
+            addVlanEncapsulationActions(rule, Collections.singletonList(vlanId), egressEndpoint.getVlanStack());
         } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
-            rule.setTunnelId(encapsulationId.getEncapsulationId());
+            FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+            rule.tunnelId(encapsulationId.getEncapsulationId());
+            addVlanEncapsulationActions(rule, ingressEndpoint.getVlanStack(), egressEndpoint.getVlanStack());
         }
 
-        return rule;
+        return rule.build();
     }
 
     /**
@@ -227,6 +244,10 @@ public class SimpleSwitchRuleConverter {
                             .map(Integer::parseInt)
                             .orElse(NumberUtils.INTEGER_ZERO));
                 }
+
+                if (applyActions.getEncapsulationActions() != null) {
+                    rule.setEncapsulationActions(applyActions.getEncapsulationActions());
+                }
             }
 
             Optional.ofNullable(flowEntry.getInstructions().getGoToMeter())
@@ -246,5 +267,74 @@ public class SimpleSwitchRuleConverter {
         }
 
         return rule;
+    }
+
+    /**
+     * Fields are defined into org.openkilda.floodlight.utils.MetadataAdapter.
+     */
+    private void addMultiTableIngressMatch(SimpleSwitchRule.SimpleSwitchRuleBuilder rule, FlowEndpoint endpoint) {
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            long presenceFlag = 0x01000000_00000000L;
+            long value = presenceFlag | endpoint.getOuterVlanId();
+            long mask = presenceFlag | 0x00000000_00000fffL;
+
+            rule.matchMetadata(formatMetadataMatch(value, mask));
+        }
+    }
+
+    /**
+     * Inspired by org.openkilda.floodlight.utils.OfAdapter#makeVlanReplaceActions.
+     *
+     * <p>Get rid of this ugly code duplication.
+     */
+    private void addVlanEncapsulationActions(
+            SimpleSwitchRule.SimpleSwitchRuleBuilder rule,
+            List<Integer> currentVlanStack, List<Integer> desiredVlanStack) {
+        Iterator<Integer> currentIter = currentVlanStack.iterator();
+        Iterator<Integer> desiredIter = desiredVlanStack.iterator();
+
+        while (currentIter.hasNext() && desiredIter.hasNext()) {
+            Integer current = currentIter.next();
+            Integer desired = desiredIter.next();
+            if (current == null || desired == null) {
+                throw new IllegalArgumentException(
+                        "Null elements are not allowed inside currentVlanStack and desiredVlanStack arguments");
+            }
+
+            if (!current.equals(desired)) {
+                // remove all extra VLANs
+                while (currentIter.hasNext()) {
+                    currentIter.next();
+                    rule.encapsulationAction("vlan_pop");
+                }
+                // rewrite existing VLAN stack "head"
+                rule.encapsulationAction(formatSetVlanAction(desired));
+                break;
+            }
+        }
+
+        // remove all extra VLANs (if previous loops ends with lack of desired VLANs
+        while (currentIter.hasNext()) {
+            currentIter.next();
+            rule.encapsulationAction("vlan_pop");
+        }
+        while (desiredIter.hasNext()) {
+            rule.encapsulationAction("vlan_push");
+            rule.encapsulationAction(formatSetVlanAction(desiredIter.next()));
+        }
+    }
+
+    private boolean isMultiTableSwitch(SwitchId switchId) {
+        return switchPropertiesRepository.findBySwitchId(switchId)
+                .map(SwitchProperties::isMultiTable)
+                .orElse(false);
+    }
+
+    private String formatMetadataMatch(long value, long mask) {
+        return String.format("0x%016x/0x%016x", value, mask);
+    }
+
+    public static String formatSetVlanAction(int vlanId) {
+        return String.format("vlan_vid=%d", vlanId);
     }
 }

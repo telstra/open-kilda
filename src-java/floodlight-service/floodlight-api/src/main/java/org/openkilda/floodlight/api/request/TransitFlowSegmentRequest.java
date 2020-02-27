@@ -56,4 +56,9 @@ public abstract class TransitFlowSegmentRequest extends FlowSegmentRequest {
                 other.messageContext, other.switchId, commandId, other.metadata,
                 other.ingressIslPort, other.egressIslPort, other.encapsulation);
     }
+
+    @Override
+    public void handle(FlowSegmentRequestHandler handler) {
+        handler.handleFlowSegmentRequest(this);
+    }
 }

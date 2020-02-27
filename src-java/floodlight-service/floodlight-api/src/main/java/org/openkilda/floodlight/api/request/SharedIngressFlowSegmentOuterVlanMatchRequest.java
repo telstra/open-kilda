@@ -47,4 +47,9 @@ public abstract class SharedIngressFlowSegmentOuterVlanMatchRequest extends Flow
             SharedIngressFlowSegmentOuterVlanMatchRequest other, UUID commandId) {
         this(other.messageContext, commandId, other.metadata, other.endpoint);
     }
+
+    @Override
+    public void handle(FlowSegmentRequestHandler handler) {
+        handler.handleFlowSegmentRequest(this);
+    }
 }

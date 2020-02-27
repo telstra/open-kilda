@@ -28,6 +28,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IllegalFlowStateException;
@@ -56,18 +57,23 @@ public class FlowValidationService {
     private FlowRepository flowRepository;
     private FlowResourcesManager flowResourcesManager;
 
-    private SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
+    private SimpleSwitchRuleConverter simpleSwitchRuleConverter;
 
     private long flowMeterMinBurstSizeInKbits;
     private double flowMeterBurstCoefficient;
 
     public FlowValidationService(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig,
                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        final RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
+
         this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+
+        this.simpleSwitchRuleConverter = new SimpleSwitchRuleConverter(
+                repositoryFactory.createSwitchPropertiesRepository());
     }
 
     /**
@@ -274,6 +280,16 @@ public class FlowValidationService {
             discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "outVlan",
                     String.valueOf(expected.getOutVlan()), String.valueOf(matched.getOutVlan())));
         }
+        if (! equalsIgnoreNulls(matched.getMatchMetadata(), expected.getMatchMetadata())) {
+            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "matchMetadata",
+                    String.valueOf(expected.getMatchMetadata()), String.valueOf(matched.getMatchMetadata())));
+        }
+        if (! equalsIgnoreNulls(matched.getEncapsulationActions(), expected.getEncapsulationActions())) {
+            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "encapsulationActions",
+                    String.valueOf(expected.getEncapsulationActions()),
+                    String.valueOf(matched.getEncapsulationActions())));
+        }
+
         //meters on OF_12 switches are not supported, so skip them.
         if ((matched.getVersion() == null || matched.getVersion().compareTo("OF_12") > 0)
                 && !(matched.getMeterId() == null && expected.getMeterId() == null)) {
@@ -285,8 +301,7 @@ public class FlowValidationService {
 
                 Switch sw = switchRepository.findById(expected.getSwitchId())
                         .orElseThrow(() -> new SwitchNotFoundException(expected.getSwitchId()));
-                boolean isESwitch =
-                        Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+                boolean isESwitch = sw.isNoviflowESwitch();
 
                 if (!equalsRate(matched.getMeterRate(), expected.getMeterRate(), isESwitch)) {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterRate",
@@ -303,6 +318,13 @@ public class FlowValidationService {
             }
         }
         return discrepancies;
+    }
+
+    private boolean equalsIgnoreNulls(Object left, Object right) {
+        if (left == null) {
+            return right == null;
+        }
+        return left.equals(right);
     }
 
     private boolean equalsRate(Long actual, Long expected, boolean isESwitch) {

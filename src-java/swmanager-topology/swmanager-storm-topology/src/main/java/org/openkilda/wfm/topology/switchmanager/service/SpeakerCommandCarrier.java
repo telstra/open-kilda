@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.wfm.error.PipelineException;
@@ -23,5 +25,9 @@ public interface SpeakerCommandCarrier {
 
     void sendCommand(String key, CommandMessage command) throws PipelineException;
 
+    void sendCommand(String key, SpeakerRequest request);
+
     void sendResponse(String key, Message response) throws PipelineException;
+
+    void sendResponse(String key, SpeakerResponse response);
 }

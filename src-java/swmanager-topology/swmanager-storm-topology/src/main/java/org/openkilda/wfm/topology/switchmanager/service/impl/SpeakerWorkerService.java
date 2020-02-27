@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -26,14 +28,15 @@ import org.openkilda.wfm.topology.switchmanager.service.SpeakerCommandCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
+// TODO(surabujin): useless - get rid of it
 @Slf4j
 public class SpeakerWorkerService {
     private final SpeakerCommandCarrier carrier;
 
-    private final Map<String, CommandData> keyToRequest = new HashMap<>();
+    private final Set<String> pendingKeys = new HashSet<>();
 
     public SpeakerWorkerService(SpeakerCommandCarrier carrier) {
         this.carrier = carrier;
@@ -46,8 +49,13 @@ public class SpeakerWorkerService {
      */
     public void sendCommand(String key, CommandData command) throws PipelineException {
         log.debug("Got a request from hub bolt {}", command);
-        keyToRequest.put(key, command);
+        pendingKeys.add(key);
         carrier.sendCommand(key, new CommandMessage(command, System.currentTimeMillis(), key));
+    }
+
+    public void sendCommand(String key, SpeakerRequest request) {
+        pendingKeys.add(key);
+        carrier.sendCommand(key, request);
     }
 
     /**
@@ -58,8 +66,16 @@ public class SpeakerWorkerService {
     public void handleResponse(String key, Message response)
             throws PipelineException {
         log.debug("Got a response from speaker {}", response);
-        CommandData pendingRequest = keyToRequest.remove(key);
-        if (pendingRequest != null) {
+        if (pendingKeys.remove(key)) {
+            carrier.sendResponse(key, response);
+        }
+    }
+
+    /**
+     * Proxy request into HUB.
+     */
+    public void handleResponse(String key, SpeakerResponse response) {
+        if (pendingKeys.remove(key)) {
             carrier.sendResponse(key, response);
         }
     }
@@ -70,10 +86,10 @@ public class SpeakerWorkerService {
      */
     public void handleTimeout(String key) throws PipelineException {
         log.debug("Send timeout error to hub {}", key);
-        CommandData commandData = keyToRequest.remove(key);
+        pendingKeys.remove(key);
 
         ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT,
-                String.format("Timeout for waiting response %s", commandData.toString()),
+                String.format("Timeout for waiting response (key=%s)", key),
                 "Error in SpeakerWorkerService");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
         carrier.sendResponse(key, errorMessage);

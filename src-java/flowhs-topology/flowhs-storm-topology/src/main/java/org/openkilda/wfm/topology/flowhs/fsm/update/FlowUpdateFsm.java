@@ -254,7 +254,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.transition().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
                     .to(State.REMOVING_OLD_RULES).on(Event.NEXT)
-                    .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
+                    .perform(new RemoveOldRulesAction(persistenceManager));
             builder.transitions().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -300,7 +300,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transitions().from(State.PATHS_SWAP_REVERTED)
                     .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
                     .onEach(Event.NEXT, Event.ERROR)
-                    .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
+                    .perform(new RevertNewRulesAction(persistenceManager));
 
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));

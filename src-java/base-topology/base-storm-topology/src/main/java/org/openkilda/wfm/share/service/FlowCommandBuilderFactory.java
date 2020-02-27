@@ -16,16 +16,9 @@
 package org.openkilda.wfm.share.service;
 
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 
 public class FlowCommandBuilderFactory {
-    private final FlowResourcesManager resourcesManager;
-
-    public FlowCommandBuilderFactory(FlowResourcesManager resourcesManager) {
-        this.resourcesManager = resourcesManager;
-    }
-
     /**
      * Provides a flow command factory depending on the encapsulation type.
      *

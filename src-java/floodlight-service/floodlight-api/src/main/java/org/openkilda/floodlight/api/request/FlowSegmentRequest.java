@@ -75,4 +75,6 @@ public abstract class FlowSegmentRequest extends SpeakerRequest {
     public boolean isVerifyRequest() {
         return false;
     }
+
+    public abstract void handle(FlowSegmentRequestHandler handler);
 }

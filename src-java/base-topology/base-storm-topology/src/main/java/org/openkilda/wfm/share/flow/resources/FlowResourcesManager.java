@@ -19,15 +19,16 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
+import org.openkilda.wfm.share.model.FlowPathReference;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -45,7 +46,6 @@ public class FlowResourcesManager {
     private static final int MAX_ALLOCATION_ATTEMPTS = 5;
 
     private final TransactionManager transactionManager;
-    private final SwitchRepository switchRepository;
 
     private final CookiePool cookiePool;
     private final MeterPool meterPool;
@@ -53,7 +53,6 @@ public class FlowResourcesManager {
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
-        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie());
         this.meterPool = new MeterPool(persistenceManager,
@@ -155,6 +154,33 @@ public class FlowResourcesManager {
         return new PathId(format("%s_%s", flowId, UUID.randomUUID()));
     }
 
+    public FlowResources fetchResources(FlowPathReference pathReference) {
+        FlowEncapsulationType encapsulationType = pathReference.getFlow().getEncapsulationType();
+        return fetchResources(pathReference.getPath(), pathReference.getOppositePath(), encapsulationType);
+    }
+
+    /**
+     * Load resources from persistent storage. One or both path can be null. No resources are returned for null path(s).
+     */
+    public FlowResources fetchResources(
+            FlowPath forwardPath, FlowPath reversePath, FlowEncapsulationType encapsulationType) {
+        EncapsulationResources forwardEncapsulationResources = fetchPathResources(
+                forwardPath, reversePath, encapsulationType)
+                .orElse(null);
+        EncapsulationResources reverseEncapsulationResources = fetchPathResources(
+                reversePath, forwardPath, encapsulationType)
+                .orElse(forwardEncapsulationResources);
+
+        if (forwardEncapsulationResources == null) {
+            forwardEncapsulationResources = reverseEncapsulationResources;
+        }
+
+        return FlowResources.builder()
+                .forward(makePathResources(forwardPath, forwardEncapsulationResources).orElse(null))
+                .reverse(makePathResources(reversePath, reverseEncapsulationResources).orElse(null))
+                .build();
+    }
+
     /**
      * Deallocate the flow path resources.
      * <p/>
@@ -209,5 +235,28 @@ public class FlowResourcesManager {
                                                                       PathId oppositePathId,
                                                                       FlowEncapsulationType encapsulationType) {
         return getEncapsulationResourcesProvider(encapsulationType).get(pathId, oppositePathId);
+    }
+
+    private Optional<EncapsulationResources> fetchPathResources(
+            FlowPath path, FlowPath oppositePath, FlowEncapsulationType encapsulationType) {
+        if (path == null) {
+            return Optional.empty();
+        }
+
+        PathId oppositePathId = oppositePath != null ? oppositePath.getPathId() : null;
+        return getEncapsulationResources(path.getPathId(), oppositePathId, encapsulationType);
+    }
+
+    private Optional<FlowResources.PathResources> makePathResources(
+            FlowPath path, EncapsulationResources encapsulationResources) {
+        if (path == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(FlowResources.PathResources.builder()
+                .pathId(path.getPathId())
+                .meterId(path.getMeterId())
+                .encapsulationResources(encapsulationResources)
+                .build());
     }
 }

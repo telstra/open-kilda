@@ -272,32 +272,25 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     /**
-     * Creates Kafka bolt, that uses {@link MessageSerializer} in order to serialize an object.
-     *
-     * @param topic Kafka topic
-     * @return {@link KafkaBolt}
+     * Creates Kafka bolt, that uses {@link AbstractMessageSerializer} in order to serialize an object.
      */
-    protected KafkaBolt<String, Message> buildKafkaBolt(final String topic) {
-        Properties properties = getKafkaProducerProperties();
-        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MessageSerializer.class.getName());
-
-        return new KafkaBolt<String, Message>()
-                .withProducerProperties(properties)
-                .withTopicSelector(new DefaultTopicSelector(topic))
-                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+    protected KafkaBolt<String, AbstractMessage> buildKafkaBoltWithAbstractMessageSupport(final String topic) {
+        return buildKafkaBolt(topic, AbstractMessage.class, AbstractMessageSerializer.class);
     }
 
     /**
-     * Creates Kafka bolt, that uses {@link AbstractMessageSerializer} in order to serialize an object.
-     *
-     * @param topic Kafka topic
-     * @return {@link KafkaBolt}
+     * Creates Kafka bolt, that uses {@link MessageSerializer} in order to serialize an object.
      */
-    protected KafkaBolt<String, T> buildKafkaBoltWithAbstractMessageSupport(final String topic) {
-        Properties properties = getKafkaProducerProperties();
-        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AbstractMessageSerializer.class.getName());
+    protected KafkaBolt<String, Message> buildKafkaBolt(final String topic) {
+        return buildKafkaBolt(topic, Message.class, MessageSerializer.class);
+    }
 
-        return new KafkaBolt<String, T>()
+    protected <V> KafkaBolt<String, V> buildKafkaBolt(
+            String topic, Class<V> valueTypeReference, Class<?> serializerClass) {
+        Properties properties = getKafkaProducerProperties();
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, serializerClass.getName());
+
+        return new KafkaBolt<String, V>()
                 .withProducerProperties(properties)
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());

@@ -40,6 +40,7 @@ import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowCopyField;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionPopVlan;
 import org.projectfloodlight.openflow.protocol.action.OFActionPushVlan;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -49,6 +50,8 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
+import org.projectfloodlight.openflow.types.Masked;
+import org.projectfloodlight.openflow.types.OFMetadata;
 
 import java.util.List;
 import java.util.Objects;
@@ -140,6 +143,8 @@ public abstract class OfFlowStatsMapper {
                         .map(Objects::toString).orElse(null))
                 .tunnelId(Optional.ofNullable(match.get(MatchField.TUNNEL_ID))
                         .map(Objects::toString).orElse(null))
+                .metadata(Optional.ofNullable(match.getMasked(MatchField.METADATA))
+                        .map(this::formatMatchMaskedMetadata).orElse(null))
                 .build();
     }
 
@@ -177,6 +182,8 @@ public abstract class OfFlowStatsMapper {
                 fillFlowAction(flowActions, (OFActionMeter) action);
             } else if (action instanceof OFActionPushVlan) {
                 fillFlowAction(flowActions, (OFActionPushVlan) action);
+            } else if (action instanceof OFActionPopVlan) {
+                fillFlowAction(flowActions, (OFActionPopVlan) action);
             } else if (action instanceof OFActionOutput) {
                 fillFlowAction(flowActions, (OFActionOutput) action);
             } else if (action instanceof OFActionSetField) {
@@ -256,6 +263,11 @@ public abstract class OfFlowStatsMapper {
 
     private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionPushVlan action) {
         flowActions.pushVlan(String.valueOf(action.getEthertype().toString()));
+        flowActions.encapsulationAction("vlan_push");
+    }
+
+    private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionPopVlan action) {
+        flowActions.encapsulationAction("vlan_pop");
     }
 
     private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionOutput action) {
@@ -268,6 +280,7 @@ public abstract class OfFlowStatsMapper {
 
         if (MatchField.VLAN_VID.getName().equals(field.getMatchField().getName())) {
             value = String.valueOf(Long.decode(value) & VLAN_MASK);
+            flowActions.encapsulationAction(String.format("vlan_vid=%s", value));
         }
 
         flowActions.fieldAction(new FlowSetFieldAction(field.getMatchField().getName(), value));
@@ -315,5 +328,11 @@ public abstract class OfFlowStatsMapper {
             return outputAction.get().getPort().getPortNumber();
         }
         return 0;
+    }
+
+    private String formatMatchMaskedMetadata(Masked<OFMetadata> metadataMatch) {
+        OFMetadata value = metadataMatch.getValue();
+        OFMetadata mask = metadataMatch.getMask();
+        return String.format("0x%016x/0x%016x", value.getValue().getValue(),  mask.getValue().getValue());
     }
 }

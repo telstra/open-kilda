@@ -26,11 +26,11 @@ import java.util.stream.Stream;
 
 class IdProvider {
     private long flowCounter = 0;
-    private long flowEffectiveIdCounter = 0;
+    private long flowEffectiveIdCounter = 1;
     private long pathCounter = 0;
 
-    private int transitVlanCounter = 0;
-    private int transitVxLanCounter = 0;
+    private int transitVlanCounter = 1;
+    private int transitVxLanCounter = 1;
 
     private Map<SwitchId, Integer> meterCounters = new HashMap<>();
 

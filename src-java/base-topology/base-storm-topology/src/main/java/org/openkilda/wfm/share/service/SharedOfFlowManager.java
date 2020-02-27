@@ -96,6 +96,10 @@ public class SharedOfFlowManager {
         return evaluateStatus(sharedFlow, path.getPathId());
     }
 
+    private SharedOfFlowStatus evaluateStatus(SharedOfFlow sharedFlow) {
+        return evaluateStatus(sharedFlow, null);
+    }
+
     private SharedOfFlowStatus evaluateStatus(SharedOfFlow sharedFlow, PathId ignorePath) {
         List<PathId> ignoreReferences = referencesToRemove;
         if (ignorePath != null) {

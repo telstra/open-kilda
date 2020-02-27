@@ -16,68 +16,71 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
-import org.openkilda.model.Cookie;
+import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.MeterId;
-import org.openkilda.model.PathId;
+import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.persistence.dummy.IslDirectionalReference;
+import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class ValidationServiceImplTest {
+@RunWith(MockitoJUnitRunner.class)
+public class ValidationServiceImplTest extends Neo4jBasedTest {
+    private static final CommandContext commandContext = new CommandContext("dummy");
 
-    private static final SwitchId SWITCH_ID_A = new SwitchId("00:10");
-    private static final SwitchId SWITCH_ID_B = new SwitchId("00:20");
-    private static final SwitchId SWITCH_ID_E = new SwitchId("00:30");
-    private static final SwitchId SWITCH_ID_C = new SwitchId("00:40");
-    private static final long FLOW_E_BANDWIDTH = 10000L;
-    private static final Switch switchA = Switch.builder()
-            .switchId(SWITCH_ID_A)
-            .description("Nicira, Inc. OF_13 2.5.5")
-            .build();
-    private static final Switch switchB = Switch.builder()
-            .switchId(SWITCH_ID_B)
-            .description("Nicira, Inc. OF_13 2.5.5")
-            .build();
-    private static DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
-            true, true, true, true, false, false, false, false);
+    private static final SwitchId SWITCH_ID_BEFORE = new SwitchId("00:10");
+    private static final SwitchId SWITCH_ID_TARGET = new SwitchId("00:20");
+    private static final SwitchId SWITCH_ID_AFTER = new SwitchId("00:30");
+
+    private final IslDirectionalReference islBeforeTarget = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_BEFORE, 1), new IslEndpoint(SWITCH_ID_TARGET, 2));
+    private final IslDirectionalReference islTargetAfter = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_TARGET, 3), new IslEndpoint(SWITCH_ID_AFTER, 4));
+    private final IslDirectionalReference islBeforeAfter = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_BEFORE, 5), new IslEndpoint(SWITCH_ID_AFTER, 6));
+
+    private Flow flowTargetStarts;
+    private Flow flowTargetEnds;
+    private Flow flowTargetTransit;
+    private Flow flowTargetBypass;
+
     private static SwitchManagerTopologyConfig topologyConfig;
 
     @BeforeClass
@@ -87,145 +90,321 @@ public class ValidationServiceImplTest {
         topologyConfig = configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
     }
 
+    @Before
+    public void setUp() throws Exception {
+        dummyFactory.makeSwitch(SWITCH_ID_BEFORE);
+        dummyFactory.makeSwitch(SWITCH_ID_TARGET);
+        Switch switchAfter = dummyFactory.makeSwitch(SWITCH_ID_AFTER);
+
+        switchAfter.setOfDescriptionManufacturer("E");
+        persistenceManager.getRepositoryFactory().createSwitchRepository()
+                .createOrUpdate(switchAfter);
+
+        for (IslDirectionalReference reference : new IslDirectionalReference[]{
+                islBeforeTarget, islTargetAfter, islBeforeAfter}) {
+            dummyFactory.makeIsl(reference.getSourceEndpoint(), reference.getDestEndpoint());
+            dummyFactory.makeIsl(reference.getDestEndpoint(), reference.getSourceEndpoint());
+        }
+
+        flowTargetStarts = dummyFactory.makeFlow(
+                new FlowEndpoint(SWITCH_ID_TARGET, 10, 100),
+                new FlowEndpoint(SWITCH_ID_AFTER, 11, 101),
+                islTargetAfter);
+        flowTargetEnds = dummyFactory.makeFlow(
+                new FlowEndpoint(SWITCH_ID_BEFORE, 12, 103),
+                new FlowEndpoint(SWITCH_ID_TARGET, 13, 104),
+                islBeforeTarget);
+        flowTargetTransit = dummyFactory.makeFlow(
+                new FlowEndpoint(SWITCH_ID_BEFORE, 14, 105),
+                new FlowEndpoint(SWITCH_ID_AFTER, 15, 106),
+                islBeforeTarget, islTargetAfter);
+        flowTargetBypass = dummyFactory.makeFlow(
+                new FlowEndpoint(SWITCH_ID_BEFORE, 16, 107),
+                new FlowEndpoint(SWITCH_ID_AFTER, 17, 108),
+                islBeforeAfter);
+    }
+
     @Test
     public void validateRulesEmpty() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
+        ValidationService validationService = makeService();
+        ValidateRulesResult response = validationService.validateRules(
+                commandContext, makeValidationContext(emptyList(), emptyList()))
+                .getOfFlowsValidationReport();
+        verifyCookiesSeriesMatch(extractCookies(collectFlowEntries()), response.getMissingRules());
+        assertTrue(response.getProperRules().isEmpty());
+        assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    // FIXME
+    @Test
+    public void mustHaveLldpRuleWithOutConnectedDevices() {
+        Flow flow = createFlowForConnectedDevices(false, false);
+
+        ValidationServiceImpl validationService =
+                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(1).build(), topologyConfig);
+
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getReversePath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_A, flow.getProtectedReversePath()));
+
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getReversePath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedForwardPath()));
+        assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_B, flow.getProtectedReversePath()));
+    }
+
+    @Test
+    public void mustHaveLldpRuleWithConnectedDevices() {
+        Flow flow = createFlowForConnectedDevices(true, true);
+
+        ValidationServiceImpl validationService = makeService();
+
+        Assert.assertNotNull(flow.getForwardPath());
+        Assert.assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_BEFORE, flow.getForwardPath()));
+
+        Assert.assertNotNull(flow.getReversePath());
+        Assert.assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_AFTER, flow.getReversePath()));
+
+        Assert.assertNotNull(flow.getProtectedForwardPath());
+        Assert.assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_BEFORE, flow.getProtectedForwardPath()));
+
+        Assert.assertNotNull(flow.getProtectedReversePath());
+        Assert.assertTrue(validationService.mustHaveLldpRule(SWITCH_ID_AFTER, flow.getProtectedReversePath()));
+
+        Assert.assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_AFTER, flow.getForwardPath()));
+        Assert.assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_BEFORE, flow.getReversePath()));
+        Assert.assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_AFTER, flow.getProtectedForwardPath()));
+        Assert.assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_BEFORE, flow.getProtectedReversePath()));
+    }
+
+    @Test
+    public void mustHaveLldpRuleWithOutConnectedDevices() {
+        Flow flow = createFlowForConnectedDevices(false, false);
+
+        ValidationServiceImpl validationService = makeService();
+        for (FlowPath path : flow.getPaths()) {
+            Assert.assertNotNull(path);
+            Assert.assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_BEFORE, path));
+            Assert.assertFalse(validationService.mustHaveLldpRule(SWITCH_ID_AFTER, path));
+        }
+    }
+
+    @Test
+    public void validateExcessAndMissingFlowRulesDetection() {
+        ValidationService validationService = makeService();
+>>>>>>> 4e7dffe8e... Incorporate QinQ flows logic into flow and switch validation tools
+
+        List<FlowEntry> properEntries = collectFlowEntries(flowTargetStarts, flowTargetTransit);
+        List<FlowEntry> extraEntries = collectFlowEntries(flowTargetBypass);
+        List<FlowEntry> missingEntries = collectFlowEntries(flowTargetEnds);
+
+<<<<<<< HEAD
+    @Test
+||||||| parent of 4e7dffe8e... Incorporate QinQ flows logic into flow and switch validation tools
+    @Test
+    public void validateRulesSegmentAndIngressLldpCookiesProper() {
+        PersistenceManager persistenceManager = persistenceManager()
+                .withIngressCookies(1L)
+                .withDetectConnectedDevices(detectConnectedDevices)
+                .build();
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
+        List<FlowEntry> flowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(1L).build());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertTrue(response.getMissingRules().isEmpty());
+        assertEquals(ImmutableSet.of(1L), new HashSet<>(response.getProperRules()));
+        assertTrue(response.getExcessRules().isEmpty());
+    }
+
+    @Test
+    public void validateRulesSegmentAndIngressLldpCookiesMissing() {
+        PersistenceManager persistenceManager = persistenceManager()
+                .withIngressCookies(1L)
+                .withDetectConnectedDevices(new DetectConnectedDevices(true, false, true, false, false, false))
+                .build();
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
+        assertEquals(ImmutableSet.of(1L), new HashSet<>(response.getMissingRules()));
         assertTrue(response.getProperRules().isEmpty());
         assertTrue(response.getExcessRules().isEmpty());
     }
 
     @Test
-    public void validateRulesSimpleSegmentCookies() {
-        ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
-        assertEquals(ImmutableList.of(3L), response.getMissingRules());
-        assertEquals(ImmutableList.of(2L), response.getProperRules());
-        assertEquals(ImmutableList.of(1L), response.getExcessRules());
+=======
+        List<FlowEntry> actualEntries = new ArrayList<>(properEntries);
+        actualEntries.addAll(extraEntries);
+
+        ValidateRulesResult response = validationService.validateRules(
+                commandContext, makeValidationContext(actualEntries, emptyList()))
+                .getOfFlowsValidationReport();
+
+        verifyCookiesSeriesMatch(extractCookies(missingEntries), response.getMissingRules());
+        verifyCookiesSeriesMatch(extractCookies(properEntries), response.getProperRules());
+        verifyCookiesSeriesMatch(extractCookies(extraEntries), response.getExcessRules());
     }
 
     @Test
-    public void validateRulesSegmentAndIngressCookies() {
-        ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build(),
-                        topologyConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
+    public void validateFlowRulesFullMatch() {
+        ValidationService validationService = makeService();
+        List<FlowEntry> properEntries = collectFlowEntries();
+        ValidateRulesResult response = validationService.validateRules(
+                commandContext, makeValidationContext(properEntries, emptyList()))
+                .getOfFlowsValidationReport();
         assertTrue(response.getMissingRules().isEmpty());
-        assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
+        verifyCookiesSeriesMatch(extractCookies(properEntries), response.getProperRules());
         assertTrue(response.getExcessRules().isEmpty());
     }
 
     @Test
     public void validateDefaultRules() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        List<FlowEntry> flowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
-                        FlowEntry.builder().cookie(0x8000000000000001L).priority(2).build(),
-                        FlowEntry.builder().cookie(0x8000000000000002L).priority(1).build(),
-                        FlowEntry.builder().cookie(0x8000000000000002L).priority(2).build(),
-                        FlowEntry.builder().cookie(0x8000000000000004L).priority(1).build());
-        List<FlowEntry> expectedDefaultFlowEntries =
-                Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(321).build(),
+        final ValidationService validationService = makeService();
+        final List<FlowEntry> flowEntries = Lists.newArrayList(
+                FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
+                FlowEntry.builder().cookie(0x8000000000000001L).priority(2).build(),
+                FlowEntry.builder().cookie(0x8000000000000002L).priority(1).build(),
+                FlowEntry.builder().cookie(0x8000000000000002L).priority(2).build(),
+                FlowEntry.builder().cookie(0x8000000000000004L).priority(1).build());
+        final List<FlowEntry> expectedDefaultFlowEntries =
+                Lists.newArrayList(
+                        FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(321).build(),
                         FlowEntry.builder().cookie(0x8000000000000002L).priority(3).build(),
                         FlowEntry.builder().cookie(0x8000000000000003L).priority(1).build());
-        ValidateRulesResult response =
-                validationService.validateRules(SWITCH_ID_A, flowEntries, expectedDefaultFlowEntries);
-        assertEquals(ImmutableSet.of(0x8000000000000001L), new HashSet<>(response.getProperRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000001L, 0x8000000000000002L),
-                new HashSet<>(response.getMisconfiguredRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000003L), new HashSet<>(response.getMissingRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000004L), new HashSet<>(response.getExcessRules()));
+
+        ValidateRulesResult response = validationService.validateRules(
+                commandContext, makeValidationContext(flowEntries, expectedDefaultFlowEntries))
+                .getOfFlowsValidationReport();
+
+
+        verifyCookiesSeriesMatch(Lists.newArrayList(0x8000000000000001L), response.getProperRules());
+        verifyCookiesSeriesMatch(
+                Lists.newArrayList(0x8000000000000001L, 0x8000000000000002L), response.getMisconfiguredRules());
+
+        List<Long> missingCookies = extractCookies(collectFlowEntries());
+        missingCookies.add(0x8000000000000003L);
+        verifyCookiesSeriesMatch(missingCookies, response.getMissingRules());
+
+        verifyCookiesSeriesMatch(Lists.newArrayList(0x8000000000000004L), response.getExcessRules());
     }
 
     @Test
-    public void validateMetersEmpty() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList());
-        assertTrue(response.getMissingMeters().isEmpty());
+    public void validateMissingFlowMeters() {
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .actualMeters(Collections.emptyList())
+                .build();
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries();
+        verifyMetersSeriesMatch(expectedMeters, response.getMissingMeters());
+
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
     @Test
-    public void validateMetersProperMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
+    public void validateProperFlowMeters() {
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries();
+        List<MeterEntry> actualMeterEntries = expectedMeters.stream()
+                .map(entry -> new MeterEntry(
+                        entry.getMeterId(), entry.getRate(), entry.getBurstSize(), "OF_13",
+                        new String[]{"KBPS", "BURST", "STATS"}))
+                .collect(Collectors.toList());
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .actualMeters(actualMeterEntries)
+                .build();
+
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertFalse(response.getProperMeters().isEmpty());
-        assertEquals(32L, (long) response.getProperMeters().get(0).getMeterId());
-        assertMeter(response.getProperMeters().get(0), 32, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
+        verifyMetersSeriesMatch(expectedMeters, response.getProperMeters());
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
     @Test
-    public void validateMetersMisconfiguredMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        String[] actualFlags = new String[]{"PKTPS", "BURST", "STATS"};
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)),
-                emptyList());
+    public void validateMetersMisconfiguredMeters() {
+        long rateOffset = 100;
+        long burstOffset = 200;
+
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries();
+        List<MeterEntry> actualMeterEntries = expectedMeters.stream()
+                .map(entry -> new MeterEntry(
+                        entry.getMeterId(), entry.getRate() + rateOffset, entry.getBurstSize() + burstOffset, "OF_13",
+                        new String[]{"KBPS", "BURST", "STATS"}))
+                .collect(Collectors.toList());
+
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .actualMeters(actualMeterEntries)
+                .build();
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
         assertTrue(response.getMissingMeters().isEmpty());
-        assertFalse(response.getMisconfiguredMeters().isEmpty());
-        assertEquals(10002, (long) response.getMisconfiguredMeters().get(0).getActual().getRate());
-        assertEquals(10000, (long) response.getMisconfiguredMeters().get(0).getExpected().getRate());
-        assertEquals(10498L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
-        assertEquals(10500L, (long) response.getMisconfiguredMeters().get(0).getExpected().getBurstSize());
-        assertArrayEquals(actualFlags, response.getMisconfiguredMeters().get(0).getActual().getFlags());
-        assertArrayEquals(new String[]{"KBPS", "BURST", "STATS"},
-                response.getMisconfiguredMeters().get(0).getExpected().getFlags());
+
+        assertEquals(actualMeterEntries.size(), response.getMisconfiguredMeters().size());
+        for (MeterInfoEntry entry : response.getMisconfiguredMeters()) {
+            MeterMisconfiguredInfoEntry actual = entry.getActual();
+            MeterMisconfiguredInfoEntry expected = entry.getExpected();
+
+            assertEquals(actual.getRate() - rateOffset, (long) expected.getRate());
+            assertEquals(actual.getBurstSize() - burstOffset, (long) expected.getBurstSize());
+        }
+
         assertTrue(response.getProperMeters().isEmpty());
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
     @Test
-    public void validateMetersMissingAndExcessMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
-        assertFalse(response.getMissingMeters().isEmpty());
-        assertMeter(response.getMissingMeters().get(0), 32, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
+    public void validateMetersMissingAndExcessMeters() {
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries();
+        List<MeterInfoEntry> missingMeters = Collections.singletonList(expectedMeters.remove(0));
+        MeterInfoEntry lastEntry = expectedMeters.get(expectedMeters.size() - 1);
+        List<MeterInfoEntry> extraMeters = Collections.singletonList(
+                MeterInfoEntry.builder()
+                        .meterId(lastEntry.getMeterId() + 1)
+                        .rate(lastEntry.getRate())
+                        .burstSize(lastEntry.getBurstSize())
+                        .build());
+
+        List<MeterEntry> actualMeterEntries = Stream.concat(expectedMeters.stream(), extraMeters.stream())
+                .map(entry -> new MeterEntry(
+                        entry.getMeterId(), entry.getRate(), entry.getBurstSize(), "OF_13",
+                        new String[]{"KBPS", "BURST", "STATS"}))
+                .collect(Collectors.toList());
+
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .actualMeters(actualMeterEntries)
+                .build();
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
         assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertTrue(response.getProperMeters().isEmpty());
-        assertFalse(response.getExcessMeters().isEmpty());
-        assertMeter(response.getExcessMeters().get(0), 33, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
+        verifyMetersSeriesMatch(expectedMeters, response.getProperMeters());
+        verifyMetersSeriesMatch(extraMeters, response.getExcessMeters());
     }
 
     @Test
-    public void validateExcessMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A,
-                Lists.newArrayList(new MeterEntry(100, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
-        assertTrue(response.getMissingMeters().isEmpty());
-        assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertTrue(response.getProperMeters().isEmpty());
-        assertEquals(1, response.getExcessMeters().size());
-        assertMeter(response.getExcessMeters().get(0), 100, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
-    }
+    public void validateMetersIgnoreDefaultMeters() {
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries();
+        List<MeterEntry> actualMeterEntries = Lists.newArrayList(
+                new MeterEntry(2, 0, 0, null, null),
+                new MeterEntry(3, 0, 0, null, null));
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .actualMeters(actualMeterEntries)
+                .build();
 
-    @Test
-    public void validateDefaultMeters() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        MeterEntry missingMeter = new MeterEntry(2, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
-        MeterEntry excessMeter = new MeterEntry(4, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(excessMeter,
-                        new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                Lists.newArrayList(missingMeter));
-        assertFalse(response.getMissingMeters().isEmpty());
-        assertEquals(1, response.getMissingMeters().size());
-        assertMeter(response.getMissingMeters().get(0), missingMeter);
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
+        verifyMetersSeriesMatch(expectedMeters, response.getMissingMeters());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
         assertEquals(1, response.getProperMeters().size());
@@ -235,189 +414,168 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersProperMetersESwitch() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) - 1;
-        long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
-        long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
-                Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
-                        new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
+    public void validateMetersProperMetersESwitch() {
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries(
+                SWITCH_ID_AFTER, flowTargetStarts, flowTargetTransit, flowTargetBypass);
+
+        List<MeterEntry> actualMeterEntries = expectedMeters.stream()
+                .map(entry -> {
+                    long rate = entry.getRate() + (long) (entry.getRate() * 0.01) - 1;
+                    long burst = (long) (entry.getRate() * 1.05);
+                    burst += (long) (burst * 0.01) - 1;
+                    return new MeterEntry(
+                            entry.getMeterId(), rate, burst, "OF_13",
+                            new String[]{"KBPS", "BURST", "STATS"});
+                })
+                .collect(Collectors.toList());
+
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .switchId(SWITCH_ID_AFTER)
+                .actualMeters(actualMeterEntries)
+                .build();
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertFalse(response.getProperMeters().isEmpty());
-        assertEquals(32L, (long) response.getProperMeters().get(0).getMeterId());
-        assertMeter(response.getProperMeters().get(0), 32, rateESwitch, burstSizeESwitch,
-                new String[]{"KBPS", "BURST", "STATS"});
+        verifyMetersSeriesMatch(expectedMeters, response.getProperMeters());
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
     @Test
-    public void validateMetersMisconfiguredMetersESwitch() throws SwitchNotFoundException {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) + 1;
-        long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
-        long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) + 1;
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
-                Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
-                        new String[]{"KBPS", "BURST", "STATS"})),
-                emptyList());
+    public void validateMetersMisconfiguredMetersESwitch() {
+        List<MeterInfoEntry> expectedMeters = collectMeterEntries(
+                SWITCH_ID_AFTER, flowTargetStarts, flowTargetTransit, flowTargetBypass);
+
+        long rateOffset = 100;
+        long burstOffset = 200;
+        List<MeterEntry> actualMeterEntries = expectedMeters.stream()
+                .map(entry -> {
+                    long rate = entry.getRate() + (long) (entry.getRate() * 0.01) - 1;
+                    long burst = (long) (entry.getRate() * 1.05);
+                    burst += (long) (burst * 0.01) - 1;
+                    return new MeterEntry(
+                            entry.getMeterId(), rate + rateOffset, burst + burstOffset, "OF_13",
+                            new String[]{"KBPS", "BURST", "STATS"});
+                })
+                .collect(Collectors.toList());
+
+        SwitchValidationContext validationContext = makeValidationContext(
+                Collections.emptyList(), Collections.emptyList())
+                .toBuilder()
+                .switchId(SWITCH_ID_AFTER)
+                .actualMeters(actualMeterEntries)
+                .build();
+        ValidateMetersResult response = makeService().validateMeters(validationContext).getMetersValidationReport();
+
         assertTrue(response.getMissingMeters().isEmpty());
-        assertFalse(response.getMisconfiguredMeters().isEmpty());
-        assertEquals(10606L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
-        assertEquals(10500L, (long) response.getMisconfiguredMeters().get(0).getExpected().getBurstSize());
+        verifyMetersSeriesMatch(expectedMeters, response.getMisconfiguredMeters());
         assertTrue(response.getProperMeters().isEmpty());
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
-    private void assertMeter(MeterInfoEntry meterInfoEntry, MeterEntry expected) {
-        assertMeter(meterInfoEntry, expected.getMeterId(), expected.getRate(), expected.getBurstSize(),
-                expected.getFlags());
+    private void verifyCookiesSeriesMatch(List<Long> expectedSeries, List<Long> actualSeries) {
+        List<Long> expected = new ArrayList<>(expectedSeries);
+        expected.sort(null);
+
+        List<Long> actual = new ArrayList<>(actualSeries);
+        actual.sort(null);
+        assertEquals(expected, actual);
     }
 
-    private void assertMeter(MeterInfoEntry meterInfoEntry, long expectedId, long expectedRate, long expectedBurstSize,
-                             String[] expectedFlags) {
-        assertEquals(expectedId, (long) meterInfoEntry.getMeterId());
-        assertEquals(expectedRate, (long) meterInfoEntry.getRate());
-        assertEquals(expectedBurstSize, (long) meterInfoEntry.getBurstSize());
-        assertEquals(Sets.newHashSet(expectedFlags), Sets.newHashSet(meterInfoEntry.getFlags()));
+    private void verifyMetersSeriesMatch(List<MeterInfoEntry> expectedSeries, List<MeterInfoEntry> actualSeries) {
+        Set<Long> expected = extractMeterIds(expectedSeries);
+        Set<Long> actual = extractMeterIds(actualSeries);
+        assertEquals(expected, actual);
     }
 
-    private static FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, String pathId, long cookie) {
-        return FlowPath.builder()
-                .flow(flow)
-                .srcSwitch(srcSwitch)
-                .destSwitch(dstSwitch)
-                .pathId(new PathId(pathId))
-                .cookie(new Cookie(cookie))
+    private List<FlowEntry> collectFlowEntries() {
+        return collectFlowEntries(flowTargetStarts, flowTargetEnds, flowTargetTransit);
+    }
+
+    private List<FlowEntry> collectFlowEntries(Flow... flowsSet) {
+        List<FlowEntry> results = new ArrayList<>();
+        for (Flow flow : flowsSet) {
+            for (FlowPath path : flow.getPaths()) {
+                FlowEntry entry = FlowEntry.builder()
+                        .cookie(path.getCookie().getValue())
+                        .build();
+                results.add(entry);
+            }
+        }
+        return results;
+    }
+
+    private List<MeterInfoEntry> collectMeterEntries() {
+        return collectMeterEntries(SWITCH_ID_TARGET, flowTargetStarts, flowTargetEnds);
+    }
+
+    private List<MeterInfoEntry> collectMeterEntries(SwitchId target, Flow... flowsSet) {
+        List<MeterInfoEntry> results = new ArrayList<>();
+        for (Flow flow : flowsSet) {
+            for (FlowPath path : new FlowPath[]{flow.getForwardPath(), flow.getReversePath()}) {
+                if (path == null) {
+                    continue;
+                }
+
+                FlowSideAdapter sideAdapter = FlowSideAdapter.makeIngressAdapter(flow, path);
+                if (! target.equals(sideAdapter.getEndpoint().getSwitchId())) {
+                    continue;
+                }
+
+                long burstSize = Meter.calculateBurstSize(
+                        path.getBandwidth(), topologyConfig.getFlowMeterMinBurstSizeInKbits(),
+                        topologyConfig.getFlowMeterBurstCoefficient(), path.getSrcSwitch().getDescription());
+
+                MeterInfoEntry entry = MeterInfoEntry.builder()
+                        .meterId(path.getMeterId().getValue())
+                        .rate(path.getBandwidth())
+                        .burstSize(burstSize)
+                        .build();
+                results.add(entry);
+            }
+        }
+        return results;
+    }
+
+    private List<Long> extractCookies(List<FlowEntry> flowEntries) {
+        return flowEntries.stream()
+                .map(FlowEntry::getCookie)
+                .collect(Collectors.toList());
+    }
+
+    private Set<Long> extractMeterIds(List<MeterInfoEntry> meterEntries) {
+        return meterEntries.stream()
+                .map(MeterInfoEntry::getMeterId)
+                .collect(Collectors.toSet());
+    }
+
+    private ValidationServiceImpl makeService() {
+        FlowResourcesConfig resourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        return new ValidationServiceImpl(
+                persistenceManager, topologyConfig, new FlowResourcesManager(persistenceManager, resourcesConfig));
+    }
+
+    private SwitchValidationContext makeValidationContext(
+            List<FlowEntry> actualOfFlows, List<FlowEntry> expectedDefaultOfFlows) {
+        return SwitchValidationContext.builder(SWITCH_ID_TARGET)
+                .actualOfFlows(actualOfFlows)
+                .expectedDefaultOfFlows(expectedDefaultOfFlows)
                 .build();
     }
 
-    private PersistenceManagerBuilder persistenceManager() {
-        return new PersistenceManagerBuilder();
-    }
+    private Flow createFlowForConnectedDevices(boolean detectSrcLldp, boolean detectDstLldp) {
+        FlowEndpoint ingress = new FlowEndpoint(SWITCH_ID_BEFORE, 21);
+        FlowEndpoint egress = new FlowEndpoint(SWITCH_ID_AFTER, 22);
+        Flow flow = dummyFactory.makeFlow(ingress, egress, islBeforeTarget, islTargetAfter);
+        dummyFactory.injectProtectedPath(flow, islBeforeAfter);
 
-    private static class PersistenceManagerBuilder {
-        private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
-        private SwitchRepository switchRepository = mock(SwitchRepository.class);
+        flow.setDetectConnectedDevices(new DetectConnectedDevices(
+                detectSrcLldp, false, detectDstLldp, false, false, false, false, false));
+        persistenceManager.getRepositoryFactory().createFlowRepository()
+                .createOrUpdate(flow);
 
-        private long[] segmentsCookies = new long[0];
-        private long[] ingressCookies = new long[0];
-        private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
-
-        private PersistenceManagerBuilder withSegmentsCookies(long... cookies) {
-            segmentsCookies = cookies;
-            return this;
-        }
-
-        private PersistenceManagerBuilder withIngressCookies(long... cookies) {
-            ingressCookies = cookies;
-            return this;
-        }
-
-        private PersistenceManagerBuilder withDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
-            this.detectConnectedDevices = detectConnectedDevices;
-            return this;
-        }
-
-        private PersistenceManager build() {
-            List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
-            for (long cookie : segmentsCookies) {
-                Flow flow = buildFlow(cookie, "flow_");
-                FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
-                flow.addPaths(flowPath);
-                flow.setForwardPath(flowPath.getPathId());
-                pathsBySegment.add(flowPath);
-
-                FlowPath flowOldPath = buildFlowPath(flow, switchA, switchB, "old_path_" + cookie, cookie + 10000);
-                flow.addPaths(flowOldPath);
-                pathsBySegment.add(flowOldPath);
-            }
-            List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
-            for (long cookie : ingressCookies) {
-                Flow flow = buildFlow(cookie, "flow_");
-                FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
-                flow.addPaths(flowPath);
-                flow.setForwardPath(flowPath.getPathId());
-                flowPaths.add(flowPath);
-
-                FlowPath flowOldPath = buildFlowPath(flow, switchA, switchB, "old_path_" + cookie, cookie + 10000);
-                flow.addPaths(flowOldPath);
-                flowPaths.add(flowOldPath);
-            }
-            when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
-            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
-
-            FlowPath flowPathA = mock(FlowPath.class);
-            PathId flowAPathId = new PathId("flow_path_a");
-            when(flowPathA.getSrcSwitch()).thenReturn(switchB);
-            when(flowPathA.getDestSwitch()).thenReturn(switchA);
-            when(flowPathA.getBandwidth()).thenReturn(10000L);
-            when(flowPathA.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
-            when(flowPathA.getMeterId()).thenReturn(new MeterId(32L));
-            when(flowPathA.getPathId()).thenReturn(flowAPathId);
-
-            Flow flowA = mock(Flow.class);
-            when(flowA.getFlowId()).thenReturn("test_flow");
-            when(flowA.getSrcSwitch()).thenReturn(switchB);
-            when(flowA.getDestSwitch()).thenReturn(switchA);
-            when(flowA.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
-            when(flowA.isActualPathId(flowAPathId)).thenReturn(true);
-            when(flowPathA.getFlow()).thenReturn(flowA);
-
-            FlowPath flowPathC = mock(FlowPath.class);
-            PathId flowCPathId = new PathId("flow_path_d");
-            when(flowA.isActualPathId(flowCPathId)).thenReturn(false);
-            when(flowPathC.getFlow()).thenReturn(flowA);
-
-            Switch switchE = Switch.builder()
-                    .switchId(SWITCH_ID_E)
-                    .description("Nicira, Inc. OF_13 2.5.5")
-                    .build();
-            switchE.setOfDescriptionManufacturer("E");
-            FlowPath flowPathB = mock(FlowPath.class);
-            PathId flowBPathId = new PathId("flow_path_b");
-            when(flowPathB.getSrcSwitch()).thenReturn(switchE);
-            when(flowPathB.getDestSwitch()).thenReturn(switchA);
-            when(flowPathB.getBandwidth()).thenReturn(FLOW_E_BANDWIDTH);
-            when(flowPathB.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
-            when(flowPathB.getMeterId()).thenReturn(new MeterId(32L));
-            when(flowPathB.getPathId()).thenReturn(flowBPathId);
-
-            Flow flowB = mock(Flow.class);
-            when(flowB.getFlowId()).thenReturn("test_flow_b");
-            when(flowB.getSrcSwitch()).thenReturn(switchE);
-            when(flowB.getDestSwitch()).thenReturn(switchA);
-            when(flowB.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
-            when(flowB.isActualPathId(flowBPathId)).thenReturn(true);
-            when(flowPathB.getFlow()).thenReturn(flowB);
-
-            when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_B)))
-                    .thenReturn(singletonList(flowPathA));
-            when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_E)))
-                    .thenReturn(singletonList(flowPathB));
-
-            RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-            when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-
-            when(switchRepository.findById(SWITCH_ID_A)).thenReturn(Optional.of(switchA));
-            when(switchRepository.findById(SWITCH_ID_B)).thenReturn(Optional.of(switchB));
-            when(switchRepository.findById(SWITCH_ID_E)).thenReturn(Optional.of(switchE));
-            when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-
-            PersistenceManager persistenceManager = mock(PersistenceManager.class);
-            when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-            return persistenceManager;
-        }
-
-        private Flow buildFlow(long cookie, String flowIdPrefix) {
-            return Flow.builder()
-                    .srcSwitch(switchA)
-                    .destSwitch(switchB)
-                    .detectConnectedDevices(detectConnectedDevices)
-                    .flowId(flowIdPrefix + cookie)
-                    .build();
-        }
+        return flow;
     }
 }

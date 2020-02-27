@@ -44,7 +44,7 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
     public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override

@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
@@ -126,8 +127,10 @@ public class OfFlowStatsMapperTest {
         assertEquals(udpSrc.toString(), entry.getMatch().getUdpSrc());
         assertEquals(udpDst.toString(), entry.getMatch().getUdpDst());
 
-        List<FlowSetFieldAction> flowSetFieldAction = Collections.singletonList(
+        List<FlowSetFieldAction> flowSetFieldAction = ImmutableList.of(
+                new FlowSetFieldAction("vlan_vid", "200"),
                 new FlowSetFieldAction("eth_type", ethType.toString()));
+        List<String> encapsulationActions = ImmutableList.of("vlan_push", "vlan_vid=200");
         FlowCopyFieldAction flowCopyFieldAction = FlowCopyFieldAction.builder()
                 .bits(String.valueOf(bits))
                 .srcOffset(String.valueOf(srcOffset))
@@ -136,7 +139,7 @@ public class OfFlowStatsMapperTest {
                 .dstOxm(String.valueOf(oxmDstHeader))
                 .build();
         FlowApplyActions applyActions = new FlowApplyActions(port.toString(), flowSetFieldAction, ethType.toString(),
-                null, null, null, group.toString(), flowCopyFieldAction);
+                null, null, group.toString(), flowCopyFieldAction, encapsulationActions);
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
         assertEquals(instructions, entry.getInstructions());
     }
@@ -174,6 +177,7 @@ public class OfFlowStatsMapperTest {
         List<OFAction> actions = new ArrayList<>();
 
         actions.add(factory.actions().pushVlan(ethType));
+        actions.add(factory.actions().setField(factory.oxms().vlanVid(OFVlanVidMatch.ofVlan(200))));
         actions.add(factory.actions().output(port, 0));
         actions.add(factory.actions().setField(factory.oxms().ethType(ethType)));
         actions.add(factory.actions().group(group));

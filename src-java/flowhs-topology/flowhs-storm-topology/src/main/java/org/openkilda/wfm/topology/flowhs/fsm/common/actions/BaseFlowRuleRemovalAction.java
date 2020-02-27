@@ -43,9 +43,9 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
     protected final FlowCommandBuilderFactory commandBuilderFactory;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
 
-    public BaseFlowRuleRemovalAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    public BaseFlowRuleRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        this.commandBuilderFactory = new FlowCommandBuilderFactory();
         switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
     }
 

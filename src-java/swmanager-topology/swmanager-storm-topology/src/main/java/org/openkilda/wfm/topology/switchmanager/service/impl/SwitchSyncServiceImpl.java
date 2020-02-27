@@ -15,15 +15,14 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
-import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
@@ -42,36 +41,39 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
 
     private Map<String, SwitchSyncFsm> fsms = new HashMap<>();
 
-    @VisibleForTesting
-    CommandBuilder commandBuilder;
-    private SwitchManagerCarrier carrier;
-    private StateMachineBuilder<SwitchSyncFsm, SwitchSyncState, SwitchSyncEvent, Object> builder;
+    private final CommandBuilder commandBuilder;
+    private final SwitchManagerCarrier carrier;
+    private final StateMachineBuilder<SwitchSyncFsm, SwitchSyncState, SwitchSyncEvent, Object> builder;
 
-    public SwitchSyncServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager,
-                                 FlowResourcesConfig flowResourcesConfig) {
+    public SwitchSyncServiceImpl(SwitchManagerCarrier carrier) {
+        this(carrier, new CommandBuilderImpl());
+    }
+
+    @VisibleForTesting
+    SwitchSyncServiceImpl(SwitchManagerCarrier carrier, CommandBuilder commandBuilder) {
         this.carrier = carrier;
-        this.commandBuilder = new CommandBuilderImpl(persistenceManager, flowResourcesConfig);
+        this.commandBuilder = commandBuilder;
+
         this.builder = SwitchSyncFsm.builder();
     }
 
     @Override
-    public void handleSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult) {
+    public void handleSwitchSync(String key, SwitchValidateRequest request, SwitchValidationContext validationContext) {
         SwitchSyncFsm fsm =
                 builder.newStateMachine(SwitchSyncState.INITIALIZED, carrier, key, commandBuilder, request,
-                        validationResult);
-
+                        validationContext);
         process(fsm);
     }
 
     @Override
-    public void handleInstallRulesResponse(String key) {
+    public void handleSpeakerResponse(String key, SpeakerResponse response) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {
             logFsmNotFound(key);
             return;
         }
 
-        fsm.fire(SwitchSyncEvent.RULES_INSTALLED);
+        fsm.fire(SwitchSyncEvent.SPEAKER_RESPONSE, response);
         process(fsm);
     }
 

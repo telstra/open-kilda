@@ -15,16 +15,17 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
-import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 
 public interface SwitchSyncService {
 
-    void handleSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
+    void handleSwitchSync(String key, SwitchValidateRequest request, SwitchValidationContext validationContext);
 
-    void handleInstallRulesResponse(String key);
+    void handleSpeakerResponse(String key, SpeakerResponse response);
 
     void handleRemoveRulesResponse(String key);
 

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -26,6 +28,7 @@ import org.openkilda.wfm.topology.switchmanager.service.impl.SpeakerWorkerServic
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -33,6 +36,10 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     public static final String ID = "speaker.worker.bolt";
     public static final String INCOME_STREAM = "speaker.worker.stream";
+
+    public static String STREAM_SPEAKER_REQUEST_ID = "speaker-request";
+    public static Fields STREAM_SPEAKER_REQUEST_FIELDS = MessageKafkaTranslator.STREAM_FIELDS;
+
     private transient SpeakerWorkerService service;
 
     public SpeakerWorkerBolt(Config config) {
@@ -48,17 +55,29 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
+        Object payload = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
 
-        service.sendCommand(key, command);
+        if (payload instanceof CommandData) {
+            service.sendCommand(key, (CommandData) payload);
+        } else if (payload instanceof SpeakerRequest) {
+            service.sendCommand(key, (SpeakerRequest) payload);
+        } else {
+            unhandledInput(input);
+        }
     }
 
     @Override
     protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
         String key = pullKey();
-        Message message = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
-
-        service.handleResponse(key, message);
+        Object payload = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
+        if (payload instanceof Message) {
+            service.handleResponse(key, (Message) payload);
+        } else if (payload instanceof SpeakerResponse) {
+            service.handleResponse(key, (SpeakerResponse) payload);
+        } else {
+            // all "foreign" messages/events are filtered by key mismatch inside WorkerBolt
+            unhandledInput(response);
+        }
     }
 
     @Override
@@ -70,16 +89,34 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(STREAM_SPEAKER_REQUEST_ID, STREAM_SPEAKER_REQUEST_FIELDS);
     }
 
     @Override
     public void sendCommand(String key, CommandMessage command) {
-        emitWithContext(StreamType.TO_FLOODLIGHT.toString(), getCurrentTuple(), new Values(key, command));
+        emit(StreamType.TO_FLOODLIGHT.toString(), getCurrentTuple(), makeKafkaTuple(key, command));
+    }
+
+    @Override
+    public void sendCommand(String key, SpeakerRequest request) {
+        emit(STREAM_SPEAKER_REQUEST_ID, getCurrentTuple(), makeKafkaTuple(key, request));
     }
 
     @Override
     public void sendResponse(String key, Message response) {
-        Values values = new Values(key, response, getCommandContext());
-        emitResponseToHub(getCurrentTuple(), values);
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, response));
+    }
+
+    @Override
+    public void sendResponse(String key, SpeakerResponse response) {
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, response));
+    }
+
+    private Values makeHubTuple(String key, Object payload) {
+        return new Values(key, payload, getCommandContext());
+    }
+
+    private Values makeKafkaTuple(String key, Object payload) {
+        return new Values(key, payload, getCommandContext());
     }
 }

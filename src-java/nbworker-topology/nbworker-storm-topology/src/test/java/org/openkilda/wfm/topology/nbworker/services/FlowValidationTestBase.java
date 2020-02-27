@@ -43,6 +43,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRuleConverter;
 
 import com.google.common.collect.Lists;
 
@@ -648,6 +649,10 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null);
         if (flowSetFieldAction != null) {
             applyActions.fieldAction(flowSetFieldAction);
+            if ("vlan_vid".equals(flowSetFieldAction.getFieldName())) {
+                applyActions.encapsulationAction(SimpleSwitchRuleConverter.formatSetVlanAction(
+                        Integer.parseInt(flowSetFieldAction.getFieldValue())));
+            }
         }
 
         return FlowEntry.builder()

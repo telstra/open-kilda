@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.floodlight.api.request;
 
-import org.openkilda.messaging.info.rule.FlowEntry;
+public interface FlowSegmentRequestHandler {
+    void handle(FlowSegmentRequest unclassified);
 
-import lombok.Value;
+    void handleFlowSegmentRequest(IngressFlowSegmentRequest request);
 
-import java.util.List;
-
-// TODO(surabujin): unused? - drop
-@Value
-public class ValidationResult {
-    List<FlowEntry> flowEntries;
-    boolean processMeters;
-
-    ValidateRulesResult validateRulesResult;
-    ValidateMetersResult validateMetersResult;
+    void handleFlowSegmentRequest(FlowSegmentRequest request);
 }

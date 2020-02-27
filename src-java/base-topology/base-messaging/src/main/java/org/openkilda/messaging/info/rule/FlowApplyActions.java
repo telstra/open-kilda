@@ -42,9 +42,6 @@ public class FlowApplyActions implements Serializable {
     @JsonProperty("push_vlan")
     private String pushVlan;
 
-    @JsonProperty("POP_VLAN")
-    private String popVlan;
-
     @JsonProperty("meter")
     private String meter;
 
@@ -57,19 +54,24 @@ public class FlowApplyActions implements Serializable {
     @JsonProperty("set_copy_field")
     private FlowCopyFieldAction copyFieldAction;
 
+    @Singular
+    @JsonProperty("encapsulation_actions")
+    private List<String> encapsulationActions;
+
     @JsonCreator
     public FlowApplyActions(
             @JsonProperty("output") String flowOutput, @JsonProperty("set_field") List<FlowSetFieldAction> fieldActions,
-            @JsonProperty("push_vlan") String pushVlan, @JsonProperty("POP_VLAN") String popVlan,
-            @JsonProperty("meter") String meter, @JsonProperty("push_vxlan") String pushVxlan,
-            @JsonProperty("group") String group, @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction) {
+            @JsonProperty("push_vlan") String pushVlan, @JsonProperty("meter") String meter,
+            @JsonProperty("push_vxlan") String pushVxlan, @JsonProperty("group") String group,
+            @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction,
+            @JsonProperty("encapsulation_actions") List<String> encapsulationActions) {
         this.flowOutput = flowOutput;
         this.fieldActions = fieldActions;
         this.pushVlan = pushVlan;
-        this.popVlan = popVlan;
         this.meter = meter;
         this.pushVxlan = pushVxlan;
         this.group = group;
         this.copyFieldAction = copyFieldAction;
+        this.encapsulationActions = encapsulationActions;
     }
 }

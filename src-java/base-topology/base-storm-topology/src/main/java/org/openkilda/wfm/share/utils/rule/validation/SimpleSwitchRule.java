@@ -22,6 +22,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.Singular;
+
+import java.util.List;
 
 @Data
 @Builder
@@ -43,6 +46,10 @@ public class SimpleSwitchRule {
     private Long meterRate;
     private Long meterBurstSize;
     private String[] meterFlags;
+    private String matchMetadata;
+
+    @Singular
+    private List<String> encapsulationActions;
 
     @Override
     public String toString() {

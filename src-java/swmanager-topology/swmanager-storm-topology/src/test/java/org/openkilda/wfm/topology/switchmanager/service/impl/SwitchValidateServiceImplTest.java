@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,7 +30,6 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -54,9 +54,10 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
 import org.junit.Before;
@@ -69,7 +70,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.Optional;
-import java.util.Properties;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SwitchValidateServiceImplTest {
@@ -86,6 +86,8 @@ public class SwitchValidateServiceImplTest {
     @Mock
     private SwitchManagerCarrier carrier;
 
+    private final CommandContext commandContext = new CommandContext();
+
     private SwitchValidateServiceImpl service;
     private SwitchValidateRequest request;
 
@@ -93,12 +95,7 @@ public class SwitchValidateServiceImplTest {
     private MeterEntry meterEntry;
 
     @Before
-    public void setUp() throws SwitchNotFoundException {
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(new Properties());
-        SwitchManagerTopologyConfig topologyConfig =
-                configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
-        when(carrier.getTopologyConfig()).thenReturn(topologyConfig);
+    public void setUp() {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
         FlowRepository flowRepository = Mockito.mock(FlowRepository.class);
@@ -120,18 +117,28 @@ public class SwitchValidateServiceImplTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        service = new SwitchValidateServiceImpl(carrier, persistenceManager);
-        service.validationService = validationService;
+        service = new SwitchValidateServiceImpl(carrier, persistenceManager, validationService);
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
         meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
 
-        when(validationService.validateRules(any(), any(), any()))
-                .thenReturn(new ValidateRulesResult(singletonList(flowEntry.getCookie()), emptyList(), emptyList(),
-                        emptyList()));
-        when(validationService.validateMeters(any(), any(), any()))
-                .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
+        when(validationService.validateRules(any(), any()))
+                .thenAnswer(invocation -> {
+                    SwitchValidationContext validationContext = invocation.getArgument(1);
+                    return validationContext.toBuilder()
+                            .ofFlowsValidationReport(new ValidateRulesResult(
+                                    singletonList(flowEntry.getCookie()), emptyList(), emptyList(), emptyList()))
+                            .build();
+                });
+        when(validationService.validateMeters(any()))
+                .thenAnswer(invocation -> {
+                    SwitchValidationContext validationContext = invocation.getArgument(0);
+                    return validationContext.toBuilder()
+                            .metersValidationReport(new ValidateMetersResult(
+                                    emptyList(), emptyList(), emptyList(), emptyList()))
+                            .build();
+                });
     }
 
     @Test
@@ -193,16 +200,15 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void validationWithoutMetersSuccess() {
-        verify(carrier, times(1)).getTopologyConfig();
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
-        service.handleSwitchValidateRequest(KEY, request);
+        service.handleSwitchValidateRequest(commandContext, KEY, request);
         verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
-        verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
+        verify(validationService).validateRules(any(), any());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
@@ -226,7 +232,7 @@ public class SwitchValidateServiceImplTest {
         service.handleExpectedDefaultMeterEntriesResponse(KEY,
                 new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
 
-        verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
+        verify(validationService).validateRules(any(), any());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
@@ -245,8 +251,8 @@ public class SwitchValidateServiceImplTest {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
-        when(validationService.validateMeters(any(), any(), any()))
-                .thenThrow(new IllegalArgumentException(errorMessage));
+        doThrow(new IllegalArgumentException(errorMessage))
+                .when(validationService).validateMeters(any());
         handleDataReceiveAndValidate();
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
@@ -260,7 +266,6 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void doNothingWhenFsmNotFound() {
-        verify(carrier, times(1)).getTopologyConfig();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
 
         verifyZeroInteractions(carrier);
@@ -274,15 +279,13 @@ public class SwitchValidateServiceImplTest {
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
 
-        verify(carrier).runSwitchSync(eq(KEY), eq(request), any(ValidationResult.class));
+        verify(carrier).runSwitchSync(eq(KEY), eq(request), any(SwitchValidationContext.class));
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
 
-
     private void handleRequestAndInitDataReceive() {
-        verify(carrier, times(1)).getTopologyConfig();
-        service.handleSwitchValidateRequest(KEY, request);
+        service.handleSwitchValidateRequest(commandContext, KEY, request);
 
         verify(carrier, times(4)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
@@ -296,8 +299,8 @@ public class SwitchValidateServiceImplTest {
         service.handleExpectedDefaultMeterEntriesResponse(KEY,
                 new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
 
-        verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-        verify(validationService).validateMeters(eq(SWITCH_ID), any(), any());
+        verify(validationService).validateRules(any(), any());
+        verify(validationService).validateMeters(any());
     }
 
     private ErrorMessage getErrorMessage() {

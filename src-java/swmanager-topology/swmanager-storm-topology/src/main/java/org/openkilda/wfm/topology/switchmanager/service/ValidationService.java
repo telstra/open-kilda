@@ -15,19 +15,11 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
-
-import java.util.List;
+import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
 
 public interface ValidationService {
-    ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                      List<FlowEntry> expectedDefaultRules);
+    SwitchValidationContext validateRules(CommandContext commandContext, SwitchValidationContext validationContext);
 
-    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                        List<MeterEntry> expectedDefaultMeters) throws SwitchNotFoundException;
+    SwitchValidationContext validateMeters(SwitchValidationContext validationContext);
 }

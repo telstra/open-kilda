@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
@@ -50,17 +51,20 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     private StateMachineBuilder<SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, Object> builder;
     private RepositoryFactory repositoryFactory;
 
-    public SwitchValidateServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
+    public SwitchValidateServiceImpl(
+            SwitchManagerCarrier carrier, PersistenceManager persistenceManager,
+            ValidationServiceImpl validationService) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
-        this.validationService = new ValidationServiceImpl(persistenceManager, carrier.getTopologyConfig());
+        this.validationService = validationService;
         this.repositoryFactory = persistenceManager.getRepositoryFactory();
     }
 
     @Override
-    public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
+    public void handleSwitchValidateRequest(CommandContext commandContext, String key, SwitchValidateRequest request) {
         SwitchValidateFsm fsm =
-                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, validationService,
+                builder.newStateMachine(
+                        SwitchValidateState.INITIALIZED, commandContext, carrier, key, request, validationService,
                         repositoryFactory);
 
         process(fsm);

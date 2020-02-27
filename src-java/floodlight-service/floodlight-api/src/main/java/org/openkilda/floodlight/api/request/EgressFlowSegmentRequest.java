@@ -63,4 +63,8 @@ public abstract class EgressFlowSegmentRequest extends FlowSegmentRequest {
                 other.messageContext, commandId, other.metadata, other.endpoint,
                 other.ingressEndpoint, other.islPort, other.encapsulation);
     }
+
+    public void handle(FlowSegmentRequestHandler handler) {
+        handler.handleFlowSegmentRequest(this);
+    }
 }

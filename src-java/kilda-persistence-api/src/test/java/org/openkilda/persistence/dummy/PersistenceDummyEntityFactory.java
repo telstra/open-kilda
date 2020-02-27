@@ -15,6 +15,9 @@
 
 package org.openkilda.persistence.dummy;
 
+import org.openkilda.adapter.FlowDestAdapter;
+import org.openkilda.adapter.FlowPathAdapter;
+import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowCookie;
@@ -172,12 +175,30 @@ public class PersistenceDummyEntityFactory {
                 .destSwitch(fetchOrCreateSwitch(dest.getSwitchId()))
                 .destPort(dest.getPortNumber())
                 .destVlan(dest.getOuterVlanId())
+                .allocateProtectedPath(false)  // override possible default (we have only 1 path hint)
                 .build();
         txManager.doInTransaction(() -> {
-            makeFlowPathPair(flow, source, dest, pathHint);
-            if (flow.isAllocateProtectedPath()) {
-                makeFlowPathPair(flow, source, dest, pathHint, Collections.singletonList("protected"));
-            }
+            makeFlowPathPair(FlowPathAdapter.makePrimaryAdapter(flow), source, dest, pathHint);
+            flowRepository.createOrUpdate(flow);
+
+            allocateFlowBandwidth(flow);
+        });
+
+        return flow;
+    }
+
+    public Flow injectProtectedPath(Flow flow, IslDirectionalReference... pathHint) {
+        return injectProtectedPath(flow, Arrays.asList(pathHint));
+    }
+
+    public Flow injectProtectedPath(Flow flow, List<IslDirectionalReference> pathHint) {
+        flow.setAllocateProtectedPath(true);
+        txManager.doInTransaction(() -> {
+            FlowEndpoint source = new FlowSourceAdapter(flow).getEndpoint();
+            FlowEndpoint dest = new FlowDestAdapter(flow).getEndpoint();
+            makeFlowPathPair(
+                    FlowPathAdapter.makeProtectedAdapter(flow), source, dest, pathHint,
+                    Collections.singletonList("protected"));
             flowRepository.createOrUpdate(flow);
 
             allocateFlowBandwidth(flow);
@@ -187,14 +208,16 @@ public class PersistenceDummyEntityFactory {
     }
 
     private void makeFlowPathPair(
-            Flow flow, FlowEndpoint source, FlowEndpoint dest, List<IslDirectionalReference> forwardTrace) {
-        makeFlowPathPair(flow, source, dest, forwardTrace, Collections.emptyList());
+            FlowPathAdapter flowAdapter, FlowEndpoint source, FlowEndpoint dest,
+            List<IslDirectionalReference> forwardTrace) {
+        makeFlowPathPair(flowAdapter, source, dest, forwardTrace, Collections.emptyList());
     }
 
     private void makeFlowPathPair(
-            Flow flow, FlowEndpoint source, FlowEndpoint dest, List<IslDirectionalReference> forwardPathHint,
-            List<String> tags) {
+            FlowPathAdapter flowAdapter, FlowEndpoint source, FlowEndpoint dest,
+            List<IslDirectionalReference> forwardPathHint, List<String> tags) {
         long flowEffectiveId = idProvider.provideFlowEffectiveId();
+        Flow flow = flowAdapter.getFlow();
         makeFlowCookie(flow.getFlowId(), flowEffectiveId);
 
         List<IslDirectionalReference> reversePathHint = forwardPathHint.stream()
@@ -203,11 +226,11 @@ public class PersistenceDummyEntityFactory {
         Collections.reverse(reversePathHint);  // inline
 
         List<PathSegment> forwardSegments = makePathSegments(source.getSwitchId(), dest.getSwitchId(), forwardPathHint);
-        flow.setForwardPath(makePath(
+        flowAdapter.setForwardPath(makePath(
                 flow, source, dest, forwardSegments, Cookie.buildForwardCookie(flowEffectiveId), tags, "forward"));
 
         List<PathSegment> reverseSegments = makePathSegments(dest.getSwitchId(), source.getSwitchId(), reversePathHint);
-        flow.setReversePath(makePath(
+        flowAdapter.setReversePath(makePath(
                 flow, dest, source, reverseSegments, Cookie.buildReverseCookie(flowEffectiveId), tags, "reverse"));
     }
 

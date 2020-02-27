@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager;
 
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -40,8 +41,10 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
     private static final String HUB_SPOUT = "hub.spout";
     private static final String WORKER_SPOUT = "worker.spout";
+    private static final String SPEAKER_RESPONSE_SPOUT = "speaker-response.kafka.spout";
     private static final String NB_KAFKA_BOLT = "nb.bolt";
     private static final String SPEAKER_KAFKA_BOLT = "speaker.bolt";
+    private static final String SPEAKER_REQUEST_EMITTER = "speaker-request.kafka";
 
     private static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
 
@@ -52,6 +55,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
     @Override
     public StormTopology createTopology() {
         logger.info("Creating SwitchManagerTopology - {}", topologyName);
+
+        final KafkaTopicsConfig kafkaTopics = topologyConfig.getKafkaTopics();
 
         TopologyBuilder builder = new TopologyBuilder();
 
@@ -76,19 +81,22 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 topologyConfig.getNewParallelism())
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
-                .directGrouping(SpeakerWorkerBolt.ID, SwitchManagerHub.INCOME_STREAM)
+                .directGrouping(SpeakerWorkerBolt.ID, SpeakerWorkerBolt.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);
 
         WorkerBolt.Config speakerWorkerConfig = WorkerBolt.Config.builder()
                 .hubComponent(SwitchManagerHub.ID)
-                .streamToHub(SwitchManagerHub.INCOME_STREAM)
+                .streamToHub(SpeakerWorkerBolt.INCOME_STREAM)
                 .workerSpoutComponent(WORKER_SPOUT)
                 .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
                 .build();
         builder.setSpout(WORKER_SPOUT, buildKafkaSpout(topologyConfig.getKafkaSwitchManagerTopic(), WORKER_SPOUT));
+        builder.setSpout(SPEAKER_RESPONSE_SPOUT, buildKafkaSpoutForAbstractMessage(
+                kafkaTopics.getFlowHsTopic(), SPEAKER_RESPONSE_SPOUT));
         builder.setBolt(SpeakerWorkerBolt.ID, new SpeakerWorkerBolt(speakerWorkerConfig),
                 topologyConfig.getNewParallelism())
                 .fieldsGrouping(WORKER_SPOUT, FIELDS_KEY)
+                .fieldsGrouping(SPEAKER_RESPONSE_SPOUT, FIELDS_KEY)
                 .fieldsGrouping(SwitchManagerHub.ID, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
 
@@ -97,6 +105,10 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
         builder.setBolt(SPEAKER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()))
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_FLOODLIGHT.toString());
+        builder.setBolt(
+                SPEAKER_REQUEST_EMITTER, buildKafkaBoltWithAbstractMessageSupport(
+                        topologyConfig.getKafkaSpeakerTopic()))
+                .shuffleGrouping(SpeakerWorkerBolt.ID, SpeakerWorkerBolt.STREAM_SPEAKER_REQUEST_ID);
 
         return builder.createTopology();
     }
