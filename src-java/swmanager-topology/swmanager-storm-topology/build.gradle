@@ -1,6 +1,6 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6'
-    id 'com.github.johnrengelman.shadow' version '5.2.0'
+    id 'io.freefair.aspectj.post-compile-weaving'
+    id 'com.github.johnrengelman.shadow'
 }
 
 compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
@@ -9,6 +9,7 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'Switch Manager Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
+    implementation project(path: ':base-storm-topology', configuration: 'stormFluxArtifacts')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':flow-messaging')

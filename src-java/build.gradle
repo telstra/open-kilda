@@ -1,10 +1,13 @@
 import org.ajoberstar.grgit.Grgit
 
 import java.text.DateFormat
+import java.util.jar.JarFile
 
 plugins {
     id 'org.sonarqube' version '2.8'
     id 'org.ajoberstar.grgit' version '4.0.1' apply false
+    id 'com.github.johnrengelman.shadow' version '5.2.0' apply false
+    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6' apply false
 }
 
 allprojects {
@@ -36,9 +39,6 @@ subprojects {
             compileOnly 'org.apache.storm:storm-core:1.1.0'
             testImplementation 'org.apache.storm:storm-core:1.1.0'
             implementation 'org.apache.storm:storm-kafka-client:1.1.0'
-            implementation 'org.apache.storm:storm-opentsdb:1.1.0'
-            implementation 'org.apache.storm:flux-core:1.1.0'
-            implementation 'org.apache.storm:flux-wrappers:1.1.0'
 
             implementation 'org.squirrelframework:squirrel-foundation:0.3.8'
 
@@ -188,6 +188,27 @@ subprojects {
             grgit.close()
         }
     }
+
+    tasks.withType(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+        // The step detects a conflict in dependency jars' content and fails the build if found.
+        doFirst {
+            Map<String, String> classes = new HashMap<>()
+            getIncludedDependencies().each { jar ->
+                JarFile jf = new JarFile(jar)
+                jf.entries().each { file ->
+                    // TODO: it's good to reuse shadowJar plugin's patterns
+                    if (file.name.endsWith(".class") && file.name != "module-info.class") {
+                        if (classes.containsKey(file.name)) {
+                            throw new GradleException("shadowJar failure: " + file.name
+                                    + " conflicts in jars: " + classes.get(file.name) + " and " + jar)
+                        }
+                        classes.put(file.name, jar)
+                    }
+                }
+                jf.close()
+            }
+        }
+    }
 }
 
 task buildAndCopyArtifacts(type: Copy) {
@@ -202,7 +223,7 @@ task buildAndCopyArtifacts(type: Copy) {
     dependsOn floodlightBuild.task(':build')
 }
 
-configure(subprojects.findAll {it.name.endsWith("-topology")}) {
+configure(subprojects.findAll { it.name.endsWith("-topology") }) {
     configurations {
         localStormRuntime
     }
