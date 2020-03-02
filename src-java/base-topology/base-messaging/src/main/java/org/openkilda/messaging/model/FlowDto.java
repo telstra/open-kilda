@@ -150,7 +150,7 @@ public class FlowDto implements Serializable {
     private FlowStatusDetails flowStatusDetails;
 
     @JsonProperty("max_latency")
-    private Integer maxLatency;
+    private Long maxLatency;
 
     @JsonProperty("priority")
     private Integer priority;
@@ -216,7 +216,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("transit_encapsulation_id") final int transitEncapsulationId,
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("status_details") FlowStatusDetails flowStatusDetails,
-                   @JsonProperty("max_latency") Integer maxLatency,
+                   @JsonProperty("max_latency") Long maxLatency,
                    @JsonProperty("priority") Integer priority,
                    @JsonProperty("pinned") boolean pinned,
                    @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,

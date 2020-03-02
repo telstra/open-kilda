@@ -67,7 +67,7 @@ public class FlowUpdatePayload extends FlowPayload {
                              @JsonProperty("last-updated") String lastUpdated,
                              @JsonProperty("diverse-flowid") String diverseFlowId,
                              @JsonProperty("status") String status,
-                             @JsonProperty("max-latency") Integer maxLatency,
+                             @JsonProperty("max-latency") Long maxLatency,
                              @JsonProperty("priority") Integer priority,
                              @JsonProperty("pinned") Boolean pinned,
                              @JsonProperty("encapsulation-type") String encapsulationType,

@@ -70,7 +70,7 @@ class PathComputationSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Flow path computation strategy can be updated"() {
+    def "Flow path computation strategy can be updated from LATENCY to COST"() {
         given: "Switch pair with two paths at least"
         def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
 

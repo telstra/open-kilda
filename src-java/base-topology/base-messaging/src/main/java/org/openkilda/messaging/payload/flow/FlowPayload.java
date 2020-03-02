@@ -74,7 +74,7 @@ public class FlowPayload implements Serializable {
     private String status;
 
     @JsonProperty("max-latency")
-    private Integer maxLatency;
+    private Long maxLatency;
 
     @JsonProperty("priority")
     private Integer priority;
@@ -121,7 +121,7 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("created") String created,
                        @JsonProperty("last-updated") String lastUpdated,
                        @JsonProperty("status") String status,
-                       @JsonProperty("max-latency") Integer maxLatency,
+                       @JsonProperty("max-latency") Long maxLatency,
                        @JsonProperty("priority") Integer priority,
                        @JsonProperty("pinned") Boolean pinned,
                        @JsonProperty("encapsulation-type") String encapsulationType,
