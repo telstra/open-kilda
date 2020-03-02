@@ -60,7 +60,7 @@ class SwitchSyncSpec extends BaseSpecification {
         syncResult.rules.removed.size() == 0
         syncResult.rules.installed.size() == 0
 
-        def properMeters = syncResult.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        def properMeters = syncResult.meters.proper.findAll({ !isDefaultMeter(it) })
         properMeters.size() == 0
         syncResult.meters.excess.size() == 0
         syncResult.meters.missing.size() == 0
@@ -100,11 +100,11 @@ class SwitchSyncSpec extends BaseSpecification {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches[1..-2].each {
                 assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
-                assert validationResultsMap[it.dpId].meters.missing.size() == 2
+                assert validationResultsMap[it.dpId].meters.missing.meterId.sort() == it.defaultMeters.sort()
             }
             [switchPair.src, switchPair.dst].each {
                 assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
-                assert validationResultsMap[it.dpId].meters.missing.size() == 3
+                assert validationResultsMap[it.dpId].meters.missing.size() == 1 + it.defaultMeters.size()
             }
         }
 

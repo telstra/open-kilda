@@ -78,8 +78,8 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         srcSwitchValidateInfo.meters.proper*.cookie.containsAll(srcSwitchCreatedCookies)
         dstSwitchValidateInfo.meters.proper*.cookie.containsAll(dstSwitchCreatedCookies)
 
-        def srcSwitchProperMeters = srcSwitchValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
-        def dstSwitchProperMeters = dstSwitchValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        def srcSwitchProperMeters = srcSwitchValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
+        def dstSwitchProperMeters = dstSwitchValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
 
         [srcSwitchProperMeters, dstSwitchProperMeters].each {
             it.each {
@@ -231,7 +231,7 @@ misconfigured"
 
         and: "The rest fields of 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["proper", "missing", "excess"])
         }
 
         and: "Created rules are still stored in the 'proper' section"
@@ -336,7 +336,7 @@ misconfigured"
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 verifyBurstSizeIsCorrect(srcSwitchBurstSize, it.burstSize)
             }
-            switchHelper.verifyMeterSectionsAreEmpty(it, ["misconfigured", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["proper", "misconfigured", "excess"])
             switchHelper.verifyRuleSectionsAreEmpty(it, ["excess"])
         }
 
