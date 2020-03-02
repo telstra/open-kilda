@@ -94,7 +94,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         } else if (request instanceof GetFlowsForSwitchRequest) {
             result = processGetFlowsForSwitchRequest((GetFlowsForSwitchRequest) request);
         } else if (request instanceof RerouteFlowsForIslRequest) {
-            result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request, tuple);
+            result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request);
         } else if (request instanceof GetFlowPathRequest) {
             result = processGetFlowPathRequest((GetFlowPathRequest) request);
         } else if (request instanceof FlowPatchRequest) {
@@ -142,7 +142,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         }
     }
 
-    private List<FlowsResponse> processRerouteFlowsForLinkRequest(RerouteFlowsForIslRequest message, Tuple tuple) {
+    private List<FlowsResponse> processRerouteFlowsForLinkRequest(RerouteFlowsForIslRequest message) {
         SwitchId srcSwitch = message.getSource().getDatapath();
         Integer srcPort = message.getSource().getPortNumber();
         SwitchId dstSwitch = message.getDestination().getDatapath();
@@ -155,22 +155,13 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
         }
 
-        boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
-                .map(FeatureToggles::getFlowsRerouteViaFlowHs)
-                .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
-        String streamId = flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString();
-
         Set<IslEndpoint> affectedIslEndpoints = new HashSet<>();
         affectedIslEndpoints.add(new IslEndpoint(srcSwitch, srcPort));
         affectedIslEndpoints.add(new IslEndpoint(dstSwitch, dstPort));
-        String reason = format("initiated via Northbound, reroute all flows that go over the link %s_%d - %s_%d",
-                srcSwitch, srcPort, dstSwitch, dstPort);
 
-        for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
-                paths, affectedIslEndpoints, reason)) {
-            CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
-            getOutput().emit(streamId, tuple, new Values(request, forkedContext.getCorrelationId()));
-        }
+        sendRerouteRequest(paths, affectedIslEndpoints,
+                format("initiated via Northbound, reroute all flows that go over the link %s_%d - %s_%d",
+                        srcSwitch, srcPort, dstSwitch, dstPort));
 
         List<String> flowIds = paths.stream()
                 .map(FlowPath::getFlow)
@@ -257,5 +248,19 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         CommandMessage command = new CommandMessage(new PeriodicPingCommand(flowId, enabled),
                 System.currentTimeMillis(), getCorrelationId());
         getOutput().emit(StreamType.PING.toString(), getCurrentTuple(), new Values(command, getCommandContext()));
+    }
+
+    @Override
+    public void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
+        boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
+                .map(FeatureToggles::getFlowsRerouteViaFlowHs)
+                .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
+        String streamId = flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString();
+
+        for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
+                paths, affectedIslEndpoints, reason)) {
+            CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
+            getOutput().emit(streamId, getCurrentTuple(), new Values(request, forkedContext.getCorrelationId()));
+        }
     }
 }
