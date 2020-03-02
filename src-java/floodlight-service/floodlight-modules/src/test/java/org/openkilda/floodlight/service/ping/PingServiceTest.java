@@ -40,7 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
 
 public class PingServiceTest extends EasyMockSupport {
     private PingService pingService = new PingService();
@@ -70,11 +69,6 @@ public class PingServiceTest extends EasyMockSupport {
     public void wrapUnwrapCycle() throws Exception {
         DatapathId dpIdAlpha = DatapathId.of(0xfffe000000000001L);
         DatapathId dpIdBeta = DatapathId.of(0xfffe000000000002L);
-        MacAddress macBeta = MacAddress.of(0xfffe000000000002L);
-
-        moduleContext.getServiceImpl(ISwitchManager.class)
-                .dpIdToMac(dpIdBeta);
-        expect(switchManager.dpIdToMac(dpIdBeta)).andReturn(macBeta);
 
         moduleContext.getServiceImpl(InputService.class)
                 .addTranslator(eq(OFType.PACKET_IN), anyObject(PingInputTranslator.class));

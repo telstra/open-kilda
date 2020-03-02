@@ -14,8 +14,10 @@ import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
+import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.Constants
@@ -207,7 +209,7 @@ class SwitchHelper {
     }
 
     static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                                            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+                                            List<String> sections = ["missing", "misconfigured", "excess"]) {
         if (switchValidateInfo.meters) {
             sections.each {
                 assert switchValidateInfo.meters."$it".empty
@@ -232,5 +234,9 @@ class SwitchHelper {
                 }.empty
             }
         }
+    }
+
+    public static boolean isDefaultMeter(MeterInfoDto dto) {
+        return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
 }

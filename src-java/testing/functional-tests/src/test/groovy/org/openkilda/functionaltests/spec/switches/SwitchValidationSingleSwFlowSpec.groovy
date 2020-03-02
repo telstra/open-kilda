@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
@@ -78,7 +79,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.proper*.cookie.containsAll(createdCookies)
 
-        switchValidateInfo.meters.proper.each {
+        def properMeters = switchValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        properMeters.each {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
@@ -156,7 +158,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         and: "The rest fields are empty"
-        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "proper", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
 
         and: "Created rules are still stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
@@ -248,7 +250,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         and: "The rest fields are empty"
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
-        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["misconfigured", "proper", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["misconfigured", "excess"])
 
         when: "Try to synchronize the switch"
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
@@ -296,7 +298,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         then: "Rules and meters are created"
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
-        swValidateInfo.meters.proper.meterId.size() == 2
+        def properMeters = swValidateInfo.meters.proper.findAll({it -> !isDefaultMeter(it)})
+        properMeters.meterId.size() == 2
         swValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
 
         when: "Update meterId for created flow directly via db"
@@ -513,7 +516,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         with(northbound.validateSwitch(sw.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
             it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
-            it.meters.proper.size() == 2
+            def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
+            properMeters.size() == 2
         }
 
         when: "Delete the flow"

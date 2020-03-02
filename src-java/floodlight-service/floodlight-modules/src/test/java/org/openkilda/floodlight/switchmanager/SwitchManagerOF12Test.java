@@ -14,6 +14,8 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
+import org.openkilda.floodlight.switchmanager.factory.SwitchFlowFactory;
+import org.openkilda.floodlight.switchmanager.factory.generator.DropLoopFlowGenerator;
 import org.openkilda.model.FlowEncapsulationType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -59,8 +61,13 @@ public class SwitchManagerOF12Test {
         replay(config);
         PathVerificationService pathVerificationService = EasyMock.createMock(PathVerificationService.class);
         expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
-        replay(pathVerificationService);
+        SwitchFlowFactory switchFlowFactory = EasyMock.createMock(SwitchFlowFactory.class);
+        expect(switchFlowFactory.getDropLoopFlowGenerator())
+                .andReturn(DropLoopFlowGenerator.builder().build())
+                .anyTimes();
+        replay(pathVerificationService, switchFlowFactory);
         context.addService(IPathVerificationService.class, pathVerificationService);
+        context.addService(SwitchFlowFactory.class, switchFlowFactory);
 
         switchManager = new SwitchManager();
         switchManager.init(context);

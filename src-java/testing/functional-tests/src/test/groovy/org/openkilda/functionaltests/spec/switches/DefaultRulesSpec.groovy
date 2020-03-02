@@ -124,9 +124,9 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                     //BFD, Round Trip and VXlan are available only on Noviflow
                     !(!theSw.noviflow && dataPiece.installRulesAction in [InstallRulesAction.INSTALL_BFD_CATCH,
                                                                   InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY,
-                                                                  InstallRulesAction.INSTALL_UNICAST_VXLAN])
+                                                                  InstallRulesAction.INSTALL_UNICAST_VXLAN]) &&
                     //having broadcast rule with 'drop loop' rule on WB5164 will lead to packet storm. See #2595
-                    !(!theSw.wb5164 && dataPiece.installRulesAction == InstallRulesAction.INSTALL_BROADCAST)
+                    !(theSw.wb5164 && dataPiece.installRulesAction == InstallRulesAction.INSTALL_BROADCAST)
         }
     }
 

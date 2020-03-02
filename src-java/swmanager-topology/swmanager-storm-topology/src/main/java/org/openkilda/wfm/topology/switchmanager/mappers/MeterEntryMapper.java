@@ -13,20 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import lombok.Builder;
-import lombok.Value;
+import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 
-import java.util.Set;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
-@Value
-@Builder
-public class SimpleMeterEntry {
-    private String flowId;
-    private long meterId;
-    private long cookie;
-    private long rate;
-    private long burstSize;
-    private Set<String> flags;
+@Mapper
+public interface MeterEntryMapper {
+
+    MeterEntryMapper INSTANCE = Mappers.getMapper(MeterEntryMapper.class);
+
+    SimpleMeterEntry map(MeterEntry meterEntry);
 }

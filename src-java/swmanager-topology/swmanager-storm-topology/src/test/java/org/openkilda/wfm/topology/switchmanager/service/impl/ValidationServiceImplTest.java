@@ -41,6 +41,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -49,12 +51,14 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 
 public class ValidationServiceImplTest {
@@ -204,9 +208,9 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersEmpty() {
+    public void validateMetersEmpty() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, new ArrayList<>());
+        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -214,10 +218,11 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersProperMeters() {
+    public void validateMetersProperMeters() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
+                Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
+                emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
@@ -227,11 +232,12 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersMisconfiguredMeters() {
+    public void validateMetersMisconfiguredMeters() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         String[] actualFlags = new String[]{"PKTPS", "BURST", "STATS"};
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)));
+                Lists.newArrayList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)),
+                emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertEquals(10002, (long) response.getMisconfiguredMeters().get(0).getActual().getRate());
@@ -246,10 +252,11 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersMissingAndExcessMeters() {
+    public void validateMetersMissingAndExcessMeters() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
+                Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
+                emptyList());
         assertFalse(response.getMissingMeters().isEmpty());
         assertMeter(response.getMissingMeters().get(0), 32, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -259,10 +266,11 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateExcessMeters() {
+    public void validateExcessMeters() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A,
-                Lists.newArrayList(new MeterEntry(100, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
+                Lists.newArrayList(new MeterEntry(100, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
+                emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -271,26 +279,35 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersIgnoreDefaultMeters() {
+    public void validateDefaultMeters() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        MeterEntry missingMeter = new MeterEntry(2, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
+        MeterEntry excessMeter = new MeterEntry(4, 10, 20, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(2, 0, 0, null, null), new MeterEntry(3, 0, 0, null, null)));
+                Lists.newArrayList(excessMeter,
+                        new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
+                Lists.newArrayList(missingMeter));
         assertFalse(response.getMissingMeters().isEmpty());
         assertEquals(1, response.getMissingMeters().size());
+        assertMeter(response.getMissingMeters().get(0), missingMeter);
         assertTrue(response.getMisconfiguredMeters().isEmpty());
-        assertTrue(response.getProperMeters().isEmpty());
-        assertTrue(response.getExcessMeters().isEmpty());
+        assertFalse(response.getProperMeters().isEmpty());
+        assertEquals(1, response.getProperMeters().size());
+        assertFalse(response.getExcessMeters().isEmpty());
+        assertEquals(1, response.getExcessMeters().size());
+        assertMeter(response.getExcessMeters().get(0), excessMeter);
     }
 
     @Test
-    public void validateMetersProperMetersESwitch() {
+    public void validateMetersProperMetersESwitch() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) - 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
                 Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
-                        new String[]{"KBPS", "BURST", "STATS"})));
+                        new String[]{"KBPS", "BURST", "STATS"})),
+                emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
@@ -301,14 +318,15 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateMetersMisconfiguredMetersESwitch() {
+    public void validateMetersMisconfiguredMetersESwitch() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) + 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) + 1;
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
                 Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
-                        new String[]{"KBPS", "BURST", "STATS"})));
+                        new String[]{"KBPS", "BURST", "STATS"})),
+                emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertEquals(10606L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
@@ -317,12 +335,17 @@ public class ValidationServiceImplTest {
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
+    private void assertMeter(MeterInfoEntry meterInfoEntry, MeterEntry expected) {
+        assertMeter(meterInfoEntry, expected.getMeterId(), expected.getRate(), expected.getBurstSize(),
+                expected.getFlags());
+    }
+
     private void assertMeter(MeterInfoEntry meterInfoEntry, long expectedId, long expectedRate, long expectedBurstSize,
                              String[] expectedFlags) {
         assertEquals(expectedId, (long) meterInfoEntry.getMeterId());
         assertEquals(expectedRate, (long) meterInfoEntry.getRate());
         assertEquals(expectedBurstSize, (long) meterInfoEntry.getBurstSize());
-        assertEquals(expectedFlags, meterInfoEntry.getFlags());
+        assertEquals(Sets.newHashSet(expectedFlags), Sets.newHashSet(meterInfoEntry.getFlags()));
     }
 
     private Flow createFlowForConnectedDevices(boolean detectSrcLldp,
@@ -365,6 +388,7 @@ public class ValidationServiceImplTest {
 
     private static class PersistenceManagerBuilder {
         private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
+        private SwitchRepository switchRepository = mock(SwitchRepository.class);
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
@@ -443,6 +467,11 @@ public class ValidationServiceImplTest {
 
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
             when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+
+            when(switchRepository.findById(SWITCH_ID_A)).thenReturn(Optional.of(switchA));
+            when(switchRepository.findById(SWITCH_ID_B)).thenReturn(Optional.of(switchB));
+            when(switchRepository.findById(SWITCH_ID_E)).thenReturn(Optional.of(switchE));
+            when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);

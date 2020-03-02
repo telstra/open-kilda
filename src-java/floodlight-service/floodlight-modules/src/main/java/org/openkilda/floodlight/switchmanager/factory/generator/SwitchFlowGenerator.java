@@ -13,20 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.floodlight.switchmanager.factory.generator;
 
-import lombok.Builder;
-import lombok.Value;
+import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
 
-import java.util.Set;
+import net.floodlightcontroller.core.IOFSwitch;
 
-@Value
-@Builder
-public class SimpleMeterEntry {
-    private String flowId;
-    private long meterId;
-    private long cookie;
-    private long rate;
-    private long burstSize;
-    private Set<String> flags;
+public interface SwitchFlowGenerator {
+
+    SwitchFlowTuple generateFlow(IOFSwitch sw);
 }
