@@ -66,6 +66,10 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.forward.error
         !response.reverse.error
 
+        and: "Latency is present in response"
+        response.forward.latency
+        response.reverse.latency
+
         and: "Unicast rule packet count is increased and logged to otsdb"
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {

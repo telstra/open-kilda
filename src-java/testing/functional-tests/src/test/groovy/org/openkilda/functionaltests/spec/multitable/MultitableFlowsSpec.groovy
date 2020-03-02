@@ -843,7 +843,6 @@ mode with existing flows and hold flows of different table-mode types"() {
         //flow is pinned, so that's why the flow is not rerouted
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
 

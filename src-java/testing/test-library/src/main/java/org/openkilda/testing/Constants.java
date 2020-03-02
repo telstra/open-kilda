@@ -35,7 +35,7 @@ public final class Constants {
     public static final Integer SINGLE_TABLE_ID = 0;
     public static final Integer INGRESS_RULE_MULTI_TABLE_ID = 2;
     public static final Integer EGRESS_RULE_MULTI_TABLE_ID = 4;
-    public static final Integer TRANSIT_RULE_MULTI_TABLE_ID = 6;
+    public static final Integer TRANSIT_RULE_MULTI_TABLE_ID = 5;
     public static final Integer LLDP_RULE_SINGLE_TABLE_ID = 1;
     public static final Integer LLDP_RULE_MULTI_TABLE_ID = 3;
 
