@@ -77,7 +77,7 @@ public class ValidationServiceImplTest {
             .description("Nicira, Inc. OF_13 2.5.5")
             .build();
     private static DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
-            true, false, true, false, false, false);
+            true, true, true, true, false, false, false, false);
     private static SwitchManagerTopologyConfig topologyConfig;
 
     @BeforeClass
@@ -176,7 +176,8 @@ public class ValidationServiceImplTest {
     public void validateRulesSegmentAndIngressLldpCookiesMissing() {
         PersistenceManager persistenceManager = persistenceManager()
                 .withIngressCookies(1L)
-                .withDetectConnectedDevices(new DetectConnectedDevices(true, false, true, false, false, false))
+                .withDetectConnectedDevices(new DetectConnectedDevices(
+                        true, true, true, true, false, false, false, false))
                 .build();
         ValidationService validationService = new ValidationServiceImpl(persistenceManager, topologyConfig);
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
@@ -355,7 +356,7 @@ public class ValidationServiceImplTest {
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
                 .detectConnectedDevices(new DetectConnectedDevices(
-                        detectSrcLldp, false, detectDstLldp, false, false, false))
+                        detectSrcLldp, false, detectDstLldp, false, false, false, false, false))
                 .build();
 
         FlowPath forwardPath = buildFlowPath(flow, switchA, switchB, "1", 1);
@@ -392,8 +393,7 @@ public class ValidationServiceImplTest {
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
-        private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(false, false, false, false,
-                false, false);
+        private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
 
         private PersistenceManagerBuilder withSegmentsCookies(long... cookies) {
             segmentsCookies = cookies;

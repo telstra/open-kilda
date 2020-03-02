@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 @Data
 @Builder
@@ -31,4 +32,6 @@ public class FlowEndpointV2 {
     private SwitchId switchId;
     private Integer portNumber;
     private int vlanId;
+    @NonNull
+    private DetectConnectedDevicesV2 detectConnectedDevices;
 }

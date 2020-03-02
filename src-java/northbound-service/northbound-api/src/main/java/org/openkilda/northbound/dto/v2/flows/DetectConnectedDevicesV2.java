@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,34 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.model;
+package org.openkilda.northbound.dto.v2.flows;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
-public class DetectConnectedDevicesDto implements Serializable {
-    boolean srcLldp;
-    boolean srcArp;
-    boolean dstLldp;
-    boolean dstArp;
-
-    boolean srcSwitchLldp;
-    boolean srcSwitchArp;
-    boolean dstSwitchLldp;
-    boolean dstSwitchArp;
-
-    public DetectConnectedDevicesDto(boolean srcLldp, boolean srcArp, boolean dstLldp, boolean dstArp) {
-        this(srcLldp, srcArp, dstLldp, dstArp, false, false, false, false);
-    }
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class DetectConnectedDevicesV2 {
+    boolean lldp;
+    boolean arp;
 }

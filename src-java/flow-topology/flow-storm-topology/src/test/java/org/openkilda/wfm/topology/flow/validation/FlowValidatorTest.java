@@ -161,7 +161,8 @@ public class FlowValidatorTest {
         Flow flow = new TestFlowBuilder()
                 .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                 .destSwitch(Switch.builder().switchId(dstSwitchId).build())
-                .detectConnectedDevices(new DetectConnectedDevices(true, false, true, false, false, false))
+                .detectConnectedDevices(new DetectConnectedDevices(
+                        true, false, true, false, false, false, false, false))
                 .build();
 
         target.checkSwitchesSupportLldpIfNeeded(flow);
@@ -211,7 +212,7 @@ public class FlowValidatorTest {
                 .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
                 .detectConnectedDevices(new DetectConnectedDevices(
-                        srcLldpRequested, false, dstLldpRequested, false, false, false))
+                        srcLldpRequested, false, dstLldpRequested, false, false, false, false, false))
                 .build();
 
         target.checkSwitchesSupportLldpIfNeeded(flow);

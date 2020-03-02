@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
+import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
@@ -40,6 +41,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
@@ -51,7 +53,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring",
-        imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class})
+        imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class,
+                DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class})
 public interface FlowMapper {
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "source",
@@ -98,10 +101,13 @@ public interface FlowMapper {
     FlowResponsePayload toFlowResponseOutput(FlowDto f);
 
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
+                    + "new DetectConnectedDevicesV2("
+                    + "f.getDetectConnectedDevices().isSrcLldp(), f.getDetectConnectedDevices().isSrcArp())))")
     @Mapping(target = "destination",
             expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+                    + "f.getDestinationVlan(), new DetectConnectedDevicesV2("
+                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
@@ -116,6 +122,11 @@ public interface FlowMapper {
     @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
     @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    @Mapping(target = "detectConnectedDevices", expression = "java(new DetectConnectedDevicesDto("
+            + "request.getSource().getDetectConnectedDevices().isLldp(), "
+            + "request.getSource().getDetectConnectedDevices().isArp(), "
+            + "request.getDestination().getDetectConnectedDevices().isLldp(), "
+            + "request.getDestination().getDetectConnectedDevices().isArp()))")
     FlowRequest toFlowRequest(FlowRequestV2 request);
 
     default FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
@@ -147,10 +158,13 @@ public interface FlowMapper {
 
     @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
+                    + "new DetectConnectedDevicesV2("
+                    + "f.getDetectConnectedDevices().isSrcLldp(), f.getDetectConnectedDevices().isSrcArp())))")
     @Mapping(target = "destination",
             expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+                    + "f.getDestinationVlan(), new DetectConnectedDevicesV2( "
+                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
     SwapFlowPayload toSwapOutput(FlowDto f);
 
     @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")

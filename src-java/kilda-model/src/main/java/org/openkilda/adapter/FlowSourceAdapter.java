@@ -29,7 +29,8 @@ public class FlowSourceAdapter extends FlowSideAdapter {
         DetectConnectedDevices trackConnectedDevices = flow.getDetectConnectedDevices();
         return new FlowEndpoint(
                 flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(), flow.getSrcVlan(),
-                trackConnectedDevices.isSrcLldp() || trackConnectedDevices.isSrcArp());
+                trackConnectedDevices.isSrcLldp() || trackConnectedDevices.isSrcSwitchLldp(),
+                trackConnectedDevices.isSrcArp() || trackConnectedDevices.isSrcSwitchArp());
     }
 
     @Override

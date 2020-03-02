@@ -29,7 +29,8 @@ public class FlowDestAdapter extends FlowSideAdapter {
         DetectConnectedDevices trackConnectedDevices = flow.getDetectConnectedDevices();
         return new FlowEndpoint(
                 flow.getDestSwitch().getSwitchId(), flow.getDestPort(), flow.getDestVlan(),
-                trackConnectedDevices.isDstLldp() || trackConnectedDevices.isDstArp());
+                trackConnectedDevices.isDstLldp() || trackConnectedDevices.isDstSwitchLldp(),
+                trackConnectedDevices.isDstArp() || trackConnectedDevices.isDstSwitchArp());
     }
 
     @Override
