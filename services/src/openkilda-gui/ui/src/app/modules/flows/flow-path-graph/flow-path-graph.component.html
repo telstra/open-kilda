@@ -40,9 +40,11 @@
   </div>
       </div>
     </div>
-    <div class="chart-container flow-path-graph-container" style="width:95% !important">
-        <app-dygraph (zoomChange)="zoom($event)" ></app-dygraph>
-    </div>
+   
+    <div  class="chart-container flow-path-graph-container" style="width:95% !important">
+      <!-- <app-dygraph  (zoomChange)="zoom($event)" ></app-dygraph> -->
+      <ng-dygraphs [data]="graph_data" [noDataLabel]="'    '"[options]="options"></ng-dygraphs>
+  </div>
   </div>
 </div>
 

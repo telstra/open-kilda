@@ -24,7 +24,6 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.KildaConfiguration;
@@ -33,7 +32,6 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
@@ -47,31 +45,12 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Convert {@link UnidirectionalFlow} to {@link FlowDto} and back.
+ * Convert {@link Flow} to {@link FlowDto} and back.
  */
 @Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class}, imports = {FlowStatusDetails.class})
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
-
-    /**
-     * Convert {@link UnidirectionalFlow} to {@link FlowDto}.
-     */
-    @Mapping(source = "srcPort", target = "sourcePort")
-    @Mapping(source = "srcVlan", target = "sourceVlan")
-    @Mapping(source = "destPort", target = "destinationPort")
-    @Mapping(source = "destVlan", target = "destinationVlan")
-    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
-    @Mapping(source = "status", target = "state")
-    @Mapping(source = "timeModify", target = "lastUpdated")
-    @Mapping(source = "timeCreate", target = "createdTime")
-    @Mapping(source = "pinned", target = "pinned")
-    @Mapping(target = "flowStatusDetails",
-            expression = "java(flow.getFlow().isAllocateProtectedPath() ? "
-                    + "new FlowStatusDetails(flow.getFlow().getMainFlowPrioritizedPathsStatus(), "
-                    + "flow.getFlow().getProtectedFlowPrioritizedPathsStatus()) : null)")
-    public abstract FlowDto map(UnidirectionalFlow flow);
 
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
@@ -89,59 +68,61 @@ public abstract class FlowMapper {
     public abstract FlowDto map(Flow flow);
 
     /**
-     * Convert {@link FlowPair} to {@link FlowPairDto}.
+     * Convert {@link FlowPairDto} to {@link Flow}.
+     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
+     * will be used.
      */
-    public FlowPairDto<FlowDto, FlowDto> map(FlowPair flowPair) {
+    public Flow map(FlowPairDto<FlowDto, FlowDto> flowPair, Supplier<KildaConfiguration> kildaConfiguration) {
         if (flowPair == null) {
             return null;
         }
 
-        return new FlowPairDto<>(
-                map(flowPair.getForward()),
-                map(flowPair.getReverse()));
-    }
-
-    /**
-     * Builds a {@link UnidirectionalFlow} with provided data from {@link FlowDto}.
-     * <p/>
-     * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
-     * with only switchId filled.</strong>
-     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
-     * will be used.
-     */
-    public UnidirectionalFlow map(FlowDto flowDto, Supplier<KildaConfiguration> kildaConfiguration) {
-        Flow flow = buildFlow(flowDto, kildaConfiguration);
-
-        FlowPath flowPath = buildPath(flow, flowDto);
-        flow.setForwardPath(flowPath);
-        EncapsulationId encapsulationId = convertToEncapsulationId(flow, flowPath, flowDto);
-
-        return new UnidirectionalFlow(flowPath, encapsulationId, true);
-    }
-
-
-    /**
-     * Convert {@link FlowPairDto} to {@link FlowPair}.
-     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
-     * will be used.
-     */
-    public FlowPair map(FlowPairDto<FlowDto, FlowDto> flowPair, Supplier<KildaConfiguration> kildaConfiguration) {
-        if (flowPair == null) {
-            return null;
-        }
-
-        Flow flow = buildFlow(flowPair.getLeft(), kildaConfiguration);
+        Flow flow = map(flowPair.getLeft(), kildaConfiguration);
 
         FlowPath forwardPath = buildPath(flow, flowPair.getLeft());
         FlowPath reversePath = buildPath(flow, flowPair.getRight());
 
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
-        EncapsulationId forwardEncapsulationId = convertToEncapsulationId(flow, forwardPath, flowPair.getLeft());
+        return flow;
+    }
 
-        EncapsulationId reverseEncapsulationId = convertToEncapsulationId(flow, reversePath, flowPair.getRight());
+    /**
+     * Convert {@link FlowDto} to {@link Flow}.
+     * If encapsulation type and/or path computation strategy is not provided then values from KildaConfiguration
+     * will be used.
+     */
+    public Flow map(FlowDto flow, Supplier<KildaConfiguration> kildaConfiguration) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
 
-        return new FlowPair(flow, forwardEncapsulationId, reverseEncapsulationId);
+        return Flow.builder()
+                .flowId(flow.getFlowId())
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .srcPort(flow.getSourcePort())
+                .destPort(flow.getDestinationPort())
+                .srcVlan(flow.getSourceVlan())
+                .destVlan(flow.getDestinationVlan())
+                .status(map(flow.getState()))
+                .description(flow.getDescription())
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .periodicPings(Boolean.TRUE.equals(flow.getPeriodicPings()))
+                .allocateProtectedPath(flow.isAllocateProtectedPath())
+                .encapsulationType(Optional.ofNullable(flow.getEncapsulationType())
+                        .map(encapsulationType -> FlowEncapsulationType.valueOf(encapsulationType.name()))
+                        .orElse(kildaConfiguration.get().getFlowEncapsulationType()))
+                .pathComputationStrategy(Optional.ofNullable(flow.getPathComputationStrategy())
+                        .map(pathComputationStrategy -> PathComputationStrategy.valueOf(pathComputationStrategy.name()))
+                        .orElse(kildaConfiguration.get().getPathComputationStrategy()))
+                .maxLatency(flow.getMaxLatency())
+                .priority(flow.getPriority())
+                .timeCreate(map(flow.getCreatedTime()))
+                .timeModify(map(flow.getLastUpdated()))
+                .pinned(flow.isPinned())
+                .detectConnectedDevices(DetectConnectedDevicesMapper.INSTANCE.map(flow.getDetectConnectedDevices()))
+                .build();
     }
 
     /**
@@ -263,39 +244,6 @@ public abstract class FlowMapper {
                 .segments(Collections.emptyList())
                 .timeCreate(map(flowDto.getCreatedTime()))
                 .timeModify(map(flowDto.getLastUpdated()))
-                .build();
-    }
-
-    private Flow buildFlow(FlowDto flow, Supplier<KildaConfiguration> kildaConfiguration) {
-        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
-        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
-
-        return Flow.builder()
-                .flowId(flow.getFlowId())
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .srcPort(flow.getSourcePort())
-                .destPort(flow.getDestinationPort())
-                .srcVlan(flow.getSourceVlan())
-                .destVlan(flow.getDestinationVlan())
-                .status(map(flow.getState()))
-                .description(flow.getDescription())
-                .bandwidth(flow.getBandwidth())
-                .ignoreBandwidth(flow.isIgnoreBandwidth())
-                .periodicPings(Boolean.TRUE.equals(flow.getPeriodicPings()))
-                .allocateProtectedPath(flow.isAllocateProtectedPath())
-                .encapsulationType(Optional.ofNullable(flow.getEncapsulationType())
-                    .map(encapsulationType -> FlowEncapsulationType.valueOf(encapsulationType.name()))
-                    .orElse(kildaConfiguration.get().getFlowEncapsulationType()))
-                .pathComputationStrategy(Optional.ofNullable(flow.getPathComputationStrategy())
-                        .map(pathComputationStrategy -> PathComputationStrategy.valueOf(pathComputationStrategy.name()))
-                        .orElse(kildaConfiguration.get().getPathComputationStrategy()))
-                .maxLatency(flow.getMaxLatency())
-                .priority(flow.getPriority())
-                .timeCreate(map(flow.getCreatedTime()))
-                .timeModify(map(flow.getLastUpdated()))
-                .pinned(flow.isPinned())
-                .detectConnectedDevices(DetectConnectedDevicesMapper.INSTANCE.map(flow.getDetectConnectedDevices()))
                 .build();
     }
 

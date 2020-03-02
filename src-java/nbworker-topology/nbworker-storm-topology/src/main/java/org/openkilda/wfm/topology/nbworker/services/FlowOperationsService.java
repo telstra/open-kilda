@@ -24,14 +24,11 @@ import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -64,7 +61,6 @@ public class FlowOperationsService {
     private IslRepository islRepository;
     private SwitchRepository switchRepository;
     private FlowRepository flowRepository;
-    private FlowPairRepository flowPairRepository;
     private FlowPathRepository flowPathRepository;
     private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
 
@@ -72,7 +68,6 @@ public class FlowOperationsService {
         this.islRepository = repositoryFactory.createIslRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
-        this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.transactionManager = transactionManager;
@@ -136,11 +131,6 @@ public class FlowOperationsService {
                     .ifPresent(flow -> flowPaths.add(flow.getForwardPath()));
             return flowPaths;
         }
-
-    }
-
-    public Optional<FlowPair> getFlowPairById(String flowId) {
-        return flowPairRepository.findById(flowId);
     }
 
     /**
@@ -249,14 +239,13 @@ public class FlowOperationsService {
      * @param flow flow.
      * @return updated flow.
      */
-    public UnidirectionalFlow updateFlow(FlowOperationsCarrier carrier, FlowDto flow) throws FlowNotFoundException {
+    public Flow updateFlow(FlowOperationsCarrier carrier, FlowDto flow) throws FlowNotFoundException {
         return transactionManager.doInTransaction(() -> {
-            Optional<FlowPair> foundFlow = flowPairRepository.findById(flow.getFlowId());
+            Optional<Flow> foundFlow = flowRepository.findById(flow.getFlowId());
             if (!foundFlow.isPresent()) {
-                return Optional.<UnidirectionalFlow>empty();
+                return Optional.<Flow>empty();
             }
-            UnidirectionalFlow forwardFlow = foundFlow.get().getForward();
-            Flow currentFlow = forwardFlow.getFlow();
+            Flow currentFlow = foundFlow.get();
 
             if (flow.getMaxLatency() != null) {
                 currentFlow.setMaxLatency(flow.getMaxLatency());
@@ -276,7 +265,7 @@ public class FlowOperationsService {
 
             flowRepository.createOrUpdate(currentFlow);
 
-            return Optional.of(forwardFlow);
+            return Optional.of(currentFlow);
 
         }).orElseThrow(() -> new FlowNotFoundException(flow.getFlowId()));
     }

@@ -168,11 +168,10 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                 .setPortNo(OFPort.ANY)
                 .build();
 
-        logger.trace("Getting port stats for switch={}", iofSwitch.getId());
+        logger.info("Getting port stats for switch={} OF-xid:{}", iofSwitch.getId(), portStatsRequest.getXid());
 
-        Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest),
-                new RequestCallback<>(data -> OfPortStatsMapper.INSTANCE.toPostStatsData(data, switchId),
-                        "port", CorrelationContext.getId()));
+        Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest), new RequestCallback<>(
+                data -> OfPortStatsMapper.INSTANCE.toPostStatsData(data, switchId), switchId, "port"));
     }
 
     @NewCorrelationContextRequired
@@ -187,11 +186,10 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
         if (factory.getVersion().compareTo(OFVersion.OF_15) != 0) {
             // skip flow stats for OF 1.5 protocol version
-            logger.trace("Getting flow stats for switch={}", iofSwitch.getId());
+            logger.info("Getting flow stats for switch={} OF-xid:{}", iofSwitch.getId(), flowStatsRequest.getXid());
 
-            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
-                    new RequestCallback<>(data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId),
-                            "flow", CorrelationContext.getId()));
+            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), new RequestCallback<>(
+                    data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId), switchId, "flow"));
         }
     }
 
@@ -204,7 +202,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                 .buildTableStatsRequest()
                 .build();
 
-        logger.trace("Getting table stats for switch={}", iofSwitch.getId());
+        logger.info("Getting table stats for switch={} OF-xid:{}", iofSwitch.getId(), flowStatsRequest.getXid());
 
         if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
             Function<List<OFTableStatsReply>, InfoData> converter = (response) -> {
@@ -222,8 +220,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                         .build();
             };
 
-            RequestCallback<OFTableStatsReply> callback = new RequestCallback<>(converter, "table",
-                    CorrelationContext.getId());
+            RequestCallback<OFTableStatsReply> callback = new RequestCallback<>(converter, switchId, "table");
             Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), callback);
         }
     }
@@ -240,30 +237,32 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     .setMeterId(OFPM_ALL)
                     .build();
 
-            logger.trace("Getting meter stats for switch={}", iofSwitch.getId());
+            logger.info("Getting meter stats for switch={} OF-xid:{}", iofSwitch.getId(), meterStatsRequest.getXid());
 
             Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
-                    new RequestCallback<>(data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId),
-                            "meter", CorrelationContext.getId()));
+                    new RequestCallback<>(
+                            data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId), switchId, "meter"));
         }
     }
 
     private class RequestCallback<T extends OFStatsReply> implements FutureCallback<List<T>> {
         private Function<List<T>, InfoData> transform;
-        private String type;
+        private final SwitchId switchId;
+        private final String type;
         private final String correlationId;
 
-        RequestCallback(Function<List<T>, InfoData> transform, String type, String correlationId) {
+        RequestCallback(Function<List<T>, InfoData> transform, SwitchId switchId, String type) {
             this.transform = transform;
+            this.switchId = switchId;
             this.type = type;
-            this.correlationId = correlationId;
+            this.correlationId = CorrelationContext.getId();
         }
 
         @Override
         public void onSuccess(List<T> data) {
             // Restore the correlation context used for the request.
             try (CorrelationContextClosable closable = CorrelationContext.create(correlationId)) {
-
+                logger.info("Receive switch {} stats response(s) from {}", type, switchId);
                 InfoMessage infoMessage = new InfoMessage(transform.apply(data),
                         System.currentTimeMillis(), correlationId, Destination.WFM_STATS, region);
                 producerService.sendMessageAndTrack(statisticsTopic, infoMessage);
@@ -274,8 +273,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         public void onFailure(Throwable throwable) {
             // Restore the correlation context used for the request.
             try (CorrelationContextClosable closable = CorrelationContext.create(correlationId)) {
-
-                logger.error("Exception reading {} stats", type, throwable);
+                logger.error("Exception reading {} stats from {}", type, switchId, throwable);
             }
         }
     }

@@ -32,7 +32,6 @@ import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
@@ -286,10 +285,10 @@ public class FlowServiceTest extends Neo4jBasedTest {
     public void saveFlowAllocateResources() throws Exception {
         Flow flow = getFlowBuilder().build();
         flow.setAllocateProtectedPath(false);
-        FlowPair flowPair = createFlowPair(flow, PATH_DIRECT_1_TO_3);
+        addFlowPaths(flow, PATH_DIRECT_1_TO_3);
 
         FlowCommandSender flowCommandSender = mock(FlowCommandSender.class);
-        flowService.saveFlow(flowPair, flowCommandSender);
+        flowService.saveFlow(flow, flowCommandSender);
 
         checkFlowResources(flow);
     }
@@ -315,9 +314,8 @@ public class FlowServiceTest extends Neo4jBasedTest {
         assertTrue(reroutedFlowPaths.isRerouted());
         checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlowPaths.getNewFlowPaths().getForwardPath());
 
-        Optional<FlowPair> foundFlow = persistenceManager.getRepositoryFactory().createFlowPairRepository()
-                .findById(FLOW_ID);
-        assertEquals(flow.getFlowId(), foundFlow.get().getForward().getFlowId());
+        Optional<Flow> foundFlow = persistenceManager.getRepositoryFactory().createFlowRepository().findById(FLOW_ID);
+        assertEquals(flow.getFlowId(), foundFlow.get().getFlowId());
     }
 
     @Test
@@ -397,7 +395,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
         return count;
     }
 
-    private FlowPair createFlowPair(Flow flow, PathPair pathPair) {
+    private void addFlowPaths(Flow flow, PathPair pathPair) {
         FlowPathBuilder flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
 
         PathResources forwardPathResources = PathResources.builder().pathId(FORWARD_PATH_ID).build();
@@ -410,8 +408,6 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         flow.setForwardPath(forward);
         flow.setReversePath(reverse);
-
-        return new FlowPair(flow, null, null);
     }
 
     private Flow.FlowBuilder getFlowBuilder() {

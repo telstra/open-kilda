@@ -24,7 +24,7 @@ For running virtual environment you additionally need linux kernel 4.18+ for OVS
 On Ubuntu 18.04, you can install those dependencies like this:
 
 ```
-apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virtualenv make openvswitch-switch linux-generic-hwe-18.04
+apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virtualenv make openvswitch-switch linux-generic-hwe-18.04 python3-setuptools python3-pip
 ```
 
 Note that your build user needs to be a member of the docker group for the build to work. Do that by adding the user to /etc/groups and logging out and back in again.

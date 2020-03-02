@@ -6,7 +6,8 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import groovy.util.logging.Slf4j
-import org.spockframework.runtime.AbstractRunListener
+import org.spockframework.runtime.extension.IMethodInterceptor
+import org.spockframework.runtime.extension.IMethodInvocation
 import org.spockframework.runtime.model.SpecInfo
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -32,23 +33,25 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
         if (!enabled) {
             return
         }
-        spec.addListener(new AbstractRunListener() {
-            @Override
-            void afterSpec(SpecInfo runningSpec) {
-                log.info("Running cleanup verifier for '$runningSpec.name'")
-                assert northbound.getAllFlows().empty
-                northbound.getAllSwitches().each {
-                    def validation = northbound.validateSwitch(it.switchId)
-                    validation.verifyRuleSectionsAreEmpty()
-                    validation.verifyMeterSectionsAreEmpty()
+        spec.features.each {
+            it.addInterceptor(new IMethodInterceptor() {
+                @Override
+                void intercept(IMethodInvocation invocation) throws Throwable {
+                    invocation.proceed()
+                    log.info("Running cleanup verifier for '$invocation.feature.name'")
+                    assert northbound.getAllFlows().empty
+                    northbound.getAllSwitches().each {
+                        def validation = northbound.validateSwitch(it.switchId)
+                        validation.verifyRuleSectionsAreEmpty()
+                        validation.verifyMeterSectionsAreEmpty()
+                    }
+                    northbound.getAllLinks().each {
+                        assert it.state == IslChangeType.DISCOVERED
+                        assert it.cost == Constants.DEFAULT_COST || it.cost == 0
+                        assert it.availableBandwidth == it.maxBandwidth
+                    }
                 }
-                northbound.getAllLinks().each {
-                    assert it.state == IslChangeType.DISCOVERED
-                    assert it.cost == Constants.DEFAULT_COST || it.cost == 0
-                    assert it.availableBandwidth == it.maxBandwidth
-                }
-            }
-        })
+            })
+        }
     }
-
 }

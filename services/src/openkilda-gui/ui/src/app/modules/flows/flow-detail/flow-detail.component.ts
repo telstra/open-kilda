@@ -207,7 +207,7 @@ export class FlowDetailComponent implements OnInit {
                }
             ];
     this.processLinks();
-    this.svgElement = d3.select("svg");
+    this.svgElement = d3.select("svg#pingGraph");
     this.width = this.svgElement.attr('width');
     this.height = this.svgElement.attr('height');
     this.svgElement.style('cursor','move');

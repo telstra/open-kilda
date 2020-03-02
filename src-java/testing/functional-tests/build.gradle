@@ -5,6 +5,7 @@ plugins {
 description = 'Functional-Tests'
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
+
     implementation project(':test-library')
 
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
@@ -46,4 +47,15 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
     }
 
     systemProperty 'tags', System.getProperty('tags')
+
+    Properties properties = new Properties()
+    File propertiesFile = file("kilda.properties.example")
+    propertiesFile.withInputStream {
+        properties.load(it)
+    }
+    properties.keys().each { k ->
+        if (System.getProperty(k)) {
+            systemProperty k, System.getProperty(k)
+        }
+    }
 }

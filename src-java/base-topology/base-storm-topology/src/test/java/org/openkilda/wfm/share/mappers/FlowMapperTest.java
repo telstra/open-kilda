@@ -28,14 +28,12 @@ import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 
 import org.junit.Test;
 
@@ -99,10 +97,9 @@ public class FlowMapperTest {
         reverseFlow.setDetectConnectedDevices(new DetectConnectedDevicesDto(true, false, false, true, false, false));
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
-        FlowPair p = FlowMapper.INSTANCE.map(pair, () -> KildaConfiguration.DEFAULTS);
-        assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
-        assertDetectConnectedDevices(forwardFlow.getDetectConnectedDevices(), p.forward.getDetectConnectedDevices());
-        assertDetectConnectedDevices(reverseFlow.getDetectConnectedDevices(), p.reverse.getDetectConnectedDevices());
+        Flow p = FlowMapper.INSTANCE.map(pair, () -> KildaConfiguration.DEFAULTS);
+        assertEquals(p.getFlowId(), pair.getLeft().getFlowId());
+        assertDetectConnectedDevices(forwardFlow.getDetectConnectedDevices(), p.getDetectConnectedDevices());
     }
 
     private void assertDetectConnectedDevices(DetectConnectedDevicesDto expected, DetectConnectedDevices actual) {
@@ -166,15 +163,6 @@ public class FlowMapperTest {
         assertNotNull(flowDto.getFlowStatusDetails());
         assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
         assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
-
-        UnidirectionalFlow unidirectionalFlow = new UnidirectionalFlow(forwardFlowPath, null, true);
-
-        flowDto = FlowMapper.INSTANCE.map(unidirectionalFlow);
-
-        assertNotNull(flowDto.getFlowStatusDetails());
-        assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
-        assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
-        assertDetectConnectedDevices(flowDto.getDetectConnectedDevices(),
-                unidirectionalFlow.getDetectConnectedDevices());
+        assertDetectConnectedDevices(flowDto.getDetectConnectedDevices(), flow.getDetectConnectedDevices());
     }
 }

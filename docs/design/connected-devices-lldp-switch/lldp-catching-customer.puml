@@ -1,0 +1,32 @@
+@startuml
+title Detect Connected Devices on Customer Port
+
+participant "Switch A\ninput table " as SWAIT
+participant "Switch A\ningress table " as SWAI
+participant "Switch A\npost ingress table  " as SWAPI
+participant "Transit/egress  \nSwitch B" as SWB
+collections "Floodlights " as FL
+control "kilda.floodlight.\nconnected.devices.priv  " as TP
+participant "ConnectedDevicesTopology    " as CDT
+database DB
+
+activate SWAIT
+SWAIT -> SWAIT : Mark LLDP\npacket by\nmetadata
+SWAIT -> SWAI : Send to ingress
+deactivate SWAIT
+activate SWAI
+SWAI -> SWB : Send to next switch
+SWAI -> SWAPI : Send to post ingress
+deactivate SWAI
+activate SWAPI
+SWAPI -> FL : LLDP packet\n(match by metadata)
+deactivate SWAPI
+activate FL
+FL -> TP : SwitchLldpInfoData
+deactivate FL
+TP -> CDT : SwitchLldpInfoData
+activate CDT
+CDT -> DB : Save/update\nConnected Device
+deactivate CDT
+
+@enduml

@@ -1,0 +1,24 @@
+@startuml
+title Detect Connected Devices on Other Ports
+
+participant "Switch A\ninput table " as SWA
+participant "Switch B " as SWB
+collections "Floodlights " as FL
+control "kilda.floodlight.\nconnected.devices.priv  " as TP
+participant "ConnectedDevicesTopology    " as CDT
+database DB
+
+activate SWA
+SWA -> SWB : All packets from Flows
+SWA -> SWB : All packets from ISLs
+SWA -> FL: Match ARP by eth_type
+deactivate SWA
+activate FL
+FL -> TP : ArpInfoData
+deactivate FL
+TP -> CDT : ArpInfoData
+activate CDT
+CDT -> DB : Save/update\nConnected Device
+deactivate CDT
+
+@enduml

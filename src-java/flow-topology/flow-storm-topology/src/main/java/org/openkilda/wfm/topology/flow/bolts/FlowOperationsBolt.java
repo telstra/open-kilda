@@ -35,9 +35,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.model.Cookie;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.Flow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -190,14 +188,14 @@ public class FlowOperationsBolt extends BaseRichBolt {
 
             SwapFlowEndpointRequest request = (SwapFlowEndpointRequest) message.getData();
 
-            List<FlowPair> flowPairs =
-                    flowService.swapFlowEnpoints(FlowMapper.INSTANCE.buildFlow(request.getFirstFlow()),
+            List<Flow> flows =
+                    flowService.swapFlowEndpoints(FlowMapper.INSTANCE.buildFlow(request.getFirstFlow()),
                             FlowMapper.INSTANCE.buildFlow(request.getSecondFlow()),
                             new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Swap endpoint for flows: {} and {}", request.getFirstFlow().getFlowId(),
                     request.getSecondFlow().getFlowId());
-            Values values = new Values(new InfoMessage(buildSwapFlowResponse(flowPairs), message.getTimestamp(),
+            Values values = new Values(new InfoMessage(buildSwapFlowResponse(flows), message.getTimestamp(),
                     message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FeatureTogglesNotEnabledException e) {
@@ -219,14 +217,14 @@ public class FlowOperationsBolt extends BaseRichBolt {
         }
     }
 
-    private SwapFlowResponse buildSwapFlowResponse(List<FlowPair> flows) {
-        return new SwapFlowResponse(buildFlowResponse(flows.get(0).getForward()),
-                buildFlowResponse(flows.get(1).getForward()));
+    private SwapFlowResponse buildSwapFlowResponse(List<Flow> flows) {
+        return new SwapFlowResponse(buildFlowResponse(flows.get(0)),
+                buildFlowResponse(flows.get(1)));
     }
 
-    private FlowResponse buildFlowResponse(UnidirectionalFlow flow) {
+    private FlowResponse buildFlowResponse(Flow flow) {
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
-        flowDto.setCookie(flow.getCookie() & Cookie.FLOW_COOKIE_VALUE_MASK);
+        flowDto.setCookie(flow.getForwardPath().getCookie().getUnmaskedValue());
         return new FlowResponse(flowDto);
     }
 

@@ -100,7 +100,8 @@ class TopologyHelper {
             new Isl(topoSwitches.find { it.dpId == link.source.switchId }, link.source.portNo,
                     topoSwitches.find { it.dpId == link.destination.switchId }, link.destination.portNo,
                     link.maxBandwidth, null)
-        }
+        }.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+
         return new TopologyDefinition(topoSwitches, topoLinks, [], TraffGenConfig.defaultConfig())
     }
 
@@ -119,7 +120,7 @@ class TopologyHelper {
                 .findAll { src, dst -> src != dst } //non-single-switch
                 .unique { it.sort() } //no reversed versions of same flows
                 .collect { Switch src, Switch dst ->
-            new SwitchPair(src: src, dst: dst, paths: database.getPaths(src.dpId, dst.dpId)*.path)
-        }
+                    new SwitchPair(src: src, dst: dst, paths: database.getPaths(src.dpId, dst.dpId)*.path)
+                }
     }
 }

@@ -189,7 +189,7 @@ public class Session implements AutoCloseable {
 
     private void actualWrite(OFMessage message)
             throws SwitchWriteException {
-        log.debug("push OF message to {}: {}", sw.getId(), message);
+        log.info("push OF message to {}: {}", sw.getId(), message);
         if (!sw.write(message)) {
             error = true;
             throw new SwitchWriteException(sw.getId(), message);

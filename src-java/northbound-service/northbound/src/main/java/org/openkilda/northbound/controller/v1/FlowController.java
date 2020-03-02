@@ -316,7 +316,8 @@ public class FlowController extends BaseController {
      * Verify flow integrity by sending "ping" package over flow path.
      */
     @ApiOperation(
-            value = "Verify flow - using special network packet that is being routed in the same way as client traffic")
+            value = "Verify flow - using special network packet that is being routed in the same way as client traffic",
+            response = PingOutput.class)
     @PutMapping(path = "/{flow_id}/ping")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PingOutput> pingFlow(
@@ -338,7 +339,7 @@ public class FlowController extends BaseController {
     /**
      * Update burst parameter in meter.
      */
-    @ApiOperation(value = "Update burst parameter in meter")
+    @ApiOperation(value = "Update burst parameter in meter", response = FlowMeterEntries.class)
     @PatchMapping(path = "/{flow_id}/meters")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowMeterEntries> updateMetersBurst(@PathVariable("flow_id") String flowId) {
@@ -348,7 +349,7 @@ public class FlowController extends BaseController {
     /**
      * Gets flow history.
      */
-    @ApiOperation(value = "Gets history for flow")
+    @ApiOperation(value = "Gets history for flow", response = FlowEventPayload.class, responseContainer = "List")
     @GetMapping(path = "/{flow_id}/history")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowEventPayload>> getHistory(
@@ -367,7 +368,7 @@ public class FlowController extends BaseController {
     /**
      * Gets flow connected devices.
      */
-    @ApiOperation(value = "Gets flow connected devices")
+    @ApiOperation(value = "Gets flow connected devices", response = FlowConnectedDevicesResponse.class)
     @GetMapping(path = "/{flow_id}/devices")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowConnectedDevicesResponse> getHistory(

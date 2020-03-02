@@ -26,7 +26,6 @@ import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.v1.switches.DeleteLinkResult;
 import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.annotations.ApiOperation;
@@ -78,9 +77,9 @@ public class LinkController extends BaseController {
      * Delete link.
      *
      * @param linkParameters properties to find a link for delete.
-     * @return result of the operation wrapped into {@link DeleteLinkResult}. True means no errors is occurred.
+     * @return deleted link.
      */
-    @ApiOperation(value = "Delete link.", response = DeleteLinkResult.class)
+    @ApiOperation(value = "Delete link.", response = LinkDto.class, responseContainer = "List")
     @DeleteMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LinkDto>> deleteLink(@RequestBody LinkParametersDto linkParameters) {

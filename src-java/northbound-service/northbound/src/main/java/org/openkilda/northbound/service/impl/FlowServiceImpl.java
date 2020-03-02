@@ -45,7 +45,6 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
@@ -469,7 +468,7 @@ public class FlowServiceImpl implements FlowService {
     }
 
     /**
-     * Reads {@link BidirectionalFlowDto} flow representation from the Storm.
+     * Reads {@link FlowReadResponse} flow representation from the Storm.
      *
      * @return the bidirectional flow.
      */

@@ -1,0 +1,32 @@
+@startuml
+title Detect Connected Devices on Isl Port
+
+participant "Switch A\ninput table " as SWAIT
+participant "Switch A\negress table " as SWAE
+participant "Switch A\ntransit table  " as SWAT
+participant "Switch B " as SWB
+collections "Floodlights " as FL
+control "kilda.floodlight.\nconnected.devices.priv  " as TP
+participant "ConnectedDevicesTopology    " as CDT
+database DB
+
+activate SWAIT
+SWAIT -> SWAE: Send to egress
+deactivate SWAIT
+activate SWAE
+SWAE-> SWB : Send to next\nswitch if egress
+SWAE-> SWAT : Send to transit\n table otherwise
+deactivate SWAE
+activate SWAT
+SWAT -> SWB : Send to next switch\nif transit
+SWAT -> FL : Match ARP packet\n otherwise
+deactivate SWAT
+activate FL
+FL -> TP : ArpInfoData
+deactivate FL
+TP -> CDT : ArpInfoData
+activate CDT
+CDT -> DB : Save/update\nConnected Device
+deactivate CDT
+
+@enduml

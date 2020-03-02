@@ -31,10 +31,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
-import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
@@ -44,7 +42,6 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
@@ -154,7 +151,7 @@ public class FlowService extends BaseFlowService {
      * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
-    public FlowPair createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender)
+    public Flow createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender)
             throws RecoverableException, UnroutableFlowException, FlowAlreadyExistException, FlowValidationException,
             SwitchValidationException, FlowNotFoundException, ResourceAllocationException {
         dashboardLogger.onFlowCreate(flow);
@@ -236,7 +233,7 @@ public class FlowService extends BaseFlowService {
                 createFlowPathStatusRequests(result, FlowPathStatus.ACTIVE),
                 createFlowPathStatusRequests(result, FlowPathStatus.INACTIVE));
 
-        return buildFlowPair(result);
+        return result.getFlow();
     }
 
     @VisibleForTesting
@@ -276,12 +273,11 @@ public class FlowService extends BaseFlowService {
     /**
      * Stores a flow and related entities into DB, and invokes flow rules installation via the command sender.
      *
-     * @param flowPair the flow to be saved.
+     * @param flow the flow to be saved.
      * @param sender the command sender for flow rules installation.
      */
-    public void saveFlow(FlowPair flowPair, FlowCommandSender sender) throws FlowAlreadyExistException,
+    public void saveFlow(Flow flow, FlowCommandSender sender) throws FlowAlreadyExistException,
             ResourceAllocationException {
-        Flow flow = flowPair.getForward().getFlow();
 
         dashboardLogger.onFlowPush(flow);
 
@@ -296,7 +292,7 @@ public class FlowService extends BaseFlowService {
 
         FlowPathsWithEncapsulation result = transactionManager.doInTransaction(() -> {
             Instant timestamp = Instant.now();
-            FlowPathPair flowPathPair = buildFlowPathPair(flowPair, flowResources, timestamp);
+            FlowPathPair flowPathPair = buildFlowPathPair(flow, flowResources, timestamp);
 
             Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, flow.getStatus(), timestamp);
             flowWithPaths.setTimeCreate(timestamp);
@@ -396,7 +392,7 @@ public class FlowService extends BaseFlowService {
      * @param sender the command sender for flow rules installation and deletion.
      * @return the updated flow with the path and resources set.
      */
-    public FlowPair updateFlow(Flow updatingFlow, String diverseFlowId, FlowCommandSender sender)
+    public Flow updateFlow(Flow updatingFlow, String diverseFlowId, FlowCommandSender sender)
             throws RecoverableException, UnroutableFlowException, FlowNotFoundException, FlowValidationException,
             SwitchValidationException, ResourceAllocationException {
         dashboardLogger.onFlowUpdate(updatingFlow);
@@ -416,7 +412,7 @@ public class FlowService extends BaseFlowService {
 
         UpdatedFlowPathsWithEncapsulation result = updateFlowAndPaths(currentFlow, updatingFlow, sender);
 
-        return buildFlowPair(result);
+        return result.getFlow();
     }
 
     private UpdatedFlowPathsWithEncapsulation updateFlowAndPaths(FlowPathsWithEncapsulation currentFlow,
@@ -786,7 +782,7 @@ public class FlowService extends BaseFlowService {
      * @param sender the command sender for flow rules installation and deletion.
      * @return the updated flow.
      */
-    public UnidirectionalFlow pathSwap(String flowId, PathId pathId, FlowCommandSender sender)
+    public Flow pathSwap(String flowId, PathId pathId, FlowCommandSender sender)
             throws FlowNotFoundException, FlowValidationException {
         FlowPathsWithEncapsulation result = transactionManager.doInTransaction(() -> {
             FlowPathsWithEncapsulation currentFlow =
@@ -839,7 +835,7 @@ public class FlowService extends BaseFlowService {
                 createFlowPathStatusRequests(result, FlowPathStatus.ACTIVE),
                 createFlowPathStatusRequests(result, FlowPathStatus.INACTIVE));
 
-        return buildForwardUnidirectionalFlow(result.getProtectedForward());
+        return result.getFlow();
     }
 
     /**
@@ -946,19 +942,19 @@ public class FlowService extends BaseFlowService {
         );
     }
 
-    private FlowPathPair buildFlowPathPair(FlowPair flowPair, FlowResources flowResources, Instant timeCreate) {
-        FlowPathStatus pathStatus = flowPair.getForward().getStatus() == FlowStatus.IN_PROGRESS
+    private FlowPathPair buildFlowPathPair(Flow flow, FlowResources flowResources, Instant timeCreate) {
+        FlowPathStatus pathStatus = flow.getStatus() == FlowStatus.IN_PROGRESS
                 ? FlowPathStatus.IN_PROGRESS : FlowPathStatus.ACTIVE;
 
-        FlowPath forwardPath = flowPair.getForward().getFlowPath().toBuilder()
-                .srcSwitch(switchRepository.reload(flowPair.getForward().getSrcSwitch()))
-                .destSwitch(switchRepository.reload(flowPair.getForward().getDestSwitch()))
+        FlowPath forwardPath = flow.getForwardPath().toBuilder()
+                .srcSwitch(switchRepository.reload(flow.getForwardPath().getSrcSwitch()))
+                .destSwitch(switchRepository.reload(flow.getForwardPath().getDestSwitch()))
                 .status(pathStatus)
                 .timeCreate(timeCreate)
                 .build();
-        FlowPath reversePath = flowPair.getReverse().getFlowPath().toBuilder()
-                .srcSwitch(switchRepository.reload(flowPair.getReverse().getSrcSwitch()))
-                .destSwitch(switchRepository.reload(flowPair.getReverse().getDestSwitch()))
+        FlowPath reversePath = flow.getReversePath().toBuilder()
+                .srcSwitch(switchRepository.reload(flow.getReversePath().getSrcSwitch()))
+                .destSwitch(switchRepository.reload(flow.getReversePath().getDestSwitch()))
                 .status(pathStatus)
                 .timeCreate(timeCreate)
                 .build();
@@ -1167,26 +1163,6 @@ public class FlowService extends BaseFlowService {
         return !IntersectionComputer.isProtectedPathOverlaps(primaryFlowSegments, segments);
     }
 
-    private FlowPair buildFlowPair(FlowPathsWithEncapsulation flowPath) {
-        EncapsulationId forwardEncapsulation = null;
-        if (flowPath.getForwardEncapsulation() != null) {
-            forwardEncapsulation = flowPath.getForwardEncapsulation().getEncapsulation();
-        }
-        EncapsulationId reverseEncapsulation = null;
-        if (flowPath.getReverseEncapsulation() != null) {
-            reverseEncapsulation = flowPath.getReverseEncapsulation().getEncapsulation();
-        }
-        return new FlowPair(flowPath.getFlow(), forwardEncapsulation, reverseEncapsulation);
-    }
-
-    private UnidirectionalFlow buildForwardUnidirectionalFlow(FlowPathWithEncapsulation flowPath) {
-        EncapsulationId encapsulationId = null;
-        if (flowPath.getEncapsulation() != null) {
-            encapsulationId = flowPath.getEncapsulation().getEncapsulation();
-        }
-        return new UnidirectionalFlow(flowPath.getFlowPath(), encapsulationId, true);
-    }
-
     private FlowPathsWithEncapsulation buildFlowPathsWithEncapsulation(Flow flow, FlowResources primaryResources,
                                                                        FlowResources protectedResources) {
         FlowPathsWithEncapsulationBuilder builder =
@@ -1204,28 +1180,6 @@ public class FlowService extends BaseFlowService {
                     .protectedReverseEncapsulation(protectedResources.getReverse().getEncapsulationResources());
         }
         return builder.build();
-    }
-
-    private FlowPathWithEncapsulation getFlowPathWithEncapsulation(Flow flow, FlowPath flowPath) {
-        EncapsulationResources encapResources;
-        if (flow.isOneSwitchFlow()) {
-            encapResources = null;
-        } else {
-            FlowEncapsulationType encapType = flowPath.getFlow().getEncapsulationType();
-            PathId forwardPathId = flowPath.getPathId();
-            PathId reversePathId = flow.getOppositePathId(flowPath.getPathId())
-                    .orElseThrow(() -> new IllegalStateException(
-                            format("Flow %s does not have reverse path for %s", flow.getFlowId(),
-                                    flowPath.getPathId())));
-            encapResources = flowResourcesManager.getEncapsulationResources(forwardPathId, reversePathId, encapType)
-                    .orElseThrow(() ->
-                            new ResourceNotAvailableException(format("Failed to find resources for flow path %s",
-                                    flowPath.getPathId())));
-        }
-        return FlowPathWithEncapsulation.builder()
-                .flowPath(flowPath)
-                .encapsulation(encapResources)
-                .build();
     }
 
     private List<CommandGroup> createSwapIngressCommand(FlowPathsWithEncapsulation pathsToSwap) {
@@ -1496,7 +1450,7 @@ public class FlowService extends BaseFlowService {
      * @param sender a command sender for flow rules installation and deletion.
      * @return the flows with swapped endpoints.
      */
-    public List<FlowPair> swapFlowEnpoints(Flow firstFlow, Flow secondFlow, FlowCommandSender sender)
+    public List<Flow> swapFlowEndpoints(Flow firstFlow, Flow secondFlow, FlowCommandSender sender)
             throws FlowNotFoundException, FlowValidationException, ResourceAllocationException,
             UnroutableFlowException {
         dashboardLogger.onFlowEndpointSwap(firstFlow, secondFlow);
@@ -1604,7 +1558,7 @@ public class FlowService extends BaseFlowService {
                 buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
     }
 
-    private List<FlowPair> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
+    private List<Flow> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
                                      Flow updatingFirstFlow,
                                      FlowPathsWithEncapsulation currentSecondFlow,
                                      Flow updatingSecondFlow, FlowCommandSender sender)
@@ -1647,7 +1601,7 @@ public class FlowService extends BaseFlowService {
                 secondCommandGroup,
                 createFlowPathStatusRequests(flows.get(1), FlowPathStatus.ACTIVE),
                 createFlowPathStatusRequests(flows.get(1), FlowPathStatus.INACTIVE));
-        return flows.stream().map(this::buildFlowPair).collect(Collectors.toList());
+        return flows.stream().map(FlowPathsWithEncapsulation::getFlow).collect(Collectors.toList());
     }
 
     private void createPaths(FlowPath forward, FlowPath reverse) {

@@ -162,10 +162,6 @@ public interface OutputCommands {
                 matchBuilder.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(tunnelId));
                 break;
             case VXLAN:
-                if (dpid != null) {
-                    matchBuilder.setExact(MatchField.ETH_DST,
-                            MacAddress.of(Arrays.copyOfRange(dpid.getBytes(), 2, 8)));
-                }
                 matchBuilder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
                 matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
                 break;
@@ -660,6 +656,7 @@ public interface OutputCommands {
     default OFFlowAdd installUnicastVerificationRuleVxlan(DatapathId dpid) {
         Match match = ofFactory.buildMatch()
                 .setMasked(MatchField.ETH_SRC, FLOW_PING_MAGIC_SRC_MAC_ADDRESS, MacAddress.NO_MASK)
+                .setMasked(MatchField.ETH_DST, MacAddress.of(dpid), MacAddress.NO_MASK)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.UDP_SRC, TransportPort.of(4500))

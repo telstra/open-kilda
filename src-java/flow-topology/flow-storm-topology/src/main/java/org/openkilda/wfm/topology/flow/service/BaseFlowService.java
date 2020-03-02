@@ -17,10 +17,8 @@ package org.openkilda.wfm.topology.flow.service;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPair;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
@@ -42,27 +40,16 @@ public class BaseFlowService {
     protected final FlowResourcesManager flowResourcesManager;
     protected final TransactionManager transactionManager;
     protected final FlowRepository flowRepository;
-    protected final FlowPairRepository flowPairRepository;
 
     public BaseFlowService(PersistenceManager persistenceManager, FlowResourcesManager flowResourcesManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
-        flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowResourcesManager = flowResourcesManager;
     }
 
     public boolean doesFlowExist(String flowId) {
         return flowRepository.exists(flowId);
-    }
-
-    /**
-     * Fetch a path pair for the flow.
-     */
-    public Optional<FlowPair> getFlowPair(String flowId) {
-        dashboardLogger.onFlowRead(flowId);
-
-        return flowPairRepository.findById(flowId);
     }
 
     /**

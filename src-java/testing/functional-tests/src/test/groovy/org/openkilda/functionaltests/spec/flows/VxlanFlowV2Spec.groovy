@@ -482,6 +482,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             def involvedSwitches = pathHelper.getInvolvedSwitches(it)
             involvedSwitches.size() > 2 && !involvedSwitches*.dpId.contains(vxlanSw.dpId)
         }
+        assumeTrue("Wasn't able to find any path without VXLAN", noVxlanPath as boolean)
         switchPair.paths.findAll { it != noVxlanPath }.each { pathHelper.makePathMorePreferable(noVxlanPath, it) }
         def noVxlanSw = pathHelper.getInvolvedSwitches(noVxlanPath).first()
         def initNoVxlanSwProps = northbound.getSwitchProperties(noVxlanSw.dpId)

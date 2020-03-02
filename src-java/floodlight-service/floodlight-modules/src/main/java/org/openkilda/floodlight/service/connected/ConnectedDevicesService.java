@@ -53,7 +53,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class ConnectedDevicesService implements IService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(ConnectedDevicesService.class);
     public static final int MAC_ADDRESS_LENGTH_IN_BYTES = 6;
@@ -121,6 +120,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             return;
         }
 
+        logger.info("Receive connected device packet from {} OF-xid:{}", input.getDpId(), input.getMessage().getXid());
         long cookie = rawCookie.getValue();
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 

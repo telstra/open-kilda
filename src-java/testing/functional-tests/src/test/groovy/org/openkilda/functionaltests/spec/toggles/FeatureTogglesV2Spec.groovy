@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -320,6 +321,7 @@ feature toogle"() {
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
         when: "Restore all possible flow paths"
