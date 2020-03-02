@@ -1038,7 +1038,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(protectedIslToBreak).get().state != IslChangeType.FAILED
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
