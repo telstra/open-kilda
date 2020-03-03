@@ -322,11 +322,13 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
      modalRef.result.then((response)=>{
       if(response && response == true){
         var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,enable_bfd:this.enable_bfd};
+       this.loaderService.show('updating BFD flag..');
         this.islListService.updateBFDflag(data).subscribe(response=>{
           this.toastr.success('BFD flag updated successfully!','Success');
-          location.reload();
+          this.loaderService.hide();
         },error => {
           this.enable_bfd = false;
+          this.loaderService.hide();
           var errMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : 'Error in updating BFD flag! ';
           this.toastr.error(errMsg,'Error');
         })
