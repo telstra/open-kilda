@@ -12,8 +12,6 @@ import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -38,7 +36,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.LldpData
@@ -58,7 +55,6 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
-@Ignore("https://github.com/telstra/open-kilda/issues/3059")
 @Slf4j
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
@@ -142,12 +138,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         restoreSwitchProperties(data.switchPair.src.dpId, initialSrcProps)
         restoreSwitchProperties(data.switchPair.dst.dpId, initialDstProps)
         [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(data.switchPair.src.dpId)
-            cleanupLldpMeters(data.switchPair.dst.dpId)
-        }
 
         where:
         data <<
@@ -251,12 +241,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
 
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.switchDpId)
-            cleanupLldpMeters(flow.destination.switchDpId)
-        }
-
         where:
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
                 [false, false, false, false],
@@ -309,11 +293,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         cleanup: "Restore initial switch properties"
         restoreSwitchProperties(sw.dpId, initialProps)
         database.removeConnectedDevices(sw.dpId)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     @Unroll
@@ -372,12 +351,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
 
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.switchDpId)
-            cleanupLldpMeters(flow.destination.switchDpId)
-        }
-
         where:
         [srcEnabled, dstEnabled] << [
                 [true, false],
@@ -428,11 +401,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.datapath)
-        }
     }
 
     @Tidy
@@ -486,11 +454,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.destination.datapath)
-        }
     }
 
     @Tidy
@@ -548,11 +511,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(sw.dpId, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     @Tidy
@@ -600,11 +558,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         northbound.deleteFlow(flow.id)
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     def "Able to detect devices on free switch port (no flow or isl)"() {
@@ -637,11 +590,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         cleanup: "Turn off devices prop, remove connected devices"
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     @Unroll
@@ -734,11 +682,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
 
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
-
         where:
         srcDefault | dstDefault
         true       | false
@@ -813,12 +756,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.datapath)
-            cleanupLldpMeters(flow.destination.datapath)
-        }
 
         where:
         srcDefault | dstDefault
@@ -912,6 +849,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         if (oneSwitch) {
             flow = flowHelper.singleSwitchSinglePortFlow(switchPair.src)
         } else {
+            assert switchPair.src.dpId != switchPair.dst.dpId
             flow = flowHelper.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
@@ -942,26 +880,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
             })
         }
         return initialProps
-    }
-
-    private void cleanupLldpMeters(SwitchId switchId) {
-        if (topology.switches.find { it.dpId == switchId }.ofVersion == "OF_12") {
-            return //meters are not supported
-        }
-
-        def lldpCookies = [
-                LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE,
-                LLDP_POST_INGRESS_VXLAN_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE]
-
-        lldpCookies.each {
-            northbound.deleteMeter(switchId, createMeterIdForDefaultRule(it).value)
-        }
-
-        def expectedMeters = [createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).value,
-                              createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).value]
-        Wrappers.wait(Constants.RULES_DELETION_TIME) {
-            assert northbound.getAllMeters(switchId).meterEntries*.meterId.sort() == expectedMeters.sort()
-        }
     }
 
     private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
@@ -1067,41 +985,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
     private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {
         assert northbound.getSwitchRules(switchId).flowEntries.count { !Cookie.isDefaultRule(it.cookie) } == 0
         assert northbound.getAllMeters(switchId).meterEntries.count { !MeterId.isMeterIdOfDefaultRule(it.meterId) } == 0
-    }
-
-    private static int getExpectedNonDefaultMeterCount(Flow flow, boolean source) {
-        int count = 0
-        if (mustHaveLldp(flow, source)) {
-            count += 1
-        }
-        if (flow.oneSwitchFlow && mustHaveLldp(flow, !source)) {
-            count += 1
-        }
-        if (flow.allocateProtectedPath) {
-            count *= 2
-        }
-        if (flow.bandwidth > 0) {
-            count += flow.oneSwitchFlow ? 2 : 1
-        }
-        return count
-    }
-
-    private static int getExpectedLldpRulesCount(Flow flow, boolean source) {
-        int count = 0
-        if (mustHaveLldp(flow, source)) {
-            count += 1
-        }
-        if (flow.oneSwitchFlow && mustHaveLldp(flow, !source)) {
-            count += 1
-        }
-        if (flow.allocateProtectedPath) {
-            count *= 2
-        }
-        return count
-    }
-
-    private static boolean mustHaveLldp(Flow flow, boolean source) {
-        return (source && flow.detectConnectedDevices.srcLldp) || (!source && flow.detectConnectedDevices.dstLldp)
     }
 
     def verifyEquals(ConnectedDeviceDto device, LldpData lldp) {

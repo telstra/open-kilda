@@ -45,7 +45,6 @@ import spock.lang.See
 
 import javax.inject.Provider
 
-@Ignore("https://github.com/telstra/open-kilda/issues/3059")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/multi-table-pipelines")
 class MultitableFlowsSpec extends HealthCheckSpecification {
 
@@ -800,6 +799,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         revertSwitchToInitState(sw, initSwProps)
     }
 
+    @Ignore
     def "Flow rules are not recreated when pinned flow changes state to up/down"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
