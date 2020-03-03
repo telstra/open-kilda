@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.configuration
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -20,7 +21,6 @@ import org.openkilda.model.FlowEncapsulationType
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -93,7 +93,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3059")
     def "System takes into account default multi table value while connecting a new switch"() {
         assumeTrue("Multi table is not enabled in kilda configuration", useMultitable)
 
@@ -107,7 +106,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
         with(islRules) { rules ->
             rules.size() == isls.size()
-            rules*.instructions.goToTable.unique() == [4]  // 4 - egress table id
+            rules*.instructions.goToTable.unique() == [(short) EGRESS_RULE_MULTI_TABLE_ID]  // 4 - egress table id
             islRules*.match.inPort.sort() == isls*.srcPort.collect { it.toString() }.sort()
         }
 

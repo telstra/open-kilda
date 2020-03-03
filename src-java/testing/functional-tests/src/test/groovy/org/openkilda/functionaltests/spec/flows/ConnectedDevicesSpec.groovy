@@ -56,7 +56,6 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
-@Ignore("https://github.com/telstra/open-kilda/issues/3059")
 @Slf4j
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
@@ -1031,6 +1030,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         if (oneSwitch) {
             flow = flowHelper.singleSwitchSinglePortFlow(switchPair.src)
         } else {
+            assert switchPair.src.dpId != switchPair.dst.dpId
             flow = flowHelper.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
@@ -1141,10 +1141,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {
         assert northbound.getSwitchRules(switchId).flowEntries.count { !Cookie.isDefaultRule(it.cookie) } == 0
         assert northbound.getAllMeters(switchId).meterEntries.count { !MeterId.isMeterIdOfDefaultRule(it.meterId) } == 0
-    }
-
-    private static boolean mustHaveLldp(Flow flow, boolean source) {
-        return (source && flow.detectConnectedDevices.srcLldp) || (!source && flow.detectConnectedDevices.dstLldp)
     }
 
     def verifyEquals(ConnectedDeviceDto device, LldpData lldp) {

@@ -15,7 +15,6 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
@@ -25,7 +24,6 @@ Main purpose of that is to understand which feature is supported by a switch(enc
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3059")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"

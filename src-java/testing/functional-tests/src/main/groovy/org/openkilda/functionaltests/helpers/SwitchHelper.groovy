@@ -224,8 +224,8 @@ class SwitchHelper {
     }
 
     /**
-     * The same as direct northbound call, but additionally waits that default rules are indeed reinstalled according
-     * to config
+     * The same as direct northbound call, but additionally waits that default rules and default meters are indeed
+     * reinstalled according to config
      */
     static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
         def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
@@ -239,6 +239,11 @@ class SwitchHelper {
                 expectedHexCookie.add(decode(cookie).toString())
             }
             assertThat actualHexCookie, containsInAnyOrder(expectedHexCookie.toArray())
+
+            def actualDefaultMetersIds = northbound.getAllMeters(sw.dpId).meterEntries*.meterId.findAll {
+                MeterId.isMeterIdOfDefaultRule((long) it)
+            }
+            assert actualDefaultMetersIds.sort() == sw.defaultMeters.sort()
         }
         return response
     }
