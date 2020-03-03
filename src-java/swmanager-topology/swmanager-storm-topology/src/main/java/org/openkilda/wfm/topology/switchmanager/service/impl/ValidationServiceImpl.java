@@ -78,6 +78,7 @@ public class ValidationServiceImpl implements ValidationService {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitch(switchId).stream()
+                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                 .map(FlowPath::getCookie)
                 .map(Cookie::getValue)
                 .collect(Collectors.toSet());
@@ -85,6 +86,7 @@ public class ValidationServiceImpl implements ValidationService {
         Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchId);
 
         paths.stream()
+                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                 .map(FlowPath::getCookie)
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
@@ -203,7 +205,10 @@ public class ValidationServiceImpl implements ValidationService {
                 .map(MeterEntryMapper.INSTANCE::map)
                 .collect(toList());
 
-        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId);
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId).stream()
+                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
+                .collect(Collectors.toList());
+
         if (!paths.isEmpty()) {
             expectedMeters.addAll(getExpectedFlowMeters(paths));
         }

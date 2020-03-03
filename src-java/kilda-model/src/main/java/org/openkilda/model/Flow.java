@@ -551,4 +551,12 @@ public class Flow implements Serializable {
             }
         }
     }
+
+    /**
+     * Checks if pathId belongs to the current flow.
+     */
+    public boolean isActualPathId(PathId pathId) {
+        return pathId != null && (pathId.equals(this.getForwardPathId()) || pathId.equals(this.getReversePathId())
+                || pathId.equals(this.getProtectedForwardPathId()) || pathId.equals(this.getProtectedReversePathId()));
+    }
 }
