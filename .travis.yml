@@ -15,11 +15,10 @@ jobs:
         - make update-props-dryrun
         - make update-props
 
-    - stage: tests
-      name: "Sonar"
+    - stage: "Unit Tests & SonarCloud Analysis"
       language: java
-      install: true
       jdk: openjdk8
+      sudo: false
       if: fork = false
 
       addons:
@@ -43,7 +42,9 @@ jobs:
 
       script:
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-        - mkdir -p ~/.gradle && echo "org.gradle.jvmargs=-Xmx4096M" >> ~/.gradle/gradle.properties
+        - mkdir -p $HOME/.gradle
+        - echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
+        - echo "org.gradle.console=plain" >> $HOME/.gradle/gradle.properties
         - make sonar
 
       cache:
@@ -53,10 +54,11 @@ jobs:
           - '$HOME/.gradle/caches/'
           - '$HOME/.gradle/wrapper/'
 
-    - stage: tests
-      name: "Unit"
+    - stage: "Unit Tests"
       language: java
       jdk: openjdk8
+      sudo: false
+      if: fork = true
 
       before_install:
         - wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64
@@ -73,7 +75,9 @@ jobs:
 
       script:
         - export MAVEN_OPTS="$MAVEN_OPTS -DinteractiveMode=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
-        - mkdir -p ~/.gradle && echo "org.gradle.jvmargs=-Xmx4096M" >> ~/.gradle/gradle.properties
+        - mkdir -p $HOME/.gradle
+        - echo "org.gradle.jvmargs=-Xmx4096M" >> $HOME/.gradle/gradle.properties
+        - echo "org.gradle.console=plain" >> $HOME/.gradle/gradle.properties
         - make unit
 
       cache:

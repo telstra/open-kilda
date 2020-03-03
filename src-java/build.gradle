@@ -169,6 +169,8 @@ subprojects {
     }
 
     jacocoTestReport {
+        dependsOn test
+
         reports {
             xml.enabled true
             csv.enabled false
