@@ -21,6 +21,12 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.TRANSIT_TABLE_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -686,6 +692,18 @@ class RecordHandler implements Runnable {
             return switchManager.installLldpPostIngressOneSwitchFlow(dpid);
         } else if (cookie == LLDP_TRANSIT_COOKIE) {
             return switchManager.installLldpTransitFlow(dpid);
+        } else if (cookie == ARP_INPUT_PRE_DROP_COOKIE) {
+            return switchManager.installArpInputPreDropFlow(dpid);
+        } else if (cookie == ARP_INGRESS_COOKIE) {
+            return switchManager.installArpIngressFlow(dpid);
+        } else if (cookie == ARP_POST_INGRESS_COOKIE) {
+            return switchManager.installArpPostIngressFlow(dpid);
+        } else if (cookie == ARP_POST_INGRESS_VXLAN_COOKIE) {
+            return switchManager.installArpPostIngressVxlanFlow(dpid);
+        } else if (cookie == ARP_POST_INGRESS_ONE_SWITCH_COOKIE) {
+            return switchManager.installArpPostIngressOneSwitchFlow(dpid);
+        } else if (cookie == ARP_TRANSIT_COOKIE) {
+            return switchManager.installArpTransitFlow(dpid);
         } else if (Cookie.isIngressRulePassThrough(cookie)) {
             long port = Cookie.getValueFromIntermediateCookie(cookie);
             return switchManager.installIntermediateIngressRule(dpid, (int) port);
@@ -701,6 +719,9 @@ class RecordHandler implements Runnable {
         } else if (Cookie.isLldpInputCustomer(cookie)) {
             long port = Cookie.getValueFromIntermediateCookie(cookie);
             return switchManager.installLldpInputCustomerFlow(dpid, (int) port);
+        } else if (Cookie.isArpInputCustomer(cookie)) {
+            long port = Cookie.getValueFromIntermediateCookie(cookie);
+            return switchManager.installArpInputCustomerFlow(dpid, (int) port);
         } else {
             logger.warn("Skipping the installation of unexpected default switch rule {} for switch {}",
                     Long.toHexString(cookie), switchId);
@@ -807,6 +828,18 @@ class RecordHandler implements Runnable {
                 installedRules.add(switchManager.installLldpPostIngressOneSwitchFlow(dpid));
             } else if (installAction == InstallRulesAction.INSTALL_LLDP_TRANSIT) {
                 installedRules.add(switchManager.installLldpTransitFlow(dpid));
+            } else if (installAction == InstallRulesAction.INSTALL_ARP_INPUT_PRE_DROP) {
+                installedRules.add(switchManager.installArpInputPreDropFlow(dpid));
+            } else if (installAction == InstallRulesAction.INSTALL_ARP_INGRESS) {
+                installedRules.add(switchManager.installArpIngressFlow(dpid));
+            } else if (installAction == InstallRulesAction.INSTALL_ARP_POST_INGRESS) {
+                installedRules.add(switchManager.installArpPostIngressFlow(dpid));
+            } else if (installAction == InstallRulesAction.INSTALL_ARP_POST_INGRESS_VXLAN) {
+                installedRules.add(switchManager.installArpPostIngressVxlanFlow(dpid));
+            } else if (installAction == InstallRulesAction.INSTALL_ARP_POST_INGRESS_ONE_SWITCH) {
+                installedRules.add(switchManager.installArpPostIngressOneSwitchFlow(dpid));
+            } else if (installAction == InstallRulesAction.INSTALL_ARP_TRANSIT) {
+                installedRules.add(switchManager.installArpTransitFlow(dpid));
             } else {
                 installedRules.addAll(switchManager.installDefaultRules(dpid));
                 if (request.isMultiTable()) {
@@ -826,6 +859,12 @@ class RecordHandler implements Runnable {
                             LLDP_POST_INGRESS_VXLAN_COOKIE));
                     installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                             LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            ARP_POST_INGRESS_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            ARP_POST_INGRESS_VXLAN_COOKIE));
+                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                            ARP_POST_INGRESS_ONE_SWITCH_COOKIE));
                     for (int port : request.getIslPorts()) {
                         installedRules.addAll(switchManager.installMultitableEndpointIslRules(dpid, port));
                     }
@@ -835,6 +874,9 @@ class RecordHandler implements Runnable {
                     for (Integer port : request.getFlowLldpPorts()) {
                         installedRules.add(switchManager.installLldpInputCustomerFlow(dpid, port));
                     }
+                    for (Integer port : request.getFlowArpPorts()) {
+                        installedRules.add(switchManager.installArpInputCustomerFlow(dpid, port));
+                    }
 
                     if (request.isSwitchLldp()) {
                         installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
@@ -843,6 +885,14 @@ class RecordHandler implements Runnable {
                                 LLDP_TRANSIT_COOKIE));
                         installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                                 LLDP_INGRESS_COOKIE));
+                    }
+                    if (request.isSwitchArp()) {
+                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                                ARP_INPUT_PRE_DROP_COOKIE));
+                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                                ARP_TRANSIT_COOKIE));
+                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
+                                ARP_INGRESS_COOKIE));
                     }
                 }
             }
@@ -956,6 +1006,30 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(LLDP_TRANSIT_COOKIE).build();
                         break;
+                    case REMOVE_ARP_INPUT_PRE_DROP:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ARP_INPUT_PRE_DROP_COOKIE).build();
+                        break;
+                    case REMOVE_ARP_INGRESS:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ARP_INGRESS_COOKIE).build();
+                        break;
+                    case REMOVE_ARP_POST_INGRESS:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ARP_POST_INGRESS_COOKIE).build();
+                        break;
+                    case REMOVE_ARP_POST_INGRESS_VXLAN:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ARP_POST_INGRESS_VXLAN_COOKIE).build();
+                        break;
+                    case REMOVE_ARP_POST_INGRESS_ONE_SWITCH:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).build();
+                        break;
+                    case REMOVE_ARP_TRANSIT:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(ARP_TRANSIT_COOKIE).build();
+                        break;
                     default:
                         logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
                 }
@@ -968,8 +1042,8 @@ class RecordHandler implements Runnable {
                 // The cases when we delete the default rules.
                 if (deleteAction.defaultRulesToBeRemoved()) {
                     removedRules.addAll(switchManager.deleteDefaultRules(dpid, request.getIslPorts(),
-                            request.getFlowPorts(), request.getFlowLldpPorts(), request.isMultiTable(),
-                            request.isSwitchLldp()));
+                            request.getFlowPorts(), request.getFlowLldpPorts(), request.getFlowArpPorts(),
+                            request.isMultiTable(), request.isSwitchLldp(), request.isSwitchArp()));
                 }
             }
 
@@ -995,6 +1069,9 @@ class RecordHandler implements Runnable {
                     processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_COOKIE);
                     processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_VXLAN_COOKIE);
                     processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_POST_INGRESS_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_POST_INGRESS_VXLAN_COOKIE);
+                    processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
                     for (int port : request.getIslPorts()) {
                         switchManager.installMultitableEndpointIslRules(dpid, port);
                     }
@@ -1005,11 +1082,19 @@ class RecordHandler implements Runnable {
                     for (Integer port : request.getFlowLldpPorts()) {
                         switchManager.installLldpInputCustomerFlow(dpid, port);
                     }
+                    for (Integer port : request.getFlowArpPorts()) {
+                        switchManager.installArpInputCustomerFlow(dpid, port);
+                    }
 
                     if (request.isSwitchLldp()) {
                         processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_INPUT_PRE_DROP_COOKIE);
                         processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_TRANSIT_COOKIE);
                         processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_INGRESS_COOKIE);
+                    }
+                    if (request.isSwitchArp()) {
+                        processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_INPUT_PRE_DROP_COOKIE);
+                        processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_TRANSIT_COOKIE);
+                        processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_INGRESS_COOKIE);
                     }
                 }
             }
@@ -1067,15 +1152,17 @@ class RecordHandler implements Runnable {
         SwitchId switchId = request.getSwitchId();
         boolean multiTable = request.isMultiTable();
         boolean switchLldp = request.isSwitchLldp();
+        boolean switchArp = request.isSwitchArp();
         List<Integer> islPorts = request.getIslPorts();
         List<Integer> flowPorts = request.getFlowPorts();
         Set<Integer> flowLldpPorts = request.getFlowLldpPorts();
+        Set<Integer> flowArpPorts = request.getFlowArpPorts();
 
         try {
             logger.debug("Loading expected default rules for switch {}", switchId);
             DatapathId dpid = DatapathId.of(switchId.toLong());
             List<OFFlowMod> defaultRules =
-                    context.getSwitchManager().getExpectedDefaultFlows(dpid, multiTable, switchLldp);
+                    context.getSwitchManager().getExpectedDefaultFlows(dpid, multiTable, switchLldp, switchArp);
             if (multiTable) {
                 for (int port : islPorts) {
                     List<OFFlowMod> islFlows = context.getSwitchManager().getExpectedIslFlowsForPort(dpid, port);
@@ -1086,6 +1173,9 @@ class RecordHandler implements Runnable {
                 }
                 for (Integer port : flowLldpPorts) {
                     defaultRules.add(context.getSwitchManager().buildLldpInputCustomerFlow(dpid, port));
+                }
+                for (Integer port : flowArpPorts) {
+                    defaultRules.add(context.getSwitchManager().buildArpInputCustomerFlow(dpid, port));
                 }
             }
             List<FlowEntry> flows = defaultRules.stream()
@@ -1120,12 +1210,13 @@ class RecordHandler implements Runnable {
         SwitchId switchId = request.getSwitchId();
         boolean multiTable = request.isMultiTable();
         boolean switchLldp = request.isSwitchLldp();
+        boolean switchArp = request.isSwitchArp();
 
         try {
             logger.debug("Loading expected default meters for switch {}", switchId);
             DatapathId dpid = DatapathId.of(switchId.toLong());
             List<MeterEntry> defaultMeters =
-                    context.getSwitchManager().getExpectedDefaultMeters(dpid, multiTable, switchLldp);
+                    context.getSwitchManager().getExpectedDefaultMeters(dpid, multiTable, switchLldp, switchArp);
 
             SwitchExpectedDefaultMeterEntries response = SwitchExpectedDefaultMeterEntries.builder()
                     .switchId(switchId)
