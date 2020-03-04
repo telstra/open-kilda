@@ -32,7 +32,6 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -48,16 +47,17 @@ public class OfFlowDumpProducer implements IOfFlowDumpProducer {
     public OfFlowDumpProducer(MessageContext context, IOFSwitch sw, List<OFFlowMod> expectedFlows) {
         swId = sw.getId();
 
-        HashMap<TableId, DumpSelector> targetTables = new HashMap<>();
+        List<DumpSelector> dumpSelectors = new ArrayList<>();
         for (OFFlowMod entry : expectedFlows) {
             TableId tableId = entry.getTableId();  // can be null
-            targetTables.computeIfAbsent(tableId, DumpSelector::new)
-                    .updateCookie(entry.getCookie());
+            DumpSelector dumpSelector = new DumpSelector(tableId);
+            dumpSelector.updateCookie(entry.getCookie());
+            dumpSelectors.add(dumpSelector);
         }
 
         OFFactory of = sw.getOFFactory();
         tableRequests = new ArrayList<>();
-        for (DumpSelector entry : targetTables.values()) {
+        for (DumpSelector entry : dumpSelectors) {
             OFFlowStatsRequest request = makeOfFlowStatsRequest(of, entry);
 
             log.debug("Send flows stats request to {} - {}", sw.getId(), request);

@@ -15,15 +15,22 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_MASK;
+import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_VALUE;
+
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowCommand;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchFeature;
 
+import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,5 +71,13 @@ abstract class OneSwitchFlowInstallFlowModFactory extends IngressInstallFlowModF
             return super.makeOutputAction(OFPort.IN_PORT);
         }
         return super.makeOutputAction(OFPort.of(egressEndpoint.getPortNumber()));
+    }
+
+    @Override
+    protected List<OFInstruction> makeMetadataInstructions() {
+        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
+                .setMetadata(U64.of(METADATA_ONE_SWITCH_FLOW_VALUE))
+                .setMetadataMask(U64.of(METADATA_ONE_SWITCH_FLOW_MASK)).build();
+        return Lists.newArrayList(writeMetadata);
     }
 }

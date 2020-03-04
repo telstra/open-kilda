@@ -52,14 +52,17 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         applyActions.add(makeOutputAction());
 
         instructions.add(of.instructions().applyActions(applyActions));
-        if (command.getEndpoint().isTrackLldpConnectedDevices()) {
+        if (command.getMetadata().isMultiTable()) {
             instructions.add(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
+            instructions.addAll(makeMetadataInstructions());
         }
 
         return instructions;
     }
 
     protected abstract List<OFAction> makeTransformActions();
+
+    protected abstract List<OFInstruction> makeMetadataInstructions();
 
     protected abstract OFAction makeOutputAction();
 

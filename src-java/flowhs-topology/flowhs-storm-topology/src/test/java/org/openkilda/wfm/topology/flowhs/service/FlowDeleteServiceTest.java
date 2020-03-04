@@ -43,6 +43,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.RecoverablePersistenceException;
@@ -86,6 +87,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
         IslRepository islRepository = mock(IslRepository.class);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
@@ -450,8 +452,13 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
                 .build()));
         flow.setReversePath(reversePath);
 
+        SwitchProperties srcSwitchProperties = SwitchProperties.builder().build();
+        SwitchProperties dstSwitchProperties = SwitchProperties.builder().build();
+
         when(flowRepository.findById(any())).thenReturn(Optional.of(flow));
         when(flowRepository.findById(any(), any())).thenReturn(Optional.of(flow));
+        when(switchPropertiesRepository.findBySwitchId(SWITCH_1)).thenReturn(Optional.of(srcSwitchProperties));
+        when(switchPropertiesRepository.findBySwitchId(SWITCH_2)).thenReturn(Optional.of(dstSwitchProperties));
 
         doAnswer(invocation -> {
             FlowStatus status = invocation.getArgument(1);

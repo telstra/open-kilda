@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -27,6 +28,8 @@ import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
@@ -36,6 +39,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFactoryTest {
@@ -182,6 +186,8 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
                 : OFPort.of(egress.getPortNumber());
         applyActions.add(of.actions().buildOutput().setPort(outPort).build());
         instructions.add(of.instructions().applyActions(applyActions));
+        getGoToTableInstruction().ifPresent(instructions::add);
+        getWriteMetadataInstruction().ifPresent(instructions::add);
 
         return of.buildFlowAdd()
                 .setTableId(tableId)
@@ -208,10 +214,14 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
         UUID commandId = UUID.randomUUID();
         return new OneSwitchFlowInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
-                egressEndpoint, false);
+                egressEndpoint, new RemoveSharedRulesContext(false, false));
     }
 
     abstract FlowSegmentMetadata makeMetadata();
 
     abstract TableId getTargetTableId();
+
+    abstract Optional<OFInstructionGotoTable> getGoToTableInstruction();
+
+    abstract Optional<OFInstructionWriteMetadata> getWriteMetadataInstruction();
 }

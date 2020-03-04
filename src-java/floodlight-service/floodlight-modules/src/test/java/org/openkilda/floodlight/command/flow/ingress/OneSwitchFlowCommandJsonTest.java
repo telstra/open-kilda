@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.OneSwitchFlowRequest;
 import org.openkilda.floodlight.api.request.factory.OneSwitchFlowRequestFactory;
 import org.openkilda.floodlight.command.AbstractSpeakerCommandJsonTest;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEndpoint;
@@ -38,6 +39,7 @@ abstract class OneSwitchFlowCommandJsonTest
         Assert.assertEquals(request.getEndpoint(), command.getEndpoint());
         Assert.assertEquals(request.getMeterConfig(), command.getMeterConfig());
         Assert.assertEquals(request.getEgressEndpoint(), command.getEgressEndpoint());
+        Assert.assertEquals(request.getRemoveSharedRulesContext(), command.getRemoveSharedRulesContext());
     }
 
     @Override
@@ -49,7 +51,7 @@ abstract class OneSwitchFlowCommandJsonTest
                 new FlowEndpoint(swId, 3, 4),
                 new MeterConfig(new MeterId(6), 7000),
                 new FlowEndpoint(swId, 8, 9),
-                false);
+                new RemoveSharedRulesContext(false, false));
         return makeRequest(factory);
     }
 

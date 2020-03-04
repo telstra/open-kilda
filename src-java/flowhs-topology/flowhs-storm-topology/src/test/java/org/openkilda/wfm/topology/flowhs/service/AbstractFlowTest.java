@@ -31,6 +31,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import lombok.SneakyThrows;
@@ -53,6 +54,8 @@ public abstract class AbstractFlowTest {
     FlowRepository flowRepository;
     @Mock
     FlowPathRepository flowPathRepository;
+    @Mock
+    SwitchPropertiesRepository switchPropertiesRepository;
     @Mock
     PathComputer pathComputer;
     @Mock

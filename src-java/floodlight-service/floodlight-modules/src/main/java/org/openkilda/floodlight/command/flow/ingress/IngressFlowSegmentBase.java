@@ -29,6 +29,7 @@ import org.openkilda.floodlight.command.meter.MeterVerifyCommand;
 import org.openkilda.floodlight.command.meter.MeterVerifyReport;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -61,7 +62,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     protected final FlowEndpoint endpoint;
     protected final MeterConfig meterConfig;
     protected final SwitchId egressSwitchId;
-    protected final boolean removeCustomerPortSharedCatchRule;
+    protected final RemoveSharedRulesContext removeSharedRulesContext;
 
     // operation data
     @Getter(AccessLevel.PROTECTED)
@@ -71,12 +72,12 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     IngressFlowSegmentBase(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
             @NonNull FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
-            boolean removeCustomerPortSharedCatchRule) {
+            RemoveSharedRulesContext removeSharedRulesContext) {
         super(messageContext, switchId, commandId, metadata);
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
-        this.removeCustomerPortSharedCatchRule = removeCustomerPortSharedCatchRule;
+        this.removeSharedRulesContext = removeSharedRulesContext;
     }
 
     @Override

@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
+import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
+
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
@@ -34,7 +37,9 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
@@ -108,6 +113,31 @@ public abstract class IngressFlowModFactory {
                                   .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))))
+                .build();
+    }
+
+    /**
+     * Route all LLDP traffic for specific physical port into pre-ingress table and mark it by metadata. Shared across
+     * all flows for this physical (if OF flow-mod ADD message use same match and priority fields with existing OF flow,
+     * existing OF flow will be replaced/not added).
+     */
+    public OFFlowMod makeLldpInputCustomerFlowMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
+                .setMetadata(U64.of(METADATA_LLDP_VALUE))
+                .setMetadataMask(U64.of(METADATA_LLDP_MASK)).build();
+
+        return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
+                .setPriority(SwitchManager.LLDP_INPUT_CUSTOMER_PRIORITY)
+                .setCookie(U64.of(Cookie.encodeLldpInputCustomer(endpoint.getPortNumber())))
+                .setCookieMask(U64.NO_MASK)
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setExact(MatchField.ETH_TYPE, EthType.LLDP)
+                        .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
+                        writeMetadata))
                 .build();
     }
 
