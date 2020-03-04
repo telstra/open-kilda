@@ -95,7 +95,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
     public void makeOuterVlanOnlyForwardMessageConnectedDevices() {
         FlowEndpoint endpoint = new FlowEndpoint(
                 endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(), endpointSingleVlan.getVlanId(),
-                true);
+                true, true);
         IngressFlowSegmentInstallCommand command = makeCommand(endpoint, meterConfig, encapsulationVlan);
 
         IngressFlowModFactory factory = makeFactory(command);
@@ -127,7 +127,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
     public void makeDefaultPortFlowMatchAndForwardMessageConnectedDevices() {
         FlowEndpoint endpoint = new FlowEndpoint(
                 endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(), endpointSingleVlan.getVlanId(),
-                true);
+                true, true);
         IngressFlowSegmentInstallCommand command = makeCommand(endpoint, meterConfig, encapsulationVlan);
 
         IngressFlowModFactory factory = makeFactory(command);

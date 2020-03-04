@@ -29,15 +29,18 @@ public class FlowEndpoint extends NetworkEndpoint {
     @JsonProperty("outer_vlan_id")
     private final int vlanId;
 
-    @JsonProperty("track_connected_devices")
-    private final boolean trackConnectedDevices;
+    @JsonProperty("track_lldp_connected_devices")
+    private final boolean trackLldpConnectedDevices;
+
+    @JsonProperty("track_arp_connected_devices")
+    private final boolean trackArpConnectedDevices;
 
     public FlowEndpoint(SwitchId switchId, Integer portNumber) {
         this(switchId, portNumber, 0);
     }
 
     public FlowEndpoint(SwitchId switchId, Integer portNumber, int vlanId) {
-        this(switchId, portNumber, vlanId, false);
+        this(switchId, portNumber, vlanId, false, false);
     }
 
     @JsonCreator
@@ -46,10 +49,12 @@ public class FlowEndpoint extends NetworkEndpoint {
             @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("port_number") Integer portNumber,
             @JsonProperty("outer_vlan_id") int vlanId,
-            @JsonProperty("track_connected_devices") boolean trackConnectedDevices) {
+            @JsonProperty("track_lldp_connected_devices") boolean trackLldpConnectedDevices,
+            @JsonProperty("track_arp_connected_devices") boolean trackArpConnectedDevices) {
         super(switchId, portNumber);
         this.vlanId = vlanId;
-        this.trackConnectedDevices = trackConnectedDevices;
+        this.trackLldpConnectedDevices = trackLldpConnectedDevices;
+        this.trackArpConnectedDevices = trackArpConnectedDevices;
     }
 
     public static boolean isVlanIdSet(Integer vlanId) {

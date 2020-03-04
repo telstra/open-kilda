@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
@@ -65,6 +66,10 @@ public class FlowRequest extends CommandData {
     FlowEncapsulationType encapsulationType;
     String pathComputationStrategy;
     Type type;
+
+    @NonNull
+    @Builder.Default
+    DetectConnectedDevicesDto detectConnectedDevices = new DetectConnectedDevicesDto();
 
     public enum Type {
         CREATE,
