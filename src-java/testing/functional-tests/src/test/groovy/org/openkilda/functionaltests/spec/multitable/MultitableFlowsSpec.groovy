@@ -365,11 +365,12 @@ mode with existing flows and hold flows of different table-mode types"() {
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
-            desiredPath = pair.paths.find { path ->
-                involvedSwitches = pathHelper.getInvolvedSwitches(path)
-                involvedSwitches.size() == 3 &&
-                        involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+            def allPaths = pair.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
+            desiredPath = allPaths.find { pathHelper.getInvolvedSwitches(it).size() == 3 }
+            // make sure that alternative path for protected path is available
+            allPaths.findAll { it.intersect(desiredPath) == [] ? 1 : 0 }.size() > 0
         }
         assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
         //make required path the most preferred
@@ -842,7 +843,6 @@ mode with existing flows and hold flows of different table-mode types"() {
         //flow is pinned, so that's why the flow is not rerouted
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
 
@@ -1182,8 +1182,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Involved switches pass switch validation"
         involvedSwitches.each {
             with(northbound.validateSwitch(it.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured", "proper"])
+                validation.verifyRuleSectionsAreEmpty()
+                validation.verifyMeterSectionsAreEmpty()
             }
         }
 

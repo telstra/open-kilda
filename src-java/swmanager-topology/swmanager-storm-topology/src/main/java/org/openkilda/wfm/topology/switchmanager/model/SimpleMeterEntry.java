@@ -15,14 +15,18 @@
 
 package org.openkilda.wfm.topology.switchmanager.model;
 
+import lombok.Builder;
 import lombok.Value;
 
+import java.util.Set;
+
 @Value
+@Builder
 public class SimpleMeterEntry {
     private String flowId;
     private long meterId;
     private long cookie;
     private long rate;
     private long burstSize;
-    private String[] flags;
+    private Set<String> flags;
 }

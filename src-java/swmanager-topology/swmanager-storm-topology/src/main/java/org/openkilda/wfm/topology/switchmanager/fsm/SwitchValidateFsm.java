@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_UNSUPPORTED;
@@ -33,6 +34,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -95,6 +97,7 @@ public class SwitchValidateFsm
     private List<FlowEntry> flowEntries;
     private List<FlowEntry> expectedDefaultFlowEntries;
     private List<MeterEntry> presentMeters;
+    private List<MeterEntry> expectedDefaultMetersEntries;
     private ValidateRulesResult validateRulesResult;
     private ValidateMetersResult validateMetersResult;
 
@@ -124,7 +127,7 @@ public class SwitchValidateFsm
                 if (flowPath.getFlow().getDetectConnectedDevices().isSrcLldp() || switchLldp) {
                     flowLldpPorts.add(flowPath.getFlow().getSrcPort());
                 }
-            } else  {
+            } else {
                 if (flowPath.getFlow().isDestWithMultiTable()) {
                     flowPorts.add(flowPath.getFlow().getDestPort());
                 }
@@ -135,7 +138,7 @@ public class SwitchValidateFsm
         }
 
         hasMultiTableFlows = !flowPathRepository.findBySegmentSwitchWithMultiTable(switchId, true).isEmpty()
-                             || !flowRepository.findByEndpointSwitchWithMultiTableSupport(switchId).isEmpty();
+                || !flowRepository.findByEndpointSwitchWithMultiTableSupport(switchId).isEmpty();
 
         IslRepository islRepository = repositoryFactory.createIslRepository();
         this.islPorts = islRepository.findBySrcSwitch(switchId).stream()
@@ -170,6 +173,8 @@ public class SwitchValidateFsm
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_RECEIVED).callMethod("metersReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(EXPECTED_DEFAULT_RULES_RECEIVED)
                 .callMethod("expectedDefaultRulesReceived");
+        builder.internalTransition().within(RECEIVE_DATA).on(EXPECTED_DEFAULT_METERS_RECEIVED)
+                .callMethod("expectedDefaultMetersReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_UNSUPPORTED)
                 .callMethod("metersUnsupported");
 
@@ -219,8 +224,10 @@ public class SwitchValidateFsm
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
+            carrier.sendCommandToSpeaker(key, new GetExpectedDefaultMetersRequest(switchId, multiTable, switchLldp));
         } else {
             presentMeters = emptyList();
+            expectedDefaultMetersEntries = emptyList();
         }
     }
 
@@ -245,16 +252,25 @@ public class SwitchValidateFsm
         checkAllDataReceived();
     }
 
+    protected void expectedDefaultMetersReceived(SwitchValidateState from, SwitchValidateState to,
+                                                 SwitchValidateEvent event, Object context) {
+        log.info("Key: {}, switch expected default meters received", key);
+        this.expectedDefaultMetersEntries = (List<MeterEntry>) context;
+        checkAllDataReceived();
+    }
+
     protected void metersUnsupported(SwitchValidateState from, SwitchValidateState to,
                                      SwitchValidateEvent event, Object context) {
         log.info("Switch meters unsupported (switch={}, key={})", switchId, key);
         this.presentMeters = emptyList();
+        this.expectedDefaultMetersEntries = emptyList();
         this.processMeters = false;
         checkAllDataReceived();
     }
 
     private void checkAllDataReceived() {
-        if (flowEntries != null && presentMeters != null && expectedDefaultFlowEntries != null) {
+        if (flowEntries != null && presentMeters != null && expectedDefaultFlowEntries != null
+                && expectedDefaultMetersEntries != null) {
             fire(NEXT);
         }
     }
@@ -284,7 +300,8 @@ public class SwitchValidateFsm
         try {
             if (processMeters) {
                 log.info("Validate meters (switch={}, key={})", switchId, key);
-                validateMetersResult = validationService.validateMeters(switchId, presentMeters);
+                validateMetersResult = validationService.validateMeters(switchId, presentMeters,
+                        expectedDefaultMetersEntries);
             }
 
         } catch (Exception e) {
@@ -354,6 +371,7 @@ public class SwitchValidateFsm
         RULES_RECEIVED,
         METERS_RECEIVED,
         EXPECTED_DEFAULT_RULES_RECEIVED,
+        EXPECTED_DEFAULT_METERS_RECEIVED,
         METERS_UNSUPPORTED,
         TIMEOUT,
         ERROR

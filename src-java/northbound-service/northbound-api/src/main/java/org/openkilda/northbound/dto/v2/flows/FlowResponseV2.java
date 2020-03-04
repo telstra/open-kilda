@@ -41,7 +41,7 @@ public class FlowResponseV2 {
     private boolean ignoreBandwidth;
     private boolean periodicPings;
     private String description;
-    private Integer maxLatency;
+    private Long maxLatency;
     private Integer priority;
 
     private String[] diverseWith;

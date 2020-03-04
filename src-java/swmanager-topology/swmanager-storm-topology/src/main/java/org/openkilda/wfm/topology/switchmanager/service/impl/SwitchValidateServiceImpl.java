@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -86,6 +87,18 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         }
 
         fsm.fire(SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED, data.getFlowEntries());
+        process(fsm);
+    }
+
+    @Override
+    public void handleExpectedDefaultMeterEntriesResponse(String key, SwitchExpectedDefaultMeterEntries data) {
+        SwitchValidateFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED, data.getMeterEntries());
         process(fsm);
     }
 

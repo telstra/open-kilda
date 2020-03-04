@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.bfd;
 
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
+
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.error.SessionErrorResponseException;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
@@ -149,8 +151,8 @@ abstract class BfdSessionCommand extends BfdCommand {
         DatapathId remoteDatapath = DatapathId.of(bfdSession.getRemote().getDatapath().toLong());
         return new Ethernet()
                 .setEtherType(EthType.IPv4)
-                .setSourceMACAddress(switchManager.dpIdToMac(sw.getId()))
-                .setDestinationMACAddress(switchManager.dpIdToMac(remoteDatapath))
+                .setSourceMACAddress(convertDpIdToMac(sw.getId()))
+                .setDestinationMACAddress(convertDpIdToMac(remoteDatapath))
                 .setPayload(l3);
     }
 

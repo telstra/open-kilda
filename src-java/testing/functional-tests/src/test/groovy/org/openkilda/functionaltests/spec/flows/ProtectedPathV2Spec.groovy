@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -831,7 +832,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 if(switchValidateInfo.meters) {
-                    assert switchValidateInfo.meters.proper.size() == 1
+                    assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
                 }
                 assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 3
@@ -1096,11 +1097,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         cleanup: "Restore topology, delete flow and reset costs"
+        flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(protectedIslToBreak).get().state != IslChangeType.FAILED
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()

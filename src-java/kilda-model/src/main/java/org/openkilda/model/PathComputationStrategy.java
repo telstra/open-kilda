@@ -20,5 +20,6 @@ package org.openkilda.model;
  */
 public enum PathComputationStrategy {
     COST,
-    LATENCY
+    LATENCY,
+    MAX_LATENCY
 }

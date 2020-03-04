@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 public class FlowPatchDto {
 
     @JsonProperty("max-latency")
-    private Integer maxLatency;
+    private Long maxLatency;
 
     @JsonProperty("priority")
     private Integer priority;
@@ -34,7 +34,7 @@ public class FlowPatchDto {
     private Boolean periodicPings;
 
     @JsonCreator
-    public FlowPatchDto(@JsonProperty("max-latency") Integer maxLatency,
+    public FlowPatchDto(@JsonProperty("max-latency") Long maxLatency,
                         @JsonProperty("priority") Integer priority,
                         @JsonProperty("periodic_pings") Boolean periodicPings) {
         this.maxLatency = maxLatency;

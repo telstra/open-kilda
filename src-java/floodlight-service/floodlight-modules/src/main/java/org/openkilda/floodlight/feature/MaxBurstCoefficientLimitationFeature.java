@@ -28,10 +28,12 @@ public class MaxBurstCoefficientLimitationFeature extends AbstractFeature {
         Optional<SwitchFeature> empty = Optional.empty();
 
         SwitchDescription description = sw.getSwitchDescription();
-        if (description == null || description.getSoftwareDescription() == null) {
+        if (description == null || description.getSoftwareDescription() == null
+                || description.getHardwareDescription() == null) {
             return empty;
         }
-        if (NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX.matcher(description.getSoftwareDescription()).matches()) {
+        if (NOVIFLOW_SOFTWARE_DESCRIPTION_REGEX.matcher(description.getSoftwareDescription()).matches()
+                && !E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(description.getHardwareDescription()).matches()) {
             return Optional.of(SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION);
         }
 
