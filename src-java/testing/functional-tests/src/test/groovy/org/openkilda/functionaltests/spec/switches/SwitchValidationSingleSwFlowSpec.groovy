@@ -402,7 +402,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Switch validation is able to detect rule info into the 'excess' section on a #switchType switch"() {
+    def "Switch validation is able to detect rule/meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
         setup: "Select a #switchType switch and no meters/rules exist on a switch"
@@ -411,7 +411,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfoInitState)
         switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfoInitState)
 
-        when: "Create excess rules directly via kafka"
+        when: "Create excess rules/meter directly via kafka"
         Long fakeBandwidth = 333
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, fakeBandwidth)
         def producer = new KafkaProducer(producerProps)
@@ -426,11 +426,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
                         FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
-                        FlowEncapsulationType.TRANSIT_VLAN,
+                        FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.REPLACE, fakeBandwidth, excessMeterId,
+                        sw.dpId, false, false)).toJson()))
 
-                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId, sw.dpId, false, false)).toJson()))
-
-        then: "System detects created rules as excess rules"
+        then: "System detects created rules/meter as excess rules"
         //excess egress/ingress/transit rules are not added yet
         //they will be added after the next line
         def switchValidateInfo
@@ -438,10 +437,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfo = northbound.validateSwitch(sw.dpId)
             //excess egress/ingress/transit rules are added
             switchValidateInfo.rules.excess.size() == 3
+            switchValidateInfo.meters.excess.size() == 1
         }
 
-        and: "System detects one meter as excess"
-        switchValidateInfo.meters.excess.size() == 1
         switchValidateInfo.meters.excess.each {
             verifyRateIsCorrect(sw, it.rate, fakeBandwidth)
             assert it.meterId == excessMeterId
