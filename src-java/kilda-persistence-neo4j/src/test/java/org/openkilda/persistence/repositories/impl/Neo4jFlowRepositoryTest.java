@@ -331,6 +331,33 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowByEndpointSwitchWithEnabledLldp() {
+        createFlowWithLldp(TEST_FLOW_ID, switchA, false, switchB, false);
+        createFlowWithLldp(TEST_FLOW_ID_2, switchA, true, switchB, false);
+        createFlowWithLldp(TEST_FLOW_ID_3, switchB, false, switchA, true);
+        createFlowWithLldp(TEST_FLOW_ID_4, switchA, true, switchA, true);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledLldp(TEST_SWITCH_A_ID);
+        Set<String> foundFlowIds = foundFlows.stream()
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+
+        assertEquals(Sets.newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
+    }
+
+    @Test
+    public void shouldFindOneFlowByEndpointSwitchWithEnabledLldp() {
+        // one switch flow with LLDP on src and dst
+        createFlowWithLldp(TEST_FLOW_ID, switchA, true, switchA, true);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledLldp(TEST_SWITCH_A_ID);
+
+        // only one Flow object must be returned
+        assertEquals(1, foundFlows.size());
+        assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
+    }
+
+    @Test
     public void shouldFindDownFlowIdsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);
@@ -488,6 +515,14 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
 
         return flow;
+    }
+
+    private void createFlowWithLldp(
+            String flowId, Switch srcSwitch, boolean srcLldp, Switch dstSwitch, boolean dstLldp) {
+        Flow flow = buildTestFlow(flowId, srcSwitch, dstSwitch);
+        flow.getDetectConnectedDevices().setSrcLldp(srcLldp);
+        flow.getDetectConnectedDevices().setDstLldp(dstLldp);
+        flowRepository.createOrUpdate(flow);
     }
 
     private void createFlowWithArp(

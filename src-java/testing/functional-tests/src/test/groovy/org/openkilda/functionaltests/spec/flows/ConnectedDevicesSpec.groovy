@@ -870,7 +870,6 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
-    @Ignore("not implemented yet")
     @Tidy
     def "System forbids to turn off multi-table mode if switch has an lldp-enabled flow"() {
         given: "Switch in multi-table mode"
@@ -890,11 +889,14 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         then: "Error is returned, stating that this operation cannot be performed"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorDescription == "Catching of LLDP packets supported only on " +
-                "switches with enabled 'multiTable' switch feature. This feature is disabled on switch $sw.dpId."
+        e.responseBodyAsString.to(MessageError).errorDescription == "Failed to update switch properties."
+        e.responseBodyAsString.to(MessageError).errorMessage == "Illegal switch properties combination for switch $sw.dpId. " +
+                "Detect Connected Devices feature is turn on for following flows [$flow.id]. " +
+                "For correct work of this feature switch property 'multiTable' must be set to 'true' " +
+                "Please disable detecting of connected devices via LLDP for each flow before set 'multiTable' property to 'false'"
 
         cleanup: "Restore switch props"
-        flow && !e && flowHelper.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
         SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
