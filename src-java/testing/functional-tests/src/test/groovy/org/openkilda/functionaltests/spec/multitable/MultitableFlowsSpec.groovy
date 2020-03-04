@@ -801,6 +801,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         revertSwitchToInitState(sw, initSwProps)
     }
 
+    @Ignore
     def "Flow rules are not recreated when pinned flow changes state to up/down"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
