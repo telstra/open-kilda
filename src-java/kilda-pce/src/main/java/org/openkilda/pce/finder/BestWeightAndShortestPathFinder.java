@@ -307,15 +307,15 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
     private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
         SearchNode desiredPath = getDesiredPath(start, end, weightFunction, maxWeight);
+        List<Edge> foundPath = (desiredPath != null) ? desiredPath.getParentPath() : new LinkedList<>();
         SearchNode desiredReversePath = getDesiredPath(end, start, weightFunction, maxWeight);
 
-        if (desiredReversePath != null) {
-            if (desiredPath == null || desiredReversePath.parentWeight > desiredPath.parentWeight) {
-                desiredPath = desiredReversePath;
-            }
+        if (desiredReversePath != null
+                && (desiredPath == null || desiredReversePath.parentWeight > desiredPath.parentWeight)) {
+            foundPath = getReversePath(start, end, desiredReversePath.getParentPath());
         }
 
-        return (desiredPath != null) ? desiredPath.parentPath : new LinkedList<>();
+        return foundPath;
     }
 
     /**
