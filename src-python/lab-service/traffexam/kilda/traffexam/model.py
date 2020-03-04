@@ -348,6 +348,13 @@ class LLDPPush(Abstract):
         self.time_to_live = ttl
 
 
+class ARPPush(Abstract):
+    def __init__(self, src_mac, src_ipv4, **fields):
+        super().__init__(**fields)
+        self.src_mac = src_mac
+        self.src_ipv4 = src_ipv4
+
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Abstract):
