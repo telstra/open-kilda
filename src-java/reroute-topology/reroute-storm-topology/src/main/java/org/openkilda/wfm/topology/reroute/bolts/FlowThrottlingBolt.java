@@ -24,10 +24,11 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.reroute.RerouteTopology;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.ReroutesThrottling;
-import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.storm.state.InMemoryKeyValueState;
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -35,7 +36,7 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 @Slf4j
-public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, ReroutesThrottling>> {
+public class FlowThrottlingBolt extends AbstractTickRichBolt {
 
     private static final String REROUTES_THROTTLING = "reroutes-throttling";
 
@@ -54,7 +55,6 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
     public FlowThrottlingBolt(PersistenceManager persistenceManager,
                               long minDelay, long maxDelay, int defaultFlowPriority) {
         this.persistenceManager = persistenceManager;
-
         this.minDelay = minDelay;
         this.maxDelay = maxDelay;
         this.defaultFlowPriority = defaultFlowPriority;
@@ -108,13 +108,10 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
     }
 
     @Override
-    public void initState(InMemoryKeyValueState<String, ReroutesThrottling> state) {
-        reroutesThrottling = state.get(REROUTES_THROTTLING);
-        if (reroutesThrottling == null) {
-            reroutesThrottling = new ReroutesThrottling(minDelay, maxDelay, defaultFlowPriority);
-            state.put(REROUTES_THROTTLING, reroutesThrottling);
-        }
-
+    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+        super.prepare(map, topologyContext, outputCollector);
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        reroutesThrottling = new ReroutesThrottling(minDelay, maxDelay, defaultFlowPriority);
+
     }
 }

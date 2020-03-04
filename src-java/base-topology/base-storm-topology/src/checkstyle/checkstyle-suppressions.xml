@@ -15,7 +15,6 @@
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="29" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="54" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="66" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/AbstractTickStatefulBolt.java" lines="43" checks="SummaryJavadoc"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FilerBolt.java" lines="53" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="44" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="70" checks="SummaryJavadoc"/>
