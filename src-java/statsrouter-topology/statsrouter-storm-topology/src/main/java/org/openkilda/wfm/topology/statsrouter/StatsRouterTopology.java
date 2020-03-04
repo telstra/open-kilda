@@ -69,7 +69,7 @@ public final class StatsRouterTopology extends AbstractTopology<StatsRouterTopol
 
         IRichBolt routerBolt =
                 new StatsRouterBolt(getConfig().getStatsRouterRequestInterval(), getConfig().getStatsRouterTimeout());
-        builder.setBolt(ROUTER_BOLT.name(), routerBolt, parallelism)
+        builder.setBolt(ROUTER_BOLT.name(), routerBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(STATS_REQUEST_KAFKA_SPOUT.name())
                 .allGrouping(FL_STATS_SWITCHES_KAFKA_SPOUT.name());
 
