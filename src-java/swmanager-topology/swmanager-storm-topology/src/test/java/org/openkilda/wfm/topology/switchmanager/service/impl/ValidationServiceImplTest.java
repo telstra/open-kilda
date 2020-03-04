@@ -413,33 +413,52 @@ public class ValidationServiceImplTest {
         private PersistenceManager build() {
             List<FlowPath> pathsBySegment = new ArrayList<>(segmentsCookies.length);
             for (long cookie : segmentsCookies) {
-                FlowPath flowPath = mock(FlowPath.class);
-                when(flowPath.getCookie()).thenReturn(new Cookie(cookie));
-                pathsBySegment.add(flowPath);
-            }
-            List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
-            for (int i = 0; i < ingressCookies.length; i++) {
-                long cookie = ingressCookies[i];
                 Flow flow = buildFlow(cookie, "flow_");
                 FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
+                flow.addPaths(flowPath);
+                flow.setForwardPath(flowPath.getPathId());
+                pathsBySegment.add(flowPath);
+
+                FlowPath flowOldPath = buildFlowPath(flow, switchA, switchB, "old_path_" + cookie, cookie + 10000);
+                flow.addPaths(flowOldPath);
+                pathsBySegment.add(flowOldPath);
+            }
+            List<FlowPath> flowPaths = new ArrayList<>(ingressCookies.length);
+            for (long cookie : ingressCookies) {
+                Flow flow = buildFlow(cookie, "flow_");
+                FlowPath flowPath = buildFlowPath(flow, switchA, switchB, "path_" + cookie, cookie);
+                flow.addPaths(flowPath);
+                flow.setForwardPath(flowPath.getPathId());
                 flowPaths.add(flowPath);
+
+                FlowPath flowOldPath = buildFlowPath(flow, switchA, switchB, "old_path_" + cookie, cookie + 10000);
+                flow.addPaths(flowOldPath);
+                flowPaths.add(flowOldPath);
             }
             when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
             when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
 
             FlowPath flowPathA = mock(FlowPath.class);
+            PathId flowAPathId = new PathId("flow_path_a");
             when(flowPathA.getSrcSwitch()).thenReturn(switchB);
             when(flowPathA.getDestSwitch()).thenReturn(switchA);
             when(flowPathA.getBandwidth()).thenReturn(10000L);
             when(flowPathA.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
             when(flowPathA.getMeterId()).thenReturn(new MeterId(32L));
+            when(flowPathA.getPathId()).thenReturn(flowAPathId);
 
             Flow flowA = mock(Flow.class);
             when(flowA.getFlowId()).thenReturn("test_flow");
             when(flowA.getSrcSwitch()).thenReturn(switchB);
             when(flowA.getDestSwitch()).thenReturn(switchA);
             when(flowA.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
+            when(flowA.isActualPathId(flowAPathId)).thenReturn(true);
             when(flowPathA.getFlow()).thenReturn(flowA);
+
+            FlowPath flowPathC = mock(FlowPath.class);
+            PathId flowCPathId = new PathId("flow_path_d");
+            when(flowA.isActualPathId(flowCPathId)).thenReturn(false);
+            when(flowPathC.getFlow()).thenReturn(flowA);
 
             Switch switchE = Switch.builder()
                     .switchId(SWITCH_ID_E)
@@ -447,17 +466,20 @@ public class ValidationServiceImplTest {
                     .build();
             switchE.setOfDescriptionManufacturer("E");
             FlowPath flowPathB = mock(FlowPath.class);
+            PathId flowBPathId = new PathId("flow_path_b");
             when(flowPathB.getSrcSwitch()).thenReturn(switchE);
             when(flowPathB.getDestSwitch()).thenReturn(switchA);
             when(flowPathB.getBandwidth()).thenReturn(FLOW_E_BANDWIDTH);
             when(flowPathB.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
             when(flowPathB.getMeterId()).thenReturn(new MeterId(32L));
+            when(flowPathB.getPathId()).thenReturn(flowBPathId);
 
             Flow flowB = mock(Flow.class);
             when(flowB.getFlowId()).thenReturn("test_flow_b");
             when(flowB.getSrcSwitch()).thenReturn(switchE);
             when(flowB.getDestSwitch()).thenReturn(switchA);
             when(flowB.getDetectConnectedDevices()).thenReturn(detectConnectedDevices);
+            when(flowB.isActualPathId(flowBPathId)).thenReturn(true);
             when(flowPathB.getFlow()).thenReturn(flowB);
 
             when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_B)))
