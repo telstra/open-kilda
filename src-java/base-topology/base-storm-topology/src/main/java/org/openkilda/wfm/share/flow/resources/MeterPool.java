@@ -32,8 +32,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The resource pool is responsible for meter de-/allocation.
@@ -101,7 +101,8 @@ public class MeterPool {
         transactionManager.doInTransaction(() -> {
             List<FlowMeter> meters = Arrays.stream(pathIds)
                     .map(flowMeterRepository::findByPathId)
-                    .flatMap(Collection::stream)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
                     .collect(toList());
 
             meters.forEach(flowMeterRepository::delete);

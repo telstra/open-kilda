@@ -24,7 +24,7 @@ import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
 import static org.openkilda.persistence.FetchStrategy.DIRECT_RELATIONS;
 
-import org.openkilda.messaging.info.event.SwitchLldpInfoData;
+import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
@@ -64,9 +64,9 @@ public class PacketService {
     }
 
     /**
-     * Handle Switch LLDP info data.
+     * Handle LLDP info data.
      */
-    public void handleSwitchLldpData(SwitchLldpInfoData data) {
+    public void handleLldpData(LldpInfoData data) {
         transactionManager.doInTransaction(() -> {
 
             FlowRelatedData flowRelatedData = findFlowRelatedData(data);
@@ -94,7 +94,7 @@ public class PacketService {
         });
     }
 
-    private FlowRelatedData findFlowRelatedData(SwitchLldpInfoData data) {
+    private FlowRelatedData findFlowRelatedData(LldpInfoData data) {
         if (data.getCookie() == LLDP_POST_INGRESS_COOKIE) {
             return findFlowRelatedDataForVlanFlow(data);
         } else if (data.getCookie() == LLDP_POST_INGRESS_VXLAN_COOKIE) {
@@ -113,7 +113,7 @@ public class PacketService {
     }
 
     @VisibleForTesting
-    FlowRelatedData findFlowRelatedDataForVlanFlow(SwitchLldpInfoData data) {
+    FlowRelatedData findFlowRelatedDataForVlanFlow(LldpInfoData data) {
         if (data.getVlans().isEmpty()) {
             log.warn("Got LLDP packet without transit VLAN: {}", data);
             return null;
@@ -152,7 +152,7 @@ public class PacketService {
     }
 
     @VisibleForTesting
-    FlowRelatedData findFlowRelatedDataForVxlanFlow(SwitchLldpInfoData data) {
+    FlowRelatedData findFlowRelatedDataForVxlanFlow(LldpInfoData data) {
         int inputVlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
         Flow flow = getFlowBySwitchIdPortAndVlan(data.getSwitchId(), data.getPortNumber(), inputVlan);
 
@@ -172,7 +172,7 @@ public class PacketService {
     }
 
     @VisibleForTesting
-    FlowRelatedData findFlowRelatedDataForOneSwitchFlow(SwitchLldpInfoData data) {
+    FlowRelatedData findFlowRelatedDataForOneSwitchFlow(LldpInfoData data) {
         // top vlan with which we got LLDP packet in Floodlight.
         int outputVlan = data.getVlans().isEmpty() ? 0 : data.getVlans().get(0);
         // second vlan with which we got LLDP packet in Floodlight. Exists only for some full port flows.
@@ -231,7 +231,7 @@ public class PacketService {
     }
 
     private FlowRelatedData getOneSwitchOnePortFlowRelatedData(
-            Flow flow, int outputVlan, int customerVlan, SwitchLldpInfoData data) {
+            Flow flow, int outputVlan, int customerVlan, LldpInfoData data) {
         if (flow.getDestVlan() == outputVlan) {
             if (flow.getSrcVlan() == FULL_PORT_VLAN) {
                 // case 1:  customer vlan 0 ==> src vlan 0, dst vlan 2 ==> output vlan 2, vlans in packet: [2]
@@ -308,7 +308,7 @@ public class PacketService {
         }
     }
 
-    private SwitchConnectedDevice getOrBuildSwitchDevice(SwitchLldpInfoData data, int vlan) {
+    private SwitchConnectedDevice getOrBuildSwitchDevice(LldpInfoData data, int vlan) {
         Optional<SwitchConnectedDevice> device = switchConnectedDeviceRepository
                 .findLldpByUniqueFieldCombination(
                         data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),

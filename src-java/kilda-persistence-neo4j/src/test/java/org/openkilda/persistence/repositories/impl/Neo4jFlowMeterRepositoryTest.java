@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
@@ -31,6 +32,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
@@ -66,17 +68,16 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test(expected = PersistenceException.class)
-    public void shouldNotGetMoreThanTwoMetersForPath() {
+    public void shouldNotGetMoreThanOneMetersForPath() {
         flowMeterRepository.createOrUpdate(createFlowMeter(1, new PathId(TEST_PATH_ID)));
         flowMeterRepository.createOrUpdate(createFlowMeter(2, new PathId(TEST_PATH_ID)));
-        flowMeterRepository.createOrUpdate(createFlowMeter(3, new PathId(TEST_PATH_ID)));
         flowMeterRepository.findByPathId(new PathId(TEST_PATH_ID));
     }
 
     @Test
     public void shouldGetZeroMetersForPath() {
-        Collection<FlowMeter> meters = flowMeterRepository.findByPathId(new PathId(TEST_PATH_ID));
-        assertEquals(0, meters.size());
+        Optional<FlowMeter> meters = flowMeterRepository.findByPathId(new PathId(TEST_PATH_ID));
+        assertFalse(meters.isPresent());
     }
 
     @Test

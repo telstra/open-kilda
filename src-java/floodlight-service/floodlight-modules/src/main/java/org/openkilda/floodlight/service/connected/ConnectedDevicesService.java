@@ -34,7 +34,7 @@ import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.SwitchLldpInfoData;
+import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
@@ -140,7 +140,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
 
     private InfoMessage createSwitchLldpMessage(
             SwitchId switchId, long cookie, OfInput input, LldpPacket lldpPacket, List<Integer> vlans) {
-        SwitchLldpInfoData lldpInfoData = new SwitchLldpInfoData(
+        LldpInfoData lldpInfoData = new LldpInfoData(
                 switchId,
                 input.getPort().getPortNumber(),
                 vlans,
