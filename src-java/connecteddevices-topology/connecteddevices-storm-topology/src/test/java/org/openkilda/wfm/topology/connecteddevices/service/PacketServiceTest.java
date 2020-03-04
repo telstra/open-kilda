@@ -19,7 +19,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.info.event.SwitchLldpInfoData;
 import org.openkilda.model.Cookie;
@@ -364,8 +363,8 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     private void assertSwitchConnectedDeviceExistInDatabase(SwitchLldpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
-                        data.getMacAddress(), LLDP, data.getChassisId(), data.getPortId());
+                .findLldpByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
+                        data.getMacAddress(), data.getChassisId(), data.getPortId());
         assertTrue(switchConnectedDevice.isPresent());
         assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }

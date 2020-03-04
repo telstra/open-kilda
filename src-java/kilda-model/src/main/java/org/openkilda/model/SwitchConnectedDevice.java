@@ -87,12 +87,14 @@ public class SwitchConnectedDevice implements Serializable {
     private ConnectedDeviceType type;
 
     @Index
-    @NonNull
+    @Property("ip_address")
+    private String ipAddress;
+
+    @Index
     @Property("chassis_id")
     private String chassisId;
 
     @Index
-    @NonNull
     @Property("port_id")
     private String portId;
 
@@ -131,8 +133,8 @@ public class SwitchConnectedDevice implements Serializable {
 
     @Builder(toBuilder = true)
     public SwitchConnectedDevice(@NonNull Switch switchObj, int portNumber, int vlan, String flowId, Boolean source,
-                                 @NonNull String macAddress, @NonNull ConnectedDeviceType type,
-                                 @NonNull String chassisId, @NonNull String portId, Integer ttl, String portDescription,
+                                 @NonNull String macAddress, @NonNull ConnectedDeviceType type, String ipAddress,
+                                 String chassisId, String portId, Integer ttl, String portDescription,
                                  String systemName, String systemDescription, String systemCapabilities,
                                  String managementAddress, Instant timeFirstSeen, Instant timeLastSeen) {
         this.switchObj = switchObj;
@@ -142,6 +144,7 @@ public class SwitchConnectedDevice implements Serializable {
         this.source = source;
         this.macAddress = macAddress;
         this.type = type;
+        this.ipAddress = ipAddress;
         this.chassisId = chassisId;
         this.portId = portId;
         this.ttl = ttl;
@@ -180,18 +183,33 @@ public class SwitchConnectedDevice implements Serializable {
         calculateUniqueIndex();
     }
 
-    public void setChassisId(@NonNull String chassisId) {
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+        calculateUniqueIndex();
+    }
+
+    public void setChassisId(String chassisId) {
         this.chassisId = chassisId;
         calculateUniqueIndex();
     }
 
-    public void setPortId(@NonNull String portId) {
+    public void setPortId(String portId) {
         this.portId = portId;
         calculateUniqueIndex();
     }
 
     private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
-                switchObj.getSwitchId(), portNumber, vlan, macAddress, type, chassisId, portId);
+        switch (type) {
+            case LLDP:
+                uniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
+                        switchObj.getSwitchId(), portNumber, vlan, macAddress, type, chassisId, portId);
+                break;
+            case ARP:
+                uniqueIndex = format("%s_%s_%s_%s_%s_%s",
+                        switchObj.getSwitchId(), portNumber, vlan, macAddress, type, ipAddress);
+                break;
+            default:
+                throw new IllegalArgumentException(format("Unknown connected device type %s", type));
+        }
     }
 }
