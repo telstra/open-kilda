@@ -15,13 +15,18 @@
 
 package org.openkilda.floodlight.service.connected;
 
+import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
-import static org.projectfloodlight.openflow.types.EthType.VLAN_FRAME;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
@@ -32,8 +37,10 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.shared.packet.VlanTag;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.ArpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
@@ -41,27 +48,32 @@ import org.openkilda.model.SwitchId;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.LLDP;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ConnectedDevicesService implements IService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(ConnectedDevicesService.class);
-    public static final int MAC_ADDRESS_LENGTH_IN_BYTES = 6;
-    public static final int VLAN_HEADER_LENGTH_IN_BYTES = 4;
-    public static final int VLAN_VALUE_MASK = 0x0FFF;
 
     private IKafkaProducerService producerService;
     private String topic;
     private String region;
+
+    static {
+        try {
+            logger.info("Force loading of {}", Class.forName(VlanTag.class.getName()));
+        } catch (ClassNotFoundException e) {
+            logger.error(String.format("Couldn't load class VlanTag %s", e.getMessage()), e);
+        }
+    }
 
     @Override
     public Command makeCommand(CommandContext context, OfInput input) {
@@ -75,25 +87,14 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
     }
 
     @VisibleForTesting
-    PacketData deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
+    LldpPacketData deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
         try {
-            byte[] data = eth.serialize();
-            ByteBuffer bb = ByteBuffer.wrap(data, MAC_ADDRESS_LENGTH_IN_BYTES * 2,
-                    data.length - MAC_ADDRESS_LENGTH_IN_BYTES * 2);
             List<Integer> vlans = new ArrayList<>();
+            IPacket payload = extractEthernetPayload(eth, vlans);
 
-            short s = bb.getShort();
-            EthType ethType = EthType.of(Short.toUnsignedInt(s));
-            while (bb.remaining() > VLAN_HEADER_LENGTH_IN_BYTES && VLAN_FRAME.equals(ethType)) {
-                vlans.add(bb.getShort() & VLAN_VALUE_MASK);
-                ethType = EthType.of(Short.toUnsignedInt(bb.getShort()));
-            }
-
-            if (EthType.LLDP.equals(ethType)) {
-                LLDP lldp = new LLDP();
-                lldp.deserialize(data, bb.position(), data.length - bb.position());
-                LldpPacket lldpPacket = new LldpPacket(lldp);
-                return new PacketData(lldpPacket, vlans);
+            if (payload instanceof LLDP) {
+                LldpPacket lldpPacket = new LldpPacket((LLDP) payload);
+                return new LldpPacketData(lldpPacket, vlans);
             }
         }  catch (Exception exception) {
             logger.info("Could not deserialize LLDP packet {} on switch {}. Cookie {}. Deserialization failure: {}",
@@ -101,6 +102,24 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             return null;
         }
         logger.info("Got invalid lldp packet: {} on switch {}. Cookie {}", eth, switchId, cookie);
+        return null;
+    }
+
+    @VisibleForTesting
+    ArpPacketData deserializeArp(Ethernet eth, SwitchId switchId, long cookie) {
+        try {
+            List<Integer> vlans = new ArrayList<>();
+            IPacket payload = extractEthernetPayload(eth, vlans);
+
+            if (payload instanceof ARP) {
+                return new ArpPacketData((ARP) payload, vlans);
+            }
+        }  catch (Exception exception) {
+            logger.info("Could not deserialize ARP packet {} on switch {}. Cookie {}. Deserialization failure: {}",
+                    eth, switchId, Cookie.toString(cookie), exception.getMessage(), exception);
+            return null;
+        }
+        logger.info("Got invalid ARP packet: {} on switch {}. Cookie {}", eth, switchId, cookie);
         return null;
     }
 
@@ -113,10 +132,19 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
                 || value == LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
     }
 
+    private boolean isArpRelated(long value) {
+        return value == ARP_INPUT_PRE_DROP_COOKIE
+                || value == ARP_TRANSIT_COOKIE
+                || value == ARP_INGRESS_COOKIE
+                || value == ARP_POST_INGRESS_COOKIE
+                || value == ARP_POST_INGRESS_VXLAN_COOKIE
+                || value == ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+    }
+
     private void handlePacketIn(OfInput input) {
         U64 rawCookie = input.packetInCookie();
 
-        if (rawCookie == null || !isLldpRelated(rawCookie.getValue())) {
+        if (rawCookie == null) {
             return;
         }
 
@@ -124,12 +152,16 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         long cookie = rawCookie.getValue();
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 
-        handleSwitchLldp(input, switchId, cookie);
+        if (isLldpRelated(cookie)) {
+            handleSwitchLldp(input, switchId, cookie);
+        } else if (isArpRelated(cookie)) {
+            handleArp(input, switchId, cookie);
+        }
     }
 
     private void handleSwitchLldp(OfInput input, SwitchId switchId, long cookie) {
         Ethernet ethernet = input.getPacketInPayload();
-        PacketData packetData = deserializeLldp(ethernet, switchId, cookie);
+        LldpPacketData packetData = deserializeLldp(ethernet, switchId, cookie);
         if (packetData == null) {
             return;
         }
@@ -158,6 +190,45 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         return new InfoMessage(lldpInfoData, System.currentTimeMillis(), CorrelationContext.getId(), region);
     }
 
+    private void handleArp(OfInput input, SwitchId switchId, long cookie) {
+        Ethernet ethernet = input.getPacketInPayload();
+        ArpPacketData data = deserializeArp(ethernet, switchId, cookie);
+        if (data == null) {
+            return;
+        }
+
+        ArpInfoData arpInfoData = new ArpInfoData(
+                switchId,
+                input.getPort().getPortNumber(),
+                data.vlans,
+                cookie,
+                data.arp.getSenderHardwareAddress().toString(),
+                data.arp.getSenderProtocolAddress().toString()
+        );
+
+        InfoMessage message = new InfoMessage(
+                arpInfoData, System.currentTimeMillis(), CorrelationContext.getId(), region);
+        // This line will be uncommented in next patch
+        // producerService.sendMessageAndTrack(topic, switchId.toString(), message);
+    }
+
+    @VisibleForTesting
+    IPacket extractEthernetPayload(Ethernet packet, List<Integer> vlans) {
+        short rootVlan = packet.getVlanID();
+        if (rootVlan > 0) {
+            vlans.add((int) rootVlan);
+        }
+
+        IPacket payload = packet.getPayload();
+        while (payload instanceof VlanTag) {
+            short vlanId = ((VlanTag) payload).getVlanId();
+            vlans.add((int) vlanId);
+            payload = payload.getPayload();
+        }
+
+        return payload;
+    }
+
     @Override
     public void setup(FloodlightModuleContext context) {
         logger.info("Stating {}", ConnectedDevicesService.class.getCanonicalName());
@@ -173,8 +244,14 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
     }
 
     @Value
-    static class PacketData {
+    static class LldpPacketData {
         LldpPacket lldpPacket;
+        List<Integer> vlans;
+    }
+
+    @Value
+    static class ArpPacketData {
+        ARP arp;
         List<Integer> vlans;
     }
 }
