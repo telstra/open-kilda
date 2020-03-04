@@ -530,7 +530,7 @@ public class SwitchService {
                 .updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
         return linkBandwidthUpdate;
     }
-    
+
     /**
      * Delete switch.
      *
@@ -543,4 +543,16 @@ public class SwitchService {
         return switchInfo;
         
     }
+
+    /** Update enable-bfd flag.
+     *
+     * @param linkParametersDto
+     *            the link parameters
+     * @return the IslLinkInfo
+   */
+    public List<IslLinkInfo> updateLinkBfdFlag(LinkParametersDto linkParametersDto) {
+        List<IslLinkInfo> islLinkInfo = switchIntegrationService.updateIslBfdFlag(linkParametersDto); 
+        return islLinkInfo;
+    }
+
 }

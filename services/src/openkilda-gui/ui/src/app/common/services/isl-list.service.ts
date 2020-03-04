@@ -28,6 +28,10 @@ export class IslListService {
     return this.httpClient.patch(url,data);
 	}
 
+  updateBFDflag(data){
+		const url = `${environment.apiEndPoint}/switch/link/enable-bfd`; 
+    return this.httpClient.patch(url,data);
+	}
   updateIslBandWidth(data,src_switch,src_port,dst_switch,dst_port){
 		const url = `${environment.apiEndPoint}/switch/link/bandwidth?src_switch=${src_switch}&src_port=${src_port}&dst_switch=${dst_switch}&dst_port=${dst_port}`; 
     return this.httpClient.patch(url,data);

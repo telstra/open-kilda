@@ -216,6 +216,39 @@ public class SwitchController {
     }
 
     /**
+     * Update isl bfd-flag.
+     *
+     * @param linkParametersDto
+     *            the link parameters
+     * @return the IslLinkInfo
+     */
+    @RequestMapping(path = "/link/enable-bfd", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.ISL_UPDATE_BFD_FLAG})
+    public @ResponseBody List<IslLinkInfo> updateEnableBfdFlag(@RequestBody LinkParametersDto linkParametersDto) {
+        activityLogger.log(ActivityType.UPDATE_ISL_BFD_FLAG, linkParametersDto.toString());
+        String response = validateRequest(linkParametersDto);
+        if (response != null) {
+            throw new RequestValidationException(response + " is mandatory");
+        }
+        List<IslLinkInfo> islLinkInfos = serviceSwitch.updateLinkBfdFlag(linkParametersDto);
+        return islLinkInfos;
+    }
+    
+    private String validateRequest(LinkParametersDto linkParametersDto) {
+        if (StringUtil.isNullOrEmpty(linkParametersDto.getSrcSwitch())) {
+            return "src_switch";
+        } else if (linkParametersDto.getSrcPort() == null) {
+            return "src_port";
+        } else if (StringUtil.isNullOrEmpty(linkParametersDto.getDstSwitch())) {
+            return "dst_switch";
+        } else if (linkParametersDto.getDstPort() == null) {
+            return "dst_port";
+        } 
+        return null;
+    }
+
+    /**
      * Get Link Props.
      *
      * @param keys the link properties
@@ -338,10 +371,6 @@ public class SwitchController {
     @Permissions(values = { IConstants.Permission.SW_SWITCH_DELETE })
     public @ResponseBody SwitchInfo deleteSwitch(@PathVariable final String switchId,
             @RequestParam(name = "force", required = false) boolean force) {
-        //        Long userId = null;
-        //        if (serverContext.getRequestContext() != null) {
-        //            userId = serverContext.getRequestContext().getUserId();
-        //        }
         activityLogger.log(ActivityType.DELETE_SWITCH, switchId);
         return serviceSwitch.deleteSwitch(switchId, force);
     }
