@@ -58,6 +58,7 @@ import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentMatchers;
@@ -464,7 +465,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .thenReturn(make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
-        setupPostponedRequestInjector(service);
 
         service.handleRequest(new FlowRerouteFact(
                 currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
@@ -616,24 +616,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         PathSegment firstSegment = forwardSegments.get(0);
 
         return new IslEndpoint(firstSegment.getSrcSwitch().getSwitchId(), firstSegment.getSrcPort());
-    }
-
-    private void setupPostponedRequestInjector(FlowRerouteService service) {
-        doAnswer(invocation -> {
-            FlowRerouteFact retry = invocation.getArgument(0);
-            currentRequestKey = retry.getKey();
-            service.handlePostponedRequest(retry);
-            return null;
-        }).when(carrier).injectPostponedRequest(any());
-    }
-
-    private void setupRetryRequestInjector(FlowRerouteService service) {
-        doAnswer(invocation -> {
-            FlowRerouteFact retry = invocation.getArgument(0);
-            currentRequestKey = retry.getKey();
-            service.handleRequest(retry);
-            return null;
-        }).when(carrier).injectRetry(any());
     }
 
     private void preparePathComputation(String flowId, Throwable error)

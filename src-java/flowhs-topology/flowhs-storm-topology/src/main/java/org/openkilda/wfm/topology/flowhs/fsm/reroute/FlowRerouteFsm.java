@@ -77,8 +77,6 @@ import java.util.Set;
 @Slf4j
 public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    public static final int REROUTE_RETRY_LIMIT = 3;
-
     private final FlowRerouteHubCarrier carrier;
 
     private boolean recreateIfSamePath;
@@ -94,16 +92,13 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private FlowStatus newFlowStatus;
     private FlowEncapsulationType newEncapsulationType;
 
-    private int rerouteCounter;
     private String rerouteReason;
     private Set<IslEndpoint> affectedIsls;
     private boolean forceReroute;
 
-    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId,
-                          Integer rerouteCounter) {
+    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
         super(commandContext, flowId);
         this.carrier = carrier;
-        this.rerouteCounter = rerouteCounter;
     }
 
     @Override
@@ -167,8 +162,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
-                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class,
-                    Integer.class);
+                    FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
@@ -215,11 +209,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit, persistenceManager,
-                            carrier));
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit, persistenceManager,
-                            carrier));
+                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
@@ -235,11 +227,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit, persistenceManager,
-                            carrier));
+                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit, persistenceManager,
-                            carrier));
+                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
             builder.transition().from(State.VALIDATING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
@@ -385,8 +375,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId, int rerouteCounter) {
-            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId, rerouteCounter);
+        public FlowRerouteFsm newInstance(CommandContext commandContext, String flowId) {
+            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
         }
     }
 
