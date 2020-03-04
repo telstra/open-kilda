@@ -1,5 +1,73 @@
 # Changelog
 
+## v1.50.0 (04/03/2020)
+
+### Features:
+-  [#3072](https://github.com/telstra/open-kilda/pull/3072) Add default meters validation (Issues: [#2969](https://github.com/telstra/open-kilda/issues/2969) [#3152](https://github.com/telstra/open-kilda/issues/3152)) [**floodlight**][**storm-topologies**]
+-  [#3149](https://github.com/telstra/open-kilda/pull/3149) Added a reroute call when updating the maxLatency flow field. [**storm-topologies**]
+-  [#3135](https://github.com/telstra/open-kilda/pull/3135) Added MAX_LATENCY PCE strategy. 
+
+### Bug Fixes:
+-  [#3220](https://github.com/telstra/open-kilda/pull/3220) Added a filter in SwitchManagerTopology to check only the paths contained in flow. (Issue: [#3090](https://github.com/telstra/open-kilda/issues/3090)) [**storm-topologies**]
+
+### Improvements:
+-  [#3246](https://github.com/telstra/open-kilda/pull/3246) refactor tests according to 1.49 release [**tests**]
+-  [#3221](https://github.com/telstra/open-kilda/pull/3221) improve MultitableFlowsSpec (Issue: [#3218](https://github.com/telstra/open-kilda/issues/3218)) [**tests**]
+-  [#3092](https://github.com/telstra/open-kilda/pull/3092) Minor tweaks in tests according to default meters validation feature [**tests**]
+-  [#3223](https://github.com/telstra/open-kilda/pull/3223) improve protectedPath specs [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.49.0...v1.50.0).
+
+### Affected Components:
+router, swmanager, fl, nbworker
+
+---
+
+## v1.49.0 (28/02/2020)
+
+### Features:
+-  [#3075](https://github.com/telstra/open-kilda/pull/3075) [Server 42] Design for Round Trip Ping rules [**docs**]
+-  [#3121](https://github.com/telstra/open-kilda/pull/3121) Design for ARP connected devices on switch (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) [**docs**]
+-  [#2876](https://github.com/telstra/open-kilda/pull/2876) Design for LLDP connected devices on switch (Issue: [#2917](https://github.com/telstra/open-kilda/issues/2917)) [**docs**]
+
+### Bug Fixes:
+-  [#3088](https://github.com/telstra/open-kilda/pull/3088) Fix the responses in swagger docs. (Issues: [#2382](https://github.com/telstra/open-kilda/issues/2382) [#2765](https://github.com/telstra/open-kilda/issues/2765)) [**northbound**]
+-  [#3039](https://github.com/telstra/open-kilda/pull/3039) Fix MeterVerifyCommand to handle inaccurate meter bandwidth and burst (Issue: [#3027](https://github.com/telstra/open-kilda/issues/3027)) [**floodlight**]
+-  [#3174](https://github.com/telstra/open-kilda/pull/3174) Correct handle empty affected isl set in reroute throttling [**storm-topologies**]
+-  [#3055](https://github.com/telstra/open-kilda/pull/3055) Fixed issue in flow path stats graph  (Issue: [#3052](https://github.com/telstra/open-kilda/issues/3052)) [**gui**]
+-  [#3069](https://github.com/telstra/open-kilda/pull/3069) Fixed flow ping for VXLAN flows [**floodlight**]
+
+### Improvements:
+-  [#3208](https://github.com/telstra/open-kilda/pull/3208) improve building procedure for kilda-base-lab-service image 
+-  [#3084](https://github.com/telstra/open-kilda/pull/3084) Fixed unit test for multi table [**tests**]
+-  [#3153](https://github.com/telstra/open-kilda/pull/3153) Get rid of flow wrappers in Ping topology. [**storm-topologies**]
+-  [#3155](https://github.com/telstra/open-kilda/pull/3155) Added a status tag to the flow.latency metric in the Ping topology. [**storm-topologies**]
+-  [#3030](https://github.com/telstra/open-kilda/pull/3030) Imrovement for gzip compression in UI and browser (Issue: [#3029](https://github.com/telstra/open-kilda/issues/3029)) [**gui**]
+-  [#3160](https://github.com/telstra/open-kilda/pull/3160) Return empty list instead of null on dumpMeters request [**floodlight**]
+-  [#3161](https://github.com/telstra/open-kilda/pull/3161) Get rid of the FlowPair wrapper. [**storm-topologies**]
+-  [#3163](https://github.com/telstra/open-kilda/pull/3163) Get rid of UnidirectionalFlow wrapper. [**storm-topologies**]
+-  [#3169](https://github.com/telstra/open-kilda/pull/3169) Move transit table_id to 5 [**floodlight**]
+-  [#3112](https://github.com/telstra/open-kilda/pull/3112) improvement: generate topology with one-way link only [**tests**]
+-  [#3191](https://github.com/telstra/open-kilda/pull/3191) Expose OF transaction id into speaker logs [**floodlight**]
+-  [#3198](https://github.com/telstra/open-kilda/pull/3198) test improvements [**tests**]
+
+### Other changes:
+-  [#3211](https://github.com/telstra/open-kilda/pull/3211) Fix running Storm topology locally (in dev environment) 
+-  [#3091](https://github.com/telstra/open-kilda/pull/3091) Now verify cleanup per feature rather than per spec [**tests**]
+-  [#3222](https://github.com/telstra/open-kilda/pull/3222) Docker base image for Lab-Api bumped to Ubuntu Eoan 
+-  [#3192](https://github.com/telstra/open-kilda/pull/3192) Fix running func-tests and perf-tests in IDEA. 
+-  [#3190](https://github.com/telstra/open-kilda/pull/3190) Fix python3 dependency list [**docs**]
+-  [#3193](https://github.com/telstra/open-kilda/pull/3193) Fix build.gradle - proper task reference in buildAndCopyArtifacts. 
+-  [#3066](https://github.com/telstra/open-kilda/pull/3066) Fixed security vulnerability in kildagui [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.48.2...v1.49.0).
+
+### Affected Components:
+nb, fl, gui, flow, reroute, nbworker, ping
+
+---
+
 ## v1.48.1 (24/02/2020)
 
 ### Bug Fixes:
