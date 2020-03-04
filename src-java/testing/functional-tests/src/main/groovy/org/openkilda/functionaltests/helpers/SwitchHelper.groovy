@@ -1,5 +1,11 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE
+import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE
+import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE
@@ -21,7 +27,6 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
-import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
@@ -88,12 +93,15 @@ class SwitchHelper {
         def swProps = northbound.getSwitchProperties(sw.dpId)
         def multiTableRules = []
         def switchLldpRules = []
+        def switchArpRules = []
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                    MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE]
+                    MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
+                    ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 multiTableRules.add(LLDP_POST_INGRESS_VXLAN_COOKIE)
+                multiTableRules.add(ARP_POST_INGRESS_VXLAN_COOKIE)
             }
             northbound.getLinks(sw.dpId, null, null, null).each {
                 if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
@@ -108,11 +116,17 @@ class SwitchHelper {
                     if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
                         switchLldpRules.add(Cookie.encodeLldpInputCustomer(it.source.portId))
                     }
+                    if (swProps.switchArp || it.source.detectConnectedDevices.arp) {
+                        switchArpRules.add(Cookie.encodeArpInputCustomer(it.source.portId))
+                    }
                 }
                 if (it.destination.datapath.equals(sw.dpId)) {
                     multiTableRules.add(Cookie.encodeIngressRulePassThrough(it.destination.portId))
                     if (swProps.switchLldp || it.destination.detectConnectedDevices.lldp) {
                         switchLldpRules.add(Cookie.encodeLldpInputCustomer(it.destination.portId))
+                    }
+                    if (swProps.switchArp || it.destination.detectConnectedDevices.arp) {
+                        switchArpRules.add(Cookie.encodeArpInputCustomer(it.destination.portId))
                     }
                 }
             }
@@ -120,21 +134,24 @@ class SwitchHelper {
         if (swProps.switchLldp) {
             switchLldpRules.addAll([LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE])
         }
+        if (swProps.switchArp) {
+            switchArpRules.addAll([ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE])
+        }
         if (sw.noviflow && !sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
                     CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE,
-                    VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + switchLldpRules)
+                    VERIFICATION_UNICAST_VXLAN_RULE_COOKIE] + multiTableRules + switchLldpRules + switchArpRules)
         } else if((sw.noviflow || sw.details.manufacturer == "E") && sw.wb5164){
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                    CATCH_BFD_RULE_COOKIE] + multiTableRules + switchLldpRules)
+                    CATCH_BFD_RULE_COOKIE] + multiTableRules + switchLldpRules + switchArpRules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
-            + multiTableRules + switchLldpRules)
+            + multiTableRules + switchLldpRules + switchArpRules)
         }
     }
 
@@ -152,14 +169,22 @@ class SwitchHelper {
         if (swProps.multiTable) {
             result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE) //16
             result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE) //18
+            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE) //22
+            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE) //24
             if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
                 result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE) //17
+                result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE) //23
             }
         }
         if (swProps.switchLldp) {
             result << MeterId.createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE) //13
             result << MeterId.createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE) //14
             result << MeterId.createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE) //15
+        }
+        if (swProps.switchArp) {
+            result << MeterId.createMeterIdForDefaultRule(ARP_INPUT_PRE_DROP_COOKIE) //19
+            result << MeterId.createMeterIdForDefaultRule(ARP_TRANSIT_COOKIE) //20
+            result << MeterId.createMeterIdForDefaultRule(ARP_INGRESS_COOKIE) //21
         }
         return result*.getValue().sort()
     }
