@@ -21,7 +21,6 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 
 class SwitchesSpec extends HealthCheckSpecification {
     @Tidy
@@ -62,7 +61,6 @@ class SwitchesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/2885")
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
