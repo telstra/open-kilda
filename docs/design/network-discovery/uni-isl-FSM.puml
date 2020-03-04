@@ -33,9 +33,8 @@ UNKNOWN --> DOWN : fail
 UNKNOWN --> DOWN : physical-down
 
 UP --> moveChoice : discovery
-UP --> DOWN : fail
-UP --> DOWN : physical-down
-UP --> BFD : bfd-up
+UP --> DOWN : fail\nphysical-down
+UP --> BFD_UP : bfd-up
 UP : enter [have speaker event] / set remote
 UP : enter [have speaker event] / emit isl-up
 
@@ -48,12 +47,16 @@ selfLoopChoice --> UP : [else]
 selfLoopChoice -r-> UNKNOWN : [self-loop]
 
 DOWN --> moveChoice : discovery
-DOWN --> BFD : bfd-up
+DOWN --> BFD_UP : bfd-up
 DOWN : enter [has remote] / emit isl-down
 
-BFD --> DOWN : physical-down
-BFD --> DOWN : bfd-down
-BFD --> UP : bfd-kill
-BFD : enter / emit isl-up
+BFD_UP --> UP : bfd-kill
+BFD_UP --> DOWN : physical-down
+BFD_UP --> BFD_DOWN : bfd-down
+BFD_UP : enter / emit isl-up
+
+BFD_DOWN --> BFD_UP : bfd-up
+BFD_DOWN --> DOWN : physical-down\nbfd-kill
+BFD_DOWN : enter [has remote] / emit isl-down
 
 @enduml
