@@ -127,7 +127,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
+        switches.each { sw -> Wrappers.wait(RULES_DELETION_TIME) { verifySwitchRules(sw.dpId) } }
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -340,7 +340,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         !northbound.getAllFlows().find { it.id == flow.flowId }
 
         and: "No rule discrepancies on the switch after delete"
-        Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.switchId) }
+        Wrappers.wait(RULES_DELETION_TIME) { verifySwitchRules(flow.source.switchId) }
 
         where:
         flow << getSingleSwitchSinglePortFlows()
