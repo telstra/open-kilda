@@ -27,6 +27,7 @@ public class ConnectedDeviceDto implements Serializable {
     private static final long serialVersionUID = 6293390020243063935L;
 
     private String macAddress;
+    private String ipAddress;
     private String chassisId;
     private String portId;
     private Integer ttl;

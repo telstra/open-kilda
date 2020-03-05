@@ -27,4 +27,5 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class TypedConnectedDevicesDto {
     private List<ConnectedDeviceDto> lldp;
+    private List<ConnectedDeviceDto> arp;
 }

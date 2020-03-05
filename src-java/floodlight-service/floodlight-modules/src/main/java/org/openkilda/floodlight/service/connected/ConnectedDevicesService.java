@@ -208,8 +208,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
 
         InfoMessage message = new InfoMessage(
                 arpInfoData, System.currentTimeMillis(), CorrelationContext.getId(), region);
-        // This line will be uncommented in next patch
-        // producerService.sendMessageAndTrack(topic, switchId.toString(), message);
+        producerService.sendMessageAndTrack(topic, switchId.toString(), message);
     }
 
     @VisibleForTesting
