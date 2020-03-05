@@ -71,6 +71,10 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
             if (getEndpoint().isTrackLldpConnectedDevices()) {
                 ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
             }
+
+            if (getEndpoint().isTrackArpConnectedDevices()) {
+                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
         }
         return ofMessages;
     }

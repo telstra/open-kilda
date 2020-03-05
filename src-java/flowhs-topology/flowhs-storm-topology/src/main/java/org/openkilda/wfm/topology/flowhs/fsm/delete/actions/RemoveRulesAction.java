@@ -89,6 +89,9 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                                 .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                                 .removeOppositeCustomerPortLldpRule(
                                         isRemoveCustomerPortSharedLldpCatchRule(flow, oppositePath))
+                                .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
+                                .removeOppositeCustomerPortArpRule(
+                                        isRemoveCustomerPortSharedArpCatchRule(flow, oppositePath))
                                 .build();
                         commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
                                 path, oppositePath, speakerRequestBuildContext));
@@ -164,6 +167,12 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
     private boolean isRemoveCustomerPortSharedLldpCatchRule(Flow flow, FlowPath path) {
         boolean isForward = flow.isForward(path);
         return isFlowTheLastUserOfSharedLldpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+                isForward ? flow.getSrcPort() : flow.getDestPort());
+    }
+
+    private boolean isRemoveCustomerPortSharedArpCatchRule(Flow flow, FlowPath path) {
+        boolean isForward = flow.isForward(path);
+        return isFlowTheLastUserOfSharedArpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 }

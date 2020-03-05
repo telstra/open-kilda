@@ -68,7 +68,7 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExistsAndActive(flow);
-        checkSwitchesSupportLldpIfNeeded(flow);
+        checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
@@ -250,22 +250,24 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure switches support LLDP.
+     * Ensure switches support LLDP/ARP.
      *
      * @param requestedFlow a flow to be validated.
      */
     @VisibleForTesting
-    void checkSwitchesSupportLldpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
+    void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
         SwitchId sourceId = requestedFlow.getSrcSwitch();
         SwitchId destinationId = requestedFlow.getDestSwitch();
 
         List<String> errorMessages = new ArrayList<>();
 
-        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()) {
+        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()
+                || requestedFlow.getDetectConnectedDevices().isSrcArp()) {
             validateMultiTableProperty(sourceId, errorMessages);
         }
 
-        if (requestedFlow.getDetectConnectedDevices().isDstLldp()) {
+        if (requestedFlow.getDetectConnectedDevices().isDstLldp()
+                || requestedFlow.getDetectConnectedDevices().isDstArp()) {
             validateMultiTableProperty(destinationId, errorMessages);
         }
 
@@ -280,7 +282,7 @@ public class FlowValidator {
             errorMessages.add(String.format("Couldn't get switch properties for switch %s.", switchId));
         } else {
             if (!switchProperties.get().isMultiTable()) {
-                errorMessages.add(String.format("Catching of LLDP packets supported only on switches with "
+                errorMessages.add(String.format("Catching of LLDP/ARP packets supported only on switches with "
                                 + "enabled 'multiTable' switch feature. This feature is disabled on switch %s.",
                         switchId));
             }
