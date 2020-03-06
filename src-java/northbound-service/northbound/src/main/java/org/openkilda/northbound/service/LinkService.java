@@ -104,7 +104,7 @@ public interface LinkService {
      * @param linkParameters properties to find a link for delete.
      * @return list of removed links.
      */
-    CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters);
+    CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters, boolean force);
 
     /**
      * Update "Enable BFD" flag.
