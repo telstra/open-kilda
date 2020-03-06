@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.IslStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -385,6 +386,13 @@ public class DatabaseSupportImpl implements Database {
         return islRepository.findByEndpoints(
                 isl.getSrcSwitch().getDpId(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId(), isl.getDstPort()).get().getTimeUnstable();
+    }
+
+    @Override
+    public IslStatus getIslRoundTripStatus(Isl isl) {
+        return islRepository.findByEndpoints(
+                isl.getSrcSwitch().getDpId(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId(), isl.getDstPort()).get().getRoundTripStatus();
     }
 
     @Override
