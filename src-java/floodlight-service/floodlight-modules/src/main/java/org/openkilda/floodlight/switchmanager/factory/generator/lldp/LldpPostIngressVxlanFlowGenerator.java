@@ -24,10 +24,12 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
 import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -44,6 +46,7 @@ import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.List;
+import java.util.Set;
 
 public class LldpPostIngressVxlanFlowGenerator extends LldpFlowGenerator {
 
@@ -56,7 +59,8 @@ public class LldpPostIngressVxlanFlowGenerator extends LldpFlowGenerator {
     @Override
     OFFlowMod getLldpFlowMod(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
-        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        if (!(features.contains(NOVIFLOW_PUSH_POP_VXLAN) && features.contains(NOVIFLOW_COPY_FIELD))) {
             return null;
         }
 
