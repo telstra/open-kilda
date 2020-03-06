@@ -799,7 +799,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
         then: "Bad request error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorDescription == "Catching of LLDP packets supported only on " +
+        e.responseBodyAsString.to(MessageError).errorDescription == "Catching of LLDP/ARP packets supported only on " +
                 "switches with enabled 'multiTable' switch feature. This feature is disabled on switch $sw.dpId."
 
         cleanup: "Restore switch props"
