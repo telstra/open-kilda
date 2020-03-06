@@ -652,7 +652,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
             swPair.paths.find { pathHelper.getInvolvedSwitches(it).every { it in vxlanEnabledSwitches } }
         }
         def switchesToPick = vxlanSwitchPairs.collectMany { [it.src, it.dst] }
-                                             .unique { it.details.hardware + it.details.software }
+                                             .unique { it.nbFormat().hardware + it.nbFormat().software }
         return vxlanSwitchPairs.inject([]) { r, switchPair ->
             if (switchPair.src in switchesToPick || switchPair.dst in switchesToPick ) {
                 r << switchPair

@@ -155,7 +155,7 @@ class MetersSpec extends HealthCheckSpecification {
         meters.meterEntries.each { assert it.flags.size() == 3 }
 
         where:
-        sw << (getNoviflowSwitches().unique { it.details.hardware + it.details.software }
+        sw << (getNoviflowSwitches().unique { it.nbFormat().hardware + it.nbFormat().software }
                 ?: assumeTrue("Unable to find Noviflow switch in topology", false))
     }
 

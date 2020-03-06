@@ -16,17 +16,33 @@
 package org.openkilda.testing.service.lockkeeper;
 
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
-import org.openkilda.testing.service.lockkeeper.model.InetAddress;
+import org.openkilda.testing.service.floodlight.ManagementFloodlightManager;
+import org.openkilda.testing.service.floodlight.MultiFloodlightManager;
+import org.openkilda.testing.service.floodlight.StatsFloodlightManager;
+import org.openkilda.testing.service.labservice.LabService;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.BlockRequest;
+import org.openkilda.testing.service.lockkeeper.model.ContainerName;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Provide functionality of {@link LockKeeperService} for virtual network.
@@ -34,51 +50,171 @@ import java.util.List;
 @Slf4j
 @Service
 @Profile("virtual")
-public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
+public class LockKeeperVirtualImpl implements LockKeeperService {
 
     public static final String DUMMY_CONTROLLER = "tcp:192.0.2.0:6666";
-    @Value("#{'${floodlight.controllers.management}'.split(',')}")
-    private List<String> managementControllers;
-    @Value("#{'${floodlight.controllers.stat}'.split(',')}")
-    private List<String> statControllers;
 
-    @Override
-    public void knockoutSwitch(Switch sw) {
-        log.debug("Knock out switch: {}", sw.getName());
-        setController(sw, DUMMY_CONTROLLER);
-    }
+    @Autowired
+    LabService labService;
+    @Autowired
+    private NorthboundService northbound;
+    @Autowired
+    private ManagementFloodlightManager mgmtManager;
+    @Autowired
+    private StatsFloodlightManager statsManager;
 
-    @Override
-    public void reviveSwitch(Switch sw) {
-        log.debug("Revive switch: {}", sw.getName());
-        setController(sw, managementControllers.get(0) + " " + statControllers.get(0));
-    }
+    @Value("${kafka.bootstrap.server}")
+    private String kafkaBootstrapServer;
+
+    @Autowired
+    @Qualifier("labApiRestTemplate")
+    protected RestTemplate restTemplate;
 
     @Override
     public void setController(Switch sw, String controller) {
         log.debug("Set '{}' controller on the '{}' switch", controller, sw.getName());
-        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/set-controller", HttpMethod.POST,
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/set-controller", HttpMethod.POST,
                 new HttpEntity<>(new SwitchModify(sw.getName(), controller), buildJsonHeaders()), String.class);
     }
 
+    /**
+     * Disconnects certain switch from specified floodlight by adding iptable rules to FL container.
+     * !Important note: having a knocked-out switch will disable new virtual switches from being connected until iptable
+     * changes are reverted.
+     */
     @Override
-    public void blockFloodlightAccessToPort(Integer port) {
-        log.debug("Block floodlight access to {} by adding iptables rules", port);
-        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/block-floodlight-access", HttpMethod.POST,
-                new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+    public BlockRequest knockoutSwitch(Switch sw, MultiFloodlightManager manager) {
+        log.debug("Block Floodlight access to switch '{}' by adding iptables rules", sw.getName());
+        String containerName = manager.getContainerName(sw.getRegion());
+        String currentController = manager.getControllerAddresses().get(
+                manager.getContainerNames().indexOf(containerName));
+        sw.setController(StringUtils.replaceOnce(sw.getController(), currentController, DUMMY_CONTROLLER));
+        setController(sw, sw.getController());
+        return new BlockRequest(containerName, "");
     }
 
     @Override
-    public void unblockFloodlightAccessToPort(Integer port) {
-        log.debug("Unblock floodlight access to {} by removing iptables rules", port);
-        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/unblock-floodlight-access",
-                HttpMethod.POST, new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+    public void reviveSwitch(Switch sw, BlockRequest blockRequest) {
+        log.debug("Unblock Floodlight access to switch '{}' by removing iptables rules", sw.getName());
+        MultiFloodlightManager manager = Stream.of(mgmtManager, statsManager).filter(m ->
+                m.getContainerNames().indexOf(blockRequest.getContainerName()) > -1).findFirst().get();
+        String currentController = manager.getControllerAddresses().get(
+                manager.getContainerNames().indexOf(blockRequest.getContainerName()));
+        sw.setController(StringUtils.replaceOnce(sw.getController(), DUMMY_CONTROLLER, currentController));
+        setController(sw, sw.getController());
     }
 
     @Override
-    public void removeFloodlightAccessRestrictions() {
+    public void addFlows(List<ASwitchFlow> flows) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/flows", HttpMethod.POST,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
+        log.debug("Added flows: {}", flows.stream()
+                .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
+                .collect(Collectors.toList()));
+    }
+
+    @Override
+    public void removeFlows(List<ASwitchFlow> flows) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/flows", HttpMethod.DELETE,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
+        log.debug("Removed flows: {}", flows.stream()
+                .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
+                .collect(Collectors.toList()));
+    }
+
+    @Override
+    public List<ASwitchFlow> getAllFlows() {
+        ASwitchFlow[] flows = restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/flows",
+                HttpMethod.GET, new HttpEntity(buildJsonHeaders()), ASwitchFlow[].class).getBody();
+        return Arrays.asList(flows);
+    }
+
+    @Override
+    public void portsUp(List<Integer> ports) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/ports", HttpMethod.POST,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        log.debug("Brought up ports: {}", ports);
+    }
+
+    @Override
+    public void portsDown(List<Integer> ports) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/ports", HttpMethod.DELETE,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        log.debug("Brought down ports: {}", ports);
+    }
+
+    @Override
+    public void stopFloodlight(String region) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/stop",
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(mgmtManager.getContainerName(region)),
+                        buildJsonHeaders()), String.class);
+        log.debug("Stopping Floodlight");
+    }
+
+    @Override
+    public void startFloodlight(String region) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/start",
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(mgmtManager.getContainerName(region)),
+                        buildJsonHeaders()), String.class);
+        log.debug("Starting Floodlight");
+    }
+
+    @Override
+    public void restartFloodlight(String region) {
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/restart",
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(mgmtManager.getContainerName(region)),
+                        buildJsonHeaders()), String.class);
+        log.debug("Restarting Floodlight");
+    }
+
+    @Override
+    public void blockFloodlightAccess(String region, BlockRequest address) {
+        log.debug("Block floodlight access to {} by adding iptables rules", address);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/block",
+                HttpMethod.POST, new HttpEntity<>(address, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void unblockFloodlightAccess(String region, BlockRequest address) {
+        log.debug("Unblock floodlight access to {} by removing iptables rules", address);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/unblock",
+                HttpMethod.POST, new HttpEntity<>(address, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void removeFloodlightAccessRestrictions(String region) {
         log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
-        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/remove-floodlight-access-restrictions",
-                HttpMethod.POST, new HttpEntity(buildJsonHeaders()), String.class);
+        String containerName = mgmtManager.getContainerName(region);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/unblock-all",
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(containerName), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void knockoutFloodlight(String region) {
+        log.debug("Knock out Floodlight service");
+        String containerName = mgmtManager.getContainerName(region);
+        blockFloodlightAccess(region, new BlockRequest(containerName, getPort(kafkaBootstrapServer)));
+    }
+
+    @Override
+    public void reviveFloodlight(String region) {
+        log.debug("Revive Floodlight service");
+        String containerName = mgmtManager.getContainerName(region);
+        unblockFloodlightAccess(region, new BlockRequest(containerName, getPort(kafkaBootstrapServer)));
+    }
+
+    HttpHeaders buildJsonHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        return headers;
+    }
+
+    private Integer getPort(String uri) {
+        String[] parts = uri.split(":");
+        return Integer.valueOf(parts[parts.length - 1]);
+    }
+
+    private String getCurrentLabUrl() {
+        return "api/" + labService.getLab().getLabId();
     }
 }

@@ -753,7 +753,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -771,7 +771,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 "Destination switch $sw.dpId are not connected to the controller"
 
         and: "Cleanup: Connect switch back to the controller"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()

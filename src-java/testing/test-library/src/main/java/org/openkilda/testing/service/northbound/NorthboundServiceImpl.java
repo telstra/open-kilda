@@ -21,16 +21,12 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.event.SwitchChangeType;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.model.SpeakerSwitchDescription;
-import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -521,18 +517,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<SwitchInfoData> getAllSwitches() {
-        SwitchDto[] switches = restTemplate.exchange("/api/v1/switches", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto[].class).getBody();
-        return Stream.of(switches)
-                .map(this::convertToSwitchInfoData)
-                .collect(Collectors.toList());
+    public List<SwitchDto> getAllSwitches() {
+        return Arrays.asList(restTemplate.exchange("/api/v1/switches", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto[].class).getBody());
     }
 
     @Override
-    public SwitchInfoData getSwitch(SwitchId switchId) {
-        return convertToSwitchInfoData(restTemplate.exchange("/api/v1/switches/{switch_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto.class, switchId).getBody());
+    public SwitchDto getSwitch(SwitchId switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchDto.class, switchId).getBody();
     }
 
     @Override
@@ -696,26 +689,5 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .underMaintenance(dto.isUnderMaintenance())
                 .latency(dto.getLatency())
                 .build();
-    }
-
-    private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
-        SpeakerSwitchView switchView = SpeakerSwitchView.builder()
-                .ofVersion(dto.getOfVersion())
-                .description(SpeakerSwitchDescription.builder()
-                        .hardware(dto.getHardware())
-                        .manufacturer(dto.getManufacturer())
-                        .serialNumber(dto.getSerialNumber())
-                        .software(dto.getSoftware())
-                        .build())
-                .build();
-        return new SwitchInfoData(
-                new SwitchId(dto.getSwitchId()),
-                SwitchChangeType.from(dto.getState()),
-                dto.getAddress(),
-                dto.getHostname(),
-                dto.getDescription(),
-                KILDA_CONTROLLER,
-                dto.isUnderMaintenance(),
-                switchView);
     }
 }

@@ -9,8 +9,8 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.info.event.SwitchInfoData
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
+import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
@@ -110,7 +110,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
-    def unsetSwitchMaintenance(List<SwitchInfoData> switches) {
+    def unsetSwitchMaintenance(List<SwitchDto> switches) {
         def maintenanceSwitches = switches.findAll { it.underMaintenance }
         if (maintenanceSwitches) {
             log.info("Unset maintenance mode from all affected switches: $maintenanceSwitches")
@@ -120,14 +120,14 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
-    def removeFlowRules(List<SwitchInfoData> switches) {
+    def removeFlowRules(List<SwitchDto> switches) {
         log.info("Remove non-default rules from all switches")
         switches.each {
             northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
     }
 
-    def removeExcessMeters(List<SwitchInfoData> switches) {
+    def removeExcessMeters(List<SwitchDto> switches) {
         log.info("Remove excess meters from switches")
         switches.each { sw ->
             if (!sw.description.contains("OF_12")) {
@@ -171,7 +171,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
-    def deleteInactiveSwitches(List<SwitchInfoData> allSwitches) {
+    def deleteInactiveSwitches(List<SwitchDto> allSwitches) {
         def inactiveSwitches = allSwitches.findAll { it.state == SwitchChangeType.DEACTIVATED }
         if(inactiveSwitches) {
             log.info("Removing inactive switches: $inactiveSwitches")

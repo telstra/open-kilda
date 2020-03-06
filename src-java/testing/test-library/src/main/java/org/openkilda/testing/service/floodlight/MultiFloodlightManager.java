@@ -13,28 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.lockkeeper.model;
+package org.openkilda.testing.service.floodlight;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import lombok.Value;
+import java.util.List;
 
-@Value
-public class InetAddress {
+public interface MultiFloodlightManager {
+    FloodlightService getFloodlightService(String region);
 
-    @JsonInclude(Include.NON_NULL)
-    String ip;
+    String getContainerName(String region);
 
-    @JsonInclude(Include.NON_NULL)
-    Integer port;
+    List<String> getRegions();
 
-    public InetAddress(String ip) {
-        this.ip = ip;
-        this.port = null;
-    }
+    List<String> getContainerNames();
 
-    public InetAddress(Integer port) {
-        this.ip = null;
-        this.port = port;
+    List<String> getControllerAddresses();
+
+    static boolean isBackupRegion(String region) {
+        return region.toLowerCase().endsWith("_backup");
     }
 }

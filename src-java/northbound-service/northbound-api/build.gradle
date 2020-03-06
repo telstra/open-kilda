@@ -1,5 +1,11 @@
+plugins {
+    id 'java-library'
+}
+
 description = 'Northbound Service API'
 dependencies {
+
+    implementation project(':base-messaging')
     implementation project(':kilda-model')
 
     implementation 'com.fasterxml.jackson.core:jackson-annotations'

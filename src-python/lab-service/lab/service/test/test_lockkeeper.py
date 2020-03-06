@@ -20,8 +20,6 @@ def test_parse_dump_flows():
     test_data = '''OFPST_FLOW reply (OF1.3) (xid=0x2):
          cookie=0x0, duration=782.127s, table=0, n_packets=0, n_bytes=0, in_port=7 actions=output:8
          cookie=0x0, duration=782.127s, table=0, n_packets=0, n_bytes=0, in_port=51 actions=output:52
-         cookie=0x8000000000000001, duration=3.256s, table=0, n_packets=0, n_bytes=0, priority=1 actions=drop
-         cookie=0x0, duration=782.132s, table=0, n_packets=0, n_bytes=0, priority=0 actions=NORMAL
         '''
 
     assert parse_dump_flows(test_data) == [

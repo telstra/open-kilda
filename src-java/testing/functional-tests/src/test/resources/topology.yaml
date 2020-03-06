@@ -4,6 +4,7 @@ switches:
     of_version: OF_13
     status: active
     max_port: 30
+    region: 1
     out_ports:
     - port: 10
       vlan_range: 101..150
@@ -13,6 +14,7 @@ switches:
     of_version: OF_13
     status: active
     max_port: 30
+    region: 2
     out_ports:
     - port: 10
       vlan_range: 101..150
@@ -22,6 +24,7 @@ switches:
     of_version: OF_13
     status: active
     max_port: 30
+    region: 1
     out_ports:
     - port: 10
       vlan_range: 101..150
@@ -31,6 +34,7 @@ switches:
     of_version: OF_13
     status: active
     max_port: 52
+    region: 2
     out_ports:
     - port: 10
       vlan_range: 101..150
@@ -40,6 +44,7 @@ switches:
     of_version: OF_13
     status: active
     max_port: 52
+    region: 1
     out_ports:
     - port: 10
       vlan_range: 101..150
@@ -49,6 +54,7 @@ switches:
     of_version: OF_13
     status: active
     max_port: 52
+    region: 2
     out_ports:
     - port: 10
       vlan_range: 101..150

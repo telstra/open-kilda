@@ -31,7 +31,7 @@ class PortAntiflapHelper {
         def swPort = new Tuple2(swId, portNo)
         def lastEvent = history.get(swPort)
         if (lastEvent) {
-            sleep(lastEvent + antiflapCooldown * 1000 - System.currentTimeMillis())
+            sleep(lastEvent + antiflapCooldown * 1100 - System.currentTimeMillis())
             history.remove(swPort)
         }
         northbound.portUp(swId, portNo)

@@ -244,8 +244,8 @@ services:
          - storm-supervisor.pendev
 
 
-  floodlight_one:
-    container_name: floodlight_one
+  floodlight_1:
+    container_name: floodlight_1
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
@@ -264,33 +264,8 @@ services:
     networks:
       default:
         aliases:
-         - floodlight_one.pendev
-# we use kilda as hostname for FL in atdd topologies
-         - kilda
+         - floodlight_1.pendev
     mem_limit: ${FL_1_MEM_LIMIT:-1073741824}
-
-  floodlight_two:
-    container_name: floodlight_two
-    build:
-      context: docker
-      dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:${full_build_number:-latest}"
-    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
-    ports:
-      - "6654:6653"
-      - "8082:8080"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      logstash:
-        condition: service_started
-    cap_add:
-      - NET_ADMIN
-    networks:
-      default:
-        aliases:
-          - floodlight_two.pendev
-    mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
 
   northbound:
     container_name: openkilda-northbound
