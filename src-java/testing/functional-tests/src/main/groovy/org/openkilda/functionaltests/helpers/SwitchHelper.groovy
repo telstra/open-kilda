@@ -108,7 +108,8 @@ class SwitchHelper {
                     MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                     MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
                     ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                    && sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
                 multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
             }
             northbound.getLinks(sw.dpId, null, null, null).each {
@@ -177,14 +178,23 @@ class SwitchHelper {
         if (swProps.multiTable) {
             result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE) //16
             result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE) //18
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)) {
+            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE) //22
+            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE) //24
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                    && sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
                 result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE) //17
+                result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE) //23
             }
         }
         if (swProps.switchLldp) {
             result << MeterId.createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE) //13
             result << MeterId.createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE) //14
             result << MeterId.createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE) //15
+        }
+        if (swProps.switchArp) {
+            result << MeterId.createMeterIdForDefaultRule(ARP_INPUT_PRE_DROP_COOKIE) //19
+            result << MeterId.createMeterIdForDefaultRule(ARP_TRANSIT_COOKIE) //20
+            result << MeterId.createMeterIdForDefaultRule(ARP_INGRESS_COOKIE) //21
         }
         return result*.getValue().sort()
     }
