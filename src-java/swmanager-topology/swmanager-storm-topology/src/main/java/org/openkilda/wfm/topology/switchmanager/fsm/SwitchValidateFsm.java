@@ -55,6 +55,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
@@ -88,6 +89,7 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
+    private boolean switchExists;
     private SwitchProperties switchProperties;
     private List<Integer> islPorts;
     private List<Integer> flowPorts;
@@ -114,6 +116,8 @@ public class SwitchValidateFsm
         this.flowLldpPorts = new HashSet<>();
         this.flowArpPorts = new HashSet<>();
 
+        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchExists = switchRepository.exists(switchId);
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
         boolean switchLldp = switchProperties != null && switchProperties.isSwitchLldp();
@@ -213,6 +217,10 @@ public class SwitchValidateFsm
 
     protected void initialized(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
+        if (!switchExists) {
+            sendException(format("Switch '%s' not found", switchId), ErrorType.NOT_FOUND);
+            return;
+        }
         if (switchProperties == null) {
             sendException(format("Switch properties not found for switch '%s'", switchId), ErrorType.NOT_FOUND);
             return;
