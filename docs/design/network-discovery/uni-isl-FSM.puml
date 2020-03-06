@@ -22,41 +22,54 @@ Ouput signals
 title UniISL FSM
 
 [*] --> INIT
+INIT --> POLL : discovery
+INIT --> PAIRED : activate [have-history] / set remote, emit isl-history
+INIT : fail / log error - lost ISL discovery
+INIT : bfd-up / log error - lost ISL discovery
+INIT : bfd-down / log error - lost ISL discovery
 
-INIT --> UNKNOWN : activate
-INIT : activate [have-history] / set remote, emit emit isl-history
+PAIRED -l-> POLL : discovery
+PAIRED --> BFD : bfd-up
+PAIRED --> DOWN : physical-down
+PAIRED : fail / emit isl-down
 
-state moveChoice <<choice>>
+state POLL {
+    state moveChoice <<choice>>
 
-UNKNOWN --> moveChoice : discovery
-UNKNOWN --> DOWN : fail
-UNKNOWN --> DOWN : physical-down
+    [*] -l-> moveChoice
 
-UP --> moveChoice : discovery
-UP --> DOWN : fail\nphysical-down
-UP --> BFD_UP : bfd-up
-UP : enter [have speaker event] / set remote
-UP : enter [have speaker event] / emit isl-up
+    POLL_IDLE --> moveChoice : discovery
+    POLL_IDLE : fail / emit isl-down
 
-state selfLoopChoice <<choice>>
+    state selfLoopChoice <<choice>>
 
-moveChoice --> UP : [remote not changed]
-moveChoice --> selfLoopChoice : [remote is changed] / emit isl-move
+    moveChoice --> POLL_UP : [else]
+    moveChoice --> selfLoopChoice : [remote is changed] / emit isl-move
 
-selfLoopChoice --> UP : [else]
-selfLoopChoice -r-> UNKNOWN : [self-loop]
+    selfLoopChoice --> POLL_UP : [else]
+    selfLoopChoice -r-> POLL_IDLE : [self-loop]
 
-DOWN --> moveChoice : discovery
-DOWN --> BFD_UP : bfd-up
-DOWN : enter [has remote] / emit isl-down
+    POLL_UP --> POLL_IDLE : next
+    POLL_UP : enter [have speaker event] / set remote
+    POLL_UP : enter [have speaker event] / emit isl-up
+}
+POLL --> BFD : bfd-up
+POLL --> DOWN : physical-down
 
-BFD_UP --> UP : bfd-kill
-BFD_UP --> DOWN : physical-down
-BFD_UP --> BFD_DOWN : bfd-down
-BFD_UP : enter / emit isl-up
+state BFD {
+    [*] --> BFD_UP
 
-BFD_DOWN --> BFD_UP : bfd-up
-BFD_DOWN --> DOWN : physical-down\nbfd-kill
-BFD_DOWN : enter [has remote] / emit isl-down
+    BFD_UP -r-> BFD_DOWN : bfd-down
+    BFD_UP : enter / emit isl-up
+
+    BFD_DOWN -l-> BFD_UP : bfd-up
+    BFD_DOWN : enter / emit isl-down
+}
+BFD --> PAIRED : bfd-kill
+BFD --> DOWN : physical-down
+
+DOWN --> POLL : discovery
+DOWN --> BFD : bfd-up
+DOWN : enter / emit isl-down
 
 @enduml
