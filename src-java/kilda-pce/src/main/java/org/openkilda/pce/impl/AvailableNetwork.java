@@ -93,6 +93,13 @@ public class AvailableNetwork {
             Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
             Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
 
+            if (dstNode != null) {
+                dstNode.increaseDiversityGroupUseCounter();
+            }
+            if (srcNode != null && segment.getSeqId() == 0) {
+                srcNode.increaseDiversityGroupUseCounter();
+            }
+
             if (srcNode == null || dstNode == null) {
                 log.debug("Diversity segment {} don't present in AvailableNetwork", segment);
                 continue;
@@ -110,10 +117,6 @@ public class AvailableNetwork {
                 Edge edge = edgeOptional.get();
 
                 edge.increaseDiversityGroupUseCounter();
-                edge.getDestSwitch().increaseDiversityGroupUseCounter();
-                if (segment.getSeqId() == 0) {
-                    edge.getSrcSwitch().increaseDiversityGroupUseCounter();
-                }
             }
         }
     }
