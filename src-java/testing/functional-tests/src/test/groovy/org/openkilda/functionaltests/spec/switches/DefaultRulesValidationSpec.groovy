@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.hamcrest.Matchers.containsInAnyOrder
+import static org.junit.Assert.assertThat
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -52,7 +54,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
             rules.missing.empty
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.sort()
+            assertThat sw.toString(), rules.proper, containsInAnyOrder(sw.defaultCookies.toArray())
         }
 
         cleanup: "Restore original switch props"

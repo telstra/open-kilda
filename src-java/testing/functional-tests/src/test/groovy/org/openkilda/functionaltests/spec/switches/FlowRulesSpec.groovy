@@ -476,7 +476,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with the longest available path"
-        assumeTrue("https://github.com/telstra/open-kilda/issues/3056", !useMultiTable)
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
             pair.paths.max { it.size() }.size()
         }

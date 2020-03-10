@@ -238,7 +238,7 @@ class SwitchHelper {
             for (long cookie : sw.defaultCookies) {
                 expectedHexCookie.add(decode(cookie).toString())
             }
-            assertThat actualHexCookie, containsInAnyOrder(expectedHexCookie.toArray())
+            assertThat sw.toString(), actualHexCookie, containsInAnyOrder(expectedHexCookie.toArray())
 
             def actualDefaultMetersIds = northbound.getAllMeters(sw.dpId).meterEntries*.meterId.findAll {
                 MeterId.isMeterIdOfDefaultRule((long) it)

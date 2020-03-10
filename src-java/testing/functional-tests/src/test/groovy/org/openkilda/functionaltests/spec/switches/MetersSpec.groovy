@@ -483,7 +483,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     @Tidy
     @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
-    @Ignore("https://github.com/telstra/open-kilda/issues/3027")
     def "Meter burst size is correctly set on Noviflow Wb5164 switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = getNoviflowWb5164()
@@ -537,7 +536,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
@@ -567,13 +565,12 @@ meters in flow rules at all (#data.flowType flow)"() {
         [response.srcMeter, response.dstMeter].each { switchMeterEntries ->
             def originalFlowMeters = originalMeters[switchMeterEntries.switchId].findAll(flowMeters)
             switchMeterEntries.meterEntries.each { meterEntry ->
-                //TODO(andriidovhan) add if/else condition when 2634 is fixed
-//                if (northbound.getSwitch(switchMeterEntries.switchId).switchView.description.hardware =~ "WB5164") {
-//                    verifyRateSizeOnWb5164(newBandwidth, meterEntry.rate)
-//                    Long expectedBurstSize = switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
-//                    Long actualBurstSize = meterEntry.burstSize
-//                    verifyBurstSizeOnWb5164(expectedBurstSize, actualBurstSize)
-//                } else { }
+                if (northbound.getSwitch(switchMeterEntries.switchId).hardware =~ "WB5164") {
+                    verifyRateSizeOnWb5164(newBandwidth, meterEntry.rate)
+                    Long expectedBurstSize = switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
+                    Long actualBurstSize = meterEntry.burstSize
+                    verifyBurstSizeOnWb5164(expectedBurstSize, actualBurstSize)
+                }
                 assert meterEntry.rate == newBandwidth
                 assert meterEntry.burstSize == switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
             }
@@ -622,11 +619,10 @@ meters in flow rules at all (#data.flowType flow)"() {
                         switches   : !centecSwitches.empty && !noviflowSwitches.empty ?
                                 [centecSwitches[0], noviflowSwitches[0]] : []
                 ],
-                //TODO(andriidovhan)uncomment when 2634 is fixed
-//                [
-//                        description: "Noviflow_Wb5164-Noviflow_Wb5164",
-//                        switches   : noviflowWb5164
-//                ],
+                [
+                        description: "Noviflow_Wb5164-Noviflow_Wb5164",
+                        switches   : noviflowWb5164
+                ],
                 [
                         description: "OVS-OVS",
                         switches   : virtualSwitches
@@ -635,7 +631,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "Try to reset meters for unmetered flow"() {
         given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
         def availableSwitches = topology.activeSwitches
