@@ -164,7 +164,7 @@ public class Session implements AutoCloseable {
             }
 
             // check session completion (we have received all responses, if we got response for closing barrier request)
-            if (closingBarrier.isDone()) {
+            if (closingBarrier != null && closingBarrier.isDone()) {
                 incompleteRequestsStream()
                         .forEach(entry -> entry.complete(Optional.empty()));
                 return true;
@@ -181,7 +181,14 @@ public class Session implements AutoCloseable {
         CompletableFuture<Optional<OFMessage>> future = new CompletableFuture<>();
 
         long xid = message.getXid();
-        requestsByXid.put(xid, future);
+        if (xid == 0) {
+            log.error("Send OF request with xid:0 to {} - {}", sw.getId(), message);
+        }
+        CompletableFuture<Optional<OFMessage>> existing = requestsByXid.put(xid, future);
+        if (existing != null) {
+            log.error("Detect xid collision on {} xid:{} - can lead to unprocessed/missing response", sw.getId(), xid);
+            existing.complete(Optional.empty());  // to avoid infinite wait on replaced future object
+        }
         group.bindRequest(this, xid);
 
         return future;
