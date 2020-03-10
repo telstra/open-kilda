@@ -22,6 +22,7 @@ import org.openkilda.messaging.payload.history.FlowEventPayload;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.List;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class FlowHistoryData extends InfoData {
     @JsonProperty(Utils.PAYLOAD)
     private List<FlowEventPayload> payload;

@@ -34,7 +34,7 @@ import lombok.ToString;
 /*
  *  Command to request a list of all ports including port state
  */
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper = false)
 @ToString(callSuper = true)
 public class PortsCommandData extends CommandData {
     private static final long serialVersionUID = 1L;

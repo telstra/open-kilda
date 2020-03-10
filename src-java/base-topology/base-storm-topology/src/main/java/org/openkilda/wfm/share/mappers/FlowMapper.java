@@ -36,6 +36,7 @@ import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
@@ -48,7 +49,8 @@ import java.util.function.Supplier;
 /**
  * Convert {@link Flow} to {@link FlowDto} and back.
  */
-@Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class}, imports = {FlowStatusDetails.class})
+@Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class}, imports = {FlowStatusDetails.class},
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);

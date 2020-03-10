@@ -39,10 +39,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 @Slf4j
-@Mapper(uses = {FlowPathMapper.class})
+@Mapper(uses = {FlowPathMapper.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class HistoryMapper {
     public static final HistoryMapper INSTANCE = Mappers.getMapper(HistoryMapper.class);
 

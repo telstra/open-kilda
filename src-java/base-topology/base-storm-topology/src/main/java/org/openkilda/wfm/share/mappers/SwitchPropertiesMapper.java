@@ -19,12 +19,13 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.model.SwitchProperties;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 /**
  * Convert {@link SwitchProperties} to {@link SwitchPropertiesDto} and back.
  */
-@Mapper
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface SwitchPropertiesMapper {
 
     SwitchPropertiesMapper INSTANCE = Mappers.getMapper(SwitchPropertiesMapper.class);

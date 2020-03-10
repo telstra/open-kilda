@@ -19,9 +19,10 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
-@Mapper
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface MeterEntryMapper {
 
     MeterEntryMapper INSTANCE = Mappers.getMapper(MeterEntryMapper.class);

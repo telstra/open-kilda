@@ -19,9 +19,11 @@ import org.openkilda.messaging.model.LinkPropsMask;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class LinkPropsDrop extends LinkPropsRequest {
     @JsonProperty("lookup_mask")
     LinkPropsMask propsMask;

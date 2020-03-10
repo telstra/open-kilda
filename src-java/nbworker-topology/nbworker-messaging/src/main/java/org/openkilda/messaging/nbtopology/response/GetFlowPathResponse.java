@@ -20,12 +20,14 @@ import org.openkilda.messaging.model.FlowPathDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Represents a flow path northbound response.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class GetFlowPathResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 

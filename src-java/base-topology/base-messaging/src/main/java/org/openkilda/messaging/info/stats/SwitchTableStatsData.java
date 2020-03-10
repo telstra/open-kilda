@@ -21,12 +21,14 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
 
 @Value
 @Builder
+@EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class SwitchTableStatsData extends InfoData {
     SwitchId switchId;

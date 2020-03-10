@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.FlowDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.List;
  * Represents a flow read northbound response.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class FlowReadResponse extends InfoData {
     /**
      * Serialization version number constant.

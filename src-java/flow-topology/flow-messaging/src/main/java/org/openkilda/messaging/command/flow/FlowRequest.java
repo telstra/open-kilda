@@ -24,12 +24,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 
 @Value
 @JsonNaming(value = SnakeCaseStrategy.class)
 @Builder(toBuilder = true)
+@EqualsAndHashCode(callSuper = false)
 public class FlowRequest extends CommandData {
 
     @NonNull

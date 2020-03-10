@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.List;
  * either completely processed group by group or canceled as a whole.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class BatchCommandsRequest extends CommandData {
     @JsonProperty("groups")
     private List<CommandGroup> groups;

@@ -20,12 +20,14 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Defines the payload payload of a Message representing an command for ISL discovery.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class DiscoverIslCommandData extends CommandData {
     /**
      * Serialization version number constant.

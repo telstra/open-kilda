@@ -59,7 +59,6 @@ public class TransitVlan implements Serializable, EncapsulationId {
     @Convert(graphPropertyType = String.class)
     private PathId pathId;
 
-    @NonNull
     @Property(name = "vlan")
     @Index(unique = true)
     private int vlan;

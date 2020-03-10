@@ -24,12 +24,13 @@ import org.openkilda.model.PortStatus;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 /**
  * Convert {@link org.openkilda.model.Port} to {@link PortInfoData} and back.
  */
-@Mapper
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class PortMapper {
 
     public static final PortMapper INSTANCE = Mappers.getMapper(PortMapper.class);

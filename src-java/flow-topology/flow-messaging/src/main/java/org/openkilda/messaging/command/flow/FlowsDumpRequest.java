@@ -17,12 +17,14 @@ package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
 
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Dump all flows northbound request.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class FlowsDumpRequest extends CommandData {
 
     public FlowsDumpRequest() {

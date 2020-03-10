@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 
@@ -26,6 +27,7 @@ import lombok.Value;
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = false)
 public class PushSettings extends Message {
     Integer packetGenerationIntervalInMs;
 }

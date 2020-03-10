@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.time.Instant;
@@ -29,6 +30,7 @@ import java.time.Instant;
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class PortHistoryRequest extends HistoryRequest {
     SwitchId switchId;
     int portNumber;

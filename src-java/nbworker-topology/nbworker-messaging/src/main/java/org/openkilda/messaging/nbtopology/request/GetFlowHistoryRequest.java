@@ -19,11 +19,13 @@ import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @ReadRequest
 @Value
 @Builder
+@EqualsAndHashCode(callSuper = false)
 public class GetFlowHistoryRequest extends HistoryRequest {
     @JsonProperty("flow_id")
     String flowId;

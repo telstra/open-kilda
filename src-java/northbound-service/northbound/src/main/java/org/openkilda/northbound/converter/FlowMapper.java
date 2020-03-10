@@ -51,10 +51,12 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring",
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class,
-                DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class})
+                DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class},
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface FlowMapper {
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "source",
