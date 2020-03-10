@@ -18,10 +18,12 @@ package org.openkilda.wfm.topology.ping.model;
 import org.openkilda.wfm.CommandContext;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.UUID;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class TimeoutDescriptor extends Expirable<UUID> {
     private final PingContext pingContext;
     private final CommandContext commandContext;

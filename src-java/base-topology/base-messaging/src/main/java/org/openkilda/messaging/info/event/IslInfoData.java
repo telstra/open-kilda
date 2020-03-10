@@ -24,6 +24,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.Objects;
 
@@ -33,6 +34,9 @@ import java.util.Objects;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
+@EqualsAndHashCode(of = {"latency", "source", "destination", "speed", "availableBandwidth", "maxBandwidth",
+        "defaultMaxBandwidth", "state", "actualState", "cost", "underMaintenance", "enableBfd", "bfdSessionStatus"},
+        callSuper = false)
 public class IslInfoData extends CacheTimeTag {
     /**
      * Serialization version number constant.
@@ -196,42 +200,5 @@ public class IslInfoData extends CacheTimeTag {
     @JsonIgnore
     public boolean isSelfLooped() {
         return Objects.equals(source.getSwitchId(), destination.getSwitchId());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(latency, source, destination, speed, availableBandwidth, maxBandwidth, defaultMaxBandwidth,
-                state, actualState, cost, underMaintenance, enableBfd, bfdSessionStatus);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        IslInfoData that = (IslInfoData) object;
-        return Objects.equals(getLatency(), that.getLatency())
-                && Objects.equals(getSource(), that.getSource())
-                && Objects.equals(getDestination(), that.getDestination())
-                && Objects.equals(getSpeed(), that.getSpeed())
-                && Objects.equals(getAvailableBandwidth(), that.getAvailableBandwidth())
-                && Objects.equals(getMaxBandwidth(), that.getMaxBandwidth())
-                && Objects.equals(getDefaultMaxBandwidth(), that.getDefaultMaxBandwidth())
-                && Objects.equals(getState(), that.getState())
-                && Objects.equals(getActualState(), that.getActualState())
-                && Objects.equals(getCost(), that.getCost())
-                && Objects.equals(isUnderMaintenance(), that.isUnderMaintenance())
-                && Objects.equals(isEnableBfd(), that.isEnableBfd())
-                && Objects.equals(getBfdSessionStatus(), that.getBfdSessionStatus());
     }
 }

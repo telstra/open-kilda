@@ -20,9 +20,11 @@ import org.openkilda.messaging.model.LinkPropsDto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class LinkPropsPut extends LinkPropsRequest {
     @JsonProperty("link_props")
     LinkPropsDto linkProps;

@@ -23,8 +23,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Data;
-
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
 
 /**
  * Defines the payload payload of a Message representing a port info.
@@ -32,6 +31,7 @@ import java.util.Objects;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
+@EqualsAndHashCode(of = {"switchId", "portNo", "maxCapacity", "state"}, callSuper = false)
 public class PortInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -122,32 +122,5 @@ public class PortInfoData extends InfoData {
         this.maxCapacity = maxCapacity;
         this.state = state;
         this.enabled = enabled;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(switchId, portNo, maxCapacity, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        PortInfoData that = (PortInfoData) object;
-        return Objects.equals(getSwitchId(), that.getSwitchId())
-                && Objects.equals(getPortNo(), that.getPortNo())
-                && Objects.equals(getMaxCapacity(), that.getMaxCapacity())
-                && Objects.equals(getState(), that.getState());
     }
 }

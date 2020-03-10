@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.model.FeatureToggles;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 /**
@@ -31,5 +32,6 @@ public abstract class FeatureTogglesMapper {
 
     public abstract FeatureTogglesDto map(FeatureToggles featureToggles);
 
+    @Mapping(target = "entityId", ignore = true)
     public abstract FeatureToggles map(FeatureTogglesDto featureTogglesDto);
 }

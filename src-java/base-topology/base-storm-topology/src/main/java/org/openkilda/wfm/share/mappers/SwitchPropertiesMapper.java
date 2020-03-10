@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.model.SwitchProperties;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 /**
@@ -31,5 +32,6 @@ public interface SwitchPropertiesMapper {
 
     SwitchPropertiesDto map(SwitchProperties switchProperties);
 
+    @Mapping(target = "switchObj", ignore = true)
     SwitchProperties map(SwitchPropertiesDto switchProperties);
 }

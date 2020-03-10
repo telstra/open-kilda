@@ -16,9 +16,11 @@
 
 package org.openkilda.server42.control.messaging.flowrtt;
 
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class ClearFlows extends Message {
 }

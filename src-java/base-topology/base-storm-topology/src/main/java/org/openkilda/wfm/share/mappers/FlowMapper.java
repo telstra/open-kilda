@@ -66,6 +66,10 @@ public abstract class FlowMapper {
             expression = "java(flow.isAllocateProtectedPath() ? "
                     + "new FlowStatusDetails(flow.getMainFlowPrioritizedPathsStatus(), "
                     + "flow.getProtectedFlowPrioritizedPathsStatus()) : null)")
+    @Mapping(target = "cookie", ignore = true)
+    @Mapping(target = "meterId", ignore = true)
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "diverseWith", ignore = true)
     public abstract FlowDto map(Flow flow);
 
     /**

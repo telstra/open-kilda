@@ -20,10 +20,12 @@ import org.openkilda.messaging.command.CommandData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class CreateLogicalPortRequest extends CommandData {
 
     @JsonProperty("address")

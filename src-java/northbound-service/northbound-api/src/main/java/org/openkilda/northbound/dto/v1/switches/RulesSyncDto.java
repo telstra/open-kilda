@@ -18,6 +18,7 @@ package org.openkilda.northbound.dto.v1.switches;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class RulesSyncDto extends RulesValidationDto {
 
     @JsonProperty("missing")

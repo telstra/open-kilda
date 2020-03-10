@@ -20,12 +20,14 @@ import org.openkilda.model.Switch;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Represents a switch northbound response.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class GetSwitchResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 

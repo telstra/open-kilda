@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
@@ -31,6 +32,7 @@ import lombok.Value;
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class FlowRerouteResponse extends InfoData {
 
     private static final long serialVersionUID = 1L;

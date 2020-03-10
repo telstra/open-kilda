@@ -22,12 +22,14 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
 
 @Value
 @Builder
+@EqualsAndHashCode(callSuper = false)
 public class SwitchExpectedDefaultMeterEntries extends InfoData {
 
     @JsonProperty(value = "switch_id")
