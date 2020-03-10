@@ -17,21 +17,52 @@ package org.openkilda.northbound.dto.v2.flows;
 
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
 @Data
 @Builder
-@AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowEndpointV2 {
+
+    @JsonProperty("switch_id")
     private SwitchId switchId;
+
+    @JsonProperty("port_number")
     private Integer portNumber;
+
+    @JsonProperty("vlan_id")
     private int vlanId;
+
     @NonNull
+    @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesV2 detectConnectedDevices;
+
+    @Builder
+    @JsonCreator
+    public FlowEndpointV2(@JsonProperty("switch_id") SwitchId switchId,
+                          @JsonProperty("port_number") Integer portNumber,
+                          @JsonProperty("vlan_id") int vlanId,
+                          @JsonProperty("detect_connected_devices") DetectConnectedDevicesV2 detectConnectedDevices) {
+        this.switchId = switchId;
+        this.portNumber = portNumber;
+        this.vlanId = vlanId;
+        setDetectConnectedDevices(detectConnectedDevices);
+    }
+
+    /**
+     * Sets detectConnectedDevices field.
+     */
+    public void setDetectConnectedDevices(DetectConnectedDevicesV2 detectConnectedDevices) {
+        if (detectConnectedDevices == null) {
+            this.detectConnectedDevices = new DetectConnectedDevicesV2();
+        } else {
+            this.detectConnectedDevices = detectConnectedDevices;
+        }
+    }
 }
