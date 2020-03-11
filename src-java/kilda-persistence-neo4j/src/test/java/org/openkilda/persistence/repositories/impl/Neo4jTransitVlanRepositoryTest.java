@@ -32,6 +32,8 @@ import java.util.Optional;
 public class Neo4jTransitVlanRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
     static final int VLAN = 1;
+    static final int MIN_TRANSIT_VLAN = 5;
+    static final int MAX_TRANSIT_VLAN = 25;
 
     static TransitVlanRepository transitVlanRepository;
 
@@ -70,7 +72,7 @@ public class Neo4jTransitVlanRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldDeleteFlowMeter() {
+    public void shouldDeleteTransitVlan() {
         TransitVlan vlan = TransitVlan.builder()
                 .vlan(1)
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
@@ -84,7 +86,7 @@ public class Neo4jTransitVlanRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldDeleteFoundFlowMeter() {
+    public void shouldDeleteFoundTransitVlan() {
         TransitVlan vlan = TransitVlan.builder()
                 .vlan(1)
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
@@ -97,5 +99,35 @@ public class Neo4jTransitVlanRepositoryTest extends Neo4jBasedTest {
         transitVlanRepository.delete(foundVlan);
 
         assertEquals(0, transitVlanRepository.findAll().size());
+    }
+
+    @Test
+    public void shouldSelectNextInOrderResourceWhenFindUnassignedTransitVlan() {
+        int first = findUnassignedTransitVlanAndCreate("flow_1");
+        assertEquals(5, first);
+
+        int second = findUnassignedTransitVlanAndCreate("flow_2");
+        assertEquals(6, second);
+
+        int third = findUnassignedTransitVlanAndCreate("flow_3");
+        assertEquals(7, third);
+
+        transitVlanRepository.findByVlan(second).ifPresent(transitVlanRepository::delete);
+        int fourth = findUnassignedTransitVlanAndCreate("flow_4");
+        assertEquals(6, fourth);
+
+        int fifth = findUnassignedTransitVlanAndCreate("flow_5");
+        assertEquals(8, fifth);
+    }
+
+    private int findUnassignedTransitVlanAndCreate(String flowId) {
+        int availableVlan = transitVlanRepository.findUnassignedTransitVlan(MIN_TRANSIT_VLAN, MAX_TRANSIT_VLAN).get();
+        TransitVlan transitVlan = TransitVlan.builder()
+                .vlan(availableVlan)
+                .pathId(new PathId(TEST_FLOW_ID + "_path"))
+                .flowId(flowId)
+                .build();
+        transitVlanRepository.createOrUpdate(transitVlan);
+        return availableVlan;
     }
 }

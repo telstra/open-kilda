@@ -26,63 +26,60 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
 public class TransitVlanPoolTest extends Neo4jBasedTest {
+    private static final Switch SWITCH_A = Switch.builder().switchId(new SwitchId("ff:00")).build();
+    private static final Switch SWITCH_B = Switch.builder().switchId(new SwitchId("ff:01")).build();
+    private static final Flow FLOW_1 = Flow.builder().flowId("flow_1").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+    private static final Flow FLOW_2 = Flow.builder().flowId("flow_2").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+    private static final Flow FLOW_3 = Flow.builder().flowId("flow_3").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+    private static final PathId PATH_ID_1 = new PathId("path_1");
+    private static final PathId PATH_ID_2 = new PathId("path_2");
+    private static final PathId PATH_ID_3 = new PathId("path_3");
+    private static final int MIN_TRANSIT_VLAN = 100;
+    private static final int MAX_TRANSIT_VLAN = 110;
 
     private TransitVlanPool transitVlanPool;
-
-    private Switch switch1 = Switch.builder().switchId(new SwitchId("ff:00")).build();
-    private Switch switch2 = Switch.builder().switchId(new SwitchId("ff:01")).build();
+    private TransitVlanRepository transitVlanRepository;
 
     @Before
     public void setUp() {
-        transitVlanPool = new TransitVlanPool(persistenceManager, 100, 110);
+        transitVlanPool = new TransitVlanPool(persistenceManager, MIN_TRANSIT_VLAN, MAX_TRANSIT_VLAN);
+        transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        switchRepository.createOrUpdate(switch1);
-        switchRepository.createOrUpdate(switch2);
+        switchRepository.createOrUpdate(SWITCH_A);
+        switchRepository.createOrUpdate(SWITCH_B);
     }
 
     @Test
-    public void vlanIdPool() {
-        Flow flow = Flow.builder().flowId("flow_1").srcSwitch(switch1).destSwitch(switch2).build();
-        int first = transitVlanPool.allocate(flow, new PathId("path_1"), new PathId("opposit_1"))
-                .getTransitVlan().getVlan();
-        assertEquals(100, first);
-
-        PathId path2 = new PathId("path_2");
-
-        flow.setFlowId("flow_2");
-        int second = transitVlanPool.allocate(flow, path2, new PathId("opposit_2")).getTransitVlan().getVlan();
-        assertEquals(101, second);
-
-        flow.setFlowId("flow_3");
-        int third = transitVlanPool.allocate(flow, new PathId("path_3"), new PathId("opposit_3"))
-                .getTransitVlan().getVlan();
-        assertEquals(102, third);
-
-        transitVlanPool.deallocate(path2);
-
-        flow.setFlowId("flow_4");
-        int fourth = transitVlanPool.allocate(flow, new PathId("path_4"), new PathId("opposit_4"))
-                .getTransitVlan().getVlan();
-        assertEquals(101, fourth);
-
-        flow.setFlowId("flow_5");
-        int fifth = transitVlanPool.allocate(flow, new PathId("path_5"), new PathId("opposit_5"))
-                .getTransitVlan().getVlan();
-        assertEquals(103, fifth);
+    public void vlanPoolTest() {
+        Set<Integer> transitVlans = new HashSet<>();
+        for (int i = MIN_TRANSIT_VLAN; i <= MAX_TRANSIT_VLAN; i++) {
+            Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+            transitVlans.add(transitVlanPool.allocate(
+                    flow,
+                    new PathId(format("path_%d", i)),
+                    new PathId(format("opposite_dummy_%d", i))).getTransitVlan().getVlan());
+        }
+        assertEquals(MAX_TRANSIT_VLAN - MIN_TRANSIT_VLAN + 1, transitVlans.size());
+        transitVlans.forEach(vlan -> assertTrue(vlan >= MIN_TRANSIT_VLAN && vlan <= MAX_TRANSIT_VLAN));
     }
 
     @Test(expected = ResourceNotAvailableException.class)
     public void vlanPoolFullTest() {
-        for (int i = 100; i <= 111; i++) {
-            Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(switch1).destSwitch(switch2).build();
+        for (int i = MIN_TRANSIT_VLAN; i <= MAX_TRANSIT_VLAN + 1; i++) {
+            Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
             assertTrue(transitVlanPool.allocate(
                     flow,
                     new PathId(format("path_%d", i)),
@@ -92,7 +89,7 @@ public class TransitVlanPoolTest extends Neo4jBasedTest {
 
     @Test
     public void gotSameVlanForOppositePath() {
-        Flow flow = Flow.builder().flowId("flow_1").srcSwitch(switch1).destSwitch(switch2).build();
+        Flow flow = Flow.builder().flowId("flow_1").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
 
         final PathId forwardPathId = new PathId("forward");
         final PathId reversePathId = new PathId("reverse");
@@ -103,5 +100,18 @@ public class TransitVlanPoolTest extends Neo4jBasedTest {
                 .getTransitVlan();
 
         Assert.assertEquals(forward, reverse);
+    }
+
+    @Test
+    public void deallocateTransitVlanTest() {
+        transitVlanPool.allocate(FLOW_1, PATH_ID_1, PATH_ID_2);
+        transitVlanPool.allocate(FLOW_2, PATH_ID_2, PATH_ID_1);
+        int vlan = transitVlanPool.allocate(FLOW_3, PATH_ID_3, PATH_ID_3).getTransitVlan().getVlan();
+        assertEquals(2, transitVlanRepository.findAll().size());
+
+        transitVlanPool.deallocate(PATH_ID_1);
+        Collection<TransitVlan> transitVlans = transitVlanRepository.findAll();
+        assertEquals(1, transitVlans.size());
+        assertEquals(vlan, transitVlans.iterator().next().getVlan());
     }
 }

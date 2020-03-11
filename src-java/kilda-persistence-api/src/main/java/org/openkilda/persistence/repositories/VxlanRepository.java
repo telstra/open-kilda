@@ -26,10 +26,11 @@ public interface VxlanRepository extends Repository<Vxlan> {
 
     /**
      * Find a vxlan which is not assigned to any flow.
-     * Use the provided defaultVxlan as the first candidate.
+     * Use the provided minVni as the first candidate.
      *
-     * @param defaultVni the potential vxlan to be checked first.
+     * @param minVni the potential vxlan to be checked first.
+     * @param maxVni the max value of vxlan.
      * @return a vxlan or {@link Optional#empty()} if no vxlan available.
      */
-    Optional<Integer> findUnassignedVxlan(int defaultVni);
+    Optional<Integer> findUnassignedVxlan(int minVni, int maxVni);
 }

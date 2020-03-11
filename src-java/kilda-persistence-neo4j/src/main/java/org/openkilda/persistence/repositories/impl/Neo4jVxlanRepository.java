@@ -50,14 +50,15 @@ public class Neo4jVxlanRepository extends Neo4jGenericRepository<Vxlan> implemen
     }
 
     @Override
-    public Optional<Integer> findUnassignedVxlan(int defaultVni) {
+    public Optional<Integer> findUnassignedVxlan(int minVni, int maxVni) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "default_vni", defaultVni);
+                "min_vni", minVni,
+                "max_vni", maxVni);
 
-        // The query returns the default_vni if it's not used in any vxlan,
+        // The query returns the min_vni if it's not used in any vxlan,
         // otherwise locates a gap between / after the values used in vxlan entities.
 
-        String query = "UNWIND [$default_vni] AS vni "
+        String query = "UNWIND [$min_vni] AS vni "
                 + "OPTIONAL MATCH (n:vxlan) "
                 + "WHERE vni = n.vni "
                 + "WITH vni, n "
@@ -65,7 +66,7 @@ public class Neo4jVxlanRepository extends Neo4jGenericRepository<Vxlan> implemen
                 + "RETURN vni "
                 + "UNION ALL "
                 + "MATCH (n1:vxlan) "
-                + "WHERE n1.vni >= $default_vni "
+                + "WHERE n1.vni >= $min_vni AND n1.vni < $max_vni "
                 + "OPTIONAL MATCH (n2:vxlan) "
                 + "WHERE (n1.vni + 1) = n2.vni "
                 + "WITH n1, n2 "

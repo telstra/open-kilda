@@ -29,6 +29,8 @@ import java.util.Collection;
 public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
     static final long TEST_COOKIE = 1L;
+    static final long MIN_COOKIE = 5L;
+    static final long MAX_COOKIE = 25L;
 
     static FlowCookieRepository flowCookieRepository;
 
@@ -78,5 +80,44 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
         flowCookieRepository.delete(foundCookie);
 
         assertEquals(0, flowCookieRepository.findAll().size());
+    }
+
+    @Test
+    public void shouldSelectNextInOrderResourceWhenFindUnassignedCookie() {
+        long first = findUnassignedCookieAndCreate("flow_1");
+        assertEquals(5, first);
+
+        long second = findUnassignedCookieAndCreate("flow_2");
+        assertEquals(6, second);
+
+        long third = findUnassignedCookieAndCreate("flow_3");
+        assertEquals(7, third);
+
+        flowCookieRepository.findByCookie(second).ifPresent(flowCookieRepository::delete);
+        long fourth = findUnassignedCookieAndCreate("flow_4");
+        assertEquals(6, fourth);
+
+        long fifth = findUnassignedCookieAndCreate("flow_5");
+        assertEquals(8, fifth);
+    }
+
+    @Test
+    public void shouldAssignTwoCookiesForOneFlow() {
+        String flowId = "flow_1";
+        long flowCookie = findUnassignedCookieAndCreate(flowId);
+        assertEquals(5, flowCookie);
+
+        long secondCookie = findUnassignedCookieAndCreate(flowId);
+        assertEquals(6, secondCookie);
+    }
+
+    private long findUnassignedCookieAndCreate(String flowId) {
+        long availableCookie = flowCookieRepository.findUnassignedCookie(MIN_COOKIE, MAX_COOKIE).get();
+        FlowCookie flowCookie = FlowCookie.builder()
+                .unmaskedCookie(availableCookie)
+                .flowId(flowId)
+                .build();
+        flowCookieRepository.createOrUpdate(flowCookie);
+        return availableCookie;
     }
 }

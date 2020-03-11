@@ -91,14 +91,15 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
     }
 
     @Override
-    public Optional<Integer> findUnassignedTransitVlan(int defaultVlan) {
+    public Optional<Integer> findUnassignedTransitVlan(int minVlan, int maxVlan) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "default_vlan", defaultVlan);
+                "min_vlan", minVlan,
+                "max_vlan", maxVlan);
 
-        // The query returns the default_vlan if it's not used in any transit_vlan,
+        // The query returns the min_vlan if it's not used in any transit_vlan,
         // otherwise locates a gap between / after the values used in transit_vlan entities.
 
-        String query = "UNWIND [$default_vlan] AS vlan "
+        String query = "UNWIND [$min_vlan] AS vlan "
                 + "OPTIONAL MATCH (n:transit_vlan) "
                 + "WHERE vlan = n.vlan "
                 + "WITH vlan, n "
@@ -106,7 +107,7 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
                 + "RETURN vlan "
                 + "UNION ALL "
                 + "MATCH (n1:transit_vlan) "
-                + "WHERE n1.vlan >= $default_vlan "
+                + "WHERE n1.vlan >= $min_vlan AND n1.vlan < $max_vlan "
                 + "OPTIONAL MATCH (n2:transit_vlan) "
                 + "WHERE (n1.vlan + 1) = n2.vlan "
                 + "WITH n1, n2 "
