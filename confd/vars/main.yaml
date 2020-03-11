@@ -95,6 +95,8 @@ kilda_opentsdb_flush_interval: 1
 kilda_opentsdb_workers: 1
 kilda_opentsdb_metric_prefix: "kilda."
 
+kilda_statistics_interval: 60
+
 kilda_production_fileserver: "http://127.0.0.1"
 
 kilda_reroute_throttling_delay_min: 2

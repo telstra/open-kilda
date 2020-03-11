@@ -61,6 +61,8 @@ opentsdb.workers = {{ getv "/kilda_opentsdb_workers" }}
 opentsdb.client.chunked-requests.enabled = true
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
+statistics.interval = {{ getv "/kilda_statistics_interval" }}
+
 neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
 neo4j.password = {{ getv "/kilda_neo4j_password" }}
