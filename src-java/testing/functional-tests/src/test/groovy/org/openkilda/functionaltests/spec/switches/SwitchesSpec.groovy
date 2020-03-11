@@ -21,7 +21,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
+import spock.lang.Unroll
 
 class SwitchesSpec extends HealthCheckSpecification {
     @Tidy
@@ -42,11 +42,11 @@ class SwitchesSpec extends HealthCheckSpecification {
         !response.hostname.empty
         !response.address.empty
         !response.description.empty
-        !response.switchView.ofVersion.empty
-        !response.switchView.description.hardware.empty
-        !response.switchView.description.software.empty
-        !response.switchView.description.serialNumber.empty
-        !response.switchView.description.manufacturer.empty
+        !response.ofVersion.empty
+        !response.hardware.empty
+        !response.software.empty
+        !response.serialNumber.empty
+        !response.manufacturer.empty
         response.state == SwitchChangeType.ACTIVATED
     }
 
@@ -62,7 +62,6 @@ class SwitchesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/2885")
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -204,7 +203,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
-        lockKeeper.knockoutSwitch(switchToDisconnect)
+        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -217,7 +216,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         cleanup: "Revive the src switch and delete the flows"
         [simpleFlow, singleFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        lockKeeper.reviveSwitch(switchToDisconnect)
+        lockKeeper.reviveSwitch(switchToDisconnect, blockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }
@@ -317,5 +316,28 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
         e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
+    }
+
+    @Unroll
+    def "System returns human readable error when #data.descr non-existing switch"() {
+        when: "Make action from description on non-existing switch"
+        data.operation()
+
+        then: "Not Found error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.NOT_FOUND
+        e.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
+
+        where:
+        data << [
+                [descr    : "synchronizing rules on",
+                 operation: { getNorthbound().synchronizeSwitchRules(NON_EXISTENT_SWITCH_ID) }],
+                [descr    : "synchronizing",
+                 operation: { getNorthbound().synchronizeSwitch(NON_EXISTENT_SWITCH_ID, true) }],
+                [descr    : "validating rules on",
+                 operation: { getNorthbound().validateSwitchRules(NON_EXISTENT_SWITCH_ID) }],
+                [descr    : "validating",
+                 operation: { getNorthbound().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
+        ]
     }
 }

@@ -51,6 +51,12 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterM
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
+import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -189,6 +195,14 @@ public class SwitchManagerTest {
             LLDP_POST_INGRESS_VXLAN_COOKIE).getValue();
     private static final long lldpPostIngressOneSwitchMeterId = createMeterIdForDefaultRule(
             LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue();
+    private static final long arpPreDropMeterId = createMeterIdForDefaultRule(ARP_INPUT_PRE_DROP_COOKIE).getValue();
+    private static final long arpTransitMeterId = createMeterIdForDefaultRule(ARP_TRANSIT_COOKIE).getValue();
+    private static final long arpIngressMeterId = createMeterIdForDefaultRule(ARP_INGRESS_COOKIE).getValue();
+    private static final long arpPostIngressMeterId = createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE).getValue();
+    private static final long arpPostIngressVxlanMeterId = createMeterIdForDefaultRule(
+            ARP_POST_INGRESS_VXLAN_COOKIE).getValue();
+    private static final long arpPostIngressOneSwitchMeterId = createMeterIdForDefaultRule(
+            ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue();
     private SwitchManager switchManager;
     private IOFSwitchService ofSwitchService;
     private IRestApiService restApiService;
@@ -926,10 +940,12 @@ public class SwitchManagerTest {
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
-                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE,
+                ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
+                ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(18);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(24);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -940,11 +956,11 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptySet(), true, true);
+                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true);
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(18, actual.size());
+        assertEquals(24, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -964,6 +980,12 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_VXLAN_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_INPUT_PRE_DROP_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_TRANSIT_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_INGRESS_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_VXLAN_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
 
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
@@ -972,7 +994,8 @@ public class SwitchManagerTest {
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
-                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE,
+                ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE));
     }
 
     @Test
@@ -990,10 +1013,12 @@ public class SwitchManagerTest {
                 MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE,
-                LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
+                ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE,
+                ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(28);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(40);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -1004,7 +1029,7 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptySet(), true, true);
+                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true);
 
         // then
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -1013,13 +1038,15 @@ public class SwitchManagerTest {
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
-                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE,
+                ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
+                ARP_POST_INGRESS_ONE_SWITCH_COOKIE));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(28, actual.size());
+        assertEquals(40, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 18);
+        List<OFFlowMod> rulesMod = actual.subList(0, 24);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -1028,21 +1055,28 @@ public class SwitchManagerTest {
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_INGRESS_DROP_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_POST_INGRESS_DROP_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_TRANSIT_DROP_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INPUT_PRE_DROP_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_TRANSIT_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INGRESS_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_VXLAN_COOKIE)))));
-        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(
+                MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_INGRESS_DROP_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_POST_INGRESS_DROP_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(MULTITABLE_TRANSIT_DROP_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INPUT_PRE_DROP_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_TRANSIT_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_INGRESS_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_VXLAN_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_INPUT_PRE_DROP_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_TRANSIT_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_INGRESS_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_VXLAN_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
 
 
         // verify meters deletion
-        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 9);
+        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 15);
         assertThat(metersMod, everyItem(hasProperty("command", equalTo(OFMeterModCommand.DELETE))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(broadcastMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(unicastMeterId))));
@@ -1053,6 +1087,12 @@ public class SwitchManagerTest {
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPostIngressMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPostIngressVxlanMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(lldpPostIngressOneSwitchMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(arpPreDropMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(arpTransitMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(arpIngressMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(arpPostIngressMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(arpPostIngressVxlanMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(arpPostIngressOneSwitchMeterId))));
 
         // verify group deletion
         List<OFFlowMod> groupMod = actual.subList(rulesMod.size() + metersMod.size(), actual.size());

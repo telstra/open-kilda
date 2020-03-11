@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 public class ListSwitchCommand extends Command {
     protected static final Logger log = LoggerFactory.getLogger(ListSwitchCommand.class);
 
+    public static final String STATS_CONTROLLER_ID = "stats";
     private final IOFSwitchService ofSwitchService;
     private final IKafkaProducerService kafkaProducer;
     private final KafkaUtilityService kafkaUtility;
@@ -53,11 +54,20 @@ public class ListSwitchCommand extends Command {
         List<SwitchId> switchIds = ofSwitchService.getAllSwitchDpids().stream()
                 .map(it -> new SwitchId(it.getLong()))
                 .collect(Collectors.toList());
+
+
         String controllerId =
                 getContext().getModuleContext().getConfigParams(FloodlightProvider.class).get("controllerId");
-        InfoMessage response = getContext().makeInfoMessage(new ListSwitchResponse(switchIds, controllerId));
-        kafkaProducer.sendMessageAndTrack(kafkaUtility.getKafkaChannel().getFlStatsSwitchesPrivRegionTopic(), response);
-        log.trace("List switch response send");
+        if (STATS_CONTROLLER_ID.equals(controllerId)) {
+            String region = kafkaUtility.getKafkaChannel().getRegion();
+            InfoMessage response = getContext().makeInfoMessage(new ListSwitchResponse(switchIds, region));
+            kafkaProducer.sendMessageAndTrack(kafkaUtility.getKafkaChannel().getFlStatsSwitchesPrivRegionTopic(),
+                    response);
+            log.trace("List switch response send");
+        } else {
+            log.trace("Omitting list switch requests for mgmt controller");
+        }
+
         return null;
     }
 }

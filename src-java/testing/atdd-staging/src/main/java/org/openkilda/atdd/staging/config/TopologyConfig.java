@@ -35,10 +35,10 @@ public class TopologyConfig {
     @Value("file:${topology.definition.file:topology.yaml}")
     private Resource topologyDefinitionFile;
 
-    @Value("#{'${floodlight.controllers.management}'.split(',').get(0)}")
+    @Value("#{'${floodlight.controllers.management.openflow}'.split(',').get(0)}")
     private String managementController;
 
-    @Value("#{'${floodlight.controllers.stat}'.split(',').get(0)}")
+    @Value("#{'${floodlight.controllers.stat.openflow}'.split(',').get(0)}")
     private String statController;
 
     @Value("${bfd.offset}")

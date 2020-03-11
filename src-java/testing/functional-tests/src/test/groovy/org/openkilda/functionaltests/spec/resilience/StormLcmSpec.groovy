@@ -88,8 +88,8 @@ class StormLcmSpec extends HealthCheckSpecification {
 
         and: "Disconnect switches on both ends of ISL"
         def islUnderTest = topology.islsForActiveSwitches.first()
-        lockKeeper.knockoutSwitch(islUnderTest.srcSwitch.dpId)
-        lockKeeper.knockoutSwitch(islUnderTest.dstSwitch.dpId)
+        def srcBlockData = lockKeeper.knockoutSwitch(islUnderTest.srcSwitch, mgmtFlManager)
+        def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSwitch, mgmtFlManager)
 
         and: "Deploy network topology back"
         wfmManipulator.deployTopology("network")
@@ -110,8 +110,8 @@ class StormLcmSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: restore switch and failed ISLs"
-        lockKeeper.reviveSwitch(islUnderTest.srcSwitch.dpId)
-        lockKeeper.reviveSwitch(islUnderTest.dstSwitch.dpId)
+        lockKeeper.reviveSwitch(islUnderTest.srcSwitch, srcBlockData)
+        lockKeeper.reviveSwitch(islUnderTest.dstSwitch, dstBlockData)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             def allIsls = northbound.getAllLinks()
             assert islUtils.getIslInfo(allIsls, islUnderTest).get().state == IslChangeType.DISCOVERED

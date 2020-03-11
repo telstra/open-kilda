@@ -20,7 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
@@ -48,7 +48,7 @@ public final class TopologyChecker {
                 && discoveredDstNode.getPortNo() == linkDef.getDstPort();
     }
 
-    public static class SwitchMatcher extends HasPropertyWithValue<SwitchInfoData> {
+    public static class SwitchMatcher extends HasPropertyWithValue<SwitchDto> {
 
         private Switch sw;
 

@@ -33,4 +33,7 @@ public class SwitchPropertiesDto implements Serializable {
 
     @JsonProperty("switch_lldp")
     private boolean switchLldp;
+
+    @JsonProperty("switch_arp")
+    private boolean switchArp;
 }

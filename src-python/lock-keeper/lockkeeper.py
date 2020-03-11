@@ -2,7 +2,7 @@ import os
 
 import paramiko
 import docker
-from flask import Flask
+from flask import Flask, Response
 from flask import jsonify
 from flask import request
 
@@ -11,7 +11,6 @@ app = Flask(__name__)
 HOST = os.environ.get("LOCK_KEEPER_HOST")
 USER = os.environ.get("LOCK_KEEPER_USER")
 SECRET = os.environ.get("LOCK_KEEPER_SECRET")
-FL_CONTAINER_NAME = "floodlight_mgmt_1"
 PORT = 22
 
 
@@ -27,7 +26,7 @@ def execute_remote_commands(commands):
     return data
 
 
-def execute_command_in_container(commands, container_name=FL_CONTAINER_NAME):
+def execute_commands_in_container(commands, container_name):
     container = docker.from_env().containers.get(container_name)
     for command in commands:
         container.exec_run(command)
@@ -116,59 +115,99 @@ def ports_down():
 
 @app.route('/floodlight/stop', methods=['POST'])
 def fl_stop():
-    docker.from_env().containers.get(FL_CONTAINER_NAME).stop()
+    docker.from_env().containers.get(request.get_json().get('containerName')).stop()
     return jsonify({'status': 'ok'})
 
 
 @app.route('/floodlight/start', methods=['POST'])
 def fl_start():
-    docker.from_env().containers.get(FL_CONTAINER_NAME).start()
+    docker.from_env().containers.get(request.get_json().get('containerName')).start()
     return jsonify({'status': 'ok'})
 
 
 @app.route('/floodlight/restart', methods=['POST'])
 def fl_restart():
-    docker.from_env().containers.get(FL_CONTAINER_NAME).restart()
+    docker.from_env().containers.get(request.get_json().get('containerName')).restart()
     return jsonify({'status': 'ok'})
 
 
-@app.route('/block-floodlight-access', methods=['POST'])
+@app.route('/floodlight/block', methods=['POST'])
 def block_floodlight_access():
     body = request.get_json()
-    commands = []
-    if 'ip' in body:
-        commands.append('iptables -I INPUT -s {} -j DROP'.format(body['ip']))
-        commands.append('iptables -I OUTPUT -s {} -j DROP'.format(body['ip']))
-        execute_command_in_container(commands)
-        return jsonify({'blocked_ip': body['ip']})
+    execute_commands_in_container(get_iptables_commands(body, "-A"), body['containerName'])
+    if 'ip' in body and 'port' in body:
+        return jsonify({'status': "blocked %s:%s" % (body['ip'], body['port'])})
+    elif 'ip' in body:
+        return jsonify({'status': "blocked ip %s" % (body['ip'])})
     elif 'port' in body:
-        commands.append('iptables -I INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
-        commands.append('iptables -I OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
-        execute_command_in_container(commands)
-        return jsonify({'blocked_port': body['port']})
+        return jsonify({'status': "blocked port %s" % (body['port'])})
     else:
-        return jsonify({'status': 'Oops, available params: ip or port'})
+        return Response({"status": "Please pass 'ip' or 'port' or both"}, status=400, mimetype='application/json')
 
 
-@app.route('/unblock-floodlight-access', methods=['POST'])
+@app.route('/floodlight/unblock', methods=['POST'])
 def unblock_floodlight_access():
     body = request.get_json()
-    commands = []
-    if 'ip' in body:
-        commands.append('iptables -D INPUT -s {} -j DROP'.format(body['ip']))
-        commands.append('iptables -D OUTPUT -s {} -j DROP'.format(body['ip']))
-        execute_command_in_container(commands)
-        return jsonify({'unblocked_ip': body['ip']})
+    execute_commands_in_container(get_iptables_commands(body, "-D"), body['containerName'])
+    if 'ip' in body and 'port' in body:
+        return jsonify({'status': "unblocked %s:%s" % (body['ip'], body['port'])})
+    elif 'ip' in body:
+        return jsonify({'status': "unblocked ip %s" % (body['ip'])})
     elif 'port' in body:
-        commands.append('iptables -D INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
-        commands.append('iptables -D OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
-        execute_command_in_container(commands)
-        return jsonify({'unblocked_port': body['port']})
+        return jsonify({'status': "unblocked port %s" % (body['port'])})
     else:
-        return jsonify({'status': 'Oops, available params: ip or port'})
+        return Response({"status": "Please pass 'ip' or 'port' or both"}, status=400, mimetype='application/json')
 
 
-@app.route('/remove-floodlight-access-restrictions', methods=['POST'])
+@app.route('/floodlight/block-switch', methods=['POST'])
+def block_floodlight_switch_access():
+    body = request.get_json()
+    if 'ip' in body and 'port' in body:
+        commands = ['iptables -A INPUT -s {} -p tcp --syn -j REJECT'.format(body['ip'])]
+        commands.extend(get_iptables_commands(body, "-A"))
+        execute_commands_in_container(commands, body['containerName'])
+        return jsonify({'status': "blocked switch %s:%s" % (body['ip'], body['port'])})
+    else:
+        return Response({"status": "Both 'ip' and 'port' are required"}, status=400, mimetype='application/json')
+
+
+@app.route('/floodlight/unblock-switch', methods=['POST'])
+def unblock_floodlight_switch_access():
+    body = request.get_json()
+    if 'ip' in body and 'port' in body:
+        commands = ['iptables -D INPUT -s {} -p tcp --syn -j REJECT'.format(body['ip'])]
+        commands.extend(get_iptables_commands(body, "-D"))
+        execute_commands_in_container(commands, body['containerName'])
+        return jsonify({'status': "unblocked switch %s:%s" % (body['ip'], body['port'])})
+    else:
+        return Response({"status": "Both 'ip' and 'port' are required"}, status=400, mimetype='application/json')
+
+
+@app.route('/floodlight/unblock-all', methods=['POST'])
 def remove_floodlight_access_restrictions():
-    execute_command_in_container(['iptables -F INPUT', 'iptables -F OUTPUT'])
+    execute_commands_in_container(['iptables -F INPUT', 'iptables -F OUTPUT'], request.get_json().get('containerName'))
     return jsonify({'status': 'All iptables rules in INPUT/OUTPUT chains were removed'})
+
+
+def get_iptables_commands(address, operation):
+    commands = []
+    if 'ip' in address and 'port' in address:
+        commands.append('iptables {} INPUT -s {} -p tcp --source-port {} -j REJECT --reject-with tcp-reset -m state \
+        --state ESTABLISHED'
+                        .format(operation, address['ip'], address['port']))
+        commands.append('iptables {} OUTPUT -d {} -p tcp --destination-port {} -j REJECT --reject-with tcp-reset -m \
+        state --state ESTABLISHED'
+                        .format(operation, address['ip'], address['port']))
+    elif 'ip' in address:
+        commands.append('iptables {} INPUT -s {} -p tcp -j REJECT --reject-with tcp-reset -m state --state ESTABLISHED'
+                        .format(operation, address['ip']))
+        commands.append('iptables {} OUTPUT -d {} -p tcp -j REJECT --reject-with tcp-reset -m state --state ESTABLISHED'
+                        .format(operation, address['ip']))
+    elif 'port' in address:
+        commands.append('iptables {} INPUT -p tcp --source-port {} -j REJECT --reject-with tcp-reset -m state --state \
+        ESTABLISHED'
+                        .format(operation, address['port']))
+        commands.append('iptables {} OUTPUT -p tcp --destination-port {} -j REJECT --reject-with tcp-reset -m state \
+        --state ESTABLISHED'
+                        .format(operation, address['port']))
+    return commands

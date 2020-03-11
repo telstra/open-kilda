@@ -112,7 +112,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
 
         when: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
@@ -127,7 +127,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         })
 
         and: "New switch connects"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def allIsls = northbound.getAllLinks()

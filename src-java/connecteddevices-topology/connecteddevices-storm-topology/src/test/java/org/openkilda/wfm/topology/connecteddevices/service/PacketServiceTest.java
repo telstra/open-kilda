@@ -19,19 +19,18 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.model.ConnectedDeviceType.LLDP;
+import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 
-import org.openkilda.messaging.info.event.SwitchLldpInfoData;
-import org.openkilda.model.Cookie;
+import org.openkilda.messaging.info.event.ArpInfoData;
+import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowCookie;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.Neo4jBasedTest;
-import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -52,9 +51,10 @@ import java.util.Optional;
 
 @RunWith(JUnitParamsRunner.class)
 public class PacketServiceTest extends Neo4jBasedTest {
-    public static final long COOKIE = Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
     public static final String MAC_ADDRESS_1 = "00:00:00:00:00:01";
     public static final String MAC_ADDRESS_2 = "00:00:00:00:00:02";
+    public static final String IP_ADDRESS_1 = "192.168.1.1";
+    public static final String IP_ADDRESS_2 = "192.168.1.2";
     public static final String CHASSIS_ID_1 = "00:00:00:00:00:03";
     public static final String CHASSIS_ID_2 = "00:00:00:00:00:04";
     public static final String PORT_ID_1 = "00:00:00:00:00:05";
@@ -84,7 +84,6 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     private static SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private static SwitchRepository switchRepository;
-    private static FlowCookieRepository flowCookieRepository;
     private static FlowRepository flowRepository;
     private static TransitVlanRepository transitVlanRepository;
     private static PacketService packetService;
@@ -94,7 +93,6 @@ public class PacketServiceTest extends Neo4jBasedTest {
         switchConnectedDeviceRepository = persistenceManager.getRepositoryFactory()
                 .createSwitchConnectedDeviceRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        flowCookieRepository = persistenceManager.getRepositoryFactory().createFlowCookieRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
         packetService = new PacketService(persistenceManager);
@@ -108,9 +106,16 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     @Test
     public void testHandleLldpDataSameTimeOnCreate() {
-        flowCookieRepository.createOrUpdate(new FlowCookie(FLOW_ID, COOKIE));
-        SwitchLldpInfoData data = createSwitchLldpInfoData();
-        packetService.handleSwitchLldpData(data);
+        LldpInfoData data = createLldpInfoDataData();
+        packetService.handleLldpData(data);
+        Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
+        assertEquals(1, devices.size());
+        assertEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+    }
+
+    @Test
+    public void testHandleArpDataSameTimeOnCreate() {
+        packetService.handleArpData(createArpInfoData());
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, devices.size());
         assertEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
@@ -118,13 +123,12 @@ public class PacketServiceTest extends Neo4jBasedTest {
 
     @Test
     public void testHandleLldpDataDifferentTimeOnUpdate() throws InterruptedException {
-        flowCookieRepository.createOrUpdate(new FlowCookie(FLOW_ID, COOKIE));
         // create
-        packetService.handleSwitchLldpData(createSwitchLldpInfoData());
+        packetService.handleLldpData(createLldpInfoDataData());
 
         Thread.sleep(10);
         // update
-        packetService.handleSwitchLldpData(createSwitchLldpInfoData());
+        packetService.handleLldpData(createLldpInfoDataData());
 
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, devices.size());
@@ -132,95 +136,152 @@ public class PacketServiceTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void testHandleSwitchLldpDataNonExistentSwitch() {
-        SwitchLldpInfoData data = createSwitchLldpInfoData();
+    public void testHandleArpDataDifferentTimeOnUpdate() throws InterruptedException {
+        // create
+        packetService.handleArpData(createArpInfoData());
+
+        Thread.sleep(10);
+        // update
+        packetService.handleArpData(createArpInfoData());
+
+        Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
+        assertEquals(1, devices.size());
+        assertNotEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+    }
+
+    @Test
+    public void testHandleLldpDataNonExistentSwitch() {
+        LldpInfoData data = createLldpInfoDataData();
         data.setSwitchId(new SwitchId("12345"));
-        packetService.handleSwitchLldpData(data);
+        packetService.handleLldpData(data);
         assertTrue(switchConnectedDeviceRepository.findAll().isEmpty());
     }
 
     @Test
-    public void testHandleSwitchLldpDataDifferentSwitchId() {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleArpDataNonExistentSwitch() {
+        ArpInfoData data = createArpInfoData();
+        data.setSwitchId(new SwitchId("12345"));
+        packetService.handleArpData(data);
+        assertTrue(switchConnectedDeviceRepository.findAll().isEmpty());
+    }
+
+    @Test
+    public void testHandleLldpDataDifferentSwitchId() {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setSwitchId(SWITCH_ID_2);
-        runHandleSwitchLldpWithAddedDevice(updatedData);
+        runHandleLldpDataWithAddedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataDifferentPortNumber() {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataDifferentPortNumber() {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setPortNumber(PORT_NUMBER_2);
-        runHandleSwitchLldpWithAddedDevice(updatedData);
+        runHandleLldpDataWithAddedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataDifferentVlan() {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataDifferentVlan() {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setVlans(Collections.singletonList(VLAN_2));
-        runHandleSwitchLldpWithAddedDevice(updatedData);
+        runHandleLldpDataWithAddedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataDifferentMac() {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataDifferentMac() {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setMacAddress(MAC_ADDRESS_2);
-        runHandleSwitchLldpWithAddedDevice(updatedData);
+        runHandleLldpDataWithAddedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataDifferentPortId() {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataDifferentPortId() {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setPortId(PORT_ID_2);
-        runHandleSwitchLldpWithAddedDevice(updatedData);
+        runHandleLldpDataWithAddedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataDifferentChassisId() {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataDifferentChassisId() {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setChassisId(CHASSIS_ID_2);
-        runHandleSwitchLldpWithAddedDevice(updatedData);
+        runHandleLldpDataWithAddedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentPortDescription() throws InterruptedException {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataUpdateDifferentPortDescription() throws InterruptedException {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setPortDescription(PORT_DESCRIPTION_2);
-        runHandleSwitchLldpWithUpdatedDevice(updatedData);
+        runHandleLldpDataWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentManagementAddress() throws InterruptedException {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataUpdateDifferentManagementAddress() throws InterruptedException {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setManagementAddress(MANAGEMENT_ADDRESS_2);
-        runHandleSwitchLldpWithUpdatedDevice(updatedData);
+        runHandleLldpDataWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentSystemName() throws InterruptedException {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataUpdateDifferentSystemName() throws InterruptedException {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setSystemName(SYSTEM_NAME_2);
-        runHandleSwitchLldpWithUpdatedDevice(updatedData);
+        runHandleLldpDataWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentSystemDescription() throws InterruptedException {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataUpdateDifferentSystemDescription() throws InterruptedException {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setSystemDescription(SYSTEM_DESCRIPTION_2);
-        runHandleSwitchLldpWithUpdatedDevice(updatedData);
+        runHandleLldpDataWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentSystemCapabilities() throws InterruptedException {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataUpdateDifferentSystemCapabilities() throws InterruptedException {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setSystemCapabilities(CAPABILITIES_2);
-        runHandleSwitchLldpWithUpdatedDevice(updatedData);
+        runHandleLldpDataWithUpdatedDevice(updatedData);
     }
 
     @Test
-    public void testHandleSwitchLldpDataUpdateDifferentTtl() throws InterruptedException {
-        SwitchLldpInfoData updatedData = createSwitchLldpInfoData();
+    public void testHandleLldpDataUpdateDifferentTtl() throws InterruptedException {
+        LldpInfoData updatedData = createLldpInfoDataData();
         updatedData.setTtl(TTL_2);
-        runHandleSwitchLldpWithUpdatedDevice(updatedData);
+        runHandleLldpDataWithUpdatedDevice(updatedData);
+    }
+
+    @Test
+    public void testHandleArpDataDifferentSwitchId() {
+        ArpInfoData updatedData = createArpInfoData();
+        updatedData.setSwitchId(SWITCH_ID_2);
+        runHandleArpDataWithAddedDevice(updatedData);
+    }
+
+    @Test
+    public void testHandleArpDataDifferentPortNumber() {
+        ArpInfoData updatedData = createArpInfoData();
+        updatedData.setPortNumber(PORT_NUMBER_2);
+        runHandleArpDataWithAddedDevice(updatedData);
+    }
+
+    @Test
+    public void testHandleArpDataDifferentVlan() {
+        ArpInfoData updatedData = createArpInfoData();
+        updatedData.setVlans(Collections.singletonList(VLAN_2));
+        runHandleArpDataWithAddedDevice(updatedData);
+    }
+
+    @Test
+    public void testHandleArpDataDifferentMac() {
+        ArpInfoData updatedData = createArpInfoData();
+        updatedData.setMacAddress(MAC_ADDRESS_2);
+        runHandleArpDataWithAddedDevice(updatedData);
+    }
+
+    @Test
+    public void testHandleArpDataDifferentIpAddress() {
+        ArpInfoData updatedData = createArpInfoData();
+        updatedData.setIpAddress(IP_ADDRESS_2);
+        runHandleArpDataWithAddedDevice(updatedData);
     }
 
     private Object[][] getOneSwitchOnePortFlowParameters() {
@@ -240,7 +301,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
     public void findFlowRelatedDataForOneSwitchOnePortFlowTest(
             int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, null, true, true);
-        SwitchLldpInfoData data = createSwitchLldpInfoData(SWITCH_ID_1, vlansInPacket, PORT_NUMBER_1);
+        LldpInfoData data = createLldpInfoDataData(SWITCH_ID_1, vlansInPacket, PORT_NUMBER_1);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForOneSwitchFlow(data);
         assertEquals(FLOW_ID, flowRelatedData.getFlowId());
         assertEquals(inVlan, flowRelatedData.getOriginalVlan());
@@ -268,7 +329,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
     public void findFlowRelatedDataForOneSwitchFlowTest(
             int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, null, true, false);
-        SwitchLldpInfoData data = createSwitchLldpInfoData(
+        LldpInfoData data = createLldpInfoDataData(
                 SWITCH_ID_1, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForOneSwitchFlow(data);
         assertEquals(FLOW_ID, flowRelatedData.getFlowId());
@@ -293,7 +354,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
     public void findFlowRelatedDataForVlanFlowTest(
             int inVlan, int srcVlan, int dstVlan, int transitVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, transitVlan, false, false);
-        SwitchLldpInfoData data = createSwitchLldpInfoData(
+        LldpInfoData data = createLldpInfoDataData(
                 source ? SWITCH_ID_1 : SWITCH_ID_2, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForVlanFlow(data);
         assertEquals(FLOW_ID, flowRelatedData.getFlowId());
@@ -320,7 +381,7 @@ public class PacketServiceTest extends Neo4jBasedTest {
     public void findFlowRelatedDataForVxlanFlowTest(
             int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, null, false, false);
-        SwitchLldpInfoData data = createSwitchLldpInfoData(
+        LldpInfoData data = createLldpInfoDataData(
                 source ? SWITCH_ID_1 : SWITCH_ID_2, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForVxlanFlow(data);
         assertEquals(FLOW_ID, flowRelatedData.getFlowId());
@@ -328,50 +389,71 @@ public class PacketServiceTest extends Neo4jBasedTest {
         assertEquals(source, flowRelatedData.getSource());
     }
 
-    private void runHandleSwitchLldpWithAddedDevice(SwitchLldpInfoData updatedData) {
-        SwitchLldpInfoData data = createSwitchLldpInfoData();
-        packetService.handleSwitchLldpData(data);
+    private void runHandleLldpDataWithAddedDevice(LldpInfoData updatedData) {
+        LldpInfoData data = createLldpInfoDataData();
+        packetService.handleLldpData(data);
         assertEquals(1, switchConnectedDeviceRepository.findAll().size());
-        assertSwitchConnectedDeviceExistInDatabase(data);
+        assertLldpConnectedDeviceExistInDatabase(data);
 
         // we must add second device
-        packetService.handleSwitchLldpData(updatedData);
+        packetService.handleLldpData(updatedData);
         assertEquals(2, switchConnectedDeviceRepository.findAll().size());
-        assertSwitchConnectedDeviceExistInDatabase(data);
-        assertSwitchConnectedDeviceExistInDatabase(updatedData);
+        assertLldpConnectedDeviceExistInDatabase(data);
+        assertLldpConnectedDeviceExistInDatabase(updatedData);
     }
 
-    private void runHandleSwitchLldpWithUpdatedDevice(SwitchLldpInfoData updatedData) throws InterruptedException {
-        SwitchLldpInfoData data = createSwitchLldpInfoData();
-        packetService.handleSwitchLldpData(data);
+    private void runHandleLldpDataWithUpdatedDevice(LldpInfoData updatedData) throws InterruptedException {
+        LldpInfoData data = createLldpInfoDataData();
+        packetService.handleLldpData(data);
         Collection<SwitchConnectedDevice> oldDevices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, oldDevices.size());
-        assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(data, oldDevices.iterator().next());
+        assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, oldDevices.iterator().next());
 
         // Need to have a different timestamp in 'data' and 'updatedData' messages.
         // More info https://github.com/telstra/open-kilda/issues/3064
         updatedData.setTimestamp(data.getTimestamp() + 1000);
 
         // we must update old device
-        packetService.handleSwitchLldpData(updatedData);
+        packetService.handleLldpData(updatedData);
         Collection<SwitchConnectedDevice> newDevices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, newDevices.size());
-        assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(updatedData, newDevices.iterator().next());
+        assertLldpInfoDataDataEqualsSwitchConnectedDevice(updatedData, newDevices.iterator().next());
 
         // time must be updated
         assertNotEquals(oldDevices.iterator().next().getTimeLastSeen(), newDevices.iterator().next().getTimeLastSeen());
     }
 
-    private void assertSwitchConnectedDeviceExistInDatabase(SwitchLldpInfoData data) {
-        Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
-                        data.getMacAddress(), LLDP, data.getChassisId(), data.getPortId());
-        assertTrue(switchConnectedDevice.isPresent());
-        assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
+    private void runHandleArpDataWithAddedDevice(ArpInfoData updatedData) {
+        ArpInfoData data = createArpInfoData();
+        packetService.handleArpData(data);
+        assertEquals(1, switchConnectedDeviceRepository.findAll().size());
+        assertArpConnectedDeviceExistInDatabase(data);
+
+        // we must add second device
+        packetService.handleArpData(updatedData);
+        assertEquals(2, switchConnectedDeviceRepository.findAll().size());
+        assertArpConnectedDeviceExistInDatabase(data);
+        assertArpConnectedDeviceExistInDatabase(updatedData);
     }
 
-    private void assertSwitchLldpInfoDataEqualsSwitchConnectedDevice(
-            SwitchLldpInfoData data, SwitchConnectedDevice device) {
+    private void assertLldpConnectedDeviceExistInDatabase(LldpInfoData data) {
+        Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
+                .findLldpByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
+                        data.getMacAddress(), data.getChassisId(), data.getPortId());
+        assertTrue(switchConnectedDevice.isPresent());
+        assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
+    }
+
+    private void assertArpConnectedDeviceExistInDatabase(ArpInfoData data) {
+        Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
+                .findArpByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
+                        data.getMacAddress(), data.getIpAddress());
+        assertTrue(switchConnectedDevice.isPresent());
+        assertArpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
+    }
+
+    private void assertLldpInfoDataDataEqualsSwitchConnectedDevice(
+            LldpInfoData data, SwitchConnectedDevice device) {
         assertEquals(data.getSwitchId(), device.getSwitchObj().getSwitchId());
         assertEquals(data.getPortNumber(), device.getPortNumber());
         assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
@@ -384,6 +466,14 @@ public class PacketServiceTest extends Neo4jBasedTest {
         assertEquals(data.getSystemName(), device.getSystemName());
         assertEquals(data.getSystemDescription(), device.getSystemDescription());
         assertEquals(data.getTtl(), device.getTtl());
+    }
+
+    private void assertArpInfoDataEqualsSwitchConnectedDevice(ArpInfoData data, SwitchConnectedDevice device) {
+        assertEquals(data.getSwitchId(), device.getSwitchObj().getSwitchId());
+        assertEquals(data.getPortNumber(), device.getPortNumber());
+        assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
+        assertEquals(data.getMacAddress(), device.getMacAddress());
+        assertEquals(data.getIpAddress(), device.getIpAddress());
     }
 
     private void createFlow(
@@ -405,13 +495,18 @@ public class PacketServiceTest extends Neo4jBasedTest {
         flowRepository.createOrUpdate(flow);
     }
 
-    private SwitchLldpInfoData createSwitchLldpInfoData() {
-        return createSwitchLldpInfoData(SWITCH_ID_1, newArrayList(VLAN_1), PORT_NUMBER_1);
+    private LldpInfoData createLldpInfoDataData() {
+        return createLldpInfoDataData(SWITCH_ID_1, newArrayList(VLAN_1), PORT_NUMBER_1);
     }
 
-    private SwitchLldpInfoData createSwitchLldpInfoData(SwitchId switchId, List<Integer> vlans, int portNumber) {
-        return new SwitchLldpInfoData(switchId, portNumber, vlans, COOKIE, MAC_ADDRESS_1,
+    private LldpInfoData createLldpInfoDataData(SwitchId switchId, List<Integer> vlans, int portNumber) {
+        return new LldpInfoData(switchId, portNumber, vlans, LLDP_INPUT_PRE_DROP_COOKIE, MAC_ADDRESS_1,
                 CHASSIS_ID_1, PORT_ID_1, TTL_1, PORT_DESCRIPTION_1, SYSTEM_NAME_1, SYSTEM_DESCRIPTION_1, CAPABILITIES_1,
                 MANAGEMENT_ADDRESS_1);
+    }
+
+    private ArpInfoData createArpInfoData() {
+        return new ArpInfoData(SWITCH_ID_1, PORT_NUMBER_1, newArrayList(VLAN_1), ARP_INPUT_PRE_DROP_COOKIE,
+                MAC_ADDRESS_1, IP_ADDRESS_1);
     }
 }

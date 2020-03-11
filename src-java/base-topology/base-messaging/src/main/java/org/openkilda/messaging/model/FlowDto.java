@@ -31,6 +31,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.Set;
 
 @Data
 @EqualsAndHashCode(exclude = {"ignoreBandwidth", "periodicPings", "cookie", "createdTime", "lastUpdated", "meterId",
@@ -126,7 +127,7 @@ public class FlowDto implements Serializable {
 
     @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesDto detectConnectedDevices
-            = new DetectConnectedDevicesDto(false, false, false, false, false, false);
+            = new DetectConnectedDevicesDto();
 
     /**
      * Flow source meter id.
@@ -163,6 +164,9 @@ public class FlowDto implements Serializable {
 
     @JsonProperty("path_computation_strategy")
     private PathComputationStrategy pathComputationStrategy;
+
+    @JsonProperty("diverse_with")
+    private Set<String> diverseWith;
 
     public FlowDto() {
     }
@@ -221,7 +225,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("pinned") boolean pinned,
                    @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
                    @JsonProperty("detect_connected_devices") DetectConnectedDevicesDto detectConnectedDevices,
-                   @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy) {
+                   @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy,
+                   @JsonProperty("diverse_with") Set<String> diverseWith) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -247,6 +252,7 @@ public class FlowDto implements Serializable {
         this.encapsulationType = encapsulationType;
         setDetectConnectedDevices(detectConnectedDevices);
         this.pathComputationStrategy = pathComputationStrategy;
+        this.diverseWith = diverseWith;
     }
 
     /**
@@ -286,7 +292,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null);
+                null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -314,9 +320,10 @@ public class FlowDto implements Serializable {
                         input.getSource().getDetectConnectedDevices().isLldp(),
                         input.getSource().getDetectConnectedDevices().isArp(),
                         input.getDestination().getDetectConnectedDevices().isLldp(),
-                        input.getDestination().getDetectConnectedDevices().isArp(), false, false),
+                        input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
-                        input.getPathComputationStrategy().toUpperCase()) : null);
+                        input.getPathComputationStrategy().toUpperCase()) : null,
+                null);
     }
 
     @JsonIgnore
@@ -386,7 +393,7 @@ public class FlowDto implements Serializable {
      */
     public void setDetectConnectedDevices(DetectConnectedDevicesDto detectConnectedDevices) {
         if (detectConnectedDevices == null) {
-            this.detectConnectedDevices = new DetectConnectedDevicesDto(false, false, false, false, false, false);
+            this.detectConnectedDevices = new DetectConnectedDevicesDto();
         } else {
             this.detectConnectedDevices = detectConnectedDevices;
         }

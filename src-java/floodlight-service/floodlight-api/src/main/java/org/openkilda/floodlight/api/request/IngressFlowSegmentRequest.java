@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.api.request;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -46,8 +47,8 @@ public abstract class IngressFlowSegmentRequest extends IngressFlowSegmentBase {
     protected IngressFlowSegmentRequest(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            @NonNull FlowTransitEncapsulation encapsulation, boolean removeCustomerPortSharedCatchRule) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, removeCustomerPortSharedCatchRule);
+            @NonNull FlowTransitEncapsulation encapsulation, RemoveSharedRulesContext removeSharedRulesContext) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, removeSharedRulesContext);
 
         this.islPort = islPort;
         this.encapsulation = encapsulation;
@@ -56,6 +57,6 @@ public abstract class IngressFlowSegmentRequest extends IngressFlowSegmentBase {
     protected IngressFlowSegmentRequest(@NonNull IngressFlowSegmentRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint, other.meterConfig,
-                other.egressSwitchId, other.islPort, other.encapsulation, other.removeCustomerPortSharedCatchRule);
+                other.egressSwitchId, other.islPort, other.encapsulation, other.removeSharedRulesContext);
     }
 }

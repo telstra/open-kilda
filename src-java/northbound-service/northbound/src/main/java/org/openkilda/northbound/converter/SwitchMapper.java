@@ -26,7 +26,6 @@ import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
@@ -62,18 +61,18 @@ public interface SwitchMapper {
     /**
      * Convert {@link SwitchStatus} to {@link String} representation.
      */
-    default String convertStatus(SwitchStatus status) {
+    default SwitchChangeType convertStatus(SwitchStatus status) {
         if (status == null) {
             return null;
         }
 
         switch (status) {
             case ACTIVE:
-                return SwitchChangeType.ACTIVATED.name();
+                return SwitchChangeType.ACTIVATED;
             case INACTIVE:
-                return SwitchChangeType.DEACTIVATED.name();
+                return SwitchChangeType.DEACTIVATED;
             case REMOVED:
-                return SwitchChangeType.REMOVED.name();
+                return SwitchChangeType.REMOVED;
             default:
                 throw new IllegalArgumentException("Unsupported Switch status: " + status);
         }
@@ -122,8 +121,4 @@ public interface SwitchMapper {
     @Mapping(source = "downEventsCount", target = "downCount")
     @Mapping(target = "date", expression = "java(Date.from(response.getTime()))")
     PortHistoryResponse map(PortHistoryPayload response);
-
-    default String toSwithId(SwitchId switchId) {
-        return switchId.toString();
-    }
 }

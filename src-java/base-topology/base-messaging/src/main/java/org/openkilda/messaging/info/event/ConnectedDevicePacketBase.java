@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,29 +24,23 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-@AllArgsConstructor
-public class SwitchLldpInfoData extends InfoData {
+public class ConnectedDevicePacketBase extends InfoData {
 
-    private static final long serialVersionUID = 7963516610743491465L;
+    private static final long serialVersionUID = 4716089677532960449L;
 
     private SwitchId switchId;
     private int portNumber;
     private List<Integer> vlans;
     private long cookie;
     private String macAddress;
-    private String chassisId;
-    private String portId;
-    private Integer ttl;
-    private String portDescription;
-    private String systemName;
-    private String systemDescription;
-    private String systemCapabilities;
-    private String managementAddress;
 }

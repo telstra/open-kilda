@@ -187,7 +187,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "Deactivate the src switch"
         def switchToDisconnect = isl.srcSwitch
-        lockKeeper.knockoutSwitch(switchToDisconnect)
+        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -202,7 +202,7 @@ class PortHistorySpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
             }
         }
-        switchToDisconnect && lockKeeper.reviveSwitch(switchToDisconnect)
+        switchToDisconnect && lockKeeper.reviveSwitch(switchToDisconnect, blockData)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }

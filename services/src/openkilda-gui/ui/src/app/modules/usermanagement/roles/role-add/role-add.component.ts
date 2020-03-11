@@ -59,6 +59,7 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
     this.loaderService.show("Adding Role");
     this.submitted = true;
     if (this.roleAddForm.invalid) {
+      this.loaderService.hide();
       return;
     }
 

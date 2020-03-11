@@ -71,7 +71,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         when: "Deactivate the switch"
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
             def links = northbound.getAllLinks()
@@ -82,7 +82,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }
 
         when: "Activate the switch"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()

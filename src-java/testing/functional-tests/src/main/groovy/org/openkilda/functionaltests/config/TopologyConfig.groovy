@@ -35,10 +35,10 @@ class TopologyConfig {
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
 
-    @Value("#{'\${floodlight.controllers.management}'.split(',')}")
+    @Value("#{'\${floodlight.controllers.management.openflow}'.split(',')}")
     List<String> managementControllers
 
-    @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
+    @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
     List<String> statControllers
 
     @Value('${bfd.offset}')
@@ -64,9 +64,14 @@ class TopologyConfig {
 
         topologyDefinition.setControllers([managementControllers[0], statControllers[0]])
         topologyDefinition.setBfdOffset(bfdOffset)
-        for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
-            sw.setController(managementControllers[0] + " " + statControllers[0])
+        topologyDefinition.switches.each { sw ->
+            def regionIndex = regions.indexOf(sw.getRegion())
+            if(regionIndex == -1) {
+                throw new RuntimeException("Switch $sw has an unknown region '${sw.getRegion()}'. All regions should" +
+                        "be specified in kilda.properties.")
+            }
+            sw.setController(managementControllers[regionIndex] + " " + statControllers[regionIndex])
         }
-        return topologyDefinition;
+        return topologyDefinition
     }
 }

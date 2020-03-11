@@ -21,13 +21,14 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
@@ -37,12 +38,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 @Slf4j
-public class RevertNewRulesAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-    private final FlowCommandBuilderFactory commandBuilderFactory;
+public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
 
     public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
-        super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        super(persistenceManager, resourcesManager);
     }
 
     @Override
@@ -67,13 +66,16 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
                 stateMachine.getCarrier(), installCommands, stateMachine.getIngressCommands());
         stateMachine.getPendingCommands().addAll(stateMachine.getIngressCommands().keySet());
 
+
+
         // Remove possible installed segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
             removeCommands.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
+                    stateMachine.getCommandContext(), flow, newForward, newReverse,
+                    getSpeakerRequestBuildContext(stateMachine)));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
@@ -91,5 +93,17 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowUpdateFsm, St
 
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
+    }
+
+    private SpeakerRequestBuildContext getSpeakerRequestBuildContext(FlowUpdateFsm stateMachine) {
+        RequestedFlow originalFlow = stateMachine.getOriginalFlow();
+        RequestedFlow targetFlow = stateMachine.getTargetFlow();
+
+        return SpeakerRequestBuildContext.builder()
+                .removeCustomerPortLldpRule(removeForwardSharedLldpRule(targetFlow, originalFlow))
+                .removeOppositeCustomerPortLldpRule(removeReverseSharedLldpRule(targetFlow, originalFlow))
+                .removeCustomerPortArpRule(removeForwardSharedArpRule(targetFlow, originalFlow))
+                .removeOppositeCustomerPortArpRule(removeReverseSharedArpRule(targetFlow, originalFlow))
+                .build();
     }
 }

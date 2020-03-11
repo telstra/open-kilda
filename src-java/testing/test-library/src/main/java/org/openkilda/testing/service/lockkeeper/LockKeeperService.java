@@ -16,9 +16,16 @@
 package org.openkilda.testing.service.lockkeeper;
 
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.floodlight.MultiFloodlightManager;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.BlockRequest;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This service is meant to give control over some software or hardware parts of the system that are out of Kilda's
@@ -35,25 +42,38 @@ public interface LockKeeperService {
 
     void portsDown(List<Integer> ports);
 
-    void stopFloodlight();
+    void stopFloodlight(String region);
 
-    void startFloodlight();
+    void startFloodlight(String region);
 
-    void restartFloodlight();
+    void restartFloodlight(String region);
 
-    void knockoutSwitch(Switch sw);
+    BlockRequest knockoutSwitch(Switch sw, MultiFloodlightManager factory);
 
-    void reviveSwitch(Switch sw);
+    void reviveSwitch(Switch sw, BlockRequest blockRequest);
 
     void setController(Switch sw, String controller);
 
-    void blockFloodlightAccessToPort(Integer port);
+    void blockFloodlightAccess(String region, BlockRequest address);
 
-    void unblockFloodlightAccessToPort(Integer port);
+    void unblockFloodlightAccess(String region, BlockRequest address);
 
-    void removeFloodlightAccessRestrictions();
+    void removeFloodlightAccessRestrictions(String region);
 
-    void knockoutFloodlight();
+    void knockoutFloodlight(String region);
 
-    void reviveFloodlight();
+    void reviveFloodlight(String region);
+
+    /**
+     * Extract switch address and port from the 'inetAddress' string of Floodlight 'get switches' response.
+     */
+    static Pair<String, Integer> parseAddressPort(String flFormatInetAddress) {
+        Matcher matcher = Pattern.compile(".*?/(.*?):(\\d+)").matcher(flFormatInetAddress);
+        if (matcher.matches()) {
+            return ImmutablePair.of(matcher.group(1), Integer.parseInt(matcher.group(2)));
+        } else {
+            throw new RuntimeException(
+                    String.format("Unable to parse inetaddress returned flow Floodlight: %s", flFormatInetAddress));
+        }
+    }
 }

@@ -479,6 +479,27 @@ public class BestWeightAndShortestPathFinderTest {
         assertEquals(forwardSwitchPath, backwardSwitchPath);
     }
 
+    @Test
+    public void shouldCreatePathThrowMoreExpensiveWayMaxLatencyStrategy() throws  UnroutableFlowException {
+        // Reverse way is more expansive then forward, so we must choose this path
+        // and the sequence of switches must match the forward path.
+        AvailableNetwork network = buildNetworkWithCostInReversePathBiggerThanForward();
+
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
+        Pair<List<Edge>, List<Edge>> paths =
+                pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5, WEIGHT_FUNCTION, 10201);
+
+        List<Edge> fpath = paths.getLeft();
+        assertThat(fpath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_1, fpath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_3, fpath.get(2).getSrcSwitch().getSwitchId());
+
+        List<Edge> rpath = paths.getRight();
+        assertThat(rpath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_5, fpath.get(2).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch().getSwitchId());
+    }
+
     private AvailableNetwork buildNetworkWithCostInReversePathBiggerThanForward() {
         /*
          *   Topology:

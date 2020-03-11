@@ -15,7 +15,6 @@
 
 package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.ConnectedDeviceType;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 
@@ -25,9 +24,11 @@ import java.util.Optional;
 public interface SwitchConnectedDeviceRepository extends Repository<SwitchConnectedDevice> {
     Collection<SwitchConnectedDevice> findBySwitchId(SwitchId switchId);
 
-    Optional<SwitchConnectedDevice> findByUniqueFieldCombination(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, ConnectedDeviceType type, String chassisId,
-            String portId);
+    Optional<SwitchConnectedDevice> findLldpByUniqueFieldCombination(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId);
+
+    Optional<SwitchConnectedDevice> findArpByUniqueFieldCombination(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress);
 
     Collection<SwitchConnectedDevice> findByFlowId(String flowId);
 }

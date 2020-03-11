@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import static java.lang.String.format;
+import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import org.openkilda.messaging.command.CommandMessage;
@@ -131,8 +132,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         Integer srcPort = request.getPort();
 
         try {
-            return flowOperationsService.getFlowPathsForEndpoint(srcSwitch, srcPort).stream()
-                    .map(FlowPath::getFlow)
+            return flowOperationsService.getFlowsForEndpoint(srcSwitch, srcPort).stream()
                     .distinct()
                     .map(FlowMapper.INSTANCE::map)
                     .map(FlowResponse::new)
@@ -212,7 +212,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         }
 
         FlowConnectedDevicesResponse response = new FlowConnectedDevicesResponse(
-                new TypedConnectedDevicesDto(new ArrayList<>()), new TypedConnectedDevicesDto(new ArrayList<>()));
+                new TypedConnectedDevicesDto(new ArrayList<>(), new ArrayList<>()),
+                new TypedConnectedDevicesDto(new ArrayList<>(), new ArrayList<>()));
 
         for (SwitchConnectedDevice device : devices) {
             ConnectedDeviceDto deviceDto = ConnectedDeviceMapper.INSTANCE.mapSwitchDeviceToFlowDeviceDto(device);
@@ -222,10 +223,14 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
             } else if (device.getSource()) {
                 if (device.getType() == LLDP) {
                     response.getSource().getLldp().add(deviceDto);
+                } else if (device.getType() == ARP) {
+                    response.getSource().getArp().add(deviceDto);
                 }
             } else {
                 if (device.getType() == LLDP) {
                     response.getDestination().getLldp().add(deviceDto);
+                } else if (device.getType() == ARP) {
+                    response.getDestination().getArp().add(deviceDto);
                 }
             }
         }

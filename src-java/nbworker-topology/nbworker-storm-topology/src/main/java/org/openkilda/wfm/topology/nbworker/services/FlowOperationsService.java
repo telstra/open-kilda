@@ -58,6 +58,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -90,9 +91,9 @@ public class FlowOperationsService {
      * Return all paths for a particular link.
      *
      * @param srcSwitchId source switch id.
-     * @param srcPort     source port.
+     * @param srcPort source port.
      * @param dstSwitchId destination switch id.
-     * @param dstPort     destination port.
+     * @param dstPort destination port.
      * @return all paths for a particular link.
      * @throws IslNotFoundException if there is no link with these parameters.
      */
@@ -110,14 +111,14 @@ public class FlowOperationsService {
     }
 
     /**
-     * Return all paths for a particular endpoint or for a particular switch if port is null.
+     * Return all flows for a particular endpoint or for a particular switch if port is null.
      *
      * @param switchId switch id.
      * @param port     port.
-     * @return all paths for a particular endpoint.
+     * @return all flows for a particular endpoint.
      * @throws SwitchNotFoundException if there is no switch with this switch id.
      */
-    public Collection<FlowPath> getFlowPathsForEndpoint(SwitchId switchId, Integer port)
+    public Collection<Flow> getFlowsForEndpoint(SwitchId switchId, Integer port)
             throws SwitchNotFoundException {
 
         flowDashboardLogger.onFlowPathsDumpByEndpoint(switchId, port);
@@ -125,18 +126,23 @@ public class FlowOperationsService {
         if (!switchRepository.findById(switchId).isPresent()) {
             throw new SwitchNotFoundException(switchId);
         }
+        Set<Flow> flows = new HashSet<>();
 
         if (port != null) {
-            List<FlowPath> flowPaths = new ArrayList<>(flowPathRepository.findBySegmentEndpoint(switchId, port));
-            flowRepository.findByEndpoint(switchId, port).stream().findAny()
-                    .ifPresent(flow -> flowPaths.add(flow.getForwardPath()));
-            return flowPaths;
+            flowPathRepository.findBySegmentEndpoint(switchId, port).stream()
+                    .map(FlowPath::getFlow)
+                    .forEach(flows::add);
+            flows.addAll(flowRepository.findByEndpoint(switchId, port));
         } else {
-            List<FlowPath> flowPaths = new ArrayList<>(flowPathRepository.findBySegmentSwitch(switchId));
-            flowRepository.findByEndpointSwitch(switchId).stream().findAny()
-                    .ifPresent(flow -> flowPaths.add(flow.getForwardPath()));
-            return flowPaths;
+            flowPathRepository.findBySegmentSwitch(switchId).stream()
+                    .map(FlowPath::getFlow)
+                    .forEach(flows::add);
+            flows.addAll(flowRepository.findByEndpointSwitch(switchId));
         }
+        // need to return Flows unique by id
+        return flows.stream()
+                .collect(Collectors.toMap(Flow::getFlowId, Function.identity()))
+                .values();
     }
 
     /**

@@ -26,6 +26,12 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpId
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
+import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -45,6 +51,8 @@ import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.Metadata.METADATA_ARP_MASK;
+import static org.openkilda.model.Metadata.METADATA_ARP_VALUE;
 import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
 import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
 import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_MASK;
@@ -218,12 +226,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int LLDP_POST_INGRESS_VXLAN_PRIORITY = FLOW_PRIORITY - 1;
     public static final int LLDP_POST_INGRESS_ONE_SWITCH_PRIORITY = FLOW_PRIORITY;
 
+    public static final int ARP_INPUT_PRE_DROP_PRIORITY = MINIMAL_POSITIVE_PRIORITY + 1;
+    public static final int ARP_TRANSIT_ISL_PRIORITY = FLOW_PRIORITY - 1;
+    public static final int ARP_INPUT_CUSTOMER_PRIORITY = FLOW_PRIORITY - 1;
+    public static final int ARP_INGRESS_PRIORITY = MINIMAL_POSITIVE_PRIORITY + 1;
+    public static final int ARP_POST_INGRESS_PRIORITY = FLOW_PRIORITY - 2;
+    public static final int ARP_POST_INGRESS_VXLAN_PRIORITY = FLOW_PRIORITY - 1;
+    public static final int ARP_POST_INGRESS_ONE_SWITCH_PRIORITY = FLOW_PRIORITY;
+
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
     public static final MacAddress STUB_VXLAN_ETH_DST_MAC = MacAddress.of(0xFFFFFFEDCBA2L);
     public static final IPv4Address STUB_VXLAN_IPV4_SRC = IPv4Address.of("127.0.0.1");
     public static final IPv4Address STUB_VXLAN_IPV4_DST = IPv4Address.of("127.0.0.2");
     public static final int STUB_VXLAN_UDP_SRC = 4500;
+    public static final int ARP_VXLAN_UDP_SRC = 4501;
     public static final int VXLAN_UDP_DST = 4789;
     public static final int ETH_SRC_OFFSET = 48;
     public static final int INTERNAL_ETH_SRC_OFFSET = 448;
@@ -616,10 +633,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable, boolean switchLldp)
+    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable, boolean switchLldp,
+                                                   boolean switchArp)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(multiTable, switchLldp);
+        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(
+                multiTable, switchLldp, switchArp);
 
         return defaultFlowGenerators.stream()
                 .map(g -> g.generateFlow(sw))
@@ -632,10 +651,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public List<MeterEntry> getExpectedDefaultMeters(DatapathId dpid, boolean multiTable, boolean switchLldp)
+    public List<MeterEntry> getExpectedDefaultMeters(DatapathId dpid, boolean multiTable, boolean switchLldp,
+                                                     boolean switchArp)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(multiTable, switchLldp);
+        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(
+                multiTable, switchLldp, switchArp);
 
         return defaultFlowGenerators.stream()
                 .map(g -> g.generateFlow(sw))
@@ -645,7 +666,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .collect(toList());
     }
 
-    private List<SwitchFlowGenerator> getDefaultSwitchFlowGenerators(boolean multiTable, boolean switchLldp) {
+    private List<SwitchFlowGenerator> getDefaultSwitchFlowGenerators(boolean multiTable, boolean switchLldp,
+                                                                     boolean switchArp) {
         List<SwitchFlowGenerator> defaultFlowGenerators = new ArrayList<>();
         defaultFlowGenerators.add(switchFlowFactory.getDropFlowGenerator(DROP_RULE_COOKIE, INPUT_TABLE_ID));
         defaultFlowGenerators.add(switchFlowFactory.getVerificationFlow(true));
@@ -669,11 +691,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressFlowGenerator());
             defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressVxlanFlowGenerator());
             defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressOneSwitchFlowGenerator());
+            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressFlowGenerator());
+            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressVxlanFlowGenerator());
+            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressOneSwitchFlowGenerator());
 
             if (switchLldp) {
                 defaultFlowGenerators.add(switchFlowFactory.getLldpTransitFlowGenerator());
                 defaultFlowGenerators.add(switchFlowFactory.getLldpInputPreDropFlowGenerator());
                 defaultFlowGenerators.add(switchFlowFactory.getLldpIngressFlowGenerator());
+            }
+            if (switchArp) {
+                defaultFlowGenerators.add(switchFlowFactory.getArpTransitFlowGenerator());
+                defaultFlowGenerators.add(switchFlowFactory.getArpInputPreDropFlowGenerator());
+                defaultFlowGenerators.add(switchFlowFactory.getArpIngressFlowGenerator());
             }
         }
         return defaultFlowGenerators;
@@ -999,8 +1029,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
-                                         List<Integer> flowPorts, Set<Integer> flowLldpPorts, boolean multiTable,
-                                         boolean switchLldp) throws SwitchOperationException {
+                                         List<Integer> flowPorts, Set<Integer> flowLldpPorts,
+                                         Set<Integer> flowArpPorts, boolean multiTable, boolean switchLldp,
+                                         boolean switchArp) throws SwitchOperationException {
 
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
@@ -1009,7 +1040,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
-                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE,
+                ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
+                ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
         if (multiTable) {
             for (int islPort : islPorts) {
                 deletedRules.addAll(removeMultitableEndpointIslRules(dpid, islPort));
@@ -1022,6 +1055,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             for (int flowLldpPort : flowLldpPorts) {
                 deletedRules.add(removeLldpInputCustomerFlow(dpid, flowLldpPort));
             }
+            for (int flowArpPort : flowArpPorts) {
+                deletedRules.add(removeArpInputCustomerFlow(dpid, flowArpPort));
+            }
         }
 
 
@@ -1032,11 +1068,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue());
 
             if (switchLldp) {
                 deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE).getValue());
                 deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_TRANSIT_COOKIE).getValue());
                 deleteMeter(dpid, createMeterIdForDefaultRule(LLDP_INGRESS_COOKIE).getValue());
+            }
+            if (switchArp) {
+                deleteMeter(dpid, createMeterIdForDefaultRule(ARP_INPUT_PRE_DROP_COOKIE).getValue());
+                deleteMeter(dpid, createMeterIdForDefaultRule(ARP_TRANSIT_COOKIE).getValue());
+                deleteMeter(dpid, createMeterIdForDefaultRule(ARP_INGRESS_COOKIE).getValue());
             }
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
@@ -1400,6 +1444,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
+    public Long installArpTransitFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getArpTransitFlowGenerator(),
+                "--Isl ARP transit rule for VLAN--");
+    }
+
+    @Override
+    public Long installArpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getArpInputPreDropFlowGenerator(),
+                "--Isl ARP input pre drop rule--");
+    }
+
+    @Override
     public long removeEgressIslVlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
@@ -1445,7 +1501,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeLldpInputCustomer(port);
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
 
         OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
         builder.setCookie(U64.of(cookie));
@@ -1455,6 +1511,26 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         builder.setInstructions(ImmutableList.of(goToTable));
         builder.setPriority(LLDP_INPUT_CUSTOMER_PRIORITY);
+
+        removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
+        return cookie;
+    }
+
+    @Override
+    public Long removeArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException {
+        long cookie = Cookie.encodeArpInputCustomer(port);
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
+
+        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
+        builder.setCookie(U64.of(cookie));
+        builder.setCookieMask(U64.NO_MASK);
+
+        builder.setMatch(buildInPortMatch(port, ofFactory));
+
+        builder.setInstructions(ImmutableList.of(goToTable));
+        builder.setPriority(ARP_INPUT_CUSTOMER_PRIORITY);
 
         removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
         return cookie;
@@ -1496,7 +1572,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMetadata(U64.of(METADATA_LLDP_VALUE))
                 .setMetadataMask(U64.of(METADATA_LLDP_MASK)).build();
 
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeLldpInputCustomer(port),
                 LLDP_INPUT_CUSTOMER_PRIORITY, INPUT_TABLE_ID)
@@ -1525,6 +1601,60 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public Long installLldpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException {
         return installDefaultFlow(dpid, switchFlowFactory.getLldpPostIngressOneSwitchFlowGenerator(),
                 "--LLDP post ingress one switch rule--");
+    }
+
+    @Override
+    public Long installArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFlowMod flowMod = buildArpInputCustomerFlow(dpid, port);
+        String flowName = "--Customer Port ARP input rule--" + dpid.toString();
+        pushFlow(sw, flowName, flowMod);
+        return flowMod.getCookie().getValue();
+    }
+
+    @Override
+    public OFFlowMod buildArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .setExact(MatchField.ETH_TYPE, EthType.ARP)
+                .build();
+
+        OFInstructionWriteMetadata writeMetadata = ofFactory.instructions().buildWriteMetadata()
+                .setMetadata(U64.of(METADATA_ARP_VALUE))
+                .setMetadataMask(U64.of(METADATA_ARP_MASK)).build();
+
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
+        return prepareFlowModBuilder(
+                ofFactory, Cookie.encodeArpInputCustomer(port),
+                ARP_INPUT_CUSTOMER_PRIORITY, INPUT_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(goToTable, writeMetadata)).build();
+    }
+
+    @Override
+    public Long installArpIngressFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getArpIngressFlowGenerator(), "--ARP ingress rule--");
+    }
+
+    @Override
+    public Long installArpPostIngressFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getArpPostIngressFlowGenerator(),
+                "--ARP post ingress rule--");
+    }
+
+    @Override
+    public Long installArpPostIngressVxlanFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getArpPostIngressVxlanFlowGenerator(),
+                "--ARP post ingress VXLAN rule--");
+    }
+
+    @Override
+    public Long installArpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException {
+        return installDefaultFlow(dpid, switchFlowFactory.getArpPostIngressOneSwitchFlowGenerator(),
+                "--ARP post ingress one switch rule--");
     }
 
     @Override

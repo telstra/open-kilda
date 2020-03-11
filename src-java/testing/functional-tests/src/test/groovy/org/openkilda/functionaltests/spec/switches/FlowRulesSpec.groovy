@@ -83,11 +83,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
         }
 
-        lockKeeper.knockoutSwitch(srcSwitch)
+        def blockData = lockKeeper.knockoutSwitch(srcSwitch, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(srcSwitch)
+        lockKeeper.reviveSwitch(srcSwitch, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Previously installed rules are not deleted from the switch"
@@ -544,7 +544,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch properties not found for switch '$NON_EXISTENT_SWITCH_ID'"
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
 
         where:
         action        | method

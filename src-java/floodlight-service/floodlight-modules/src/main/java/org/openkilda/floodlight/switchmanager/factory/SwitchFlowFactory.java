@@ -29,6 +29,12 @@ import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenera
 import org.openkilda.floodlight.switchmanager.factory.generator.TablePassThroughDefaultFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.UnicastVerificationVxlanRuleGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.VerificationFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.arp.ArpIngressFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.arp.ArpInputPreDropFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.arp.ArpPostIngressFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.arp.ArpPostIngressOneSwitchFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.arp.ArpPostIngressVxlanFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.arp.ArpTransitFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpIngressFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpInputPreDropFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressFlowGenerator;
@@ -183,6 +189,66 @@ public class SwitchFlowFactory implements IService {
      */
     public SwitchFlowGenerator getLldpTransitFlowGenerator() {
         return LldpTransitFlowGenerator.builder()
+                .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get ARP input pre drop switch flow generator.
+     */
+    public SwitchFlowGenerator getArpInputPreDropFlowGenerator() {
+        return ArpInputPreDropFlowGenerator.builder()
+                .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get ARP ingress switch flow generator.
+     */
+    public SwitchFlowGenerator getArpIngressFlowGenerator() {
+        return ArpIngressFlowGenerator.builder()
+                .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get ARP post ingress switch flow generator.
+     */
+    public SwitchFlowGenerator getArpPostIngressFlowGenerator() {
+        return ArpPostIngressFlowGenerator.builder()
+                .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get ARP post ingress VXLAN switch flow generator.
+     */
+    public SwitchFlowGenerator getArpPostIngressVxlanFlowGenerator() {
+        return ArpPostIngressVxlanFlowGenerator.builder()
+                .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get ARP one switch post ingress switch flow generator.
+     */
+    public SwitchFlowGenerator getArpPostIngressOneSwitchFlowGenerator() {
+        return ArpPostIngressOneSwitchFlowGenerator.builder()
+                .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get ARP transit switch flow generator.
+     */
+    public SwitchFlowGenerator getArpTransitFlowGenerator() {
+        return ArpTransitFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
                 .build();

@@ -28,6 +28,8 @@ public interface TestIslMock {
     static final boolean UNDER_MAINTENANE_FLAG = true;
 
     static final boolean EVACUATE_FLAG = false;
+    
+    static final boolean ENABLE_BFD_FLAG = false;
 
     static final Long  USER_ID = (long) 1;
 

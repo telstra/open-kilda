@@ -113,7 +113,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         when: "Try to update set switchLldp property to True and multiTable property to False"
         def switchProperties = new SwitchPropertiesDto()
-        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
         switchProperties.multiTable = false
         switchProperties.switchLldp = true
         northbound.updateSwitchProperties(sw.dpId, switchProperties)
@@ -121,8 +121,28 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains(
-                "Illegal switch properties combination for switch $sw.dpId.")
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Illegal switch properties combination for switch $sw.dpId. 'switchLldp' property " +
+                "can be set to 'true' only if 'multiTable' property is 'true'."
+    }
+
+    def "Unable to turn on switchArp property without turning on multiTable property"() {
+        given: "A switch"
+        def sw = topology.activeSwitches.first()
+
+        when: "Try to update set switchArp property to True and multiTable property to False"
+        def switchProperties = new SwitchPropertiesDto()
+        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        switchProperties.multiTable = false
+        switchProperties.switchArp = true
+        northbound.updateSwitchProperties(sw.dpId, switchProperties)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Illegal switch properties combination for switch $sw.dpId. 'switchArp' property " +
+                "can be set to 'true' only if 'multiTable' property is 'true'."
     }
 
     @Tidy

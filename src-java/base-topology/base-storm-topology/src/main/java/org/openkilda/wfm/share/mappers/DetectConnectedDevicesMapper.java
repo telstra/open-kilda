@@ -34,7 +34,7 @@ public abstract class DetectConnectedDevicesMapper {
             return null;
         }
         return new DetectConnectedDevices(value.isSrcLldp(), value.isSrcArp(), value.isDstLldp(), value.isDstArp(),
-                value.isSrcSwitchLldp(), value.isDstSwitchLldp());
+                value.isSrcSwitchLldp(), value.isSrcSwitchArp(), value.isDstSwitchLldp(), value.isDstSwitchArp());
     }
 
     /**
@@ -45,6 +45,6 @@ public abstract class DetectConnectedDevicesMapper {
             return null;
         }
         return new DetectConnectedDevicesDto(value.isSrcLldp(), value.isSrcArp(), value.isDstLldp(), value.isDstArp(),
-                value.isSrcSwitchLldp(), value.isDstSwitchLldp());
+                value.isSrcSwitchLldp(), value.isSrcSwitchArp(), value.isDstSwitchLldp(), value.isDstSwitchArp());
     }
 }

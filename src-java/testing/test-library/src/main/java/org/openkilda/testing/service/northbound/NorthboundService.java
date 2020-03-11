@@ -19,7 +19,6 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -126,9 +125,9 @@ public interface NorthboundService {
 
     RulesValidationResult validateSwitchRules(SwitchId switchId);
 
-    List<SwitchInfoData> getAllSwitches();
+    List<SwitchDto> getAllSwitches();
 
-    SwitchInfoData getSwitch(SwitchId switchId);
+    SwitchDto getSwitch(SwitchId switchId);
 
     SwitchDto setSwitchMaintenance(SwitchId switchId, boolean maintenance, boolean evacuate);
 
@@ -219,10 +218,9 @@ public interface NorthboundService {
     /**
      * Returns all active switches.
      */
-    default List<SwitchInfoData> getActiveSwitches() {
+    default List<SwitchDto> getActiveSwitches() {
         return getAllSwitches().stream()
                 .filter(sw -> sw.getState().isActive())
                 .collect(Collectors.toList());
     }
-
 }

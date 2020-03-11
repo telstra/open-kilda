@@ -95,6 +95,12 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     private boolean enableLldp;
 
     /**
+     * ARP flag. Packets will be send to ARP rule if True.
+     */
+    @JsonProperty("enable_arp")
+    private boolean enableArp;
+
+    /**
      * Instance constructor.
      *
      * @param transactionId transaction id
@@ -108,7 +114,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param outputVlanType output vlan tag action
      * @param bandwidth flow bandwidth
      * @param meterId source meter id
-     * @param multiTable multitable flag
+     * @param enableLldp install LLDP shared rule if True
+     * @param enableArp install ARP shared rule if True
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -124,7 +131,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("bandwidth") final Long bandwidth,
                                 @JsonProperty("meter_id") final Long meterId,
                                 @JsonProperty("multi_table") final boolean multiTable,
-                                @JsonProperty("enable_lldp") final boolean enableLldp) {
+                                @JsonProperty("enable_lldp") final boolean enableLldp,
+                                @JsonProperty("enable_arp") final boolean enableArp) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
@@ -132,6 +140,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
         setBandwidth(bandwidth);
         setMeterId(meterId);
         setEnableLldp(enableLldp);
+        setEnableArp(enableArp);
     }
 
     /**
@@ -265,6 +274,20 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     }
 
     /**
+     * Get enable ARP flag.
+     */
+    public boolean isEnableArp() {
+        return enableArp;
+    }
+
+    /**
+     * Set enable ARP flag.
+     */
+    public void setEnableArp(boolean enableArp) {
+        this.enableArp = enableArp;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -283,6 +306,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 .add("meter_id", meterId)
                 .add("multi_table", multiTable)
                 .add("enable_lldp", enableLldp)
+                .add("enable_arp", enableArp)
                 .toString();
     }
 
@@ -311,7 +335,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 && Objects.equals(getBandwidth(), that.getBandwidth())
                 && Objects.equals(getMeterId(), that.getMeterId())
                 && Objects.equals(isMultiTable(), that.isMultiTable())
-                && Objects.equals(isEnableLldp(), that.isEnableLldp());
+                && Objects.equals(isEnableLldp(), that.isEnableLldp())
+                && Objects.equals(isEnableArp(), that.isEnableArp());
     }
 
     /**
@@ -320,6 +345,6 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, multiTable, enableLldp);
+                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, multiTable, enableLldp, enableArp);
     }
 }

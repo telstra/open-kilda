@@ -14,8 +14,8 @@ import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.floodlight.FloodlightService
-import org.openkilda.testing.service.grpc.GrpcService
+import org.openkilda.testing.service.floodlight.ManagementFloodlightManager
+import org.openkilda.testing.service.floodlight.StatsFloodlightManager
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -35,7 +35,9 @@ class BaseSpecification extends Specification implements SetupOnce {
     @Autowired
     NorthboundService northbound
     @Autowired
-    FloodlightService floodlight
+    ManagementFloodlightManager mgmtFlManager
+    @Autowired
+    StatsFloodlightManager statsFlManager
     @Autowired
     LockKeeperService lockKeeper
     @Autowired
@@ -75,9 +77,9 @@ class BaseSpecification extends Specification implements SetupOnce {
     int antiflapMin
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
-    @Value("#{'\${floodlight.controllers.management}'.split(',')}")
+    @Value("#{'\${floodlight.controllers.management.openflow}'.split(',')}")
     List<String> managementControllers
-    @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
+    @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
     List<String> statControllers
 
     /**

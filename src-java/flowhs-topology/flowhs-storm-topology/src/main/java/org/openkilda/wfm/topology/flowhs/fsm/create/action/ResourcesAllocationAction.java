@@ -141,7 +141,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         }
 
         CommandContext commandContext = stateMachine.getCommandContext();
-        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow));
+        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
         Message response = new InfoMessage(flowData, commandContext.getCreateTime(), commandContext.getCorrelationId());
         return Optional.of(response);
     }

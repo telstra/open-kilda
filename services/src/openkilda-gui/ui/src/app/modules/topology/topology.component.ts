@@ -627,8 +627,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .append("path")
       .attr("class", function(d, index) {
         var availbandwidth = d.available_bandwidth;
-        var speed = d.speed;
-        var percentage = ref.commonService.getPercentage(availbandwidth, speed);
+        var max_bandwidth = d.max_bandwidth;
+        var percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
         if (d.hasOwnProperty("flow_count")) {
           return "link logical";
         } else {
@@ -638,15 +638,19 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               d.state.toLowerCase() == "discovered") ||
             (d.state && d.state.toLowerCase() == "failed")
           ) {
-            if (d.affected) {
+            if(d.under_maintenance){
+              return "link physical down dashed_maintenance_path";
+            } else if (d.affected) {
               return "link physical down dashed_path";
-            } else {
+            }else {
               return "link physical down";
             }
           } else {
-            if (d.affected) {
+            if(d.under_maintenance){
+              return "link physical  dashed_maintenance_path";
+            }else if (d.affected) {
               return "link physical dashed_path";
-            } else {
+            }else {
               if (parseInt(percentage) < 50) {
                 return "link physical orange_percentage";
               }
@@ -662,13 +666,16 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         $("#switch_hover").css("display", "none");
         var element = $("#link" + index)[0];
         var availbandwidth = d.available_bandwidth;
-        var speed = d.speed;
+        var max_bandwidth = d.max_bandwidth;
 
-        var percentage = ref.commonService.getPercentage(availbandwidth, speed);
+        var percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
         if (d.hasOwnProperty("flow_count")) {
-          if (d.affected) {
+          if(d.under_maintenance){
+            element.setAttribute("class", "link logical overlay dashed_maintenance_path");
+      
+          } else if (d.affected) {
             element.setAttribute("class", "link logical overlay dashed_path");
-          } else {
+          }else  {
             element.setAttribute("class", "link logical overlay");
           }
         } else {
@@ -678,12 +685,18 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               d.state.toLowerCase() == "discovered") ||
             (d.state && d.state.toLowerCase() == "failed")
           ) {
-            if (d.affected) {
+            if(d.under_maintenance){
+              element.setAttribute(
+                "class",
+                "link physical dashed_maintenance_path pathoverlay"
+              );
+              
+            } else if (d.affected) {
               element.setAttribute(
                 "class",
                 "link physical dashed_path pathoverlay"
               );
-            } else {
+            }else  {
               if (parseInt(percentage) < 50 && d.state.toLowerCase() != 'failed' && !d.unidirectional) {
                 element.setAttribute(
                   "class",
@@ -694,12 +707,18 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               }
             }
           } else {
-            if (d.affected) {
+            if(d.under_maintenance){
+              element.setAttribute(
+                "class",
+                "link physical overlay dashed_maintenance_path"
+              );
+              
+            } else if (d.affected) {
               element.setAttribute(
                 "class",
                 "link physical overlay dashed_path"
               );
-            } else {
+            }else  {
               if (parseInt(percentage) < 50) {
                 element.setAttribute(
                   "class",
@@ -734,6 +753,12 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               (d.src_port == "" || d.src_port == undefined ? "-" : d.src_port) +
               "</span>"
           );
+          d3.select(".isldetails_div_maintenance").html(
+            "<span>" +
+              (d.under_maintenance == "" || d.under_maintenance == undefined ? "false" : d.under_maintenance) +
+              "</span>"
+          );
+          
           d3.select(".isldetails_div_destination_port").html(
             "<span>" +
               (d.dst_port == "" || d.dst_port == undefined ? "-" : d.dst_port) +
@@ -755,7 +780,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           );
           d3.select(".isldetails_div_speed").html(
             "<span>" +
-              (d.speed == "" || d.speed == undefined ? "-" : d.speed / 1000) +
+              (d.max_bandwidth == "" || d.max_bandwidth == undefined ? "-" : d.max_bandwidth / 1000) +
               " Mbps</span>"
           );
           d3.select(".isldetails_div_state").html(
@@ -795,12 +820,14 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         $("#topology-hover-txt, #isl_hover").css("display", "none");
         var element = $("#link" + index)[0];
         var availbandwidth = d.available_bandwidth;
-        var speed = d.speed;
-        var percentage = ref.commonService.getPercentage(availbandwidth, speed);
+        var max_bandwidth = d.max_bandwidth;
+        var percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
         if (d.hasOwnProperty("flow_count")) {
-          if (d.affected) {
+          if(d.under_maintenance){
+            element.setAttribute("class", "link logical dashed_maintenance_path");
+          }  else if (d.affected) {
             element.setAttribute("class", "link logical dashed_path");
-          } else {
+          }else {
             element.setAttribute("class", "link logical");
           }
         } else {
@@ -810,15 +837,19 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               d.state.toLowerCase() == "discovered") ||
             (d.state && d.state.toLowerCase() == "failed")
           ) {
-            if (d.affected) {
+            if(d.under_maintenance){
+              element.setAttribute("class", "link physical down dashed_maintenance_path");
+            } else if (d.affected) {
               element.setAttribute("class", "link physical down dashed_path");
-            } else {
+            }else {
               element.setAttribute("class", "link physical down");
             }
           } else {
-            if (d.affected) {
+            if(d.under_maintenance){
+              element.setAttribute("class", "link physical dashed_maintenance_path");
+            } else if (d.affected) {
               element.setAttribute("class", "link physical dashed_path");
-            } else {
+            }else {
               if (parseInt(percentage) < 50) {
                 element.setAttribute(
                   "class",
@@ -838,12 +869,14 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .on("click", function(d, index) {
         var element = $("#link" + index)[0];
         var availbandwidth = d.available_bandwidth;
-        var speed = d.speed;
-        var percentage = ref.commonService.getPercentage(availbandwidth, speed);
+        var max_bandwidth = d.max_bandwidth;
+        var percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
         if (d.hasOwnProperty("flow_count")) {
-          if (d.affected) {
+          if(d.under_maintenance){
+            element.setAttribute("class", "link logical overlay dashed_maintenance_path");
+          } else if (d.affected) {
             element.setAttribute("class", "link logical overlay dashed_path");
-          } else {
+          }else {
             element.setAttribute("class", "link logical overlay");
           }
 
@@ -855,21 +888,25 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               d.state.toLowerCase() == "discovered") ||
             (d.state && d.state.toLowerCase() == "failed")
           ) {
-            if (d.affected) {
+            if(d.under_maintenance){
+              element.setAttribute("class", "link physical pathoverlay dashed_maintenance_path");
+            } else if (d.affected) {
               element.setAttribute(
                 "class",
                 "link physical pathoverlay dashed_path"
               );
-            } else {
+            }else {
               element.setAttribute("class", "link physical pathoverlay");
             }
           } else {
-            if (d.affected) {
+            if(d.under_maintenance){
+              element.setAttribute("class", "link physical overlay dashed_maintenance_path");
+            } else if (d.affected) {
               element.setAttribute(
                 "class",
                 "link physical overlay dashed_path"
               );
-            } else {
+            }else {
               if (parseInt(percentage) < 50) {
                 element.setAttribute(
                   "class",
@@ -887,7 +924,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         if (d.hasOwnProperty("flow_count")) {
           return ISL.FLOWCOUNT;
         } else {
-          if (
+         if (
             d.unidirectional &&
             d.state &&
             d.state.toLowerCase() == "discovered"
@@ -954,8 +991,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         var element = $("#link" + index)[0];
         var availbandwidth = d.available_bandwidth;
         let classes = "";
-        var speed = d.speed;
-        var percentage = ref.commonService.getPercentage(availbandwidth, speed);
+        var max_bandwidth = d.max_bandwidth;
+        var percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
         if (d.hasOwnProperty("flow_count")) {
           classes = "link logical overlay";
         } else {
@@ -971,10 +1008,10 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         var element = $("#link" + index)[0];
         var availbandwidth = d.available_bandwidth;
         let classes = "";
-        var speed = d.speed;
+        var max_bandwidth = d.max_bandwidth;
         var percentage = ref.commonService.getPercentage(
           availbandwidth,
-          speed
+          max_bandwidth
         );
         if (d.hasOwnProperty("flow_count")) {
           classes = "link logical";
@@ -1144,9 +1181,9 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         ) {
           d.state = response[i].state;
           var availbandwidth = d.available_bandwidth;
-          var speed = d.speed;
+          var max_bandwidth = d.max_bandwidth;
           //var percentage = 20; //common.getPercentage(availbandwidth,speed);
-          var percentage = ref.commonService.getPercentage(availbandwidth,speed);
+          var percentage = ref.commonService.getPercentage(availbandwidth,max_bandwidth);
           if (response[i].affected) {
             d["affected"] = response[i].affected;
           } else {

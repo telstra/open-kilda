@@ -25,6 +25,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
@@ -68,8 +69,10 @@ public class FlowServiceTest {
         String firstFlowId = "bulk-flow-1";
         String secondFlowId = "bulk-flow-2";
 
-        FlowEndpointV2 firstEndpoint = new FlowEndpointV2(new SwitchId("ff:00"), 1, 1);
-        FlowEndpointV2 secondEndpoint = new FlowEndpointV2(new SwitchId("ff:01"), 2, 2);
+        FlowEndpointV2 firstEndpoint = new FlowEndpointV2(new SwitchId("ff:00"), 1, 1,
+                new DetectConnectedDevicesV2(false, false));
+        FlowEndpointV2 secondEndpoint = new FlowEndpointV2(new SwitchId("ff:01"), 2, 2,
+                new DetectConnectedDevicesV2(false, false));
 
         SwapFlowPayload firstFlowPayload = SwapFlowPayload.builder()
                 .flowId(firstFlowId)

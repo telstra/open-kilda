@@ -44,6 +44,7 @@ public class Neo4jSwitchConnectedDevicesRepository
     private static final String MAC_ADDRESS_PROPERTY_NAME = "mac_address";
     private static final String CHASSIS_ID_PROPERTY_NAME = "chassis_id";
     private static final String PORT_ID_PROPERTY_NAME = "port_id";
+    private static final String IP_ADDRESS_PROPERTY_NAME = "ip_address";
 
     Neo4jSwitchConnectedDevicesRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -63,9 +64,8 @@ public class Neo4jSwitchConnectedDevicesRepository
     }
 
     @Override
-    public Optional<SwitchConnectedDevice> findByUniqueFieldCombination(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, ConnectedDeviceType type, String chassisId,
-            String portId) {
+    public Optional<SwitchConnectedDevice> findLldpByUniqueFieldCombination(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId) {
 
         Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, EQUALS, switchId.toString());
         switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
@@ -74,16 +74,40 @@ public class Neo4jSwitchConnectedDevicesRepository
         filters.and(new Filter(PORT_NUMBER_PROPERTY_NAME, EQUALS, portNumber));
         filters.and(new Filter(VLAN_PROPERTY_NAME, EQUALS, vlan));
         filters.and(new Filter(MAC_ADDRESS_PROPERTY_NAME, EQUALS, macAddress));
-        filters.and(new Filter(TYPE_PROPERTY_NAME, EQUALS, type));
+        filters.and(new Filter(TYPE_PROPERTY_NAME, EQUALS, ConnectedDeviceType.LLDP));
         filters.and(new Filter(CHASSIS_ID_PROPERTY_NAME, EQUALS, chassisId));
         filters.and(new Filter(PORT_ID_PROPERTY_NAME, EQUALS, portId));
 
         Collection<SwitchConnectedDevice> devices = loadAll(filters);
 
         if (devices.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Connected Device by switch ID '%s', port number "
-                            + "'%d', vlan '%d', mac address '%s', type '%s', chassis ID '%s' and port ID, '%s'",
-                    switchId, portNumber, vlan, macAddress, type, chassisId, portId));
+            throw new PersistenceException(format("Found more that 1 LLDP Connected Device by switch ID '%s', "
+                            + "port number '%d', vlan '%d', mac address '%s', chassis ID '%s' and port ID '%s'",
+                    switchId, portNumber, vlan, macAddress, chassisId, portId));
+        }
+        return  devices.isEmpty() ? Optional.empty() : Optional.of(devices.iterator().next());
+    }
+
+    @Override
+    public Optional<SwitchConnectedDevice> findArpByUniqueFieldCombination(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress) {
+
+        Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, EQUALS, switchId.toString());
+        switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
+
+        Filters filters = new Filters(switchFilter);
+        filters.and(new Filter(PORT_NUMBER_PROPERTY_NAME, EQUALS, portNumber));
+        filters.and(new Filter(VLAN_PROPERTY_NAME, EQUALS, vlan));
+        filters.and(new Filter(MAC_ADDRESS_PROPERTY_NAME, EQUALS, macAddress));
+        filters.and(new Filter(IP_ADDRESS_PROPERTY_NAME, EQUALS, ipAddress));
+        filters.and(new Filter(TYPE_PROPERTY_NAME, EQUALS, ConnectedDeviceType.ARP));
+
+        Collection<SwitchConnectedDevice> devices = loadAll(filters);
+
+        if (devices.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 ARP Connected Device by switch ID '%s', "
+                            + "port number '%d', vlan '%d', mac address '%s', IP address '%s'",
+                    switchId, portNumber, vlan, macAddress, ipAddress));
         }
         return  devices.isEmpty() ? Optional.empty() : Optional.of(devices.iterator().next());
     }

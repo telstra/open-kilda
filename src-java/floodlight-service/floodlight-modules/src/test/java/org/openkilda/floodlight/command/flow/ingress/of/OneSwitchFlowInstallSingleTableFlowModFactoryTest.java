@@ -18,7 +18,11 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.types.TableId;
+
+import java.util.Optional;
 
 public class OneSwitchFlowInstallSingleTableFlowModFactoryTest extends OneSwitchFlowInstallFlowModFactoryTest {
 
@@ -35,5 +39,15 @@ public class OneSwitchFlowInstallSingleTableFlowModFactoryTest extends OneSwitch
     @Override
     TableId getTargetTableId() {
         return TableId.ZERO;
+    }
+
+    @Override
+    Optional<OFInstructionGotoTable> getGoToTableInstruction() {
+        return Optional.empty();
+    }
+
+    @Override
+    Optional<OFInstructionWriteMetadata> getWriteMetadataInstruction() {
+        return Optional.empty();
     }
 }

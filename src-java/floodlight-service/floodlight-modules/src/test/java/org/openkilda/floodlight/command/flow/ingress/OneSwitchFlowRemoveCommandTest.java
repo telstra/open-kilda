@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveMultiTableFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveSingleTableFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RemoveSharedRulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
@@ -48,7 +49,7 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
             FlowEndpoint endpoint, FlowEndpoint egressEndpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
         UUID commandId = UUID.randomUUID();
         return new CommandStub(new MessageContext(commandId.toString()), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint, false);
+                egressEndpoint, RemoveSharedRulesContext.builder().build());
     }
 
     static class CommandStub extends OneSwitchFlowRemoveCommand implements IFlowModFactoryOverride {
@@ -57,9 +58,9 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
 
         public CommandStub(
                 MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
-                MeterConfig meterConfig, FlowEndpoint egressEndpoint, boolean removeCustomerPortSharedCatchRule) {
-            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint,
-                    removeCustomerPortSharedCatchRule);
+                MeterConfig meterConfig, FlowEndpoint egressEndpoint,
+                RemoveSharedRulesContext removeSharedRulesContext) {
+            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, removeSharedRulesContext);
         }
 
         @Override

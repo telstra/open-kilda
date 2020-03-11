@@ -34,4 +34,5 @@ import java.util.List;
 public class TypedConnectedDevicesDto extends InfoData {
     private static final long serialVersionUID = 4027276737841497073L;
     private List<ConnectedDeviceDto> lldp;
+    private List<ConnectedDeviceDto> arp;
 }

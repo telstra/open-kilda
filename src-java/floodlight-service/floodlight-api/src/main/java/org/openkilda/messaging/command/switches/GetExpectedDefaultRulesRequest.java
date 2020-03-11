@@ -38,6 +38,9 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("switch_lldp")
     private boolean switchLldp;
 
+    @JsonProperty("switch_arp")
+    private boolean switchArp;
+
     @JsonProperty("isl_ports")
     private  List<Integer> islPorts;
 
@@ -47,17 +50,24 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("flow_lldp_ports")
     private Set<Integer> flowLldpPorts;
 
+    @JsonProperty("flow_arp_ports")
+    private Set<Integer> flowArpPorts;
+
     public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId,
                                           @JsonProperty("multi_table") boolean multiTable,
                                           @JsonProperty("switch_lldp") boolean switchLldp,
+                                          @JsonProperty("switch_arp") boolean switchArp,
                                           @JsonProperty("isl_ports") List<Integer> islPorts,
                                           @JsonProperty("flow_ports") List<Integer> flowPorts,
-                                          @JsonProperty("flow_lldp_ports") Set<Integer> flowLldpPorts) {
+                                          @JsonProperty("flow_lldp_ports") Set<Integer> flowLldpPorts,
+                                          @JsonProperty("flow_arp_ports") Set<Integer> flowArpPorts) {
         this.switchId = switchId;
         this.multiTable = multiTable;
         this.switchLldp = switchLldp;
+        this.switchArp = switchArp;
         this.islPorts = islPorts;
         this.flowPorts = flowPorts;
         this.flowLldpPorts = flowLldpPorts;
+        this.flowArpPorts = flowArpPorts;
     }
 }

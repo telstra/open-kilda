@@ -19,9 +19,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_LLDP;
+import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_SWITCH_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.DST_SWITCH_LLDP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_LLDP;
+import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_SWITCH_ARP;
 import static org.openkilda.converters.DetectConnectedDevicesConverter.SRC_SWITCH_LLDP;
 
 import org.openkilda.model.DetectConnectedDevices;
@@ -42,40 +44,50 @@ public class DetectConnectedDevicesConverterTest {
 
     @Test
     public void toGraphPropertyTest() {
-        runToGraphPropertyTest(true, true, true, true, true, true);
-        runToGraphPropertyTest(false, false, false, false, false, true);
-        runToGraphPropertyTest(false, true, true, false, true, false);
-        runToGraphPropertyTest(false, false, true, true, false, false);
+        runToGraphPropertyTest(true, true, true, true, true, true, true, true);
+        runToGraphPropertyTest(false, false, false, false, false, true, false, true);
+        runToGraphPropertyTest(false, true, true, false, true, false, true, false);
+        runToGraphPropertyTest(false, false, true, true, false, false, false, false);
     }
 
     private void runToGraphPropertyTest(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp,
-                                        Boolean srcSwitchLldp, Boolean dstSwitchLldp) {
+                                        Boolean srcSwitchLldp, Boolean srcSwitchArp,
+                                        Boolean dstSwitchLldp, Boolean dstSwitchArp) {
         DetectConnectedDevices value = new DetectConnectedDevices(
-                srcLldp, srcArp, dstLldp, dstArp, srcSwitchLldp, dstSwitchLldp);
+                srcLldp, srcArp, dstLldp, dstArp, srcSwitchLldp, srcSwitchArp, dstSwitchLldp, dstSwitchArp);
         Map<String, ?> properties = converter.toGraphProperties(value);
         assertEquals(srcLldp, properties.get(SRC_LLDP));
         assertEquals(srcArp, properties.get(SRC_ARP));
         assertEquals(dstLldp, properties.get(DST_LLDP));
         assertEquals(dstArp, properties.get(DST_ARP));
         assertEquals(srcSwitchLldp, properties.get(SRC_SWITCH_LLDP));
+        assertEquals(srcSwitchArp, properties.get(SRC_SWITCH_ARP));
         assertEquals(dstSwitchLldp, properties.get(DST_SWITCH_LLDP));
+        assertEquals(dstSwitchArp, properties.get(DST_SWITCH_ARP));
     }
 
     @Test
     public void toEntityAttributeTest() {
-        runToEntityAttributeTest(true, true, true, true);
-        runToEntityAttributeTest(false, false, false, false);
-        runToEntityAttributeTest(true, false, false, true);
-        runToEntityAttributeTest(false, false, true, true);
+        runToEntityAttributeTest(true, true, true, true, true, true, true, true);
+        runToEntityAttributeTest(false, false, false, false, false, false, false, false);
+        runToEntityAttributeTest(true, false, false, true, true, false, true, false);
+        runToEntityAttributeTest(false, false, true, true, false, true, false, true);
     }
 
-    private void runToEntityAttributeTest(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp) {
-        Map<String, Boolean> properties = createProperties(srcLldp, srcArp, dstLldp, dstArp);
+    private void runToEntityAttributeTest(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp,
+                                          Boolean srcSwitchLldp, Boolean srcSwitchArp,
+                                          Boolean dstSwitchLldp, Boolean dstSwitchArp) {
+        Map<String, Boolean> properties = createProperties(srcLldp, srcArp, dstLldp, dstArp,
+                srcSwitchLldp, srcSwitchArp, dstSwitchLldp, dstSwitchArp);
         DetectConnectedDevices detectConnectedDevices = converter.toEntityAttribute(properties);
         assertEquals(srcLldp, detectConnectedDevices.isSrcLldp());
         assertEquals(srcArp, detectConnectedDevices.isSrcArp());
         assertEquals(dstLldp, detectConnectedDevices.isDstLldp());
         assertEquals(dstArp, detectConnectedDevices.isDstArp());
+        assertEquals(srcSwitchLldp, detectConnectedDevices.isSrcSwitchLldp());
+        assertEquals(srcSwitchArp, detectConnectedDevices.isSrcSwitchArp());
+        assertEquals(dstSwitchLldp, detectConnectedDevices.isDstSwitchLldp());
+        assertEquals(dstSwitchArp, detectConnectedDevices.isDstSwitchArp());
     }
 
     @Test
@@ -87,12 +99,19 @@ public class DetectConnectedDevicesConverterTest {
         assertFalse(detectConnectedDevices.isDstArp());
     }
 
-    private Map<String, Boolean> createProperties(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp) {
+    private Map<String, Boolean> createProperties(Boolean srcLldp, Boolean srcArp, Boolean dstLldp, Boolean dstArp,
+                                                  Boolean srcSwitchLldp, Boolean srcSwitchArp,
+                                                  Boolean dstSwitchLldp, Boolean dstSwitchArp) {
         Map<String, Boolean> properties = new HashMap<>();
         properties.put(SRC_LLDP, srcLldp);
         properties.put(SRC_ARP, srcArp);
         properties.put(DST_LLDP, dstLldp);
         properties.put(DST_ARP, dstArp);
+        properties.put(SRC_SWITCH_LLDP, srcSwitchLldp);
+        properties.put(SRC_SWITCH_ARP, srcSwitchArp);
+        properties.put(DST_SWITCH_LLDP, dstSwitchLldp);
+        properties.put(DST_SWITCH_ARP, dstSwitchArp);
+
         return properties;
     }
 }

@@ -116,6 +116,29 @@ def address_emmit_lldp_packet(idnr):
             'sent_packets': 1}}
 
 
+@app.route('/address/<idnr>/arp', method='PUT')
+def address_emmit_arp_packet(idnr):
+    address = _address_lookup(unpack_idnr(idnr))
+    payload = bottle.request.json
+    if payload is None:
+        payload = {}
+
+    src_mac, src_ipv4 = extract_payload_fields(
+        payload, "src_mac", "src_ipv4")
+
+    try:
+        push_entry = model.ARPPush(src_mac, src_ipv4, **{})
+        get_context().action.arp_push(address.iface, push_entry)
+    except ValueError as e:
+        return bottle.HTTPError(400, 'Invalid ARP payload - {}'.format(e))
+    except Exception as e:
+        return bottle.HTTPError(500, 'Unexpected error - {}'.format(e))
+
+    return {
+        'arp_push': {
+            'sent_packets': 1}}
+
+
 def _address_lookup(idnr):
     try:
         address = get_context().service.address.lookup(idnr)

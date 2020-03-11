@@ -9,6 +9,7 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
@@ -250,7 +251,12 @@ class FlowHelperV2 {
                       .switchId(ep.getSwitchDpId())
                       .portNumber(ep.getPortId())
                       .vlanId(ep.getVlanId())
+                      .detectConnectedDevices(toV2(ep.detectConnectedDevices))
                       .build()
+    }
+
+    static DetectConnectedDevicesV2 toV2(DetectConnectedDevicesPayload payload) {
+        new DetectConnectedDevicesV2(payload.lldp, payload.arp)
     }
 
     /**
@@ -278,7 +284,9 @@ class FlowHelperV2 {
                 port = connectedTraffgens.find { allowedPorts.contains(it.switchPort) }?.switchPort ?: port
             }
         }
-        return new FlowEndpointV2(sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())])
+        return new FlowEndpointV2(
+                sw.dpId, port, allowedVlans[random.nextInt(allowedVlans.size())],
+                new DetectConnectedDevicesV2(false, false))
     }
 
     /**

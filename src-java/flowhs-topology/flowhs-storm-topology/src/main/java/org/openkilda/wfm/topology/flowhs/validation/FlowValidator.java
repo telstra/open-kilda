@@ -21,15 +21,19 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -41,12 +45,14 @@ public class FlowValidator {
     private final FlowRepository flowRepository;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
 
     public FlowValidator(FlowRepository flowRepository, SwitchRepository switchRepository,
-                         IslRepository islRepository) {
+                         IslRepository islRepository, SwitchPropertiesRepository switchPropertiesRepository) {
         this.flowRepository = flowRepository;
         this.switchRepository = switchRepository;
         this.islRepository = islRepository;
+        this.switchPropertiesRepository = switchPropertiesRepository;
     }
 
     /**
@@ -62,6 +68,7 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExistsAndActive(flow);
+        checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
@@ -239,6 +246,46 @@ public class FlowValidator {
         if (diverseFlow.isOneSwitchFlow()) {
             throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
                     ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    /**
+     * Ensure switches support LLDP/ARP.
+     *
+     * @param requestedFlow a flow to be validated.
+     */
+    @VisibleForTesting
+    void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
+        SwitchId sourceId = requestedFlow.getSrcSwitch();
+        SwitchId destinationId = requestedFlow.getDestSwitch();
+
+        List<String> errorMessages = new ArrayList<>();
+
+        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()
+                || requestedFlow.getDetectConnectedDevices().isSrcArp()) {
+            validateMultiTableProperty(sourceId, errorMessages);
+        }
+
+        if (requestedFlow.getDetectConnectedDevices().isDstLldp()
+                || requestedFlow.getDetectConnectedDevices().isDstArp()) {
+            validateMultiTableProperty(destinationId, errorMessages);
+        }
+
+        if (!errorMessages.isEmpty()) {
+            throw new InvalidFlowException(String.join(" ", errorMessages), ErrorType.DATA_INVALID);
+        }
+    }
+
+    private void validateMultiTableProperty(SwitchId switchId, List<String> errorMessages) {
+        Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
+        if (!switchProperties.isPresent()) {
+            errorMessages.add(String.format("Couldn't get switch properties for switch %s.", switchId));
+        } else {
+            if (!switchProperties.get().isMultiTable()) {
+                errorMessages.add(String.format("Catching of LLDP/ARP packets supported only on switches with "
+                                + "enabled 'multiTable' switch feature. This feature is disabled on switch %s.",
+                        switchId));
+            }
         }
     }
 }

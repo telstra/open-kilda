@@ -41,6 +41,7 @@ import org.mapstruct.factory.Mappers;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -66,6 +67,15 @@ public abstract class FlowMapper {
                     + "new FlowStatusDetails(flow.getMainFlowPrioritizedPathsStatus(), "
                     + "flow.getProtectedFlowPrioritizedPathsStatus()) : null)")
     public abstract FlowDto map(Flow flow);
+
+    /**
+     * Convert {@link Flow} to {@link FlowDto} with diverse flow ids.
+     */
+    public FlowDto map(Flow flow, Set<String> diverseWith) {
+        FlowDto flowDto = map(flow);
+        flowDto.setDiverseWith(diverseWith);
+        return flowDto;
+    }
 
     /**
      * Convert {@link FlowPairDto} to {@link Flow}.

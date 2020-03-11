@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,28 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.lockkeeper.model;
+package org.openkilda.wfm.topology.flowhs.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
-public class InetAddress {
+import java.io.Serializable;
 
-    @JsonInclude(Include.NON_NULL)
-    String ip;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class DetectConnectedDevices implements Serializable {
+    boolean srcLldp;
+    boolean srcArp;
+    boolean dstLldp;
+    boolean dstArp;
 
-    @JsonInclude(Include.NON_NULL)
-    Integer port;
-
-    public InetAddress(String ip) {
-        this.ip = ip;
-        this.port = null;
-    }
-
-    public InetAddress(Integer port) {
-        this.ip = null;
-        this.port = port;
-    }
+    boolean srcSwitchLldp;
+    boolean srcSwitchArp;
+    boolean dstSwitchLldp;
+    boolean dstSwitchArp;
 }

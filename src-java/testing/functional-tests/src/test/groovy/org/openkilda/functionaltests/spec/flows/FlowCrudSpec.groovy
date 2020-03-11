@@ -760,7 +760,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A deactivated switch"
         def sw = topology.getActiveSwitches().first()
         def swIsls = topology.getRelatedIsls(sw)
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -775,7 +775,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
 
         and: "Cleanup: Activate the switch and reset costs"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()
@@ -799,7 +799,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
             producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                     new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, null, sw.dpId,
                             5, 6, 5, meterId, FlowEncapsulationType.TRANSIT_VLAN,
-                            OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false)).toJson()))
+                            OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false, false)).toJson()))
         }
         producer.close()
 

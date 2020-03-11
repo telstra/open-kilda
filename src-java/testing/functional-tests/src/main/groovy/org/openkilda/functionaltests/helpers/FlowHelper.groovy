@@ -17,6 +17,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Flow
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -209,7 +210,12 @@ class FlowHelper {
      * @param endpoint FlowEndpointPayload object to convert
      */
     static FlowEndpointV2 toFlowEndpointV2(FlowEndpointPayload endpoint) {
-        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId)
+        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId,
+                toFlowConnectedDevicesV2(endpoint.detectConnectedDevices))
+    }
+
+    static DetectConnectedDevicesV2 toFlowConnectedDevicesV2(DetectConnectedDevicesPayload payload) {
+        new DetectConnectedDevicesV2(payload.lldp, payload.arp)
     }
 
     /**

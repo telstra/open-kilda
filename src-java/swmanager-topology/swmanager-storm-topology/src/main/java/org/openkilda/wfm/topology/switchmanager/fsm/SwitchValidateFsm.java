@@ -55,6 +55,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
@@ -88,10 +89,12 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
+    private boolean switchExists;
     private SwitchProperties switchProperties;
     private List<Integer> islPorts;
     private List<Integer> flowPorts;
     private Set<Integer> flowLldpPorts;
+    private Set<Integer> flowArpPorts;
     private boolean hasMultiTableFlows;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
@@ -111,10 +114,14 @@ public class SwitchValidateFsm
         this.switchId = request.getSwitchId();
         this.flowPorts = new ArrayList<>();
         this.flowLldpPorts = new HashSet<>();
+        this.flowArpPorts = new HashSet<>();
 
+        SwitchRepository switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchExists = switchRepository.exists(switchId);
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
         boolean switchLldp = switchProperties != null && switchProperties.isSwitchLldp();
+        boolean switchArp = switchProperties != null && switchProperties.isSwitchArp();
 
         FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
@@ -127,12 +134,18 @@ public class SwitchValidateFsm
                 if (flowPath.getFlow().getDetectConnectedDevices().isSrcLldp() || switchLldp) {
                     flowLldpPorts.add(flowPath.getFlow().getSrcPort());
                 }
+                if (flowPath.getFlow().getDetectConnectedDevices().isSrcArp() || switchArp) {
+                    flowArpPorts.add(flowPath.getFlow().getSrcPort());
+                }
             } else {
                 if (flowPath.getFlow().isDestWithMultiTable()) {
                     flowPorts.add(flowPath.getFlow().getDestPort());
                 }
                 if (flowPath.getFlow().getDetectConnectedDevices().isDstLldp() || switchLldp) {
                     flowLldpPorts.add(flowPath.getFlow().getDestPort());
+                }
+                if (flowPath.getFlow().getDetectConnectedDevices().isDstArp() || switchArp) {
+                    flowArpPorts.add(flowPath.getFlow().getDestPort());
                 }
             }
         }
@@ -204,11 +217,15 @@ public class SwitchValidateFsm
 
     protected void initialized(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
+        if (!switchExists) {
+            sendException(format("Switch '%s' not found", switchId), ErrorType.NOT_FOUND);
+            return;
+        }
         if (switchProperties == null) {
             sendException(format("Switch properties not found for switch '%s'", switchId), ErrorType.NOT_FOUND);
             return;
         }
-        log.info("The switch sync process for {} has been started (key={})", switchId, key);
+        log.info("The switch validate process for {} has been started (key={})", switchId, key);
     }
 
     protected void receiveData(SwitchValidateState from, SwitchValidateState to,
@@ -218,13 +235,15 @@ public class SwitchValidateFsm
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
         boolean switchLldp = switchProperties.isSwitchLldp();
+        boolean switchArp = switchProperties.isSwitchArp();
 
-        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp, islPorts,
-                flowPorts, flowLldpPorts));
+        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp,
+                switchArp, islPorts, flowPorts, flowLldpPorts, flowArpPorts));
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
-            carrier.sendCommandToSpeaker(key, new GetExpectedDefaultMetersRequest(switchId, multiTable, switchLldp));
+            carrier.sendCommandToSpeaker(key, new GetExpectedDefaultMetersRequest(
+                    switchId, multiTable, switchLldp, switchArp));
         } else {
             presentMeters = emptyList();
             expectedDefaultMetersEntries = emptyList();

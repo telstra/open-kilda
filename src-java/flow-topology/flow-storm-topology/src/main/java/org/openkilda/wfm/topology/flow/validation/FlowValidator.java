@@ -16,11 +16,9 @@
 package org.openkilda.wfm.topology.flow.validation;
 
 import static java.lang.String.format;
-import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -70,7 +68,7 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
-        checkSwitchesSupportLldpIfNeeded(flow);
+        checkSwitchesSupportLldpAndArpIfNeeded(flow);
     }
 
     /**
@@ -307,43 +305,26 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure switches are exists.
+     * Ensure switches support LLDP/ARP.
      *
      * @param requestedFlow a flow to be validated.
-     * @throws SwitchValidationException if LLDP is enabled for switch but switch doesn't support it.
+     * @throws SwitchValidationException if LLDP/ARP is enabled for switch but switch doesn't support it.
      */
     @VisibleForTesting
-    void checkSwitchesSupportLldpIfNeeded(Flow requestedFlow) throws SwitchValidationException {
+    void checkSwitchesSupportLldpAndArpIfNeeded(Flow requestedFlow) throws SwitchValidationException {
         SwitchId sourceId = requestedFlow.getSrcSwitch().getSwitchId();
         SwitchId destinationId = requestedFlow.getDestSwitch().getSwitchId();
 
         List<String> errorMessages = new ArrayList<>();
 
-        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()) {
-            Optional<Switch> srcSwitch = switchRepository.findById(sourceId);
-            if (!srcSwitch.isPresent()) {
-                errorMessages.add(String.format("Source switch %s is not connected to the controller.", sourceId));
-            } else {
-                if (!srcSwitch.get().supports(MULTI_TABLE)) {
-                    errorMessages.add(String.format("Source switch %s does not support catching of LLDP packets. "
-                            + "It must have at least 2 OF tables.", sourceId));
-                }
-                validateMultiTableSupport(sourceId, errorMessages);
-            }
+        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()
+                || requestedFlow.getDetectConnectedDevices().isSrcArp()) {
+            validateMultiTableProperty(sourceId, errorMessages);
         }
 
-        if (requestedFlow.getDetectConnectedDevices().isDstLldp()) {
-            Optional<Switch> dstSwitch = switchRepository.findById(destinationId);
-            if (!dstSwitch.isPresent()) {
-                errorMessages.add(String.format(
-                        "Destination switch %s is not connected to the controller.", destinationId));
-            } else {
-                if (!dstSwitch.get().supports(MULTI_TABLE)) {
-                    errorMessages.add(String.format("Destination switch %s does not support catching of LLDP packets. "
-                            + "It must have at least 2 OF tables.", destinationId));
-                }
-                validateMultiTableSupport(destinationId, errorMessages);
-            }
+        if (requestedFlow.getDetectConnectedDevices().isDstLldp()
+                || requestedFlow.getDetectConnectedDevices().isDstArp()) {
+            validateMultiTableProperty(destinationId, errorMessages);
         }
 
         if (!errorMessages.isEmpty()) {
@@ -351,13 +332,13 @@ public class FlowValidator {
         }
     }
 
-    private void validateMultiTableSupport(SwitchId switchId, List<String> errorMessages) {
+    private void validateMultiTableProperty(SwitchId switchId, List<String> errorMessages) {
         Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
         if (!switchProperties.isPresent()) {
             errorMessages.add(String.format("Couldn't get switch properties for switch %s.", switchId));
         } else {
             if (!switchProperties.get().isMultiTable()) {
-                errorMessages.add(String.format("Catching of LLDP packets supported only on switches with "
+                errorMessages.add(String.format("Catching of LLDP/ARP packets supported only on switches with "
                                 + "enabled 'multiTable' switch feature. This feature is disabled on switch %s.",
                         switchId));
             }

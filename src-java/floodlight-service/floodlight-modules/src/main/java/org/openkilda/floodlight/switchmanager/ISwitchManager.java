@@ -194,6 +194,22 @@ public interface ISwitchManager extends IFloodlightService {
     Long installLldpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Install ARP rule which will send ARP packet from ISL port to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpTransitFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install ARP rule which will send all ARP packets received from not ISL/Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
      *
      * @param dpid datapathId of the switch
@@ -254,6 +270,47 @@ public interface ISwitchManager extends IFloodlightService {
     Long installLldpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Install input ARP rule which will mark all ARP packets received from Customer ports by metadata flag.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Install ingress ARP rule which will send ARP packets received from Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpIngressFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install post ingress ARP rule which will send ARP packets received from Customer ports to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpPostIngressFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install post ingress ARP rule which will send ARP packets with encapsulation to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpPostIngressVxlanFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install post ingress ARP rule which will send ARP packets received from one switch flows to controller.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installArpPostIngressOneSwitchFlow(DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Remove intermediate rule for isl on switch in table 0 to route ingress traffic.
      *
      * @param dpid datapathId of the switch
@@ -272,6 +329,15 @@ public interface ISwitchManager extends IFloodlightService {
     long removeLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
+     * Remove ARP rule which marks ARP packet received from customer port by metadata.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    Long removeArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
      * Build intermidiate flowmod for ingress rule.
      *
      * @param dpid switch id
@@ -288,6 +354,15 @@ public interface ISwitchManager extends IFloodlightService {
      * @return modification command
      */
     OFFlowMod buildLldpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException;
+
+    /**
+     * Build ARP rule which will mark ARP packet received from customer port by metadata.
+     *
+     * @param dpid switch id
+     * @param port customer port
+     * @return modification command
+     */
+    OFFlowMod buildArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException;
 
     /**
      * Install default pass through rule for pre ingress table.
@@ -423,10 +498,11 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid switch id.
      * @param multiTable flag
      * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
+     * @param switchArp flag. True means that switch must have rules for catching ARP packets.
      * @return list of default flows.
      */
     List<OFFlowMod> getExpectedDefaultFlows(
-            DatapathId dpid, boolean multiTable, boolean switchLldp) throws SwitchOperationException;
+            DatapathId dpid, boolean multiTable, boolean switchLldp, boolean switchArp) throws SwitchOperationException;
 
     /**
      * Returns list of default meters that must be installed on a switch.
@@ -434,10 +510,11 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid switch id.
      * @param multiTable flag
      * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
+     * @param switchArp flag. True means that switch must have rules for catching ARP packets.
      * @return list of default meters.
      */
     List<MeterEntry> getExpectedDefaultMeters(
-            DatapathId dpid, boolean multiTable, boolean switchLldp) throws SwitchOperationException;
+            DatapathId dpid, boolean multiTable, boolean switchLldp, boolean switchArp) throws SwitchOperationException;
 
     /**
      * Returns list of flows that must be installed for multitable pipeline per isl port.
@@ -547,14 +624,17 @@ public interface ISwitchManager extends IFloodlightService {
      * @param islPorts ports with isl default rule
      * @param flowPorts ports with flow default rule
      * @param flowLldpPorts ports with lldp flow default rule
+     * @param flowArpPorts ports with arp flow default rule
      * @param multiTable multiTableMode
      * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
+     * @param switchArp switch Arp enabled. True means that switch has rules for catching ARP packets.
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
-                                  List<Integer> flowPorts, Set<Integer> flowLldpPorts, boolean multiTable,
-                                  boolean switchLldp) throws SwitchOperationException;
+                                  List<Integer> flowPorts, Set<Integer> flowLldpPorts, Set<Integer> flowArpPorts,
+                                  boolean multiTable, boolean switchLldp, boolean switchArp)
+            throws SwitchOperationException;
 
     /**
      * Delete rules that match the criteria.

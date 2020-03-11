@@ -38,42 +38,20 @@ import java.util.Optional;
  */
 public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> implements FlowMeterRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";
-    static final String METER_ID_PROPERTY_NAME = "meter_id";
-    static final String FLOW_ID_PROPERTY_NAME = "flow_id";
-    static final String SWITCH_PROPERTY_NAME = "switch_id";
 
     public Neo4jFlowMeterRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
     }
 
     @Override
-    public Optional<FlowMeter> findLldpMeterByMeterIdSwitchIdAndFlowId(
-            MeterId meterId, SwitchId switchId, String flowId) {
-        Filter meterIdFilter = new Filter(METER_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, meterId);
-        Filter switchIdFilter = new Filter(SWITCH_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
-        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
-
-        Collection<FlowMeter> meters = loadAll(meterIdFilter.and(flowIdFilter).and(switchIdFilter));
-
-        if (meters.size() > 1) {
-            throw new PersistenceException(
-                    format("Found more that 1 LLDP Meter entities by meter id '%s', switch id '%s' and flow id '%s'",
-                            meterId, switchId, flowId));
-        }
-
-        return  meters.isEmpty() ? Optional.empty() : Optional.of(meters.iterator().next());
-    }
-
-    @Override
-    public Collection<FlowMeter> findByPathId(PathId pathId) {
+    public Optional<FlowMeter> findByPathId(PathId pathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
 
         Collection<FlowMeter> meters = loadAll(pathIdFilter);
-        if (meters.size() > 2) {
-            throw new PersistenceException(format("Found more that 2 Meter entity by path (%s). "
-                    + " One path must have up to 2 meters: ingress meter and LLDP meter.", pathId));
+        if (meters.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 Meter entity by path (%s)", pathId));
         }
-        return meters;
+        return meters.isEmpty() ? Optional.empty() : Optional.of(meters.iterator().next());
     }
 
     @Override

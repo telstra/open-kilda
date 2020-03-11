@@ -48,6 +48,7 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 
 abstract class IngressFlowModFactoryTest extends EasyMockSupport {
@@ -111,7 +112,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
 
     // --- verify methods
 
-    protected void verifyGoToTableInstruction(OFFlowMod message, TableId tableId) {
+    protected void verifyGoToTableInstruction(Optional<TableId> expected, OFFlowMod message) {
         OFInstructionGotoTable match = null;
         for (OFInstruction instruction : message.getInstructions()) {
             if (instruction instanceof OFInstructionGotoTable) {
@@ -120,8 +121,12 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
             }
         }
 
-        Assert.assertNotNull(match);
-        Assert.assertEquals(tableId, match.getTableId());
+        if (expected.isPresent()) {
+            Assert.assertNotNull(match);
+            Assert.assertEquals(expected.get(), match.getTableId());
+        } else {
+            Assert.assertNull(match);
+        }
     }
 
     protected void verifyOfMessageEquals(OFMessage expected, OFMessage actual) {

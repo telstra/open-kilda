@@ -31,14 +31,14 @@ public class ListSwitchResponse extends InfoData {
     @JsonProperty("switch_ids")
     private List<SwitchId> switchIds;
 
-    @JsonProperty("controller_id")
-    private String controllerId;
+    @JsonProperty("region")
+    private String region;
 
     @JsonCreator
     public ListSwitchResponse(
             @JsonProperty("switch_ids") List<SwitchId> switchIds,
-            @JsonProperty("controller_id") String controllerId) {
+            @JsonProperty("region") String region) {
         this.switchIds = switchIds;
-        this.controllerId = controllerId;
+        this.region = region;
     }
 }

@@ -593,7 +593,7 @@ misconfigured"
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
-                        switchPair.dst.dpId, false, false)).toJson()))
+                        switchPair.dst.dpId, false, false, false)).toJson()))
         producer.flush()
 
         then: "Switch validation shows excess rules and store them in the 'excess' section"

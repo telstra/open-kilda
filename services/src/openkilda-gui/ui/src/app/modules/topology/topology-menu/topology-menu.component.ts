@@ -32,8 +32,8 @@ declare var jQuery: any;
           transition: "all 0.4s ease-in-out"
         })
       ),
-      transition("show=>hide", animate("300ms")),
-      transition("hide=>show", animate("300ms"))
+      transition("show=>hide", animate("30ms")),
+      transition("hide=>show", animate("30ms"))
     ])
   ]
 })

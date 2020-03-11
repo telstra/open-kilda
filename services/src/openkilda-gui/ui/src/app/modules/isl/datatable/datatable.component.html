@@ -59,6 +59,10 @@
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedAvailableBandwidth')"></i>
         <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedAvailableBandwidth" [hidden]="!expandedAvailableBandwidth"/>
       </th>
+      <th ><span title="BFD">BFD</span>
+        <i class="fa fa-search" (click)="toggleSearch($event,'expandedBfd')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedBfd" [hidden]="!expandedBfd"/>
+      </th>
       <th ><span title="Latency">Latency</span>
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedLatency')"></i>
         <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedLatency" [hidden]="!expandedLatency"/>
@@ -114,6 +118,9 @@
      
       <td class="divTableCell" title="{{ checkValueInt(listItem.available_bandwidth) }}" (click)="showIslDetail(listItem)">
         {{checkValueInt(listItem.available_bandwidth)}}
+      </td>
+      <td class="divTableCell" title="{{ checkValue(listItem.enable_bfd) }}" (click)="showIslDetail(listItem)">
+        {{checkValue(listItem.enable_bfd)}}
       </td>
       <td class="divTableCell" title="{{ checkValue(listItem.latency) }}" (click)="showIslDetail(listItem)">
         {{checkValue(listItem.latency)}}

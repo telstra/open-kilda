@@ -152,12 +152,12 @@ public class FlowCommandFactory {
      * @return list of commands
      */
     public RemoveFlow createRemoveIngressRulesForFlow(
-            FlowPath flowPath, boolean cleanUpIngress, boolean cleanUpIngressLldp) {
+            FlowPath flowPath, boolean cleanUpIngress, boolean cleanUpIngressLldp, boolean cleanUpIngressArp) {
         Flow flow = flowPath.getFlow();
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return buildRemoveIngressFlow(flow, flowPath, null,
-                    flow.isSrcWithMultiTable(), cleanUpIngress, cleanUpIngressLldp);
+                    flow.isSrcWithMultiTable(), cleanUpIngress, cleanUpIngressLldp, cleanUpIngressArp);
         }
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
@@ -169,7 +169,7 @@ public class FlowCommandFactory {
         }
 
         return buildRemoveIngressFlow(flow, flowPath, ingressSegment.getSrcPort(),
-                ingressSegment.isSrcWithMultiTable(), cleanUpIngress, cleanUpIngressLldp);
+                ingressSegment.isSrcWithMultiTable(), cleanUpIngress, cleanUpIngressLldp, cleanUpIngressArp);
     }
 
     /**
@@ -298,6 +298,7 @@ public class FlowCommandFactory {
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
         int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
         boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
+        boolean enableArp = needToInstallOrRemoveArpFlow(flowPath);
 
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
 
@@ -305,11 +306,12 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inPort,
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, egressSwitchId, multiTable, enableLldp);
+                flow.getBandwidth(), meterId, egressSwitchId, multiTable, enableLldp, enableArp);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo, boolean multiTable,
-                                              boolean cleanUpIngress, boolean cleanUpIngressLldp) {
+                                              boolean cleanUpIngress, boolean cleanUpIngressLldp,
+                                              boolean cleanUpIngressArp) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
@@ -331,6 +333,7 @@ public class FlowCommandFactory {
                 .ruleType(RuleType.INGRESS)
                 .cleanUpIngress(cleanUpIngress)
                 .cleanUpIngressLldp(cleanUpIngressLldp)
+                .cleanUpIngressArp(cleanUpIngressArp)
                 .build();
     }
 
@@ -340,6 +343,14 @@ public class FlowCommandFactory {
         DetectConnectedDevices detect = flow.getDetectConnectedDevices();
         return  (isForward && (detect.isSrcLldp() || detect.isSrcSwitchLldp()))
                 || (!isForward && (detect.isDstLldp() || detect.isDstSwitchLldp()));
+    }
+
+    private boolean needToInstallOrRemoveArpFlow(FlowPath path) {
+        Flow flow = path.getFlow();
+        boolean isForward = flow.isForward(path);
+        DetectConnectedDevices detect = flow.getDetectConnectedDevices();
+        return  (isForward && (detect.isSrcArp() || detect.isSrcSwitchArp()))
+                || (!isForward && (detect.isDstArp() || detect.isDstSwitchArp()));
     }
 
     /**
@@ -357,13 +368,14 @@ public class FlowCommandFactory {
         int outPort = isForward ? flow.getDestPort() : flow.getSrcPort();
         int outVlan = isForward ? flow.getDestVlan() : flow.getSrcVlan();
         boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
+        boolean enableArp = needToInstallOrRemoveArpFlow(flowPath);
         boolean multiTable = flow.isSrcWithMultiTable();
 
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
                 flow.getFlowId(), flowPath.getCookie().getValue(), switchId, inPort,
                 outPort, inVlan, outVlan,
-                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp);
+                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp, enableArp);
     }
 
     private OutputVlanType getOutputVlanType(Flow flow, FlowPath flowPath) {

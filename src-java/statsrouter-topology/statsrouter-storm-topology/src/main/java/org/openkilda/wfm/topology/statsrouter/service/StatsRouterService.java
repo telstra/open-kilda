@@ -88,9 +88,9 @@ public final class StatsRouterService {
             ListSwitchResponse response = (ListSwitchResponse) data;
             ConnectedInfo connectedInfo = new ConnectedInfo(
                     response.getSwitchIds(),
-                    response.getControllerId(),
+                    response.getRegion(),
                     LocalDateTime.now(clock));
-            connectedToStats.put(connectedInfo.controllerId, connectedInfo);
+            connectedToStats.put(connectedInfo.region, connectedInfo);
         } else {
             log.warn("Unknown message data {}", data);
         }
@@ -105,7 +105,7 @@ public final class StatsRouterService {
         LocalDateTime threshold = LocalDateTime.now(clock).minus(timeout, ChronoUnit.SECONDS);
         connectedToStats.values().stream()
                 .filter(info -> info.time.isBefore(threshold))
-                .map(info -> info.controllerId)
+                .map(info -> info.region)
                 .collect(Collectors.toList())
                 .forEach(connectedToStats::remove);
         Message requestConnected =
@@ -117,12 +117,12 @@ public final class StatsRouterService {
 
     private final class ConnectedInfo {
         public final List<SwitchId> switchIds;
-        public final String controllerId;
+        public final String region;
         public final LocalDateTime time;
 
-        private ConnectedInfo(List<SwitchId> switchIds, String controllerId, LocalDateTime time) {
+        private ConnectedInfo(List<SwitchId> switchIds, String region, LocalDateTime time) {
             this.switchIds = switchIds;
-            this.controllerId = controllerId;
+            this.region = region;
             this.time = time;
         }
     }

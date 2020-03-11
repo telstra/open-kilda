@@ -149,15 +149,13 @@ class MetersSpec extends HealthCheckSpecification {
         // now burstSize is equal to 4096, rate == 200
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
-        assert meters.meterEntries.size() == 3
-        assert meters.meterEntries.every(defaultMeters)
-        meters.meterEntries.each { assert it.rate == DISCO_PKT_RATE }
-        meters.meterEntries.each { assert it.burstSize == switchHelper.getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
+        meters.meterEntries*.meterId.sort() == sw.defaultMeters.sort()
+        meters.meterEntries.each { assert it.burstSize == switchHelper.getExpectedBurst(sw.dpId, it.rate) }
         meters.meterEntries.each { assert ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
         meters.meterEntries.each { assert it.flags.size() == 3 }
 
         where:
-        sw << (getNoviflowSwitches().unique { it.description }
+        sw << (getNoviflowSwitches().unique { it.nbFormat().hardware + it.nbFormat().software }
                 ?: assumeTrue("Unable to find Noviflow switch in topology", false))
     }
 

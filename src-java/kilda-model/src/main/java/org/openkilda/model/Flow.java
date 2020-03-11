@@ -166,8 +166,7 @@ public class Flow implements Serializable {
     private boolean pinned;
 
     @Convert(DetectConnectedDevicesConverter.class)
-    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices(
-            false, false, false, false, false, false);
+    private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
 
     @Property(name = "src_with_multi_table")
     private boolean srcWithMultiTable;
@@ -514,7 +513,7 @@ public class Flow implements Serializable {
      */
     public void setDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices) {
         if (detectConnectedDevices == null) {
-            this.detectConnectedDevices = new DetectConnectedDevices(false, false, false, false, false, false);
+            this.detectConnectedDevices = new DetectConnectedDevices();
         } else {
             this.detectConnectedDevices = detectConnectedDevices;
         }

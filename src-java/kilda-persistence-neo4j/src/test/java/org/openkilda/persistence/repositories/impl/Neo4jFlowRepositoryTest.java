@@ -38,6 +38,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -55,6 +56,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow_1";
     static final String TEST_FLOW_ID_2 = "test_flow_2";
     static final String TEST_FLOW_ID_3 = "test_flow_3";
+    static final String TEST_FLOW_ID_4 = "test_flow_4";
     static final String TEST_GROUP_ID = "test_group";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
@@ -208,6 +210,33 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowByEndpointSwitchWithEnabledArp() {
+        createFlowWithArp(TEST_FLOW_ID, switchA, false, switchB, false);
+        createFlowWithArp(TEST_FLOW_ID_2, switchA, true, switchB, false);
+        createFlowWithArp(TEST_FLOW_ID_3, switchB, false, switchA, true);
+        createFlowWithArp(TEST_FLOW_ID_4, switchA, true, switchA, true);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledArp(TEST_SWITCH_A_ID);
+        Set<String> foundFlowIds = foundFlows.stream()
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+
+        assertEquals(Sets.newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
+    }
+
+    @Test
+    public void shouldFindOneFlowByEndpointSwitchWithEnabledArp() {
+        // one switch flow with ARP on src and dst
+        createFlowWithArp(TEST_FLOW_ID, switchA, true, switchA, true);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledArp(TEST_SWITCH_A_ID);
+
+        // only one Flow object must be returned
+        assertEquals(1, foundFlows.size());
+        assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
+    }
+
+    @Test
     public void shouldFindFlowByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);
@@ -299,6 +328,33 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithMultiTableSupport(TEST_SWITCH_A_ID);
         Set<String> foundFlowIds = foundFlows.stream().map(Flow::getFlowId).collect(Collectors.toSet());
         assertEquals(Collections.singleton(firstFlow.getFlowId()), foundFlowIds);
+    }
+
+    @Test
+    public void shouldFindFlowByEndpointSwitchWithEnabledLldp() {
+        createFlowWithLldp(TEST_FLOW_ID, switchA, false, switchB, false);
+        createFlowWithLldp(TEST_FLOW_ID_2, switchA, true, switchB, false);
+        createFlowWithLldp(TEST_FLOW_ID_3, switchB, false, switchA, true);
+        createFlowWithLldp(TEST_FLOW_ID_4, switchA, true, switchA, true);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledLldp(TEST_SWITCH_A_ID);
+        Set<String> foundFlowIds = foundFlows.stream()
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+
+        assertEquals(Sets.newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
+    }
+
+    @Test
+    public void shouldFindOneFlowByEndpointSwitchWithEnabledLldp() {
+        // one switch flow with LLDP on src and dst
+        createFlowWithLldp(TEST_FLOW_ID, switchA, true, switchA, true);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledLldp(TEST_SWITCH_A_ID);
+
+        // only one Flow object must be returned
+        assertEquals(1, foundFlows.size());
+        assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
     }
 
     @Test
@@ -459,5 +515,21 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
 
         return flow;
+    }
+
+    private void createFlowWithLldp(
+            String flowId, Switch srcSwitch, boolean srcLldp, Switch dstSwitch, boolean dstLldp) {
+        Flow flow = buildTestFlow(flowId, srcSwitch, dstSwitch);
+        flow.getDetectConnectedDevices().setSrcLldp(srcLldp);
+        flow.getDetectConnectedDevices().setDstLldp(dstLldp);
+        flowRepository.createOrUpdate(flow);
+    }
+
+    private void createFlowWithArp(
+            String flowId, Switch srcSwitch, boolean srcArp, Switch dstSwitch, boolean dstArp) {
+        Flow flow = buildTestFlow(flowId, srcSwitch, dstSwitch);
+        flow.getDetectConnectedDevices().setSrcArp(srcArp);
+        flow.getDetectConnectedDevices().setDstArp(dstArp);
+        flowRepository.createOrUpdate(flow);
     }
 }

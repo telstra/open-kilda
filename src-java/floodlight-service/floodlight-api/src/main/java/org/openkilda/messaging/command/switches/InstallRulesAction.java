@@ -73,6 +73,24 @@ public enum InstallRulesAction {
     // Install Transit table LLDP rule
     INSTALL_LLDP_TRANSIT,
 
+    // Install Input table ARP pre drop rule
+    INSTALL_ARP_INPUT_PRE_DROP,
+
+    // Install Ingress Table ARP rule
+    INSTALL_ARP_INGRESS,
+
+    // Install Post Ingress Table ARP rule
+    INSTALL_ARP_POST_INGRESS,
+
+    // Install Post Ingress Table ARP vxlan rule
+    INSTALL_ARP_POST_INGRESS_VXLAN,
+
+    // Install Post Ingress Table ARP one switch rule
+    INSTALL_ARP_POST_INGRESS_ONE_SWITCH,
+
+    // Install Transit table ARP rule
+    INSTALL_ARP_TRANSIT,
+
     // Install all default rules (ie a combination of the above)
     INSTALL_DEFAULTS;
 }

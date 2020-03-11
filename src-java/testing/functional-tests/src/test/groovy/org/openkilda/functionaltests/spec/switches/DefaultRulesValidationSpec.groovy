@@ -5,6 +5,10 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.model.SwitchFeature
+import org.openkilda.testing.Constants
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -24,13 +28,23 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
     @Tidy
     @Unroll
     @Tags(SMOKE)
-    def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name)"() {
-        given: "Clean switch without customer flows"
+    def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name #propsDescr)"(
+            Map swProps, Switch sw, String propsDescr) {
+        given: "Clean switch without customer flows and with the given switchProps"
+        def originalProps = northbound.getSwitchProperties(sw.dpId)
+        northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap({
+            it.multiTable = swProps.multiTable
+            it.switchLldp = swProps.switchLldp
+            it.switchArp = swProps.switchArp
+        }))
+
         expect: "Switch validation shows all expected default rules in 'proper' section"
-        verifyAll(northbound.validateSwitchRules(sw.dpId)) {
-            missingRules.empty
-            excessRules.empty
-            properRules.sort() == sw.defaultCookies.sort()
+        Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
+            verifyAll(northbound.validateSwitchRules(sw.dpId)) {
+                missingRules.empty
+                excessRules.empty
+                properRules.sort() == sw.defaultCookies.sort()
+            }
         }
 
         and: "Rule validation shows all expected default rules in 'proper' section"
@@ -41,7 +55,50 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
             rules.proper.sort() == sw.defaultCookies.sort()
         }
 
-        where: "Run for all unique switches"
-        sw << getTopology().getActiveSwitches().unique { activeSw -> activeSw.description }
+        cleanup: "Restore original switch props"
+        switchHelper.updateSwitchProperties(sw, originalProps)
+
+        where: "Run for all combinations of unique switches and switch modes"
+        [swProps, sw] <<
+                [[
+                    [
+                        multiTable: false,
+                        switchLldp: false,
+                        switchArp: false
+                    ],
+
+                    [
+                        multiTable: true,
+                        switchLldp: false,
+                        switchArp: false
+                    ],
+                    [
+                        multiTable: true,
+                        switchLldp: true,
+                        switchArp: true
+                    ]
+                ], getTopology().getActiveSwitches().unique { activeSw -> activeSw.description }
+                ].combinations().findAll { Map swProp, Switch _sw ->
+                    //filter out combinations where we pick non-multitable switch and do multitable switch props
+                    !(swProp.multiTable && !_sw.features.contains(SwitchFeature.MULTI_TABLE))
+                }
+        propsDescr = getDescr(swProps.multiTable, swProps.switchLldp, swProps.switchArp)
+    }
+
+    String getDescr(boolean multitable, boolean lldp, boolean arp) {
+        String r = ""
+        if (multitable) {
+            r += "multi-table"
+        } else {
+            r += "single-table"
+        }
+        if (lldp && arp) {
+            r += " with lldp and arp"
+        } else if (lldp) {
+            r += " with lldp"
+        } else if (arp) {
+            r += " with arp"
+        }
+        return r
     }
 }
