@@ -1,5 +1,63 @@
 # Changelog
 
+## v1.51.0 (11/03/2020)
+
+### Features:
+-  [#3203](https://github.com/telstra/open-kilda/pull/3203) ARP Part 6: Added shared rule (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) 
+-  [#3142](https://github.com/telstra/open-kilda/pull/3142) ARP Part 4: Added ARP support into Floodlight (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) [**floodlight**]
+-  [#3143](https://github.com/telstra/open-kilda/pull/3143) Enhancement/topology maintenance isl (Issue: [#3136](https://github.com/telstra/open-kilda/issues/3136)) [**gui**]
+-  [#3144](https://github.com/telstra/open-kilda/pull/3144) ARP Part 5: Connected devices topology (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) [**floodlight**]
+-  [#3217](https://github.com/telstra/open-kilda/pull/3217) Added ARP support to traff gens [**tests**]
+-  [#3226](https://github.com/telstra/open-kilda/pull/3226) Add func tests for ARP connected devices [**tests**]
+-  [#3177](https://github.com/telstra/open-kilda/pull/3177) Updated SwitchConnectedDevice db model 
+-  [#3119](https://github.com/telstra/open-kilda/pull/3119) ARP Part 1: Add ARP connected devices models (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) [**floodlight**][**northbound**]
+-  [#3124](https://github.com/telstra/open-kilda/pull/3124) ARP Part 2: Update Switch Properties (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) [**storm-topologies**]
+-  [#3187](https://github.com/telstra/open-kilda/pull/3187) Feature to add and update isl BFD flag (Issues: [#2883](https://github.com/telstra/open-kilda/issues/2883) [#2884](https://github.com/telstra/open-kilda/issues/2884)) [**gui**]
+-  [#3188](https://github.com/telstra/open-kilda/pull/3188) Add flow reroute retry design [**docs**]
+-  [#3129](https://github.com/telstra/open-kilda/pull/3129) Added LLDP shared rule V2 removing and installation (Issue: [#3056](https://github.com/telstra/open-kilda/issues/3056)) 
+-  [#3134](https://github.com/telstra/open-kilda/pull/3134) ARP Part 3: Switch rules (Issue: [#3118](https://github.com/telstra/open-kilda/issues/3118)) [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3272](https://github.com/telstra/open-kilda/pull/3272) Do not install ARP rules on WB switches [**floodlight**]
+-  [#3209](https://github.com/telstra/open-kilda/pull/3209) Fix flow endpoints update via APIv2. (Issue: [#3049](https://github.com/telstra/open-kilda/issues/3049)) 
+-  [#3016](https://github.com/telstra/open-kilda/pull/3016) Fix error message when switch not found (Issue: [#2906](https://github.com/telstra/open-kilda/issues/2906)) [**storm-topologies**]
+-  [#3274](https://github.com/telstra/open-kilda/pull/3274) Added default value for detect connected devices in V2 API [**northbound**]
+-  [#3224](https://github.com/telstra/open-kilda/pull/3224) Fixed display of `diverse_with` field in response via APIv2. (Issue: [#2701](https://github.com/telstra/open-kilda/issues/2701)) 
+-  [#3243](https://github.com/telstra/open-kilda/pull/3243) Fix incorrect switch validation log message [**storm-topologies**]
+-  [#3248](https://github.com/telstra/open-kilda/pull/3248) Fix data points duplicates for switch statistics (Issue: [#2801](https://github.com/telstra/open-kilda/issues/2801)) [**floodlight**]
+-  [#3183](https://github.com/telstra/open-kilda/pull/3183) Issue 2885: Fixed getting Flows by Endpoint (Issue: [#2885](https://github.com/telstra/open-kilda/issues/2885)) [**storm-topologies**]
+-  [#3259](https://github.com/telstra/open-kilda/pull/3259) Fixed creating/updating flow using the `max_latency` strategy. (Issue: [#3254](https://github.com/telstra/open-kilda/issues/3254)) [**storm-topologies**]
+
+### Improvements:
+-  [#3267](https://github.com/telstra/open-kilda/pull/3267) Fix MetersSpec to properly expect default meters in multitable mode [**tests**]
+-  [#3141](https://github.com/telstra/open-kilda/pull/3141) LLDP cleanup: Remove unused methods, renamed SwitchLldpInfoData [**floodlight**][**storm-topologies**]
+-  [#3082](https://github.com/telstra/open-kilda/pull/3082) Forbid to turn off multiTable property if there are flows with LLDP enabled [**storm-topologies**]
+-  [#3041](https://github.com/telstra/open-kilda/pull/3041) Removed constraints and indexes for old flow connected devices model 
+-  [#3235](https://github.com/telstra/open-kilda/pull/3235) Make FlowThrottlingBolt stateless for storm. [**storm-topologies**]
+-  [#2665](https://github.com/telstra/open-kilda/pull/2665) Use multi-region floodlight for local build. Update lock-keeper to use iptables [**tests**]
+-  [#3250](https://github.com/telstra/open-kilda/pull/3250) improve SwitchValidationSpec(wait for meter) [**tests**]
+-  [#3251](https://github.com/telstra/open-kilda/pull/3251) Make packet loss test hw-only again [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.50.0...v1.51.0).
+
+### Affected Components:
+nb, connected, fl, stats-router, flow-hs, swmanager, reroute, flow, neo4j, nbworker
+
+### Upgrade notes:
+
+Consider using the following migration scripts to update db:
+
+- [1.21 migration-script](https://github.com/telstra/open-kilda/blob/v1.51.0/services/neo4j/migrations/1.21-remove-flow-connected-devices/1-remove-flow-connected-devices-index-and-constraint.xml)
+- [1.22 migration-script](https://github.com/telstra/open-kilda/blob/v1.51.0/services/neo4j/migrations/1.22-switch-connected-devices-arp-indexes/1-add-switch-connected-devices-arp-index.xml)
+
+In case of issues these rollback scripts should be executed:
+
+- [1.22 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.51.0/services/neo4j/migrations/1.22-switch-connected-devices-arp-indexes/rollback.cql)
+- [1.21 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.51.0/services/neo4j/migrations/1.21-remove-flow-connected-devices/rollback.cql)
+
+---
+
 ## v1.50.0 (04/03/2020)
 
 ### Features:
