@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
@@ -376,6 +377,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def switchPair1 = topologyHelper.getAllNeighboringSwitchPairs().find {
             it.paths.findAll { it.size() == 2 }.size() > 1
         } ?: assumeTrue("No suiting switches found for the first flow", false)
+        // disable auto-reroute on islDiscovery event
+        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(false).build())
 
         and: "Second switch pair where the srс switch from the first switch pair is a transit switch"
         List<PathNode> secondFlowPath
@@ -476,11 +479,17 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         and: "Flow is rerouted due to switchUp event"
-        //TODO(andriidovhan) specify flow history verification(it is not implemented yet) Reroute reason: switchUp event
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 2
-
-            assert northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 5
+            def firstFlowHistory = northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == "Flow rerouting" }
+            assert firstFlowHistory.size() == 2
+            assert firstFlowHistory.find {
+                it.details == "Reason: initiated by Reroute topology: Switch '$switchPair1.src.dpId' online"
+            }
+            def secondFlowHistory = northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == "Flow rerouting" }
+            assert secondFlowHistory.findAll { it.action == "Flow rerouting" }.size() == 5
+            assert secondFlowHistory.find {
+                it.details == "Reason: initiated by Reroute topology: Switch '$switchPair1.src.dpId' online"
+            }
             /* 2 = first reroute due to the broken isl + 1 reroute on switch up event;
              5 = first reroute due to the broken isl + 3 retries + 1 reroute on switch up event;
              NOTE: retry is available for a flow when switchUp event appears on a transit switch */
@@ -489,7 +498,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup: "Restore topology, delete the flow and reset costs"
         firstFlow && flowHelperV2.deleteFlow(firstFlow.flowId)
         secondFlow && flowHelperV2.deleteFlow(secondFlow.flowId)
-        !isSwitchActivated && blockData && lockKeeper.reviveSwitch(switchPair1.src, blockData)
+        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())
+        !isSwitchActivated && lockKeeper.reviveSwitch(switchPair1.src)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.ACTIVATED
         }
