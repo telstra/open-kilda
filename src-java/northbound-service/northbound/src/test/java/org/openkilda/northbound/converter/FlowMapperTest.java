@@ -16,6 +16,8 @@
 package org.openkilda.northbound.converter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
@@ -80,6 +82,26 @@ public class FlowMapperTest {
         assertEquals(SRC_DETECT_CONNECTED_DEVICES.isArp(), flowRequest.getDetectConnectedDevices().isSrcArp());
         assertEquals(DST_DETECT_CONNECTED_DEVICES.isLldp(), flowRequest.getDetectConnectedDevices().isDstLldp());
         assertEquals(DST_DETECT_CONNECTED_DEVICES.isArp(), flowRequest.getDetectConnectedDevices().isDstArp());
+    }
+
+    @Test
+    public void testFlowEndpointV2WithoutConnectedDevicesBuilder() {
+        FlowEndpointV2 flowEndpointV2 = FlowEndpointV2.builder()
+                .switchId(SRC_SWITCH_ID)
+                .portNumber(SRC_PORT)
+                .vlanId(SRC_VLAN)
+                .build();
+        assertNotNull(flowEndpointV2.getDetectConnectedDevices());
+        assertFalse(flowEndpointV2.getDetectConnectedDevices().isArp());
+        assertFalse(flowEndpointV2.getDetectConnectedDevices().isLldp());
+    }
+
+    @Test
+    public void testFlowEndpointV2WithoutConnectedDevices2Constructor() {
+        FlowEndpointV2 flowEndpointV2 = new FlowEndpointV2(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, null);
+        assertNotNull(flowEndpointV2.getDetectConnectedDevices());
+        assertFalse(flowEndpointV2.getDetectConnectedDevices().isArp());
+        assertFalse(flowEndpointV2.getDetectConnectedDevices().isLldp());
     }
 
     @Test(expected = IllegalArgumentException.class)
