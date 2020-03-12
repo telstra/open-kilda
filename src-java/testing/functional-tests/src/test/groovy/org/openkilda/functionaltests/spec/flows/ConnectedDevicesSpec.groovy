@@ -12,8 +12,6 @@ import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -38,7 +36,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ArpData
@@ -50,7 +47,6 @@ import groovy.transform.AutoClone
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -68,9 +64,6 @@ Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 class ConnectedDevicesSpec extends HealthCheckSpecification {
 
-    @Value('${use.multitable}')
-    boolean useMultiTable
-
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
@@ -81,6 +74,9 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
             @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     ])
     def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr"() {
+        assumeTrue("Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199",
+                data.encapsulation != FlowEncapsulationType.VXLAN)
+
         given: "A flow with enabled or disabled connected devices"
         def tgService = traffExamProvider.get()
         def flow = getFlowWithConnectedDevices(data)
@@ -91,7 +87,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def initialDstProps = enableMultiTableIfNeeded(data.dstEnabled, data.switchPair.dst.dpId)
 
         when: "Create a flow with connected devices"
-        with(flowHelper.addFlow(flow)) {
+        verifyAll(flowHelper.addFlow(flow)) {
             source.detectConnectedDevices.lldp == flow.source.detectConnectedDevices.lldp
             source.detectConnectedDevices.arp == flow.source.detectConnectedDevices.arp
             destination.detectConnectedDevices.lldp == flow.destination.detectConnectedDevices.lldp
@@ -123,7 +119,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
         then: "Getting connecting devices shows corresponding devices on each endpoint if enabled"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            with(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (data.srcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (data.dstEnabled ? 1 : 0)
                 it.source.arp.size() == (data.srcEnabled ? 1 : 0)
@@ -145,15 +141,9 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore initial switch properties"
-        restoreSwitchProperties(data.switchPair.src.dpId, initialSrcProps)
-        restoreSwitchProperties(data.switchPair.dst.dpId, initialDstProps)
-        [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(data.switchPair.src.dpId)
-            cleanupLldpMeters(data.switchPair.dst.dpId)
-        }
+        initialSrcProps && restoreSwitchProperties(data.switchPair.src.dpId, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(data.switchPair.dst.dpId, initialDstProps)
+        srcLldpData && [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
 
         where:
         data <<
@@ -242,7 +232,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Getting connecting devices shows corresponding devices on each endpoint according to updated status"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            with(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (newSrcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (newDstEnabled ? 1 : 0)
                 it.source.arp.size() == (newSrcEnabled ? 1 : 0)
@@ -261,12 +251,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.switchDpId)
-            cleanupLldpMeters(flow.destination.switchDpId)
-        }
 
         where:
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
@@ -325,11 +309,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Restore initial switch properties"
         restoreSwitchProperties(sw.dpId, initialProps)
         database.removeConnectedDevices(sw.dpId)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     @Unroll
@@ -372,7 +351,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Getting connecting devices shows corresponding devices on each endpoint"
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
-            with(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == (srcEnabled ? 1 : 0)
                 it.destination.lldp.size() == (dstEnabled ? 1 : 0)
                 it.source.arp.size() == (srcEnabled ? 1 : 0)
@@ -391,12 +370,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.switchDpId)
-            cleanupLldpMeters(flow.destination.switchDpId)
-        }
 
         where:
         [srcEnabled, dstEnabled] << [
@@ -448,11 +421,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.datapath)
-        }
     }
 
     @Tidy
@@ -498,11 +466,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.datapath)
-        }
     }
 
     @Tidy
@@ -556,11 +519,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.destination.datapath)
-        }
     }
 
     @Tidy
@@ -615,11 +573,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.destination.datapath)
-        }
     }
 
     @Tidy
@@ -660,7 +613,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "LLDP and ARP devices are registered as flow devices"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == 1
                 verifyEquals(it.source.lldp.first(), lldpData)
                 it.source.arp.size() == 1
@@ -669,7 +622,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered per-switch"
-        with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+        verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
             it.size() == 1
             it[0].portNumber == tg.switchPort
             it[0].lldp.first().vlan == flow.source.vlanId
@@ -687,11 +640,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Restore initial switch properties"
         restoreSwitchProperties(sw.dpId, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     @Tidy
@@ -723,7 +671,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "ARP and LLDP devices are registered per-switch"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.first().vlan == flow.source.vlanId
@@ -736,7 +684,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         then: "Devices are registered as flow devices"
-        with(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
             it.source.lldp.size() == 1
             it.source.arp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData)
@@ -747,11 +695,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         northbound.deleteFlow(flow.id)
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     def "Able to detect devices on free switch port (no flow or isl)"() {
@@ -776,24 +719,19 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Corresponding devices are detected on a switch port"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
-                it.size() == 1
-                it[0].portNumber == tg.switchPort
-                it[0].lldp.first().vlan == vlan
-                verifyEquals(it[0].lldp.first(), lldpData)
-                it[0].arp.first().vlan == vlan
-                verifyEquals(it[0].arp.first(), arpData)
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) { ports ->
+                ports.size() == 1
+                ports[0].portNumber == tg.switchPort
+                ports[0].lldp.first().vlan == vlan
+                verifyEquals(ports[0].lldp.first(), lldpData)
+                ports[0].arp.first().vlan == vlan
+                verifyEquals(ports[0].arp.first(), arpData)
             }
         }
 
         cleanup: "Turn off devices prop, remove connected devices"
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
     }
 
     @Unroll
@@ -833,7 +771,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Corresponding devices are detected on a switch port with reference to corresponding non-default flow"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.first().flowId == flow.id
@@ -846,7 +784,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are also visible as flow devices"
-        with(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
             it.source.lldp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData)
             it.source.arp.size() == 1
@@ -869,7 +807,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Corresponding devices are detected on a switch port with reference to corresponding default flow"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.size() == 2
@@ -885,7 +823,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Devices are not visible as a flow devices"
         //it's a previous devices, nothing changed
-        with(northbound.getFlowConnectedDevices(flow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
             it.source.lldp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData)
             it.source.arp.size() == 1
@@ -893,7 +831,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are visible as a default flow devices"
-        with(northbound.getFlowConnectedDevices(defaultFlow.id)) {
+        verifyAll(northbound.getFlowConnectedDevices(defaultFlow.id)) {
             it.source.lldp.size() == 1
             verifyEquals(it.source.lldp.first(), lldpData2)
             it.source.arp.size() == 1
@@ -905,11 +843,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelper.deleteFlow(defaultFlow.id)
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(sw.dpId)
-        }
 
         where:
         srcDefault | dstDefault
@@ -954,7 +887,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Devices are registered for the flow on src and dst"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northbound.getFlowConnectedDevices(flow.id)) {
+            verifyAll(northbound.getFlowConnectedDevices(flow.id)) {
                 it.source.lldp.size() == 1
                 it.destination.lldp.size() == 1
                 verifyEquals(it.source.lldp.first(), srcLldpData)
@@ -967,7 +900,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered on src switch"
-        with(northboundV2.getConnectedDevices(flow.source.datapath).ports) {
+        verifyAll(northboundV2.getConnectedDevices(flow.source.datapath).ports) {
             it.size() == 1
             it[0].portNumber == srcTg.switchPort
             it[0].lldp.size() == 1
@@ -981,7 +914,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Device are registered on dst switch"
-        with(northboundV2.getConnectedDevices(flow.destination.datapath).ports) {
+        verifyAll(northboundV2.getConnectedDevices(flow.destination.datapath).ports) {
             it.size() == 1
             it[0].portNumber == dstTg.switchPort
             it[0].lldp.size() == 1
@@ -1001,12 +934,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         restoreSwitchProperties(flow.source.datapath, initialSrcProps)
         restoreSwitchProperties(flow.destination.datapath, initialDstProps)
         [flow.source.datapath, flow.destination.datapath].each { database.removeConnectedDevices(it) }
-
-        and: "Cleanup LLDP meters because feature https://github.com/telstra/open-kilda/issues/2969 is not implemented yet"
-        if (!useMultiTable) {
-            cleanupLldpMeters(flow.source.datapath)
-            cleanupLldpMeters(flow.destination.datapath)
-        }
 
         where:
         srcDefault | dstDefault
@@ -1136,26 +1063,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         return initialProps
     }
 
-    private void cleanupLldpMeters(SwitchId switchId) {
-        if (topology.switches.find { it.dpId == switchId }.ofVersion == "OF_12") {
-            return //meters are not supported
-        }
-
-        def lldpCookies = [
-                LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE,
-                LLDP_POST_INGRESS_VXLAN_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE]
-
-        lldpCookies.each {
-            northbound.deleteMeter(switchId, createMeterIdForDefaultRule(it).value)
-        }
-
-        def expectedMeters = [createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).value,
-                              createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).value]
-        Wrappers.wait(Constants.RULES_DELETION_TIME) {
-            assert northbound.getAllMeters(switchId).meterEntries*.meterId.sort() == expectedMeters.sort()
-        }
-    }
-
     private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
         Switch sw = topology.switches.find { it.dpId == switchId }
         switchHelper.updateSwitchProperties(sw, initialProperties)
@@ -1234,37 +1141,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {
         assert northbound.getSwitchRules(switchId).flowEntries.count { !Cookie.isDefaultRule(it.cookie) } == 0
         assert northbound.getAllMeters(switchId).meterEntries.count { !MeterId.isMeterIdOfDefaultRule(it.meterId) } == 0
-    }
-
-    private static int getExpectedNonDefaultMeterCount(Flow flow, boolean source) {
-        int count = 0
-        if (mustHaveLldp(flow, source)) {
-            count += 1
-        }
-        if (flow.oneSwitchFlow && mustHaveLldp(flow, !source)) {
-            count += 1
-        }
-        if (flow.allocateProtectedPath) {
-            count *= 2
-        }
-        if (flow.bandwidth > 0) {
-            count += flow.oneSwitchFlow ? 2 : 1
-        }
-        return count
-    }
-
-    private static int getExpectedLldpRulesCount(Flow flow, boolean source) {
-        int count = 0
-        if (mustHaveLldp(flow, source)) {
-            count += 1
-        }
-        if (flow.oneSwitchFlow && mustHaveLldp(flow, !source)) {
-            count += 1
-        }
-        if (flow.allocateProtectedPath) {
-            count *= 2
-        }
-        return count
     }
 
     private static boolean mustHaveLldp(Flow flow, boolean source) {
