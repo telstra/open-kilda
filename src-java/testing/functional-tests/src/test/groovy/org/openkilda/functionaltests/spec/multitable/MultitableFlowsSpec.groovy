@@ -475,19 +475,28 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2996")
     def "Flow rules are (re)installed according to switch property while rerouting"() {
-        given: "Three active switches"
+        given: "Three active switches, src and dst switches are connected to traffgen"
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
+
+        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.dpId ?:
+                assumeTrue("Should be at least two active traffgens connected to switches",
+                        allTraffgenSwitchIds.size() > 1)
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
-            desiredPath = pair.paths.find { path ->
+            def allPaths = pair.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+            }
+            desiredPath = allPaths.find { path ->
                 involvedSwitches = pathHelper.getInvolvedSwitches(path)
-                involvedSwitches.size() == 3 &&
-                        involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+                //3 switches total. the first switch and the last one are connected to traffgen
+                involvedSwitches.size() == 3 && involvedSwitches[0].dpId in allTraffgenSwitchIds &&
+                        involvedSwitches[-1].dpId in allTraffgenSwitchIds }
+            if (desiredPath) {
+                allPaths.findAll { it.intersect(desiredPath) == [] ? 1 : 0 }.size() > 0
             }
         }
-        assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
+        assumeTrue("Unable to find a switch pair with two diverse paths", switchPair.asBoolean())
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
@@ -545,6 +554,18 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
         }
 
+        and: "The flow allows traffic"
+        def traffExam = traffExamProvider.get()
+        def examFlow = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 8)
+        withPool {
+            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
         when: "Make current path not preferable"
         pathHelper.makePathNotPreferable(desiredPath)
 
@@ -576,6 +597,15 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
+        and: "The flow allows traffic"
+        withPool {
+            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
         when: "Disable protected path on the flow"
         northbound.updateFlow(flow.flowId, northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false })
 
@@ -586,14 +616,12 @@ mode with existing flows and hold flows of different table-mode types"() {
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[2].dpId], false))
 
         and: "Init auto reroute(Fail a flow ISL (bring switch port down))"
-        def flowIsls = pathHelper.getInvolvedIsls(newFlowPath)
+        def flowIsls = pathHelper.getInvolvedIsls(PathHelper.convert(newFlowPath))
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        def newFlowPath2
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-            newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
-            assert newFlowPath2 != newFlowPath
+            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != PathHelper.convert(newFlowPath)
         }
 
         then: "Flow rules on the src and dst switches are recreated according to the new switch properties"
@@ -607,6 +635,15 @@ mode with existing flows and hold flows of different table-mode types"() {
                     rules.find { it.cookie == flowInfo.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
                     rules.find { it.cookie == flowInfo.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
                 }
+            }
+        }
+
+        and: "The flow allows traffic"
+        withPool {
+            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
             }
         }
 
