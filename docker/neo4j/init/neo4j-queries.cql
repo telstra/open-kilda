@@ -44,3 +44,7 @@ CREATE INDEX ON :`switch_connected_device` (`type`);
 CREATE INDEX ON :`switch_connected_device` (`chassis_id`);
 CREATE INDEX ON :`switch_connected_device` (`port_id`);
 CREATE INDEX ON :`switch_connected_device` (`ip_address`);
+CREATE INDEX ON :`flow_event` (`flow_id`);
+CREATE INDEX ON :`flow_history` (`task_id`);
+CREATE INDEX ON :`flow_dump` (`flow_id`);
+CREATE INDEX ON :`flow_dump` (`task_id`);
