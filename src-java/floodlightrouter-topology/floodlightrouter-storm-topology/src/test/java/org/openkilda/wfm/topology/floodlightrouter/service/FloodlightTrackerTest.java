@@ -54,7 +54,7 @@ public class FloodlightTrackerTest {
     private final AliveSetup aliveSetup = new AliveSetup(testClock, DEFAULT_ALIVE_TIMEOUT, DEFAULT_RESPONSE_TIMEOUT);
     private Set<String> regions = Collections.asSet(REGION_ONE, REGION_TWO);
     private final FloodlightTracker service = new FloodlightTracker(
-            regions, aliveSetup, Duration.ofSeconds(DEFAULT_ALIVE_TIMEOUT));
+            regions, aliveSetup);
 
 
     @Mock
@@ -85,8 +85,7 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testAliveExpiration() {
-        FloodlightTracker floodlightTracker = new FloodlightTracker(regions, aliveSetup,
-                                                                    Duration.ofSeconds(DEFAULT_ALIVE_TIMEOUT));
+        FloodlightTracker floodlightTracker = new FloodlightTracker(regions, aliveSetup);
 
         floodlightTracker.updateSwitchRegion(SWITCH_R1_ONE, REGION_ONE);
         floodlightTracker.updateSwitchRegion(SWITCH_R2_ONE, REGION_TWO);

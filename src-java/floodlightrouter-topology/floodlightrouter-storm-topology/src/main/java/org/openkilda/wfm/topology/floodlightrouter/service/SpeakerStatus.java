@@ -18,22 +18,16 @@ package org.openkilda.wfm.topology.floodlightrouter.service;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
-
 @Slf4j
 @Data
 public class SpeakerStatus {
     private final String region;
-    private final Duration remoteOffsetInfo;
-    private final Duration remoteOffsetWarn;
 
     private AliveMarker aliveMarker;
     private boolean active = true;
 
-    public SpeakerStatus(String region, Duration aliveTimeout, AliveMarker aliveMarker) {
+    public SpeakerStatus(String region, AliveMarker aliveMarker) {
         this.region = region;
-        this.remoteOffsetWarn = aliveTimeout;
-        this.remoteOffsetInfo = Duration.ofMillis((long) (aliveTimeout.toMillis() * .7));
         this.aliveMarker = aliveMarker;
     }
 
@@ -43,9 +37,7 @@ public class SpeakerStatus {
     public void markActive(AliveMarker marker) {
         active = true;
         aliveMarker = marker;
-        if (aliveMarker.getRemoteOffsetMillis() != null) {
-            reportRemoteOffset(aliveMarker.getRemoteOffsetMillis());
-        }
+        log.debug("Time offset between SPEAKER and router is {} (region {})", marker.getRemoteOffsetMillis(), region);
     }
 
     /**
@@ -55,13 +47,5 @@ public class SpeakerStatus {
         boolean isActiveChanged = active;
         active = false;
         return isActiveChanged;
-    }
-
-    private void reportRemoteOffset(Duration remoteOffset) {
-        if (log.isDebugEnabled()) {
-            String message = String.format("Time offset between SPEAKER and router is %s (region %s)", remoteOffset,
-                                           region);
-            log.debug(message);
-        }
     }
 }

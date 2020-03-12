@@ -183,7 +183,7 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
      */
     @Override
     public void emitNetworkDumpRequest(String region) {
-        String correlationId = commandContext.fork(String.format("network-dump(%s)", region)).toString();
+        String correlationId = commandContext.fork(String.format("network-dump(%s)", region)).getCorrelationId();
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
                                                     System.currentTimeMillis(), correlationId);
 
