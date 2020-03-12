@@ -84,7 +84,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
@@ -148,7 +148,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Reason is specified why meters are misconfigured"
@@ -176,8 +176,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             def burst = direction.discrepancies[1]
             assert burst.field == "meterBurstSize"
             Long newBurstSize = switchHelper.getExpectedBurst(sw.dpId, newBandwidth)
-            verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
-            verifyBurstSizeIsCorrect(sw, burstSize, burst.actualValue.toLong())
+            switchHelper.verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, burst.actualValue.toLong())
 
             assert direction.flowRulesTotal == 1
             assert direction.switchRulesTotal == amountOfRules + 2
@@ -245,7 +245,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "The rest fields are empty"
@@ -313,7 +313,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.excess.each {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Updated meters are stored in the 'missing' section"
@@ -324,7 +324,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             assert it.flowId == flow.flowId
             assert it.meterId == newMeterId.value
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Rules still exist in the 'proper' section"
@@ -444,7 +444,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             verifyRateIsCorrect(sw, it.rate, fakeBandwidth)
             assert it.meterId == excessMeterId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         when: "Try to synchronize the switch"
@@ -566,14 +566,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter
         }*.cookie
-    }
-
-    void verifyBurstSizeIsCorrect(Switch sw, Long expected, Long actual) {
-        if(sw.isWb5164()) {
-            assert Math.abs(expected - actual) <= expected * 0.01
-        } else {
-            assert Math.abs(expected - actual) <= 1
-        }
     }
 
     void verifyRateIsCorrect(Switch sw, Long expected, Long actual) {

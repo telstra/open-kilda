@@ -316,4 +316,15 @@ class SwitchHelper {
     static boolean isDefaultMeter(MeterInfoDto dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
+
+    /**
+     * Verifies that actual and expected burst size are the same.
+     */
+    static void verifyBurstSizeIsCorrect(Switch sw, Long expected, Long actual) {
+        if(sw.isWb5164()) {
+            assert Math.abs(expected - actual) <= expected * 0.01
+        } else {
+            assert Math.abs(expected - actual) <= 1
+        }
+    }
 }
