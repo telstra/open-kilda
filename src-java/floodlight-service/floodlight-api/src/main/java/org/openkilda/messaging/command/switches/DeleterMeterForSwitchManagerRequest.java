@@ -24,7 +24,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class DeleterMeterForSwitchManagerRequest extends DeleteMeterRequest {
 
     @JsonCreator

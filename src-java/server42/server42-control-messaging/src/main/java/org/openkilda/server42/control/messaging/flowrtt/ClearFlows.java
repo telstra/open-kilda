@@ -21,6 +21,6 @@ import lombok.Value;
 
 
 @Value
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class ClearFlows extends Message {
 }

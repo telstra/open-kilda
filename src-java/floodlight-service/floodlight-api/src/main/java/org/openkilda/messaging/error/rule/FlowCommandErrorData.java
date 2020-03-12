@@ -31,7 +31,7 @@ import java.util.UUID;
  */
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class FlowCommandErrorData extends ErrorData {
     @JsonProperty("flow_id")
     private String flowId;

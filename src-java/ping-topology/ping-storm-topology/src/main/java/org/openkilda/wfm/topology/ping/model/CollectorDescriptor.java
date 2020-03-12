@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class CollectorDescriptor extends Expirable<GroupId> {
     private final GroupId groupId;
     private final List<PingContext> records = new ArrayList<>();

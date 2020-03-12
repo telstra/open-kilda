@@ -24,7 +24,7 @@ import lombok.Value;
 @Value
 @Builder
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class ListFlowsRequest extends Message {
     private Headers headers;
 }

@@ -29,7 +29,7 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class ListFlowsResponse extends Message {
     private Headers headers;
     private Set<String> flowIds;

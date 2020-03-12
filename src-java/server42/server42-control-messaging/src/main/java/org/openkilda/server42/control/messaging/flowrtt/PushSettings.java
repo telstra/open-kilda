@@ -27,7 +27,7 @@ import lombok.Value;
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class PushSettings extends Message {
     Integer packetGenerationIntervalInMs;
 }

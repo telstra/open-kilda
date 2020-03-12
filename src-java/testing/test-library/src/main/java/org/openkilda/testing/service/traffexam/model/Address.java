@@ -28,7 +28,7 @@ import java.util.InputMismatchException;
 import java.util.UUID;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class Address extends HostResource {
 
     @JsonSerialize(using = VlanJsonSerializer.class)

@@ -27,7 +27,7 @@ import lombok.Value;
  * this filed must be treated as having "any possible value".
  */
 @Value
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class NetworkEndpointMask extends AbstractNetworkEndpoint {
 
     @JsonCreator
