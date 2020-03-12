@@ -39,6 +39,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadActionCode;
+import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -206,6 +207,38 @@ public class SessionServiceTest extends EasyMockSupport {
     }
 
     @Test
+    public void responseBeforeClose() throws Exception {
+        IOFSwitch sw = createMock(IOFSwitch.class);
+        setupSwitchMock(sw, dpId);
+        swWriteAlwaysSuccess(sw);
+        doneWithSetUp(sw);
+
+        OFFactory ofFactory = sw.getOFFactory();
+        CompletableFuture<Optional<OFMessage>> first;
+        CompletableFuture<Optional<OFMessage>> second;
+        try (Session session = subject.open(context, sw)) {
+            OFPacketOut egress = makePacketOut(ofFactory, 100);
+            first = session.write(egress);
+
+            second = session.write(makePacketOut(ofFactory, 1));
+
+            // response before close
+            OFMessage ingress = ofFactory.errorMsgs().buildBadRequestErrorMsg()
+                    .setXid(egress.getXid())
+                    .setCode(OFBadRequestCode.BAD_PORT)
+                    .build();
+            subject.handleResponse(dpId, ingress);
+        }
+
+        completeSessions(sw);
+
+        // received error response must be reported via future
+        expectExceptionResponse(first, SessionErrorResponseException.class);
+        // second request must be marker as completed
+        expectNoResponse(second);
+    }
+
+    @Test
     public void sessionBarrierWriteError() throws Exception {
         IOFSwitch sw = createMock(IOFSwitch.class);
         setupSwitchMock(sw, dpId);
@@ -242,6 +275,12 @@ public class SessionServiceTest extends EasyMockSupport {
             Throwable cause = e.getCause();
             Assert.assertTrue(klass.isInstance(cause));
         }
+    }
+
+    private void expectNoResponse(CompletableFuture<Optional<OFMessage>> future)
+            throws ExecutionException, InterruptedException {
+        Assert.assertTrue(future.isDone());
+        Assert.assertFalse(future.get().isPresent());
     }
 
     private void setupSwitchMock(IOFSwitch mock, DatapathId dpId) {
