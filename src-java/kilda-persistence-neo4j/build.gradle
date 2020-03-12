@@ -3,6 +3,7 @@ dependencies {
     implementation project(':kilda-model')
     implementation project(':kilda-persistence-api')
     implementation project(':kilda-configuration')
+    testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
 
     implementation 'org.neo4j:neo4j-ogm-core'
     implementation 'org.neo4j:neo4j-ogm-bolt-driver'
@@ -14,6 +15,7 @@ dependencies {
 
     testImplementation 'org.neo4j:neo4j-ogm-test'
     testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.mockito:mockito-core'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

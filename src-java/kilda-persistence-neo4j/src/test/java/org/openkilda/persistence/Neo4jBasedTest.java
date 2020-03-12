@@ -19,6 +19,8 @@ import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
@@ -27,6 +29,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -37,10 +40,14 @@ import java.util.Properties;
 
 public abstract class Neo4jBasedTest {
 
+    protected static PersistenceManager persistenceManager;
+    protected static RepositoryFactory repositoryFactorySpy;
+
+    protected static PersistenceDummyEntityFactory dummyFactory;
+
     private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
     protected static Neo4jTransactionManager txManager;
     protected static Neo4jSessionFactory neo4jSessionFactory;
-    protected static PersistenceManager persistenceManager;
     protected static PropertiesBasedConfigurationProvider configurationProvider;
 
     @ClassRule
@@ -55,8 +62,14 @@ public abstract class Neo4jBasedTest {
         configProps.setProperty("neo4j.indexes.auto", "update"); // ask to create indexes/constraints if needed
         configurationProvider = new PropertiesBasedConfigurationProvider(configProps);
 
-        persistenceManager =
-                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        PersistenceManager realPersistenceManager = PersistenceProvider.getInstance()
+                .createPersistenceManager(configurationProvider);
+        persistenceManager = Mockito.spy(realPersistenceManager);
+
+        repositoryFactorySpy = Mockito.spy(realPersistenceManager.getRepositoryFactory());
+        Mockito.when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactorySpy);
+
+        dummyFactory = new PersistenceDummyEntityFactory(persistenceManager);
 
         txManager = (Neo4jTransactionManager) persistenceManager.getTransactionManager();
         neo4jSessionFactory = txManager;

@@ -16,46 +16,28 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
-import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.model.Cookie;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.MeterId;
-import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
-import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
-import org.openkilda.model.TransitVlan;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.RecoverablePersistenceException;
-import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
-import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 
 import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,129 +45,91 @@ import org.mockito.Mock;
 import org.mockito.hamcrest.MockitoHamcrest;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Collections;
-import java.util.Optional;
-
 @RunWith(MockitoJUnitRunner.class)
 public class FlowDeleteServiceTest extends AbstractFlowTest {
     private static final int TRANSACTION_RETRIES_LIMIT = 3;
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 3;
-    private static final String FLOW_ID = "TEST_FLOW";
-    private static final SwitchId SWITCH_1 = new SwitchId(1);
-    private static final SwitchId SWITCH_2 = new SwitchId(2);
-    private static final PathId FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_forward");
-    private static final PathId REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse");
 
     @Mock
     private FlowDeleteHubCarrier carrier;
-    @Mock
-    private CommandContext commandContext;
 
     @Before
     public void setUp() {
-        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
-        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
-
-        IslRepository islRepository = mock(IslRepository.class);
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-
-        FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
-        when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
-        when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
-
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
+
+        // must be done before first service create attempt, because repository objects are cached inside FSM actions
+        setupFlowRepositorySpy();
+        setupFlowPathRepositorySpy();
     }
 
     @Test
     public void shouldFailDeleteFlowIfNoFlowFound() {
-        when(flowRepository.findById(eq(FLOW_ID), eq(FetchStrategy.DIRECT_RELATIONS))).thenReturn(Optional.empty());
+        String flowId = "dummy-flow";
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        // make sure flow is missing
+        FlowRepository repository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        Assert.assertFalse(repository.findById(flowId).isPresent());
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+        makeService().handleRequest(dummyRequestKey, commandContext, flowId);
 
-        verifyZeroInteractions(flowResourcesManager);
-        verify(flowPathRepository, never()).delete(any());
-        verify(flowRepository, never()).delete(any());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, ErrorType.NOT_FOUND);
     }
 
     @Test
     public void shouldFailDeleteFlowOnLockedFlow() {
-        Flow flow = build2SwitchFlow();
+        Flow flow = makeFlow();
         flow.setStatus(FlowStatus.IN_PROGRESS);
+        flushFlowChanges(flow);
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        makeService().handleRequest(dummyRequestKey, commandContext, flow.getFlowId());
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
-
-        verifyZeroInteractions(flowResourcesManager);
-        verify(flowPathRepository, never()).delete(any());
-        verify(flowRepository, never()).delete(any());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, ErrorType.REQUEST_INVALID);
+        verifyFlowStatus(flow.getFlowId(), FlowStatus.IN_PROGRESS);
     }
 
     @Test
     public void shouldCompleteDeleteOnLockedSwitches() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
-        doThrow(new RecoverablePersistenceException("Must fail"))
-                .when(flowPathRepository).lockInvolvedSwitches(any(), any());
+        String flowId = makeFlow().getFlowId();
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        FlowPathRepository repository = setupFlowPathRepositorySpy();
+        doThrow(new RecoverablePersistenceException(injectedErrorMessage))
+                .when(repository).lockInvolvedSwitches(any(), any());
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+        FlowDeleteService service = makeService();
+        service.handleRequest(dummyRequestKey, commandContext, flowId);
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        Flow flow = verifyFlowStatus(flowId, FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        FlowSegmentRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                    .messageContext(flowRequest.getMessageContext())
-                    .commandId(flowRequest.getCommandId())
-                    .metadata(flowRequest.getMetadata())
-                    .switchId(flowRequest.getSwitchId())
-                    .success(true)
-                    .build());
-        }
+        produceSpeakerResponses(service);
 
         verify(carrier, times(4)).sendSpeakerRequest(any());
-        verify(flowPathRepository, times(4)).lockInvolvedSwitches(any(), any());
-        verify(flowPathRepository, never()).delete(any());
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
+        verifyFlowIsMissing(flow);
     }
 
     @Test
-    public void shouldCompleteDeleteOnUnsuccessfulRuleRemoval() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
+    public void shouldCompleteDeleteOnUnsuccessfulSpeakerResponse() {
+        testSpeakerErrorResponse(makeFlow().getFlowId(), ErrorCode.UNKNOWN);
+    }
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+    @Test
+    public void shouldCompleteDeleteOnTimeoutSpeakerResponse() {
+        testSpeakerErrorResponse(makeFlow().getFlowId(), ErrorCode.OPERATION_TIMED_OUT);
+    }
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+    private void testSpeakerErrorResponse(String flowId, ErrorCode errorCode) {
+        FlowDeleteService service = makeService();
+        service.handleRequest(dummyRequestKey, commandContext, flowId);
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        Flow flow = verifyFlowStatus(flowId, FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
         FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
-                    .errorCode(ErrorCode.UNKNOWN)
+            service.handleAsyncResponse(dummyRequestKey, FlowErrorResponse.errorBuilder()
+                    .errorCode(errorCode)
                     .description("Switch is unavailable")
                     .commandId(flowRequest.getCommandId())
                     .metadata(flowRequest.getMetadata())
@@ -196,303 +140,165 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
 
         // 4 times sending 4 rules = 16 requests.
         verify(carrier, times(16)).sendSpeakerRequest(any());
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(REVERSE_FLOW_PATH))));
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
-    }
-
-    @Test
-    public void shouldCompleteDeleteOnTimeoutRuleRemoval() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
-
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
-
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
-
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
-
-        FlowSegmentRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
-                    .errorCode(ErrorCode.OPERATION_TIMED_OUT)
-                    .description("Switch is unavailable")
-                    .commandId(flowRequest.getCommandId())
-                    .metadata(flowRequest.getMetadata())
-                    .switchId(flowRequest.getSwitchId())
-                    .messageContext(flowRequest.getMessageContext())
-                    .build());
-        }
-
-        // 4 times sending 4 rules = 16 requests.
-        verify(carrier, times(16)).sendSpeakerRequest(any());
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(REVERSE_FLOW_PATH))));
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
+        verifyFlowIsMissing(flow);
     }
 
     @Test
     public void shouldFailDeleteOnTimeoutDuringRuleRemoval() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
+        String flowId = makeFlow().getFlowId();
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        FlowDeleteService service = makeService();
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
-
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
-
-        deleteService.handleTimeout("test_key");
+        service.handleRequest(dummyRequestKey, commandContext, flowId);
+        verifyFlowStatus(flowId, FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
         verify(carrier, times(4)).sendSpeakerRequest(any());
-        verify(flowResourcesManager, never()).deallocatePathResources(any());
-        verify(flowPathRepository, never()).delete(any());
-        verify(flowRepository, never()).delete(any());
+
+        service.handleTimeout(dummyRequestKey);
+
+        // FIXME(surabujin): flow stays in IN_PROGRESS status, any further request can't be handled.
+        //  em... there is no actual handling for timeout event, so FSM will stack in memory forever
+        Flow flow = verifyFlowStatus(flowId, FlowStatus.IN_PROGRESS);
+
+        // Flow delete will be completed only on timeout event(s) produced by {@link SpeakerWorkerBolt} for all produced
+        // speaker requests.
+
+        FlowSegmentRequest flowRequest;
+        while ((flowRequest = requests.poll()) != null) {
+            service.handleAsyncResponse(dummyRequestKey, FlowErrorResponse.errorBuilder()
+                    .commandId(flowRequest.getCommandId())
+                    .switchId(flowRequest.getSwitchId())
+                    .metadata(flowRequest.getMetadata())
+                    .errorCode(ErrorCode.OPERATION_TIMED_OUT)
+                    .messageContext(flowRequest.getMessageContext())
+                    .build());
+        }
+
+        verifyFlowIsMissing(flow);
     }
 
     @Test
     public void shouldCompleteDeleteOnErrorDuringCompletingFlowPathRemoval() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
+        Flow target = makeFlow();
+        FlowPath forwardPath = target.getForwardPath();
+        Assert.assertNotNull(forwardPath);
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        FlowPathRepository repository = setupFlowPathRepositorySpy();
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(repository)
+                .delete(MockitoHamcrest.argThat(
+                        Matchers.hasProperty("pathId", is(forwardPath.getPathId()))));
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+        FlowDeleteService service = makeService();
+        service.handleRequest(dummyRequestKey, commandContext, target.getFlowId());
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(target.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        doThrow(new RuntimeException("A persistence error"))
-                .when(flowPathRepository).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
-
-        FlowSegmentRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                    .messageContext(flowRequest.getMessageContext())
-                    .commandId(flowRequest.getCommandId())
-                    .metadata(flowRequest.getMetadata())
-                    .switchId(flowRequest.getSwitchId())
-                    .success(true)
-                    .build());
-        }
+        produceSpeakerResponses(service);
 
         verify(carrier, times(4)).sendSpeakerRequest(any());
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
+        verifyFlowIsMissing(target);
     }
 
     @Test
     public void shouldCompleteDeleteOnErrorDuringResourceDeallocation() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
+        Flow target = makeFlow();
+        FlowPath forwardPath = target.getForwardPath();
+        Assert.assertNotNull(forwardPath);
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(flowResourcesManager)
+                .deallocatePathResources(MockitoHamcrest.argThat(
+                        Matchers.hasProperty("forward",
+                                Matchers.<PathResources>hasProperty("pathId", is(forwardPath.getPathId())))));
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+        FlowDeleteService service = makeService();
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        service.handleRequest(dummyRequestKey, commandContext, target.getFlowId());
+        verifyFlowStatus(target.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        doThrow(new RuntimeException("A persistence error"))
-                .when(flowResourcesManager).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-
-        FlowSegmentRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                    .messageContext(flowRequest.getMessageContext())
-                    .commandId(flowRequest.getCommandId())
-                    .metadata(flowRequest.getMetadata())
-                    .switchId(flowRequest.getSwitchId())
-                    .success(true)
-                    .build());
-        }
+        produceSpeakerResponses(service);
 
         verify(carrier, times(4)).sendSpeakerRequest(any());
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(REVERSE_FLOW_PATH))));
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
+        verifyFlowIsMissing(target);
     }
 
     @Test
     public void shouldCompleteDeleteOnErrorDuringRemovingFlow() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
+        Flow target = makeFlow();
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        FlowRepository repository = setupFlowRepositorySpy();
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(repository)
+                .delete(MockitoHamcrest.argThat(
+                        Matchers.hasProperty("flowId", is(target.getFlowId()))));
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+        FlowDeleteService service = makeService();
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
-
-        doThrow(new RuntimeException("A persistence error"))
-                .when(flowRepository).delete(eq(flow));
-
-        FlowSegmentRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                    .messageContext(flowRequest.getMessageContext())
-                    .commandId(flowRequest.getCommandId())
-                    .metadata(flowRequest.getMetadata())
-                    .switchId(flowRequest.getSwitchId())
-                    .success(true)
-                    .build());
-        }
+        service.handleRequest(dummyRequestKey, commandContext, target.getFlowId());
+        verifyFlowStatus(target.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
         verify(carrier, times(4)).sendSpeakerRequest(any());
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(REVERSE_FLOW_PATH))));
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
+        produceSpeakerResponses(service);
+
+        // FIXME(surabujin): The flow become untouchable from kilda API (because it stack in IN_PROGRESS state
+        //  no one CRUD operation can perform on it). This is DB/persisted storage level error, we do not have
+        //  a clear plan on the way how to handle it.
+        verifyFlowStatus(target.getFlowId(), FlowStatus.IN_PROGRESS);
     }
 
     @Test
     public void shouldSuccessfullyDeleteFlow() {
-        Flow flow = build2SwitchFlow();
-        buildFlowResources();
+        Flow target = makeFlow();
 
-        FlowDeleteService deleteService = new FlowDeleteService(carrier, persistenceManager,
-                flowResourcesManager, TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
+        FlowDeleteService service = makeService();
 
-        deleteService.handleRequest("test_key", commandContext, FLOW_ID);
+        service.handleRequest(dummyRequestKey, commandContext, target.getFlowId());
+        verifyFlowStatus(target.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        produceSpeakerResponses(service);
 
-        FlowSegmentRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                    .messageContext(flowRequest.getMessageContext())
-                    .commandId(flowRequest.getCommandId())
-                    .metadata(flowRequest.getMetadata())
-                    .switchId(flowRequest.getSwitchId())
+        verify(carrier, times(4)).sendSpeakerRequest(any());
+        verifyFlowIsMissing(target);
+    }
+
+    private void verifyFlowIsMissing(Flow flow) {
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
+        FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
+
+        Assert.assertFalse(flowRepository.findById(flow.getFlowId()).isPresent());
+
+        for (FlowPath path : flow.getPaths()) {
+            Assert.assertFalse(
+                    String.format("Flow path %s still exists", path.getPathId()),
+                    flowPathRepository.findById(path.getPathId()).isPresent());
+        }
+
+        // TODO(surabujin): maybe we should make more deep scanning for flow related resources and nested objects
+    }
+
+    private void produceSpeakerResponses(FlowDeleteService service) {
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            service.handleAsyncResponse(dummyRequestKey, SpeakerFlowSegmentResponse.builder()
+                    .messageContext(request.getMessageContext())
+                    .commandId(request.getCommandId())
+                    .metadata(request.getMetadata())
+                    .switchId(request.getSwitchId())
                     .success(true)
                     .build());
         }
-
-        verify(carrier, times(4)).sendSpeakerRequest(any());
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
-        verify(flowPathRepository, times(1)).delete(MockitoHamcrest.argThat(
-                Matchers.hasProperty("pathId", is(REVERSE_FLOW_PATH))));
-        verify(flowResourcesManager, times(1)).deallocatePathResources(MockitoHamcrest.argThat(
-                Matchers.hasProperty("forward",
-                        Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
-        verify(flowRepository, times(1)).delete(eq(flow));
     }
 
-    private Flow build2SwitchFlow() {
-        Switch src = Switch.builder().switchId(SWITCH_1).build();
-        Switch dst = Switch.builder().switchId(SWITCH_2).build();
-
-        Flow flow = Flow.builder().flowId(FLOW_ID)
-                .srcSwitch(src).destSwitch(dst)
-                .status(FlowStatus.UP)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .build();
-
-        FlowPath forwardPath = FlowPath.builder()
-                .pathId(FORWARD_FLOW_PATH)
-                .flow(flow)
-                .cookie(Cookie.buildForwardCookie(2))
-                .srcSwitch(src).destSwitch(dst)
-                .status(FlowPathStatus.ACTIVE)
-                .build();
-        forwardPath.setSegments(Collections.singletonList(PathSegment.builder()
-                .srcSwitch(src)
-                .srcPort(1)
-                .destSwitch(dst)
-                .destPort(2)
-                .build()));
-        flow.setForwardPath(forwardPath);
-
-        FlowPath reversePath = FlowPath.builder()
-                .pathId(REVERSE_FLOW_PATH)
-                .flow(flow)
-                .cookie(Cookie.buildReverseCookie(2))
-                .srcSwitch(dst).destSwitch(src)
-                .status(FlowPathStatus.ACTIVE)
-                .build();
-        reversePath.setSegments(Collections.singletonList(PathSegment.builder()
-                .srcSwitch(dst)
-                .srcPort(2)
-                .destSwitch(src)
-                .destPort(1)
-                .build()));
-        flow.setReversePath(reversePath);
-
-        SwitchProperties srcSwitchProperties = SwitchProperties.builder().build();
-        SwitchProperties dstSwitchProperties = SwitchProperties.builder().build();
-
-        when(flowRepository.findById(any())).thenReturn(Optional.of(flow));
-        when(flowRepository.findById(any(), any())).thenReturn(Optional.of(flow));
-        when(switchPropertiesRepository.findBySwitchId(SWITCH_1)).thenReturn(Optional.of(srcSwitchProperties));
-        when(switchPropertiesRepository.findBySwitchId(SWITCH_2)).thenReturn(Optional.of(dstSwitchProperties));
-
-        doAnswer(invocation -> {
-            FlowStatus status = invocation.getArgument(1);
-            flow.setStatus(status);
-            return null;
-        }).when(flowRepository).updateStatus(any(), any());
-
-        return flow;
-    }
-
-    private FlowResources buildFlowResources() {
-        FlowResources flowResources = FlowResources.builder()
-                .unmaskedCookie(1)
-                .forward(PathResources.builder()
-                        .pathId(FORWARD_FLOW_PATH)
-                        .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 1))
-                        .build())
-                .reverse(PathResources.builder()
-                        .pathId(REVERSE_FLOW_PATH)
-                        .meterId(new MeterId(MeterId.MIN_FLOW_METER_ID + 2))
-                        .build())
-                .build();
-
-        when(flowResourcesManager.getEncapsulationResources(eq(FORWARD_FLOW_PATH), eq(REVERSE_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(FORWARD_FLOW_PATH).vlan(101).build())
-                        .build()));
-        when(flowResourcesManager.getEncapsulationResources(eq(REVERSE_FLOW_PATH), eq(FORWARD_FLOW_PATH),
-                eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(REVERSE_FLOW_PATH).vlan(102).build())
-                        .build()));
-
-        return flowResources;
+    private FlowDeleteService makeService() {
+        return new FlowDeleteService(
+                carrier, persistenceManager, flowResourcesManager,
+                TRANSACTION_RETRIES_LIMIT, SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 }

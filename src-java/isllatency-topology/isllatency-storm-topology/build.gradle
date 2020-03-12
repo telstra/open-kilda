@@ -15,6 +15,7 @@ dependencies {
     implementation project(':floodlight-api')
     runtimeOnly project(':kilda-persistence-neo4j')
     testImplementation project(':kilda-persistence-neo4j')
+    testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-neo4j', configuration: 'testArtifacts')
 
     compileOnly('org.apache.storm:storm-core')
