@@ -23,7 +23,7 @@ import lombok.Value;
 import java.util.UUID;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class ConsumerEndpoint extends Endpoint {
     @JsonProperty("bind_port")
     private Integer bindPort;

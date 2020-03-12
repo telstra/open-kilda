@@ -26,7 +26,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class RulesSyncDto extends RulesValidationDto {
 
     @JsonProperty("missing")
