@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.net.Inet4Address;
@@ -27,6 +28,7 @@ import java.util.InputMismatchException;
 import java.util.UUID;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class Address extends HostResource {
 
     @JsonSerialize(using = VlanJsonSerializer.class)

@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorType;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.UUID;
@@ -30,6 +31,7 @@ import java.util.UUID;
  */
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@EqualsAndHashCode(callSuper = false)
 public class FlowCommandErrorData extends ErrorData {
     @JsonProperty("flow_id")
     private String flowId;

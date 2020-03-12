@@ -34,7 +34,6 @@ public class LldpData {
     String chassisId;
     @NonNull
     String portNumber;
-    @NonNull
     int timeToLive;
     String portDescription;
     String systemName;

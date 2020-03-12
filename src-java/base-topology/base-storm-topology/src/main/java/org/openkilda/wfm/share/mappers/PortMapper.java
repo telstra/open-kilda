@@ -37,6 +37,10 @@ public abstract class PortMapper {
     @Mapping(source = "state", target = "status")
     public abstract Port map(PortInfoData portInfoData);
 
+    @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "maxCapacity", ignore = true)
+    @Mapping(target = "state", ignore = true)
+    @Mapping(target = "enabled", ignore = true)
     public abstract PortInfoData map(Port port);
 
     /**
@@ -63,5 +67,6 @@ public abstract class PortMapper {
 
     @Mapping(source = "switchObj.switchId", target = "switchId")
     @Mapping(source = "port", target = "portNumber")
+    @Mapping(target = "timestamp", ignore = true)
     public abstract PortPropertiesPayload map(PortProperties portProperties);
 }

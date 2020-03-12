@@ -19,12 +19,14 @@ import org.openkilda.messaging.command.CommandData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
  * Represents flow read northbound request.
  */
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class FlowReadRequest extends CommandData {
 
     private static final long serialVersionUID = 1L;

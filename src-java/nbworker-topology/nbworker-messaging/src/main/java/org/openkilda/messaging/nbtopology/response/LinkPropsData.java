@@ -19,9 +19,11 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.LinkPropsDto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class LinkPropsData extends InfoData {
 
     @JsonProperty

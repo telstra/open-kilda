@@ -59,7 +59,6 @@ public class Vxlan implements Serializable, EncapsulationId {
     @Convert(graphPropertyType = String.class)
     private PathId pathId;
 
-    @NonNull
     @Property(name = "vni")
     @Index(unique = true)
     private int vni;

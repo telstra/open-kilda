@@ -20,11 +20,13 @@ import org.openkilda.messaging.info.InfoData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
 
 @Value
 @ToString
+@EqualsAndHashCode(callSuper = false)
 public class DeactivateIslInfoData extends InfoData {
 
     private PathNode source;

@@ -21,6 +21,7 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
@@ -29,6 +30,7 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = false)
 public class PortHistoryPayload extends InfoData {
     private UUID id;
     private SwitchId switchId;

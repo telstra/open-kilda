@@ -21,10 +21,12 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
 @JsonNaming(value = SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = false)
 public class GetExpectedDefaultMetersRequest extends CommandData {
 
     private SwitchId switchId;

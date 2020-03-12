@@ -56,6 +56,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destPort", target = "destPort")
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
+    @Mapping(target = "diverseFlowId", ignore = true)
     public abstract RequestedFlow toRequestedFlow(Flow flow);
 
     /**
@@ -71,5 +72,11 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destPort", target = "destPort")
     @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "flowEncapsulationType", target = "encapsulationType")
+    @Mapping(target = "groupId", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "timeCreate", ignore = true)
+    @Mapping(target = "timeModify", ignore = true)
+    @Mapping(target = "srcWithMultiTable", ignore = true)
+    @Mapping(target = "destWithMultiTable", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 }

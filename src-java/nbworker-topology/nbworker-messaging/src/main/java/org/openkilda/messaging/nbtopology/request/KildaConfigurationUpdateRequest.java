@@ -19,10 +19,12 @@ import org.openkilda.messaging.model.system.KildaConfigurationDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @SuppressWarnings("squid:MaximumInheritanceDepth")
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class KildaConfigurationUpdateRequest extends KildaConfigurationBaseRequest {
 
     @JsonProperty("kilda_configuration")

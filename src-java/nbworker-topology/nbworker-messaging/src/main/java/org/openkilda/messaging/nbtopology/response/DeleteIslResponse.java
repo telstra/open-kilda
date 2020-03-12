@@ -19,9 +19,11 @@ import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class DeleteIslResponse extends InfoData {
 
     @JsonProperty("deleted")

@@ -111,8 +111,32 @@ public interface FlowMapper {
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
+    @Mapping(target = "statusDetails", ignore = true)
     FlowResponseV2 toFlowResponseV2(FlowDto f);
 
+    @Mapping(target = "flowId", ignore = true)
+    @Mapping(target = "bandwidth", ignore = true)
+    @Mapping(target = "ignoreBandwidth", ignore = true)
+    @Mapping(target = "allocateProtectedPath", ignore = true)
+    @Mapping(target = "cookie", ignore = true)
+    @Mapping(target = "description", ignore = true)
+    @Mapping(target = "createdTime", ignore = true)
+    @Mapping(target = "lastUpdated", ignore = true)
+    @Mapping(target = "sourceSwitch", ignore = true)
+    @Mapping(target = "destinationSwitch", ignore = true)
+    @Mapping(target = "sourcePort", ignore = true)
+    @Mapping(target = "destinationPort", ignore = true)
+    @Mapping(target = "sourceVlan", ignore = true)
+    @Mapping(target = "destinationVlan", ignore = true)
+    @Mapping(target = "meterId", ignore = true)
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "state", ignore = true)
+    @Mapping(target = "flowStatusDetails", ignore = true)
+    @Mapping(target = "pinned", ignore = true)
+    @Mapping(target = "encapsulationType", ignore = true)
+    @Mapping(target = "detectConnectedDevices", ignore = true)
+    @Mapping(target = "pathComputationStrategy", ignore = true)
+    @Mapping(target = "diverseWith", ignore = true)
     FlowDto toFlowDto(FlowPatchDto flowPatchDto);
 
     @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")
@@ -127,6 +151,8 @@ public interface FlowMapper {
             + "request.getSource().getDetectConnectedDevices().isArp(), "
             + "request.getDestination().getDetectConnectedDevices().isLldp(), "
             + "request.getDestination().getDetectConnectedDevices().isArp()))")
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "type", ignore = true)
     FlowRequest toFlowRequest(FlowRequestV2 request);
 
     default FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
@@ -147,6 +173,7 @@ public interface FlowMapper {
     @Mapping(source = "path", target = "nodes")
     FlowPathV2 toFlowPathV2(PathInfoData path);
 
+    @Mapping(target = "segmentLatency", ignore = true)
     FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(source = "flowId", target = "id")
