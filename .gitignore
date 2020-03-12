@@ -17,5 +17,5 @@
 # VSCode specific files/directories
 .vscod,me/
 
-./generated.mk
-./docker-compose.yaml
+/generated.mk
+/docker-compose.yaml

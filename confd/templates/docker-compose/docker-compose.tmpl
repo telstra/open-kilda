@@ -281,8 +281,8 @@ services:
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=2", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_2"]
     ports:
-      - "6654:6653"
-      - "8082:8080"
+      - "6753:6653"
+      - "8281:8080"
     depends_on:
       kafka:
         condition: service_healthy
