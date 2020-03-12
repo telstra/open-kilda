@@ -28,6 +28,7 @@ import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.FlowStatusConverter;
+import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import com.google.common.collect.ImmutableMap;
@@ -71,6 +72,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
     private final InstantStringConverter instantStringConverter = new InstantStringConverter();
+    private final SwitchIdConverter switchIdConverter = new SwitchIdConverter();
 
     private final Neo4jFlowPathRepository flowPathRepository;
 
@@ -213,6 +215,19 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 loadAll(srcSwitchFilter.and(srcPortFilter).and(srcMultiTableFilter)).stream(),
                 loadAll(dstSwitchFilter.and(dstPortFilter).and(dstMultiTableFilter)).stream())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<String> findFlowsIdsByEndpointWithMultiTableSupport(SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId),
+                "port", port,
+                "multi_table", true);
+
+        return queryForStrings("MATCH (src:switch)-[:source]-(f:flow)-[:destination]-(dst:switch) "
+                + "WHERE src.name=$switch_id AND f.src_port=$port AND f.src_with_multi_table=$multi_table "
+                + "OR dst.name=$switch_id AND f.dst_port=$port AND f.dst_with_multi_table=$multi_table "
+                + "RETURN f.flow_id as flow_id", parameters, "flow_id");
     }
 
     @Override

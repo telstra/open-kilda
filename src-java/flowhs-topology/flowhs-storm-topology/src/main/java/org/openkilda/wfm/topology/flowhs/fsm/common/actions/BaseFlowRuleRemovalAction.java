@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -47,6 +48,11 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
         super(persistenceManager);
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
         switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+    }
+
+    protected boolean isRemoveCustomerPortSharedCatchRule(String flowId, SwitchId ingressSwitchId, int ingressPort) {
+        Set<String> flowIds = findFlowsIdsByEndpointWithMultiTable(ingressSwitchId, ingressPort);
+        return flowIds.size() == 1 && flowIds.iterator().next().equals(flowId);
     }
 
     protected boolean isFlowTheLastUserOfSharedLldpPortRule(
@@ -89,6 +95,20 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
         return switchPropertiesRepository.findBySwitchId(ingressSwitchId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Properties for switch %s not found", ingressSwitchId)));
+    }
+
+    protected boolean removeForwardCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
+        boolean srcPortChanged = oldFlow.getSrcPort() != newFlow.getSrcPort();
+
+        return srcPortChanged
+                && findFlowsIdsByEndpointWithMultiTable(oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
+    }
+
+    protected boolean removeReverseCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
+        boolean dstPortChanged = oldFlow.getDestPort() != newFlow.getDestPort();
+
+        return dstPortChanged
+                && findFlowsIdsByEndpointWithMultiTable(oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
     }
 
     protected boolean removeForwardSharedLldpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {

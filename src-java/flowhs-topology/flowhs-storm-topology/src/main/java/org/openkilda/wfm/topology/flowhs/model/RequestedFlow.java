@@ -48,4 +48,7 @@ public class RequestedFlow {
     private FlowEncapsulationType flowEncapsulationType;
     private PathComputationStrategy pathComputationStrategy;
     private DetectConnectedDevices detectConnectedDevices;
+
+    private boolean srcWithMultiTable;
+    private boolean destWithMultiTable;
 }

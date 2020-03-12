@@ -306,6 +306,24 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindIsByEndpointWithMultiTableSupport() {
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2, true));
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID_2, switchA, PORT_1, VLAN_2, switchB, PORT_2, 0, true));
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID_3, switchA, PORT_1, VLAN_3, switchB, PORT_2, 0, false));
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID_4, switchB, PORT_1, VLAN_1, switchB, PORT_3, VLAN_1, true));
+
+        Collection<String> flowIds =
+                flowRepository.findFlowsIdsByEndpointWithMultiTableSupport(switchA.getSwitchId(), PORT_1);
+        assertEquals(2, flowIds.size());
+        assertTrue(flowIds.contains(TEST_FLOW_ID));
+        assertTrue(flowIds.contains(TEST_FLOW_ID_2));
+    }
+
+    @Test
     public void shouldFindFlowBySwitchEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);
@@ -399,6 +417,11 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
     private Flow buildTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
                                Switch destSwitch, int destPort, int destVlan) {
+        return buildTestFlow(flowId, srcSwitch, srcPort, srcVlan, destSwitch, destPort, destVlan, false);
+    }
+
+    private Flow buildTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
+                               Switch destSwitch, int destPort, int destVlan, boolean multiTable) {
         Flow flow = Flow.builder()
                 .flowId(flowId)
                 .srcSwitch(srcSwitch)
@@ -411,6 +434,8 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
+                .srcWithMultiTable(multiTable)
+                .destWithMultiTable(multiTable)
                 .build();
 
         FlowPath forwardFlowPath = FlowPath.builder()
