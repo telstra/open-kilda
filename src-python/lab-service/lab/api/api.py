@@ -216,12 +216,6 @@ def main():
 
     def teardown():
         logger.info('Terminating...')
-
-        for lab in list(labs.values()):
-            try:
-                lab.destroy()
-            except Exception as ex:
-                logger.exception(ex)
         server_th.terminate()
 
     loop_forever(teardown)
