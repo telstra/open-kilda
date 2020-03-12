@@ -295,6 +295,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to turn on periodic pings on a flow"() {
         when: "Create a flow with periodic pings turned on"
         def flow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair).tap {

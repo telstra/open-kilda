@@ -1274,24 +1274,12 @@ mode with existing flows and hold flows of different table-mode types"() {
         assert !northbound.getSwitchProperties(sw.dpId).multiTable
 
         when: "Disconnect the switch and remove it from DB. Pretend this switch never existed"
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
-        }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         northbound.deleteSwitch(sw.dpId, false)
 
         and: "New switch connects"
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def allIsls = northbound.getAllLinks()
-            isls.each {
-                assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
-                assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        switchHelper.reviveSwitch(sw, blockData, true)
 
         then: "Switch is added with disabled multiTable mode"
         !northbound.getSwitchProperties(sw.dpId).multiTable

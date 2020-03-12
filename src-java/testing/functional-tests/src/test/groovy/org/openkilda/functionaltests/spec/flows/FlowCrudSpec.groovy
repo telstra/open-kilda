@@ -28,7 +28,6 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
@@ -759,11 +758,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "A deactivated switch"
         def sw = topology.getActiveSwitches().first()
-        def swIsls = topology.getRelatedIsls(sw)
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
         when: "Create a flow"
         def flow = flowHelper.singleSwitchFlow(sw)
@@ -775,12 +770,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
 
         and: "Cleanup: Activate the switch and reset costs"
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
-        }
+        switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")

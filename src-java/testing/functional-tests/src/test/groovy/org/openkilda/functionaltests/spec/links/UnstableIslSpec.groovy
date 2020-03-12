@@ -11,7 +11,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.event.SwitchChangeType
 
 import org.springframework.beans.factory.annotation.Value
 
@@ -71,23 +70,13 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         when: "Deactivate the switch"
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == FAILED }
-        }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }
 
         when: "Activate the switch"
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
-        }
+        switchHelper.reviveSwitch(sw, blockData, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }

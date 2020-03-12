@@ -35,7 +35,10 @@ import static org.openkilda.model.Cookie.encodeIslVxlanTransit
 import static org.openkilda.model.Cookie.encodeLldpInputCustomer
 import static org.openkilda.model.Cookie.isDefaultRule
 import static org.openkilda.model.Cookie.isIngressRulePassThrough
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
@@ -44,9 +47,14 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.Constants
+import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.MultiFloodlightManager
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.tools.IslUtils
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
@@ -78,6 +86,21 @@ class SwitchHelper {
 
     @Value('${burst.coefficient}')
     double burstCoefficient
+
+    @Value('${discovery.interval}')
+    int discoveryInterval
+
+    @Value('${discovery.timeout}')
+    int discoveryTimeout
+
+    @Autowired
+    TopologyDefinition topology
+
+    @Autowired
+    IslUtils islUtils
+
+    @Autowired
+    LockKeeperService lockKeeper
 
     @Autowired
     SwitchHelper(NorthboundService northbound, Database database) {
@@ -331,5 +354,62 @@ class SwitchHelper {
         } else {
             assert Math.abs(expected - actual) <= 1
         }
+    }
+
+    /**
+     * Disconnect a switch from controller either removing controller settings inside an OVS switch
+     * or blocking access to floodlight via iptables for a hardware switch.
+     *
+     * @param sw                    switch which is going to be disconnected
+     * @param waitForRelatedLinks   make sure that all switch related ISLs are FAILED
+     */
+    FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager factory, boolean waitForRelatedLinks) {
+        def blockData = lockKeeper.knockoutSwitch(sw, factory)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+        if (waitForRelatedLinks) {
+            def swIsls = topology.getRelatedIsls(sw)
+
+            Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+                def allIsls = northbound.getAllLinks()
+                swIsls.each { assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.FAILED }
+            }
+        }
+
+        return blockData
+    }
+
+    FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager factory) {
+        knockoutSwitch(sw, factory, false)
+    }
+
+    /**
+     * Connect a switch to controller either adding controller settings inside an OVS switch
+     * or setting proper iptables to allow access to floodlight for a hardware switch.
+     *
+     * @param sw                    switch which is going to be connected
+     * @param waitForRelatedLinks   make sure that all switch related ISLs are DISCOVERED
+     */
+    void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress, boolean waitForRelatedLinks) {
+        lockKeeper.reviveSwitch(sw, flResourceAddress)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+        }
+        if (waitForRelatedLinks) {
+            def swIsls = topology.getRelatedIsls(sw)
+
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def allIsls = northbound.getAllLinks()
+                swIsls.each {
+                    assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
+                    assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
+                }
+            }
+        }
+    }
+
+    void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress) {
+        reviveSwitch(sw, flResourceAddress, false)
     }
 }
