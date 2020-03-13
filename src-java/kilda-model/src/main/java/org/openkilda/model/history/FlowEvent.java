@@ -52,7 +52,6 @@ public class FlowEvent {
     @Getter(AccessLevel.NONE)
     private Long entityId;
 
-    @Index
     @Property(name = "flow_id")
     private String flowId;
 
