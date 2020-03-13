@@ -76,7 +76,5 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeModify", ignore = true)
-    @Mapping(target = "srcWithMultiTable", ignore = true)
-    @Mapping(target = "destWithMultiTable", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 }
