@@ -5,7 +5,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -45,7 +44,6 @@ import spock.lang.See
 
 import javax.inject.Provider
 
-@Ignore("https://github.com/telstra/open-kilda/issues/3059")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/multi-table-pipelines")
 class MultitableFlowsSpec extends HealthCheckSpecification {
 
@@ -368,7 +366,10 @@ mode with existing flows and hold flows of different table-mode types"() {
             def allPaths = pair.paths.findAll { path ->
                 pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
-            desiredPath = allPaths.find { pathHelper.getInvolvedSwitches(it).size() == 3 }
+            desiredPath = allPaths.find {
+                involvedSwitches = pathHelper.getInvolvedSwitches(it)
+                involvedSwitches.size() == 3
+            }
             // make sure that alternative path for protected path is available
             allPaths.findAll { it.intersect(desiredPath) == [] ? 1 : 0 }.size() > 0
         }
@@ -800,6 +801,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         revertSwitchToInitState(sw, initSwProps)
     }
 
+    @Ignore
     def "Flow rules are not recreated when pinned flow changes state to up/down"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
