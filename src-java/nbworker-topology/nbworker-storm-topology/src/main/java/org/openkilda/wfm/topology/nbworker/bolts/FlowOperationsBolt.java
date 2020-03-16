@@ -31,6 +31,8 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
+import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
+import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
@@ -102,6 +104,10 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
             result = processFlowPatchRequest((FlowPatchRequest) request);
         } else if (request instanceof FlowConnectedDeviceRequest) {
             result = processFlowConnectedDeviceRequest((FlowConnectedDeviceRequest) request);
+        } else if (request instanceof FlowReadRequest) {
+            result = processFlowReadRequest((FlowReadRequest) request);
+        } else if (request instanceof FlowsDumpRequest) {
+            result = processFlowsDumpRequest();
         } else {
             unhandledInput(tuple);
         }
@@ -235,6 +241,29 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
             }
         }
         return Collections.singletonList(response);
+    }
+
+    private List<FlowResponse> processFlowReadRequest(FlowReadRequest readRequest) {
+        try {
+            String flowId = readRequest.getFlowId();
+            Flow f = flowOperationsService.getFlow(flowId);
+            FlowDto dto = FlowMapper.INSTANCE.map(f);
+            if (f.getGroupId() != null) {
+                dto.setDiverseWith(flowOperationsService.getDiverseFlowsId(flowId, f.getGroupId()));
+            }
+            FlowResponse response = new FlowResponse(dto);
+            return Collections.singletonList(response);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, "Can not get flow: " + e.getMessage(),
+                    "Flow not found");
+        }
+    }
+
+    private List<FlowResponse> processFlowsDumpRequest() {
+        return flowOperationsService.getAllFlows().stream()
+                .map(FlowMapper.INSTANCE::map)
+                .map(FlowResponse::new)
+                .collect(Collectors.toList());
     }
 
     @Override

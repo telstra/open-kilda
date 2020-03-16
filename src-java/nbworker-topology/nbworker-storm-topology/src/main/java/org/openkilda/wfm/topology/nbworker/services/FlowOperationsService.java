@@ -88,6 +88,30 @@ public class FlowOperationsService {
     }
 
     /**
+     * Return flows in the same flow group.
+     *
+     * @param flowId flow id
+     * @param groupId group id
+     * @return list of flow ids
+     */
+    public Set<String> getDiverseFlowsId(String flowId, String groupId) {
+        if (groupId == null) {
+            return null;
+        }
+
+        return flowRepository.findFlowsIdByGroupId(groupId).stream()
+                .filter(id -> !id.equals(flowId))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Get flows.
+     */
+    public Collection<Flow> getAllFlows() {
+        return flowRepository.findAll();
+    }
+
+    /**
      * Return all paths for a particular link.
      *
      * @param srcSwitchId source switch id.
