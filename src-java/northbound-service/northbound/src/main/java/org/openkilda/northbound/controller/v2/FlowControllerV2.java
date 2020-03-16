@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.controller.v2;
 
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -26,6 +27,7 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
@@ -78,6 +81,43 @@ public class FlowControllerV2 extends BaseController {
         return flowService.deleteFlowV2(flowId);
     }
 
+    /**
+     * Gets flow.
+     *
+     * @param flowId        flow id
+     * @return flow
+     */
+    @ApiOperation(value = "Gets flow", response = FlowResponseV2.class)
+    @GetMapping(value = "/{flow_id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowResponseV2> getFlow(@PathVariable(name = "flow_id") String flowId) {
+        return flowService.getFlowV2(flowId);
+    }
+
+    /**
+     * Dumps all flows. Dumps all flows with specific status if specified.
+     *
+     * @return list of flow
+     */
+    @ApiOperation(value = "Dumps all flows", response = FlowResponseV2.class, responseContainer = "List")
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowResponseV2>> getFlows() {
+        return flowService.getAllFlowsV2();
+    }
+
+    /**
+     * Gets flow status.
+     *
+     * @param flowId        flow id
+     * @return list of flow
+     */
+    @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
+    @GetMapping(value = "/status/{flow_id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowIdStatusPayload> statusFlow(@PathVariable(name = "flow_id") String flowId) {
+        return flowService.statusFlow(flowId);
+    }
 
     /**
      * Bulk update for flow.
