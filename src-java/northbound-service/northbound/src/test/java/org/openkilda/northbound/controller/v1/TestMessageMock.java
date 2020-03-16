@@ -25,9 +25,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
-import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -36,12 +34,13 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
+import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
@@ -133,7 +132,7 @@ public class TestMessageMock implements MessagingChannel {
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     private static final FlowResponse secondFlowResponse = new FlowResponse(secondFlowModel);
     static final SwapFlowResponse bulkFlowResponse = new SwapFlowResponse(flowResponse, secondFlowResponse);
-    static final FlowReadResponse FLOW_RESPONSE = new FlowReadResponse(flowModel, null);
+    static final FlowResponse FLOW_RESPONSE = new FlowResponse(flowModel);
     static final GetFlowPathResponse FLOW_PATH_RESPONSE =
             new GetFlowPathResponse(FlowPathDto.builder()
                     .id(FLOW_ID)

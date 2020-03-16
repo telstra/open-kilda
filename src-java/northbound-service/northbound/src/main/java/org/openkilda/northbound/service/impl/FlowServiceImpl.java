@@ -25,12 +25,10 @@ import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
-import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -39,7 +37,6 @@ import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
-import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
@@ -50,7 +47,9 @@ import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
+import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
+import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
@@ -214,8 +213,25 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowResponsePayload> getFlow(final String id) {
         logger.debug("Get flow request for flow {}", id);
 
-        return getFlowReadResponse(id, RequestCorrelationId.getId())
+        return getFlowResponse(id, RequestCorrelationId.getId())
+                .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<FlowResponseV2> getFlowV2(final String id) {
+        logger.debug("Get flow request for flow {}", id);
+        FlowReadRequest data =
+                new FlowReadRequest(id);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(),
+                RequestCorrelationId.getId(), Destination.WFM);
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(FlowResponse::getPayload)
+                .thenApply(flowMapper::toFlowResponseV2);
     }
 
     /**
@@ -300,11 +316,29 @@ public class FlowServiceImpl implements FlowService {
         FlowsDumpRequest data = new FlowsDumpRequest();
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGetChunked(topic, request)
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(result -> result.stream()
-                        .map(FlowReadResponse.class::cast)
-                        .map(FlowReadResponse::getPayload)
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
                         .map(flowMapper::toFlowResponseOutput)
+                        .collect(Collectors.toList()));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<List<FlowResponseV2>> getAllFlowsV2() {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get flows request processing");
+        FlowsDumpRequest data = new FlowsDumpRequest();
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
+                        .map(flowMapper::toFlowResponseV2)
                         .collect(Collectors.toList()));
     }
 
@@ -385,8 +419,8 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
         logger.debug("Flow status request for flow: {}", id);
-        return getFlowReadResponse(id, RequestCorrelationId.getId())
-                .thenApply(FlowReadResponse::getPayload)
+        return getFlowResponse(id, RequestCorrelationId.getId())
+                .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
 
@@ -476,16 +510,16 @@ public class FlowServiceImpl implements FlowService {
     }
 
     /**
-     * Reads {@link FlowReadResponse} flow representation from the Storm.
+     * Reads {@link FlowResponse} flow representation from the Storm.
      *
      * @return the bidirectional flow.
      */
-    private CompletableFuture<FlowReadResponse> getFlowReadResponse(String flowId, String correlationId) {
+    private CompletableFuture<FlowResponse> getFlowResponse(String flowId, String correlationId) {
         FlowReadRequest data = new FlowReadRequest(flowId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
-                .thenApply(FlowReadResponse.class::cast);
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(FlowResponse.class::cast);
     }
 
     /**

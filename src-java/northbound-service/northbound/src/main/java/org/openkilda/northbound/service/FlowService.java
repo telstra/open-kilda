@@ -109,11 +109,26 @@ public interface FlowService {
     CompletableFuture<FlowResponsePayload> getFlow(final String id);
 
     /**
+     * Gets flow by id.
+     *
+     * @param id flow id
+     * @return flow
+     */
+    CompletableFuture<FlowResponseV2> getFlowV2(final String id);
+
+    /**
      * Gets all the flows.
      *
      * @return the list of all flows with specified status
      */
     CompletableFuture<List<FlowResponsePayload>> getAllFlows();
+
+    /**
+     * Gets all the flows.
+     *
+     * @return the list of all flows with specified status
+     */
+    CompletableFuture<List<FlowResponseV2>> getAllFlowsV2();
 
     /**
      * Deletes all flows. Primarily this is a combination of getAllFlows and deleteFlow.

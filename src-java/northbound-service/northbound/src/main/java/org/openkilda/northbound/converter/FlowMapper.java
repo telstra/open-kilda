@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -47,6 +48,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.PathStatus;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
 import org.mapstruct.Mapper;
@@ -98,6 +100,7 @@ public interface FlowMapper {
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
     @Mapping(target = "pinned", source = "pinned")
+    @Mapping(target = "diverseWith", source = "diverseWith")
     FlowResponsePayload toFlowResponseOutput(FlowDto f);
 
     @Mapping(target = "source",
@@ -111,7 +114,8 @@ public interface FlowMapper {
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
-    @Mapping(target = "statusDetails", ignore = true)
+    @Mapping(target = "statusDetails", source = "flowStatusDetails")
+    @Mapping(target = "diverseWith", source = "diverseWith")
     FlowResponseV2 toFlowResponseV2(FlowDto f);
 
     @Mapping(target = "flowId", ignore = true)
@@ -215,9 +219,13 @@ public interface FlowMapper {
         return state.getState();
     }
 
+    @Mapping(target = "mainPath", source = "mainFlowPathStatus")
+    @Mapping(target = "protectedPath", source = "protectedFlowPathStatus")
+    PathStatus map(FlowStatusDetails flowStatusDetails);
     /**
      * Convert {@link FlowPathStatus} to {@link String}.
      */
+    
     default String map(FlowPathStatus flowPathStatus) {
         if (flowPathStatus == null) {
             return null;
