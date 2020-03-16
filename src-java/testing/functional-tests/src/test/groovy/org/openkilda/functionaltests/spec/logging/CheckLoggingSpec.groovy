@@ -80,7 +80,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         int timeout = 31
         Wrappers.wait(timeout, 5) {
             def stormLogs = elastic.getLogs(new ElasticQueryBuilder().setIndex(elasticIndex)
-                    .setTags(KildaTags.STORM_WORKER).setTimeRange(timeout * 2).setLevel("WARN")
+                    .setTags(KildaTags.STORM_WORKER).setTimeRange(timeout * 2).setLevel("ERROR")
                     .setField("message", String.format('"%s"', flowErrorMsg(flowId))).build())
 
             assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowErrorMsg(flowId)) }:
