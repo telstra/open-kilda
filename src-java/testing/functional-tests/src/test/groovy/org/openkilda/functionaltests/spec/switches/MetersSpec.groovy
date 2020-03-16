@@ -29,7 +29,6 @@ import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -165,16 +164,8 @@ class MetersSpec extends HealthCheckSpecification {
     def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
-        assert meters.meterEntries.size() == 2
-        assert meters.meterEntries.every(defaultMeters)
-        meters.meterEntries.each {
-            verifyRateSizeOnWb5164(it.rate,
-                    Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE * 8 / 1024L), MIN_RATE_KBPS))
-        }
-        meters.meterEntries.each {
-            verifyBurstSizeOnWb5164(it.burstSize,
-                (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE * 8) / 1024))
-        }
+        meters.meterEntries*.meterId.sort() == sw.defaultMeters.sort()
+        //TODO (andriidovhan) check rate/burst size
         meters.meterEntries.each { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
         meters.meterEntries.each { assert it.flags.size() == 3 }
 
@@ -483,7 +474,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     @Tidy
     @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
-    @Ignore("https://github.com/telstra/open-kilda/issues/3027")
     def "Meter burst size is correctly set on Noviflow Wb5164 switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = getNoviflowWb5164()
@@ -537,7 +527,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     @Tidy
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
@@ -635,7 +624,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/2740")
     def "Try to reset meters for unmetered flow"() {
         given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
         def availableSwitches = topology.activeSwitches
