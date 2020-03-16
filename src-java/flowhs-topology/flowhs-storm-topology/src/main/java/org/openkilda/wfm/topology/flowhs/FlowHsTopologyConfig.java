@@ -33,6 +33,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getNorthboundTopic();
     }
 
+    default String getKafkaRerouteTopic() {
+        return getKafkaTopics().getTopoRerouteTopic();
+    }
+
     default String getKafkaFlowSpeakerWorkerTopic() {
         return getKafkaTopics().getFlowHsSpeakerTopic();
     }

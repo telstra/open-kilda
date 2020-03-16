@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertFalse;
@@ -35,6 +36,9 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
+import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
+import org.openkilda.messaging.info.reroute.error.RuleFailedError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -42,6 +46,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -55,7 +60,6 @@ import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentMatchers;
@@ -66,7 +70,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FlowRerouteServiceTest extends AbstractFlowTest {
@@ -194,7 +198,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailRerouteOnUnsuccessfulInstallation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+        PathPair newPathPair = make3SwitchesPathPair();
+        preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
         service.handleRequest(new FlowRerouteFact(
@@ -221,12 +226,19 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
+        RerouteResultInfoData expected = RerouteResultInfoData.builder()
+                .flowId(origin.getFlowId())
+                .success(false)
+                .rerouteError(new RuleFailedError("Failed to install rules", getSwitches(newPathPair)))
+                .build();
+        verify(carrier).sendRerouteResultStatus(argThat(hasProperty("data", equalTo(expected))));
     }
 
     @Test
     public void shouldFailRerouteOnTimeoutDuringInstallation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+        PathPair newPathPair = make3SwitchesPathPair();
+        preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
         service.handleRequest(new FlowRerouteFact(
@@ -244,12 +256,19 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
+        RerouteResultInfoData expected = RerouteResultInfoData.builder()
+                .flowId(origin.getFlowId())
+                .success(false)
+                .rerouteError(new RuleFailedError("Failed to install rules", getSwitches(newPathPair)))
+                .build();
+        verify(carrier).sendRerouteResultStatus(argThat(hasProperty("data", equalTo(expected))));
     }
 
     @Test
     public void shouldFailRerouteOnUnsuccessfulValidation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+        PathPair newPathPair = make3SwitchesPathPair();
+        preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
         service.handleRequest(new FlowRerouteFact(
@@ -276,12 +295,19 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
+        RerouteResultInfoData expected = RerouteResultInfoData.builder()
+                .flowId(origin.getFlowId())
+                .success(false)
+                .rerouteError(new RuleFailedError("Failed to validate rules", getSwitches(newPathPair)))
+                .build();
+        verify(carrier).sendRerouteResultStatus(argThat(hasProperty("data", equalTo(expected))));
     }
 
     @Test
     public void shouldFailRerouteOnTimeoutDuringValidation() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
+        PathPair newPathPair = make3SwitchesPathPair();
+        preparePathComputation(origin.getFlowId(), newPathPair);
 
         FlowRerouteService service = makeService();
         service.handleRequest(new FlowRerouteFact(
@@ -301,6 +327,12 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
+        RerouteResultInfoData expected = RerouteResultInfoData.builder()
+                .flowId(origin.getFlowId())
+                .success(false)
+                .rerouteError(new RuleFailedError("Failed to validate rules", getSwitches(newPathPair)))
+                .build();
+        verify(carrier).sendRerouteResultStatus(argThat(hasProperty("data", equalTo(expected))));
     }
 
     @Test
@@ -342,7 +374,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         Set<PathId> originalPaths = origin.getPaths().stream()
                 .map(FlowPath::getPathId)
-                .collect(Collectors.toSet());
+                .collect(toSet());
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
                 .updateStatus(
@@ -449,6 +481,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyPathReplace(origin, result);
+        RerouteResultInfoData expected = RerouteResultInfoData.builder()
+                .flowId(origin.getFlowId())
+                .success(true)
+                .build();
+        verify(carrier).sendRerouteResultStatus(argThat(hasProperty("data", equalTo(expected))));
     }
 
     @Test
@@ -483,7 +520,14 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         FlowPath forwardPath = result.getForwardPath();
         Assert.assertNotNull(forwardPath);
-        Assert.assertTrue(1 < forwardPath.getSegments().size());  // second path have 2 segments
+        Assert.assertEquals(1, forwardPath.getSegments().size());  // second request is dropped
+
+        RerouteResultInfoData expected = RerouteResultInfoData.builder()
+                .flowId(origin.getFlowId())
+                .success(false)
+                .rerouteError(new RerouteInProgressError())
+                .build();
+        verify(carrier).sendRerouteResultStatus(argThat(hasProperty("data", equalTo(expected))));
     }
 
     @Test
@@ -630,5 +674,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         return new FlowRerouteService(
                 carrier, persistenceManager, pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
                 PATH_ALLOCATION_RETRIES_LIMIT, PATH_ALLOCATION_RETRY_DELAY, SPEAKER_COMMAND_RETRIES_LIMIT);
+    }
+
+    private Set<SwitchId> getSwitches(PathPair pathPair) {
+        return pathPair.getForward().getSegments().stream()
+                .flatMap(segment -> Stream.of(segment.getSrcSwitchId(), segment.getDestSwitchId()))
+                .collect(toSet());
     }
 }

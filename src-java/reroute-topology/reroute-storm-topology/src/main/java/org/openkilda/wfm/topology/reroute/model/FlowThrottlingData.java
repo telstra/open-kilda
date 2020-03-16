@@ -17,12 +17,11 @@ package org.openkilda.wfm.topology.reroute.model;
 
 import org.openkilda.model.IslEndpoint;
 
-import com.google.common.annotations.VisibleForTesting;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,14 +31,15 @@ public class FlowThrottlingData implements Serializable {
     private Integer priority;
     private Instant timeCreate;
     private Set<IslEndpoint> affectedIsl;
+    private boolean force;
+    private boolean effectivelyDown;
+    private String reason;
+    private int retryCounter;
 
-    @VisibleForTesting
-    public FlowThrottlingData(String correlationId, Integer priority) {
-        this(correlationId, priority, Instant.now(), Collections.emptySet());
-    }
-
-    public FlowThrottlingData(
-            String correlationId, Integer priority, Instant timeCreate, Set<IslEndpoint> affectedIsl) {
+    @Builder
+    public FlowThrottlingData(String correlationId, Integer priority, Instant timeCreate,
+                              Set<IslEndpoint> affectedIsl, boolean force, boolean effectivelyDown,
+                              String reason) {
         this.correlationId = correlationId;
         this.priority = priority;
         this.timeCreate = timeCreate;
@@ -47,5 +47,12 @@ public class FlowThrottlingData implements Serializable {
         // FIXME(surabujin): this field treats as mutable set by object owners
         //  org.openkilda.wfm.topology.reroute.service.ReroutesThrottling.putRequest
         this.affectedIsl = new HashSet<>(affectedIsl);
+        this.force = force;
+        this.effectivelyDown = effectivelyDown;
+        this.reason = reason;
+    }
+
+    public void increaseRetryCounter() {
+        retryCounter++;
     }
 }

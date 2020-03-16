@@ -17,6 +17,10 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -93,6 +97,11 @@ public class FlowRerouteService {
         }
 
         final String flowId = reroute.getFlowId();
+        if (fsms.values().stream().map(FlowRerouteFsm::getFlowId).anyMatch(id -> id.equals(flowId))) {
+            sendRerouteInProgressError(flowId, reroute.getCommandContext().getCorrelationId());
+            return;
+        }
+
         final String key = reroute.getKey();
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
@@ -166,6 +175,16 @@ public class FlowRerouteService {
                     "Attempt to reuse history key %s, but there's a history record(s) for it (flowId=\"%s\")",
                     eventKey, reroute.getFlowId()));
         }
+    }
+
+    private void sendRerouteInProgressError(String flowId, String correlationId) {
+        RerouteResultInfoData rerouteResult = RerouteResultInfoData.builder()
+                .flowId(flowId)
+                .success(false)
+                .rerouteError(new RerouteInProgressError())
+                .build();
+        Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
+        carrier.sendRerouteResultStatus(message);
     }
 
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {

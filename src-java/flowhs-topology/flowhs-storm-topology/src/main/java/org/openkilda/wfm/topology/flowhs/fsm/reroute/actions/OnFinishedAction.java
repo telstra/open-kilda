@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
@@ -24,15 +27,19 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public OnFinishedAction(FlowOperationsDashboardLogger dashboardLogger) {
+    private final FlowOperationsDashboardLogger dashboardLogger;
+    private final FlowRerouteHubCarrier carrier;
+
+    public OnFinishedAction(FlowOperationsDashboardLogger dashboardLogger, FlowRerouteHubCarrier carrier) {
         this.dashboardLogger = dashboardLogger;
+        this.carrier = carrier;
     }
 
     @Override
@@ -45,5 +52,13 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, Sta
                     format("Flow reroute completed with status %s  and error %s", stateMachine.getNewFlowStatus(),
                             stateMachine.getErrorReason()));
         }
+        RerouteResultInfoData rerouteResult = RerouteResultInfoData.builder()
+                .flowId(stateMachine.getFlowId())
+                .success(true)
+                .build();
+        Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(),
+                stateMachine.getCommandContext().getCorrelationId());
+        log.info("Reroute result success {}", rerouteResult);
+        carrier.sendRerouteResultStatus(message);
     }
 }

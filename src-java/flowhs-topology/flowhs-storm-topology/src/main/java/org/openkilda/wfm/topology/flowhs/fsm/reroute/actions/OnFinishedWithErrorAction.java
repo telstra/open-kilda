@@ -15,27 +15,45 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnFinishedWithErrorAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public OnFinishedWithErrorAction(FlowOperationsDashboardLogger dashboardLogger) {
+    private final FlowOperationsDashboardLogger dashboardLogger;
+    private final FlowRerouteHubCarrier carrier;
+
+    public OnFinishedWithErrorAction(FlowOperationsDashboardLogger dashboardLogger, FlowRerouteHubCarrier carrier) {
         this.dashboardLogger = dashboardLogger;
+        this.carrier = carrier;
     }
 
     @Override
     public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         dashboardLogger.onFailedFlowReroute(stateMachine.getFlowId(), stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to reroute the flow", stateMachine.getErrorReason());
+        RerouteError rerouteError = stateMachine.getRerouteError();
+        RerouteResultInfoData rerouteResult = RerouteResultInfoData.builder()
+                .flowId(stateMachine.getFlowId())
+                .success(false)
+                .rerouteError(rerouteError == null ? new RerouteError("Other error") : rerouteError)
+                .build();
+        Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(),
+                stateMachine.getCommandContext().getCorrelationId());
+        log.info("Reroute result fail {}", rerouteResult);
+        carrier.sendRerouteResultStatus(message);
     }
 }

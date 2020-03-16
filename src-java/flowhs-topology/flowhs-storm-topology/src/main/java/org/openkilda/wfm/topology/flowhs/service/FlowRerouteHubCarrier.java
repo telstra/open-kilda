@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import org.openkilda.messaging.Message;
+
 public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
     /**
      * Cancels timeout callback.
@@ -22,4 +24,9 @@ public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
      * @param key operation identifier.
      */
     void cancelTimeoutCallback(String key);
+
+    /**
+     * Sends reroute result status to reroute topology.
+     */
+    void sendRerouteResultStatus(Message message);
 }

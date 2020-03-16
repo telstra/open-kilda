@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.reroute.bolts;
+package org.openkilda.wfm.topology.reroute.model;
 
-import org.openkilda.model.FlowPath;
-import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
+import lombok.Builder;
+import lombok.Data;
 
-public interface MessageSender {
+@Data
+@Builder
+public class RerouteQueue {
 
-    void emitRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
-
-    void emitManualRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
-
-    void emitPathSwapCommand(String correlationId, FlowPath path, String reason);
+    private FlowThrottlingData inProgress;
+    private FlowThrottlingData pending;
+    private FlowThrottlingData throttling;
+    private String key;
 }

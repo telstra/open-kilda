@@ -71,7 +71,8 @@ public class InstallNonIngressRulesAction
         // emitting
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), commands, stateMachine.getNonIngressCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getNonIngressCommands().keySet());
+        stateMachine.getNonIngressCommands().forEach(
+                (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install non ingress rules");
