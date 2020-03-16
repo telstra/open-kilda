@@ -1,0 +1,14 @@
+.required-params{
+    margin-top: 2px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.example-param-span{
+    width: 100%;
+    float: left;
+    margin-top: 5px;
+}
+.normal-invalid-feedback{
+    color:#000;
+    font-size: 14px;
+}

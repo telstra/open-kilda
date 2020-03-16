@@ -1,0 +1,31 @@
+.navigation-bar {
+	border-bottom: 1px solid #adacac;
+	padding-bottom: 14px;
+	margin: 0 0 20px;
+}
+
+.navigation-bar li {
+	display: inline-block;
+	float:left;
+	margin-right: 5px;
+	color: #333;
+	font-size: 15px;
+}
+
+.navigation-bar li a {
+	color: #333;
+	font-weight: 500;
+}
+
+.navigation-bar li i {
+	margin-right: 5px;
+}
+
+table.dataTable.no-footer {
+    border: 1px solid #ccc;
+    font-size: 13px;
+    margin: 15px 0;
+    float: left;
+    width: 100%;
+    table-layout: fixed;
+}

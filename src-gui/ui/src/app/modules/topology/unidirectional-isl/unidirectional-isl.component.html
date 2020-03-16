@@ -1,0 +1,66 @@
+ <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" id="unidirectional-isl-table" class="isl-table-popup row-border hover" cellspacing="0">
+								<thead>
+    <tr class="tableHeading">
+        
+      <th >
+        <span title="Source Switch">
+        Src Switch
+      </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedSrcSwitchName')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedSrcSwitchName" [hidden]="!uexpandedSrcSwitchName" />
+      </th>
+      <th ></th>
+    
+      <th><span title="Source Port">Src Port </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedSrcPort')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedSrcPort" [hidden]="!uexpandedSrcPort"/>
+      </th>
+     
+      <th><span title="Destination Switch">Dst Switch </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedDestinationSwitchName')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedDestinationSwitchName" [hidden]="!uexpandedDestinationSwitchName"/>
+      </th>
+      <th ></th>
+      <th><span title="Destination Port">Dst Port </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedDestinationPort')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedDestinationPort" [hidden]="!uexpandedDestinationPort"/>
+      </th>
+      <th><span title="Cost">Cost </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedCost')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedCost" [hidden]="!uexpandedCost"/>
+      </th>
+      <th><span title="State">State </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedState')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedState" [hidden]="!uexpandedState"/>
+      </th>
+      <th ><span title="Speed(Mbps)">Speed</span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedSpeed')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedSpeed" [hidden]="!uexpandedSpeed"/>
+      </th>
+      <th ><span title="Available Bandwidth(Mbps)">Available Bandwidth(Mbps) </span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedAvailableBandwidth')"></i>
+        <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedAvailableBandwidth" [hidden]="!uexpandedAvailableBandwidth"/>
+      </th>
+      <th ><span title="Latency">Latency</span>
+        <i class="fa fa-search" (click)="toggleuSearch($event,'uexpandedLatency')"></i>
+        <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="uexpandedLatency" [hidden]="!uexpandedLatency"/>
+      </th>
+      
+  </thead>
+								<tbody>
+          <tr *ngFor="let row of unidirectionalISL; let i = index">
+              <td title="{{row.source_switch_name}}"  class="divTableCell">{{row.source_switch_name || "-"}}</td>
+              <td title="{{row.source_switch}}"  class="divTableCell">{{row.source_switch || "-"}}</td>
+              <td title="{{row.src_port}}"  class="divTableCell">{{row.src_port || "-"}}</td>
+              <td title="{{row.target_switch_name}}"  class="divTableCell">{{row.target_switch_name || "-"}}</td>
+              <td title="{{row.target_switch}}"  class="divTableCell">{{row.target_switch || "-"}}</td>
+              <td title="{{row.dst_port}}"  class="divTableCell">{{row.dst_port || "-"}}</td>
+              <td title="{{row.cost}}"  class="divTableCell">{{row.cost || "-"}}</td>
+              <td title="{{row.state}}"  class="divTableCell">{{row.state || "-"}}</td>
+              <td title="{{row.speed}}"  class="divTableCell">{{row.speed || "-"}}</td>
+              <td title="{{row.available_bandwidth}}"  class="divTableCell">{{row.available_bandwidth || "-"}}</td>
+              <td title="{{row.latency}}"  class="divTableCell">{{row.latency || "-"}}</td>
+            </tr>
+      </tbody>
+							</table>
+

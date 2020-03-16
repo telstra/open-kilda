@@ -1,0 +1,27 @@
+.topology-graph ul.line-legend li {
+    position: relative;
+    display: inline-block;
+    padding-left: 20px;
+    padding-right: 15px;
+    height: auto;
+}
+
+.line-legend li:first-child:before {
+    height: 14px;
+    left: 0;
+    position: absolute;
+    top: 3px;
+    width: 14px;
+    content: "";
+    background: #182488;
+}
+
+.line-legend li:before {
+    height: 14px;
+    left: 0;
+    position: absolute;
+    top: 3px;
+    width: 14px;
+    content: "";
+    background: #aad200;
+}

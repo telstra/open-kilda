@@ -1,0 +1,22 @@
+<div id="storeSetting">
+  <div class="row">
+    <div id="exTab1" class="col-lg-12 tab-wrapper">
+    <ul class="nav nav-pills">
+        <li id="identityServerTabHeader" [ngClass]="{'active': openedTab == 'identityserver'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('identityserver');">Identity Server</a></li>
+        <li id="linkStoreTabHeader" *ngIf="isIdentityServer" [ngClass]="{'active': openedTab == 'linkstore'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('linkstore');">Link Store</a></li>
+        <li id="switchStoreTabHeader" *ngIf="isIdentityServer" [ngClass]="{'active': openedTab == 'switchstore'}"><a class="loadTabData" href="javascript:void(0);" (click)="openTab('switchstore');">Switch Store</a></li>
+      </ul>
+      <div class="tab-content clearfix">
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'identityserver'}">
+            <app-identity-server  *ngIf="openedTab == 'identityserver'"></app-identity-server>
+        </div>
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'linkstore'}">
+            <app-link-store *ngIf="openedTab == 'linkstore'"></app-link-store>
+        </div>
+        <div class="tab-pane" [ngClass]="{'active': openedTab == 'switchstore'}">
+          <app-switch-store *ngIf="openedTab == 'switchstore'"></app-switch-store>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>

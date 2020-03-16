@@ -1,0 +1,14 @@
+.barcode-bg .otp input {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    border-bottom: 2px solid #c1c1c1;
+    width: 25px;
+    text-align: center;
+    padding: 5px;
+    margin: 10px;
+    font-family: Telstra-Regular-Bold, Arial, Helvetica, sans-serif;
+    font-size: 25px;
+    color: #2aa4a2;
+    float: left;
+}

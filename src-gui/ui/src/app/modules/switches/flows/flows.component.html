@@ -1,0 +1,31 @@
+<div class="row">
+    <div class="col-sm-12">
+        <div class="row">
+          
+            <div class="col-sm-4">
+                <div class="form-group input-group-sm">
+                     <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                 </div>
+            </div>
+            <div class="col-sm-6 text-right text-filters">
+                <div *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : portFlowFlag == 'controller','btn-dark': portFlowFlag != 'controller'}">
+                      <input type="radio" (click)="loadPortFlows('controller')" name="options" id="option2" autocomplete="off"> Controller
+                    </label>
+                    <label class="btn"  [ngClass]="{ 'btn-secondary' : portFlowFlag == 'inventory','btn-dark': portFlowFlag != 'inventory'}">
+                      <input type="radio" (click)="loadPortFlows('inventory')" name="options" id="option3" autocomplete="off"> Inventory
+                    </label>
+                    
+                  </div>
+            </div>
+           
+              <div class="col-sm-2 text-right text-filters mb-3" id="buttons">
+                  
+              </div>
+         </div>
+         
+     </div>
+    <div class="clear clearfix"></div>
+  </div>
+  <app-port-flows *ngIf="portFlowFlag == 'controller' && !ifLoadingData" [textSearch]="textSearch" [data] = "data"></app-port-flows>
+  <app-port-inventory-flows *ngIf="portFlowFlag == 'inventory' && !ifLoadingData" [textSearch]="textSearch" [data]="data"></app-port-inventory-flows>

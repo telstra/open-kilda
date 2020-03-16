@@ -1,0 +1,7 @@
+.roleDataTable{
+    width: 20%;
+}
+
+.dataTables_wrapper.no-footer .dataTables_filter label {
+    display: none;
+}

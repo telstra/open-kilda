@@ -1,0 +1,117 @@
+.check-connections {
+    margin-top: 10px;
+    float: right;
+    width: 135px;
+    clear: both;
+}
+
+.checkbox-btns {
+    position: absolute;
+    bottom: 0;
+    right: 3px;
+    z-index: 3;
+    top: 0;
+    height: 184px;
+    background: rgba(0,0,0,0.75);
+    margin: auto;
+    color: #fff;
+    padding: 2px;
+    border-radius: 3px;
+}
+
+#ui-container {
+    position: relative;
+}
+
+
+#ui-container #search {
+    height: 45px;
+    padding: 0 10px;
+    position: relative;
+    z-index: 1;
+    color: #333;
+    right: 0;
+    border: 1px solid #ccc;
+    border-right: none;
+    width: calc(100% - 45px);
+    float: left;
+    border-radius: 3px 0 0 3px;
+}
+#ui-container.active .search-container {
+    display: block;
+    position: absolute;
+    right: 100%;
+    height: 45px;
+    width: 220px;
+}
+
+#ui-container.active .search-container input {
+    height: 45px;
+    width: 100%;
+    padding: 0 10px;
+}
+
+#ui-container .search-container {
+    display: none;
+}
+
+.checkbox-btns i:hover, #ui-container.active i {
+    background: rgba(255,255,255,0.25);
+}
+
+svg:not(:root) {
+    overflow: hidden;
+}
+
+svg {
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    top: 50px;
+    position: absolute;
+    /*padding-top:80px;*/
+}
+
+
+.search-container .ta-results{
+    widows: 100%;
+
+}
+.search-container .ta-results button{
+    padding: 6px;
+}
+
+
+.links line {
+    stroke: #76963e;
+    stroke-width: 1.0px;
+    stroke-opacity: 1.5;
+  }
+  
+  .nodes circle {
+    stroke: green;
+    stroke-width: 0.5px;
+  }
+  
+  #ib-d3-graph-div {
+    height: 500px;
+    width: 960px;
+  }
+    
+  #testSvgId {
+    height: 500px;
+    width: 960px;
+  }
+    
+  #backgroundId {
+    height: 500px;
+    width: 960px;
+  }
+  
+  text {
+    font: bold 12px monospace;
+  }
+  
+  

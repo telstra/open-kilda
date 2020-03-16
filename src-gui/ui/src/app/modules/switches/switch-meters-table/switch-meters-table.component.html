@@ -1,0 +1,22 @@
+<div class="table-responsive">
+    <table class="row-border hover dataTable no-footer margin-top-zero">
+        <thead class="thead-light">
+          <tr class="tableHeading">
+            <th>Meter Id</th>
+            <th>Rate</th>
+            <th>Burst size</th>
+            <th>Version</th>
+            <th>Flags</th>
+          </tr>
+        </thead>
+      <tbody>
+        <tr *ngFor="let row of data; let i = index" >
+          <td class="divTableCell">{{row['meter_id'] || '-'}}</td>
+          <td class="divTableCell">{{row['rate'] || '-'}}</td>
+          <td class="divTableCell">{{row['burst_size'] || '-'}}</td>
+          <td class="divTableCell">{{row['version'] || '-'}}</td>
+          <td class="divTableCell">{{row['flags'].join(', ') || '-'}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>

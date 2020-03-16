@@ -1,0 +1,36 @@
+<div class="modal-header">
+  <h4 class="modal-title">2Factor Authentication</h4>
+  <button type="button" class="close" aria-label="Close" (click)="activeModal.dismiss('Cross click')">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+    <form [formGroup]="otpForm" class="form-horizotal">
+  <div class="form-group">
+    <label for="otp">Enter the authentication code <span class="mandatory-text text-danger">*</span></label>
+    <div class="barcode-bg">
+      <div class="otp otp-container" #otpcontainer>
+        <input formControlName="input1" (keypress)="validateOtpInput($event)" class="form-control otpdigit" placeholder="*" maxlength="1" autofocus> 
+        <input formControlName="input2" (keypress)="validateOtpInput($event)" class="form-control otpdigit" placeholder="*" maxlength="1"> 
+        <input formControlName="input3" (keypress)="validateOtpInput($event)" class="form-control otpdigit" placeholder="*" maxlength="1">
+        <input formControlName="input4" (keypress)="validateOtpInput($event)" class="form-control otpdigit" placeholder="*" maxlength="1"> 
+        <input formControlName="input5" (keypress)="validateOtpInput($event)" class="form-control otpdigit" placeholder="*" maxlength="1">
+        <input formControlName="input6" (keypress)="validateOtpInput($event)" class="form-control otpdigit" placeholder="*" maxlength="1">
+        
+      
+      </div>
+    </div>
+    <div class="clear clearfix"></div>
+  </div>
+  <div class="form-group">
+  <div *ngIf="submitted && (f.input1.errors || f.input2.errors || f.input3.errors || f.input4.errors || f.input5.errors || f.input6.errors)" class="invalid-feedback">
+    <div>Authentication code required</div>
+   </div>
+   </div>
+  <div class="clear clearfix"></div>
+</form>
+</div>
+<div class="modal-footer">
+  <button (click)="submittOtp()" class="btn btn-sm btn-dark">Submit</button>
+  <button type="button" class="btn btn-sm btn-dark" (click)="activeModal.close('Close click')">Cancel</button>
+</div>

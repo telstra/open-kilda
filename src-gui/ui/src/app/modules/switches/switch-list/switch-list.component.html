@@ -1,0 +1,31 @@
+<div class="row">
+    <div class="col-sm-12">
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="form-group input-group-sm">
+                     <input id="search-input" type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                 </div>
+            </div>
+              <div class="col-sm-8 text-right text-filters mb-3">
+                  <div *ngIf="hasStoreSetting && commonService.hasPermission('sw_switch_inventory')" class="btn-group btn-group-sm btn-group-toggle mr-1" data-toggle="buttons">
+                      <label class="btn"  [ngClass]="{ 'btn-secondary' : switchFilterFlag == 'all','btn-dark': switchFilterFlag != 'all'}">
+                        <input type="radio" (click)="loadSwitchList('all')" name="options" id="option1" autocomplete="off" checked> All
+                      </label>
+                      <label class="btn"  [ngClass]="{ 'btn-secondary' : switchFilterFlag == 'controller','btn-dark': switchFilterFlag != 'controller'}">
+                        <input type="radio"  (click)="loadSwitchList('controller')" name="options" id="option2" autocomplete="off"> Controller
+                      </label>
+                      <label class="btn"  [ngClass]="{ 'btn-secondary' : switchFilterFlag == 'inventory','btn-dark': switchFilterFlag != 'inventory'}">
+                        <input type="radio" (click)="loadSwitchList('inventory')" name="options" id="option3" autocomplete="off"> Inventory
+                      </label>
+                      <a *ngIf="hasStoreSetting" class="mr-1"> &nbsp;| </a>
+                    </div>
+                    
+                 <a class="cursor-pointer" (click)="getSwitchList(switchFilterFlag)"><i class="fa fa-refresh"></i>  Refresh</a>
+              </div>
+         </div>
+         
+     </div>
+    <div class="clear clearfix"></div>
+  </div>
+
+<app-switch-datatable [data]="dataSet" [textSearch]="textSearch" [switchFilterFlag]="switchFilterFlag"  *ngIf="!loadingData"></app-switch-datatable>

@@ -1,0 +1,7 @@
+.form-wrapper{
+  border: 1px solid #ccc;
+  padding: 15px 15px 0;
+}
+ .col-form-label {
+  line-height: 1;
+}

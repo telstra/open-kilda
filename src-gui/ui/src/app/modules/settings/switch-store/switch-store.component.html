@@ -1,0 +1,121 @@
+<div class="tab-pane" id="switchStoreTab">
+  <form novalidate class="setting" (ngSubmit)="submitSwitchStore()" [formGroup]="switchStoreForm" method="POST">
+    <div class="col-md-12" [formGroupName]="'urls'">
+      <div class="form-group row" [formGroupName]="'get-all-switches'">
+        <label for="getalllinkurl" class="col-sm-3 text-right col-form-label required">Get All Switch URL:</label>
+        <div class="col-sm-5">
+          <input  type="text" formControlName="url" class="form-control" placeholder="Get All Switch URL" />
+          <div class="invalid-feedback">
+            <div  *ngIf="(!i['urls']['controls']['get-all-switches']['controls'].url.valid && (i['urls']['controls']['get-all-switches']['controls'].url.dirty || i['urls']['controls']['get-all-switches']['controls'].url.touched )   && i['urls']['controls']['get-all-switches']['controls'].url.errors || submitted) && (i['urls']['controls']['get-all-switches']['controls'].url.errors && i['urls']['controls']['get-all-switches']['controls'].url.errors.required)" 
+            >Get status list Url is required.</div>
+            <div  *ngIf="(!i['urls']['controls']['get-all-switches']['controls'].url.valid && (i['urls']['controls']['get-all-switches']['controls'].url.dirty || i['urls']['controls']['get-all-switches']['controls'].url.touched )   && i['urls']['controls']['get-all-switches']['controls'].url.errors || submitted) && (i['urls']['controls']['get-all-switches']['controls'].url.errors && i['urls']['controls']['get-all-switches']['controls'].url.errors.pattern)" 
+            >Please enter a valid URL</div>
+          </div>
+        </div>  
+      </div>
+      <div class="form-group row" [formGroupName]="'get-switch'">
+        <label for="getlinkurl" class="col-sm-3 text-right col-form-label required">Get Switch With ID URL:</label>
+        <div class="col-sm-5">
+          <input  type="text" formControlName="url" class="form-control" placeholder="Get Switch With ID URL" />
+          <div class="invalid-feedback">
+            <div *ngIf="(!i['urls']['controls']['get-switch']['controls'].url.valid && (i['urls']['controls']['get-switch']['controls'].url.dirty || i['urls']['controls']['get-switch']['controls'].url.touched )   && i['urls']['controls']['get-switch']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch']['controls'].url.errors && i['urls']['controls']['get-switch']['controls'].url.errors.paramError)" 
+             >Url do not contain required params.</div>
+            <div *ngIf="(!i['urls']['controls']['get-switch']['controls'].url.valid && (i['urls']['controls']['get-switch']['controls'].url.dirty || i['urls']['controls']['get-switch']['controls'].url.touched )   && i['urls']['controls']['get-switch']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch']['controls'].url.errors && i['urls']['controls']['get-switch']['controls'].url.errors.required)" 
+             >Get Link Url is required.</div>
+            <div *ngIf="(!i['urls']['controls']['get-switch']['controls'].url.valid && (i['urls']['controls']['get-switch']['controls'].url.dirty || i['urls']['controls']['get-switch']['controls'].url.touched )   && i['urls']['controls']['get-switch']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch']['controls'].url.errors && i['urls']['controls']['get-switch']['controls'].url.errors.pattern)" 
+            >Please enter a valid URL</div>
+        </div>
+        </div>  
+        <div class="col-sm-4">
+          <span  class="example-param-span normal-invalid-feedback">
+            <pre class="required-params">Required query params:{{paramsList.switchWithIdParams}}</pre>
+          </span>
+        </div>
+      </div>
+      <!--<div class="form-group row" [formGroupName]="'get-customers-with-switch-id'">
+        <label for="getlinkwithparam" class="col-sm-3 text-right col-form-label required">Get Customers With Switch ID:</label>
+        <div class="col-sm-5">
+          <input  type="text" formControlName="url" class="form-control"  placeholder="Get Customers With Switch ID" />
+          <div class="invalid-feedback">
+            <div *ngIf="(!i['urls']['controls']['get-customers-with-switch-id']['controls'].url.valid && (i['urls']['controls']['get-customers-with-switch-id']['controls'].url.dirty || i['urls']['controls']['get-customers-with-switch-id']['controls'].url.touched )   && i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors || submitted) && (i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors && i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors.paramError)" 
+             >Url do not contain required params.</div>
+            <div *ngIf="(!i['urls']['controls']['get-customers-with-switch-id']['controls'].url.valid && (i['urls']['controls']['get-customers-with-switch-id']['controls'].url.dirty || i['urls']['controls']['get-customers-with-switch-id']['controls'].url.touched )   && i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors || submitted) && (i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors && i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors.required)" 
+             >Get Link Url is required.</div>
+            <div *ngIf="(!i['urls']['controls']['get-customers-with-switch-id']['controls'].url.valid && (i['urls']['controls']['get-customers-with-switch-id']['controls'].url.dirty || i['urls']['controls']['get-customers-with-switch-id']['controls'].url.touched )   && i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors || submitted) && (i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors && i['urls']['controls']['get-customers-with-switch-id']['controls'].url.errors.pattern)" 
+            >Please enter a valid URL</div>
+        </div>
+        </div> 
+        <div class="col-sm-4">
+          <span  class="example-param-span normal-invalid-feedback">
+            <pre class="required-params">Required query params:{{paramsList.customersWithSwitchId}}</pre>
+          </span>
+        </div>
+      </div>-->
+      <div class="form-group row" [formGroupName]="'get-switch-ports'">
+        <label for="getcontracturl" class="col-sm-3 text-right col-form-label required">Get Port List with Switch ID:</label> 
+        <div class="col-sm-5">
+          <input type="text" formControlName="url" class="form-control" placeholder="Get Port List with Switch ID" />
+          <div class="invalid-feedback">
+            <div *ngIf="(!i['urls']['controls']['get-switch-ports']['controls'].url.valid && (i['urls']['controls']['get-switch-ports']['controls'].url.dirty || i['urls']['controls']['get-switch-ports']['controls'].url.touched )   && i['urls']['controls']['get-switch-ports']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch-ports']['controls'].url.errors && i['urls']['controls']['get-switch-ports']['controls'].url.errors.paramError)" 
+             >Url do not contain required params.</div>
+            <div *ngIf="(!i['urls']['controls']['get-switch-ports']['controls'].url.valid && (i['urls']['controls']['get-switch-ports']['controls'].url.dirty || i['urls']['controls']['get-switch-ports']['controls'].url.touched )   && i['urls']['controls']['get-switch-ports']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch-ports']['controls'].url.errors && i['urls']['controls']['get-switch-ports']['controls'].url.errors.required)" 
+             >Get Link Url is required.</div>
+            <div *ngIf="(!i['urls']['controls']['get-switch-ports']['controls'].url.valid && (i['urls']['controls']['get-switch-ports']['controls'].url.dirty || i['urls']['controls']['get-switch-ports']['controls'].url.touched )   && i['urls']['controls']['get-switch-ports']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch-ports']['controls'].url.errors && i['urls']['controls']['get-switch-ports']['controls'].url.errors.pattern)" 
+            >Please enter a valid URL</div>
+        </div>
+        </div>
+        <div class="col-sm-4">
+          <span  class="example-param-span normal-invalid-feedback">
+            <pre class="required-params">Required query params:{{paramsList.portsWithSwitchId}}</pre>
+          </span>
+        </div>
+      </div>
+      <!--<div class="form-group row" [formGroupName]="'get-port-with-id'">
+        <label for="deletecontracturl" class="col-sm-3 text-right col-form-label required">Get Port with ID URL:</label> 
+        <div class="col-sm-5">
+          <input type="text" formControlName="url" class="form-control"  placeholder="Get Port with ID URL" />
+          <div class="invalid-feedback">
+            <div *ngIf="(!i['urls']['controls']['get-port-with-id']['controls'].url.valid && (i['urls']['controls']['get-port-with-id']['controls'].url.dirty || i['urls']['controls']['get-port-with-id']['controls'].url.touched )   && i['urls']['controls']['get-port-with-id']['controls'].url.errors || submitted) && (i['urls']['controls']['get-port-with-id']['controls'].url.errors && i['urls']['controls']['get-port-with-id']['controls'].url.errors.paramError)" 
+             >Url do not contain required params.</div>
+            <div *ngIf="(!i['urls']['controls']['get-port-with-id']['controls'].url.valid && (i['urls']['controls']['get-port-with-id']['controls'].url.dirty || i['urls']['controls']['get-port-with-id']['controls'].url.touched )   && i['urls']['controls']['get-port-with-id']['controls'].url.errors || submitted) && (i['urls']['controls']['get-port-with-id']['controls'].url.errors && i['urls']['controls']['get-port-with-id']['controls'].url.errors.required)" 
+             >Get Link Url is required.</div>
+            <div *ngIf="(!i['urls']['controls']['get-port-with-id']['controls'].url.valid && (i['urls']['controls']['get-port-with-id']['controls'].url.dirty || i['urls']['controls']['get-port-with-id']['controls'].url.touched )   && i['urls']['controls']['get-port-with-id']['controls'].url.errors || submitted) && (i['urls']['controls']['get-port-with-id']['controls'].url.errors && i['urls']['controls']['get-port-with-id']['controls'].url.errors.pattern)" 
+            >Please enter a valid URL</div>
+        </div>
+        </div>
+        <div class="col-sm-4">
+          <span  class="example-param-span normal-invalid-feedback">
+            <pre class="required-params">Required query params:{{paramsList.portWithId}}</pre>
+          </span>
+        </div>
+      </div>-->
+      <div class="form-group row" [formGroupName]="'get-switch-port-flows'">
+          <label for="deletecontracturl" class="col-sm-3 text-right col-form-label required">Get Port Customers and Flows:</label> 
+          <div class="col-sm-5">
+            <input type="text" formControlName="url" class="form-control"  placeholder="Get Port Customers and Flows" />
+            <div class="invalid-feedback">
+              <div *ngIf="(!i['urls']['controls']['get-switch-port-flows']['controls'].url.valid && (i['urls']['controls']['get-switch-port-flows']['controls'].url.dirty || i['urls']['controls']['get-switch-port-flows']['controls'].url.touched )   && i['urls']['controls']['get-switch-port-flows']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch-port-flows']['controls'].url.errors && i['urls']['controls']['get-switch-port-flows']['controls'].url.errors.paramError)" 
+               >Url do not contain required params.</div>
+              <div *ngIf="(!i['urls']['controls']['get-switch-port-flows']['controls'].url.valid && (i['urls']['controls']['get-switch-port-flows']['controls'].url.dirty || i['urls']['controls']['get-switch-port-flows']['controls'].url.touched )   && i['urls']['controls']['get-switch-port-flows']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch-port-flows']['controls'].url.errors && i['urls']['controls']['get-switch-port-flows']['controls'].url.errors.required)" 
+               >Get Link Url is required.</div>
+              <div *ngIf="(!i['urls']['controls']['get-switch-port-flows']['controls'].url.valid && (i['urls']['controls']['get-switch-port-flows']['controls'].url.dirty || i['urls']['controls']['get-switch-port-flows']['controls'].url.touched )   && i['urls']['controls']['get-switch-port-flows']['controls'].url.errors || submitted) && (i['urls']['controls']['get-switch-port-flows']['controls'].url.errors && i['urls']['controls']['get-switch-port-flows']['controls'].url.errors.pattern)" 
+              >Please enter a valid URL</div>
+          </div>
+          </div>
+          <div class="col-sm-4">
+            <span  class="example-param-span normal-invalid-feedback">
+              <pre class="required-params">Required query params:{{paramsList.portCustomersWithLinks}}</pre>
+            </span>
+          </div>
+        </div>
+      <div class="form-group row">
+        <div class="col-sm-8 text-right">
+          <button type="button" (click)="deleteSwitchStore()" class="btn kilda_btn" *ngIf="isEdit && !isEditable" style="margin:1px 4px;">Delete</button>
+          <button type="button" (click)="enableEditForm()" class="btn kilda_btn" *ngIf="isEdit && !isEditable">Edit</button>
+          <button type="button" (click)="cancelEditForm()"  class="btn kilda_btn cancel_btn" *ngIf="isEdit && isEditable">Cancel</button>
+          <button type="submit"  class="btn kilda_btn" *ngIf="!isEdit || isEditable">Save</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
