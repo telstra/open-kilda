@@ -24,15 +24,19 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public OnFinishedAction(FlowOperationsDashboardLogger dashboardLogger) {
+    private final FlowOperationsDashboardLogger dashboardLogger;
+    private final FlowRerouteHubCarrier carrier;
+
+    public OnFinishedAction(FlowOperationsDashboardLogger dashboardLogger, FlowRerouteHubCarrier carrier) {
         this.dashboardLogger = dashboardLogger;
+        this.carrier = carrier;
     }
 
     @Override
@@ -45,5 +49,8 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, Sta
                     format("Flow reroute completed with status %s  and error %s", stateMachine.getNewFlowStatus(),
                             stateMachine.getErrorReason()));
         }
+        log.info("Flow {} reroute success", stateMachine.getFlowId());
+        carrier.sendRerouteResultStatus(stateMachine.getFlowId(), stateMachine.getRerouteError(),
+                stateMachine.getCommandContext().getCorrelationId());
     }
 }

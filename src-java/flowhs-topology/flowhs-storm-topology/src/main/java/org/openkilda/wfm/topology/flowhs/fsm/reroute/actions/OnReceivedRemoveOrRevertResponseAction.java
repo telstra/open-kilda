@@ -45,7 +45,7 @@ public class OnReceivedRemoveOrRevertResponseAction extends
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommands().get(commandId);
         FlowSegmentRequestFactory installCommand = stateMachine.getInstallCommand(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId)
+        if (!stateMachine.getPendingCommands().containsKey(commandId)
                 || (removeCommand == null && installCommand == null)) {
             log.info("Received a response for unexpected command: {}", response);
             return;

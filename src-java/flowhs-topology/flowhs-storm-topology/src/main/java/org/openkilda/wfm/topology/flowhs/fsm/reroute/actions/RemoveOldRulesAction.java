@@ -35,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 
@@ -83,7 +82,7 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
             stateMachine.getCarrier().sendSpeakerRequest(request);
         }
 
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
+        requestsStorage.forEach((key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
         stateMachine.getRetriedCommands().clear();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");

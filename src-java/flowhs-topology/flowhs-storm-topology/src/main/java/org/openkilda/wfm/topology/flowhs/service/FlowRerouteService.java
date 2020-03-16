@@ -17,10 +17,9 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.FlowStatus;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
@@ -48,29 +47,17 @@ public class FlowRerouteService {
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowRerouteHubCarrier carrier;
-    private final PersistenceManager persistenceManager;
     private final FlowEventRepository flowEventRepository;
-    private final FlowRepository flowRepository;
-    private final PathComputer pathComputer;
-    private final FlowResourcesManager flowResourcesManager;
-    private final int transactionRetriesLimit;
-    private final int speakerCommandRetriesLimit;
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                               int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.persistenceManager = persistenceManager;
 
         final RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowEventRepository = repositoryFactory.createFlowEventRepository();
 
-        this.pathComputer = pathComputer;
-        this.flowResourcesManager = flowResourcesManager;
-        this.transactionRetriesLimit = transactionRetriesLimit;
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 speakerCommandRetriesLimit);
@@ -87,12 +74,20 @@ public class FlowRerouteService {
             checkRequestsCollision(reroute);
         } catch (Exception e) {
             log.error(e.getMessage());
-            performHousekeeping(reroute.getKey());
-            fixFlowStatus(reroute);
+            FlowRerouteFsm fsm = fsms.get(reroute.getKey());
+            if (fsm != null) {
+                removeIfFinished(fsm, reroute.getKey());
+            }
             return;
         }
 
         final String flowId = reroute.getFlowId();
+        if (isRerouteAlreadyInProgress(flowId)) {
+            carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
+                    reroute.getCommandContext().getCorrelationId());
+            return;
+        }
+
         final String key = reroute.getKey();
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
@@ -107,6 +102,12 @@ public class FlowRerouteService {
         fsmExecutor.fire(fsm, Event.NEXT, context);
 
         removeIfFinished(fsm, key);
+    }
+
+    private boolean isRerouteAlreadyInProgress(String flowId) {
+        return fsms.values().stream()
+                .map(FlowRerouteFsm::getFlowId)
+                .anyMatch(id -> id.equals(flowId));
     }
 
     /**
@@ -178,11 +179,5 @@ public class FlowRerouteService {
     private void performHousekeeping(String key) {
         fsms.remove(key);
         carrier.cancelTimeoutCallback(key);
-    }
-
-    private void fixFlowStatus(FlowRerouteFact reroute) {
-        if (reroute.isEffectivelyDown()) {
-            flowRepository.updateStatusSafe(reroute.getFlowId(), FlowStatus.DOWN);
-        }
     }
 }

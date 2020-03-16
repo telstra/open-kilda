@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.reroute;
+package org.openkilda.messaging.info.reroute.error;
 
-/**
- * Represents stream used in {@link RerouteTopology}.
- */
-public enum StreamType {
-    SWAP
+import com.fasterxml.jackson.annotation.JsonCreator;
+import lombok.Data;
+
+@Data
+public class RerouteInProgressError extends RerouteError {
+
+    @JsonCreator
+    public RerouteInProgressError() {
+        super("Reroute is in progress");
+    }
 }

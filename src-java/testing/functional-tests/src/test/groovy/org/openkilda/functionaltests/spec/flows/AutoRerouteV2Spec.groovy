@@ -33,6 +33,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -373,6 +374,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(VIRTUAL)
+    @Ignore("Rework is required")
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
         assumeTrue("Reroute should be completed before link is FAILED", rerouteDelay * 2 < discoveryTimeout)

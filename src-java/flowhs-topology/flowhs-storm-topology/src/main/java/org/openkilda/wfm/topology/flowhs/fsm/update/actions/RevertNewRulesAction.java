@@ -64,9 +64,8 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         stateMachine.getIngressCommands().clear();  // need to clean previous requests
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), installCommands, stateMachine.getIngressCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getIngressCommands().keySet());
-
-
+        stateMachine.getIngressCommands().forEach(
+                (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
 
         // Remove possible installed segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
@@ -86,7 +85,8 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), removeCommands, stateMachine.getRemoveCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
+        stateMachine.getRemoveCommands().forEach(
+                (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
 
         // report
         stateMachine.getRetriedCommands().clear();
