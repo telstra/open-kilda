@@ -42,15 +42,13 @@ public class ExtendableTimeWindowTest {
 
     @Test
     public void noFlushEmptyWindow() {
-        assertFalse(extendableTimeWindow.isTimeToFlush());
+        assertFalse(extendableTimeWindow.flushIfReady());
     }
 
     @Test
     public void noFlushEmptyWindow2() {
         when(clock.instant()).thenReturn(Instant.now());
-        extendableTimeWindow.registerEvent();
-        extendableTimeWindow.flush();
-        assertFalse(extendableTimeWindow.isTimeToFlush());
+        assertFalse(extendableTimeWindow.flushIfReady());
     }
 
     @Test
@@ -62,8 +60,8 @@ public class ExtendableTimeWindowTest {
         when(clock.instant()).thenReturn(event, beforeTimeout, afterTimeout);
 
         extendableTimeWindow.registerEvent();
-        assertFalse(extendableTimeWindow.isTimeToFlush());
-        assertTrue(extendableTimeWindow.isTimeToFlush());
+        assertFalse(extendableTimeWindow.flushIfReady());
+        assertTrue(extendableTimeWindow.flushIfReady());
     }
 
     @Test
@@ -77,8 +75,8 @@ public class ExtendableTimeWindowTest {
 
         extendableTimeWindow.registerEvent();
         extendableTimeWindow.registerEvent();
-        assertFalse(extendableTimeWindow.isTimeToFlush());
-        assertTrue(extendableTimeWindow.isTimeToFlush());
+        assertFalse(extendableTimeWindow.flushIfReady());
+        assertTrue(extendableTimeWindow.flushIfReady());
     }
 
     @Test
@@ -92,7 +90,7 @@ public class ExtendableTimeWindowTest {
 
         extendableTimeWindow.registerEvent();
         extendableTimeWindow.registerEvent();
-        assertFalse(extendableTimeWindow.isTimeToFlush());
-        assertTrue(extendableTimeWindow.isTimeToFlush());
+        assertFalse(extendableTimeWindow.flushIfReady());
+        assertTrue(extendableTimeWindow.flushIfReady());
     }
 }

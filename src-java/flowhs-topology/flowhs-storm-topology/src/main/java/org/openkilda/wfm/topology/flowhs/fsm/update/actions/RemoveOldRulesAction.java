@@ -67,7 +67,8 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
+        stateMachine.getRemoveCommands().forEach(
+                (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
         stateMachine.getRetriedCommands().clear();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");

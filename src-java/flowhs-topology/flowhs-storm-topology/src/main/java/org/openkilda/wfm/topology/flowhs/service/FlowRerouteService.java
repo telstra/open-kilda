@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -93,6 +94,12 @@ public class FlowRerouteService {
         }
 
         final String flowId = reroute.getFlowId();
+        if (isRerouteAlreadyInProgress(flowId)) {
+            carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
+                    reroute.getCommandContext().getCorrelationId());
+            return;
+        }
+
         final String key = reroute.getKey();
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
@@ -107,6 +114,12 @@ public class FlowRerouteService {
         fsmExecutor.fire(fsm, Event.NEXT, context);
 
         removeIfFinished(fsm, key);
+    }
+
+    private boolean isRerouteAlreadyInProgress(String flowId) {
+        return fsms.values().stream()
+                .map(FlowRerouteFsm::getFlowId)
+                .anyMatch(id -> id.equals(flowId));
     }
 
     /**

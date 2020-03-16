@@ -34,6 +34,14 @@ public interface RerouteTopologyConfig extends AbstractTopologyConfig {
     @Default("1000")
     int getDefaultFlowPriority();
 
+    @Key("flow.max.retry.counter")
+    @Default("3")
+    int getMaxRetry();
+
+    @Key("reroute.timeout.seconds")
+    @Default("40")
+    int getRerouteTimeoutSeconds();
+
     default String getKafkaTopoRerouteTopic() {
         return getKafkaTopics().getTopoRerouteTopic();
     }
@@ -44,5 +52,9 @@ public interface RerouteTopologyConfig extends AbstractTopologyConfig {
 
     default String getKafkaFlowHsTopic() {
         return getKafkaTopics().getFlowHsTopic();
+    }
+
+    default String getKafkaNorthboundTopic() {
+        return getKafkaTopics().getNorthboundTopic();
     }
 }

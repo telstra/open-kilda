@@ -44,7 +44,7 @@ public class ValidateNonIngressRulesAction extends
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getNonIngressCommands().get(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+        if (!stateMachine.getPendingCommands().containsKey(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }

@@ -128,6 +128,12 @@ public class FlowServiceImpl implements FlowService {
     private String nbworkerTopic;
 
     /**
+     * The kafka topic for `reroute` topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
+    private String rerouteTopic;
+
+    /**
      * The kafka topic for `ping` topology.
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
@@ -614,7 +620,7 @@ public class FlowServiceImpl implements FlowService {
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 
-        return messagingChannel.sendAndGet(flowHsTopic, command)
+        return messagingChannel.sendAndGet(rerouteTopic, command)
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toRerouteResponseV2(flowId, response.getPayload(), response.isRerouted()));

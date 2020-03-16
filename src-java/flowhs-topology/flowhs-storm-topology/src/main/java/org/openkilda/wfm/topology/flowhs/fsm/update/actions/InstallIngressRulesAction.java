@@ -62,7 +62,8 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFs
 
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), commands, stateMachine.getIngressCommands());
-        stateMachine.getPendingCommands().addAll(stateMachine.getIngressCommands().keySet());
+        stateMachine.getIngressCommands().forEach(
+                (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
         stateMachine.getRetriedCommands().clear();
 
         if (commands.isEmpty()) {
