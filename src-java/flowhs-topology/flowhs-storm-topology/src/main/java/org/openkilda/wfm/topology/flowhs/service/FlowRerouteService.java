@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.FlowStatus;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -87,12 +87,20 @@ public class FlowRerouteService {
             checkRequestsCollision(reroute);
         } catch (Exception e) {
             log.error(e.getMessage());
-            performHousekeeping(reroute.getKey());
-            fixFlowStatus(reroute);
+            FlowRerouteFsm fsm = fsms.get(reroute.getKey());
+            if (fsm != null) {
+                removeIfFinished(fsm, reroute.getKey());
+            }
             return;
         }
 
         final String flowId = reroute.getFlowId();
+        if (isRerouteAlreadyInProgress(flowId)) {
+            carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
+                    reroute.getCommandContext().getCorrelationId());
+            return;
+        }
+
         final String key = reroute.getKey();
         FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
         fsms.put(key, fsm);
@@ -107,6 +115,12 @@ public class FlowRerouteService {
         fsmExecutor.fire(fsm, Event.NEXT, context);
 
         removeIfFinished(fsm, key);
+    }
+
+    private boolean isRerouteAlreadyInProgress(String flowId) {
+        return fsms.values().stream()
+                .map(FlowRerouteFsm::getFlowId)
+                .anyMatch(id -> id.equals(flowId));
     }
 
     /**
@@ -178,11 +192,5 @@ public class FlowRerouteService {
     private void performHousekeeping(String key) {
         fsms.remove(key);
         carrier.cancelTimeoutCallback(key);
-    }
-
-    private void fixFlowStatus(FlowRerouteFact reroute) {
-        if (reroute.isEffectivelyDown()) {
-            flowRepository.updateStatusSafe(reroute.getFlowId(), FlowStatus.DOWN);
-        }
     }
 }

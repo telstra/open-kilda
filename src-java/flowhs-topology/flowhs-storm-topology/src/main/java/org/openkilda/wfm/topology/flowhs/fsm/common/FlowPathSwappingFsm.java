@@ -20,6 +20,7 @@ import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 
@@ -30,9 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -60,7 +59,7 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected PathId oldProtectedReversePath;
     protected FlowPathStatus oldProtectedReversePathStatus;
 
-    protected final Set<UUID> pendingCommands = new HashSet<>();
+    protected final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
     protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
     protected final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
     protected final Map<UUID, SpeakerFlowSegmentResponse> failedValidationResponses = new HashMap<>();

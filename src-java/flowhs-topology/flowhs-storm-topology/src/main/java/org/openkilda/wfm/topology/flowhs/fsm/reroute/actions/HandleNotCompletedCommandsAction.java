@@ -35,7 +35,7 @@ public class HandleNotCompletedCommandsAction extends
     @Override
     public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowSegmentRequestFactory requestFactory;
-        for (UUID commandId : stateMachine.getPendingCommands()) {
+        for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
             requestFactory = stateMachine.getRemoveCommands().get(commandId);
             if (requestFactory != null) {
                 stateMachine.saveErrorToHistory(
