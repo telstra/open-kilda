@@ -38,6 +38,8 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   isStorageDBType= false;
   evacuate:boolean = false;;
   underMaintenance:boolean;
+  flowBandwidthSum:any = 0;
+  flowBandwidthFlag:boolean = false;
   currentRoute: string = 'switch-details';  
   switchFlowFlag :any = 'controller';
   clipBoardItems = {
@@ -182,7 +184,12 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   toggleTab(tab, enableLoader = false){
     this.openedTab = tab;
     if(tab == 'flows'){
-        this.loadSwitchFlows(this.switchDetail.switch_id);
+      if(this.switchFlows && this.switchFlows.length){
+
+      }else{
+        this.loadSwitchFlows(this.switchDetail.switch_id,true);
+      }
+        
     }else if(enableLoader){
       this.isLoaderActive = true;
     }else{
@@ -190,16 +197,28 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     }
   }
 
-  loadSwitchFlows(switchId){
-    this.loaderService.show('Loading Flows..');
+  loadSwitchFlows(switchId,loader){
+    if(loader){
+      this.loaderService.show('Loading Flows..');
+    }
     var filter = this.switchFlowFlag =='inventory' ;
     this.loadswitchFlows = false;
+    this.flowBandwidthFlag = true;
     this.switchService.getSwitchFlows(switchId,filter,null).subscribe(data=>{
       this.switchFlows = data;
+      if(this.switchFlows && this.switchFlows.length){
+        for(let flow of this.switchFlows){
+            this.flowBandwidthSum = this.flowBandwidthSum + (flow.maximum_bandwidth / 1000);
+        }
+      }
+      this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
       this.loadswitchFlows = true;
+      this.loaderService.hide();
+      this.flowBandwidthFlag = false;
     },error=>{
       this.loaderService.hide();
       this.switchFlows = [];
+      this.flowBandwidthFlag = false;
       this.loadswitchFlows = true;
     })
   }
@@ -304,6 +323,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
             }
             
           }
+          this.loadSwitchFlows(this.switchDetail.switch_id,false);
       }else{
         this.switchService.getSwitchDetail(switchId,filter).subscribe((retrievedSwitchObject : any)=>{
           if(!retrievedSwitchObject){
@@ -339,6 +359,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
               
             }
           }
+          this.loadSwitchFlows(this.switchDetail.switch_id,false);
         },err=>{
   
             this.loaderService.hide();
