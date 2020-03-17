@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -28,6 +29,7 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
 @Builder
+@EqualsAndHashCode(callSuper = false)
 public class MeterEntry extends InfoData implements Serializable {
 
     @JsonProperty("meter_id")

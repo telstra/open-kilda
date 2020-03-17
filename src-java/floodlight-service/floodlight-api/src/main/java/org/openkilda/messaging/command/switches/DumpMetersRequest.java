@@ -19,9 +19,11 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class DumpMetersRequest extends CommandData {
 
     @JsonProperty("switch_id")

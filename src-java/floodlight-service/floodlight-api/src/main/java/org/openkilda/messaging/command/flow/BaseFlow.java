@@ -35,7 +35,7 @@ import java.util.UUID;
  * Represents general flow info.
  */
 @ToString
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         TRANSACTION_ID,

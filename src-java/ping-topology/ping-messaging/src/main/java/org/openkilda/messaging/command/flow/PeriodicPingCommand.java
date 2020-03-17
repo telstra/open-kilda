@@ -18,9 +18,11 @@ package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
 
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class PeriodicPingCommand  extends CommandData {
     String flowId;
     boolean enable;

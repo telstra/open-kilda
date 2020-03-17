@@ -21,8 +21,10 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class FlowCreateContext extends FlowContext {
     private RequestedFlow targetFlow;
 

@@ -24,6 +24,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResourcesProvider;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
+import org.openkilda.wfm.share.flow.resources.ResourceUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,8 +62,10 @@ public class VxlanPool implements EncapsulationResourcesProvider<VxlanEncapsulat
 
     private VxlanEncapsulation allocate(Flow flow, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
-            int availableVxlan = vxlanRepository.findUnassignedVxlan(minVxlan)
-                    .orElseThrow(() -> new ResourceNotAvailableException("No vxlan available"));
+            int startValue = ResourceUtils.computeStartValue(minVxlan, maxVxlan);
+            int availableVxlan = vxlanRepository.findUnassignedVxlan(startValue, maxVxlan)
+                    .orElse(vxlanRepository.findUnassignedVxlan(minVxlan, maxVxlan)
+                            .orElseThrow(() -> new ResourceNotAvailableException("No vxlan available")));
             if (availableVxlan > maxVxlan) {
                 throw new ResourceNotAvailableException("No vxlan available");
             }

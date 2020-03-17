@@ -76,8 +76,12 @@ public class MeterPool {
         return transactionManager.doInTransaction(() -> {
             String noMetersErrorMessage = format("No meter available for switch %s", theSwitch);
 
-            MeterId availableMeterId = flowMeterRepository.findUnassignedMeterId(theSwitch.getSwitchId(), minMeterId)
-                    .orElseThrow(() -> new ResourceNotAvailableException(noMetersErrorMessage));
+            MeterId startMeterId = new MeterId(
+                    ResourceUtils.computeStartValue(minMeterId.getValue(), maxMeterId.getValue()));
+            SwitchId switchId = theSwitch.getSwitchId();
+            MeterId availableMeterId = flowMeterRepository.findUnassignedMeterId(switchId, startMeterId, maxMeterId)
+                    .orElse(flowMeterRepository.findUnassignedMeterId(switchId, minMeterId, maxMeterId)
+                            .orElseThrow(() -> new ResourceNotAvailableException(noMetersErrorMessage)));
             if (availableMeterId.compareTo(maxMeterId) > 0) {
                 throw new ResourceNotAvailableException(noMetersErrorMessage);
             }

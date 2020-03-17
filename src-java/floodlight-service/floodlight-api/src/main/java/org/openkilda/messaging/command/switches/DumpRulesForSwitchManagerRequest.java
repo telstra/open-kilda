@@ -21,10 +21,12 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
 @Builder
+@EqualsAndHashCode(callSuper = false)
 public class DumpRulesForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")

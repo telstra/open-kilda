@@ -13,11 +13,13 @@ dependencies {
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     runtimeOnly project(':kilda-persistence-neo4j')
     testImplementation project(':kilda-persistence-neo4j')
+    testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-neo4j', configuration: 'testArtifacts')
 
     compileOnly('org.apache.storm:storm-core')
 
     testImplementation 'junit:junit'
+    testImplementation 'org.mockito:mockito-core'
     testImplementation 'pl.pragmatists:JUnitParams'
     testImplementation 'org.neo4j:neo4j'
     testImplementation 'org.neo4j:neo4j-bolt'

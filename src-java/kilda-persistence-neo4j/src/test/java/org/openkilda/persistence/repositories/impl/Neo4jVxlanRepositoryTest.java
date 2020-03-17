@@ -29,6 +29,8 @@ import java.util.Collection;
 
 public class Neo4jVxlanRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final int MIN_VNI = 5;
+    static final int MAX_VNI = 25;
 
     static VxlanRepository vxlanRepository;
 
@@ -81,5 +83,37 @@ public class Neo4jVxlanRepositoryTest extends Neo4jBasedTest {
         vxlanRepository.delete(foundVxlan);
 
         assertEquals(0, vxlanRepository.findAll().size());
+    }
+
+    @Test
+    public void shouldSelectNextInOrderResourceWhenFindUnassignedVxlan() {
+        int first = findUnassignedVxlanAndCreate("flow_1");
+        assertEquals(5, first);
+
+        int second = findUnassignedVxlanAndCreate("flow_2");
+        assertEquals(6, second);
+
+        int third = findUnassignedVxlanAndCreate("flow_3");
+        assertEquals(7, third);
+
+        vxlanRepository.findAll().stream()
+                .filter(vxlan -> vxlan.getVni() == second)
+                .forEach(vxlanRepository::delete);
+        int fourth = findUnassignedVxlanAndCreate("flow_4");
+        assertEquals(6, fourth);
+
+        int fifth = findUnassignedVxlanAndCreate("flow_5");
+        assertEquals(8, fifth);
+    }
+
+    private int findUnassignedVxlanAndCreate(String flowId) {
+        int availableVni = vxlanRepository.findUnassignedVxlan(MIN_VNI, MAX_VNI).get();
+        Vxlan vxlan = Vxlan.builder()
+                .vni(availableVni)
+                .pathId(new PathId(TEST_FLOW_ID + "_path"))
+                .flowId(flowId)
+                .build();
+        vxlanRepository.createOrUpdate(vxlan);
+        return availableVni;
     }
 }

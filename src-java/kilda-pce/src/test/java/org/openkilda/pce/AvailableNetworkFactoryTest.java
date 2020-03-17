@@ -21,10 +21,14 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslConfig;
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
@@ -33,14 +37,33 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class AvailableNetworkFactoryTest {
+
+    public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
+    public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
+    public static final String GROUP_ID = "group_id_1";
+    public static final String FLOW_ID_1 = "flow_id_1";
+    public static final int AVAILABLE_BANDWIDTH = 1000;
+    public static final int SRC_PORT = 30;
+    public static final int DEST_PORT = 31;
+    public static final PathId FORWARD_PATH_ID = new PathId("path_id_1");
+    public static final PathId REVERSE_PATH_ID = new PathId("path_id_2");
+    public static final Switch switchA = Switch.builder().switchId(SWITCH_ID_1).build();
+    public static final Switch switchB = Switch.builder().switchId(SWITCH_ID_2).build();
+    public static final Switch switchC = Switch.builder().switchId(SWITCH_ID_3).build();
+    public static final Switch switchD = Switch.builder().switchId(SWITCH_ID_4).build();
 
     @Mock
     private PathComputerConfig config;
@@ -76,6 +99,71 @@ public class AvailableNetworkFactoryTest {
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
 
         assertAvailableNetworkIsCorrect(isl, availableNetwork);
+    }
+
+    @Test
+    public void shouldIncreaseDiversityGroupUseCounter() throws RecoverableException {
+        // Topology:
+        // A----B----C     Already created flow: B-D
+        //      |          Requested flow: A-B-C
+        //      D
+
+        // there is no ISL B-D because we assume that is has no enough bandwidth
+        List<Isl> isls = new ArrayList<>();
+        isls.addAll(getBidirectionalIsls(switchA, 1, switchB, 2));
+        isls.addAll(getBidirectionalIsls(switchB, 3, switchC, 4));
+
+        final Flow diverseFlow = Flow.builder()
+                .flowId(FLOW_ID_1)
+                .groupId(GROUP_ID)
+                .srcSwitch(switchB)
+                .destSwitch(switchD)
+                .build();
+
+        FlowPath forwardPath = FlowPath.builder()
+                .flow(diverseFlow)
+                .srcSwitch(switchB)
+                .destSwitch(switchD)
+                .pathId(FORWARD_PATH_ID)
+                .segments(Collections.singletonList(PathSegment.builder()
+                        .srcSwitch(switchB)
+                        .srcPort(SRC_PORT)
+                        .destSwitch(switchD)
+                        .destPort(DEST_PORT)
+                        .build()))
+                .build();
+        when(flowPathRepository.findById(FORWARD_PATH_ID)).thenReturn(java.util.Optional.of(forwardPath));
+
+        FlowPath reversePath = FlowPath.builder()
+                .flow(diverseFlow)
+                .srcSwitch(switchD)
+                .destSwitch(switchB)
+                .pathId(REVERSE_PATH_ID)
+                .segments(Collections.singletonList(PathSegment.builder()
+                        .srcSwitch(switchD)
+                        .srcPort(DEST_PORT)
+                        .destSwitch(switchB)
+                        .destPort(SRC_PORT)
+                        .build()))
+                .build();
+        when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
+
+        Flow flow = getFlow(false);
+        flow.setSrcSwitch(switchA);
+        flow.setDestSwitch(switchC);
+        flow.setGroupId(GROUP_ID);
+
+        when(config.getNetworkStrategy()).thenReturn(BuildStrategy.COST.name());
+        when(islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType()))
+                .thenReturn(isls);
+
+        when(flowPathRepository.findPathIdsByFlowGroupId(GROUP_ID))
+                .thenReturn(Lists.newArrayList(FORWARD_PATH_ID, REVERSE_PATH_ID));
+
+
+
+        AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
+        assertEquals(2, availableNetwork.getSwitch(switchB.getSwitchId()).getDiversityGroupUseCounter());
     }
 
     @Test
@@ -135,17 +223,28 @@ public class AvailableNetworkFactoryTest {
     }
 
     private static Isl getIsl(Flow flow) {
+        return getIsl(flow.getSrcSwitch(), SRC_PORT, flow.getDestSwitch(), DEST_PORT);
+    }
+
+    private static Isl getIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
         Isl isl = Isl.builder()
-                .srcSwitch(flow.getSrcSwitch())
-                .srcPort(1)
-                .destSwitch(flow.getDestSwitch())
-                .destPort(2)
-                .cost(22)
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .destSwitch(dstSwitch)
+                .destPort(dstPort)
+                .cost(10)
                 .latency(33L)
-                .availableBandwidth(44)
+                .availableBandwidth(AVAILABLE_BANDWIDTH)
                 .build();
         isl.setIslConfig(IslConfig.builder().build());
         return isl;
+    }
+
+    private static List<Isl> getBidirectionalIsls(
+            Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
+        return Lists.newArrayList(
+                getIsl(srcSwitch, srcPort, dstSwitch, dstPort),
+                getIsl(dstSwitch, dstPort, srcSwitch, srcPort));
     }
 
     private static void assertAvailableNetworkIsCorrect(Isl isl, AvailableNetwork availableNetwork) {

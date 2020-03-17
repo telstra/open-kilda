@@ -24,6 +24,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResourcesProvider;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
+import org.openkilda.wfm.share.flow.resources.ResourceUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,8 +62,10 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
 
     private TransitVlanEncapsulation allocate(Flow flow, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
-            int availableVlan = transitVlanRepository.findUnassignedTransitVlan(minTransitVlan)
-                    .orElseThrow(() -> new ResourceNotAvailableException("No vlan available"));
+            int startValue = ResourceUtils.computeStartValue(minTransitVlan, maxTransitVlan);
+            int availableVlan = transitVlanRepository.findUnassignedTransitVlan(startValue, maxTransitVlan)
+                    .orElse(transitVlanRepository.findUnassignedTransitVlan(minTransitVlan, maxTransitVlan)
+                            .orElseThrow(() -> new ResourceNotAvailableException("No vlan available")));
             if (availableVlan > maxTransitVlan) {
                 throw new ResourceNotAvailableException("No vlan available");
             }

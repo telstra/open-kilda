@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,62 +25,47 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
-import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.model.Cookie;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
-import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
-import org.openkilda.model.TransitVlan;
-import org.openkilda.pce.Path;
-import org.openkilda.pce.Path.Segment;
+import org.openkilda.model.history.FlowEvent;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.repositories.history.FlowEventRepository;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
-import org.openkilda.wfm.share.flow.resources.FlowResources;
-import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 
+import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FlowRerouteServiceTest extends AbstractFlowTest {
@@ -89,882 +73,531 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private static final int PATH_ALLOCATION_RETRIES_LIMIT = 10;
     private static final int PATH_ALLOCATION_RETRY_DELAY = 0;
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 0;
-    private static final String FLOW_ID = "TEST_FLOW";
-    private static final SwitchId SWITCH_1 = new SwitchId(1);
-    private static final SwitchId SWITCH_2 = new SwitchId(2);
-    private static final SwitchId SWITCH_3 = new SwitchId(3);
-    private static final PathId OLD_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_forward_old");
-    private static final PathId OLD_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse_old");
-    private static final PathId NEW_FORWARD_FLOW_PATH = new PathId(FLOW_ID + "_forward_new");
-    private static final PathId NEW_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse_new");
 
     @Mock
     private FlowRerouteHubCarrier carrier;
-    @Mock
-    private CommandContext commandContext;
-    @Mock
-    private FlowEventRepository flowEventRepository;
 
-    private FlowRerouteService rerouteService;
-
-    private String currentRequestKey;
-
-    private Map<SwitchId, Switch> swMap = new HashMap<>();
+    private String currentRequestKey = dummyRequestKey;
 
     @Before
     public void setUp() {
-        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
-        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(any(), anyInt(), any(), anyInt())).thenReturn(0L);
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
-
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-
-        SwitchRepository switchRepository = mock(SwitchRepository.class);
-        when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-
-        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
-        when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
-                Optional.of(SwitchProperties.builder()
-                        .multiTable(false)
-                        .supportedTransitEncapsulation(DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                        .build()));
-        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
-
-        when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
-        when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
-
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
 
-        doAnswer(invocation -> {
-            FlowRerouteFact retry = invocation.getArgument(0);
-            currentRequestKey = retry.getKey();
-            rerouteService.handlePostponedRequest(retry);
-            return null;
-        }).when(carrier).injectPostponedRequest(any());
-
-        rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
-                PATH_ALLOCATION_RETRIES_LIMIT, PATH_ALLOCATION_RETRY_DELAY, SPEAKER_COMMAND_RETRIES_LIMIT);
-
-        currentRequestKey = "test-key";
-
-        for (SwitchId id : new SwitchId[] {SWITCH_1, SWITCH_2, SWITCH_3}) {
-            Switch entry = makeSwitch(id);
-            swMap.put(id, entry);
-            when(switchRepository.findById(eq(id))).thenReturn(Optional.of(entry));
-        }
+        // must be done before first service create attempt, because repository objects are cached inside FSM actions
+        setupFlowRepositorySpy();
+        setupFlowPathRepositorySpy();
+        setupIslRepositorySpy();
     }
 
     @Test
-    public void shouldFailRerouteFlowIfNoPathAvailable()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenThrow(new UnroutableFlowException("No path found"));
-        buildFlowResources();
+    public void shouldFailRerouteFlowIfNoPathAvailable() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), new UnroutableFlowException(injectedErrorMessage));
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
-
-        assertEquals(FlowStatus.DOWN, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(1)).getPath(any(), any());
-        verify(flowResourcesManager, never()).allocateFlowResources(any());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        FlowRerouteFact request = new FlowRerouteFact(
+                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null);
+        testExpectedFailure(request, origin, FlowStatus.DOWN, ErrorType.NOT_FOUND);
+        verify(pathComputer, times(1))
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
 
     @Test
-    public void shouldFailRerouteFlowIfRecoverableException()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenThrow(new RecoverableException("PCE error"));
-        buildFlowResources();
+    public void shouldFailRerouteFlowIfRecoverableException() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), new RecoverableException(injectedErrorMessage));
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
-
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).getPath(any(), any());
-        verify(flowResourcesManager, never()).allocateFlowResources(any());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        FlowRerouteFact request = new FlowRerouteFact(
+                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null);
+        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
     }
 
     @Test
     public void shouldFailRerouteFlowIfMultipleOverprovisionBandwidth()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+            throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        when(islRepository.updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong()))
-                .thenThrow(ResourceAllocationException.class);
+        IslRepository repository = setupIslRepositorySpy();
+        doThrow(ResourceAllocationException.class)
+                .when(repository).updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteFact request = new FlowRerouteFact(
+                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null);
+        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).getPath(any(), any());
-        verify(islRepository, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
+        verify(repository, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
                 .updateAvailableBandwidth(any(), anyInt(), any(), anyInt(), anyLong());
-        verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).allocateFlowResources(any());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
     }
 
     @Test
     public void shouldFailRerouteFlowIfNoResourcesAvailable()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        when(flowResourcesManager.allocateFlowResources(any()))
-                .thenThrow(new ResourceAllocationException("No resources"));
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        doThrow(new ResourceAllocationException(injectedErrorMessage))
+                .when(flowResourcesManager).allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()));
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).getPath(any(), any());
-        verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1)).allocateFlowResources(any());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        FlowRerouteFact request = new FlowRerouteFact(
+                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null);
+        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+
+        verify(flowResourcesManager, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
+                .allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()));
     }
 
     @Test
     public void shouldFailRerouteFlowOnResourcesAllocationConstraint()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
-        doThrow(new RuntimeException("Must fail")).when(flowPathRepository).lockInvolvedSwitches(any(), any());
+            throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowPathRepository repository = setupFlowPathRepositorySpy();
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(repository)
+                .createOrUpdate(any(FlowPath.class));
 
-        verify(flowResourcesManager, times(0)).deallocatePathResources(any());
-        verify(flowResourcesManager, times(0)).deallocatePathResources(any(), anyLong(), any());
+        FlowRerouteFact request = new FlowRerouteFact(
+                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null);
+        testExpectedFailure(request, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
+    }
+
+    private void testExpectedFailure(
+            FlowRerouteFact request, Flow origin, FlowStatus expectedFlowStatus, ErrorType expectedError) {
+        makeService().handleRequest(request);
+
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundErrorResponse(carrier, expectedError);
+
+        Flow result = verifyFlowStatus(origin.getFlowId(), expectedFlowStatus);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldSkipRerouteIfNoNewPathFound()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
-        buildFlowResources();
+    public void shouldSkipRerouteIfNoNewPathFound() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make2SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        makeService().handleRequest(new FlowRerouteFact(
+                dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(carrier, never()).sendSpeakerRequest(any());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyNoSpeakerInteraction(carrier);
+        verifyNorthboundSuccessResponse(carrier);
+
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldFailRerouteOnUnsuccessfulInstallation()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldFailRerouteOnUnsuccessfulInstallation() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isInstallRequest()) {
-                rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
-                        .messageContext(request.getMessageContext())
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (speakerRequest.isInstallRequest()) {
+                service.handleAsyncResponse(currentRequestKey, FlowErrorResponse.errorBuilder()
+                        .messageContext(speakerRequest.getMessageContext())
                         .errorCode(ErrorCode.UNKNOWN)
-                        .description("Switch is unavailable")
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
+                        .description(injectedErrorMessage)
+                        .commandId(speakerRequest.getCommandId())
+                        .metadata(speakerRequest.getMetadata())
+                        .switchId(speakerRequest.getSwitchId())
                         .build());
             } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
+                produceAsyncResponse(service, speakerRequest);
             }
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldFailRerouteOnTimeoutDuringInstallation()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldFailRerouteOnTimeoutDuringInstallation() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        rerouteService.handleTimeout("test_key");
+        service.handleTimeout(currentRequestKey);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse("test_key", request);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldFailRerouteOnUnsuccessfulValidation()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldFailRerouteOnUnsuccessfulValidation() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleAsyncResponse(currentRequestKey, FlowErrorResponse.errorBuilder()
                         .errorCode(ErrorCode.UNKNOWN)
-                        .description("Unknown rule")
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
+                        .description(injectedErrorMessage)
+                        .messageContext(speakerRequest.getMessageContext())
+                        .commandId(speakerRequest.getCommandId())
+                        .metadata(speakerRequest.getMetadata())
+                        .switchId(speakerRequest.getSwitchId())
                         .build());
             } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
+                produceAsyncResponse(service, speakerRequest);
             }
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldFailRerouteOnTimeoutDuringValidation()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldFailRerouteOnTimeoutDuringValidation() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleTimeout("test_key");
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleTimeout(currentRequestKey);
             } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
+                produceAsyncResponse(service, speakerRequest);
             }
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldFailRerouteOnSwapPathsError()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldFailRerouteOnSwapPathsError() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRepository repository = setupFlowRepositorySpy();
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(repository).createOrUpdate(
+                argThat(hasProperty("forwardPathId", Matchers.not(equalTo(origin.getForwardPathId())))));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        doAnswer(invocation -> {
-            // imitate transaction rollback
-            Flow persistedFlow = invocation.getArgument(0);
-            FlowPath oldForward = persistedFlow.getPaths().stream()
-                    .filter(path -> path.getPathId().equals(OLD_FORWARD_FLOW_PATH))
-                    .findAny().get();
-            persistedFlow.setForwardPath(oldForward);
-            FlowPath oldReverse = persistedFlow.getPaths().stream()
-                    .filter(path -> path.getPathId().equals(OLD_REVERSE_FLOW_PATH))
-                    .findAny().get();
-            persistedFlow.setReversePath(oldReverse);
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-            throw new RuntimeException("A persistence error");
-        }).when(flowRepository).createOrUpdate(argThat(
-                hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH))));
-
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleAsyncResponse(currentRequestKey, buildResponseOnVerifyRequest(speakerRequest));
             } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
+                produceAsyncResponse(service, speakerRequest);
             }
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
     public void shouldFailRerouteOnErrorDuringCompletingFlowPathInstallation()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+            throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowPathRepository repository = setupFlowPathRepositorySpy();
+        Set<PathId> originalPaths = origin.getPaths().stream()
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet());
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(repository)
+                .updateStatus(
+                        ArgumentMatchers.argThat(argument -> !originalPaths.contains(argument)),
+                        eq(FlowPathStatus.ACTIVE));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        doAnswer(invocation -> {
-            // imitate transaction rollback
-            flow.getPath(invocation.getArgument(0)).ifPresent(
-                    persistedFlowPath -> persistedFlowPath.setStatus(FlowPathStatus.IN_PROGRESS));
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-            throw new RuntimeException("A persistence error");
-        }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
-
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleAsyncResponse(currentRequestKey, buildResponseOnVerifyRequest(speakerRequest));
             } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
+                produceAsyncResponse(service, speakerRequest);
             }
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
     public void shouldCompleteRerouteOnErrorDuringCompletingFlowPathRemoval()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+            throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowPathRepository repository = setupFlowPathRepositorySpy();
+        doThrow(new RuntimeException(injectedErrorMessage))
+                .when(repository)
+                .delete(argThat(hasProperty("pathId", equalTo(origin.getForwardPathId()))));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        doThrow(new RuntimeException("A persistence error"))
-                .when(flowPathRepository).delete(argThat(
-                hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH))));
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse("test_key", request);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyPathReplace(origin, result);
     }
 
     @Test
     public void shouldCompleteRerouteOnErrorDuringResourceDeallocation()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+            throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        doThrow(new RuntimeException("A persistence error"))
+        doThrow(new RuntimeException(injectedErrorMessage))
                 .when(flowResourcesManager).deallocatePathResources(argThat(
                 hasProperty("forward",
-                        hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH)))));
+                        hasProperty("pathId", equalTo(origin.getForwardPathId())))));
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            if (speakerRequest.isVerifyRequest()) {
+                service.handleAsyncResponse(currentRequestKey, buildResponseOnVerifyRequest(speakerRequest));
             } else {
-                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
-                        .messageContext(request.getMessageContext())
-                        .commandId(request.getCommandId())
-                        .metadata(request.getMetadata())
-                        .switchId(request.getSwitchId())
-                        .success(true)
-                        .build());
+                produceAsyncResponse(service, speakerRequest);
             }
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyPathReplace(origin, result);
     }
 
     @Test
-    public void shouldSuccessfullyRerouteFlow()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        flow.setStatus(FlowStatus.DOWN);
+    public void shouldSuccessfullyRerouteFlow() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        origin.setStatus(FlowStatus.DOWN);
+        flushFlowChanges(origin);
 
-        when(pathComputer.getPath(any(), any()))
-                .thenReturn(build2SwitchPathPair(2, 3))
-                .thenReturn(build3SwitchPathPair());
-        buildFlowResources();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key", commandContext, FLOW_ID, null, false, false, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse("test_key", request);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyPathReplace(origin, result);
     }
 
     @Test
-    public void shouldSuccessfullyHandleOverlappingRequests()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        flow.setStatus(FlowStatus.DOWN);
+    public void shouldSuccessfullyHandleOverlappingRequests() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        origin.setStatus(FlowStatus.DOWN);
+        flushFlowChanges(origin);
 
-        when(pathComputer.getPath(any(), any()))
-                .thenReturn(build2SwitchPathPair(2, 3))
-                .thenReturn(build3SwitchPathPair());
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+                .thenReturn(make2SwitchAltPathPair())
+                .thenReturn(make3SwitchesPathPair());
 
-        FlowResources resourcesOrigin = makeFlowResources(
-                flow.getFlowId(), flow.getForwardPathId(), flow.getReversePathId());
+        FlowRerouteService service = makeService();
+        setupPostponedRequestInjector(service);
 
-        PathId pathForwardFirst = new PathId(flow.getFlowId() + "_forward_first");
-        PathId pathReverseFirst = new PathId(flow.getFlowId() + "_reverse_first");
-        FlowResources resourcesFirst = makeFlowResources(
-                flow.getFlowId(), pathForwardFirst, pathReverseFirst, resourcesOrigin);
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
 
-        PathId pathForwardSecond = new PathId(flow.getFlowId() + "_forward_second");
-        PathId pathReverseSecond = new PathId(flow.getFlowId() + "_reverse_second");
-        FlowResources resourcesSecond = makeFlowResources(
-                flow.getFlowId(), pathForwardSecond, pathReverseSecond, resourcesFirst);
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
-        when(flowResourcesManager.allocateFlowResources(any()))
-                .thenReturn(resourcesFirst)
-                .thenReturn(resourcesSecond);
-
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null));
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-
-        rerouteService.handleRequest(new FlowRerouteFact(
-                "test_key2", commandContext, flow.getFlowId(), null, false, false, null));
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        String overlappingKey = dummyRequestKey + "2";
+        service.handleRequest(new FlowRerouteFact(
+                overlappingKey, commandContext, origin.getFlowId(), null, false, false, null));
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            produceAsyncResponse(currentRequestKey, request);
+            produceAsyncResponse(service, request);
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(pathForwardSecond, flow.getForwardPathId());
-        assertEquals(pathReverseSecond, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyPathReplace(origin, result);
+
+        FlowPath forwardPath = result.getForwardPath();
+        Assert.assertNotNull(forwardPath);
+        Assert.assertTrue(1 < forwardPath.getSegments().size());  // second path have 2 segments
     }
 
     @Test
     public void shouldFixFlowStatusOnRequestConflict() {
-        Flow flow = build2SwitchFlow();
-        flow.setStatus(FlowStatus.UP);
+        Flow origin = makeFlow();
 
-        reset(flowEventRepository);
-        when(flowEventRepository.existsByTaskId(any()))
-                .thenReturn(true)
-                .thenReturn(true);
+        FlowEvent dummyHistoryEntry = FlowEvent.builder()
+                .flowId(origin.getFlowId())
+                .timestamp(Instant.now())
+                .action("injected-collision")
+                .actor(getClass().getSimpleName())
+                .taskId(commandContext.getCorrelationId())
+                .details("dummy")
+                .build();
+        persistenceManager.getRepositoryFactory().createFlowEventRepository()
+                .createOrUpdate(dummyHistoryEntry);
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, flow.getFlowId(), null, false, false, null));
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse(currentRequestKey, request);
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, false, null));
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
-        assertEquals(FlowStatus.UP, flow.getStatus());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.UP); // because effectivelyDown == false
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, flow.getFlowId(), null, false, true, null));
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse(currentRequestKey, request);
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, true, null));
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
-        assertEquals(FlowStatus.DOWN, flow.getStatus());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.DOWN); // because effectivelyDown == true
     }
 
     @Test
-    public void shouldMakeFlowDontOnTimeoutIfEffectivelyDown()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldMakeFlowDownOnTimeoutIfEffectivelyDown() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, FLOW_ID, null, false, true, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, true, null));
 
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
-        verify(carrier, times(1)).sendNorthboundResponse(any());
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyNorthboundSuccessResponse(carrier);
 
-        rerouteService.handleTimeout(currentRequestKey);
+        service.handleTimeout(currentRequestKey);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse(currentRequestKey, request);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
 
-        assertEquals(FlowStatus.DOWN, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.DOWN);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
     public void shouldIgnoreEffectivelyDownStateIfSamePaths() throws RecoverableException, UnroutableFlowException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make2SwitchesPathPair());
 
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, FLOW_ID, null, false, true, null));
+        FlowRerouteService service = makeService();
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), null, false, true, null));
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse(currentRequestKey, request);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
     @Test
-    public void shouldProcessRerouteForValidRequest()
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
-        buildFlowResources();
+    public void shouldProcessRerouteForValidRequest() throws RecoverableException, UnroutableFlowException {
+        Flow origin = makeFlow();
+        preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        IslEndpoint affectedEndpoint = extractIslEndpoint(flow);
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, FLOW_ID, Collections.singleton(affectedEndpoint), false, true,
-                null));
-        assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
+        FlowRerouteService service = makeService();
+        IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), Collections.singleton(affectedEndpoint),
+                false, true, null));
+        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            produceAsyncResponse(currentRequestKey, request);
+        FlowSegmentRequest speakerRequest;
+        while ((speakerRequest = requests.poll()) != null) {
+            produceAsyncResponse(service, speakerRequest);
         }
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(NEW_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(NEW_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyPathReplace(origin, result);
     }
 
     @Test
     public void shouldSkipRerouteOnOutdatedRequest() {
-        Flow flow = build2SwitchFlow();
+        Flow origin = makeFlow();
 
-        IslEndpoint affectedEndpoint = extractIslEndpoint(flow);
+        FlowRerouteService service = makeService();
+        IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
         IslEndpoint notAffectedEndpoint = new IslEndpoint(
                 affectedEndpoint.getSwitchId(), affectedEndpoint.getPortNumber() + 1);
-        rerouteService.handleRequest(new FlowRerouteFact(
-                currentRequestKey, commandContext, FLOW_ID, Collections.singleton(notAffectedEndpoint), false, true,
-                null));
+        service.handleRequest(new FlowRerouteFact(
+                currentRequestKey, commandContext, origin.getFlowId(), Collections.singleton(notAffectedEndpoint),
+                false, true, null));
 
-        assertEquals(FlowStatus.UP, flow.getStatus());
-        assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
-        assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
+        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
+        verifyNoPathReplace(origin, result);
     }
 
-    protected void produceAsyncResponse(String key, FlowSegmentRequest flowRequest) {
-        rerouteService.handleAsyncResponse(key, buildSpeakerResponse(flowRequest));
-    }
-
-    private Flow build2SwitchFlow() {
-        Switch src = swMap.get(SWITCH_1);
-        Switch dst = swMap.get(SWITCH_2);
-
-        Flow flow = Flow.builder().flowId(FLOW_ID)
-                .srcSwitch(src).destSwitch(dst)
-                .status(FlowStatus.UP)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .build();
-
-        FlowPath oldForwardPath = FlowPath.builder()
-                .pathId(OLD_FORWARD_FLOW_PATH)
-                .flow(flow)
-                .cookie(Cookie.buildForwardCookie(2))
-                .srcSwitch(src).destSwitch(dst)
-                .status(FlowPathStatus.ACTIVE)
-                .build();
-        oldForwardPath.setSegments(Collections.singletonList(PathSegment.builder()
-                .srcSwitch(src)
-                .srcPort(1)
-                .destSwitch(dst)
-                .destPort(2)
-                .build()));
-        flow.setForwardPath(oldForwardPath);
-
-        FlowPath oldReversePath = FlowPath.builder()
-                .pathId(OLD_REVERSE_FLOW_PATH)
-                .flow(flow)
-                .cookie(Cookie.buildReverseCookie(2))
-                .srcSwitch(dst).destSwitch(src)
-                .status(FlowPathStatus.ACTIVE)
-                .build();
-        oldReversePath.setSegments(Collections.singletonList(PathSegment.builder()
-                .srcSwitch(dst)
-                .srcPort(2)
-                .destSwitch(src)
-                .destPort(1)
-                .build()));
-        flow.setReversePath(oldReversePath);
-
-        when(flowRepository.findById(eq(flow.getFlowId()))).thenReturn(Optional.of(flow));
-        when(flowRepository.findById(eq(flow.getFlowId()), any())).thenReturn(Optional.of(flow));
-
-        doAnswer(invocation -> {
-            FlowStatus status = invocation.getArgument(1);
-            flow.setStatus(status);
-            return null;
-        }).when(flowRepository).updateStatus(eq(flow.getFlowId()), any());
-        doAnswer(invocation -> {
-            FlowStatus status = invocation.getArgument(1);
-            if (FlowStatus.IN_PROGRESS != flow.getStatus()) {
-                flow.setStatus(status);
-            }
-            return null;
-        }).when(flowRepository).updateStatusSafe(eq(flow.getFlowId()), any());
-
-        doAnswer(invocation -> {
-            PathId pathId = invocation.getArgument(0);
-            return flow.getPath(pathId);
-        }).when(flowPathRepository).findById(any());
-
-        doAnswer(invocation -> {
-            PathId pathId = invocation.getArgument(0);
-            FlowPathStatus status = invocation.getArgument(1);
-            flow.getPath(pathId).ifPresent(entity -> entity.setStatus(status));
-            return null;
-        }).when(flowPathRepository).updateStatus(any(), any());
-
-        return flow;
-    }
-
-    private PathPair build2SwitchPathPair() {
-        return build2SwitchPathPair(1, 2);
-    }
-
-    private PathPair build2SwitchPathPair(int srcPort, int destPort) {
-        List<Segment> forwardSegments = Collections.singletonList(
-                Segment.builder()
-                        .srcSwitchId(SWITCH_1).srcPort(srcPort).destSwitchId(SWITCH_2).destPort(destPort).build());
-        List<Segment> reverseSegments = Collections.singletonList(
-                Segment.builder()
-                        .srcSwitchId(SWITCH_2).srcPort(destPort).destSwitchId(SWITCH_1).destPort(srcPort).build());
-        return buildPcePathPair(forwardSegments, reverseSegments);
-    }
-
-    private PathPair build3SwitchPathPair() {
-        return build3SwitchPathPair(3, 4);
-    }
-
-    private PathPair build3SwitchPathPair(int srcPort, int destPort) {
-        List<Segment> forwardSegments = new ArrayList<>();
-        forwardSegments.add(
-                Segment.builder()
-                        .srcSwitchId(SWITCH_1).srcPort(srcPort).destPort(destPort).destSwitchId(SWITCH_3).build());
-        forwardSegments.add(
-                Segment.builder()
-                        .srcSwitchId(SWITCH_3).srcPort(srcPort).destPort(destPort).destSwitchId(SWITCH_2).build());
-
-        List<Segment> reverseSegments = new ArrayList<>();
-        reverseSegments.add(
-                Segment.builder()
-                        .srcSwitchId(SWITCH_2).srcPort(destPort).destPort(srcPort).destSwitchId(SWITCH_3).build());
-        reverseSegments.add(
-                Segment.builder()
-                        .srcSwitchId(SWITCH_3).srcPort(destPort).destPort(srcPort).destSwitchId(SWITCH_1).build());
-
-        return buildPcePathPair(forwardSegments, reverseSegments);
-    }
-
-    private PathPair buildPcePathPair(List<Segment> forwardSegments, List<Segment> reverseSegments) {
-        return PathPair.builder()
-                .forward(Path.builder()
-                        .srcSwitchId(SWITCH_1).destSwitchId(SWITCH_2)
-                        .segments(forwardSegments)
-                        .build())
-                .reverse(Path.builder()
-                        .srcSwitchId(SWITCH_2).destSwitchId(SWITCH_1)
-                        .segments(reverseSegments)
-                        .build())
-                .build();
-    }
-
-    private FlowResources buildFlowResources() throws ResourceAllocationException {
-        FlowResources original = makeFlowResources(FLOW_ID, OLD_FORWARD_FLOW_PATH, OLD_REVERSE_FLOW_PATH);
-        FlowResources target = makeFlowResources(FLOW_ID, NEW_FORWARD_FLOW_PATH, NEW_REVERSE_FLOW_PATH, original);
-
-        when(flowResourcesManager.allocateFlowResources(any())).thenReturn(target);
-
-        return target;
-    }
-
-    private Switch makeSwitch(SwitchId id) {
-        return Switch.builder().switchId(id).build();
-    }
-
-    private FlowResources makeFlowResources(String flowId, PathId forward, PathId reverse) {
-        return makeFlowResources(flowId, forward, reverse, null);
-    }
-
-    private FlowResources makeFlowResources(
-            String flowId, PathId forward, PathId reverse, FlowResources lastAllocated) {
-        FlowResources resources = FlowResources.builder()
-                .unmaskedCookie(extractLastAllocatedCookie(lastAllocated).getValue())
-                .forward(PathResources.builder()
-                                 .pathId(forward)
-                                 .meterId(allocateForwardMeterId(lastAllocated))
-                                 .encapsulationResources(
-                                         makeTransitVlanResources(flowId, forward,
-                                                                  allocateForwardTransitVlanId(lastAllocated)))
-                                 .build())
-                .reverse(PathResources.builder()
-                                 .pathId(reverse)
-                                 .meterId(allocateReverseMeterId(lastAllocated))
-                                 .encapsulationResources(
-                                         makeTransitVlanResources(flowId, reverse,
-                                                                  allocateReverseTransitVlanId(lastAllocated)))
-                                 .build())
-                .build();
-
-        when(flowResourcesManager.getEncapsulationResources(
-                eq(forward), eq(reverse), eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(resources.getForward().getEncapsulationResources()));
-        when(flowResourcesManager.getEncapsulationResources(
-                eq(reverse), eq(forward), eq(FlowEncapsulationType.TRANSIT_VLAN)))
-                .thenReturn(Optional.of(resources.getReverse().getEncapsulationResources()));
-
-        return resources;
-    }
-
-    private EncapsulationResources makeTransitVlanResources(String flowId, PathId pathId, int vlanId) {
-        TransitVlan entity = TransitVlan.builder()
-                .flowId(flowId).pathId(pathId)
-                .vlan(vlanId)
-                .build();
-        return TransitVlanEncapsulation.builder()
-                .transitVlan(entity)
-                .build();
-    }
-
-    private MeterId allocateForwardMeterId(FlowResources lastAllocated) {
-        return new MeterId(extractLastAllocatedMeterId(lastAllocated).getValue() + 1);
-    }
-
-    private MeterId allocateReverseMeterId(FlowResources lastAllocated) {
-        return new MeterId(extractLastAllocatedMeterId(lastAllocated).getValue() + 2);
-    }
-
-    private int allocateForwardTransitVlanId(FlowResources lastAllocated) {
-        return extractLastAllocatedVlanId(lastAllocated) + 1;
-    }
-
-    private int allocateReverseTransitVlanId(FlowResources lastAllocated) {
-        return extractLastAllocatedVlanId(lastAllocated) + 2;
-    }
-
-    private Cookie extractLastAllocatedCookie(FlowResources resources) {
-        if (resources == null) {
-            return new Cookie(1);
-        }
-        return new Cookie(resources.getUnmaskedCookie());
-    }
-
-    private MeterId extractLastAllocatedMeterId(FlowResources resources) {
-        if (resources == null) {
-            return new MeterId(MeterId.MIN_FLOW_METER_ID);
-        }
-        return resources.getForward().getMeterId();
-    }
-
-    private int extractLastAllocatedVlanId(FlowResources resources) {
-        if (resources == null) {
-            return 100;
-        }
-        return resources.getForward().getEncapsulationResources().getTransitEncapsulationId();
+    protected void produceAsyncResponse(FlowRerouteService service, FlowSegmentRequest speakerRequest) {
+        service.handleAsyncResponse(currentRequestKey, buildSpeakerResponse(speakerRequest));
     }
 
     private IslEndpoint extractIslEndpoint(Flow flow) {
@@ -975,5 +608,45 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         PathSegment firstSegment = forwardSegments.get(0);
 
         return new IslEndpoint(firstSegment.getSrcSwitch().getSwitchId(), firstSegment.getSrcPort());
+    }
+
+    private void setupPostponedRequestInjector(FlowRerouteService service) {
+        doAnswer(invocation -> {
+            FlowRerouteFact retry = invocation.getArgument(0);
+            currentRequestKey = retry.getKey();
+            service.handlePostponedRequest(retry);
+            return null;
+        }).when(carrier).injectPostponedRequest(any());
+    }
+
+    private void setupRetryRequestInjector(FlowRerouteService service) {
+        doAnswer(invocation -> {
+            FlowRerouteFact retry = invocation.getArgument(0);
+            currentRequestKey = retry.getKey();
+            service.handleRequest(retry);
+            return null;
+        }).when(carrier).injectRetry(any());
+    }
+
+    private void preparePathComputation(String flowId, Throwable error)
+            throws RecoverableException, UnroutableFlowException {
+        doThrow(error).when(pathComputer)
+                .getPath(makeFlowArgumentMatch(flowId), any());
+    }
+
+    private void preparePathComputation(String flowId, PathPair pathPair)
+            throws RecoverableException, UnroutableFlowException {
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
+    }
+
+    @Override
+    protected void verifyNorthboundSuccessResponse(FlowGenericCarrier carrierMock) {
+        verifyNorthboundSuccessResponse(carrierMock, FlowRerouteResponse.class);
+    }
+
+    private FlowRerouteService makeService() {
+        return new FlowRerouteService(
+                carrier, persistenceManager, pathComputer, flowResourcesManager, TRANSACTION_RETRIES_LIMIT,
+                PATH_ALLOCATION_RETRIES_LIMIT, PATH_ALLOCATION_RETRY_DELAY, SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 }

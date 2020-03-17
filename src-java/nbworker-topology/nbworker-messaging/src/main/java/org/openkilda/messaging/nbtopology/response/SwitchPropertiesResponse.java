@@ -20,9 +20,11 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class SwitchPropertiesResponse extends InfoData {
 
     @JsonProperty("switch_properties")

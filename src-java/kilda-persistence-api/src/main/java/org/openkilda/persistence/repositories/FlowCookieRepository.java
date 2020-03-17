@@ -24,10 +24,11 @@ public interface FlowCookieRepository extends Repository<FlowCookie> {
 
     /**
      * Find an unmasked cookie which is not assigned to any flow.
-     * Use the provided {@code defaultCookie} as the first candidate.
+     * Use the provided {@code minCookie} as the first candidate.
      *
-     * @param defaultCookie the potential cookie to be checked first.
+     * @param minCookie the potential cookie to be checked first.
+     * @param maxCookie the max value of cookie.
      * @return an unmasked cookie value or {@link Optional#empty()} if no cookie available.
      */
-    Optional<Long> findUnassignedCookie(long defaultCookie);
+    Optional<Long> findUnassignedCookie(long minCookie, long maxCookie);
 }

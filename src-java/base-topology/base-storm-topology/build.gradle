@@ -15,6 +15,7 @@ dependencies {
     implementation project(':kilda-reporting')
     implementation project(':floodlight-api')
     testImplementation project(':kilda-persistence-neo4j')
+    testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-neo4j', configuration: 'testArtifacts')
 
     api 'org.apache.storm:storm-kafka-client'

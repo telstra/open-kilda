@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -93,14 +94,8 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
                         format("Flow path %s not found", pathId)));
     }
 
-    protected boolean isRemoveCustomerPortSharedCatchRule(String flowId,
-                                                          SwitchId ingressSwitchId, int ingressPort) {
-        Set<String> flowIds = flowRepository.findByEndpointWithMultiTableSupport(ingressSwitchId, ingressPort)
-                .stream()
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-
-        return flowIds.size() == 1 && flowIds.iterator().next().equals(flowId);
+    protected Set<String> findFlowsIdsByEndpointWithMultiTable(SwitchId switchId, int port) {
+        return new HashSet<>(flowRepository.findFlowsIdsByEndpointWithMultiTableSupport(switchId, port));
     }
 
     protected Set<String> getDiverseWithFlowIds(Flow flow) {

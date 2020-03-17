@@ -17,12 +17,14 @@ package org.openkilda.server42.control.messaging.flowrtt;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 
 @Value
 @Builder
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 public class ListFlowsRequest extends Message {
     private Headers headers;
 }

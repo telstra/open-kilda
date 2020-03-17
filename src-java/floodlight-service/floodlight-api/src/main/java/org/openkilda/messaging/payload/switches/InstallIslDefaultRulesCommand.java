@@ -24,11 +24,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class InstallIslDefaultRulesCommand extends CommandData {
 
     private static final long serialVersionUID = 7393431355263735216L;

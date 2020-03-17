@@ -16,9 +16,15 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.messaging.Message;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 
 public interface FlowGenericCarrier {
+    /**
+     * Sends response to northbound component.
+     */
+    void sendNorthboundResponse(Message message);
+
     /**
      * Sends commands to speaker.
      * @param command command to be executed.

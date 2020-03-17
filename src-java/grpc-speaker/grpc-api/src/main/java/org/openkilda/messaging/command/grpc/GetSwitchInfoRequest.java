@@ -20,8 +20,10 @@ import org.openkilda.messaging.command.CommandData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class GetSwitchInfoRequest extends CommandData {
 
     @JsonProperty("address")

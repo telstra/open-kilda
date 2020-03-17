@@ -116,6 +116,16 @@ Transit Table pass traffic to the next switch, by default drops unmatched packet
  
 ## Modes Change and Customer Flow migration
 
+To migrate to Multi-Table mode operator should do the following steps for each switch:
+
+* Enable MultiTable for the switch via NorthBound API see `PUT` `/v1/switches/{switch-id}/properties`.
+* Validate switch and verify that there are no rule discrepancies
+* Sync flow that goes through the switch one by one, starting from `default` flows
+* Validate switch and verify that all rules are installed, check flow statistics for the traffic details.
+
+NOTE: In case of migration from Multi-Table to Single-Table mode all the steps remain the same, except flow sync.
+Operator should start migrating `non-default` flows first and finish with default ones.
+
 To change mode of the existing switch from Single-Table to Multi-Table operator should use
 switch properties endpoint in the Northbound API.
 

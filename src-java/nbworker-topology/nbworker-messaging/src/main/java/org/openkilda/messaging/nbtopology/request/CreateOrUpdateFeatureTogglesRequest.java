@@ -19,12 +19,14 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
 
 @SuppressWarnings("squid:MaximumInheritanceDepth")
 @Value
 @ToString
+@EqualsAndHashCode(callSuper = false)
 public class CreateOrUpdateFeatureTogglesRequest extends FeatureTogglesBaseRequest {
 
     @JsonProperty("feature_toggles")

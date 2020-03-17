@@ -19,6 +19,7 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
@@ -26,6 +27,7 @@ import lombok.Value;
  * this filed must be treated as having "any possible value".
  */
 @Value
+@EqualsAndHashCode(callSuper = true)
 public class NetworkEndpointMask extends AbstractNetworkEndpoint {
 
     @JsonCreator

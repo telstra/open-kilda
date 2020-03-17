@@ -15,14 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.messaging.Message;
-
 public interface FlowUpdateHubCarrier extends FlowGenericCarrier {
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
-
     /**
      * Cancels timeout callback.
      *

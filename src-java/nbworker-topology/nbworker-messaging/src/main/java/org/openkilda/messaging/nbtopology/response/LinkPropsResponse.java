@@ -22,9 +22,11 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsRequest;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class LinkPropsResponse extends InfoData {
     @JsonProperty("request")
     LinkPropsRequest request;

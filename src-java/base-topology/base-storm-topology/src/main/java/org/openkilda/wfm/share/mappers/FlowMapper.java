@@ -21,7 +21,6 @@ import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -31,8 +30,6 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.TransitVlan;
-import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -66,6 +63,10 @@ public abstract class FlowMapper {
             expression = "java(flow.isAllocateProtectedPath() ? "
                     + "new FlowStatusDetails(flow.getMainFlowPrioritizedPathsStatus(), "
                     + "flow.getProtectedFlowPrioritizedPathsStatus()) : null)")
+    @Mapping(target = "cookie", ignore = true)
+    @Mapping(target = "meterId", ignore = true)
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "diverseWith", ignore = true)
     public abstract FlowDto map(Flow flow);
 
     /**
@@ -201,14 +202,6 @@ public abstract class FlowMapper {
         }
     }
 
-    public long map(Cookie cookie) {
-        return cookie.getValue();
-    }
-
-    public Long map(MeterId meterId) {
-        return Optional.ofNullable(meterId).map(MeterId::getValue).orElse(null);
-    }
-    
     /**
      * Convert {@link FlowEncapsulationType} to {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType}.
      */
@@ -216,27 +209,6 @@ public abstract class FlowMapper {
         return encapsulationType != null ? org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(
                 encapsulationType.name()) : null;
     }
-
-    private EncapsulationId convertToEncapsulationId(Flow flow, FlowPath flowPath, FlowDto flowDto) {
-        FlowEncapsulationType flowEncapsulationType = flow.getEncapsulationType();
-        EncapsulationId encapsulationId = null;
-        if (FlowEncapsulationType.TRANSIT_VLAN.equals(flowEncapsulationType)) {
-
-            encapsulationId = TransitVlan.builder()
-                    .flowId(flow.getFlowId())
-                    .pathId(flowPath.getPathId())
-                    .vlan(flowDto.getTransitEncapsulationId())
-                    .build();
-        } else if (FlowEncapsulationType.VXLAN.equals(flowEncapsulationType)) {
-            encapsulationId = Vxlan.builder()
-                    .flowId(flow.getFlowId())
-                    .pathId(flowPath.getPathId())
-                    .vni(flowDto.getTransitEncapsulationId())
-                    .build();
-        }
-        return encapsulationId;
-    }
-
 
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {
         Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();

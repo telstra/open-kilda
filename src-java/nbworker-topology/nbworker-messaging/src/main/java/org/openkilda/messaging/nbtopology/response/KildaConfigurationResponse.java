@@ -20,9 +20,11 @@ import org.openkilda.messaging.model.system.KildaConfigurationDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class KildaConfigurationResponse extends InfoData {
 
     @JsonProperty("kilda_configuration")

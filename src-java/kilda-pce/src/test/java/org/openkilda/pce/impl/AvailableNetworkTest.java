@@ -392,7 +392,9 @@ public class AvailableNetworkTest {
 
         Edge edge = srcSwitch.getOutgoingLinks().iterator().next();
         assertEquals(0, edge.getDiversityGroupUseCounter());
-        assertEquals(0, edge.getDestSwitch().getDiversityGroupUseCounter());
+        // as switches are in AvailableNetwork
+        assertEquals(1, edge.getDestSwitch().getDiversityGroupUseCounter());
+        assertEquals(1, edge.getSrcSwitch().getDiversityGroupUseCounter());
     }
 
     private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,

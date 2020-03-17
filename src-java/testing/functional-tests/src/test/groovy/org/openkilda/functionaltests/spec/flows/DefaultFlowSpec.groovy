@@ -105,8 +105,12 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
+        given: "At least 2 traffGen switches"
+        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 1) as boolean)
+
         when: "Create a default flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
+        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
         def defaultFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         defaultFlow.source.vlanId = 0
         defaultFlow.destination.vlanId = 0
@@ -132,8 +136,12 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     }
 
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
-        given: "A default flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
+        given: "At least 2 traffGen switches"
+        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 1) as boolean)
+
+        and: "A default flow"
+        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
         def defaultFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         defaultFlow.source.vlanId = 0
         defaultFlow.destination.vlanId = 0
@@ -165,7 +173,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def defaultFlow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         defaultFlow1.source.vlanId = 0
         flowHelper.addFlow(defaultFlow1)
@@ -173,6 +181,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         and: "Try to create second default flow on the same port"
         def defaultFlow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         defaultFlow2.source.vlanId = 0
+        defaultFlow2.source.portNumber = defaultFlow1.source.portNumber
         flowHelper.addFlow(defaultFlow2)
 
         then: "Human readable error is returned"

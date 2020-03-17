@@ -20,7 +20,6 @@ import org.openkilda.model.SwitchId;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -38,14 +37,14 @@ public class FloodlightTracker {
     protected Map<String, SpeakerStatus> floodlightStatus = new HashMap<>();
 
     public FloodlightTracker(Set<String> floodlights, long aliveTimeout, long aliveInterval) {
-        this(floodlights, new AliveSetup(aliveTimeout, aliveInterval), Duration.ofSeconds(aliveTimeout));
+        this(floodlights, new AliveSetup(aliveTimeout, aliveInterval));
     }
 
-    FloodlightTracker(Set<String> floodlights, AliveSetup aliveSetup, Duration aliveTimeout) {
+    FloodlightTracker(Set<String> floodlights, AliveSetup aliveSetup) {
         this.aliveSetup = aliveSetup;
 
         for (String region : floodlights) {
-            SpeakerStatus fl = new SpeakerStatus(region, aliveTimeout, aliveSetup.makeZeroMarker());
+            SpeakerStatus fl = new SpeakerStatus(region, aliveSetup.makeZeroMarker());
             floodlightStatus.put(region, fl);
         }
     }

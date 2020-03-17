@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit
 class MultiRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3047")
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Two flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:

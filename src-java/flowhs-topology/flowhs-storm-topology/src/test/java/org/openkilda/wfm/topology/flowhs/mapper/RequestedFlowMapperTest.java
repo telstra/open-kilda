@@ -20,7 +20,9 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -64,6 +66,29 @@ public class RequestedFlowMapperTest {
             .periodicPings(true)
             .build();
 
+    private Flow flow = Flow.builder()
+            .flowId(FLOW_ID)
+            .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+            .srcPort(SRC_PORT)
+            .srcVlan(SRC_VLAN)
+            .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+            .destPort(DST_PORT)
+            .destVlan(DST_VLAN)
+            .priority(PRIORITY)
+            .description(DESCRIPTION)
+            .bandwidth(BANDWIDTH)
+            .maxLatency(MAX_LATENCY)
+            .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .detectConnectedDevices(
+                    new org.openkilda.model.DetectConnectedDevices(true, true, true, true, true, true, true, true))
+            .pinned(true)
+            .allocateProtectedPath(true)
+            .ignoreBandwidth(true)
+            .periodicPings(true)
+            .srcWithMultiTable(true)
+            .destWithMultiTable(true)
+            .build();
+
     @Test
     public void mapFlowRequestToRequestedFlowTest() {
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flowRequest);
@@ -86,5 +111,33 @@ public class RequestedFlowMapperTest {
         assertTrue(requestedFlow.isPeriodicPings());
         assertEquals(new DetectConnectedDevices(true, true, true, true, true, true, true, true),
                 requestedFlow.getDetectConnectedDevices());
+    }
+
+    @Test
+    public void mapFlowToRequestedFlowTest() {
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
+        assertEquals(FLOW_ID, requestedFlow.getFlowId());
+        assertEquals(SRC_SWITCH_ID, requestedFlow.getSrcSwitch());
+        assertEquals(SRC_PORT, requestedFlow.getSrcPort());
+        assertEquals(SRC_VLAN, requestedFlow.getSrcVlan());
+        assertEquals(DST_SWITCH_ID, requestedFlow.getDestSwitch());
+        assertEquals(DST_PORT, requestedFlow.getDestPort());
+        assertEquals(DST_VLAN, requestedFlow.getDestVlan());
+        assertEquals(PRIORITY, requestedFlow.getPriority());
+        assertEquals(DESCRIPTION, requestedFlow.getDescription());
+        assertEquals(BANDWIDTH, requestedFlow.getBandwidth());
+        assertEquals(MAX_LATENCY, requestedFlow.getMaxLatency());
+        assertEquals(ENCAPSULATION_TYPE, requestedFlow.getFlowEncapsulationType());
+        assertTrue(requestedFlow.isPinned());
+        assertTrue(requestedFlow.isAllocateProtectedPath());
+        assertTrue(requestedFlow.isIgnoreBandwidth());
+        assertTrue(requestedFlow.isPeriodicPings());
+        assertTrue(requestedFlow.isSrcWithMultiTable());
+        assertTrue(requestedFlow.isDestWithMultiTable());
+        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true, true, true),
+                requestedFlow.getDetectConnectedDevices());
+
+        Flow mappedFlow = RequestedFlowMapper.INSTANCE.toFlow(requestedFlow);
+        assertEquals(flow, mappedFlow);
     }
 }

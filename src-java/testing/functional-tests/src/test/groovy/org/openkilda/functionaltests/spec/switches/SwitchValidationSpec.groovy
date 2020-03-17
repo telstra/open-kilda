@@ -91,9 +91,10 @@ class SwitchValidationSpec extends HealthCheckSpecification {
 
         Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
         Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
-        verifyBurstSizeIsCorrect(srcSwitchBurstSize, srcSwitchProperMeters*.burstSize[0])
-        verifyBurstSizeIsCorrect(dstSwitchBurstSize, srcSwitchProperMeters*.burstSize[0])
-
+        switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize,
+            srcSwitchProperMeters*.burstSize[0])
+        switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize,
+            dstSwitchProperMeters*.burstSize[0])
 
         and: "The rest fields in the 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
@@ -218,8 +219,10 @@ misconfigured"
 
         Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
         Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
-        verifyBurstSizeIsCorrect(srcSwitchBurstSize, srcSwitchValidateInfo.meters.misconfigured*.burstSize[0])
-        verifyBurstSizeIsCorrect(dstSwitchBurstSize, dstSwitchValidateInfo.meters.misconfigured*.burstSize[0])
+        switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize,
+            srcSwitchValidateInfo.meters.misconfigured*.burstSize[0])
+        switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize,
+            dstSwitchValidateInfo.meters.misconfigured*.burstSize[0])
 
         and: "Reason is specified why meter is misconfigured"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
@@ -266,8 +269,8 @@ misconfigured"
             def sw = (i == 0) ? srcSwitch : dstSwitch
             def switchBurstSize = (i == 0) ? srcSwitchBurstSize : dstSwitchBurstSize
             Long newBurstSize = switchHelper.getExpectedBurst(sw.dpId, newBandwidth)
-            verifyBurstSizeIsCorrect(newBurstSize, burst.expectedValue.toLong())
-            verifyBurstSizeIsCorrect(switchBurstSize, burst.actualValue.toLong())
+            switchHelper.verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
+            switchHelper.verifyBurstSizeIsCorrect(sw, switchBurstSize, burst.actualValue.toLong())
 
             assert direction.flowRulesTotal == 2
             assert direction.switchRulesTotal == totalSwitchRules
@@ -334,7 +337,7 @@ misconfigured"
                 assert it.rate == flow.maximumBandwidth
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-                verifyBurstSizeIsCorrect(srcSwitchBurstSize, it.burstSize)
+                switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize, it.burstSize)
             }
             switchHelper.verifyMeterSectionsAreEmpty(it, ["proper", "misconfigured", "excess"])
             switchHelper.verifyRuleSectionsAreEmpty(it, ["excess"])
@@ -355,7 +358,7 @@ misconfigured"
                 assert it.rate == flow.maximumBandwidth
                 assert it.flowId == flow.flowId
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-                verifyBurstSizeIsCorrect(dstSwitchBurstSize, it.burstSize)
+                switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize, it.burstSize)
             }
             switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
@@ -622,7 +625,7 @@ misconfigured"
             assert it.rate == flow.maximumBandwidth
             assert it.meterId == excessMeterId
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
-            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+            switchHelper.verifyBurstSizeIsCorrect(switchPair.src, burstSize, it.burstSize)
         }
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { switchId ->
             assert northbound.validateSwitch(switchId).meters.excess.empty
@@ -967,10 +970,6 @@ misconfigured"
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter
         }*.cookie
-    }
-
-    void verifyBurstSizeIsCorrect(Long expected, Long actual) {
-        assert Math.abs(expected - actual) <= 1
     }
 
     private static Message buildMessage(final CommandData data) {

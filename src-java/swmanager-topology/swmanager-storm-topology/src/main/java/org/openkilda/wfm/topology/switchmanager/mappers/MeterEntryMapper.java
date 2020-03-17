@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 @Mapper
@@ -26,5 +27,7 @@ public interface MeterEntryMapper {
 
     MeterEntryMapper INSTANCE = Mappers.getMapper(MeterEntryMapper.class);
 
+    @Mapping(target = "flowId", ignore = true)
+    @Mapping(target = "cookie", ignore = true)
     SimpleMeterEntry map(MeterEntry meterEntry);
 }
