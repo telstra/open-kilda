@@ -28,6 +28,8 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.model.bitops.cookie.CookieSchema.CookieType
+import org.openkilda.model.bitops.cookie.ServiceCookieSchema
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -928,12 +930,15 @@ misconfigured"
         data << [
                 [
                         descr              : "LLDP",
-                        cookieSearchClosure: { Cookie.isLldpInputCustomer(it.cookie) }
+                        cookieSearchClosure: { ServiceCookieSchema.INSTANCE
+                                .getType(new Cookie(it.cookie)) ==  CookieType.LLDP_INPUT_CUSTOMER_TYPE }
                 ],
 
                 [
                         descr              : "ARP",
-                        cookieSearchClosure: { Cookie.isArpInputCustomer(it.cookie) }
+                        cookieSearchClosure: {
+                            ServiceCookieSchema.INSTANCE
+                                    .getType(new Cookie(it.cookie)) == CookieType.ARP_INPUT_CUSTOMER_TYPE }
                 ]
         ]
     }

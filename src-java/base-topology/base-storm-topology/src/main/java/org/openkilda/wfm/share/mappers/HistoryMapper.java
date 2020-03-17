@@ -20,9 +20,12 @@ import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.bitops.cookie.FlowSegmentCookieSchema;
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
@@ -36,7 +39,6 @@ import org.openkilda.wfm.share.history.model.PortHistoryData;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
-import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -97,25 +99,18 @@ public abstract class HistoryMapper {
      * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
      * to the dump data.
      */
-    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
-    @Mapping(source = "flow.srcPort", target = "sourcePort")
-    @Mapping(source = "flow.destPort", target = "destinationPort")
-    @Mapping(source = "flow.srcVlan", target = "sourceVlan")
-    @Mapping(source = "flow.destVlan", target = "destinationVlan")
-    @Mapping(source = "flow.flowId", target = "flowId")
-    @Mapping(source = "flow.bandwidth", target = "bandwidth")
-    @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
-    @Mapping(target = "forwardCookie", expression =
-            "java(org.openkilda.model.Cookie.buildForwardCookie(resources.getUnmaskedCookie()))")
-    @Mapping(target = "reverseCookie", expression =
-            "java(org.openkilda.model.Cookie.buildReverseCookie(resources.getUnmaskedCookie()))")
-    @Mapping(source = "resources.forward.meterId", target = "forwardMeterId")
-    @Mapping(source = "resources.reverse.meterId", target = "reverseMeterId")
-    @Mapping(source = "dumpType", target = "dumpType")
-    @BeanMapping(ignoreByDefault = true)
-    public abstract FlowDumpData map(Flow flow, FlowResources resources, DumpType dumpType);
+    public FlowDumpData map(Flow flow, FlowResources resources, DumpType dumpType) {
+        FlowDumpData result = generatedMap(flow, resources, dumpType);
 
+        result.setSourceSwitch(flow.getSrcSwitch().getSwitchId());
+        result.setDestinationSwitch(flow.getDestSwitch().getSwitchId());
+
+        Cookie blank = FlowSegmentCookieSchema.INSTANCE.make(resources.getUnmaskedCookie());
+        result.setForwardCookie(FlowSegmentCookieSchema.INSTANCE.setDirection(blank, FlowPathDirection.FORWARD));
+        result.setReverseCookie(FlowSegmentCookieSchema.INSTANCE.setDirection(blank, FlowPathDirection.REVERSE));
+
+        return result;
+    }
 
     @Mapping(source = "time", target = "timestamp")
     @Mapping(source = "description", target = "details")
@@ -140,6 +135,22 @@ public abstract class HistoryMapper {
     public String map(SwitchId switchId) {
         return switchId.toString();
     }
+
+    @Mapping(source = "flow.srcPort", target = "sourcePort")
+    @Mapping(source = "flow.destPort", target = "destinationPort")
+    @Mapping(source = "flow.srcVlan", target = "sourceVlan")
+    @Mapping(source = "flow.destVlan", target = "destinationVlan")
+    @Mapping(source = "flow.flowId", target = "flowId")
+    @Mapping(source = "flow.bandwidth", target = "bandwidth")
+    @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
+    @Mapping(source = "resources.forward.meterId", target = "forwardMeterId")
+    @Mapping(source = "resources.reverse.meterId", target = "reverseMeterId")
+    @Mapping(source = "dumpType", target = "dumpType")
+    @Mapping(target = "sourceSwitch", ignore = true)
+    @Mapping(target = "destinationSwitch", ignore = true)
+    @Mapping(target = "forwardCookie", ignore = true)
+    @Mapping(target = "reverseCookie", ignore = true)
+    protected abstract FlowDumpData generatedMap(Flow flow, FlowResources resources, DumpType dumpType);
 
     /**
      * Adds string representation of flow path into {@link FlowDumpData}.
