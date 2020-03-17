@@ -15,13 +15,14 @@
 
 package org.openkilda.persistence.dummy;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowCookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
@@ -204,15 +205,17 @@ public class PersistenceDummyEntityFactory {
 
         List<PathSegment> forwardSegments = makePathSegments(source.getSwitchId(), dest.getSwitchId(), forwardPathHint);
         flow.setForwardPath(makePath(
-                flow, source, dest, forwardSegments, Cookie.buildForwardCookie(flowEffectiveId), tags, "forward"));
+                flow, source, dest, forwardSegments,
+                new FlowSegmentCookie(FlowPathDirection.FORWARD, flowEffectiveId), tags, "forward"));
 
         List<PathSegment> reverseSegments = makePathSegments(dest.getSwitchId(), source.getSwitchId(), reversePathHint);
         flow.setReversePath(makePath(
-                flow, dest, source, reverseSegments, Cookie.buildReverseCookie(flowEffectiveId), tags, "reverse"));
+                flow, dest, source, reverseSegments,
+                new FlowSegmentCookie(FlowPathDirection.REVERSE, flowEffectiveId), tags, "reverse"));
     }
 
     private FlowPath makePath(
-            Flow flow, FlowEndpoint ingress, FlowEndpoint egress, List<PathSegment> segments, Cookie cookie,
+            Flow flow, FlowEndpoint ingress, FlowEndpoint egress, List<PathSegment> segments, FlowSegmentCookie cookie,
             List<String> tags, String... extraTags) {
         List<String> allTags = new ArrayList<>(tags);
         allTags.addAll(Arrays.asList(extraTags));

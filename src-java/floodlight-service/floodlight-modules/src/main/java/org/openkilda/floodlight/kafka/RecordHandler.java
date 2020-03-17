@@ -138,7 +138,9 @@ import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
 import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.CookieBase.CookieType;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.PortColourCookie;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 
@@ -658,6 +660,9 @@ class RecordHandler implements Runnable {
         ISwitchManager switchManager = context.getSwitchManager();
         DatapathId dpid = DatapathId.of(switchId.toLong());
 
+        Cookie encodedCookie = new Cookie(cookie);
+        PortColourCookie portColourCookie = new PortColourCookie(cookie);
+        CookieType cookieType = encodedCookie.getType();
         if (cookie == DROP_RULE_COOKIE) {
             return switchManager.installDropFlow(dpid);
         } else if (cookie == VERIFICATION_BROADCAST_RULE_COOKIE) {
@@ -708,27 +713,21 @@ class RecordHandler implements Runnable {
             return switchManager.installArpPostIngressOneSwitchFlow(dpid);
         } else if (cookie == ARP_TRANSIT_COOKIE) {
             return switchManager.installArpTransitFlow(dpid);
-        } else if (Cookie.isIngressRulePassThrough(cookie)) {
-            long port = Cookie.getValueFromIntermediateCookie(cookie);
-            return switchManager.installIntermediateIngressRule(dpid, (int) port);
-        } else if (Cookie.isIslVlanEgress(cookie)) {
-            long port = Cookie.getValueFromIntermediateCookie(cookie);
-            return switchManager.installEgressIslVlanRule(dpid, (int) port);
-        } else if (Cookie.isIslVxlanTransit(cookie)) {
-            long port = Cookie.getValueFromIntermediateCookie(cookie);
-            return switchManager.installTransitIslVxlanRule(dpid, (int) port);
-        } else if (Cookie.isIslVxlanEgress(cookie)) {
-            long port = Cookie.getValueFromIntermediateCookie(cookie);
-            return switchManager.installEgressIslVxlanRule(dpid, (int) port);
-        } else if (Cookie.isLldpInputCustomer(cookie)) {
-            long port = Cookie.getValueFromIntermediateCookie(cookie);
-            return switchManager.installLldpInputCustomerFlow(dpid, (int) port);
-        } else if (Cookie.isArpInputCustomer(cookie)) {
-            long port = Cookie.getValueFromIntermediateCookie(cookie);
-            return switchManager.installArpInputCustomerFlow(dpid, (int) port);
+        } else if (cookieType == CookieType.MULTI_TABLE_INGRESS_RULES) {
+            return switchManager.installIntermediateIngressRule(dpid, portColourCookie.getPortNumber());
+        } else if (cookieType == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES) {
+            return switchManager.installEgressIslVlanRule(dpid, portColourCookie.getPortNumber());
+        } else if (cookieType == CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES) {
+            return switchManager.installTransitIslVxlanRule(dpid, portColourCookie.getPortNumber());
+        } else if (cookieType == CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES) {
+            return switchManager.installEgressIslVxlanRule(dpid, portColourCookie.getPortNumber());
+        } else if (cookieType == CookieType.LLDP_INPUT_CUSTOMER_TYPE) {
+            return switchManager.installLldpInputCustomerFlow(dpid, portColourCookie.getPortNumber());
+        } else if (cookieType == CookieType.ARP_INPUT_CUSTOMER_TYPE) {
+            return switchManager.installArpInputCustomerFlow(dpid, portColourCookie.getPortNumber());
         } else {
             logger.warn("Skipping the installation of unexpected default switch rule {} for switch {}",
-                    Long.toHexString(cookie), switchId);
+                    encodedCookie, switchId);
         }
         return null;
     }

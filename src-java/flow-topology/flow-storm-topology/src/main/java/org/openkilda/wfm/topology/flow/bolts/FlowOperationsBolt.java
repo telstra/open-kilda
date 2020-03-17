@@ -224,7 +224,7 @@ public class FlowOperationsBolt extends BaseRichBolt {
 
     private FlowResponse buildFlowResponse(Flow flow) {
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
-        flowDto.setCookie(flow.getForwardPath().getCookie().getUnmaskedValue());
+        flowDto.setCookie(flow.getForwardPath().getCookie().getFlowEffectiveId());
         return new FlowResponse(flowDto);
     }
 
