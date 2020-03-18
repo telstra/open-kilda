@@ -39,6 +39,7 @@ import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.shared.packet.VlanTag;
 import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.EthernetPacketToolbox;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.ArpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
@@ -90,7 +91,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
     LldpPacketData deserializeLldp(Ethernet eth, SwitchId switchId, long cookie) {
         try {
             List<Integer> vlans = new ArrayList<>();
-            IPacket payload = extractEthernetPayload(eth, vlans);
+            IPacket payload = EthernetPacketToolbox.extractPayload(eth, vlans);
 
             if (payload instanceof LLDP) {
                 LldpPacket lldpPacket = new LldpPacket((LLDP) payload);
@@ -109,7 +110,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
     ArpPacketData deserializeArp(Ethernet eth, SwitchId switchId, long cookie) {
         try {
             List<Integer> vlans = new ArrayList<>();
-            IPacket payload = extractEthernetPayload(eth, vlans);
+            IPacket payload = EthernetPacketToolbox.extractPayload(eth, vlans);
 
             if (payload instanceof ARP) {
                 return new ArpPacketData((ARP) payload, vlans);
@@ -209,23 +210,6 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         InfoMessage message = new InfoMessage(
                 arpInfoData, System.currentTimeMillis(), CorrelationContext.getId(), region);
         producerService.sendMessageAndTrack(topic, switchId.toString(), message);
-    }
-
-    @VisibleForTesting
-    IPacket extractEthernetPayload(Ethernet packet, List<Integer> vlans) {
-        short rootVlan = packet.getVlanID();
-        if (rootVlan > 0) {
-            vlans.add((int) rootVlan);
-        }
-
-        IPacket payload = packet.getPayload();
-        while (payload instanceof VlanTag) {
-            short vlanId = ((VlanTag) payload).getVlanId();
-            vlans.add((int) vlanId);
-            payload = payload.getPayload();
-        }
-
-        return payload;
     }
 
     @Override
