@@ -55,7 +55,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
 
@@ -93,7 +93,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -105,7 +105,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         cleanup: "Restore topology to the original state, remove the flow"
@@ -140,7 +140,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         and: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
 
@@ -171,7 +171,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow goes to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -184,12 +184,12 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "The flow goes to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "The flow was rerouted"
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Bring port involved in the original path up and delete the flow"
         antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
@@ -230,7 +230,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
-        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         and: "Delete the flow"
@@ -267,7 +267,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
-        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         and: "Delete the flow"
@@ -345,7 +345,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -451,7 +451,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert northbound.getLink(islToReroute).state == DISCOVERED
             withPool {
                 [firstFlow.flowId, secondFlow.flowId].eachParallel { String flowId ->
-                    assert northbound.getFlowStatus(flowId).status == FlowState.DOWN
+                    assert northboundV2.getFlowStatus(flowId).status == FlowState.DOWN
                     assert PathHelper.convert(northbound.getFlowPath(flowId)) == flowPathMap[flowId]
                 }
             }
@@ -469,7 +469,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             withPool {
                 [firstFlow.flowId, secondFlow.flowId].eachParallel { String flowId ->
-                    assert northbound.getFlowStatus(flowId).status == FlowState.UP
+                    assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
                     assert PathHelper.convert(northbound.getFlowPath(flowId)) != flowPathMap[flowId]
                 }
             }
@@ -529,7 +529,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         //move the flow to DOWN status
         def islToBreak = pathHelper.getInvolvedIsls(flowPath).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Generate switchUp event on switch which is not related to the flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)*.dpId
@@ -631,7 +631,7 @@ triggering one more reroute of the current path"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
             //we need a stable UP state, since it may temporary switch to UP and then again to In Progress
             Wrappers.timedLoop(2) {
-                assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
                 sleep(500)
             }
         }

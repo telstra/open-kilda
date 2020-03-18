@@ -35,7 +35,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flowHelperV2.addFlow(flow)
-        assert northbound.getFlow(flow.flowId).maximumBandwidth == maximumBandwidth
+        assert northboundV2.getFlow(flow.flowId).maximumBandwidth == maximumBandwidth
 
         then: "Available bandwidth on ISLs is changed in accordance with flow maximum bandwidth"
         def linksAfterFlowCreate = northbound.getAllLinks()
@@ -49,8 +49,8 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         northboundV2.updateFlow(flow.flowId, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.getFlow(flow.flowId).maximumBandwidth == maximumBandwidthUpdated
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northboundV2.getFlow(flow.flowId).maximumBandwidth == maximumBandwidthUpdated
 
         and: "Available bandwidth on ISLs is changed in accordance with new flow maximum bandwidth"
         def linksBeforeFlowUpdate = linksAfterFlowCreate
@@ -149,7 +149,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flowHelperV2.addFlow(flow)
-        assert northbound.getFlow(flow.flowId).maximumBandwidth == maximumBandwidth
+        assert northboundV2.getFlow(flow.flowId).maximumBandwidth == maximumBandwidth
 
         and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
         List<Long> involvedBandwidths = []
@@ -185,7 +185,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         since we are focused on proper path computation and link bw change, not the meter requirements, thus not
         using flowHelper.addFlow in order not to validate successful rules installation in this case*/
         flowHelperV2.addFlow(flow)
-        assert northbound.getFlow(flow.flowId).maximumBandwidth == flow.maximumBandwidth
+        assert northboundV2.getFlow(flow.flowId).maximumBandwidth == flow.maximumBandwidth
 
         then: "Available bandwidth on ISLs is not changed in accordance with flow maximum bandwidth"
         def linksAfterFlowCreate = northbound.getAllLinks()
@@ -197,8 +197,8 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         northboundV2.updateFlow(flow.flowId, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.getFlow(flow.flowId).maximumBandwidth == flow.maximumBandwidth
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northboundV2.getFlow(flow.flowId).maximumBandwidth == flow.maximumBandwidth
 
         and: "Available bandwidth on ISLs is not changed in accordance with new flow maximum bandwidth"
         def linksAfterFlowUpdate = northbound.getAllLinks()
@@ -229,7 +229,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flowHelperV2.addFlow(flow)
-        assert northbound.getFlow(flow.flowId).maximumBandwidth == maximumBandwidth
+        assert northboundV2.getFlow(flow.flowId).maximumBandwidth == maximumBandwidth
 
         then: "Only one link is involved in flow path"
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -243,8 +243,8 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         northboundV2.updateFlow(flow.flowId, flow)
 
         then: "The flow is successfully updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.getFlow(flow.flowId).maximumBandwidth == linkSpeed
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northboundV2.getFlow(flow.flowId).maximumBandwidth == linkSpeed
 
         and: "The same path is used by updated flow"
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
@@ -266,7 +266,7 @@ class BandwidthV2Spec extends HealthCheckSpecification {
         flow.maximumBandwidth = maxBandwidth + 1
         flow.ignoreBandwidth = true
         flowHelperV2.addFlow(flow)
-        assert northbound.getFlow(flow.flowId).maximumBandwidth == flow.maximumBandwidth
+        assert northboundV2.getFlow(flow.flowId).maximumBandwidth == flow.maximumBandwidth
 
         then: "Available bandwidth on ISLs is not changed in accordance with flow maximum bandwidth"
         def linksAfterFlowCreate = northbound.getAllLinks()
@@ -286,8 +286,8 @@ class BandwidthV2Spec extends HealthCheckSpecification {
                 "Switch ${flow.source.switchId} doesn't have links with enough bandwidth"
 
         and: "The flow is not updated and has 'Up' status"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.getFlow(flow.flowId).ignoreBandwidth
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northboundV2.getFlow(flow.flowId).ignoreBandwidth
 
         and: "Available bandwidth on ISLs is not changed"
         def linksAfterFlowUpdate = northbound.getAllLinks()

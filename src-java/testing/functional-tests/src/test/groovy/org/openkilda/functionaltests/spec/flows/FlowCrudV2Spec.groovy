@@ -118,7 +118,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
-        !northbound.getAllFlows().find { it.id == flow.flowId }
+        !northboundV2.getAllFlows().find { it.flowId == flow.flowId }
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) {
@@ -153,7 +153,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flows.second)
 
         then: "Both flows are successfully created"
-        northbound.getAllFlows()*.id.containsAll(flows*.flowId)
+        northboundV2.getAllFlows()*.flowId.containsAll(flows*.flowId)
 
         cleanup: "Delete flows"
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
@@ -337,7 +337,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
-        !northbound.getAllFlows().find { it.id == flow.flowId }
+        !northboundV2.getAllFlows().find { it.flowId == flow.flowId }
 
         and: "No rule discrepancies on the switch after delete"
         Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.switchId) }
@@ -542,11 +542,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         e.statusCode == HttpStatus.BAD_REQUEST
 
         and: "Flow is not removed"
-        northbound.getAllFlows()*.id.contains(flow.flowId)
+        northboundV2.getAllFlows()*.flowId.contains(flow.flowId)
 
         and: "Flow eventually gets into UP state"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "All related switches have no discrepancies in rules"
@@ -588,8 +588,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 		flowHelperV2.addFlow(flow)
 
 		when: "Try to update the flow (faked encapsulation type)"
-		def flowInfo = northbound.getFlow(flow.flowId)
-		northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = "fake" }))
+		def flowInfo = northboundV2.getFlow(flow.flowId)
+		northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.encapsulationType = "fake" }))
 
 		then: "Flow is not updated"
 		def exc = thrown(HttpClientErrorException)
@@ -794,8 +794,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         then: "Flow is created with protected path"
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
         flowPathInfo.protectedPath
-        def flowInfo = northbound.getFlow(flow.flowId)
-        flowInfo.flowStatusDetails
+        def flowInfo = northboundV2.getFlow(flow.flowId)
+        flowInfo.statusDetails
 
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
@@ -808,11 +808,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
         def protectedFlowPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.allocateProtectedPath = false }))
+        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.allocateProtectedPath = false }))
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath
-        !northbound.getFlow(flow.flowId).flowStatusDetails
+        !northboundV2.getFlow(flow.flowId).statusDetails
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
@@ -848,7 +848,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         then: "Flow is created with needed values"
-        def flowInfo = northbound.getFlow(flow.flowId)
+        def flowInfo = northboundV2.getFlow(flow.flowId)
         flowInfo.priority == initPriority
         flowInfo.maxLatency == initMaxLatency
         flowInfo.description == initDescription
@@ -863,10 +863,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         flowInfo.maxLatency = newMaxLatency
         flowInfo.description = newDescription
         flowInfo.periodicPings = newPeriodicPing
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo))
+        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo))
 
         then: "Flow is updated correctly"
-        def newFlowInfo = northbound.getFlow(flow.flowId)
+        def newFlowInfo = northboundV2.getFlow(flow.flowId)
         newFlowInfo.priority == newPriority
         newFlowInfo.maxLatency == newMaxLatency
         newFlowInfo.description == newDescription
@@ -1000,9 +1000,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northboundV2.addFlow(flow)
 
         then: "Flow status is changed to UP only when all rules are actually installed"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
         def flowInfo = database.getFlow(flow.flowId)
         def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
@@ -1017,9 +1017,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def deleteResponse = northboundV2.deleteFlow(flow.flowId)
 
         then: "Flow is actually removed from flows dump only after all rules are removed"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert !northbound.getFlowStatus(flow.flowId)
+            assert !northboundV2.getFlowStatus(flow.flowId)
         }
         withPool(switches.size()) {
             switches.eachParallel { Switch sw ->
@@ -1028,7 +1028,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 }.empty
             }
         }
-        northbound.getAllFlows().empty
+        northboundV2.getAllFlows().empty
 
         cleanup: 
         northbound.deleteLinkProps(northbound.getAllLinkProps())
@@ -1059,7 +1059,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         })
 
         then: "Flow is really updated"
-        with(northbound.getFlow(flow.flowId)) {
+        with(northboundV2.getFlow(flow.flowId)) {
             it.source.portNumber == newPortNumber
             it.source.vlanId == newVlanId
         }
@@ -1104,8 +1104,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         })
 
         then: "Flow is really updated"
-        with(northbound.getFlow(flow.flowId)) {
-            it.destination.switchDpId == newDstSwitch.dpId
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.destination.switchId == newDstSwitch.dpId
         }
 
         and: "Flow rules are removed from the old dst switch"
@@ -1184,7 +1184,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "Flow is updated"
-        northbound.getFlow(flow.flowId).description == newFlowDescr
+        northboundV2.getFlow(flow.flowId).description == newFlowDescr
 
         and: "All involved switches pass switch validation"
         def involvedSwitchIds = (currentPath*.switchId + newCurrentPath*.switchId).unique()

@@ -65,7 +65,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
-            assert pathChanged || (northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
+            assert pathChanged || (northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
                     northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL })
         }
 
@@ -92,7 +92,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             assert northbound.getSwitch(srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED
         }
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
         }
 
         and: "Flow has no path associated"
@@ -121,14 +121,14 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
 
         then: "Flow is still down, because ISLs had not enough time to fail, so no ISLs are discovered and no reroute happen"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
 
         when: "Reroute the flow"
         def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "Flow is rerouted and in UP state"
         rerouteResponse.rerouted
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Has a path now"
         with(northbound.getFlowPath(flow.flowId)) {
@@ -178,7 +178,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 

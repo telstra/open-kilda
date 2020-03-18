@@ -318,7 +318,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Reroute(intentional) the flow via APIv1"
         with(northbound.rerouteFlow(flow.flowId)) { !it.rerouted }
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         then: "Flow rules on the switch are not recreated in single table mode because flow wasn't rerouted"
@@ -330,7 +330,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         when: "Reroute(intentional) the flow via APIv2"
         with(northboundV2.rerouteFlow(flow.flowId)) { !it.rerouted }
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         then: "Flow rules on the switch are not recreated in single table mode because the flow wasn't rerouted"
@@ -425,6 +425,9 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
 
         then: "Rules on the transit switch are recreated in single table mode"
         def flowInfoFromDb2
@@ -460,9 +463,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         when: "Update the flow"
-        northbound.updateFlow(flow.flowId, northbound.getFlow(flow.flowId).tap {
+        northboundV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId).tap {
             it.description = it.description + " updated"
-        })
+        }))
 
         then: "Flow rules on the src switch are recreated in single table mode"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -607,7 +610,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         when: "Disable protected path on the flow"
-        northbound.updateFlow(flow.flowId, northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false })
+        northboundV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId)
+                .tap { it.allocateProtectedPath = false }))
 
         and: "Update switch properties(multi_table: false) on the dst and (multi_table: true) on the src switches"
         northbound.updateSwitchProperties(involvedSwitches[0].dpId,
@@ -620,8 +624,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != PathHelper.convert(newFlowPath)
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+            assert newFlowPath2 != newFlowPath
         }
 
         then: "Flow rules on the src and dst switches are recreated according to the new switch properties"
@@ -696,9 +701,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Enable protected path on the flow"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
         Wrappers.wait(WAIT_OFFSET, 1) {
-            with(northbound.getFlow(flow.flowId).flowStatusDetails) {
-                mainFlowPathStatus == "Up"
-                protectedFlowPathStatus == "Up"
+            with(northboundV2.getFlow(flow.flowId).statusDetails) {
+                mainPath == "Up"
+                protectedPath == "Up"
             }
         }
 
@@ -741,7 +746,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         def newFlowPath2
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
             assert newFlowPath2 != desiredPath
         }
@@ -802,14 +807,16 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
 
         and: "Update the flow: enable protected path"
-        northbound.updateFlow(flow.flowId, northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = true })
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        northboundV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId)
+                .tap { it.allocateProtectedPath = true }))
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Couldn't setup protected path for one-switch flow"
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
 
         and: "Flow rules are still in multi table mode"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -881,7 +888,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         //flow is pinned, so that's why the flow is not rerouted
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
 
@@ -892,7 +899,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Restore the failed flow ISL (bring switch port up)"
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
         }
 
@@ -921,7 +928,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { it.rerouted }
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         then: "Flow rules are reinstalled according to switch props"
         Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
