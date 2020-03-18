@@ -15,30 +15,21 @@
 
 package org.openkilda.floodlight.service.connected;
 
-import static com.google.common.primitives.Bytes.concat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.floodlight.service.connected.ConnectedDevicesService.ArpPacketData;
 import org.openkilda.floodlight.service.connected.ConnectedDevicesService.LldpPacketData;
-import org.openkilda.floodlight.shared.packet.VlanTag;
+import org.openkilda.floodlight.test.standard.PacketTestBase;
 
-import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.PacketParsingException;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.projectfloodlight.openflow.types.EthType;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Slf4j
-public class ConnectedDevicesServiceTest {
+public class ConnectedDevicesServiceTest extends PacketTestBase {
     private byte[] srcAndDstMacAddresses = new byte[] {
             0x1, (byte) 0x80, (byte) 0xC2, 0x0, 0x0, 0xE,           // src mac address
             0x10, 0x4E, (byte) 0xF1, (byte) 0xF9, 0x6D, (byte) 0xFA // dst mac address
@@ -57,11 +48,6 @@ public class ConnectedDevicesServiceTest {
     };
 
     private ConnectedDevicesService service = new ConnectedDevicesService();
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-        log.info("Force loading of {}", Class.forName(VlanTag.class.getName()));
-    }
 
     @Test
     public void deserializeLldpTest() {
@@ -187,48 +173,9 @@ public class ConnectedDevicesServiceTest {
         assertEquals(buildArpPacket(arpPacket), data.getArp());
     }
 
-    @Test
-    public void extractEthernetPayloadTest() {
-        short vlan1 = 1234;
-        short vlan2 = 2345;
-        short vlan3 = 4000;
-        Ethernet ethernet = buildEthernet(srcAndDstMacAddresses,
-                ethTypeToByteArray(EthType.Q_IN_Q), shortToByteArray(vlan1),
-                ethTypeToByteArray(EthType.BRIDGING), shortToByteArray(vlan2),
-                ethTypeToByteArray(EthType.VLAN_FRAME), shortToByteArray(vlan3),
-                ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
-
-        List<Integer> vlans = new ArrayList<>();
-        IPacket payload = service.extractEthernetPayload(ethernet, vlans);
-
-        assertEquals(3, vlans.size());
-        assertEquals(Integer.valueOf(vlan1), vlans.get(0));
-        assertEquals(Integer.valueOf(vlan2), vlans.get(1));
-        assertEquals(Integer.valueOf(vlan3), vlans.get(2));
-
-        LLDP lldp = new LLDP();
-        lldp.deserialize(LldpPacketTest.packet, 0, LldpPacketTest.packet.length);
-        assertEquals(lldp, payload);
-    }
-
-    public Ethernet buildEthernet(byte[]... arrays) {
-        byte[] data = concat(arrays);
-        Ethernet ethernet = new Ethernet();
-        ethernet.deserialize(data, 0, data.length);
-        return ethernet;
-    }
-
     private ARP buildArpPacket(byte[] data) throws PacketParsingException {
         ARP arp = new ARP();
         arp.deserialize(data, 0, data.length);
         return arp;
-    }
-
-    private byte[] ethTypeToByteArray(EthType ethType) {
-        return shortToByteArray((short) ethType.getValue());
-    }
-
-    private byte[] shortToByteArray(short s) {
-        return new byte[] {(byte) (s >> 8), (byte) s};
     }
 }
