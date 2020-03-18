@@ -15,15 +15,18 @@
 
 package org.openkilda.grpc.speaker.mapper;
 
+import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchBuildInfoStatus;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchEthLinkInfoStatus;
 
 import io.grpc.noviflow.LogicalPort;
+import io.grpc.noviflow.PacketInOutStats;
 import io.grpc.noviflow.RemoteLogServer;
 import io.grpc.noviflow.StatusSwitch;
 import io.grpc.noviflow.StatusSwitchBuild;
 import io.grpc.noviflow.StatusSwitchEthLink;
+import io.grpc.noviflow.YesNo;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -44,4 +47,23 @@ public interface NoviflowResponseMapper {
     SwitchEthLinkInfoStatus toSwitchEthLink(StatusSwitchEthLink statusSwitchEthLink);
 
     SwitchBuildInfoStatus toSwitchBuildInfo(StatusSwitchBuild statusSwitchBuild);
+
+    PacketInOutStatsResponse toPacketInOutStatsResponse(PacketInOutStats stats);
+
+    /**
+     * Maps YesNo enum to Boolean value.
+     */
+    default Boolean toBoolean(YesNo yesNo) {
+        if (yesNo == null) {
+            return null;
+        }
+        switch (yesNo) {
+            case YES:
+                return true;
+            case NO:
+                return false;
+            default:
+                return null;
+        }
+    }
 }

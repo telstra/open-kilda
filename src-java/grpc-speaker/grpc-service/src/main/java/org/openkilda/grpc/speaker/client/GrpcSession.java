@@ -35,11 +35,13 @@ import io.grpc.noviflow.LogOferrors;
 import io.grpc.noviflow.LogicalPort;
 import io.grpc.noviflow.NoviFlowGrpcGrpc;
 import io.grpc.noviflow.OnOff;
+import io.grpc.noviflow.PacketInOutStats;
 import io.grpc.noviflow.PortConfig;
 import io.grpc.noviflow.PortMode;
 import io.grpc.noviflow.PortPause;
 import io.grpc.noviflow.PortSpeed;
 import io.grpc.noviflow.RemoteLogServer;
+import io.grpc.noviflow.ShowPacketInOutStats;
 import io.grpc.noviflow.ShowRemoteLogServer;
 import io.grpc.noviflow.StatusSwitch;
 import lombok.extern.slf4j.Slf4j;
@@ -372,5 +374,17 @@ public class GrpcSession {
 
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
+    }
+
+    /**
+     * Performs packet in out stats request.
+     *
+     * @return {@link CompletableFuture} with operation result.
+     */
+    public CompletableFuture<Optional<PacketInOutStats>> getPacketInOutStats() {
+        GrpcResponseObserver<PacketInOutStats> observer = new GrpcResponseObserver<>();
+        log.info("Getting packet in out stats for switch {}", address);
+        stub.showStatsPacketInOut(ShowPacketInOutStats.newBuilder().build(), observer);
+        return observer.future.thenApply(responses -> responses.stream().findFirst());
     }
 }
