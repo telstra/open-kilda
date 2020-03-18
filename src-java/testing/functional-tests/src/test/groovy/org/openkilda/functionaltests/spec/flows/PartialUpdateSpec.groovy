@@ -31,7 +31,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         response."$data.field" == data.newValue
 
         and: "Changes actually took place"
-        northbound.getFlow(flow.flowId)."$data.field" == data.newValue
+        northboundV2.getFlow(flow.flowId)."$data.field" == data.newValue
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -71,7 +71,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         response.priority == newPriority
 
         and: "Changes actually took place"
-        northbound.getFlow(flow.flowId).priority == newPriority
+        northboundV2.getFlow(flow.flowId).priority == newPriority
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -90,11 +90,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }*.cookie
 
         when: "Request a flow partial update without specifying any fields"
-        def flowBeforeUpdate = northbound.getFlow(flow.flowId)
+        def flowBeforeUpdate = northboundV2.getFlow(flow.flowId)
         northbound.partialUpdate(flow.flowId, new FlowPatchDto())
 
         then: "Flow is left intact"
-        expect northbound.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
+        expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
 
         and: "Flow rules have not been reinstalled"

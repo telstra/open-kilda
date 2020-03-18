@@ -46,7 +46,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         northboundV2.addFlow(flow1)
 
         then: "Flow is created with current default encapsulation type(transit_vlan)"
-        northbound.getFlow(flow1.flowId).encapsulationType == defaultEncapsulationType.toString().toLowerCase()
+        northboundV2.getFlow(flow1.flowId).encapsulationType == defaultEncapsulationType.toString().toLowerCase()
 
         when: "Update default flow encapsulation type"
         def newFlowEncapsulationType = FlowEncapsulationType.VXLAN
@@ -65,7 +65,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         northboundV2.addFlow(flow2)
 
         then: "Flow is created with new default encapsulation type(vxlan)"
-        northbound.getFlow(flow2.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
+        northboundV2.getFlow(flow2.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
 
         cleanup: "Restore default configuration and delete the flow"
         northbound.updateKildaConfiguration(

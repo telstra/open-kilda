@@ -158,7 +158,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(protectedFlow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
         def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)

@@ -52,7 +52,7 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Missing flow rules are installed (existing ones are reinstalled) on all switches"
         involvedSwitches.each { sw ->
@@ -106,7 +106,7 @@ class FlowSyncV2Spec extends HealthCheckSpecification {
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
         newFlowPath != flowPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Flow rules are installed/reinstalled on switches remained from the original flow path"
         def involvedSwitchesAfterSync = pathHelper.getInvolvedSwitches(flow.flowId)

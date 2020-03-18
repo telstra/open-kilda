@@ -91,7 +91,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         when: "Swap main and protected path"
         northbound.swapFlowPath(flow.flowId)
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
             assert pathHelper.convert(newFlowPathInfo) == currentProtectedPath
             assert pathHelper.convert(newFlowPathInfo.protectedPath) == currentPath
@@ -185,7 +185,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
         newCurrentPath != currentPath
         newCurrentPath != currentProtectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -265,7 +265,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentProtectedPath
         }
 
@@ -333,10 +333,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlow(flow.flowId)) {
+            verifyAll(northboundV2.getFlow(flow.flowId)) {
                 status == "Degraded"
-                flowStatusDetails.mainFlowPathStatus == "Up"
-                flowStatusDetails.protectedFlowPathStatus == "Down"
+                statusDetails.mainPath == "Up"
+                statusDetails.protectedPath == "Down"
             }
         }
 
