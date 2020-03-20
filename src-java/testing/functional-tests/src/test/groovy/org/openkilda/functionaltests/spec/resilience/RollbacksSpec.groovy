@@ -76,7 +76,7 @@ and at least 1 path must remain safe"
         then: "System fails to install rules on desired path and tries to retry path installation"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET, 0.1) {
             assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == "Flow rerouting" && it.details.matches(/Reason: .*?: retry #1/)
+                it.action == "Flow rerouting" && it.taskId =~ (/[^a-z_A-Z0-9-\s]* : retry #1 :/)
             }
         }
 
