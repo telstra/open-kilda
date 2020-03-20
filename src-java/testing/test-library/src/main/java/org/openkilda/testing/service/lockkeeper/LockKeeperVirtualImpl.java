@@ -21,9 +21,11 @@ import org.openkilda.testing.service.floodlight.MultiFloodlightManager;
 import org.openkilda.testing.service.floodlight.StatsFloodlightManager;
 import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
-import org.openkilda.testing.service.lockkeeper.model.BlockRequest;
 import org.openkilda.testing.service.lockkeeper.model.ContainerName;
+import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlRequest;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -83,23 +85,21 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
      * changes are reverted.
      */
     @Override
-    public BlockRequest knockoutSwitch(Switch sw, MultiFloodlightManager manager) {
-        log.debug("Block Floodlight access to switch '{}' by adding iptables rules", sw.getName());
+    public FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager manager) {
         String containerName = manager.getContainerName(sw.getRegion());
         String currentController = manager.getControllerAddresses().get(
                 manager.getContainerNames().indexOf(containerName));
         sw.setController(StringUtils.replaceOnce(sw.getController(), currentController, DUMMY_CONTROLLER));
         setController(sw, sw.getController());
-        return new BlockRequest(containerName, "");
+        return new FloodlightResourceAddress(containerName, "");
     }
 
     @Override
-    public void reviveSwitch(Switch sw, BlockRequest blockRequest) {
-        log.debug("Unblock Floodlight access to switch '{}' by removing iptables rules", sw.getName());
+    public void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress) {
         MultiFloodlightManager manager = Stream.of(mgmtManager, statsManager).filter(m ->
-                m.getContainerNames().indexOf(blockRequest.getContainerName()) > -1).findFirst().get();
+                m.getContainerNames().indexOf(flResourceAddress.getContainerName()) > -1).findFirst().get();
         String currentController = manager.getControllerAddresses().get(
-                manager.getContainerNames().indexOf(blockRequest.getContainerName()));
+                manager.getContainerNames().indexOf(flResourceAddress.getContainerName()));
         sw.setController(StringUtils.replaceOnce(sw.getController(), DUMMY_CONTROLLER, currentController));
         setController(sw, sw.getController());
     }
@@ -168,17 +168,35 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     }
 
     @Override
-    public void blockFloodlightAccess(String region, BlockRequest address) {
+    public void blockFloodlightAccess(String region, FloodlightResourceAddress address) {
         log.debug("Block floodlight access to {} by adding iptables rules", address);
         restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/block",
                 HttpMethod.POST, new HttpEntity<>(address, buildJsonHeaders()), String.class);
     }
 
     @Override
-    public void unblockFloodlightAccess(String region, BlockRequest address) {
+    public void unblockFloodlightAccess(String region, FloodlightResourceAddress address) {
         log.debug("Unblock floodlight access to {} by removing iptables rules", address);
         restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/unblock",
                 HttpMethod.POST, new HttpEntity<>(address, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData) {
+        log.debug("Add traffic control rules for switches {}",
+                switches.stream().map(Switch::getDpId).collect(Collectors.toList()));
+        List<FloodlightResourceAddress> swResources = switches.stream()
+                .map(sw -> LockKeeperService.toFlResource(sw, mgmtManager)).collect(Collectors.toList());
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/tc", HttpMethod.POST,
+                new HttpEntity<>(new TrafficControlRequest(tcData, swResources), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void cleanupTrafficShaperRules(String region) {
+        log.debug("Cleanup traffic control rules for region {}", region);
+        String containerName = mgmtManager.getContainerName(region);
+        restTemplate.exchange(getCurrentLabUrl() + "/lock-keeper/floodlight/tc/cleanup",
+                HttpMethod.POST, new HttpEntity<>(new ContainerName(containerName), buildJsonHeaders()), String.class);
     }
 
     @Override
@@ -193,14 +211,14 @@ public class LockKeeperVirtualImpl implements LockKeeperService {
     public void knockoutFloodlight(String region) {
         log.debug("Knock out Floodlight service");
         String containerName = mgmtManager.getContainerName(region);
-        blockFloodlightAccess(region, new BlockRequest(containerName, getPort(kafkaBootstrapServer)));
+        blockFloodlightAccess(region, new FloodlightResourceAddress(containerName, getPort(kafkaBootstrapServer)));
     }
 
     @Override
     public void reviveFloodlight(String region) {
         log.debug("Revive Floodlight service");
         String containerName = mgmtManager.getContainerName(region);
-        unblockFloodlightAccess(region, new BlockRequest(containerName, getPort(kafkaBootstrapServer)));
+        unblockFloodlightAccess(region, new FloodlightResourceAddress(containerName, getPort(kafkaBootstrapServer)));
     }
 
     HttpHeaders buildJsonHeaders() {
