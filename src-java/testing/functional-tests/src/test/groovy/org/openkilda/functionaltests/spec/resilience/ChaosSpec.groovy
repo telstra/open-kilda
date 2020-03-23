@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.resilience
 
-import spock.lang.Ignore
-
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -18,12 +16,13 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
 @Slf4j
-@Narrative("Test system behavior under different factors or events that randomly appear across the topology")
+@Narrative("Test system behavior under different factors and events that randomly appear across the topology")
 class ChaosSpec extends HealthCheckSpecification {
 
     @Value('${antiflap.cooldown}')
@@ -33,10 +32,10 @@ class ChaosSpec extends HealthCheckSpecification {
      * This test simulates a busy network with a lot of flows. Random ISLs across the topology begin to blink,
      * causing some of the flows to reroute. Verify that system remains stable.
      */
-    @Ignore("FIXME: fail if run as the first in suite")
+    @Ignore("https://github.com/telstra/open-kilda/issues/3256")
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
-        def flowsAmount = topology.activeSwitches.size() * 15
+        def flowsAmount = topology.activeSwitches.size() * 10
         List<FlowRequestV2> flows = []
         flowsAmount.times {
             def flow = flowHelperV2.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
@@ -69,9 +68,6 @@ class ChaosSpec extends HealthCheckSpecification {
                 bothDirectionsHaveSamePath(northbound.getFlowPath(flow.flowId))
             }
         }
-
-        and: "All flows are writing stats"
-        statsHelper.verifyFlowsWriteStats(flows*.flowId)
 
         and: "Cleanup: remove flows and reset costs"
         flows.each { northboundV2.deleteFlow(it.flowId) }
