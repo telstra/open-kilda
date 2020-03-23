@@ -67,6 +67,10 @@
         <label class='col-sm-3' *ngIf="hasStoreSetting">Assignment Date:</label>
         <p *ngIf="hasStoreSetting" class='col-sm-3 switchdetails_div_number'>{{ (portDataObject['assignment-date'] ?  assignDate(portDataObject['assignment-date'])  :'-' ) }}</p>
       </div>
+      <div class='row'>
+        <label class='col-sm-3 '>Sum(Bandwidth) Of Flows(Mbps):</label>
+        <p class='col-sm-3 port_details_div_status'>{{ (!flowBandwidthFlag) ? flowBandwidthSum :'loading..'}}</p>
+       </div>
       <div class='row' *ngIf="hasStoreSetting">
         <label class='col-sm-3 ' *ngIf="hasStoreSetting">Port X-connect:</label>
         <p class='col-sm-3 port_details_div_status'>{{portDataObject.crossconnect ? portDataObject.crossconnect:'-'}}</p>
