@@ -132,10 +132,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
     @Tags([Tag.VIRTUAL])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
-        /*antiflapCooldown should be rather big in order for test to understand that there is no 'antiflap' during
-        isl discovery*/
-        assumeTrue(antiflapCooldown >= discoveryInterval + WAIT_OFFSET / 2)
-
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
@@ -155,8 +151,8 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
         }
 
-        and: "Related ISLs are discovered without antiflap"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET / 2) {
+        and: "Related ISLs are discovered"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET / 2 + antiflapCooldown) {
             def allIsls = northbound.getAllLinks()
             isls.each {
                 assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED

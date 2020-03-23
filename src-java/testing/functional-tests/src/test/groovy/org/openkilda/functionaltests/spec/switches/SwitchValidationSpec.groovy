@@ -26,7 +26,9 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -37,6 +39,7 @@ import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
+import spock.lang.Unroll
 
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-validate",
         "https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync"])
@@ -865,89 +868,44 @@ misconfigured"
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2779")
-    def "Able to validate and sync a missing 'connected device' LLDP rule"() {
+    @Unroll
+    def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
         given: "A flow with enabled connected devices"
-        def flow = flowHelper.randomFlow(topologyHelper.switchPairs.first())
-        flow.source.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
-        flowHelper.addFlow(flow)
-
-        expect: "Switch validation puts connected device lldp rule into 'proper' section"
-        def lldpInfo = database.getFlow(flow.id).forwardPath.lldpResources
-        with(northbound.validateSwitch(flow.source.datapath)) {
-            it.rules.proper.contains(lldpInfo.cookie.value)
-            it.meters.proper*.meterId.contains(lldpInfo.meterId.value)
+        def swPair = topologyHelper.switchPairs.find {
+            [it.src, it.dst].every { it.features.contains(SwitchFeature.MULTI_TABLE) }
         }
-
-        when: "Remove the connected device lldp rule"
-        northbound.deleteSwitchRules(flow.source.datapath, lldpInfo.cookie.value)
-
-        then: "Switch validation puts connected device lldp rule into 'missing' section"
-        verifyAll(northbound.validateSwitch(flow.source.datapath)) {
-            !it.rules.proper.contains(lldpInfo.cookie.value)
-            it.rules.missing.contains(lldpInfo.cookie.value)
-            it.meters.proper*.meterId.contains(lldpInfo.meterId.value)
-        }
-
-        when: "Synchronize the switch"
-        with(northbound.synchronizeSwitch(flow.source.datapath, false)) {
-            it.rules.installed == [lldpInfo.cookie.value]
-        }
-
-        then: "Switch validation no longer shows any discrepancies in rules"
-        verifyAll(northbound.validateSwitch(flow.source.datapath)) {
-            it.rules.proper.contains(lldpInfo.cookie.value)
-            it.rules.missing.empty
-            it.rules.excess.empty
-        }
-
-        when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
-
-        then: "Switch validation is empty"
-        verifyAll(northbound.validateSwitch(flow.source.datapath)) {
-            switchHelper.verifyRuleSectionsAreEmpty(it)
-            switchHelper.verifyMeterSectionsAreEmpty(it)
-        }
-    }
-
-    @Ignore("https://github.com/telstra/open-kilda/issues/2779")
-    def "Able to validate and sync a missing 'connected device' LLDP rule + meter"() {
-        given: "A flow with enabled connected devices"
-        def flow = flowHelper.randomFlow(topologyHelper.switchPairs.first())
+        Map<Switch, SwitchPropertiesDto> initialProps = [swPair.src, swPair.dst]
+                .collectEntries { [(it): enableMultiTableIfNeeded(true, it.dpId)] }
+        def flow = flowHelper.randomFlow(swPair)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
         flowHelper.addFlow(flow)
 
         expect: "Switch validation puts connected device lldp rule into 'proper' section"
-        def lldpInfo = database.getFlow(flow.id).reversePath.lldpResources
+        def deviceCookie = northbound.getSwitchRules(swPair.dst.dpId).flowEntries
+                .find(data.cookieSearchClosure).cookie
         with(northbound.validateSwitch(flow.destination.datapath)) {
-            it.rules.proper.contains(lldpInfo.cookie.value)
-            it.meters.proper*.meterId.contains(lldpInfo.meterId.value)
+            it.rules.proper.contains(deviceCookie)
         }
 
-        when: "Remove the connected device lldp meter"
-        northbound.deleteMeter(flow.destination.datapath, lldpInfo.meterId.value)
+        when: "Remove the connected device rule"
+        northbound.deleteSwitchRules(flow.destination.datapath, deviceCookie)
 
-        then: "Switch validation puts connected device lldp rule and meter into 'missing' section"
+        then: "Switch validation puts connected device rule into 'missing' section"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
-            !it.rules.proper.contains(lldpInfo.cookie.value)
-            it.rules.missing.contains(lldpInfo.cookie.value)
-            !it.meters.proper*.meterId.contains(lldpInfo.meterId.value)
-            it.meters.missing*.meterId.contains(lldpInfo.meterId.value)
+            !it.rules.proper.contains(deviceCookie)
+            it.rules.missing.contains(deviceCookie)
         }
 
         when: "Synchronize the switch"
         with(northbound.synchronizeSwitch(flow.destination.datapath, false)) {
-            it.rules.installed == [lldpInfo.cookie.value]
-            it.meters.installed*.meterId == [lldpInfo.meterId.value]
+            it.rules.installed == [deviceCookie]
         }
 
         then: "Switch validation no longer shows any discrepancies in rules nor meters"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
-            it.rules.proper.contains(lldpInfo.cookie.value)
+            it.rules.proper.contains(deviceCookie)
             it.rules.missing.empty
             it.rules.excess.empty
-            it.meters.proper*.meterId.contains(lldpInfo.meterId.value)
             it.meters.missing.empty
             it.meters.excess.empty
         }
@@ -960,6 +918,24 @@ misconfigured"
             switchHelper.verifyRuleSectionsAreEmpty(it)
             switchHelper.verifyMeterSectionsAreEmpty(it)
         }
+
+        cleanup:
+        initialProps.each {
+            switchHelper.updateSwitchProperties(it.key, it.value)
+        }
+
+        where:
+        data << [
+                [
+                        descr              : "LLDP",
+                        cookieSearchClosure: { Cookie.isLldpInputCustomer(it.cookie) }
+                ],
+
+                [
+                        descr              : "ARP",
+                        cookieSearchClosure: { Cookie.isArpInputCustomer(it.cookie) }
+                ]
+        ]
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
@@ -974,5 +950,16 @@ misconfigured"
 
     private static Message buildMessage(final CommandData data) {
         return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
+    }
+
+    private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
+        def initialProps = northbound.getSwitchProperties(switchId)
+        if (needDevices && !initialProps.multiTable) {
+            def sw = topology.switches.find { it.dpId == switchId }
+            switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+                it.multiTable = true
+            })
+        }
+        return initialProps
     }
 }
