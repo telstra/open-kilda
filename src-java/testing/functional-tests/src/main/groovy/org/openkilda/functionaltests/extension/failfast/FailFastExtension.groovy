@@ -43,7 +43,9 @@ class FailFastExtension extends AbstractGlobalExtension {
 
     void checkForFailedTest() {
         if(failedTest) {
-            throw new PreviousTestFailedError("Unable to run until '$failedTest' is fixed")
+            def previousTestFailed = new PreviousTestFailedError("Unable to run until '$failedTest' is fixed")
+            previousTestFailed.setStackTrace(new StackTraceElement[0])
+            throw previousTestFailed
         }
     }
 }
