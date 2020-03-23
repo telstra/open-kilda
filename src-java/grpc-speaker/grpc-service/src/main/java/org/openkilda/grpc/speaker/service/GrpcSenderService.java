@@ -27,6 +27,7 @@ import org.openkilda.grpc.speaker.model.LicenseResponse;
 import org.openkilda.grpc.speaker.model.LogMessagesDto;
 import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
+import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.model.PortConfigDto;
 import org.openkilda.grpc.speaker.model.PortConfigSetupResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
@@ -276,6 +277,24 @@ public class GrpcSenderService {
                         .map(value -> new LicenseResponse(value.getReplyStatus() == 0))
                         .orElseThrow(() ->
                                 new GrpcException(format("Could not setup license for switch %s", switchAddress))))
+                .whenComplete((e, ex) -> sender.shutdown());
+    }
+
+    /**
+     * Gets packet in out stats.
+     *
+     * @param switchAddress switch address.
+     * @return {@link CompletableFuture} with the execution result.
+     */
+    public CompletableFuture<PacketInOutStatsResponse> getPacketInOutStats(String switchAddress) {
+        GrpcSession sender = new GrpcSession(switchAddress);
+        return sender.login(name, password)
+                .thenCompose(e -> sender.getPacketInOutStats())
+                .thenApply(statusOptional -> statusOptional
+                        .map(mapper::toPacketInOutStatsResponse)
+                        .orElseThrow(() ->
+                                new GrpcException(format(
+                                        "Couldn't get packet in out stats for switch %s", switchAddress))))
                 .whenComplete((e, ex) -> sender.shutdown());
     }
 }
