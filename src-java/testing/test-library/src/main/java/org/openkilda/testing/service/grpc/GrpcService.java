@@ -22,6 +22,7 @@ import org.openkilda.grpc.speaker.model.LicenseResponse;
 import org.openkilda.grpc.speaker.model.LogMessagesDto;
 import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
+import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.RemoteLogServer;
@@ -54,4 +55,6 @@ public interface GrpcService {
     //    PortConfigDto setPortConfiguration(String switchAddress, String port_number, PortConfigDto payload);
 
     LicenseResponse setLicenseForSwitch(String switchAddress, LicenseDto payload);
+
+    PacketInOutStatsResponse getPacketInOutStats(String switchAddress);
 }

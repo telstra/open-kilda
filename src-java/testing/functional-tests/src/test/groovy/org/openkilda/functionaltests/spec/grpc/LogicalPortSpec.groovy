@@ -6,9 +6,11 @@ import org.openkilda.messaging.error.MessageError
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
+@Ignore("https://github.com/telstra/open-kilda/issues/3245")
 @Narrative("""This test suite checks the CRUD actions on a logical port.
 Logical ports are defined by associating a single physical port to them to define
 Bidirectional Forwarding Detection(BFD) ports or
