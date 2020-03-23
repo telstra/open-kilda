@@ -632,47 +632,37 @@ switches"() {
     }
 
     @Tidy
-    @Unroll
-    @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /dst/)
-    def "Unable to swap ports for two flows (port is occupied by ISL on #switchType switch)"() {
+    def "Unable to swap ports for two flows (port is occupied by ISL on src switch)"() {
         given: "Two active flows"
+        def islPort
+        def swPair = topologyHelper.switchPairs.find {
+            def busyPorts = topology.getBusyPortsForSwitch(it.src)
+            islPort = topology.getAllowedPortsForSwitch(it.dst).find { it in busyPorts }
+        }
+        assert islPort
+        def flow1 = flowHelper.randomFlow(swPair)
+        def flow2 = changePropertyValue(flowHelper.randomFlow(swPair, false, [flow1]),
+                "destination", "portNumber", islPort)
         flowHelper.addFlow(flow1)
         flowHelper.addFlow(flow2)
 
         when: "Try to swap ports for two flows"
         northbound.swapFlowEndpoint(
-                new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
-                        flowHelper.toFlowEndpointV2(flow1Dst)),
-                new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow2Src),
-                        flowHelper.toFlowEndpointV2(flow2Dst)))
+                new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(
+                        changePropertyValue(flow1.source, "portNumber", flow2.destination.portNumber)),
+                        flowHelper.toFlowEndpointV2(flow1.destination)),
+                new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow2.source),
+                        flowHelper.toFlowEndpointV2(changePropertyValue(
+                                flow1.destination, "portNumber", flow2.source.portNumber))))
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "The port $islPort on the switch '${switchPair."$switchType".dpId}' is occupied by an ISL."
+                "The port $islPort on the switch '${swPair.src.dpId}' is occupied by an ISL."
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
-
-        where:
-        switchType << ["src", "dst"]
-        switchPair << [getTopologyHelper().getNotNeighboringSwitchPair()] * 2
-        islPort << [getTopology().getBusyPortsForSwitch(switchPair.src).first(),
-                    getTopology().getBusyPortsForSwitch(switchPair.dst).first()]
-        flow1 << [getFlowHelper().randomFlow(switchPair)] * 2
-        flow2 << [
-                changePropertyValue(getFlowHelper().randomFlow(switchPair, false, [flow1]),
-                        "destination", "portNumber", islPort),
-                changePropertyValue(getFlowHelper().randomFlow(switchPair, false, [flow1]),
-                        "source", "portNumber", islPort)
-        ]
-        [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
-                [changePropertyValue(flow1.source, "portNumber", flow2.destination.portNumber), flow1.destination,
-                 flow2.source, changePropertyValue(flow2.destination, "portNumber", flow1.source.portNumber)],
-                [flow1.source, changePropertyValue(flow1.destination, "portNumber", flow2.source.portNumber),
-                 changePropertyValue(flow2.source, "portNumber", flow1.destination.portNumber), flow2.destination]
-        ]
     }
 
     @Tidy
