@@ -43,6 +43,8 @@ public abstract class RequestedFlowMapper {
             expression = "java(java.util.Optional.ofNullable(request.getPathComputationStrategy())"
                     + ".map(pcs -> org.openkilda.model.PathComputationStrategy.valueOf(pcs.toUpperCase()))"
                     + ".orElse(null))")
+    @Mapping(target = "srcWithMultiTable", ignore = true)
+    @Mapping(target = "destWithMultiTable", ignore = true)
     public abstract RequestedFlow toRequestedFlow(FlowRequest request);
 
     /**
