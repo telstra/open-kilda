@@ -570,9 +570,10 @@ meters in flow rules at all (#data.flowType flow)"() {
                     Long expectedBurstSize = switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
                     Long actualBurstSize = meterEntry.burstSize
                     verifyBurstSizeOnWb5164(expectedBurstSize, actualBurstSize)
+                } else {
+                    assert meterEntry.rate == newBandwidth
+                    assert meterEntry.burstSize == switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
                 }
-                assert meterEntry.rate == newBandwidth
-                assert meterEntry.burstSize == switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
             }
             assert switchMeterEntries.meterEntries*.meterId.sort() == originalFlowMeters*.meterId.sort()
             assert switchMeterEntries.meterEntries*.flags.sort() == originalFlowMeters*.flags.sort()
