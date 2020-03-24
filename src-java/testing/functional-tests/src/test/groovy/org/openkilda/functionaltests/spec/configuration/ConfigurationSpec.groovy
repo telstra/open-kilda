@@ -117,6 +117,10 @@ class ConfigurationSpec extends HealthCheckSpecification {
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
         }
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            isls.each { assert !islUtils.getIslInfo(links, it).present }
+        }
         northbound.deleteSwitch(sw.dpId, false)
 
         and: "Update the multi table field in kilda configuration"

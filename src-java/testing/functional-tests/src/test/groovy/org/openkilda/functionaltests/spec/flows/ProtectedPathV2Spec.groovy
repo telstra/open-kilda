@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -25,6 +26,7 @@ import org.openkilda.model.SwitchId
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -34,6 +36,7 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
 @Narrative("""Protected path - it is pre-calculated, reserved, and deployed (except ingress rule),
 so we can switch traffic fast.
@@ -1188,6 +1191,62 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3140")
+    def "System properly reroutes both paths if protected path breaks during auto-swap"() {
+        given: "Switch pair with at least 4 diverse paths"
+        def switchPair = topologyHelper.switchPairs.find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 4
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A protected flow"
+        def flow = flowHelperV2.randomFlow(switchPair).tap { it.allocateProtectedPath = true }
+        flowHelperV2.addFlow(flow)
+
+        when: "Main paths breaks"
+        def paths = northbound.getFlowPath(flow.flowId)
+        def mainPath = pathHelper.convert(paths)
+        def mainPathIsl = pathHelper.getInvolvedIsls(mainPath).first()
+        def protectedPath = pathHelper.convert(paths.protectedPath)
+        def protectedPathIsl = pathHelper.getInvolvedIsls(protectedPath).first()
+        antiflap.portDown(mainPathIsl.srcSwitch.dpId, mainPathIsl.srcPort)
+        Wrappers.wait(3, 0) {
+            assert northbound.getLink(mainPathIsl).state == IslChangeType.FAILED
+        }
+
+        and: "Protected path breaks when swap is in progress"
+        //we want to break the second ISL right when the protected path reroute starts. race here
+        //+750ms correction was found experimentally. helps to hit the race condition more often (local env)
+        sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000 + 750))
+        antiflap.portDown(protectedPathIsl.srcSwitch.dpId, protectedPathIsl.srcPort)
+        def portsDown = true
+
+        then: "Both paths are successfully evacuated from broken isls and the flow is UP"
+        log.debug("original main: $mainPath\n original protected: $protectedPath")
+        Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
+            Wrappers.timedLoop(3) { //this should be a stable result, all reroutes must finish
+                assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+                def currentPath = northbound.getFlowPath(flow.flowId)
+                [currentPath, currentPath.protectedPath].each {
+                   assert pathHelper.getInvolvedIsls(pathHelper.convert(it)).findAll {
+                       it in [mainPathIsl, protectedPathIsl]
+                   }.empty, "Found broken ISL being used in path: $it"
+                }
+            }
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if(portsDown) {
+            [mainPathIsl, protectedPathIsl].each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                assert northbound.getLink(mainPathIsl).state == IslChangeType.DISCOVERED
+                assert northbound.getLink(protectedPathIsl).state == IslChangeType.DISCOVERED
+            }
+            database.resetCosts()
+        }
     }
 
     @Tidy

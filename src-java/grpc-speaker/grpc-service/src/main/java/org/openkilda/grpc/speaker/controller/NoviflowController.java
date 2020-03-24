@@ -22,6 +22,7 @@ import org.openkilda.grpc.speaker.model.LicenseResponse;
 import org.openkilda.grpc.speaker.model.LogMessagesDto;
 import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
+import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.model.PortConfigDto;
 import org.openkilda.grpc.speaker.model.PortConfigSetupResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
@@ -174,5 +175,13 @@ public class NoviflowController {
             @PathVariable("switch_address") String switchAddress,
             @RequestBody LicenseDto licenseDto) {
         return grpcService.setConfigLicense(switchAddress, licenseDto);
+    }
+
+    @ApiOperation(value = "Get packet in out stats for switch", response = PacketInOutStatsResponse.class)
+    @GetMapping(path = "{switch_address}/packet-in-out-stats")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<PacketInOutStatsResponse> packetInOutStats(
+            @PathVariable("switch_address") String switchAddress) {
+        return grpcService.getPacketInOutStats(switchAddress);
     }
 }

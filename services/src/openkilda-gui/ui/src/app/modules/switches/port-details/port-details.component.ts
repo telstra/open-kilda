@@ -30,6 +30,9 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   port_src_switch: any;
   openedTab : string = 'graph';
   portForm: FormGroup;
+  portFlows :any = [];
+  flowBandwidthSum :any = 0;
+  flowBandwidthFlag:boolean = false;
 
   hasStoreSetting = false;
   
@@ -67,6 +70,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     public commonService:CommonService,
   ) {
     this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+    
   }
 
   ngOnInit() {
@@ -87,7 +91,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
       }
       
     }
-
+   
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)) .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
@@ -100,6 +104,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
         }
    
       });
+    this.loadPortFlows();
   }
 
   maskSwitchId(switchType, e) {
@@ -174,7 +179,28 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     });
   }
 
-  
+  loadPortFlows(){
+    if(this.portDataObject['port_number'] && (this.retrievedSwitchObject['switch_id'])){
+        let switchId = this.retrievedSwitchObject.switch_id;
+        let portnumber = this.portDataObject.port_number;
+        this.flowBandwidthFlag = true;
+        this.switchService.getSwitchFlows(switchId,false,portnumber).subscribe(data=>{
+          this.portFlows = data;
+          if(this.portFlows && this.portFlows.length){
+            for(let flow of this.portFlows){
+                this.flowBandwidthSum = this.flowBandwidthSum + (flow.maximum_bandwidth / 1000);
+            }
+          }
+          this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+          this.flowBandwidthFlag = false;
+        },error=>{
+          this.portFlows = [];
+          this.flowBandwidthSum = 0;
+          this.flowBandwidthFlag = false;
+        })
+    }
+    
+  }
 
 
   cancelConfigurePort(){
