@@ -19,9 +19,11 @@ import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.FLOW_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_CFG_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_STATS_METRIC_GEN;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.PACKET_IN_OUT_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_GRPC_SPEAKER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_REQUESTER_BOLT;
@@ -29,6 +31,7 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.SYSTEM_RULE_ST
 import static org.openkilda.wfm.topology.stats.StatsComponentType.TABLE_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.TICK_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
+import static org.openkilda.wfm.topology.stats.StatsStreamType.GRPC_REQUEST;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.statsWithCacheFields;
 
@@ -46,6 +49,7 @@ import org.openkilda.wfm.topology.stats.bolts.TickBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterStatsMetricGenBolt;
+import org.openkilda.wfm.topology.stats.metrics.PacketInOutMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.SystemRuleMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.TableStatsMetricGenBolt;
@@ -118,6 +122,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(TABLE_STATS_METRIC_GEN.name(),
                 new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.TABLE_STATS.toString(), statsFields);
+        builder.setBolt(PACKET_IN_OUT_STATS_METRIC_GEN.name(),
+                new PacketInOutMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.PACKET_IN_OUT_STATS.toString(), statsFields);
 
         logger.debug("starting flow_stats_metric_gen");
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
@@ -129,11 +136,13 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
         builder.setBolt(TICK_BOLT.name(), new TickBolt(topologyConfig.getStatisticsRequestInterval()));
 
-        builder.setBolt(STATS_REQUESTER_BOLT.name(), new StatsRequesterBolt(), parallelism)
+        builder.setBolt(STATS_REQUESTER_BOLT.name(), new StatsRequesterBolt(persistenceManager), parallelism)
                 .shuffleGrouping(TICK_BOLT.name());
 
         builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getStatsRequestPrivTopic()))
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
+        builder.setBolt(STATS_GRPC_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()))
+                .shuffleGrouping(STATS_REQUESTER_BOLT.name(), GRPC_REQUEST.name());
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))
@@ -142,7 +151,8 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name())
                 .shuffleGrouping(TABLE_STATS_METRIC_GEN.name())
-                .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name());
+                .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name())
+                .shuffleGrouping(PACKET_IN_OUT_STATS_METRIC_GEN.name());
 
         return builder.createTopology();
     }
