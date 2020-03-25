@@ -227,4 +227,8 @@ public interface KafkaTopicsConfig {
     @Key("topo.floodlight.connected.devices.region")
     @Default("kilda.floodlight.connected.devices.priv")
     String getTopoConnectedDevicesRegionTopic();
+
+    @Key("grpc.response")
+    @Default("kilda.grpc.response.priv")
+    String getGrpcResponseTopic();
 }
