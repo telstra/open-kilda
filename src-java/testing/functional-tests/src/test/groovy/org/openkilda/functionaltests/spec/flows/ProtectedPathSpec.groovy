@@ -935,7 +935,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         antiflap.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
         antiflap.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
-        //TODO (andriidovhan) FlowState should be DEGRADED and mainFlowPathStatus should be "Up" when pr2430 is merged
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
