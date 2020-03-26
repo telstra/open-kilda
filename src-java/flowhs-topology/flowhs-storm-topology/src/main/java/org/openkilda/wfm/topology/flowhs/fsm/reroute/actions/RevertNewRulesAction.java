@@ -18,9 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -42,9 +41,9 @@ import java.util.UUID;
 public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    public RevertNewRulesAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override
@@ -58,8 +57,8 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
         Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
         // Reinstall old ingress rules that may be overridden by new ingress.
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+            FlowPathSpeakerView oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+            FlowPathSpeakerView oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
             installCommands.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
@@ -72,14 +71,14 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
         // Remove possible installed flow segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+            FlowPathSpeakerView newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
+            FlowPathSpeakerView newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
             removeCommands.addAll(commandBuilder.buildAll(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
+            FlowPathSpeakerView newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
+            FlowPathSpeakerView newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             removeCommands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }

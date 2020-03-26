@@ -17,9 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -40,30 +39,29 @@ public class InstallNonIngressRulesAction
         extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public InstallNonIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override
     protected void perform(State from, State to,
                            Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
         RequestedFlow requestedFlow = stateMachine.getTargetFlow();
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(requestedFlow.getFlowEncapsulationType());
 
         // primary path
-        FlowPath newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-        FlowPath newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+        FlowPathSpeakerView newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
+        FlowPathSpeakerView newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAllExceptIngress(
                 stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
 
         // protected path
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
-            FlowPath newProtectedForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-            FlowPath newProtectedReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
+            FlowPathSpeakerView newProtectedForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
+            FlowPathSpeakerView newProtectedReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newProtectedForward, newProtectedReverse));
         }

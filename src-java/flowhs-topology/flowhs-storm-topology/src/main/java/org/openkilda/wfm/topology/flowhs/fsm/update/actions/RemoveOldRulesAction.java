@@ -18,17 +18,15 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
@@ -49,18 +47,16 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(oldEncapsulationType);
 
+        // TODO(surabujin): review other entry points into `FlowCommandBuilder` for "old" paths
         Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
-        FlowPath oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-        oldPrimaryForward.setFlow(flow);
-        FlowPath oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-        oldPrimaryReverse.setFlow(flow);
+        FlowPathSpeakerView oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+        FlowPathSpeakerView oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAll(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse,
-                getSpeakerRequestBuildContext(stateMachine)));
+                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse));
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
-            FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+            FlowPathSpeakerView oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
+            FlowPathSpeakerView oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
@@ -71,19 +67,5 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         stateMachine.getRetriedCommands().clear();
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
-    }
-
-    private SpeakerRequestBuildContext getSpeakerRequestBuildContext(FlowUpdateFsm stateMachine) {
-        RequestedFlow originalFlow = stateMachine.getOriginalFlow();
-        RequestedFlow targetFlow = stateMachine.getTargetFlow();
-
-        return SpeakerRequestBuildContext.builder()
-                .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(originalFlow, targetFlow))
-                .removeOppositeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(originalFlow, targetFlow))
-                .removeCustomerPortLldpRule(removeForwardSharedLldpRule(originalFlow, targetFlow))
-                .removeOppositeCustomerPortLldpRule(removeReverseSharedLldpRule(originalFlow, targetFlow))
-                .removeCustomerPortArpRule(removeForwardSharedArpRule(originalFlow, targetFlow))
-                .removeOppositeCustomerPortArpRule(removeReverseSharedArpRule(originalFlow, targetFlow))
-                .build();
     }
 }

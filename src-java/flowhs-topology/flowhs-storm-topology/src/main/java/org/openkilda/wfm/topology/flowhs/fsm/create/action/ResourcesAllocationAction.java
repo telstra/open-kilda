@@ -49,6 +49,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -95,7 +96,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
         this.flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
-        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        this.commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override
@@ -213,17 +214,23 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
         List<FlowSegmentRequestFactory> requestFactories;
 
+        FlowPathSpeakerView primaryForward = stateMachine.getForwardPath();
+        FlowPathSpeakerView primaryReverse = stateMachine.getReversePath();
+
         // ingress
         requestFactories = stateMachine.getIngressCommands();
-        requestFactories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow));
+        requestFactories.addAll(
+                commandBuilder.buildIngressOnly(commandContext, flow, primaryForward, primaryReverse));
 
         // non ingress
         requestFactories = stateMachine.getNonIngressCommands();
-        requestFactories.addAll(commandBuilder.buildAllExceptIngress(commandContext, flow));
+        requestFactories.addAll(
+                commandBuilder.buildAllExceptIngress(commandContext, flow, primaryForward, primaryReverse));
+
         if (flow.isAllocateProtectedPath()) {
             requestFactories.addAll(commandBuilder.buildAllExceptIngress(
                     commandContext, flow,
-                    flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
+                    stateMachine.getProtectedForwardPath(), stateMachine.getProtectedReversePath()));
         }
     }
 
@@ -243,14 +250,15 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setReversePath(reverse);
 
+        fsm.setForwardPath(makeFlowPathNewView(flow, forward, flowResources.getForward()));
+        fsm.setReversePath(makeFlowPathNewView(flow, reverse, flowResources.getReverse()));
+
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
         flowRepository.createOrUpdate(flow);
 
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
 
-        fsm.setForwardPathId(forward.getPathId());
-        fsm.setReversePathId(reverse.getPathId());
         log.debug("Allocated resources for the flow {}: {}", flow.getFlowId(), flowResources);
 
         fsm.getFlowResources().add(flowResources);
@@ -278,14 +286,16 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
                 protectedPath.getForward(), forwardCookie);
         forward.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setProtectedForwardPath(forward);
-        fsm.setProtectedForwardPathId(forward.getPathId());
+        fsm.setProtectedForwardPath(
+                makeFlowPathNewView(flow, forward, flowResources.getForward()));
 
         Cookie reverseCookie = Cookie.buildReverseCookie(flowResources.getUnmaskedCookie());
         FlowPath reverse = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
                 protectedPath.getReverse(), reverseCookie);
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
         flow.setProtectedReversePath(reverse);
-        fsm.setProtectedReversePathId(reverse.getPathId());
+        fsm.setProtectedReversePath(
+                makeFlowPathNewView(flow, reverse, flowResources.getReverse()));
 
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
         flowRepository.createOrUpdate(flow);

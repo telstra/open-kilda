@@ -38,8 +38,8 @@ public class CompleteFlowPathInstallationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
-            PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
+            PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath().getPath().getPathId();
+            PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath().getPath().getPathId();
 
             log.debug("Completing installation of the flow primary path {} / {}", newPrimaryForward, newPrimaryReverse);
             flowPathRepository.updateStatus(newPrimaryForward, FlowPathStatus.ACTIVE);
@@ -50,8 +50,8 @@ public class CompleteFlowPathInstallationAction extends
 
             if (stateMachine.getNewProtectedForwardPath() != null
                     && stateMachine.getNewProtectedReversePath() != null) {
-                PathId newForward = stateMachine.getNewProtectedForwardPath();
-                PathId newReverse = stateMachine.getNewProtectedReversePath();
+                PathId newForward = stateMachine.getNewProtectedForwardPath().getPath().getPathId();
+                PathId newReverse = stateMachine.getNewProtectedReversePath().getPath().getPathId();
 
                 log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
                 flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);

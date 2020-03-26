@@ -20,13 +20,13 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -79,10 +79,10 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     private RequestedFlow targetFlow;
     private final String flowId;
     private List<FlowResources> flowResources = new ArrayList<>();
-    private PathId forwardPathId;
-    private PathId reversePathId;
-    private PathId protectedForwardPathId;
-    private PathId protectedReversePathId;
+    private FlowPathSpeakerView forwardPath;
+    private FlowPathSpeakerView reversePath;
+    private FlowPathSpeakerView protectedForwardPath;
+    private FlowPathSpeakerView protectedReversePath;
 
     private List<FlowSegmentRequestFactory> sentCommands = new ArrayList<>();
     private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
@@ -185,10 +185,10 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         pendingCommands.clear();
         sentCommands.clear();
 
-        forwardPathId = null;
-        reversePathId = null;
-        protectedForwardPathId = null;
-        protectedReversePathId = null;
+        forwardPath = null;
+        reversePath = null;
+        protectedForwardPath = null;
+        protectedReversePath = null;
     }
 
     public static FlowCreateFsm.Factory factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier,

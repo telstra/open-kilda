@@ -18,16 +18,14 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
@@ -55,8 +53,8 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
         // Reinstall old ingress rules that may be overridden by new ingress.
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+            FlowPathSpeakerView oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+            FlowPathSpeakerView oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
             installCommands.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
@@ -71,15 +69,14 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         // Remove possible installed segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+            FlowPathSpeakerView newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
+            FlowPathSpeakerView newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
             removeCommands.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse,
-                    getSpeakerRequestBuildContext(stateMachine)));
+                    stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
+            FlowPathSpeakerView newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
+            FlowPathSpeakerView newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             removeCommands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
@@ -93,19 +90,5 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
-    }
-
-    private SpeakerRequestBuildContext getSpeakerRequestBuildContext(FlowUpdateFsm stateMachine) {
-        RequestedFlow originalFlow = stateMachine.getOriginalFlow();
-        RequestedFlow targetFlow = stateMachine.getTargetFlow();
-
-        return SpeakerRequestBuildContext.builder()
-                .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(targetFlow, originalFlow))
-                .removeOppositeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(targetFlow, originalFlow))
-                .removeCustomerPortLldpRule(removeForwardSharedLldpRule(targetFlow, originalFlow))
-                .removeOppositeCustomerPortLldpRule(removeReverseSharedLldpRule(targetFlow, originalFlow))
-                .removeCustomerPortArpRule(removeForwardSharedArpRule(targetFlow, originalFlow))
-                .removeOppositeCustomerPortArpRule(removeReverseSharedArpRule(targetFlow, originalFlow))
-                .build();
     }
 }

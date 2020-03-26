@@ -15,20 +15,25 @@
 
 package org.openkilda.wfm.share.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import org.openkilda.model.FlowPath;
+import org.openkilda.wfm.share.flow.resources.FlowResources;
 
-@Data
-@Builder
-@AllArgsConstructor
-@EqualsAndHashCode
-public class SpeakerRequestBuildContext {
-    private boolean removeCustomerPortRule;
-    private boolean removeOppositeCustomerPortRule;
-    private boolean removeCustomerPortLldpRule;
-    private boolean removeOppositeCustomerPortLldpRule;
-    private boolean removeCustomerPortArpRule;
-    private boolean removeOppositeCustomerPortArpRule;
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder(toBuilder = true)
+public class FlowPathSpeakerView {
+    private final FlowPath path;
+
+    private final FlowResources.PathResources resources;
+
+    private final boolean removeCustomerPortRule;
+    private final boolean removeCustomerPortLldpRule;
+    private final boolean removeCustomerPortArpRule;
+
+    public static FlowPathSpeakerViewBuilder builder(FlowPath path) {
+        return new FlowPathSpeakerViewBuilder()
+                .path(path);
+    }
 }

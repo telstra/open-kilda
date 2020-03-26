@@ -169,7 +169,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
-                    .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
+                    .perform(new InstallNonIngressRulesAction(persistenceManager));
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -210,7 +210,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.PATHS_SWAPPED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)
-                    .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
+                    .perform(new InstallIngressRulesAction(persistenceManager));
             builder.transitions().from(State.PATHS_SWAPPED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);

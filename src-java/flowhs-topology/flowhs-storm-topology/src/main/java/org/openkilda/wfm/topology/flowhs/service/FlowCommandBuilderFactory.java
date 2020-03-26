@@ -16,16 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.service.SpeakerFlowSegmentRequestBuilder;
 
 public class FlowCommandBuilderFactory {
-    private final FlowResourcesManager resourcesManager;
-
-    public FlowCommandBuilderFactory(FlowResourcesManager resourcesManager) {
-        this.resourcesManager = resourcesManager;
-    }
-
     /**
      * Provides a flow command factory depending on the encapsulation type.
      *
@@ -36,7 +29,7 @@ public class FlowCommandBuilderFactory {
         switch (encapsulationType) {
             case TRANSIT_VLAN:
             case VXLAN:
-                return new SpeakerFlowSegmentRequestBuilder(resourcesManager);
+                return new SpeakerFlowSegmentRequestBuilder();
             default:
                 throw new UnsupportedOperationException(
                         String.format("Encapsulation type %s is not supported", encapsulationType));

@@ -17,9 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.FlowPathSpeakerView;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -32,31 +31,28 @@ import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public InstallIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    public InstallIngressRulesAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory();
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
         RequestedFlow requestedFlow = stateMachine.getTargetFlow();
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(requestedFlow.getFlowEncapsulationType());
 
-        FlowPath newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-        FlowPath newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(
-                commandBuilder.buildIngressOnly(
-                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
+        FlowPathSpeakerView newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
+        FlowPathSpeakerView newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+        Collection<FlowSegmentRequestFactory> commands = commandBuilder.buildIngressOnly(
+                stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse);
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 

@@ -195,7 +195,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
                     .on(Event.NEXT)
-                    .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
+                    .perform(new PostResourceAllocationAction(persistenceManager));
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
                     .on(Event.NO_PATH_FOUND);
             builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)
@@ -204,7 +204,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
-                    .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
+                    .perform(new InstallNonIngressRulesAction(persistenceManager));
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.FINISHED_WITH_ERROR)
                     .on(Event.REROUTE_IS_SKIPPED)
                     .perform(new RevertFlowStatusAction(persistenceManager));
@@ -252,7 +252,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.PATHS_SWAPPED).to(State.INSTALLING_INGRESS_RULES).on(Event.NEXT)
-                    .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
+                    .perform(new InstallIngressRulesAction(persistenceManager));
             builder.transitions().from(State.PATHS_SWAPPED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -296,7 +296,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
                     .to(State.REMOVING_OLD_RULES).on(Event.NEXT)
-                    .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
+                    .perform(new RemoveOldRulesAction(persistenceManager));
             builder.transitions().from(State.NEW_PATHS_INSTALLATION_COMPLETED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -346,7 +346,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transitions().from(State.PATHS_SWAP_REVERTED)
                     .toAmong(State.REVERTING_NEW_RULES, State.REVERTING_NEW_RULES)
                     .onEach(Event.NEXT, Event.ERROR)
-                    .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
+                    .perform(new RevertNewRulesAction(persistenceManager));
 
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
