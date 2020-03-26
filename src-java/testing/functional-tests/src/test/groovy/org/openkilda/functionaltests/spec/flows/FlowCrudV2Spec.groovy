@@ -712,10 +712,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
 
         cleanup: "Restore state of the ISL"
+        !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         database.resetCosts()
-        !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {

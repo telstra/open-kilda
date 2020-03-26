@@ -273,6 +273,7 @@ feature toogle"() {
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         and: "Cleanup: Revert system to origin state"
+        flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
@@ -281,7 +282,6 @@ feature toogle"() {
         Wrappers.wait(antiflapMin + 2) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy

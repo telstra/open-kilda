@@ -648,8 +648,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         cleanup: "Restore init switch properties and delete the flow"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -769,8 +769,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         cleanup: "Restore init switch properties and delete the flow"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
