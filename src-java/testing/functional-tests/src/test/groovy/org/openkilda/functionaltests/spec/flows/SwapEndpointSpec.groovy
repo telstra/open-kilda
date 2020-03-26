@@ -744,8 +744,8 @@ switches"() {
         validateSwitches(flow2SwitchPair)
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -828,8 +828,8 @@ switches"() {
                 "Switch ${flow2SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -917,8 +917,8 @@ switches"() {
         validateSwitches(flow2SwitchPair)
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -973,8 +973,8 @@ switches"() {
                 "Switch ${flow1SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

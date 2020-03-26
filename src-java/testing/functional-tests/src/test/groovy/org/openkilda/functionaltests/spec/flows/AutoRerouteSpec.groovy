@@ -50,8 +50,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -93,9 +93,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology to the original state, remove the flow"
+        flowHelper.deleteFlow(flow.id)
         portDown && !portUp && antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -130,10 +130,10 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Connect the intermediate switch back and delete the flow"
+        flowHelper.deleteFlow(flow.id)
         lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northbound.getActiveSwitches()*.switchId }
         northbound.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
-        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -174,8 +174,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Bring port involved in the original path up and delete the flow"
-        antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         flowHelper.deleteFlow(flow.id)
+        antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -278,8 +278,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
         and: "Bring flow ports up and delete the flow"
-        ["source", "destination"].each { antiflap.portUp(flow."$it".datapath, flow."$it".portNumber) }
         flowHelper.deleteFlow(flow.id)
+        ["source", "destination"].each { antiflap.portUp(flow."$it".datapath, flow."$it".portNumber) }
         database.resetCosts()
     }
 
@@ -333,9 +333,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Restore topology, delete flow and reset costs/bandwidth"
+        flowHelper.deleteFlow(flow.id)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

@@ -288,11 +288,11 @@ class FlowStatSpec extends HealthCheckSpecification {
         newMainReverseCookieStat.size() == mainReverseCookieStat.size()
 
         and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
         antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
-        flowHelper.deleteFlow(flow.id)
         database.resetCosts()
     }
 
@@ -366,10 +366,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Restore topology, delete flows and reset costs"
+        flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
         antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
