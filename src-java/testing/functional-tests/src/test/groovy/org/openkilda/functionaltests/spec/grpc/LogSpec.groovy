@@ -123,7 +123,7 @@ on the #sw.switchId switch"() {
                 [
                         [remoteIp    : "1.1.1.1111",
                          remotePort  : REMOTE_LOG_PORT,
-                         errorMessage: "Invalid IPv4 address."],
+                         errorMessage: "Invalid hostname,please provide valid hostname."],
                         [remoteIp    : REMOTE_LOG_IP,
                          remotePort  : 65537,
                          errorMessage: "Invalid remotelogserver port."]

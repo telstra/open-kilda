@@ -21,9 +21,8 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
     @Memoized
     List<SwitchDto> getNoviflowSwitches() {
         northbound.activeSwitches.findAll {
-            // it is not working properly if version <= 6.4
             def matcher = it.description =~ /NW[0-9]+.([0-9].[0-9])/
-            return matcher && matcher[0][1] > "6.4"
-        }
+            return matcher && matcher[0][1] >= "2.7"
+        }.unique { [it.hardware, it.software] }
     }
 }

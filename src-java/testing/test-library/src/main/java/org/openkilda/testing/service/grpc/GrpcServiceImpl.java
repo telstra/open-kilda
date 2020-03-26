@@ -22,6 +22,7 @@ import org.openkilda.grpc.speaker.model.LicenseResponse;
 import org.openkilda.grpc.speaker.model.LogMessagesDto;
 import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
+import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.grpc.LogicalPort;
@@ -124,6 +125,13 @@ public class GrpcServiceImpl implements GrpcService {
         HttpEntity<Object> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v1/noviflow/{switch_address}/license", HttpMethod.PUT, httpEntity,
                 LicenseResponse.class, switchAddress).getBody();
+    }
+
+    @Override
+    public PacketInOutStatsResponse getPacketInOutStats(String switchAddress) {
+        return restTemplate.exchange("/api/v1/noviflow/{switch_address}/packet-in-out-stats", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PacketInOutStatsResponse.class,
+                switchAddress).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
