@@ -6,7 +6,12 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE
+import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
+import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -164,15 +169,26 @@ class MetersSpec extends HealthCheckSpecification {
     def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
-        assert meters.meterEntries.size() == 2
-        assert meters.meterEntries.every(defaultMeters)
-        meters.meterEntries.each {
-            verifyRateSizeOnWb5164(it.rate,
-                    Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE * 8 / 1024L), MIN_RATE_KBPS))
-        }
-        meters.meterEntries.each {
-            verifyBurstSizeOnWb5164(it.burstSize,
-                (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE * 8) / 1024))
+        meters.meterEntries*.meterId.sort() == sw.defaultMeters.sort()
+        /* burstSizre doesn't depend on rate on WB switches, it should be calculated by formula
+        burstSize * packet_size * 8 / 1024,
+        where burstSize - 4096, packet_size: lldp - 300, arp - 100, unicast/multicast - 250 */
+        List<Long> arpMeters = [ createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE).getValue(),
+                                 createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue() ] //22, 24
+        List<Long> lldpMeters = [ createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).getValue(),
+                                  createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue() ] //16, 18
+
+        meters.meterEntries.each { meter ->
+            if (meter.meterId in arpMeters) {
+                verifyBurstSizeOnWb5164(meter.burstSize,
+                        Math.max((long) (DISCO_PKT_BURST * 100 * 8 / 1024L), MIN_RATE_KBPS))
+            } else if (meter.meterId in lldpMeters) {
+                verifyBurstSizeOnWb5164(meter.burstSize,
+                        Math.max((long) (DISCO_PKT_BURST * 300 * 8 / 1024L), MIN_RATE_KBPS))
+            } else {
+                verifyBurstSizeOnWb5164(meter.burstSize,
+                        Math.max((long) (DISCO_PKT_BURST * 250 * 8 / 1024L), MIN_RATE_KBPS))
+            }
         }
         meters.meterEntries.each { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
         meters.meterEntries.each { assert it.flags.size() == 3 }
