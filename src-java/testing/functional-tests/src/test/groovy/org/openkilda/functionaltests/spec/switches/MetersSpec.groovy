@@ -29,7 +29,6 @@ import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -539,7 +538,8 @@ meters in flow rules at all (#data.flowType flow)"() {
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
-        def (Switch src, Switch dst) = data.switches[0..1]
+        def src = data.switches[0]
+        def dst = data.switches[1]
 
         and: "A flow with custom meter rate and burst, that differ from defaults"
         def flow = flowHelperV2.randomFlow(src, dst)
@@ -578,11 +578,12 @@ meters in flow rules at all (#data.flowType flow)"() {
             assert switchMeterEntries.meterEntries*.flags.sort() == originalFlowMeters*.flags.sort()
         }
 
-        and: "Non-default meter rate and burst are actually changed to expected values both on src and dst switch"
-        def srcFlowMeters = northbound.getAllMeters(src.dpId).meterEntries.findAll(flowMeters)
-        def dstFlowMeters = northbound.getAllMeters(dst.dpId).meterEntries.findAll(flowMeters)
-        expect srcFlowMeters, sameBeanAs(response.srcMeter.meterEntries).ignoring("timestamp")
-        expect dstFlowMeters, sameBeanAs(response.dstMeter.meterEntries).ignoring("timestamp")
+        //cannot be checked until https://github.com/telstra/open-kilda/issues/3335
+//        and: "Non-default meter rate and burst are actually changed to expected values both on src and dst switch"
+//        def srcFlowMeters = northbound.getAllMeters(src.dpId).meterEntries.findAll(flowMeters)
+//        def dstFlowMeters = northbound.getAllMeters(dst.dpId).meterEntries.findAll(flowMeters)
+//        expect srcFlowMeters, sameBeanAs(response.srcMeter.meterEntries).ignoring("timestamp")
+//        expect dstFlowMeters, sameBeanAs(response.dstMeter.meterEntries).ignoring("timestamp")
 
         and: "Default meters are unchanged"
         [src.dpId, dst.dpId].each { SwitchId swId ->
