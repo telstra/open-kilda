@@ -60,7 +60,7 @@ clean-docker-files:
 
 .PHONY: clean-sources
 clean-sources:
-	$(MAKE) -C services/src/openkilda-gui clean-java
+	$(MAKE) -C src-gui clean-java
 	$(MAKE) -C src-python/lab-service/lab clean
 	cd src-java && ./gradlew clean
 
@@ -69,7 +69,7 @@ compile: update-props check-java-version
 	$(MAKE) -C src-python/lab-service/lab test
 	$(MAKE) -C src-python/lab-service/lab deploy-wheel
 	$(MAKE) -C src-python/lab-service/traffexam deploy-wheel
-	$(MAKE) -C services/src/openkilda-gui build
+	$(MAKE) -C src-gui build
 
 .PHONY: unit
 unit: update-props
