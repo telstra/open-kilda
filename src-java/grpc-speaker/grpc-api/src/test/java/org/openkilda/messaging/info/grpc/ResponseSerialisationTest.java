@@ -29,7 +29,7 @@ public class ResponseSerialisationTest {
 
     @Test
     public void getPacketInOutStatsResponseTest() throws JsonProcessingException {
-        GetPacketInOutStatsResponse response = new GetPacketInOutStatsResponse("192.168.1.2", new SwitchId(1),
+        GetPacketInOutStatsResponse response = new GetPacketInOutStatsResponse(new SwitchId(1),
                 new PacketInOutStatsDto(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, true, 11));
 
         String jsonString = mapper.writeValueAsString(response);

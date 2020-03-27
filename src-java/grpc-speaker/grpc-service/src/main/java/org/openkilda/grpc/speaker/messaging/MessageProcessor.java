@@ -114,7 +114,7 @@ public class MessageProcessor {
     }
 
     private void handleGetPacketInOutStatsRequest(GetPacketInOutStatsRequest request, String correlationId) {
-        log.info("Getting switch packet in out stats for switch {}", request.getAddress());
+        log.debug("Getting switch packet in out stats for switch {}", request.getAddress());
         service.getPacketInOutStats(request.getAddress())
                 .thenAccept(stats -> sendPacketInOutStatsResponse(request, stats, correlationId));
     }
@@ -122,7 +122,7 @@ public class MessageProcessor {
     private void sendPacketInOutStatsResponse(
             GetPacketInOutStatsRequest request, PacketInOutStatsResponse stats, String correlationId) {
         GetPacketInOutStatsResponse data = new GetPacketInOutStatsResponse(
-                request.getAddress(), request.getSwitchId(), responseMapper.toPacketInOutStatsDto(stats));
+                request.getSwitchId(), responseMapper.toPacketInOutStatsDto(stats));
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
         messageProducer.send(statsTopic, message);
     }

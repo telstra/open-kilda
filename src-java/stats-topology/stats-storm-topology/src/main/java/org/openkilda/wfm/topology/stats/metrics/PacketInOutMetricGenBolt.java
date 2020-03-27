@@ -55,6 +55,9 @@ public class PacketInOutMetricGenBolt extends MetricGenBolt {
         emitMetric("switch.packet-out.total-packets.host", timestamp, stats.getPacketOutTotalPacketsHost(), tags);
         emitMetric("switch.packet-out.total-packets.dataplane", timestamp,
                 stats.getPacketOutTotalPacketsDataplane(), tags);
-        emitMetric("switch.packet-out.eth0-interface-up", timestamp, stats.getPacketOutEth0InterfaceUp() ? 1 : 0, tags);
+        if (stats.getPacketOutEth0InterfaceUp() != null) {
+            emitMetric("switch.packet-out.eth0-interface-up", timestamp,
+                    stats.getPacketOutEth0InterfaceUp() ? 1 : 0, tags);
+        }
     }
 }

@@ -31,7 +31,6 @@ import lombok.EqualsAndHashCode;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class GetPacketInOutStatsResponse extends InfoData {
 
-    String address;
     SwitchId switchId;
     PacketInOutStatsDto stats;
 }
