@@ -22,6 +22,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
@@ -59,6 +60,7 @@ public class TestFlowBuilder {
     private Integer priority = null;
     private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
     private FlowEncapsulationType encapsulationType;
+    private PathComputationStrategy pathComputationStrategy;
 
     public TestFlowBuilder() {
     }
@@ -85,6 +87,7 @@ public class TestFlowBuilder {
                 .maxLatency(maxLatency)
                 .priority(priority)
                 .detectConnectedDevices(detectConnectedDevices)
+                .pathComputationStrategy(pathComputationStrategy)
                 .build();
         flow.setStatus(status);
 

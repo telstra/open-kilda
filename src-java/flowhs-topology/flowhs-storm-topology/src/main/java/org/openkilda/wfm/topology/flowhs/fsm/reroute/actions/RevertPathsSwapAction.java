@@ -45,6 +45,7 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowRerouteFsm, 
             if (stateMachine.getNewEncapsulationType() != null) {
                 flow.setEncapsulationType(stateMachine.getOriginalEncapsulationType());
             }
+            flow.setPathComputationStrategy(stateMachine.getOriginalPathComputationStrategy());
 
             if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());

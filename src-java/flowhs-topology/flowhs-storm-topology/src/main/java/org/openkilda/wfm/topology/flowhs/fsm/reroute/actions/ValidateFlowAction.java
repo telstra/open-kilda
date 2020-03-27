@@ -79,10 +79,16 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
 
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
             stateMachine.setOriginalEncapsulationType(foundFlow.getEncapsulationType());
+            stateMachine.setOriginalPathComputationStrategy(foundFlow.getPathComputationStrategy());
             stateMachine.setRecreateIfSamePath(!foundFlow.isActive() || context.isForceReroute());
             stateMachine.setOriginalFlow(RequestedFlowMapper.INSTANCE.toRequestedFlow(foundFlow));
 
-            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
+            if (foundFlow.getTargetPathComputationStrategy() != null) {
+                foundFlow.setPathComputationStrategy(foundFlow.getTargetPathComputationStrategy());
+                foundFlow.setTargetPathComputationStrategy(null);
+            }
+            foundFlow.setStatus(FlowStatus.IN_PROGRESS);
+            flowRepository.createOrUpdate(foundFlow);
             return foundFlow;
         });
 

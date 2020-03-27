@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.update;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -77,6 +78,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private FlowStatus originalFlowStatus;
     private String originalFlowGroup;
     private RequestedFlow originalFlow;
+    private PathComputationStrategy oldTargetPathComputationStrategy;
 
     private FlowStatus newFlowStatus;
 

@@ -83,6 +83,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
 
     private RequestedFlow updateFlow(Flow flow, RequestedFlow targetFlow, FlowUpdateFsm stateMachine) {
         RequestedFlow originalFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(flow);
+        stateMachine.setOldTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
         stateMachine.setOriginalFlow(originalFlow);
 
         stateMachine.setOriginalFlowGroup(flow.getGroupId());
@@ -134,8 +135,14 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         }
         if (targetFlow.getPathComputationStrategy() != null) {
             flow.setPathComputationStrategy(targetFlow.getPathComputationStrategy());
+            flow.setTargetPathComputationStrategy(null);
         } else {
-            targetFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
+            if (flow.getTargetPathComputationStrategy() != null) {
+                targetFlow.setPathComputationStrategy(flow.getTargetPathComputationStrategy());
+                flow.setPathComputationStrategy(flow.getTargetPathComputationStrategy());
+            } else {
+                targetFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
+            }
         }
         return targetFlow;
     }

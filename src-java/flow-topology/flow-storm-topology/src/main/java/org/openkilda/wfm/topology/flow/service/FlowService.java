@@ -613,15 +613,23 @@ public class FlowService extends BaseFlowService {
                     }
                 }));
 
+        boolean pathComputationStrategyChanged = flow.getTargetPathComputationStrategy() != null
+                && flow.getPathComputationStrategy() != flow.getTargetPathComputationStrategy();
+        if (pathComputationStrategyChanged) {
+            flow.setPathComputationStrategy(flow.getTargetPathComputationStrategy());
+            flow.setTargetPathComputationStrategy(null);
+        }
+
         FlowPathsWithEncapsulationBuilder toCreateBuilder = FlowPathsWithEncapsulation.builder();
         FlowPathsWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder().flow(initialFlow);
         Instant timestamp = Instant.now();
 
         boolean reroutePrimary = pathIds.isEmpty() || pathIds.contains(flow.getForwardPathId())
-                || pathIds.contains(flow.getReversePathId());
+                || pathIds.contains(flow.getReversePathId()) || pathComputationStrategyChanged;
         boolean rerouteProtected = flow.isAllocateProtectedPath() && (pathIds.isEmpty()
                 || pathIds.contains(flow.getProtectedForwardPathId())
-                || pathIds.contains(flow.getProtectedReversePathId()));
+                || pathIds.contains(flow.getProtectedReversePathId())
+                || pathComputationStrategyChanged);
 
         // primary path
         if (reroutePrimary) {
@@ -646,6 +654,9 @@ public class FlowService extends BaseFlowService {
                 dashboardLogger.onFailedFlowReroute(flowId,
                         format("Reroute %s is unsuccessful: can't find new path(s).", flowId));
                 toRemoveBuilder.forwardPath(null).reversePath(null);
+                if (pathComputationStrategyChanged) {
+                    flowRepository.createOrUpdate(flow);
+                }
             } else {
                 FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
