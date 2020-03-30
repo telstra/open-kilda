@@ -17,18 +17,24 @@ package org.openkilda.grpc.speaker.messaging;
 
 import org.openkilda.grpc.speaker.mapper.RequestMapper;
 import org.openkilda.grpc.speaker.service.GrpcSenderService;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.grpc.GetSwitchInfoRequest;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class MessageProcessor {
 
@@ -41,34 +47,66 @@ public class MessageProcessor {
     @Autowired
     RequestMapper requestMapper;
 
+    @Value("#{kafkaTopicsConfig.getGrpcResponseTopic()}")
+    private String grpcResponseTopic;
+
     // TODO error handling
 
     /**
      * Process request.
      *
-     * @param command a command data.
+     * @param message a message to be processed
      */
-    public void processRequest(CommandData command) {
-        if (command instanceof CreateLogicalPortRequest) {
-            CreateLogicalPortRequest req = (CreateLogicalPortRequest) command;
-            service.createLogicalPort(req.getAddress(), requestMapper.toLogicalPort(req))
-                    .thenAccept(e -> sendResponse(new CreateLogicalPortResponse(req.getAddress(), e, true)));
-
-        } else if (command instanceof DumpLogicalPortsRequest) {
-            DumpLogicalPortsRequest req = (DumpLogicalPortsRequest) command;
-            service.dumpLogicalPorts(req.getAddress())
-                    .thenAccept(e -> sendResponse(new DumpLogicalPortsResponse(req.getAddress(), e)));
-
-        } else if (command instanceof GetSwitchInfoRequest) {
-            GetSwitchInfoRequest req = (GetSwitchInfoRequest) command;
-            service.getSwitchStatus(req.getAddress())
-                    .thenAccept(e -> sendResponse(new GetSwitchInfoResponse(req.getAddress(), e)));
-
+    public void processRequest(Message message) {
+        if (message instanceof CommandMessage) {
+            handleCommandMessage((CommandMessage) message);
+        } else {
+            unhandledMessage(message);
         }
     }
 
-    private void sendResponse(InfoData message) {
-        // TODO topic hardcode
-        messageProducer.send("grpc.response", message);
+    private void handleCommandMessage(CommandMessage command) {
+        CommandData data = command.getData();
+        String correlationId = command.getCorrelationId();
+
+        if (data instanceof CreateLogicalPortRequest) {
+            handleCreateLogicalPortRequest((CreateLogicalPortRequest) data, correlationId);
+        } else if (data instanceof DumpLogicalPortsRequest) {
+            handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) data, correlationId);
+        } else if (data instanceof GetSwitchInfoRequest) {
+            handleGetSwitchInfoRequest((GetSwitchInfoRequest) data, correlationId);
+        } else {
+            unhandledMessage(command);
+        }
+    }
+
+    private void handleCreateLogicalPortRequest(CreateLogicalPortRequest request, String correlationId) {
+        log.info("Creating logical port {} on switch {}", request.getLogicalPortNumber(), request.getAddress());
+        service.createLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
+                .thenAccept(port -> sendResponse(
+                        new CreateLogicalPortResponse(request.getAddress(), port, true), correlationId));
+    }
+
+    private void handleDumpLogicalPortsRequest(DumpLogicalPortsRequest request, String correlationId) {
+        log.debug("Dumping logical ports on switch {}", request.getAddress());
+        service.dumpLogicalPorts(request.getAddress())
+                .thenAccept(ports -> sendResponse(
+                        new DumpLogicalPortsResponse(request.getAddress(), ports), correlationId));
+    }
+
+    private void handleGetSwitchInfoRequest(GetSwitchInfoRequest request, String correlationId) {
+        log.debug("Getting switch info for switch {}", request.getAddress());
+        service.getSwitchStatus(request.getAddress())
+                .thenAccept(status -> sendResponse(
+                        new GetSwitchInfoResponse(request.getAddress(), status), correlationId));
+    }
+
+    private void sendResponse(InfoData data, String correlationId) {
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
+        messageProducer.send(grpcResponseTopic, message);
+    }
+
+    private void unhandledMessage(Message message) {
+        log.error("GRPC speaker is unable to handle message {}", message);
     }
 }
