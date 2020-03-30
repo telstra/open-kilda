@@ -13,6 +13,7 @@ import * as d3 from "d3";
 import { environment } from "../../../../environments/environment";
 import { StoreSettingtService } from "src/app/common/services/store-setting.service";
 declare var jQuery: any;
+declare var moment: any;
  
 @Component({
   selector: "app-flow-detail",
@@ -58,6 +59,7 @@ export class FlowDetailComponent implements OnInit {
   validatedFlow: any = [];
   resyncedFlow : any = [];
   pingedFlow : any = [];
+  flowHistory : any = [];
   flowIs = '';
   contracts : any = [];
   loading = false;
@@ -70,7 +72,8 @@ export class FlowDetailComponent implements OnInit {
     targetSwitch:"",
     validateFlow:"",
     resyncFlow : "",
-    pingedFlow:""
+    pingedFlow:"",
+    flowHistory:""
   }
 
   storeLinkSetting = false;
@@ -89,6 +92,8 @@ export class FlowDetailComponent implements OnInit {
       inventory:"-"
     }
   }
+  fromDate:any = moment().subtract(1, "day").format("YYYY/MM/DD HH:mm:ss");
+  toDate:any = moment().format("YYYY/MM/DD HH:mm:ss");
 
   property = 'GraphicalView';
   Rawview = false ; 
@@ -160,12 +165,15 @@ export class FlowDetailComponent implements OnInit {
            var msg  = (Err && typeof(Err['error-auxiliary-message'])!='undefined') ? Err['error-auxiliary-message']:'';
           this.toaster.error(msg,"Error");
       })  
-    }else if(tab =='ping'){
+    }else if(tab =='ping'){ 
       this.pingedFlow = null;
       this.GraphicalView = true;
       this.Rawview = false;
       this.property = 'GraphicalView';
       this.initPingSimulation();
+    }else if(tab == 'history'){
+      this.flowHistory = null;
+      this.getFlowHistory();
     }
   }
 
@@ -467,12 +475,31 @@ export class FlowDetailComponent implements OnInit {
         }
       });
   }
+
+  getFlowStatus(status){
+    this.flowService.getFlowStatus(this.flowDetail.flowid).subscribe(
+      flowStatus =>{
+        if(flowStatus.status == 'IN PROGRESS'){
+          this.getFlowStatus(flowStatus.status);
+        }else{
+          this.flowDetail.status = (flowStatus && flowStatus.status) ?  flowStatus.status : this.flowDetail.status;
+        }
+        
+      },
+      error => {
+        var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No Flow found';
+        //this.toaster.error(errorMsg, "Error");
+       }
+    )
+  }
   /**fetching flow detail via API call */
   getFlowDetail(flowId,filterFlag) {
+    var self = this;
     this.openedTab = 'graph';
     this.loadStatsGraph = true;
     this.clearResyncedFlow();
     this.clearValidatedFlow();
+    this.clearFlowHistory();
     this.loaderService.show("Loading Flow Detail");
     this.bandWidthDescrepancy  = false;
     this.statusDescrepancy = false;
@@ -524,7 +551,11 @@ export class FlowDetailComponent implements OnInit {
             this.descrepancyData.bandwidth.inventory = (typeof(flowDetail['discrepancy']['bandwidth-value']['inventory-bandwidth'])!='undefined') ?  flowDetail['discrepancy']['bandwidth-value']['inventory-bandwidth'] : "-";
           }
         }
-        
+        setTimeout(function(){
+          if(flowDetail && flowDetail.status == 'IN PROGRESS'){
+            self.getFlowStatus(flowDetail.status);
+          }
+        },100);
         this.loaderService.hide();
   }else{
     this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
@@ -554,6 +585,11 @@ export class FlowDetailComponent implements OnInit {
         }
         
         this.loaderService.hide();
+        setTimeout(function(){
+          if(flow && flow.status == 'IN PROGRESS'){
+            self.getFlowStatus(flow.status);
+          }
+        },100);
       },
       error => {
         var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No Flow found';
@@ -561,9 +597,11 @@ export class FlowDetailComponent implements OnInit {
         this._location.back();
         this.loaderService.hide();
       }
-    );
+    );    
   }
-   
+  
+ 
+    
   }
 
   convertSwitchPattern(switchId){
@@ -612,6 +650,44 @@ export class FlowDetailComponent implements OnInit {
       this.Rawview = false;  
    }
     this[this.property] = true;
+  }
+  /** clear flow histiry */
+  clearFlowHistory(){
+    this.flowHistory = [];
+    this.flowIs ="";
+  }
+
+  /**get flow history */
+  changeDate(input, event){
+
+    this[input] = moment(new Date(event.target.value)).format("YYYY/MM/DD HH:mm:ss");
+    if(moment(new Date(this.fromDate)).isAfter(moment(new Date(this.toDate)))){
+      this.toaster.error('From Date can not be greater than To Date..','Error');
+      return;
+    }
+    setTimeout(()=>{
+      this.getFlowHistory();
+    },0);
+  }
+  getFlowHistory(){
+    this.flowHistory = null;
+    this.flowIs  ='history';
+    this.loading = true;
+    let startDate = moment(new Date(this.fromDate)).unix();
+    let endDate = moment(new Date(this.toDate)).unix();
+    this.flowService.getFlowHistory(this.flowDetail.flowid,startDate,endDate).subscribe(
+      data => {
+        this.flowHistory = data;
+        this.clipBoardItems.flowHistory = data;
+        this.loading = false;
+      },
+      error => {
+        this.flowIs  ='';
+        this.loading = false;
+        this.toaster.error(error["error-auxiliary-message"], "Error!");
+      }
+    );
+
   }
   /** Validate flow */
   validateFlow() {

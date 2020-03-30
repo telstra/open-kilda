@@ -24,6 +24,7 @@
       <div class="card">
 
         <div class="card-body">
+          
           <ul class="list-group list-group-no-border">
             <li class="list-group-item">
               <div class="row">
@@ -149,6 +150,18 @@
                 </div>
               </div>
             </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Created:</div>
+                <div class="col-sm-8">{{ flowDetail["created"] | date:'yyyy/MM/dd H:mm:s'}}</div>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="row">
+                <div class="col-sm-4">Last Updated:</div>
+                <div class="col-sm-8">{{ flowDetail["last-updated"] | date:'yyyy/MM/dd H:mm:s'}}</div>
+              </div>
+            </li>
           </ul>
         </div>
       </div>
@@ -178,6 +191,9 @@
           </li>
           <li  [ngClass]="{'active': openedTab == 'ping'}"  *ngIf="commonService.hasPermission('fw_flow_ping') && ((storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting))">
             <a href="javascript:void(0);" (click)="openTab('ping');">Ping</a>
+          </li>
+          <li  *ngIf="commonService.hasPermission('fw_flow_history') && ((storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting))" [ngClass]="{'active': openedTab == 'history'}" >
+            <a href="javascript:void(0);" (click)="openTab('history');">Flow History</a>
           </li>
         </ul>
         <div class="tab-content padding-15 clearfix">
@@ -277,9 +293,35 @@
           </div>
           
        </div>
-          
-         
       </div>
+      <div class="tab-pane" [ngClass]="{'active': openedTab == 'history'}">
+        <div class="row">
+          <div class="form-group  col-md-3 offset-4">
+            <label>From: </label> &nbsp;
+            <input datetime-picker [value]="fromDate" placeholder="Date Time:" (change)="changeDate('fromDate',$event)">
+          </div>
+          <div class="form-group  col-md-3">
+            <label>To: </label> &nbsp;
+            <input datetime-picker [value]="toDate" (change)="changeDate('toDate',$event)" placeholder="Date Time:">
+          </div>
+          <div class="text-right col-md-2 mb-2">
+            <button  class="btn btn-dark btn-sm" (click)="getFlowHistory()">Refresh</button>
+          </div>
+        </div>
+        
+        <div *ngIf="loading" class="component-loader"></div>
+        <div *ngIf="flowIs =='history' && !loading" class="clip-board-wrapper">
+          <div class="row">
+          <div class="col-md-12">
+            <label class="response_flow_label">Flow History</label>
+            <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearFlowHistory()">Clear</button>
+            <div class="clear clearfix"></div>
+          </div>
+        </div>
+       
+        <pre [contextMenu]="copyflowHistory" class="code validateFlow" *ngIf="flowHistory">{{flowHistory | json}}</pre>
+      </div>
+    </div>
       </div>
     </div>
   </div>
@@ -367,6 +409,12 @@
 
 <context-menu #copyPingedFlow>
     <ng-template contextMenuItem (execute)="copyToClipHtml($event,'pingedFlow');">
+      Copy to Clipboard
+    </ng-template>
+  </context-menu>
+
+  <context-menu #copyflowHistory>
+    <ng-template contextMenuItem (execute)="copyToClipHtml($event,'flowHistory');">
       Copy to Clipboard
     </ng-template>
   </context-menu>
