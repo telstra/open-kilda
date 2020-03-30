@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.52.0 (31/03/2020)
+
+### Features:
+-  [#3334](https://github.com/telstra/open-kilda/pull/3334) Added PacketInOutStats to stats Topology [**storm-topologies**]
+-  [#3070](https://github.com/telstra/open-kilda/pull/3070) Design for Multiple ISLs on the same port (VLANs). (Issue: [#3053](https://github.com/telstra/open-kilda/issues/3053)) [**docs**]
+
+### Bug Fixes:
+-  [#3324](https://github.com/telstra/open-kilda/pull/3324) Improve get Flow DB requests for Connected Devices Service 
+-  [#3325](https://github.com/telstra/open-kilda/pull/3325) Ignore unmapped target properties in RequestedFlow 
+
+### Improvements:
+-  [#3330](https://github.com/telstra/open-kilda/pull/3330) add missed else statement [**tests**]
+-  [#3333](https://github.com/telstra/open-kilda/pull/3333) GRPC speaker messaging refactor 
+-  [#3231](https://github.com/telstra/open-kilda/pull/3231) Control docker-compose and makefile from confd [**configuration**]
+-  [#3310](https://github.com/telstra/open-kilda/pull/3310) minor improvements in MetersSpec [**tests**]
+-  [#3319](https://github.com/telstra/open-kilda/pull/3319) improve selecting swPair with diverse path in MultitableFlowsSpec [**tests**]
+-  [#3320](https://github.com/telstra/open-kilda/pull/3320) improve grpc related tests [**tests**]
+
+### Other changes:
+-  [#3336](https://github.com/telstra/open-kilda/pull/3336) Adjust tests to workaround issue #3335 [**tests**]
+-  [#3337](https://github.com/telstra/open-kilda/pull/3337) Fix cleanups to always delete flows before bringing ports up [**tests**]
+-  [#3342](https://github.com/telstra/open-kilda/pull/3342) Add comment in test regarding issue #3341 [**tests**]
+-  [#3036](https://github.com/telstra/open-kilda/pull/3036) Support path computation strategy param in partial flow update (Issue: [#2894](https://github.com/telstra/open-kilda/issues/2894)) [**northbound**][**storm-topologies**]
+-  [#3317](https://github.com/telstra/open-kilda/pull/3317) Teach lockkeeper to add latency between FL and switches [**tests**]
+-  [#3323](https://github.com/telstra/open-kilda/pull/3323) Reduce trace size for PreviousTestFailedError [**tests**]
+-  [#3327](https://github.com/telstra/open-kilda/pull/3327) Reorganize gui project (Issue: [#1137](https://github.com/telstra/open-kilda/issues/1137)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.51.2...v1.52.0).
+
+### Affected Components:
+connected, gui, nb, stats, nbworker, grpc, flow-hs
+
+---
+
 ## v1.51.2 (23/03/2020)
 
 ### Features:
@@ -22,6 +56,8 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 grpc, gui
+
+---
 
 ## v1.51.1 (17/03/2020)
 
