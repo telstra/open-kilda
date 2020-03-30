@@ -26,7 +26,9 @@ public enum StatsStreamType {
     FLOW_STATS,
     SYSTEM_RULE_STATS,
     TABLE_STATS,
+    PACKET_IN_OUT_STATS,
     STATS_RESPONSE,
     STATS_REQUEST,
+    GRPC_REQUEST,
     CACHE_UPDATE,
 }

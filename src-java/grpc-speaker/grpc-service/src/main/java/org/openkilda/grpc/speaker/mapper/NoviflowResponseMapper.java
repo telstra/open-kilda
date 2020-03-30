@@ -16,6 +16,7 @@
 package org.openkilda.grpc.speaker.mapper;
 
 import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
+import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchBuildInfoStatus;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchEthLinkInfoStatus;
@@ -49,6 +50,8 @@ public interface NoviflowResponseMapper {
     SwitchBuildInfoStatus toSwitchBuildInfo(StatusSwitchBuild statusSwitchBuild);
 
     PacketInOutStatsResponse toPacketInOutStatsResponse(PacketInOutStats stats);
+
+    PacketInOutStatsDto toPacketInOutStatsDto(PacketInOutStatsResponse stats);
 
     /**
      * Maps YesNo enum to Boolean value.

@@ -15,18 +15,22 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
+import org.openkilda.grpc.speaker.mapper.NoviflowResponseMapper;
 import org.openkilda.grpc.speaker.mapper.RequestMapper;
+import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 import org.openkilda.grpc.speaker.service.GrpcSenderService;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
+import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
 import org.openkilda.messaging.command.grpc.GetSwitchInfoRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
+import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
 import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
 
 import lombok.extern.slf4j.Slf4j;
@@ -47,8 +51,14 @@ public class MessageProcessor {
     @Autowired
     RequestMapper requestMapper;
 
+    @Autowired
+    NoviflowResponseMapper responseMapper;
+
     @Value("#{kafkaTopicsConfig.getGrpcResponseTopic()}")
     private String grpcResponseTopic;
+
+    @Value("#{kafkaTopicsConfig.getStatsTopic()}")
+    private String statsTopic;
 
     // TODO error handling
 
@@ -75,6 +85,8 @@ public class MessageProcessor {
             handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) data, correlationId);
         } else if (data instanceof GetSwitchInfoRequest) {
             handleGetSwitchInfoRequest((GetSwitchInfoRequest) data, correlationId);
+        } else if (data instanceof GetPacketInOutStatsRequest) {
+            handleGetPacketInOutStatsRequest((GetPacketInOutStatsRequest) data, correlationId);
         } else {
             unhandledMessage(command);
         }
@@ -99,6 +111,20 @@ public class MessageProcessor {
         service.getSwitchStatus(request.getAddress())
                 .thenAccept(status -> sendResponse(
                         new GetSwitchInfoResponse(request.getAddress(), status), correlationId));
+    }
+
+    private void handleGetPacketInOutStatsRequest(GetPacketInOutStatsRequest request, String correlationId) {
+        log.debug("Getting switch packet in out stats for switch {}", request.getAddress());
+        service.getPacketInOutStats(request.getAddress())
+                .thenAccept(stats -> sendPacketInOutStatsResponse(request, stats, correlationId));
+    }
+
+    private void sendPacketInOutStatsResponse(
+            GetPacketInOutStatsRequest request, PacketInOutStatsResponse stats, String correlationId) {
+        GetPacketInOutStatsResponse data = new GetPacketInOutStatsResponse(
+                request.getSwitchId(), responseMapper.toPacketInOutStatsDto(stats));
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
+        messageProducer.send(statsTopic, message);
     }
 
     private void sendResponse(InfoData data, String correlationId) {

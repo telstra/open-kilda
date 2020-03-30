@@ -40,6 +40,10 @@ public interface StatsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getStatsRequestPrivTopic();
     }
 
+    default String getGrpcSpeakerTopic() {
+        return getKafkaTopics().getGrpcSpeakerTopic();
+    }
+
     @Key("opentsdb.metric.prefix")
     @Default("kilda.")
     String getMetricPrefix();
