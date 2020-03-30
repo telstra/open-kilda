@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { Switch } from 'src/app/common/data-models/switch';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { ClipboardService } from 'ngx-clipboard';
+import { SwitchService } from 'src/app/common/services/switch.service';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -30,13 +31,16 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   hostname : boolean = false;
   poplocation : boolean = false;
   description : boolean = false;
+  sumofflows:boolean = false;
   state : boolean = false;
   clipBoardItems = [];
+  flowDataOfSwitch:any={};
   constructor(private loaderService : LoaderService,
     private renderer: Renderer2, 
     private router:Router,
     private storeSwitchService: StoreSettingtService,
-    private clipboardService:ClipboardService
+    private clipboardService:ClipboardService,
+    private switchService:SwitchService
   ) { }
 
   ngOnInit() {
@@ -56,6 +60,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
+        { sWidth: '10%' },
         { sWidth: '30%' },
         { sWidth: '10%' }],
       language: {
@@ -69,11 +74,37 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       },
       columnDefs:[
         { targets: [4], visible: false},
-        { targets: [7], visible: false},
+        { targets: [8], visible: false},
       ]
     };
+
+    this.fetchSwitchFlowData(this.data);
   
   }
+
+  fetchSwitchFlowData(switchlist){
+    if(switchlist && switchlist.length){
+      for(let switchData of switchlist){
+          this.switchService.getSwitchFlows(switchData.switch_id,false,null).subscribe(data=>{
+          let flowsData:any = data;
+          this.flowDataOfSwitch[switchData.switch_id] = {};
+          this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
+            if(flowsData && flowsData.length){
+              for(let flow of flowsData){
+                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth + (flow.maximum_bandwidth / 1000);
+              }
+              this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3);
+            }
+          },error=>{
+            this.flowDataOfSwitch[switchData.switch_id] = {};
+           this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
+          })          
+      }
+    }
+  }
+
+  
+
 
   ngAfterViewInit(): void {
     this.dtTrigger.next();

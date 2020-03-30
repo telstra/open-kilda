@@ -639,14 +639,20 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             (d.state && d.state.toLowerCase() == "failed")
           ) {
             if(d.under_maintenance){
-              return "link physical down dashed_maintenance_path";
+              if(parseInt(percentage) < 50){
+                return "link physical  orange_percentage dashed_maintenance_path";
+              }
+              return "link physical  dashed_maintenance_path";
             } else if (d.affected) {
-              return "link physical down dashed_path";
+              return "link physical  dashed_path";
             }else {
-              return "link physical down";
+              return "link physical";
             }
           } else {
             if(d.under_maintenance){
+              if (parseInt(percentage) < 50) {
+                return "link physical dashed_maintenance_path orange_percentage";
+              }
               return "link physical  dashed_maintenance_path";
             }else if (d.affected) {
               return "link physical dashed_path";
@@ -686,11 +692,17 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             (d.state && d.state.toLowerCase() == "failed")
           ) {
             if(d.under_maintenance){
-              element.setAttribute(
-                "class",
-                "link physical dashed_maintenance_path pathoverlay"
-              );
-              
+              if(parseInt(percentage) < 50){
+                element.setAttribute(
+                  "class",
+                  "link physical dashed_maintenance_path orange_percentage pathoverlay"
+                );
+              }else{
+                element.setAttribute(
+                  "class",
+                  "link physical dashed_maintenance_path pathoverlay"
+                );
+              }
             } else if (d.affected) {
               element.setAttribute(
                 "class",
@@ -708,10 +720,18 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           } else {
             if(d.under_maintenance){
-              element.setAttribute(
-                "class",
-                "link physical overlay dashed_maintenance_path"
-              );
+              if(parseInt(percentage) < 50){
+                element.setAttribute(
+                  "class",
+                  "link physical overlay orange_percentage dashed_maintenance_path"
+                );
+              }else{
+                element.setAttribute(
+                  "class",
+                  "link physical overlay dashed_maintenance_path"
+                );
+              }
+              
               
             } else if (d.affected) {
               element.setAttribute(
@@ -838,15 +858,24 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             (d.state && d.state.toLowerCase() == "failed")
           ) {
             if(d.under_maintenance){
-              element.setAttribute("class", "link physical down dashed_maintenance_path");
+              if(parseInt(percentage) < 50){
+                element.setAttribute("class", "link physical  orange_percentage dashed_maintenance_path");
+              }else{
+                element.setAttribute("class", "link physical  dashed_maintenance_path");
+              }
+              
             } else if (d.affected) {
-              element.setAttribute("class", "link physical down dashed_path");
+              element.setAttribute("class", "link physical  dashed_path");
             }else {
-              element.setAttribute("class", "link physical down");
+              element.setAttribute("class", "link physical ");
             }
           } else {
             if(d.under_maintenance){
-              element.setAttribute("class", "link physical dashed_maintenance_path");
+              if (parseInt(percentage) < 50) {
+                element.setAttribute("class", "link physical orange_percentage dashed_maintenance_path");
+              }else{
+                element.setAttribute("class", "link physical dashed_maintenance_path");
+              }
             } else if (d.affected) {
               element.setAttribute("class", "link physical dashed_path");
             }else {
@@ -889,7 +918,13 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             (d.state && d.state.toLowerCase() == "failed")
           ) {
             if(d.under_maintenance){
+              if(parseInt(percentage) < 50){
+                
+              element.setAttribute("class", "link physical pathoverlay orange_percentage dashed_maintenance_path");
+              }else{
+                
               element.setAttribute("class", "link physical pathoverlay dashed_maintenance_path");
+              }
             } else if (d.affected) {
               element.setAttribute(
                 "class",
@@ -900,7 +935,13 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           } else {
             if(d.under_maintenance){
+              if(parseInt(percentage) < 50){
+                
+              element.setAttribute("class", "link physical overlay orange_percentage dashed_maintenance_path");
+              }else{
+                
               element.setAttribute("class", "link physical overlay dashed_maintenance_path");
+              }
             } else if (d.affected) {
               element.setAttribute(
                 "class",
@@ -1179,28 +1220,37 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           d.src_port == response[i].src_port &&
           d.dst_port == response[i].dst_port
         ) {
+          d.available_bandwidth = response[i].available_bandwidth;
+          d.max_bandwidth = response[i].max_bandwidth;
           d.state = response[i].state;
           var availbandwidth = d.available_bandwidth;
           var max_bandwidth = d.max_bandwidth;
-          //var percentage = 20; //common.getPercentage(availbandwidth,speed);
           var percentage = ref.commonService.getPercentage(availbandwidth,max_bandwidth);
           if (response[i].affected) {
             d["affected"] = response[i].affected;
           } else {
             d["affected"] = false;
           }
+          d.under_maintenance = response[i].under_maintenance;
           d.unidirectional = response[i].unidirectional;
           if (
             d.unidirectional ||
             (d.state && d.state.toLowerCase() == "failed")
           ) {
-            if (d.affected) {
+            if(d.under_maintenance){
+              classes ="link physical down dashed_maintenance_path";
+            } else if (d.affected) {
               classes = "link physical down dashed_path";
             } else {
               classes = "link physical down";
             }
           } else {
-            if (d.affected) {
+            if(d.under_maintenance){
+              classes = "link physical dashed_maintenance_path";
+              if (parseInt(percentage) < 50) {
+                classes = "link physical dashed_maintenance_path orange_percentage";
+              }
+            }else if (d.affected) {
               classes = "link physical dashed_path";
             } else {
               if (parseInt(percentage) < 50) {
@@ -1222,6 +1272,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             stroke = ISL.UNIDIR;
           } else if (d.state && d.state.toLowerCase() == "discovered") {
             stroke = ISL.DISCOVERED;
+          }else if (d.state && d.state.toLowerCase() == "moved") {
+            stroke = ISL.MOVED;
           }
 
           if (element) {
