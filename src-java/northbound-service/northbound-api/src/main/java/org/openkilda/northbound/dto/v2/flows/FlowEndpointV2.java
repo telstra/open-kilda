@@ -39,6 +39,9 @@ public class FlowEndpointV2 {
     @JsonProperty("vlan_id")
     private int vlanId;
 
+    @JsonProperty("inner_vlan_id")
+    private int innerVlanId;
+
     @NonNull
     @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesV2 detectConnectedDevices;
@@ -48,11 +51,22 @@ public class FlowEndpointV2 {
     public FlowEndpointV2(@JsonProperty("switch_id") SwitchId switchId,
                           @JsonProperty("port_number") Integer portNumber,
                           @JsonProperty("vlan_id") int vlanId,
+                          @JsonProperty("inner_vlan_id") int innerVlanId,
                           @JsonProperty("detect_connected_devices") DetectConnectedDevicesV2 detectConnectedDevices) {
         this.switchId = switchId;
         this.portNumber = portNumber;
         this.vlanId = vlanId;
+        this.innerVlanId = innerVlanId;
         setDetectConnectedDevices(detectConnectedDevices);
+    }
+
+    public FlowEndpointV2(
+            SwitchId switchId, Integer portNumber, int vlanId, DetectConnectedDevicesV2 connectedDevices) {
+        this(switchId, portNumber, vlanId, 0, connectedDevices);
+    }
+
+    public FlowEndpointV2(SwitchId switchId, Integer portNumber, int vlanId) {
+        this(switchId, portNumber, vlanId, 0, null);
     }
 
     /**

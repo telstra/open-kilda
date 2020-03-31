@@ -66,7 +66,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
 
     private List<OFAction> makeVlanEncapsulationTransformActions() {
         List<OFAction> actions = new ArrayList<>();
-        if (! FlowEndpoint.isVlanIdSet(command.getEndpoint().getVlanId())) {
+        if (! FlowEndpoint.isVlanIdSet(command.getEndpoint().getOuterVlanId())) {
             actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
         }
         actions.add(OfAdapter.INSTANCE.setVlanIdAction(of, command.getEncapsulation().getId()));

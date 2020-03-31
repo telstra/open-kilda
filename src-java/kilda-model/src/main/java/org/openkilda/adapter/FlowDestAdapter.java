@@ -20,7 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 
 public class FlowDestAdapter extends FlowSideAdapter {
-    protected FlowDestAdapter(Flow flow) {
+    public FlowDestAdapter(Flow flow) {
         super(flow);
     }
 
@@ -28,7 +28,7 @@ public class FlowDestAdapter extends FlowSideAdapter {
     public FlowEndpoint getEndpoint() {
         DetectConnectedDevices trackConnectedDevices = flow.getDetectConnectedDevices();
         return new FlowEndpoint(
-                flow.getDestSwitch().getSwitchId(), flow.getDestPort(), flow.getDestVlan(),
+                flow.getDestSwitch().getSwitchId(), flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan(),
                 trackConnectedDevices.isDstLldp() || trackConnectedDevices.isDstSwitchLldp(),
                 trackConnectedDevices.isDstArp() || trackConnectedDevices.isDstSwitchArp());
     }

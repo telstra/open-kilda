@@ -62,8 +62,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Shared
-    def getPortViolationError = { String action, int port, SwitchId swId ->
-        "The port $port on the switch '$swId' is occupied by an ISL."
+    def getPortViolationError = { String endpoint, int port, SwitchId swId ->
+        "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -631,7 +631,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                             "Could not create flow"
                         },
                         errorDescription   : { Isl violatedIsl ->
-                            getPortViolationError("create", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                            getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
                         }
                 ],
                 [
@@ -641,7 +641,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                             "Could not create flow"
                         },
                         errorDescription   : { Isl violatedIsl ->
-                            getPortViolationError("create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                            getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
         ]
@@ -677,14 +677,14 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                         switchType: "source",
                         port      : "srcPort",
                         message   : { Isl violatedIsl ->
-                            getPortViolationError("update", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                            getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
                         }
                 ],
                 [
                         switchType: "destination",
                         port      : "dstPort",
                         message   : { Isl violatedIsl ->
-                            getPortViolationError("update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                            getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
         ]
@@ -708,7 +708,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
+        errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         cleanup: "Restore state of the ISL"
         !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -737,7 +737,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
+        errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore status of the ISL and delete new created ISL"
         islUtils.replug(newIsl, true, isl, false)
@@ -1249,16 +1249,21 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     @Shared
     def errorDescription = { String operation, FlowRequestV2 flow, String endpoint, FlowRequestV2 conflictingFlow,
                              String conflictingEndpoint ->
-        "Requested flow '$conflictingFlow.flowId' " +
+        def message = "Requested flow '$conflictingFlow.flowId' " +
                 "conflicts with existing flow '$flow.flowId'. " +
                 "Details: requested flow '$conflictingFlow.flowId' $conflictingEndpoint: " +
-                "switch=${conflictingFlow."$conflictingEndpoint".switchId} " +
-                "port=${conflictingFlow."$conflictingEndpoint".portNumber} " +
-                "vlan=${conflictingFlow."$conflictingEndpoint".vlanId}, " +
-                "existing flow '$flow.flowId' $endpoint: " +
-                "switch=${flow."$endpoint".switchId} " +
-                "port=${flow."$endpoint".portNumber} " +
-                "vlan=${flow."$endpoint".vlanId}"
+                "switchId=\"${conflictingFlow."$conflictingEndpoint".switchId}\" " +
+                "port=${conflictingFlow."$conflictingEndpoint".portNumber}"
+        if (0 < conflictingFlow."$conflictingEndpoint".vlanId) {
+            message += " vlanId=${conflictingFlow."$conflictingEndpoint".vlanId}";
+        }
+        message += ", existing flow '$flow.flowId' $endpoint: " +
+                "switchId=\"${flow."$endpoint".switchId}\" " +
+                "port=${flow."$endpoint".portNumber}"
+        if (0 < flow."$endpoint".vlanId) {
+            message += " vlanId=${flow."$endpoint".vlanId}"
+        }
+        return message
     }
 
     /**

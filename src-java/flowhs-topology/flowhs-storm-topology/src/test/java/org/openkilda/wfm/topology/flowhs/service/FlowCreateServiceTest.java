@@ -27,6 +27,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathPair;
@@ -64,9 +65,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     public void shouldCreateOneSwitchFlow() throws Exception {
         FlowRequest request = makeRequest()
                 .flowId("one_switch_flow")
-                .destinationSwitch(SWITCH_SOURCE)
-                .destinationPort(2)
-                .destinationVlan(2)
+                .destination(new FlowEndpoint(SWITCH_SOURCE, 2, 2))
                 .build();
         preparePathComputation(request.getFlowId(), makeOneSwitchPathPair());
         testHappyPath(request, "successful_flow_create");

@@ -88,11 +88,17 @@ public class Flow implements Serializable {
     @Property(name = "src_vlan")
     private int srcVlan;
 
+    @Property(name = "src_inner_vlan")
+    private int srcInnerVlan;
+
     @Property(name = "dst_port")
     private int destPort;
 
     @Property(name = "dst_vlan")
     private int destVlan;
+
+    @Property(name = "dst_inner_vlan")
+    private int destInnerVlan;
 
     // No setter as forwardPath must be used for this.
     @Property(name = "forward_path_id")
@@ -186,7 +192,8 @@ public class Flow implements Serializable {
 
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                int srcPort, int srcVlan, int destPort, int destVlan,
+                int srcPort, int srcVlan, int srcInnerVlan,
+                int destPort, int destVlan, int destInnerVlan,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
                 boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
                 Long maxLatency, Integer priority,
@@ -199,8 +206,10 @@ public class Flow implements Serializable {
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;
         this.srcVlan = srcVlan;
+        this.srcInnerVlan = srcInnerVlan;
         this.destPort = destPort;
         this.destVlan = destVlan;
+        this.destInnerVlan = destInnerVlan;
         this.groupId = groupId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;

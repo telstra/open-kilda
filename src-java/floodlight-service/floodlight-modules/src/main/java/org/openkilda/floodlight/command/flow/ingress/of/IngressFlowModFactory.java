@@ -76,7 +76,7 @@ public abstract class IngressFlowModFactory {
         FlowEndpoint endpoint = command.getEndpoint();
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
                 .setCookie(U64.of(command.getCookie().getValue()))
-                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getVlanId())
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
                                   .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                                   .build());
         return makeForwardMessage(of, builder, effectiveMeterId);

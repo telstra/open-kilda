@@ -38,6 +38,8 @@ public class FlowDumpData {
     private int destinationPort;
     private int sourceVlan;
     private int destinationVlan;
+    private int sourceInnerVlan;
+    private int destinationInnerVlan;
     private Cookie forwardCookie;
     private Cookie reverseCookie;
     private MeterId forwardMeterId;
