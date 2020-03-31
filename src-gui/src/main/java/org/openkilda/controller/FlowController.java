@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,18 +18,17 @@ package org.openkilda.controller;
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
-import org.openkilda.exception.NoDataFoundException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowCount;
+import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Status;
 import org.openkilda.service.FlowService;
-import org.openkilda.utility.StringUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
 import org.usermanagement.model.UserInfo;
 
 import java.util.ArrayList;
@@ -159,9 +157,6 @@ public class FlowController extends BaseController {
             @RequestParam(name = "controller", required = false) boolean controller) {
         LOGGER.info("Get flow by id. Flow id: '" + flowId + "'");
         FlowInfo flowInfo = flowService.getFlowById(flowId, controller);
-        if (flowInfo != null && StringUtil.isNullOrEmpty(flowInfo.getFlowid())) {
-            throw new NoDataFoundException("No flow found");
-        }
         return flowInfo;
     }
 
@@ -283,6 +278,20 @@ public class FlowController extends BaseController {
         LOGGER.info("Flow ping. Flow id: '" + flowId + "'");
         activityLogger.log(ActivityType.FLOW_PING, flowId);
         return flowService.flowPing(flowId, flow);
+    }
+    
+    /**
+     * Returns history of flow.
+     *
+     * @return the flow history.
+     */
+    @RequestMapping(value = "/all/history/{flowId}", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.FW_FLOW_HISTORY })
+    public @ResponseBody List<FlowHistory> getFlowHistory(@PathVariable final String flowId,
+            @RequestParam(name = "timeFrom", required = false) String timeFrom,
+            @RequestParam(name = "timeTo", required = false) String timeTo) {
+        return flowService.getFlowHistory(flowId, timeFrom, timeTo);
     }
 
 }

@@ -76,7 +76,14 @@ public class FlowConverter {
         flowInfo.setDescription(flow.getDescription());
         flowInfo.setStatus(flow.getStatus().toUpperCase());
         flowInfo.setDiverseFlowid(flow.getDiverseFlowId());
-        flowInfo.setDiverseWith(flow.getDiverseWith());
+        flowInfo.setIgnoreBandwidth(flow.isIgnoreBandwidth());
+        flowInfo.setLastUpdated(flow.getLastUpdated());
+        flowInfo.setCreated(flow.getCreated());
+        flowInfo.setEncapsulationType(flow.getEncapsulationType());
+        flowInfo.setPathComputationStrategy(flow.getPathComputationStrategy());
+        flowInfo.setPinned(flow.isPinned());
+        flowInfo.setPeriodicPings(flow.isPeriodicPings());
+        //flowInfo.setDiverseWith(flow.getDiverseWith());
         flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {

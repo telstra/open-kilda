@@ -157,6 +157,7 @@ public abstract class IConstants {
         public static final String GET_NETWORK_PATH = "/network/paths?src_switch={src_switch}&dst_switch={dst_switch}";
         public static final String DELETE_SWITCH = GET_SWITCHES + "/{switch_id}?force={force}";
         public static final String UPDATE_LINK_BFD_FLAG = GET_LINKS + "/enable-bfd";
+        public static final String GET_FLOW_HISTORY = GET_FLOW + "/{flow_id}/history";
     }
     
     public final class OpenTsDbUrl {
@@ -275,6 +276,8 @@ public abstract class IConstants {
         public static final String MENU_AVAILABLE_PATH = "menu_available_path";
         
         public static final String ISL_UPDATE_BFD_FLAG = "isl_update_bfd_flag";
+        
+        public static final String FW_FLOW_HISTORY = "fw_flow_history";
         
     }
 

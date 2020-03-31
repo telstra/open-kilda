@@ -17,7 +17,11 @@ package org.openkilda.util;
 
 public interface TestFlowMock {
 
-    static final String FLOW_ID = "03Jun131532_588_vegetableoil2002";
+    static final String FLOW_ID_NULL = null;
+    static final String FLOW_ID = "flow001";
+    static final String TIME_FROM = "1582020869";
+    static final String TIME_TO = "1582020869";
+    //static final Long TIME_TO = System.currentTimeMillis();
     static final boolean CONTROLLER_FLAG = true;
 
 }
