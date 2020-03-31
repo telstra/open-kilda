@@ -33,7 +33,7 @@ export class FlowsService {
 
   getFlowHistory(flowId,fromDate,toDate):Observable<any>{
     let query:any = {timeFrom:fromDate,timeTo:toDate};
-    return this.httpClient.get(`${environment.apiEndPoint}/flows/history/${flowId}`,{params:query});
+    return this.httpClient.get(`${environment.apiEndPoint}/flows/all/history/${flowId}`,{params:query});
   }
 
 
