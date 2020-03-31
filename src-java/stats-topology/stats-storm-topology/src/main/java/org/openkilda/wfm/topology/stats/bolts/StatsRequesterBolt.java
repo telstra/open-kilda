@@ -21,8 +21,10 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.kafka.MessageDeserializer;
@@ -44,6 +46,7 @@ public class StatsRequesterBolt extends AbstractBolt {
 
     private final PersistenceManager persistenceManager;
     private transient SwitchRepository switchRepository;
+    private transient FeatureTogglesRepository featureTogglesRepository;
 
     public StatsRequesterBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -74,10 +77,12 @@ public class StatsRequesterBolt extends AbstractBolt {
         Values values = new Values(statsRequest);
         emit(STATS_REQUEST.name(), input, values);
 
-        Collection<Switch> switches = switchRepository.findAll();
-        for (Switch sw : switches) {
-            if (sw.getOfDescriptionSoftware() != null && Switch.isNoviflowSwitch(sw.getOfDescriptionSoftware())) {
-                emitGrpcStatsRequest(input, sw);
+        if (featureTogglesRepository.find().map(FeatureToggles::getCollectGrpcStats).orElse(false)) {
+            Collection<Switch> switches = switchRepository.findAll();
+            for (Switch sw : switches) {
+                if (sw.getOfDescriptionSoftware() != null && Switch.isNoviflowSwitch(sw.getOfDescriptionSoftware())) {
+                    emitGrpcStatsRequest(input, sw);
+                }
             }
         }
     }
