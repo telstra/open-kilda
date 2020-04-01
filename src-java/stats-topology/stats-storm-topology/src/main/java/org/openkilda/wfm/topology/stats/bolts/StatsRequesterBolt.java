@@ -78,7 +78,7 @@ public class StatsRequesterBolt extends AbstractBolt {
         emit(STATS_REQUEST.name(), input, values);
 
         if (featureTogglesRepository.find().map(FeatureToggles::getCollectGrpcStats).orElse(false)) {
-            Collection<Switch> switches = switchRepository.findAll();
+            Collection<Switch> switches = switchRepository.findActive();
             for (Switch sw : switches) {
                 if (sw.getOfDescriptionSoftware() != null && Switch.isNoviflowSwitch(sw.getOfDescriptionSoftware())) {
                     emitGrpcStatsRequest(input, sw);
