@@ -45,11 +45,13 @@ import io.grpc.noviflow.ShowPacketInOutStats;
 import io.grpc.noviflow.ShowRemoteLogServer;
 import io.grpc.noviflow.StatusSwitch;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The GRPC client session.
@@ -57,6 +59,9 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class GrpcSession {
     private static final int PORT = 50051;
+
+    @Value("${grpc.speaker.session.termination.timeout}")
+    private int sessionTerminationTimeout;
 
     private ManagedChannel channel;
     private NoviFlowGrpcGrpc.NoviFlowGrpcStub stub;
@@ -79,6 +84,11 @@ public class GrpcSession {
     public void shutdown() {
         log.debug("Perform messaging channel shutdown for switch {}", address);
         channel.shutdown();
+        try {
+            channel.awaitTermination(sessionTerminationTimeout, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error(String.format("Unable to shutdown GRPC session with switch '%s'", address), e);
+        }
     }
 
     /**

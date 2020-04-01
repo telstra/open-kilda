@@ -13,6 +13,7 @@ server.port=8091
 grpc.speaker.kafka.listener.threads=1
 grpc.speaker.kafka.session.timeout=30000
 grpc.speaker.kafka.messages.expiration.minutes=15
+grpc.speaker.session.termination.timeout=30
 
 server.contextPath=/api/v1
 security.rest.username.default=kilda
