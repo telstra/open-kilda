@@ -20,7 +20,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import lombok.Value;
 
 @Value
-public class BlockRequest {
+public class FloodlightResourceAddress {
 
     String containerName;
 
@@ -30,19 +30,19 @@ public class BlockRequest {
     @JsonInclude(Include.NON_NULL)
     Integer port;
 
-    public BlockRequest(String containerName, String ip) {
+    public FloodlightResourceAddress(String containerName, String ip) {
         this.containerName = containerName;
         this.ip = ip;
         this.port = null;
     }
 
-    public BlockRequest(String containerName, Integer port) {
+    public FloodlightResourceAddress(String containerName, Integer port) {
         this.containerName = containerName;
         this.ip = null;
         this.port = port;
     }
 
-    public BlockRequest(String containerName, String ip, Integer port) {
+    public FloodlightResourceAddress(String containerName, String ip, Integer port) {
         this.containerName = containerName;
         this.ip = ip;
         this.port = port;

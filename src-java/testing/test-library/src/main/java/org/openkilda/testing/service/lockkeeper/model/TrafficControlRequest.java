@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,22 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.testing.service.lockkeeper.model;
 
-/**
- * Represents stream used in {@link StatsTopology}.
- */
-public enum StatsStreamType {
-    PORT_STATS,
-    METER_STATS,
-    CACHE_DATA,
-    METER_CONFIG_STATS,
-    FLOW_STATS,
-    SYSTEM_RULE_STATS,
-    TABLE_STATS,
-    PACKET_IN_OUT_STATS,
-    STATS_RESPONSE,
-    STATS_REQUEST,
-    GRPC_REQUEST,
-    CACHE_UPDATE,
+import lombok.Value;
+
+import java.util.List;
+
+@Value
+public class TrafficControlRequest {
+    TrafficControlData tcData;
+    List<FloodlightResourceAddress> affectedAddresses;
 }

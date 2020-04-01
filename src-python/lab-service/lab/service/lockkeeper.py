@@ -16,6 +16,7 @@
 from flask import Flask, request, jsonify, Response
 from service.topology import A_SW_NAME
 from docker import DockerClient
+from collections import defaultdict
 import logging
 
 DUMMY_CONTROLLER = "tcp:192.0.2.0:6666"
@@ -120,6 +121,32 @@ def set_controller():
     sw = body['name']
     controller = body['controller']
     switches[sw].set_controller(controller)
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/floodlight/tc', methods=['POST'])
+def floodlight_shape_traffic():
+    body = request.get_json()
+    common_commands = ['tc qdisc del dev eth0 root',
+                       'tc qdisc add dev eth0 root handle 1: prio priomap 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2',
+                       'tc qdisc add dev eth0 parent 1:1 handle 10: netem delay {}ms'.format(
+                           body['tcData']['egressDelayMs'])]
+    switches_by_container = defaultdict(list)
+    for sw in body['affectedAddresses']:
+        switches_by_container[sw['containerName']].append(sw)
+    for container, switches in switches_by_container.items():
+        commands = common_commands.copy()
+        for switch in switches:
+            commands.extend(['tc filter add dev eth0 protocol ip parent 1:0 prio 1 u32 match ip dst {}/32 match ip '
+                             'dport {} 0xffff flowid 1:1'.format(switch['ip'], switch['port'])])
+        execute_commands_in_container(commands, container)
+    return jsonify({'status': 'Applied traffic control rules to {}'.format(switches_by_container)})
+
+
+@app.route('/floodlight/tc/cleanup', methods=['POST'])
+def floodlight_remove_traffic_shaping():
+    body = request.get_json()
+    execute_commands_in_container(['tc qdisc del dev eth0 root'], body['containerName'])
     return jsonify({'status': 'ok'})
 
 
