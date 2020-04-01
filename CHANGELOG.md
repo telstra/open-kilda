@@ -17,6 +17,7 @@
 -  [#3310](https://github.com/telstra/open-kilda/pull/3310) minor improvements in MetersSpec [**tests**]
 -  [#3319](https://github.com/telstra/open-kilda/pull/3319) improve selecting swPair with diverse path in MultitableFlowsSpec [**tests**]
 -  [#3320](https://github.com/telstra/open-kilda/pull/3320) improve grpc related tests [**tests**]
+-  [#3352](https://github.com/telstra/open-kilda/pull/3352) Added extra checks for the null values in SimpleConversionCallback
 
 ### Other changes:
 -  [#3336](https://github.com/telstra/open-kilda/pull/3336) Adjust tests to workaround issue #3335 [**tests**]
