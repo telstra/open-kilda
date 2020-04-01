@@ -18,7 +18,8 @@ package org.openkilda.testing.service.lockkeeper;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.floodlight.MultiFloodlightManager;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
-import org.openkilda.testing.service.lockkeeper.model.BlockRequest;
+import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress;
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -48,15 +49,19 @@ public interface LockKeeperService {
 
     void restartFloodlight(String region);
 
-    BlockRequest knockoutSwitch(Switch sw, MultiFloodlightManager factory);
+    FloodlightResourceAddress knockoutSwitch(Switch sw, MultiFloodlightManager factory);
 
-    void reviveSwitch(Switch sw, BlockRequest blockRequest);
+    void reviveSwitch(Switch sw, FloodlightResourceAddress flResourceAddress);
 
     void setController(Switch sw, String controller);
 
-    void blockFloodlightAccess(String region, BlockRequest address);
+    void blockFloodlightAccess(String region, FloodlightResourceAddress address);
 
-    void unblockFloodlightAccess(String region, BlockRequest address);
+    void unblockFloodlightAccess(String region, FloodlightResourceAddress address);
+
+    void shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData);
+
+    void cleanupTrafficShaperRules(String region);
 
     void removeFloodlightAccessRestrictions(String region);
 
@@ -75,5 +80,16 @@ public interface LockKeeperService {
             throw new RuntimeException(
                     String.format("Unable to parse inetaddress returned flow Floodlight: %s", flFormatInetAddress));
         }
+    }
+
+    /**
+     * Convert switch representation to FloodlightResourceAddress format.
+     */
+    static FloodlightResourceAddress toFlResource(Switch sw, MultiFloodlightManager manager) {
+        String swInfo = manager.getFloodlightService(sw.getRegion()).getSwitches().stream().filter(s ->
+                sw.getDpId().equals(s.getSwitchId())).findFirst().get().getAddress();
+        Pair<String, Integer> inetAddress = parseAddressPort(swInfo);
+        String containerName = manager.getContainerName(sw.getRegion());
+        return new FloodlightResourceAddress(containerName, inetAddress.getLeft(), inetAddress.getRight());
     }
 }

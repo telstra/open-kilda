@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -40,6 +42,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.history.FlowEvent;
@@ -562,6 +565,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldProcessRerouteForValidRequest() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
+        origin.setTargetPathComputationStrategy(PathComputationStrategy.LATENCY);
+        FlowRepository flowRepository = setupFlowRepositorySpy();
+        flowRepository.createOrUpdate(origin);
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
@@ -578,6 +584,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyPathReplace(origin, result);
+        assertEquals(PathComputationStrategy.LATENCY, result.getPathComputationStrategy());
+        assertNull(result.getTargetPathComputationStrategy());
     }
 
     @Test

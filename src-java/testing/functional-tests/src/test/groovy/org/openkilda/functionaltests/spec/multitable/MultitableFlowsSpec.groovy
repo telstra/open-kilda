@@ -371,7 +371,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 involvedSwitches.size() == 3
             }
             // make sure that alternative path for protected path is available
-            allPaths.findAll { it.intersect(desiredPath) == [] ? 1 : 0 }.size() > 0
+            allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 0
         }
         assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
         //make required path the most preferred
@@ -493,7 +493,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 involvedSwitches.size() == 3 && involvedSwitches[0].dpId in allTraffgenSwitchIds &&
                         involvedSwitches[-1].dpId in allTraffgenSwitchIds }
             if (desiredPath) {
-                allPaths.findAll { it.intersect(desiredPath) == [] ? 1 : 0 }.size() > 0
+                allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 0
             }
         }
         assumeTrue("Unable to find a switch pair with two diverse paths", switchPair.asBoolean())
@@ -607,6 +607,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         when: "Disable protected path on the flow"
+        //unable to use v2 here due to https://github.com/telstra/open-kilda/issues/3341
+//        flowHelperV2.updateFlow(flow.flowId, flowHelperV2.toV2(northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false }))
         northbound.updateFlow(flow.flowId, northbound.getFlow(flow.flowId).tap { it.allocateProtectedPath = false })
 
         and: "Update switch properties(multi_table: false) on the dst and (multi_table: true) on the src switches"
@@ -616,7 +618,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[2].dpId], false))
 
         and: "Init auto reroute(Fail a flow ISL (bring switch port down))"
-        def flowIsls = pathHelper.getInvolvedIsls(PathHelper.convert(newFlowPath))
+        def flowIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
         def islToBreak = flowIsls[0]
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -648,8 +650,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         cleanup: "Restore init switch properties and delete the flow"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -659,15 +661,19 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     def "Flow rules are not reinstalled according to switch property while swapping to protected path"() {
-        given: "Three active switches"
+        given: "Three active switches with 3 diverse paths at least"
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
-            desiredPath = pair.paths.find { path ->
-                involvedSwitches = pathHelper.getInvolvedSwitches(path)
-                involvedSwitches.size() == 3 &&
-                        involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+            def allPaths = pair.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
             }
+            desiredPath = allPaths.find {
+                involvedSwitches = pathHelper.getInvolvedSwitches(it)
+                involvedSwitches.size() == 3
+            }
+            // make sure that alternative path for protected path is available
+            allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 1
         }
         assumeTrue("Unable to find a path with three switches", switchPair.asBoolean())
         //make required path the most preferred
@@ -741,7 +747,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         def newFlowPath2
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP ||
+                    northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
             assert newFlowPath2 != desiredPath
         }
@@ -765,8 +772,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         cleanup: "Restore init switch properties and delete the flow"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

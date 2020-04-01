@@ -15,7 +15,7 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
-import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.Message;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,8 +40,8 @@ public class KafkaMessageListener {
      * @param message received  message.
      */
     @KafkaHandler
-    public void onMessage(CommandMessage message) {
+    public void onMessage(Message message) {
         log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
-        messageProcessor.processRequest(message.getData());
+        messageProcessor.processRequest(message);
     }
 }

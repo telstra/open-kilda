@@ -165,6 +165,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("path_computation_strategy")
     private PathComputationStrategy pathComputationStrategy;
 
+    @JsonProperty("target_path_computation_strategy")
+    private PathComputationStrategy targetPathComputationStrategy;
+
     @JsonProperty("diverse_with")
     private Set<String> diverseWith;
 
@@ -198,6 +201,8 @@ public class FlowDto implements Serializable {
      * @param encapsulationType         flow encapsulation type
      * @param detectConnectedDevices    detectConnectedDevices flags
      * @param pathComputationStrategy   path computation strategy
+     * @param targetPathComputationStrategy   target path computation strategy
+     * @param diverseWith               flow ids diverse with
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -226,6 +231,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
                    @JsonProperty("detect_connected_devices") DetectConnectedDevicesDto detectConnectedDevices,
                    @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy,
+                   @JsonProperty("target_path_computation_strategy")
+                               PathComputationStrategy targetPathComputationStrategy,
                    @JsonProperty("diverse_with") Set<String> diverseWith) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
@@ -252,6 +259,7 @@ public class FlowDto implements Serializable {
         this.encapsulationType = encapsulationType;
         setDetectConnectedDevices(detectConnectedDevices);
         this.pathComputationStrategy = pathComputationStrategy;
+        this.targetPathComputationStrategy = targetPathComputationStrategy;
         this.diverseWith = diverseWith;
     }
 
@@ -292,7 +300,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null, null);
+                null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -322,8 +330,7 @@ public class FlowDto implements Serializable {
                         input.getDestination().getDetectConnectedDevices().isLldp(),
                         input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
-                        input.getPathComputationStrategy().toUpperCase()) : null,
-                null);
+                        input.getPathComputationStrategy().toUpperCase()) : null, null, null);
     }
 
     @JsonIgnore

@@ -82,5 +82,7 @@ public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State,
         flow.setMaxLatency(originalFlow.getMaxLatency());
         flow.setPeriodicPings(originalFlow.isPeriodicPings());
         flow.setEncapsulationType(originalFlow.getFlowEncapsulationType());
+        flow.setPathComputationStrategy(originalFlow.getPathComputationStrategy());
+        flow.setTargetPathComputationStrategy(stateMachine.getOldTargetPathComputationStrategy());
     }
 }

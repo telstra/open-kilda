@@ -70,8 +70,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: restore connection, remove the flow"
-        lockKeeper.addFlows([isl.aswitch])
         flowHelperV2.deleteFlow(flow.flowId)
+        lockKeeper.addFlows([isl.aswitch])
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -186,9 +186,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == originalPath
 
         and: "Revive switch, remove the flow"
+        flowHelper.deleteFlow(flow.flowId)
         lockKeeper.reviveSwitch(uniqueSwitch, blockData)
         Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(uniqueSwitch.dpId).state == SwitchChangeType.ACTIVATED }
-        flowHelper.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval) { northbound.getAllLinks().each { it.state == IslChangeType.DISCOVERED } }
     }

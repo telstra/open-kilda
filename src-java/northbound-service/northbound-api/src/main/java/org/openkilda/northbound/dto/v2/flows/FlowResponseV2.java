@@ -51,6 +51,7 @@ public class FlowResponseV2 {
     private boolean allocateProtectedPath;
     private String encapsulationType;
     private String pathComputationStrategy;
+    private String targetPathComputationStrategy;
 
     private String created;
     private String lastUpdated;

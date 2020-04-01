@@ -109,9 +109,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology to the original state, remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
         portDown && !portUp && antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelperV2.deleteFlow(flow.flowId)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -192,8 +192,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Bring port involved in the original path up and delete the flow"
-        antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -299,8 +299,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         and: "Bring flow ports up and delete the flow"
-        ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
         flowHelperV2.deleteFlow(flow.flowId)
+        ["source", "destination"].each { antiflap.portUp(flow."$it".switchId, flow."$it".portNumber) }
         database.resetCosts()
     }
 

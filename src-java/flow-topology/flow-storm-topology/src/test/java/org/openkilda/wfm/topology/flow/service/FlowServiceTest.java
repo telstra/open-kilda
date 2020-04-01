@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -36,6 +37,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -295,16 +297,19 @@ public class FlowServiceTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldRerouteFlow() throws RecoverableException, UnroutableFlowException,
-            FlowNotFoundException, FlowAlreadyExistException, FlowValidationException,
-            SwitchValidationException, ResourceAllocationException {
-
+    public void shouldRerouteFlow() throws Exception {
+        FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         Flow flow = getFlowBuilder().build();
 
         when(pathComputer.getPath(any())).thenReturn(PATH_DIRECT_1_TO_3);
 
         flowService.createFlow(flow, null, mock(FlowCommandSender.class));
         flowService.updateFlowStatus(FLOW_ID, FlowStatus.UP, emptySet());
+        flowRepository.findById(FLOW_ID)
+                .ifPresent(f -> {
+                    f.setTargetPathComputationStrategy(PathComputationStrategy.LATENCY);
+                    flowRepository.createOrUpdate(f);
+                });
 
         when(pathComputer.getPath(any(), anyList())).thenReturn(PATH_1_TO_3_VIA_2);
 
@@ -315,8 +320,11 @@ public class FlowServiceTest extends Neo4jBasedTest {
         assertTrue(reroutedFlowPaths.isRerouted());
         checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlowPaths.getNewFlowPaths().getForwardPath());
 
-        Optional<Flow> foundFlow = persistenceManager.getRepositoryFactory().createFlowRepository().findById(FLOW_ID);
-        assertEquals(flow.getFlowId(), foundFlow.get().getFlowId());
+        Flow foundFlow = flowRepository.findById(FLOW_ID)
+                .orElseThrow(() -> new IllegalStateException("No flow found " + FLOW_ID));
+        assertEquals(flow.getFlowId(), foundFlow.getFlowId());
+        assertEquals(PathComputationStrategy.LATENCY, foundFlow.getPathComputationStrategy());
+        assertNull(foundFlow.getTargetPathComputationStrategy());
     }
 
     @Test
@@ -422,6 +430,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
                 .destSwitch(getOrCreateSwitch(SWITCH_ID_3)).destPort(2).destVlan(102)
                 .bandwidth(BANDWIDTH)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .status(FlowStatus.IN_PROGRESS);
     }
 

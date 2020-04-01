@@ -274,6 +274,9 @@ public class FlowOperationsService {
                     carrier.emitPeriodicPingUpdate(flow.getFlowId(), flow.getPeriodicPings());
                 }
             }
+            if (flow.getTargetPathComputationStrategy() != null) {
+                currentFlow.setTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
+            }
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);
 

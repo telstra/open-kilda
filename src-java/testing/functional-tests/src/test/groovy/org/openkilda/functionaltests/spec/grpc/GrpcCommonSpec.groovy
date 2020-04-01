@@ -25,4 +25,23 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         where:
         switches << getNoviflowSwitches()
     }
+
+    @Tidy
+    @Unroll
+    def "Able to get switch packet in out stats"() {
+        when: "Get switch packet in out stats"
+        def response = grpc.getPacketInOutStats(switches.address)
+
+        then: "Response is not null and needed fields are returned"
+        with(response) {
+            [packetInTotalPackets, packetInTotalPacketsDataplane, packetInNoMatchPackets, packetInApplyActionPackets,
+            packetInInvalidTtlPackets, packetInActionSetPackets, packetInGroupPackets, packetInPacketOutPackets,
+            packetOutTotalPacketsHost, packetOutTotalPacketsDataplane, packetOutEth0InterfaceUp, replyStatus].every {
+                it != null
+            }
+        }
+
+        where:
+        switches << getNoviflowSwitches()
+    }
 }

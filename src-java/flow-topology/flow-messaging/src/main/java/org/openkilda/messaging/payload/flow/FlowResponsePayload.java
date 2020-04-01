@@ -40,6 +40,9 @@ public class FlowResponsePayload extends FlowPayload {
     @JsonProperty("status-details")
     private FlowStatusDetailsPayload flowStatusDetails;
 
+    @JsonProperty("target-path-computation-strategy")
+    private String targetPathComputationStrategy;
+
     /**
      * Instance constructor.
      *
@@ -61,6 +64,7 @@ public class FlowResponsePayload extends FlowPayload {
      * @param pinned                    pinned flag
      * @param encapsulationType         flow encapsulation type
      * @param pathComputationStrategy   path computation strategy
+     * @param targetPathComputationStrategy     target path computation strategy
      */
     @Builder(builderMethodName = "flowResponsePayloadBuilder")
     @JsonCreator
@@ -81,11 +85,13 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("diverse_with") List<String> diverseWith,
                                @JsonProperty("pinned") Boolean pinned,
                                @JsonProperty("encapsulation-type") String encapsulationType,
-                               @JsonProperty("path-computation-strategy") String pathComputationStrategy) {
+                               @JsonProperty("path-computation-strategy") String pathComputationStrategy,
+                               @JsonProperty("target-path-computation-strategy") String targetPathComputationStrategy) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
                 description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType,
                 pathComputationStrategy);
         this.diverseWith = diverseWith;
         this.flowStatusDetails = flowStatusDetails;
+        this.targetPathComputationStrategy = targetPathComputationStrategy;
     }
 }

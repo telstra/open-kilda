@@ -154,8 +154,8 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .ignoring("forward.latency").ignoring("reverse.latency")
 
         cleanup: "Restore rules, costs and remove the flow"
-        rulesToRemove && lockKeeper.addFlows(rulesToRemove)
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        rulesToRemove && lockKeeper.addFlows(rulesToRemove)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED

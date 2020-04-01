@@ -188,8 +188,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flow2Path == flow1Path
 
         and: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

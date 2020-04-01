@@ -15,7 +15,7 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.Message;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,14 +32,13 @@ import org.springframework.util.concurrent.ListenableFuture;
 public class KafkaMessageProducer {
 
     @Autowired
-    private KafkaTemplate<String, InfoData> kafkaTemplate;
+    private KafkaTemplate<String, Message> kafkaTemplate;
 
     /**
      * Sends message to kafka topic.
      */
-    // TODO seems like message should be Message subclass
-    public ListenableFuture<SendResult<String, InfoData>> send(String topic, InfoData message) {
-        ListenableFuture<SendResult<String, InfoData>> future = kafkaTemplate.send(topic, message);
+    public ListenableFuture<SendResult<String, Message>> send(String topic, Message message) {
+        ListenableFuture<SendResult<String, Message>> future = kafkaTemplate.send(topic, message);
         future.addCallback(
                 success -> log.debug("Response has been sent: topic={}, message={}", topic, message),
                 error -> log.error("Unable to send message: topic={}, message={}", topic, message, error)

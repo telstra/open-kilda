@@ -10,7 +10,7 @@ box "gRPC Client Topology" #LightBlue
 end box
 database Database
 collections Switches
-control kilda.grpc.response
+control kilda.grpc.response.priv
 
 kilda.grpc.client -> GrpcClientSpout: Create port 2020 on sw A request
 GrpcClientSpout -> RequestBuilderBolt: Create port 2020 on sw A request
@@ -52,7 +52,7 @@ alt Response received:
     Switches -> RequestSenderBolt: a result of creation port 2020
     deactivate Switches
     activate RequestSenderBolt
-    RequestSenderBolt -> kilda.grpc.response: send the response from the switch
+    RequestSenderBolt -> kilda.grpc.response.priv: send the response from the switch
 
     RequestSenderBolt -> RequestSenderBolt: check if there is any pending requests \nfor switch A in the queue
     RequestSenderBolt -> Switches: send create port 2021 command
@@ -63,7 +63,7 @@ alt Response received:
     Switches -> RequestSenderBolt: a result of creation port 2021
     deactivate Switches
     activate RequestSenderBolt
-    RequestSenderBolt -> kilda.grpc.response: send the response from the switch
+    RequestSenderBolt -> kilda.grpc.response.priv: send the response from the switch
     RequestSenderBolt -> RequestSenderBolt: check if there is pending requests to the switch A
     deactivate RequestSenderBolt
 

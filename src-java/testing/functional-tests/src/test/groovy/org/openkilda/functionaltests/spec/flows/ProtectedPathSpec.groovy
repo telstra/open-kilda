@@ -668,8 +668,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         and: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -935,7 +935,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         antiflap.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
         antiflap.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
-        //TODO (andriidovhan) FlowState should be DEGRADED and mainFlowPathStatus should be "Up" when pr2430 is merged
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
@@ -965,8 +964,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -1034,9 +1033,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         and: "Cleanup: Restore topology, delete flow and reset costs"
+        flowHelper.deleteFlow(flow.id)
         antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -1085,8 +1084,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Cleanup: Restore topology, delete flow and reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

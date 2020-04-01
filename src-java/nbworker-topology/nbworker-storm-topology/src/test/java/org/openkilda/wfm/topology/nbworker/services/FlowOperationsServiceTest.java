@@ -87,6 +87,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         String testFlowId = "flow_id";
         Long maxLatency = 555L;
         Integer priority = 777;
+        PathComputationStrategy pathComputationStrategy = PathComputationStrategy.LATENCY;
 
         Flow flow = new TestFlowBuilder()
                 .flowId(testFlowId)
@@ -97,6 +98,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
                 .build();
         flow.setStatus(FlowStatus.UP);
         flowRepository.createOrUpdate(flow);
@@ -105,12 +107,14 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .flowId(testFlowId)
                 .maxLatency(maxLatency)
                 .priority(priority)
+                .targetPathComputationStrategy(pathComputationStrategy)
                 .build();
 
         Flow updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
+        assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
 
         receivedFlow = FlowDto.builder()
                 .flowId(testFlowId)
@@ -119,6 +123,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
+        assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
     }
 
     @Test

@@ -20,6 +20,7 @@ import static org.openkilda.model.Cookie.isDefaultRule;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
@@ -49,6 +50,7 @@ public class SpeakerBolt extends AbstractBolt {
     private static final String CACHE_STREAM = StatsStreamType.CACHE_DATA.toString();
     private static final String SYSTEM_RULES_STATS_STREAM = StatsStreamType.SYSTEM_RULE_STATS.toString();
     private static final String TABLE_STATS_STREAM = StatsStreamType.TABLE_STATS.toString();
+    private static final String PACKET_IN_OUT_STATS_STREAM = StatsStreamType.PACKET_IN_OUT_STATS.toString();
 
     @Override
     protected void handleInput(Tuple tuple) throws Exception {
@@ -79,6 +81,9 @@ public class SpeakerBolt extends AbstractBolt {
         } else if (data instanceof SwitchTableStatsData) {
             logger.debug("Table stats message: {}", infoMessage);
             emitWithContext(TABLE_STATS_STREAM, tuple, new Values(data));
+        } else if (data instanceof GetPacketInOutStatsResponse) {
+            logger.debug("Packet in out stats message: {}", infoMessage);
+            emitWithContext(PACKET_IN_OUT_STATS_STREAM, tuple, new Values(data));
         } else {
             //FIXME (ncherevko): we might receive few unexpected messages here, need to fix it and uncomment below line
             //unhandledInput(tuple);
@@ -115,5 +120,6 @@ public class SpeakerBolt extends AbstractBolt {
         outputFieldsDeclarer.declareStream(CACHE_STREAM, statsFields);
         outputFieldsDeclarer.declareStream(SYSTEM_RULES_STATS_STREAM, statsFields);
         outputFieldsDeclarer.declareStream(TABLE_STATS_STREAM, statsFields);
+        outputFieldsDeclarer.declareStream(PACKET_IN_OUT_STATS_STREAM, statsFields);
     }
 }

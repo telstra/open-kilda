@@ -82,7 +82,10 @@ class SimpleConversionCallback implements ConversionCallback {
         if (value == null) {
             return null;
         }
-
+        if (targetType == null) {
+            throw new PersistenceException("Unable to locate appropriate converter for null-valued target type and "
+                    + value);
+        }
         // Look up for a converter with corresponding entity and graph classes.
         for (Map.Entry<ParameterizedType, Class<? extends AttributeConverter>> converter : converters.entrySet()) {
             Type[] genericTypes = converter.getKey().getActualTypeArguments();

@@ -669,8 +669,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         checkTrafficCountersInRules(flow.destination, false)
 
         cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        portDown && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelperV2.deleteFlow(flow.flowId)
+        portDown && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
