@@ -52,8 +52,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         then: "Default rules are installed on the switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
-            cookies.sort() == sw.defaultCookies.sort()
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
     }
 
@@ -77,13 +76,15 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, expectedRules)
+            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries
+                    .findAll { !Cookie.isIslVlanEgress(it.cookie) }, expectedRules)
         }
 
         cleanup: "Install missing default rules"
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
 
         where:
@@ -157,6 +158,7 @@ switch(#sw.dpId, install-action=#data.installRulesAction)"(Map data, Switch sw) 
         northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
 
         where:
