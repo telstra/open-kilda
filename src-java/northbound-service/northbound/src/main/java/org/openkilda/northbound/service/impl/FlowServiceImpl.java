@@ -270,11 +270,19 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowResponsePayload> patchFlow(String flowId, FlowPatchDto flowPatchDto) {
         logger.info("Patch flow request for flow {}", flowId);
+        String correlationId = RequestCorrelationId.getId();
 
-        FlowDto flowDto = flowMapper.toFlowDto(flowPatchDto);
+        FlowDto flowDto;
+        try {
+            flowDto = flowMapper.toFlowDto(flowPatchDto);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the flow patch request");
+        }
         flowDto.setFlowId(flowId);
         CommandMessage request = new CommandMessage(new FlowPatchRequest(flowDto), System.currentTimeMillis(),
-                RequestCorrelationId.getId());
+                correlationId);
 
         return messagingChannel.sendAndGet(nbworkerTopic, request)
                 .thenApply(FlowResponse.class::cast)
