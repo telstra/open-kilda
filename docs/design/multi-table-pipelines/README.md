@@ -52,7 +52,8 @@ rules that will wire them them together. In this mode controller will operate 7 
 * Ingress Table(2) - second table in a chain for the ingress traffic 
 * Post Ingress Table(3) - last table in a chain for the ingress traffic
 * Egress Table(4) - table for egress rules
-* Transit Table(6) - table for transit rules 
+* Transit Table(5) - table for transit rules 
+* Applications Table(6) - table for mirroring traffic based on enabled apps for flow
 
 Aggregated list of rules for Multi-Table Mode is available  [here](MultiTableMode.pdf).
 
