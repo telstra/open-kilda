@@ -121,7 +121,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     oppositePath != null ? oppositePath.getPathId() : null);
         }
 
-        List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(path, context, encapsulation,
+        List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(flow, path, context, encapsulation,
                 doIngress, doTransit, doEgress, new RemoveSharedRulesContext(
                         speakerRequestBuildContext.isRemoveCustomerPortRule(),
                         speakerRequestBuildContext.isRemoveCustomerPortLldpRule(),
@@ -131,7 +131,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 encapsulation = getEncapsulation(
                         flow.getEncapsulationType(), oppositePath.getPathId(), path.getPathId());
             }
-            requests.addAll(makePathRequests(oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
+            requests.addAll(makePathRequests(flow, oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
                     new RemoveSharedRulesContext(
                             speakerRequestBuildContext.isRemoveOppositeCustomerPortRule(),
                             speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule(),
@@ -140,10 +140,10 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         return requests;
     }
 
+    @SuppressWarnings("squid:S00107")
     private List<FlowSegmentRequestFactory> makePathRequests(
-            @NonNull FlowPath path, CommandContext context, FlowTransitEncapsulation encapsulation,
+            @NonNull Flow flow, @NonNull FlowPath path, CommandContext context, FlowTransitEncapsulation encapsulation,
             boolean doIngress, boolean doTransit, boolean doEgress, RemoveSharedRulesContext removeSharedRulesContext) {
-        final Flow flow = path.getFlow();
         final FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
         final FlowSideAdapter egressSide = FlowSideAdapter.makeEgressAdapter(flow, path);
 
