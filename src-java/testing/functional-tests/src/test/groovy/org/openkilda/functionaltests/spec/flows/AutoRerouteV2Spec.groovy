@@ -6,7 +6,9 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -28,6 +30,7 @@ import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
 import spock.lang.Narrative
@@ -478,9 +481,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         and: "Flow is rerouted due to switchUp event"
         //TODO(andriidovhan) specify flow history verification(it is not implemented yet) Reroute reason: switchUp event
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 2
+            assert northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 2
 
-            assert northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == "Flow rerouting" }.size() == 5
+            assert northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 5
             /* 2 = first reroute due to the broken isl + 1 reroute on switch up event;
              5 = first reroute due to the broken isl + 3 retries + 1 reroute on switch up event;
              NOTE: retry is available for a flow when switchUp event appears on a transit switch */
@@ -548,7 +551,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
         TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
         Wrappers.timedLoop(rerouteDelay) { // just in case
-            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == "Flow rerouting" }.size() == 1
+            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
         }
 
         cleanup: "Restore topology, delete the flow and reset costs"
@@ -620,20 +623,21 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
 triggering one more reroute of the current path"
+        //add latency to make reroute process longer to allow us break the target path while rules are being installed
+        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
         //do the 2nd portdown a little bit earlier, since there is an antiflapMin time before the actual port down
-        //and we want to break the second ISL right when the first reroute starts and is in progress. race here
-        //below '+750ms' correction was found experimentally to reproduce the race more often on local env
-        sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000 + 750 as long))
+        //and we want to break the second ISL right when the first reroute starts and is in progress
+        sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000))
         antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
         TimeUnit.SECONDS.sleep(rerouteDelay)
 
-        then: "Flow is UP"
+        then: "System reroutes the flow twice and flow ends up in UP state"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
-            //we need a stable UP state, since it may temporary switch to UP and then again to In Progress
-            Wrappers.timedLoop(2) {
-                assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-                sleep(500)
-            }
+            def history = northbound.getFlowHistory(flow.flowId)
+            def reroutes = history.findAll { it.action == REROUTE_ACTION }
+            assert reroutes.size() == 2 //reroute queue, second reroute starts right after first is finished
+            reroutes.each { assert it.histories.last().action == REROUTE_SUCCESS }
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "New flow path avoids both main and backup paths as well as broken ISLs"
@@ -648,6 +652,7 @@ triggering one more reroute of the current path"
         }
 
         cleanup:
+        swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.region)
         flow && flowHelperV2.deleteFlow(flow.flowId)
         withPool {
             [mainPathUniqueIsl, commonIsl].eachParallel { Isl isl ->
