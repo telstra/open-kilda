@@ -54,29 +54,29 @@ Note that other properties should
 correspond to actual Kilda properties that were used for deployment of the target env.
 - Check your `topology.yaml`. It should represent your actual expected hardware topology. You can automatically generate 
 `topology.yaml` based on currently discovered topology, but be aware that this will prevent you from catching
-some switch/isl discovery-related issues: `gradle functionalTest -Dtest=GenerateTopologyConfig` && `cp functional-tests/target/topology.yaml functional-tests/`
+some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/target/topology.yaml functional-tests/`
 - Now you can run tests by executing the following command in the terminal:  
-`gradle functionalTest -f services/src/functional-tests`.
+`make func-tests`.
 
 ### General info
 - Framework requires `topology.yaml` and `kilda.properties` files. Custom locations can be specified via
 `-Dtopology.definition.file=custom/topology.yaml` and `-Dkilda.config.file=custom/kilda.properties`
-- Tests can be run via gradle (given we in the `functional-tests` dir) 
-`gradle functionalTest`.  
+- Tests can be run via gradle (given we in the `src-java` dir)
+`./gradlew :functional-tests:functionalTest`.
 If you want to run a single test, you can use the following command:  
-`gradle functionalTest -Dtest="<path_to_test_file>#<test_name>"`.
+`./gradlew :functional-tests:functionalTest --info --tests <test_file>."<test_name>"`.
 For example:  
-`gradle functionalTest -Dtest="spec.northbound.flows.FlowsSpec#Able to create a single-switch flow"`
+`./gradlew :functional-tests:functionalTest --info --tests LinkSpec."Unable to delete an active link"`
 - Tests can be run as regular JUnit tests from your IDE
 
 ## Test suites
 We leverage test suites by first tagging tests and then supplying a required `tag experession` when starting a test run.
 More info on how to form a tag expression can be found in javadoc here `org.openkilda.functionaltests.extension.tags.TagExtension`.  
 Common usages:  
-`gradle functionalTest -Dtags=smoke` #shorten suite of most valuable test cases  
-`gradle functionalTest '-Dtags=topology_dependent or hardware'`   
-`gradle functionalTest -Dtags=smoke_switches` #focus on switch-related tests (e.g. smoke test integration with new switch firmware)  
-`gradle functionalTest '-Dtags=not low_priority'` #exclude regression low-value tests. This suite is used to run
+`./gradlew :functional-tests:functionalTest -Dtags='smoke'` #shorten suite of most valuable test cases
+`./gradlew :functional-tests:functionalTest -Dtags='topology_dependent or hardware'`
+`./gradlew :functional-tests:functionalTest -Dtags='smoke_switches'` #focus on switch-related tests (e.g. smoke test integration with new switch firmware)
+`./gradlew :functional-tests:functionalTest -Dtags='not low_priority'` #exclude regression low-value tests. This suite is used to run
 func tests for each PR on github 
 
 ## Artifacts
