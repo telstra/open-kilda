@@ -847,7 +847,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.id doesn't have protected path"
 
         and: "Cleanup: revert system to original state"
@@ -861,7 +861,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
@@ -928,7 +928,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the main path only"
@@ -950,7 +950,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc1 = thrown(HttpClientErrorException)
         exc1.rawStatusCode == 400
-        exc1.responseBodyAsString.to(MessageError).errorMessage ==
+        exc1.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"
