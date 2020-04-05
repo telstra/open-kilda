@@ -108,4 +108,16 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.delete.speaker.command.retries")
     @Default("3")
     int getDeleteSpeakerCommandRetries();
+
+    @Key("flow.pathswap.hub.timeout.seconds")
+    @Default("30")
+    int getPathSwapHubTimeoutSeconds();
+
+    @Key("flow.pathswap.speaker.timeout.seconds")
+    @Default("10")
+    int getPathSwapSpeakerTimeoutSeconds();
+
+    @Key("flow.pathswap.speaker.command.retries")
+    @Default("3")
+    int getPathSwapSpeakerCommandRetries();
 }
