@@ -5,6 +5,8 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -1305,6 +1307,123 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Cleanup: Revert system to origin state"
         !initConf.useMultiTable && northbound.updateKildaConfiguration(initConf)
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/3341")
+    def "System can manipulate protected flow, where paths are in different table modes"() {
+        given: "Switches with 3 diverse paths"
+        List<PathNode> desiredPath = null
+        List<Switch> mainPathSwitches = null
+        def switchPair = topologyHelper.switchPairs.find { pair ->
+            def allPaths = pair.paths.findAll { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+            }
+            desiredPath = allPaths.find { thePath ->
+                mainPathSwitches = pathHelper.getInvolvedSwitches(thePath)
+                mainPathSwitches.size() == 3 && allPaths.findAll { it.intersect(thePath) == [] }.size() > 2
+            }
+        }
+        assumeTrue("Unable to find a switch pair with two diverse paths", switchPair.asBoolean())
+        //make required path the most preferred
+        switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
+        Map<SwitchId, SwitchPropertiesDto> initSwProps = mainPathSwitches.collectEntries {
+            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+        }
+
+        and: "Multi table is disabled for them"
+        mainPathSwitches.findAll { initSwProps[it.dpId].multiTable }.each { sw ->
+            northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps[sw.dpId], false))
+        }
+
+        when: "Create a protected flow"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.allocateProtectedPath = true
+        flowHelperV2.addFlow(flow)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
+        assert PathHelper.convert(flowPathInfo) == desiredPath
+
+        and: "Change table mode on src switch to multitable"
+        northbound.updateSwitchProperties(switchPair.src.dpId,
+                changeSwitchPropsMultiTableValue(initSwProps[switchPair.src.dpId], true))
+
+        and: "Reroute main path to another path, but leave protected path the same"
+        def targetPath = switchPair.paths.find {
+            it.intersect(desiredPath) == [] && it != PathHelper.convert(flowPathInfo.protectedPath) &&
+               pathHelper.getInvolvedSwitches(it).size() > 2
+         }
+        //main and protected paths should have the same cost so that only one reroute
+        def pathsWithCosts = [PathHelper.convert(flowPathInfo), PathHelper.convert(flowPathInfo.protectedPath)]
+            .collectEntries {
+                [(it): pathHelper.getInvolvedIsls(it).sum { northbound.getLink(it).cost }]
+            }
+        def diff = Math.abs(pathsWithCosts.entrySet()[0].value - pathsWithCosts.entrySet()[1].value)
+        pathsWithCosts.min { it.value }.with {
+            def isl = pathHelper.getInvolvedIsls(it.key)[0]
+            northbound.updateLinkProps([islUtils.toLinkProps(isl, [cost: (northbound.getLink(isl).cost + diff).toString()])])
+        }
+        switchPair.paths.findAll { it != targetPath }
+                .each { pathHelper.makePathMorePreferable(targetPath, it) }
+        assert northboundV2.rerouteFlow(flow.flowId).rerouted
+
+        then: "Reroute is done successfully"
+        Wrappers.wait(RULES_INSTALLATION_TIME * 2) {
+            def reroutes = northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }
+            assert reroutes.size() == 1
+            assert reroutes.last().histories.last().action == REROUTE_SUCCESS
+            northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
+
+        and: "Flow rules for main path are in multitable mode, protected in single table mode on src"
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+            rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+            //note that protected path remains in single table mode since it was not rerouted
+            rules.find { it.cookie == flowInfoFromDb.protectedReversePath.cookie.value }.tableId == SINGLE_TABLE_ID
+        }
+
+        and: "No involved switches have rule discrepencies"
+        def path = northbound.getFlowPath(flow.flowId)
+        def allInvolvedSwitches = (pathHelper.getInvolvedSwitches(pathHelper.convert(path)) +
+                pathHelper.getInvolvedSwitches(pathHelper.convert(path.protectedPath))).unique()
+        allInvolvedSwitches.each {
+            def validation = northbound.validateSwitch(it.dpId)
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+
+        when: "Swap flow paths"
+        northbound.swapFlowPath(flow.flowId)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        flowInfoFromDb = database.getFlow(flow.flowId)
+
+        then: "Flow rules for main path are in singletable mode, protected in multitable mode on src"
+        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
+            rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
+            rules.find { it.cookie == flowInfoFromDb.protectedReversePath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        }
+
+        and: "No involved switches have rule discrepencies"
+        allInvolvedSwitches.each {
+            def validation = northbound.validateSwitch(it.dpId)
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+
+        when: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+
+        then: "No involved switches have rule discrepencies"
+        allInvolvedSwitches.each {
+            def validation = northbound.validateSwitch(it.dpId)
+            validation.verifyRuleSectionsAreEmpty()
+            validation.verifyMeterSectionsAreEmpty()
+        }
+
+        cleanup:
+        revertSwitchesToInitState(mainPathSwitches, initSwProps)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
     void checkDefaultRulesOnSwitches(List<Switch> switches) {
