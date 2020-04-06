@@ -325,7 +325,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         northbound.swapFlowPath(flow.id)
 
         then: "Flow and src/dst switches are valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP }
         def swappedFlow = database.getFlow(flow.id)
         validateFlowAndSwitches(swappedFlow)
 

@@ -111,8 +111,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow is created without protected path"
         !northbound.getFlowPath(flow.flowId).protectedPath
-        def flowInfo = northbound.getFlow(flow.flowId)
-        !flowInfo.flowStatusDetails
+        def flowInfo = northboundV2.getFlow(flow.flowId)
+        !flowInfo.statusDetails
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         def currentLastUpdate = flowInfo.lastUpdated
@@ -121,12 +121,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Protected path is enabled"
         def flowPathInfoAfterUpdating = northbound.getFlowPath(flow.flowId)
         flowPathInfoAfterUpdating.protectedPath
-        northbound.getFlow(flow.flowId).flowStatusDetails
+        northboundV2.getFlow(flow.flowId).statusDetails
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
 
-        currentLastUpdate < northbound.getFlow(flow.flowId).lastUpdated
+        currentLastUpdate < northboundV2.getFlow(flow.flowId).lastUpdated
 
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
@@ -137,11 +137,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath
-        !northbound.getFlow(flow.flowId).flowStatusDetails
+        !northboundV2.getFlow(flow.flowId).statusDetails
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
@@ -244,7 +244,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
 
             assert pathHelper.convert(flowPathInfoAfterRerouting) == currentProtectedPath
@@ -315,7 +315,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow is rerouted"
         rerouteResponse.rerouted
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "Path is not changed to protected path"
@@ -327,7 +327,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def newCurrentProtectedPath = pathHelper.convert(flowPathInfoAfterRerouting.protectedPath)
         newCurrentProtectedPath != currentPath
         newCurrentProtectedPath != currentProtectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -377,7 +377,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             def newPathInfo = northbound.getFlowPath(flow.flowId)
             def newCurrentPath = pathHelper.convert(newPathInfo)
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert newCurrentPath != currentPath
 
             def newCurrentProtectedPath = pathHelper.convert(newPathInfo.protectedPath)
@@ -584,7 +584,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath)
             assert newProtectedPath != currentProtectedPath
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "Current path is not changed"
@@ -805,11 +805,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         when: "Swap flow paths"
         def srcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
         def dstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
-        def currentLastUpdate = northbound.getFlow(flow.flowId).lastUpdated
+        def currentLastUpdate = northboundV2.getFlow(flow.flowId).lastUpdated
         northbound.swapFlowPath(flow.flowId)
 
         then: "Flow paths are swapped"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         def flowPathInfoAfterSwapping = northbound.getFlowPath(flow.flowId)
         def newCurrentPath = pathHelper.convert(flowPathInfoAfterSwapping)
         def newCurrentProtectedPath = pathHelper.convert(flowPathInfoAfterSwapping.protectedPath)
@@ -818,7 +818,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         newCurrentProtectedPath != currentProtectedPath
         newCurrentProtectedPath == currentPath
 
-        currentLastUpdate < northbound.getFlow(flow.flowId).lastUpdated
+        currentLastUpdate < northboundV2.getFlow(flow.flowId).lastUpdated
 
         and: "New meter is created on the src and dst switches"
         def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
@@ -968,10 +968,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
 
         then: "Flow state is changed to DEGRADED"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
-        verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-            mainFlowPathStatus == "Up"
-            protectedFlowPathStatus == "Down"
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
+        verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
+            mainPath == "Up"
+            protectedPath == "Down"
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
@@ -979,12 +979,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
-        verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-            mainFlowPathStatus == "Down"
-            protectedFlowPathStatus == "Down"
+        verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
+            mainPath == "Down"
+            protectedPath == "Down"
         }
 
         when: "Try to swap paths when main/protected paths are not available"
@@ -1002,10 +1002,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
-            verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-                mainFlowPathStatus == "Up"
-                protectedFlowPathStatus == "Down"
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
+                mainPath == "Up"
+                protectedPath == "Down"
             }
         }
 
@@ -1025,7 +1025,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
         Wrappers.wait(discoveryInterval * 1.5 + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "Cleanup: Restore topology, delete flows and reset costs"
@@ -1072,7 +1072,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def protectedIslToBreak = pathHelper.getInvolvedIsls(currentProtectedPath)[0]
         antiflap.portDown(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
 
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
 
         when: "Make the current path less preferable than alternative path"
         def alternativePath = switchPair.paths.find { it != currentPath && it != currentProtectedPath }
@@ -1091,7 +1091,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         then: "Flow state is changed to UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Protected path is recalculated only"
         def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
@@ -1143,7 +1143,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow status is DEGRADED"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -1152,7 +1152,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = false })
 
         then: "Flow status is UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Restore topology, delete flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1291,10 +1291,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         and: "Flow and both its paths are UP"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlow(flow.flowId)) {
+            verifyAll(northboundV2.getFlow(flow.flowId)) {
                 status == "Up"
-                flowStatusDetails.mainFlowPathStatus == "Up"
-                flowStatusDetails.protectedFlowPathStatus == "Up"
+                statusDetails.mainPath == "Up"
+                statusDetails.protectedPath == "Up"
             }
         }
 

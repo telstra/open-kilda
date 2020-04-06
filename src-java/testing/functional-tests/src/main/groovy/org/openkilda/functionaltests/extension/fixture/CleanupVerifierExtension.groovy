@@ -4,6 +4,7 @@ import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtensio
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.Constants
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.IMethodInterceptor
@@ -28,6 +29,9 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
     @Autowired
     NorthboundService northbound
 
+    @Autowired
+    NorthboundServiceV2 northboundV2
+
     @Override
     void delayedVisitSpec(SpecInfo spec) {
         if (!enabled) {
@@ -39,7 +43,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                 void intercept(IMethodInvocation invocation) throws Throwable {
                     invocation.proceed()
                     log.info("Running cleanup verifier for '$invocation.feature.name'")
-                    assert northbound.getAllFlows().empty
+                    assert northboundV2.getAllFlows().empty
                     northbound.getAllSwitches().each {
                         def validation = northbound.validateSwitch(it.switchId)
                         validation.verifyRuleSectionsAreEmpty()

@@ -106,9 +106,9 @@ class FlowHistoryV2Spec extends HealthCheckSpecification {
         }
 
         when: "Update the created flow"
-         def flowInfo = northbound.getFlow(flow.flowId)
-        flowHelperV2.updateFlow(flowInfo.id,
-                flowHelperV2.toV2(flowInfo.tap { it.description = it.description + "updated" }))
+         def flowInfo = northboundV2.getFlow(flow.flowId)
+        flowHelperV2.updateFlow(flowInfo.flowId,
+                flowHelperV2.toRequest(flowInfo.tap { it.description = it.description + "updated" }))
 
         then: "History record is created after updating the flow"
         Long timestampAfterUpdate = System.currentTimeSeconds()

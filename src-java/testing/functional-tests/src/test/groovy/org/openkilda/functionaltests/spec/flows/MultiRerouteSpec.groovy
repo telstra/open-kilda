@@ -64,7 +64,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
                 pathHelper.convert(northbound.getFlowPath(it.flowId)) == newPath
             }
             assert flowsOnPrefPath.size() == halfOfFlows.size()
-            flowsOnPrefPath.each { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
+            flowsOnPrefPath.each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
         }
 
         and: "Rest of the flows are hosted on another alternative path"

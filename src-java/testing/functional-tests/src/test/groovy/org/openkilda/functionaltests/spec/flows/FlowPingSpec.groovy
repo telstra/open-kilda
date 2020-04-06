@@ -66,9 +66,10 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.forward.error
         !response.reverse.error
 
-        and: "Latency is present in response"
-        response.forward.latency
-        response.reverse.latency
+        // 0 latency issue https://github.com/telstra/open-kilda/issues/3312
+        // and: "Latency is present in response"
+        // response.forward.latency
+        // response.reverse.latency
 
         and: "Unicast rule packet count is increased and logged to otsdb"
         def statsData = null

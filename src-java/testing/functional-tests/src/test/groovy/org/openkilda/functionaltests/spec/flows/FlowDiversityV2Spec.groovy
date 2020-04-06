@@ -63,9 +63,9 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         responseMap[flow3.flowId].diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
 
         and: "All flows have diverse flow IDs in response"
-        northbound.getFlow(flow1.flowId).diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
-        northbound.getFlow(flow2.flowId).diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
-        northbound.getFlow(flow3.flowId).diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
+        northboundV2.getFlow(flow1.flowId).diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
+        northboundV2.getFlow(flow2.flowId).diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
+        northboundV2.getFlow(flow3.flowId).diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
 
         and: "All flows have different paths"
         def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
@@ -105,9 +105,9 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         flow2PathUpdated != flow2Path
 
         and: "All flows except last one have the 'diverse_with' field"
-        northbound.getFlow(flow1.flowId).diverseWith == [flow2.flowId]
-        northbound.getFlow(flow2.flowId).diverseWith == [flow1.flowId]
-        !northbound.getFlow(flow3.flowId).diverseWith
+        northboundV2.getFlow(flow1.flowId).diverseWith == [flow2.flowId].toSet()
+        northboundV2.getFlow(flow2.flowId).diverseWith == [flow1.flowId].toSet()
+        !northboundV2.getFlow(flow3.flowId).diverseWith
 
         when: "Update the third flow to become diverse"
         flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = flow2.flowId })
@@ -152,7 +152,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         flow2PathUpdated == flow1Path
 
         and: "The 'diverse_with' field is removed"
-        !northbound.getFlow(flow2.flowId).diverseWith
+        !northboundV2.getFlow(flow2.flowId).diverseWith
 
         when: "Update the third flow to become not diverse"
         flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = null })
@@ -163,7 +163,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         flow3PathUpdated == flow1Path
 
         and: "The 'diverse_with' field is removed"
-        !northbound.getFlow(flow3.flowId).diverseWith
+        !northboundV2.getFlow(flow3.flowId).diverseWith
 
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelperV2.deleteFlow(it.flowId) }

@@ -69,7 +69,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
     def "Check Storm logging"() {
         when: "A non-existent flow is requested"
         def flowId = "nonexistentFlowId" + System.currentTimeMillis()
-        northbound.getFlow(flowId)
+        northboundV2.getFlow(flowId)
 
         then: "An error is received (404 code)"
         def flowExc = thrown(HttpClientErrorException)

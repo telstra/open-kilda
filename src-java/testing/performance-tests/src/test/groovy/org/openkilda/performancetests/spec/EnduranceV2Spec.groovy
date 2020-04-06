@@ -85,9 +85,8 @@ class EnduranceV2Spec extends BaseSpecification {
         preset.flowsToStartWith.times { createFlow(makeFlowPayload()) }
         Wrappers.wait(flows.size() / 2) {
             flows.each {
-                assert northbound.getFlowStatus(it.flowId).status == FlowState.UP
-                //TODO: commented due to https://github.com/telstra/open-kilda/issues/3077
-//                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
+                assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP
+                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
             }
         }
 
@@ -105,16 +104,21 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
             (topology.isls - brokenIsls).each {
                 assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.DISCOVERED
             }
-            assert northbound.getAllFlows().findAll { it.status == FlowState.IN_PROGRESS.toString() }.empty
+            assert northboundV2.getAllFlows().findAll { it.status == FlowState.IN_PROGRESS.toString() }.empty
         }
 
-        then: "All Up flows are pingable"
-        def allFlows = northbound.getAllFlows()
+        then: "All flows are writting stats"
+        def allFlows = northboundV2.getAllFlows()
         def assertions = new SoftAssertions()
+        assertions.checkSucceeds {
+            statsHelper.verifyFlowsWriteStats(allFlows.findAll { it.status == FlowState.UP.toString() }*.flowId)
+        } ?: true
+
+        and: "All Up flows are pingable"
         def pingVerifications = new SoftAssertions()
         allFlows.findAll { it.status == FlowState.UP.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
-                def ping = northbound.pingFlow(flow.id, new PingInput())
+                def ping = northbound.pingFlow(flow.flowId, new PingInput())
                 assert ping.forward.pingSuccess
                 assert ping.reverse.pingSuccess
             }
@@ -123,7 +127,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         and: "All Down flows are NOT pingable"
         allFlows.findAll { it.status == FlowState.DOWN.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
-                def ping = northbound.pingFlow(flow.id, new PingInput())
+                def ping = northbound.pingFlow(flow.flowId, new PingInput())
                 assert !ping.forward.pingSuccess
                 assert !ping.reverse.pingSuccess
             }
