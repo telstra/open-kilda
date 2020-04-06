@@ -57,6 +57,7 @@ public class StatsRequesterBolt extends AbstractBolt {
     @Override
     protected void init() {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
     }
 
     @Override
