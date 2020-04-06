@@ -4,6 +4,23 @@
 version: '2.1'
 services:
 
+{{if not (exists "/no_grpc_stub")}}
+  grpc-stub:
+    container_name: grpc-stub
+    image: kilda/grpc-stub
+    build:
+      context: docker/grpc-stub/
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    command: python server.py
+    networks:
+      default:
+        aliases:
+          - grpc-stub.pendev
+    mem_limit: ${GRPC_STUB_MEM_LIMIT:-67108864}
+{{end}}
+
   lab-api:
     container_name: lab-api
     image: kilda_lab-service
