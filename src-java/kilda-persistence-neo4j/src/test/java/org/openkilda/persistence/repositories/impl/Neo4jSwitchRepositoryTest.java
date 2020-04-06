@@ -30,6 +30,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -67,6 +68,21 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         switchRepository.createOrUpdate(origSwitch);
 
         assertEquals(1, switchRepository.findAll().size());
+    }
+
+    @Test
+    public void shouldFindActive() {
+        Switch activeSwitch = Switch.builder().switchId(TEST_SWITCH_ID_A)
+                .status(SwitchStatus.ACTIVE).build();
+        Switch inactiveSwitch = Switch.builder().switchId(TEST_SWITCH_ID_B)
+                .status(SwitchStatus.INACTIVE).build();
+
+        switchRepository.createOrUpdate(activeSwitch);
+        switchRepository.createOrUpdate(inactiveSwitch);
+
+        Collection<Switch> switches = switchRepository.findActive();
+        assertEquals(1, switches.size());
+        assertEquals(TEST_SWITCH_ID_A, switches.iterator().next().getSwitchId());
     }
 
     @Test

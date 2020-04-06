@@ -90,6 +90,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .useBfdForIslIntegrityCheck(true)
                 .flowsRerouteViaFlowHs(useHs)
                 .floodlightRoutePeriodicSync(true)
+                .collectGrpcStats(true)
                 .build()
         northbound.toggleFeature(features)
 

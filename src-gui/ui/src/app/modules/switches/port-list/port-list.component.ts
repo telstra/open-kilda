@@ -29,6 +29,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   switchPortDataSet: any;
   anyData: any;
   portListTimerId: any;  
+  portFlowData:any = {};
   portListSubscriber = null;
   loadPorts = false;
   hasStoreSetting ;
@@ -54,7 +55,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       retrieve: true,
       autoWidth: false,
       colResize: false,
-      dom: 'tpl',
+      dom: 'tpli',
       initComplete:function( settings, json ){
         if(localStorage.getItem('portLoaderEnabled')){
             setTimeout(()=>{ref.loaderService.hide()},2000);
@@ -64,6 +65,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "aoColumns": [
         { sWidth: '5%' },
+        { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '13%' },
@@ -195,6 +197,8 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
           }else{
             this.switchPortDataSet[i]['stats'] = {};
           }
+
+          this.fetchPortFlowData(this.switch_id,this.switchPortDataSet[i].port_number);
           
       }
 
@@ -202,6 +206,25 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
      
       //this.toastr.error("No Switch Port data",'Error');
      });
+  }
+
+  fetchPortFlowData(switchId,portnumber){
+    if(switchId && portnumber!='-'){
+          this.switchService.getSwitchFlows(switchId,false,portnumber).subscribe(data=>{
+          let flowsData:any = data;
+          this.portFlowData[portnumber] = {};
+          this.portFlowData[portnumber].sumflowbandwidth = 0;
+            if(flowsData && flowsData.length){
+              for(let flow of flowsData){
+                this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth + (flow.maximum_bandwidth / 1000);
+              }
+              this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth.toFixed(3);
+            }
+          },error=>{
+            this.portFlowData[portnumber] = {};
+           this.portFlowData[portnumber].sumflowbandwidth = 0;
+          }) 
+    }
   }
 
    ngAfterViewInit(): void {
