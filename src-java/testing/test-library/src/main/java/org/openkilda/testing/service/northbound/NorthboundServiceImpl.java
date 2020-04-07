@@ -177,7 +177,6 @@ public class NorthboundServiceImpl implements NorthboundService {
             if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
                 throw ex;
             }
-
             return null;
         }
     }

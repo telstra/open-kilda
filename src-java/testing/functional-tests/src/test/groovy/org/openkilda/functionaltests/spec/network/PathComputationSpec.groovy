@@ -32,7 +32,7 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         then: "Flow is created with 'Cost' strategy (current default)"
         createResponse.pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
-        northbound.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
+        northboundV2.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
 
         and: "Flow is actually built on the path with the least cost"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
@@ -42,7 +42,7 @@ class PathComputationSpec extends HealthCheckSpecification {
                 new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.LATENCY.toString()))
 
         then: "Existing flow remains with COST strategy and on the same path"
-        northbound.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
+        northboundV2.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
 
         and: "Manual reroute of the flow responds that flow is already on the best path"
@@ -56,7 +56,7 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         then: "New flow is created with 'Latency' strategy (current default)"
         createResponse2.pathComputationStrategy == PathComputationStrategy.LATENCY.toString().toLowerCase()
-        northbound.getFlow(flow2.flowId).pathComputationStrategy == PathComputationStrategy.LATENCY.toString().toLowerCase()
+        northboundV2.getFlow(flow2.flowId).pathComputationStrategy == PathComputationStrategy.LATENCY.toString().toLowerCase()
 
         and: "New flow actually uses path with the least latency (ignoring cost)"
         pathHelper.convert(northbound.getFlowPath(flow2.flowId)) == latencyEffectivePath

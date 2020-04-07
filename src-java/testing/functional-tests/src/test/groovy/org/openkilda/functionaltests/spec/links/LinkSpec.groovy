@@ -153,7 +153,7 @@ class LinkSpec extends HealthCheckSpecification {
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             [flow1, flow2, flow3, flow4].each {
-                assert northbound.getFlowStatus(it.flowId).status == FlowState.DOWN
+                assert northboundV2.getFlowStatus(it.flowId).status == FlowState.DOWN
                 def isls = pathHelper.getInvolvedIsls(northbound.getFlowPath(it.flowId))
                 assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
             }
@@ -182,7 +182,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + PATH_INSTALLATION_TIME) {
-            [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
+            [flow1, flow2, flow3, flow4].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
         }
 
         and: "Delete all created flows and reset costs"
@@ -386,7 +386,7 @@ class LinkSpec extends HealthCheckSpecification {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            [flow1, flow2].each { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
+            [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
             assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
             assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
         }

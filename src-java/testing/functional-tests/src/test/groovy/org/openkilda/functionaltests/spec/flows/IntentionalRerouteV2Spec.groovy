@@ -68,7 +68,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
         then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         !rerouteResponse.rerouted
         rerouteResponse.path.nodes == currentPathNodesV2
 
@@ -112,7 +112,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         and: "Init a reroute of the flow"
         def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
 
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         then: "The flow is successfully rerouted and goes through the preferable path"
         def pathDto = northbound.getFlowPath(flow.flowId)
@@ -124,7 +124,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         newPath == preferableAltPath
         pathHelper.getInvolvedIsls(newPath).contains(thinIsl)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
@@ -185,7 +185,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         reroute.rerouted
         expect reroute.path.nodes, sameBeanAs(PathHelper.convertToNodesV2(potentialNewPath))
                 .ignoring("segmentLatency")
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
@@ -237,11 +237,11 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         rerouteResponse.rerouted
         rerouteResponse.path.nodes != currentPathNodesV2
 
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         def updatedPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         updatedPath != currentPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Available bandwidth was not changed while rerouting due to ignoreBandwidth=true"
         def allLinks = northbound.getAllLinks()
@@ -301,7 +301,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         reroute.rerouted
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }

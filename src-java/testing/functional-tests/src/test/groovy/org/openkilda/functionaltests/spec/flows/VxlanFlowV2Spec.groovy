@@ -74,7 +74,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         then: "Flow is created with the #encapsulationCreate.toString() encapsulation type"
-        def flowInfo = northbound.getFlow(flow.flowId)
+        def flowInfo = northboundV2.getFlow(flow.flowId)
         flowInfo.encapsulationType == data.encapsulationCreate.toString().toLowerCase()
 
         and: "Correct rules are installed"
@@ -132,11 +132,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
-        northboundV2.updateFlow(flowInfo.id,
-                flowHelperV2.toV2(flowInfo.tap { it.encapsulationType = data.encapsulationUpdate }))
+        northboundV2.updateFlow(flowInfo.flowId,
+                flowHelperV2.toRequest(flowInfo.tap { it.encapsulationType = data.encapsulationUpdate }))
 
         then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
-        def flowInfo2 = northbound.getFlow(flow.flowId)
+        def flowInfo2 = northboundV2.getFlow(flow.flowId)
         flowInfo2.encapsulationType == data.encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"
@@ -220,18 +220,18 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         then: "Flow is created"
-        def flowInfo = northbound.getFlow(flow.flowId)
+        def flowInfo = northboundV2.getFlow(flow.flowId)
         flowInfo.pinned
 
         when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
+        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.pinned = false }))
 
         then: "The pinned option is disabled"
-        def newFlowInfo = northbound.getFlow(flow.flowId)
+        def newFlowInfo = northboundV2.getFlow(flow.flowId)
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         cleanup: "Delete the flow"
@@ -261,7 +261,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         then: "Flow is created with protected path"
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
         flowPathInfo.protectedPath
-        northbound.getFlow(flow.flowId).flowStatusDetails
+        northboundV2.getFlow(flow.flowId).statusDetails
 
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
@@ -304,13 +304,13 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
-        def flowData = northbound.getFlow(flow.flowId)
+        def flowData = northboundV2.getFlow(flow.flowId)
         def protectedFlowPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
-        northboundV2.updateFlow(flowData.id, flowHelperV2.toV2(flowData.tap { it.allocateProtectedPath = false }))
+        northboundV2.updateFlow(flowData.flowId, flowHelperV2.toRequest(flowData.tap { it.allocateProtectedPath = false }))
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath
-        !northbound.getFlow(flow.flowId).flowStatusDetails
+        !northboundV2.getFlow(flow.flowId).statusDetails
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -553,7 +553,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         northboundV2.addFlow(flow)
 
         then: "Flow is created with the #encapsulationCreate.toString() encapsulation type"
-        def flowInfo1 = northbound.getFlow(flow.flowId)
+        def flowInfo1 = northboundV2.getFlow(flow.flowId)
         flowInfo1.encapsulationType == encapsulationCreate.toString().toLowerCase()
 
         and: "Correct rules are installed"
@@ -580,11 +580,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
-        northboundV2.updateFlow(flowInfo1.id,
-                flowHelperV2.toV2(flowInfo1.tap { it.encapsulationType = encapsulationUpdate }))
+        northboundV2.updateFlow(flowInfo1.flowId,
+                flowHelperV2.toRequest(flowInfo1.tap { it.encapsulationType = encapsulationUpdate }))
 
         then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
-        def flowInfo2 = northbound.getFlow(flow.flowId)
+        def flowInfo2 = northboundV2.getFlow(flow.flowId)
         flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
 
         and: "Flow is valid"

@@ -659,7 +659,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
             [srcSwitch, dstSwitch].each { sw -> getFlowRules(sw).each { assert !(it.cookie in flowCookiesMap[sw]) } }
         }

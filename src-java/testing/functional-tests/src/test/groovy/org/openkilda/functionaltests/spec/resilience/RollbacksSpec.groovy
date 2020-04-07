@@ -85,7 +85,7 @@ and at least 1 path must remain safe"
 
         then: "System finds another working path and successfully reroutes the flow (one of the auto-retries succeed)"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         currentPath != mainPath

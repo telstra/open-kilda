@@ -36,14 +36,14 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         then: "Pinned flow is created"
-        def flowInfo = northbound.getFlow(flow.flowId)
+        def flowInfo = northboundV2.getFlow(flow.flowId)
         flowInfo.pinned
 
         when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
+        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.pinned = false }))
 
         then: "The pinned option is disabled"
-        def newFlowInfo = northbound.getFlow(flow.flowId)
+        def newFlowInfo = northboundV2.getFlow(flow.flowId)
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
@@ -62,14 +62,14 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         then: "Pinned flow is created"
-        def flowInfo = northbound.getFlow(flow.flowId)
+        def flowInfo = northboundV2.getFlow(flow.flowId)
         flowInfo.pinned
 
         when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.id, flowHelperV2.toV2(flowInfo.tap { it.pinned = false }))
+        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.pinned = false }))
 
         then: "The pinned option is disabled"
-        def newFlowInfo = northbound.getFlow(flow.flowId)
+        def newFlowInfo = northboundV2.getFlow(flow.flowId)
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
@@ -116,7 +116,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
             Wrappers.timedLoop(2) {
-                assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
                 assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
             }
         }
@@ -145,7 +145,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
                 TimeUnit.SECONDS.sleep(rerouteDelay - 1)
-                assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
                 assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
             }
         }
@@ -154,7 +154,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         then: "Flow is marked as UP when the last ISL is restored"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islsToBreak[-1]).get().state == IslChangeType.DISCOVERED
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
         }
 
@@ -185,7 +185,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == newPath
         }
 

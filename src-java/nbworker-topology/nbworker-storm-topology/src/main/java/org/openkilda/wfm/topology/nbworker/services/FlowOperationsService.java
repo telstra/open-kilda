@@ -37,6 +37,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -50,6 +51,9 @@ import com.google.common.collect.Sets;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import net.jodah.failsafe.SyncFailsafe;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -58,12 +62,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowOperationsService {
     private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
+
+    private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
+    private static final int RETRY_DELAY = 100;
+
     private TransactionManager transactionManager;
     private IslRepository islRepository;
     private SwitchRepository switchRepository;
@@ -80,11 +89,48 @@ public class FlowOperationsService {
         this.transactionManager = transactionManager;
     }
 
+    private SyncFailsafe getReadOperationFailsafe() {
+        return Failsafe.with(new RetryPolicy()
+                .retryOn(ClientException.class)
+                .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
+                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
+                .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
+                .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e));
+    }
+
     /**
      * Return flow by flow id.
      */
     public Flow getFlow(String flowId) throws FlowNotFoundException {
-        return flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+        Optional<Flow> found = (Optional<Flow>) getReadOperationFailsafe().get(() ->
+                transactionManager.doInTransaction(() -> flowRepository.findById(flowId)));
+        return found.orElseThrow(() -> new FlowNotFoundException(flowId));
+    }
+
+    /**
+     * Return flows in the same flow group.
+     *
+     * @param flowId flow id
+     * @param groupId group id
+     * @return list of flow ids
+     */
+    public Set<String> getDiverseFlowsId(String flowId, String groupId) {
+        if (groupId == null) {
+            return null;
+        }
+
+        return flowRepository.findFlowsIdByGroupId(groupId).stream()
+                .filter(id -> !id.equals(flowId))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Get flows.
+     */
+    public Collection<Flow> getAllFlows() {
+        return (Collection<Flow>) getReadOperationFailsafe().get(() ->
+                transactionManager.doInTransaction(() -> flowRepository.findAll())
+        );
     }
 
     /**
@@ -114,7 +160,7 @@ public class FlowOperationsService {
      * Return all flows for a particular endpoint or for a particular switch if port is null.
      *
      * @param switchId switch id.
-     * @param port     port.
+     * @param port port.
      * @return all flows for a particular endpoint.
      * @throws SwitchNotFoundException if there is no switch with this switch id.
      */
