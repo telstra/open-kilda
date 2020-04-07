@@ -26,7 +26,6 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
@@ -754,11 +753,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
-        def swIsls = topology.getRelatedIsls(sw)
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
         when: "Try to create a one-switch flow on a deactivated switch"
         def flow = flowHelperV2.singleSwitchFlow(sw)
@@ -773,12 +768,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 "Destination switch $sw.dpId are not connected to the controller"
 
         and: "Cleanup: Connect switch back to the controller"
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
-        }
+        switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tidy

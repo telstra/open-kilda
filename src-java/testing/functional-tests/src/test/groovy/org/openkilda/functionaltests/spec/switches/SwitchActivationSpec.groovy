@@ -65,12 +65,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = lockKeeper.knockoutSwitch(switchPair.src, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) { assert !(switchPair.src.dpId in northbound.getActiveSwitches()*.switchId) }
+        def blockData = switchHelper.knockoutSwitch(switchPair.src, mgmtFlManager)
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(switchPair.src, blockData)
-        Wrappers.wait(WAIT_OFFSET) { assert switchPair.src.dpId in northbound.getActiveSwitches()*.switchId }
+        switchHelper.reviveSwitch(switchPair.src, blockData)
 
         then: "Missing flow rules/meters were synced during switch activation"
         verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
@@ -119,12 +117,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) { assert !(sw.dpId in northbound.getActiveSwitches()*.switchId) }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northbound.getActiveSwitches()*.switchId }
+        switchHelper.reviveSwitch(sw, blockData)
 
         then: "Excess meters/rules were synced during switch activation"
         verifyAll(northbound.validateSwitch(sw.dpId)) {
@@ -137,11 +133,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
-        }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         northbound.deleteSwitch(sw.dpId, false)
 

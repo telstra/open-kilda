@@ -131,7 +131,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         when: "An intermediate switch is disconnected"
-        def blockData = lockKeeper.knockoutSwitch(findSw(flowPath[1].switchId), mgmtFlManager)
+        def sw = findSw(flowPath[1].switchId)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
 
         then: "All ISLs going through the intermediate switch are 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -150,8 +151,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         and: "Connect the intermediate switch back and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        lockKeeper.reviveSwitch(findSw(flowPath[1].switchId), blockData)
-        Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northbound.getActiveSwitches()*.switchId }
+        switchHelper.reviveSwitch(sw, blockData)
         northbound.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
@@ -434,10 +434,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         when: "Disconnect the src switch of the first flow from the controller"
         def islToBreak = pathHelper.getInvolvedIsls(firstFlowMainPath).first()
         def islToReroute = pathHelper.getInvolvedIsls(firstFlowBackupPath).first()
-        def blockData = lockKeeper.knockoutSwitch(switchPair1.src, mgmtFlManager)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(switchPair1.src, mgmtFlManager)
         def isSwitchActivated = false
 
         and: "Mark the switch as ACTIVE in db" // just to reproduce #3131
@@ -463,10 +460,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         when: "Connect the switch back to the controller"
         database.setSwitchStatus(switchPair1.src.dpId, SwitchStatus.INACTIVE) // set real status
-        lockKeeper.reviveSwitch(switchPair1.src, blockData)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.ACTIVATED
-        }
+        switchHelper.reviveSwitch(switchPair1.src, blockData)
         isSwitchActivated = true
 
         then: "Both flows are rerouted"
@@ -493,10 +487,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup: "Restore topology, delete the flow and reset costs"
         firstFlow && flowHelperV2.deleteFlow(firstFlow.flowId)
         secondFlow && flowHelperV2.deleteFlow(secondFlow.flowId)
-        !isSwitchActivated && blockData && lockKeeper.reviveSwitch(switchPair1.src, blockData)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.ACTIVATED
-        }
+        !isSwitchActivated && blockData && switchHelper.reviveSwitch(switchPair1.src, blockData)
         islToBreak && antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
         islsToBreak && withPool { islsToBreak.eachParallel { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) } }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -595,30 +586,19 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         when: "Generate switchUp event on switch which is not related to the flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)*.dpId
         def switchToManipulate = topology.activeSwitches.find { !(it.dpId in involvedSwitches) }
-        def blockData = lockKeeper.knockoutSwitch(switchToManipulate, mgmtFlManager)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToManipulate.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(switchToManipulate, mgmtFlManager)
         def isSwitchActivated = false
-        lockKeeper.reviveSwitch(switchToManipulate, blockData)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToManipulate.dpId).state == SwitchChangeType.ACTIVATED
-        }
+        switchHelper.reviveSwitch(switchToManipulate, blockData)
         isSwitchActivated = true
 
         then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
         TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
-        Wrappers.timedLoop(rerouteDelay) { // just in case
-            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
-        }
+        northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
 
         cleanup: "Restore topology, delete the flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        !isSwitchActivated && blockData && lockKeeper.reviveSwitch(switchToManipulate, blockData)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToManipulate.dpId).state == SwitchChangeType.ACTIVATED
-        }
+        !isSwitchActivated && blockData && switchHelper.reviveSwitch(switchToManipulate, blockData)
         broughtDownPorts && broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
