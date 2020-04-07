@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.testing.Constants.DefaultRule
 
@@ -24,6 +25,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
+    @Tidy
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Basic stats are being logged"(metric, tags) {
@@ -45,6 +47,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
                    [[cookieHex: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()]]].combinations())
     }
 
+    @Tidy
     @Tags(HARDWARE)
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     def "Basic stats are being logged (10min interval)"() {
@@ -57,7 +60,30 @@ class OpenTsdbSpec extends HealthCheckSpecification {
                  [[cookieHex: String.format("0x%X", DefaultRule.VERIFICATION_BROADCAST_RULE.cookie)]]].combinations())
     }
 
+    @Tidy
+    @Unroll("GRPC stats are being logged for metric:#metric, tags:#tags")
+    @Tags([HARDWARE, SMOKE_SWITCHES])
+    def "GRPC stats are being logged"(metric, tags) {
+        expect: "At least 1 result in the past 10 minutes"
+        otsdb.query(10.minutes.ago, metricPrefix + metric, tags).dps.size() > 0
+
+        where:
+        [metric, tags] << (
+                [["switch.packet-in.total-packets", "switch.packet-in.total-packets.dataplane",
+                  "switch.packet-in.no-match.packets", "switch.packet-in.apply-action.packets",
+                  "switch.packet-in.apply-action.packets", "switch.packet-in.invalid-ttl.packets",
+                  "switch.packet-in.action-set.packets", "switch.packet-in.group.packets",
+                  "switch.packet-in.packet-out.packets", "switch.packet-out.total-packets.dataplane",
+                  "switch.packet-out.total-packets.host", "switch.packet-out.eth0-interface-up"],
+                 noviflowSwitches.collect { [switchid: it.switchId.toOtsdFormat()] }].combinations()
+        )
+    }
+
     def getUniqueSwitches() {
         topology.activeSwitches.unique { it.ofVersion }
+    }
+
+    def getNoviflowSwitches() {
+        northbound.activeSwitches.findAll { it.manufacturer == "NoviFlow Inc" }.unique { [it.hardware, it.software] }
     }
 }
