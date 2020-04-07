@@ -62,6 +62,10 @@ export class FlowsService {
     return this.httpClient.get(`${environment.apiEndPoint}/flows/path/${flowId}`);
   }
 
+  getConnectedDevices(flowId):Observable<any>{
+    return this.httpClient.get(`${environment.apiEndPoint}/flows/connected/devices/${flowId}`);
+  }
+
 
   getReRoutedPath(flowId):Observable<any>{
     return this.httpClient.get(`${environment.apiEndPoint}/flows/${flowId}/reroute`);

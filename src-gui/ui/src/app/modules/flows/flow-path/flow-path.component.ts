@@ -13,6 +13,7 @@ import { FlowpathService } from "src/app/common/services/flowpath.service";
 })
 export class FlowPathComponent implements OnInit, OnDestroy {
   @Input() flowId;
+  
 
   flowPathData: any;
   forwardPathGraph: Boolean = false;
@@ -74,10 +75,12 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   ngOnInit() {
     if (this.flowId) {
       this.getFlowPath(this.flowId);
+      
     } else {
       console.error("Flow Id required");
     }
   }
+ 
 
   getFlowPath(flowId) {
     var self = this;
