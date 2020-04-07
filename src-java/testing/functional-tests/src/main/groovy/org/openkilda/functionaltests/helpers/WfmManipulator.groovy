@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.helpers
 
-import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import com.spotify.docker.client.DockerClient.ListContainersParam
 import com.spotify.docker.client.messages.Container
@@ -22,8 +21,8 @@ class WfmManipulator {
     DockerClient dockerClient
     Container wfmContainer
 
-    WfmManipulator() {
-        dockerClient = DefaultDockerClient.fromEnv().build()
+    WfmManipulator(String dockerHost) {
+        dockerClient = new DockerHelper(dockerHost).dockerClient
         wfmContainer = dockerClient.listContainers(ListContainersParam.allContainers()).find {
             it.names().contains(WFM_CONTAINER_NAME)
         }

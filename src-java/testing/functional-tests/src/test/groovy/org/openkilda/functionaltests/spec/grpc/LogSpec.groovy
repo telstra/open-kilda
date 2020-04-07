@@ -1,11 +1,13 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_MESSAGES_STATE
 import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_OF_MESSAGES_STATE
 import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_IP
 import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_PORT
 
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogMessagesDto
 import org.openkilda.grpc.speaker.model.LogOferrorsDto
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto
@@ -108,6 +110,7 @@ class LogSpec extends GrpcBaseSpecification {
     }
 
     @Unroll
+    @Tags(HARDWARE)
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \
 on the #sw.switchId switch"() {
         when: "Try to set incorrect configuration"

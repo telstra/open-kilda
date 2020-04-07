@@ -13,6 +13,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -33,12 +34,14 @@ verify their consistency after restart.
 class StormLcmSpec extends HealthCheckSpecification {
     @Shared
     WfmManipulator wfmManipulator
+    @Value('${docker.host}')
+    String dockerHost
 
     def setupOnce() {
         //since we simulate storm restart by restarting the docker container, for now this is only possible on virtual
         //TODO(rtretiak): this can possibly be achieved for 'hardware' via lock-keeper instance
         requireProfiles("virtual")
-        wfmManipulator = new WfmManipulator()
+        wfmManipulator = new WfmManipulator(dockerHost)
     }
 
     def "System survives Storm topologies restart"() {
