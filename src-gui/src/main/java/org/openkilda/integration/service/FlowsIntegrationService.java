@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.converter.FlowPathConverter;
+import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
+import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.service.ApplicationService;
@@ -39,10 +41,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+
 import java.util.List;
 
 /**
@@ -371,5 +375,62 @@ public class FlowsIntegrationService {
             LOGGER.warn("Error occurred while ping flow by id:" + flowId, e);
             throw new IntegrationException(e);
         }
+    }
+    
+    /**
+     * Gets the flow history by id.
+     *
+     * @param flowId the flow id
+     * @return the flow history by id
+     */
+    public List<FlowHistory> getFlowHistoryById(final String flowId, String timeFrom, String timeTo) 
+            throws IntegrationException {
+        try {
+            UriComponentsBuilder builder = UriComponentsBuilder
+                        .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                                .GET_FLOW_HISTORY.replace("{flow_id}",
+                                UriUtils.encodePath(flowId, "UTF-8")));
+            builder = setFlowTimestamp(timeFrom, timeTo, builder);
+            String fullUri = builder.build().toUriString();
+            HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
+                        applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, FlowHistory.class);
+            }
+            return null;
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
+            e.printStackTrace();
+        }
+        return null; 
+    }
+    
+    /**
+     * This Method is used to set flow timestamp.
+     * 
+     * @param timeFrom
+     *            the timeFrom
+     * @param timeTo
+     *            the timeTo
+     * @param builder
+     *            the uri component builder
+     * @return UriComponentsBuilder
+     */
+    private UriComponentsBuilder setFlowTimestamp(final String timeFrom, final String timeTo, 
+            final UriComponentsBuilder builder) {
+        try {
+            if (timeFrom != null) {
+                builder.queryParam("timeFrom", timeFrom);
+            }
+            if (timeTo != null) {
+                builder.queryParam("timeTo", timeTo);
+            }  
+        } catch (Exception e) {
+            throw new ContentNotFoundException();
+        }
+        return builder;
     }
 }

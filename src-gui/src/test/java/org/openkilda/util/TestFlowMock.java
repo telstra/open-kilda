@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,7 +17,11 @@ package org.openkilda.util;
 
 public interface TestFlowMock {
 
-    static final String FLOW_ID = "03Jun131532_588_vegetableoil2002";
+    static final String FLOW_ID_NULL = null;
+    static final String FLOW_ID = "flow001";
+    static final String TIME_FROM = "1582020869";
+    static final String TIME_TO = "1582020869";
+    //static final Long TIME_TO = System.currentTimeMillis();
     static final boolean CONTROLLER_FLAG = true;
 
 }

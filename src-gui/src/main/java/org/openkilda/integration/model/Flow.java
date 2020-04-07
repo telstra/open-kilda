@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,8 +22,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import lombok.Data;
 
-import java.util.List;
-
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
@@ -40,6 +38,9 @@ public class Flow {
     @JsonProperty("destination")
     private FlowEndpoint destination;
 
+    @JsonProperty("ignore_bandwidth")
+    private boolean ignoreBandwidth;
+    
     @JsonProperty("maximum-bandwidth")
     private int maximumBandwidth;
 
@@ -61,8 +62,23 @@ public class Flow {
     @JsonProperty("allocate_protected_path")
     private boolean allocateProtectedPath;
     
-    @JsonProperty("diverse_with")
-    private List<String> diverseWith;
+    @JsonProperty("pinned")
+    private boolean pinned;
+    
+    @JsonProperty("encapsulation-type")
+    private String encapsulationType;
+    
+    @JsonProperty("path-computation-strategy")
+    private String pathComputationStrategy;
+    
+    @JsonProperty("periodic-pings")
+    private boolean periodicPings;
+
+    @JsonProperty("created")
+    private String created;
+    
+    //@JsonProperty("diverse_with")
+    //private List<String> diverseWith;
     
     
     public String getId() {
