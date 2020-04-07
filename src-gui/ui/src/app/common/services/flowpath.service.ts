@@ -766,16 +766,6 @@ export class FlowpathService {
         var processKey = ( linksSourceArr && typeof linksSourceArr[key] !== "undefined") ? key:key1;
         var processKeyValues = processKey.split("_");
         var linkArr = linksSourceArr[processKey];
-        // if(linkArr && linkArr.length > 1){
-          
-        // }
-        // for(var i = 0; i < linkArr.length; i++){
-        //   if(d.source.switch_id  === linkArr[i].source.switch_id && d.target.switch_id  === linkArr[i].target.switch_id){
-           
-        //   }else if(d.source.switch_id  === linkArr[i].target.switch_id && d.target.switch_id  === linkArr[i].source.switch_id){
-          
-        //   }
-        // }
         if(processKeyValues[0] == d.target.switch_id && processKeyValues[1] == d.source.switch_id){
           return "translate(" + (xvalue + 10) + "," + (yvalue-10) + ")";
         }
