@@ -1,4 +1,4 @@
-import { Directive, AfterViewInit,HostListener,  ElementRef, NgZone, OnDestroy, EventEmitter,Output  } from '@angular/core';
+import { Directive, AfterViewInit,HostListener,  ElementRef, NgZone, OnDestroy, EventEmitter,Output, Input  } from '@angular/core';
 
 declare var jQuery: any;
 
@@ -9,7 +9,7 @@ export class DatetimepickerDirective implements AfterViewInit, OnDestroy{
 
   @HostListener('blur', ['$event'])
   onBlur(event: Event){ event.stopImmediatePropagation(); }
-
+  @Input() maxDate:any;
   datePickerElement: any;
   @Output()changeVal = new EventEmitter;
 
@@ -24,7 +24,8 @@ export class DatetimepickerDirective implements AfterViewInit, OnDestroy{
     format:'Y/m/d H:i:s',
     onChangeDateTime:function(dp,$input){
       nativeElement.dispatchEvent(new Event("change"));
-    }
+    },
+    maxDate:this.maxDate
    });
   }
 

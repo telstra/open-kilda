@@ -43,7 +43,7 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
       pageLength: 10,
       deferRender: true,
       info:true,
-      dom: 'tpl',
+      dom: 'tpli',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       retrieve: true,
       autoWidth: false,
