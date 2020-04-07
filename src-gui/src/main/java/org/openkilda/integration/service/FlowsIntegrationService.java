@@ -25,6 +25,7 @@ import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
+import org.openkilda.model.FlowConnectedDevice;
 import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
@@ -393,7 +394,7 @@ public class FlowsIntegrationService {
             builder = setFlowTimestamp(timeFrom, timeTo, builder);
             String fullUri = builder.build().toUriString();
             HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
-                        applicationService.getAuthHeader());
+                    applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, FlowHistory.class);
             }
@@ -405,7 +406,34 @@ public class FlowsIntegrationService {
             LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
             e.printStackTrace();
         }
-        return null; 
+        return null;
+    }
+
+    /**
+     * Get Flow Connected Devices.
+     *
+     * @param flowId the flow id
+     * @return the FlowConnectedDevice
+     */
+    public FlowConnectedDevice getFlowConnectedDevice(String flowId, String timeLastSeen) {
+        try {
+            UriComponentsBuilder builder = UriComponentsBuilder
+                        .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                                .GET_FLOW_CONNECTED_DEVICE.replace("{flow_id}", flowId));
+            if (timeLastSeen != null) {
+                builder.queryParam("since", timeLastSeen);
+            }
+            String fullUri = builder.build().toUriString();
+            HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
+                        applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, FlowConnectedDevice.class);
+            }
+            return null;
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while getting flow connected device: " + flowId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } 
     }
     
     /**
@@ -433,4 +461,5 @@ public class FlowsIntegrationService {
         }
         return builder;
     }
+            
 }

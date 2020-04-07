@@ -29,6 +29,7 @@ import org.openkilda.integration.source.store.dto.InventoryFlow;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowBandwidth;
+import org.openkilda.model.FlowConnectedDevice;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowDiscrepancy;
 import org.openkilda.model.FlowHistory;
@@ -488,5 +489,15 @@ public class FlowService {
      */
     public List<FlowHistory> getFlowHistory(String flowId, String timeFrom, String timeTo) {
         return flowsIntegrationService.getFlowHistoryById(flowId, timeFrom, timeTo);
+    }
+    
+    /**
+     * Flow connected devices.
+     *
+     * @param flowId the flow id
+     * @return the FlowConnectedDevice
+     */
+    public FlowConnectedDevice getFlowConnectedDevice(String flowId, String timeLastSeen) {
+        return flowsIntegrationService.getFlowConnectedDevice(flowId, timeLastSeen);
     }
 }

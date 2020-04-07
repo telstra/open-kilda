@@ -23,6 +23,7 @@ import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.FlowConnectedDevice;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
@@ -292,6 +293,21 @@ public class FlowController extends BaseController {
             @RequestParam(name = "timeFrom", required = false) String timeFrom,
             @RequestParam(name = "timeTo", required = false) String timeTo) {
         return flowService.getFlowHistory(flowId, timeFrom, timeTo);
+    }
+    
+    /** Get flow connected devices.
+     *
+     * @param flowId
+     *            id of flow.
+     * @return FlowConnectedDevice
+     */
+    @RequestMapping(value = "/connected/devices/{flowId}", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody FlowConnectedDevice getFlowConnectedDevice(@PathVariable final String flowId,
+            @RequestParam(name = "since", required = false) String timeLastSeen) {
+        LOGGER.info("Get flow connected device: '" + flowId + "'");
+        FlowConnectedDevice connectedDeviceInfo = flowService.getFlowConnectedDevice(flowId, timeLastSeen);
+        return connectedDeviceInfo;
     }
 
 }
