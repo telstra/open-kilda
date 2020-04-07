@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -20,6 +22,7 @@ import groovy.util.logging.Slf4j
 class RollbacksSpec extends HealthCheckSpecification {
 
     @Tidy
+    @Tags(VIRTUAL)
     def "System retries the reroute if it fails to install rules on one the current target path's switches"() {
         given: "Switch pair with at least 3 available paths, one path should have a transit switch that we will break \
 and at least 1 path must remain safe"

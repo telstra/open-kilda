@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -504,6 +505,63 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(HARDWARE)
+    def "Flow in 'UP' status is not rerouted after switchUp event"() {
+        given: "Two active neighboring switches which support round trip latency"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            swP.paths.findAll { path ->
+                path.size() == 2 && pathHelper.getInvolvedSwitches(path).every {
+                    it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                }
+            }
+        } ?: assumeTrue("No suiting switches found.", false)
+
+        and: "A flow on the given switch pair"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Deactivate the src switch"
+        def swToDeactivate = switchPair.src
+        lockKeeper.knockoutSwitch(swToDeactivate)
+        def isSwDeactivated = true
+        // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
+        Wrappers.wait(WAIT_OFFSET * 4) {
+            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+
+        then: "Flow is UP"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+
+        when: "Activate the src switch"
+        lockKeeper.reviveSwitch(swToDeactivate)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
+            assert northbound.getAllLinks().findAll {
+                it.state == DISCOVERED
+            }.size() == topology.islsForActiveSwitches.size() * 2
+        }
+        isSwDeactivated = false
+
+        then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
+        Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
+            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == "Flow rerouting" }.empty
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (isSwDeactivated) {
+            lockKeeper.reviveSwitch(swToDeactivate)
+            Wrappers.wait(WAIT_OFFSET) {
+                assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
+                assert northbound.getAllLinks().findAll {
+                    it.state == DISCOVERED
+                }.size() == topology.islsForActiveSwitches.size() * 2
+            }
+        }
+    }
+
+    @Tidy
+    @Tags(VIRTUAL)
     def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
         given: "Given a flow in DOWN status on neighboring switches"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {

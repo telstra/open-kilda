@@ -3,11 +3,16 @@ Internal data:
 * endpoint-B
 * endpoint-A-up
 * endpoint-B-up
+* round-trip-expire-at
 
 Input signals:
 * isl-up
 * isl-down
 * isl-move
+* round-trip-status
+
+Internal(self-injected) signals
+* _become_down
 
 Output signals:
 * bisl-up (notify BFD-port, notify reroute)
@@ -23,6 +28,7 @@ title ISL FSM
 
 INIT --> DOWN : isl-up / set endpoint-(A||B)-status = UP\nisl-down / set endpoint-(A||B)-status = DOWN
 INIT --> DOWN : history [history-down]
+
 INIT --> SET_UP_RESOURCES : history [history-up]\n/ apply-history\n/ emit bisl-bfd-enable
 INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-status = MOVED
 
@@ -51,15 +57,21 @@ SET_UP_RESOURCES --> DOWN : isl-down
 SET_UP_RESOURCES --> MOVED : isl-move
 SET_UP_RESOURCES --> UP : isl-up
 
-UP --> DOWN : isl-down
-UP --> MOVED : isl-move
-UP : enter / persist DB state
-UP : enter / emit bisl-up
+UP --> DOWN : _become_down\nisl-down [physical-down] / raise ISL(uni) cost
+UP --> MOVED : isl-move / set endpoint-(A|B)-status = MOVED
 UP : enter [enable_bfd in DB is set] / emit bisl-bfd-enable
-UP : exit / set endpoint-(A|B)-status = !UP (determine by event)
+UP : enter / persist DB state
+UP : isl-up / set endpoint-(A||B)-status = UP
+UP : isl-up / evaluate-state (can emit _become_down)
+UP : isl-up / persist DB state
+UP : isl-down / set endpoint-(A||B)-status = DOWN
+UP : isl-down / evaluate-state (can emit _become_down)
+UP : isl-down / persist DB state
+UP : round-trip-status / set round-trip-expire-at
+UP : round-trip-status / evaluate-state (can emit _become_down)
 UP : exit / persist DB state
-UP : exit [physical-down] / raise ISL(uni) cost
 UP : exit / emit bisl-down
+UP : exit / clean round-trip-expire-at
 
 CLEAN_UP_RESOURCES : enter / init attempts count from config
 CLEAN_UP_RESOURCES : enter / send remove isl rules for source endpoint
@@ -70,7 +82,6 @@ CLEAN_UP_RESOURCES : isl-rule-timeout [has attempts] / emit remove isl rules for
 CLEAN_UP_RESOURCES : isl-rule-timeout [!has attempts] / emit isl-remove-finished
 CLEAN_UP_RESOURCES : isl-rule-failed [has attempts] / resend remove commands
 CLEAN_UP_RESOURCES --> DELETED : isl-remove-finished
-
 
 MOVED --> upAttempt : isl-up / set endpoint-(A|B)-status = UP
 MOVED --> deleteAttempt : isl-remove
