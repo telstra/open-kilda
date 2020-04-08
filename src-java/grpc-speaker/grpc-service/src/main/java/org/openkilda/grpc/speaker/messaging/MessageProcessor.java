@@ -114,9 +114,9 @@ public class MessageProcessor {
     }
 
     private void handleGetPacketInOutStatsRequest(GetPacketInOutStatsRequest request, String correlationId) {
-        log.debug("Getting switch packet in out stats for switch {}", request.getAddress());
-        service.getPacketInOutStats(request.getAddress())
-                .thenAccept(stats -> sendPacketInOutStatsResponse(request, stats, correlationId));
+        log.debug("Skip switch packet in out stats request for switch {}", request.getAddress());
+        // service.getPacketInOutStats(request.getAddress())
+        //        .thenAccept(stats -> sendPacketInOutStatsResponse(request, stats, correlationId));
     }
 
     private void sendPacketInOutStatsResponse(
