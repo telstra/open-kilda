@@ -33,6 +33,9 @@
           <tr style="text-align: center;">
             <td colspan="9">Source Devices</td>
           </tr>
+          <tr style="text-align: center;" *ngIf="connectedDevicesTableData['source'].length == 0">
+            <td colspan="9"> No data available</td>
+          </tr>
           <tr *ngFor="let device of connectedDevicesTableData['source']">
             <td class="divTableCell">{{device.mac_address}}</td>
             <td class="divTableCell">{{device.chassis_id}}</td>
@@ -46,6 +49,9 @@
           </tr>
           <tr style="text-align: center;">
             <td colspan="9">Destination Devices</td>
+          </tr>
+          <tr style="text-align: center;" *ngIf="connectedDevicesTableData['dst'].length == 0">
+            <td colspan="9"> No data available</td>
           </tr>
           <tr *ngFor="let device of connectedDevicesTableData['dst']">
             <td class="divTableCell">{{device.mac_address}}</td>
