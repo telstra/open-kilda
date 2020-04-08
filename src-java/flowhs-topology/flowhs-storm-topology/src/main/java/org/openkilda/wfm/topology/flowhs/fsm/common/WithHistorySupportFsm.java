@@ -20,6 +20,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import org.squirrelframework.foundation.fsm.StateMachine;
@@ -56,6 +57,24 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
     }
 
     /**
+     * Add a history record on the action.
+     */
+    public void saveFlowActionToHistory(String flowId, String action) {
+        log.debug("Flow {} action - {}", flowId, action);
+        String taskId = KeyProvider.joinKeys(flowId, getCommandContext().getCorrelationId());
+        sendHistoryData(flowId, action, null, taskId);
+    }
+
+    /**
+     * Add a history record on the action.
+     */
+    public void saveFlowActionToHistory(String flowId, String action, String description) {
+        log.debug("Flow {} action - {} : {}", flowId, action, description);
+        String taskId = KeyProvider.joinKeys(flowId, getCommandContext().getCorrelationId());
+        sendHistoryData(flowId, action, description, taskId);
+    }
+
+    /**
      * Add a history record on the error.
      */
     public void saveErrorToHistory(String action, String errorMessage) {
@@ -80,12 +99,16 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
     }
 
     protected void sendHistoryData(String action, String description) {
+        sendHistoryData(getFlowId(), action, description, getCommandContext().getCorrelationId());
+    }
+
+    protected void sendHistoryData(String flowId, String action, String description, String taskId) {
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(getCommandContext().getCorrelationId())
+                .taskId(taskId)
                 .flowHistoryData(FlowHistoryData.builder()
                         .action(action)
                         .time(getNextHistoryEntryTime())
-                        .flowId(getFlowId())
+                        .flowId(flowId)
                         .description(description)
                         .build())
                 .build();
@@ -102,21 +125,38 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
     /**
      * Add a history record on the new event.
      */
+    public void saveNewEventToHistory(String flowId, String action, FlowEventData.Event event) {
+        String taskId = KeyProvider.joinKeys(flowId, getCommandContext().getCorrelationId());
+        saveNewEventToHistory(flowId, action, event, null, null, taskId);
+    }
+
+    /**
+     * Add a history record on the new event.
+     */
     public void saveNewEventToHistory(String action, FlowEventData.Event event,
                                       FlowEventData.Initiator initiator,
                                       String details) {
-        log.debug("Flow {} action - {} : {}", getFlowId(), action, event);
+        saveNewEventToHistory(getFlowId(), action, event, initiator, details, getCommandContext().getCorrelationId());
+    }
+
+    /**
+     * Add a history record on the new event.
+     */
+    public void saveNewEventToHistory(String flowId, String action, FlowEventData.Event event,
+                                      FlowEventData.Initiator initiator,
+                                      String details, String taskId) {
+        log.debug("Flow {} action - {} : {}", flowId, action, event);
 
         Instant timestamp = getNextHistoryEntryTime();
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(getCommandContext().getCorrelationId())
+                .taskId(taskId)
                 .flowHistoryData(FlowHistoryData.builder()
                         .action(action)
                         .time(timestamp)
-                        .flowId(getFlowId())
+                        .flowId(flowId)
                         .build())
                 .flowEventData(FlowEventData.builder()
-                        .flowId(getFlowId())
+                        .flowId(flowId)
                         .event(event)
                         .initiator(initiator)
                         .time(timestamp)

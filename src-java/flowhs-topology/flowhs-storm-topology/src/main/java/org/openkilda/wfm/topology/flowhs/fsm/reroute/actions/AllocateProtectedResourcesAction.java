@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -35,8 +35,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -120,7 +122,9 @@ public class AllocateProtectedResourcesAction extends
                 log.debug("Resources have been allocated: {}", flowResources);
                 stateMachine.setNewProtectedResources(flowResources);
 
-                FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
+                List<FlowPath> pathsToReuse
+                        = Lists.newArrayList(flow.getProtectedForwardPath(), flow.getProtectedReversePath());
+                FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources);
                 log.debug("New protected path has been created: {}", newPaths);
                 stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
                 stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());

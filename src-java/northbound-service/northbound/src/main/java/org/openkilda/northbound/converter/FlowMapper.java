@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -148,6 +148,8 @@ public abstract class FlowMapper {
             + "request.getDestination().getDetectConnectedDevices().isArp()))")
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "type", ignore = true)
+    @Mapping(target = "bulkUpdateFlowIds", ignore = true)
+    @Mapping(target = "doNotRevert", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
     @Mapping(target = "flowId", source = "id")

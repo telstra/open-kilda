@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,14 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import org.openkilda.messaging.Message;
+
 public interface FlowUpdateHubCarrier extends FlowGenericCarrier {
+    /**
+     * Sends a response to SwapEndpointHub after the update operation is completed.
+     */
+    void sendHubSwapEndpointsResponse(Message message);
+
     /**
      * Cancels timeout callback.
      *

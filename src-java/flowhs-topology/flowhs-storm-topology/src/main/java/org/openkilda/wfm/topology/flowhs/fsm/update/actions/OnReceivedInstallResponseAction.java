@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -33,6 +34,8 @@ import java.util.UUID;
 @Slf4j
 public class OnReceivedInstallResponseAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+    private  static final String FAILED_TO_INSTALL_RULE_ACTION = "Failed to install rule";
+
     private final int speakerCommandRetriesLimit;
 
     public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
@@ -62,16 +65,24 @@ public class OnReceivedInstallResponseAction extends
             if (retries < speakerCommandRetriesLimit) {
                 stateMachine.getRetriedCommands().put(commandId, ++retries);
 
-                stateMachine.saveErrorToHistory("Failed to install rule", format(
+                stateMachine.saveErrorToHistory(FAILED_TO_INSTALL_RULE_ACTION, format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
                 stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
+            } else if (stateMachine.isDoNotRevert()) {
+                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.saveErrorToHistory(FAILED_TO_INSTALL_RULE_ACTION, format(
+                        "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                + "Skipping installing attempts",
+                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
+                stateMachine.setNewFlowStatus(FlowStatus.DOWN);
+                stateMachine.setErrorReason(FAILED_TO_INSTALL_RULE_ACTION);
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 
-                stateMachine.saveErrorToHistory("Failed to install rule", format(
+                stateMachine.saveErrorToHistory(FAILED_TO_INSTALL_RULE_ACTION, format(
                         "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
 
