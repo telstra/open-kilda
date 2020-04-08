@@ -519,7 +519,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
-        lockKeeper.knockoutSwitch(swToDeactivate)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
         def isSwDeactivated = true
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
         Wrappers.wait(WAIT_OFFSET * 4) {
@@ -530,7 +530,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Activate the src switch"
-        lockKeeper.reviveSwitch(swToDeactivate)
+        lockKeeper.reviveSwitch(swToDeactivate, mgmtBlockData)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {

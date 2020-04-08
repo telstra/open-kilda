@@ -48,7 +48,8 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         } ?: assumeTrue("Wasn't able to find a switch with suitable links", false)
 
         when: "Simulate connection lose between the switch and FL, the switch becomes DEACTIVATED and remains operable"
-        lockKeeper.knockoutSwitch(swToDeactivate)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
+
         def isSwDeactivated = true
         Wrappers.wait(customWaitOffset) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
@@ -73,7 +74,7 @@ for ISL alive confirmation)"
 
         cleanup:
         if (isSwDeactivated) {
-            lockKeeper.reviveSwitch(swToDeactivate)
+            lockKeeper.reviveSwitch(swToDeactivate, mgmtBlockData)
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
                 assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 assert northbound.getAllLinks().findAll {
@@ -98,8 +99,8 @@ for ISL alive confirmation)"
         def dstSwToDeactivate = roundTripIsl.dstSwitch
 
         when: "Simulate connection lose between the switches and FL, switches become DEACTIVATED and remain operable"
-        lockKeeper.knockoutSwitch(srcSwToDeactivate)
-        lockKeeper.knockoutSwitch(dstSwToDeactivate)
+        def mgmtBlockDataSrcSw = lockKeeper.knockoutSwitch(srcSwToDeactivate, mgmtFlManager)
+        def mgmtBlockDataDstSw = lockKeeper.knockoutSwitch(dstSwToDeactivate, mgmtFlManager)
         def areSwitchesDeactivated = true
         Wrappers.wait(customWaitOffset) {
             assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
@@ -114,8 +115,8 @@ on both switches)"
 
         cleanup:
         if (areSwitchesDeactivated) {
-            lockKeeper.reviveSwitch(srcSwToDeactivate)
-            lockKeeper.reviveSwitch(dstSwToDeactivate)
+            lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockDataSrcSw)
+            lockKeeper.reviveSwitch(dstSwToDeactivate, mgmtBlockDataDstSw)
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
                 assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 assert northbound.getSwitch(dstSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
@@ -145,7 +146,7 @@ round trip latency rule is removed on the dst switch"() {
         [roundTripIsl, roundTripIsl.reversed].each { assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE }
 
         when: "Simulate connection lose between the src switch and FL, switches become DEACTIVATED and remain operable"
-        lockKeeper.knockoutSwitch(srcSwToDeactivate)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwToDeactivate, mgmtFlManager)
         def isSrcSwDeactivated = true
         Wrappers.wait(customWaitOffset) {
             assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
@@ -173,7 +174,7 @@ round trip latency rule is removed on the dst switch"() {
         [roundTripIsl, roundTripIsl.reversed].each { assert !database.getIslRoundTripStatus(it) }
 
         when: "Restore connection between the src switch and FL"
-        lockKeeper.reviveSwitch(srcSwToDeactivate)
+        lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {
@@ -204,7 +205,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         cleanup:
-        isSrcSwDeactivated && lockKeeper.reviveSwitch(srcSwToDeactivate)
+        isSrcSwDeactivated && lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockData)
         isRoundTripRuleDeleted && northbound.installSwitchRules(dstSw.dpId, InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
         if (isSrcSwDeactivated || isRoundTripRuleDeleted) {
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
