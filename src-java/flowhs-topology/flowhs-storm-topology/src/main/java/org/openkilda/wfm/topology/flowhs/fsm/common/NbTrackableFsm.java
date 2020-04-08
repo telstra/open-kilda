@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,14 +18,20 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.squirrelframework.foundation.fsm.StateMachine;
 
+@Getter
+@Setter
 public abstract class NbTrackableFsm<T extends StateMachine<T, S, E, C>, S, E, C>
         extends FlowProcessingFsm<T, S, E, C> {
+
+    private Message operationResultMessage;
 
     public NbTrackableFsm(CommandContext commandContext) {
         super(commandContext);
     }
 
-    public abstract void sendResponse(Message message);
+    public abstract void sendNorthboundResponse(Message message);
 }

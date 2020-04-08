@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.mapper;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.model.DetectConnectedDevicesDto;
+import org.openkilda.messaging.model.SwapFlowDto;
+import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -62,6 +65,32 @@ public abstract class RequestedFlowMapper {
     public abstract RequestedFlow toRequestedFlow(Flow flow);
 
     /**
+     * Convert {@link SwapFlowDto} to {@link RequestedFlow}.
+     */
+    @Mapping(source = "flowId", target = "flowId")
+    @Mapping(source = "sourceSwitch", target = "srcSwitch")
+    @Mapping(source = "sourcePort", target = "srcPort")
+    @Mapping(source = "sourceVlan", target = "srcVlan")
+    @Mapping(source = "destinationSwitch", target = "destSwitch")
+    @Mapping(source = "destinationPort", target = "destPort")
+    @Mapping(source = "destinationVlan", target = "destVlan")
+    @Mapping(target = "priority", ignore = true)
+    @Mapping(target = "pinned", ignore = true)
+    @Mapping(target = "allocateProtectedPath", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "description", ignore = true)
+    @Mapping(target = "bandwidth", ignore = true)
+    @Mapping(target = "ignoreBandwidth", ignore = true)
+    @Mapping(target = "periodicPings", ignore = true)
+    @Mapping(target = "maxLatency", ignore = true)
+    @Mapping(target = "flowEncapsulationType", ignore = true)
+    @Mapping(target = "pathComputationStrategy", ignore = true)
+    @Mapping(target = "detectConnectedDevices", ignore = true)
+    @Mapping(target = "srcWithMultiTable", ignore = true)
+    @Mapping(target = "destWithMultiTable", ignore = true)
+    public abstract RequestedFlow toRequestedFlow(SwapFlowDto flow);
+
+    /**
      * Convert {@link RequestedFlow} to {@link Flow}.
      */
     @Mapping(source = "flowId", target = "flowId")
@@ -78,5 +107,42 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeModify", ignore = true)
+    @Mapping(target = "targetPathComputationStrategy", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
+
+    /**
+     * Convert {@link Flow} to {@link FlowRequest}.
+     */
+    @Mapping(target = "flowId", source = "flowId")
+    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(target = "sourcePort", source = "srcPort")
+    @Mapping(target = "sourceVlan", source = "srcVlan")
+    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(target = "destinationPort", source = "destPort")
+    @Mapping(target = "destinationVlan", source = "destVlan")
+    @Mapping(target = "encapsulationType", source = "encapsulationType")
+    @Mapping(target = "pathComputationStrategy",
+            expression = "java(java.util.Optional.ofNullable(flow.getPathComputationStrategy())"
+                    + ".map(pcs -> pcs.toString().toLowerCase())"
+                    + ".orElse(null))")
+    @Mapping(target = "bandwidth", source = "bandwidth")
+    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
+    @Mapping(target = "periodicPings", source = "periodicPings")
+    @Mapping(target = "allocateProtectedPath", source = "allocateProtectedPath")
+    @Mapping(target = "description", source = "description")
+    @Mapping(target = "maxLatency", source = "maxLatency")
+    @Mapping(target = "priority", source = "priority")
+    @Mapping(target = "pinned", source = "pinned")
+    @Mapping(target = "detectConnectedDevices", source = "detectConnectedDevices")
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "type", ignore = true)
+    @Mapping(target = "bulkUpdateFlowIds", ignore = true)
+    @Mapping(target = "doNotRevert", ignore = true)
+    public abstract FlowRequest toFlowRequest(Flow flow);
+
+    /**
+     * Convert {@link DetectConnectedDevices} to {@link DetectConnectedDevicesDto}.
+     */
+    public abstract DetectConnectedDevicesDto toDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices);
 }

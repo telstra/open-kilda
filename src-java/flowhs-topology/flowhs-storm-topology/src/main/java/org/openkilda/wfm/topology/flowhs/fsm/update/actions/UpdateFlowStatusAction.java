@@ -30,6 +30,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Optional;
+
 @Slf4j
 public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
@@ -46,7 +48,8 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
 
         FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
-            FlowStatus flowStatus = flow.computeFlowStatus();
+            FlowStatus flowStatus = Optional.ofNullable(stateMachine.getNewFlowStatus())
+                    .orElse(flow.computeFlowStatus());
             if (flowStatus != flow.getStatus()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
                 flowRepository.updateStatus(flowId, flowStatus);

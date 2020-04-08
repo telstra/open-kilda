@@ -390,6 +390,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         SPEAKER_WORKER_TO_HUB_REROUTE,
         SPEAKER_WORKER_TO_HUB_DELETE,
 
+        UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB,
+
         SPEAKER_WORKER_REQUEST_SENDER,
         HUB_TO_NB_RESPONSE_SENDER,
         HUB_TO_REROUTE_RESPONSE_SENDER,

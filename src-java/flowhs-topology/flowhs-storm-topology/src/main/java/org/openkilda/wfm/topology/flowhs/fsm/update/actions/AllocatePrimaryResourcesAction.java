@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -32,7 +33,11 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
+import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public class AllocatePrimaryResourcesAction extends
@@ -55,10 +60,18 @@ public class AllocatePrimaryResourcesAction extends
     protected void allocate(FlowUpdateFsm stateMachine)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         String flowId = stateMachine.getFlowId();
-        Flow flow = getFlow(flowId);
 
+        Set<String> flowIds = Sets.newHashSet(flowId);
+        if (stateMachine.getBulkUpdateFlowIds() != null) {
+            flowIds.addAll(stateMachine.getBulkUpdateFlowIds());
+        }
+
+        log.debug("Finding path ids for flows {}", flowIds);
+        List<PathId> pathsToReuse = getFlowsPathIds(flowIds);
+
+        Flow flow = getFlow(flowId);
         log.debug("Finding a new primary path for flow {}", flowId);
-        final PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+        final PathPair potentialPath = pathComputer.getPath(flow, pathsToReuse);
 
         log.debug("Allocating resources for a new primary path of flow {}", flowId);
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
@@ -69,7 +82,9 @@ public class AllocatePrimaryResourcesAction extends
                 .forward(flow.getForwardPath())
                 .reverse(flow.getReversePath())
                 .build();
-        FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
+        long overprovisionedBandwidth = getFlowsBandwidthSum(flowIds);
+        FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources,
+                overprovisionedBandwidth);
         log.debug("New primary path has been created: {}", newPaths);
         stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
         stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());

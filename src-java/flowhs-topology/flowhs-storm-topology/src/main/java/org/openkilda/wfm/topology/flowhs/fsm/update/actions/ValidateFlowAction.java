@@ -81,9 +81,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         }
 
         stateMachine.setTargetFlow(targetFlow);
+        stateMachine.setBulkUpdateFlowIds(context.getBulkUpdateFlowIds());
+        stateMachine.setDoNotRevert(context.isDoNotRevert());
 
         try {
-            flowValidator.validate(targetFlow);
+            flowValidator.validate(targetFlow, stateMachine.getBulkUpdateFlowIds());
         } catch (InvalidFlowException e) {
             throw new FlowProcessingException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {

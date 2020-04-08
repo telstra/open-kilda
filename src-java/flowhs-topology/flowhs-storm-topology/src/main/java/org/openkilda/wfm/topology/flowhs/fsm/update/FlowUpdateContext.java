@@ -23,14 +23,21 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.Set;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class FlowUpdateContext extends FlowContext {
     private RequestedFlow targetFlow;
+    private Set<String> bulkUpdateFlowIds;
+    private boolean doNotRevert;
 
     @Builder
-    public FlowUpdateContext(SpeakerFlowSegmentResponse speakerFlowResponse, RequestedFlow targetFlow) {
+    public FlowUpdateContext(SpeakerFlowSegmentResponse speakerFlowResponse, RequestedFlow targetFlow,
+                             Set<String> bulkUpdateFlowIds, boolean doNotRevert) {
         super(speakerFlowResponse);
         this.targetFlow = targetFlow;
+        this.bulkUpdateFlowIds = bulkUpdateFlowIds;
+        this.doNotRevert = doNotRevert;
     }
 }

@@ -20,8 +20,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
@@ -44,6 +46,7 @@ public class RequestedFlowMapperTest {
     public static final int BANDWIDTH = 1000;
     public static final Long MAX_LATENCY = 200L;
     public static final FlowEncapsulationType ENCAPSULATION_TYPE = FlowEncapsulationType.TRANSIT_VLAN;
+    public static final String PATH_COMPUTATION_STRATEGY = PathComputationStrategy.COST.toString().toLowerCase();
 
     private FlowRequest flowRequest = FlowRequest.builder()
             .flowId(FLOW_ID)
@@ -79,6 +82,7 @@ public class RequestedFlowMapperTest {
             .bandwidth(BANDWIDTH)
             .maxLatency(MAX_LATENCY)
             .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .pathComputationStrategy(PathComputationStrategy.COST)
             .detectConnectedDevices(
                     new org.openkilda.model.DetectConnectedDevices(true, true, true, true, true, true, true, true))
             .pinned(true)
@@ -139,5 +143,51 @@ public class RequestedFlowMapperTest {
 
         Flow mappedFlow = RequestedFlowMapper.INSTANCE.toFlow(requestedFlow);
         assertEquals(flow, mappedFlow);
+    }
+
+    @Test
+    public void mapFlowToFlowRequestTest() {
+        FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow);
+        assertEquals(FLOW_ID, flowRequest.getFlowId());
+        assertEquals(SRC_SWITCH_ID, flowRequest.getSourceSwitch());
+        assertEquals(SRC_PORT, flowRequest.getSourcePort());
+        assertEquals(SRC_VLAN, flowRequest.getSourceVlan());
+        assertEquals(DST_SWITCH_ID, flowRequest.getDestinationSwitch());
+        assertEquals(DST_PORT, flowRequest.getDestinationPort());
+        assertEquals(DST_VLAN, flowRequest.getDestinationVlan());
+        assertEquals(PRIORITY, flowRequest.getPriority());
+        assertEquals(DESCRIPTION, flowRequest.getDescription());
+        assertEquals(BANDWIDTH, flowRequest.getBandwidth());
+        assertEquals(MAX_LATENCY, flowRequest.getMaxLatency());
+        assertEquals(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN,
+                flowRequest.getEncapsulationType());
+        assertEquals(PATH_COMPUTATION_STRATEGY, flowRequest.getPathComputationStrategy());
+        assertTrue(flowRequest.isPinned());
+        assertTrue(flowRequest.isAllocateProtectedPath());
+        assertTrue(flowRequest.isIgnoreBandwidth());
+        assertTrue(flowRequest.isPeriodicPings());
+        assertEquals(new DetectConnectedDevicesDto(true, true, true, true, true, true, true, true),
+                flowRequest.getDetectConnectedDevices());
+    }
+
+    @Test
+    public void mapSwapDtoToRequesterFlowTest() {
+        SwapFlowDto swapFlowDto = SwapFlowDto.builder()
+                .flowId(FLOW_ID)
+                .sourceSwitch(SRC_SWITCH_ID)
+                .sourcePort(SRC_PORT)
+                .sourceVlan(SRC_VLAN)
+                .destinationSwitch(DST_SWITCH_ID)
+                .destinationPort(DST_PORT)
+                .destinationVlan(DST_VLAN)
+                .build();
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(swapFlowDto);
+        assertEquals(FLOW_ID, requestedFlow.getFlowId());
+        assertEquals(SRC_SWITCH_ID, requestedFlow.getSrcSwitch());
+        assertEquals(SRC_PORT, requestedFlow.getSrcPort());
+        assertEquals(SRC_VLAN, requestedFlow.getSrcVlan());
+        assertEquals(DST_SWITCH_ID, requestedFlow.getDestSwitch());
+        assertEquals(DST_PORT, requestedFlow.getDestPort());
+        assertEquals(DST_VLAN, requestedFlow.getDestVlan());
     }
 }
