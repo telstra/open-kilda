@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,7 +17,11 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -29,6 +33,8 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -136,5 +142,11 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
                 .server42Port(switchProperties.getServer42Port())
                 .server42MacAddress(switchProperties.getServer42MacAddress())
                 .build();
+    }
+
+    protected Message buildResponseMessage(Flow flow, CommandContext commandContext) {
+        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
+        return new InfoMessage(flowData, commandContext.getCreateTime(),
+                commandContext.getCorrelationId());
     }
 }

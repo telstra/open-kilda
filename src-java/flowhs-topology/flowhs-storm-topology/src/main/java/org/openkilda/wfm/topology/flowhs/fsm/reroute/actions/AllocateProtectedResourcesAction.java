@@ -37,7 +37,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends
@@ -112,7 +115,9 @@ public class AllocateProtectedResourcesAction extends
                 log.debug("Resources have been allocated: {}", flowResources);
                 stateMachine.setNewProtectedResources(flowResources);
 
-                FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
+                List<FlowPath> pathsToReuse
+                        = Lists.newArrayList(flow.getProtectedForwardPath(), flow.getProtectedReversePath());
+                FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources);
                 log.debug("New protected path has been created: {}", newPaths);
                 stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
                 stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());

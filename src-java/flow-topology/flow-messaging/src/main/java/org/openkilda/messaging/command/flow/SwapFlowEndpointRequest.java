@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.model.SwapFlowDto;
-import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
+import org.openkilda.messaging.nbtopology.request.BaseRequest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
@@ -28,16 +28,16 @@ import lombok.Value;
  */
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class SwapFlowEndpointRequest extends FlowsBaseRequest {
-    private static final long serialVersionUID = 1L;
+public class SwapFlowEndpointRequest extends BaseRequest {
+    private static final long serialVersionUID = 694340554858269632L;
 
     @NonNull
     @JsonProperty("first_flow")
-    private SwapFlowDto firstFlow;
+    SwapFlowDto firstFlow;
 
     @NonNull
     @JsonProperty("second_flow")
-    private SwapFlowDto secondFlow;
+    SwapFlowDto secondFlow;
 
     public SwapFlowEndpointRequest(@JsonProperty("first_flow") SwapFlowDto firstFlow,
                                    @JsonProperty("second_flow") SwapFlowDto secondFlow) {

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -49,6 +49,11 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowUpdateFsm, Stat
             stateMachine.saveActionToHistory("Flow update completed",
                     format("Flow update completed with status %s and error %s", stateMachine.getNewFlowStatus(),
                             stateMachine.getErrorReason()));
+        }
+
+        if (stateMachine.getOperationResultMessage() != null
+                && stateMachine.getBulkUpdateFlowIds() != null && !stateMachine.getBulkUpdateFlowIds().isEmpty()) {
+            stateMachine.sendHubSwapEndpointsResponse(stateMachine.getOperationResultMessage());
         }
     }
 }
