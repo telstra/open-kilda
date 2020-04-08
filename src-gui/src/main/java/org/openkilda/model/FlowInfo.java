@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -31,8 +31,8 @@ import java.io.Serializable;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"flowid", "source_switch", "src_port", "src_vlan", "target_switch", "dst_port",
-        "dst_vlan", "maximum_bandwidth", "status", "description", "diverse-flowid", "last-updated", "discrepancy"})
+@JsonPropertyOrder({"flowid", "source_switch", "src_port", "src_vlan", "target_switch", "dst_port", "dst_vlan",
+        "maximum_bandwidth", "status", "description", "diverse-flowid", "last-updated", "discrepancy"})
 @Data
 public class FlowInfo implements Serializable {
 
@@ -57,17 +57,14 @@ public class FlowInfo implements Serializable {
     @JsonProperty("target_switch")
     private String targetSwitch;
 
-
     @JsonProperty("dst_port")
     private int dstPort;
-
 
     @JsonProperty("dst_vlan")
     private int dstVlan;
     
     @JsonProperty("diverse-flowid")
     private String diverseFlowid;
-
 
     @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
@@ -78,10 +75,8 @@ public class FlowInfo implements Serializable {
     @JsonProperty("status")
     private String status;
 
-
     @JsonProperty("description")
     private String description;
-
 
     @JsonProperty("last-updated")
     private String lastUpdated;
@@ -118,8 +113,19 @@ public class FlowInfo implements Serializable {
     
     //@JsonProperty("diverse_with")
     //private List<String> diverseWith;
+    
+    @JsonProperty("src_lldp")
+    private boolean srcLldp;
+
+    @JsonProperty("src_arp")
+    private boolean srcArp;
+
+    @JsonProperty("dst_lldp")
+    private boolean dstLldp;
+
+    @JsonProperty("dst_arp")
+    private boolean dstArp;
 
     private static final long serialVersionUID = -7015976328478701934L;
-
 
 }
