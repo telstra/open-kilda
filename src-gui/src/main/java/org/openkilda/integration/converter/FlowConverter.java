@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -92,6 +92,8 @@ public class FlowConverter {
             flowInfo.setSourceSwitch(source.getSwitchId());
             flowInfo.setSrcPort(source.getPortId());
             flowInfo.setSrcVlan(source.getVlanId());
+            flowInfo.setSrcLldp(source.getDetectedDevice().isLldp());
+            flowInfo.setSrcArp(source.getDetectedDevice().isArp());
         }
         FlowEndpoint destination = flow.getDestination();
         if (destination != null) {
@@ -100,6 +102,8 @@ public class FlowConverter {
             flowInfo.setTargetSwitch(destination.getSwitchId());
             flowInfo.setDstPort(destination.getPortId());
             flowInfo.setDstVlan(destination.getVlanId());
+            flowInfo.setDstLldp(destination.getDetectedDevice().isLldp());
+            flowInfo.setDstArp(destination.getDetectedDevice().isArp());
         }
         return flowInfo;
     }
