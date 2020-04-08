@@ -28,7 +28,6 @@ import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.FloodlightDashboardLogger;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
@@ -77,10 +76,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     /**
      * Send dump contain all connected at this moment switches.
      */
-    public void dumpAllSwitches(String correlationId) {
+    public void dumpAllSwitches() {
         discoveryLock.writeLock().lock();
         try {
-            dumpAllSwitchesAction(correlationId);
+            dumpAllSwitchesAction();
         } finally {
             discoveryLock.writeLock().unlock();
         }
@@ -167,20 +166,11 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
-    private void dumpAllSwitchesAction(String correlationId) {
+    private void dumpAllSwitchesAction() {
         Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap(true).values();
-        int switchCounter = 0;
         for (IOFSwitch sw : iofSwitches) {
-            try {
-                NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
-                producerService.sendMessageAndTrack(discoveryTopic,
-                                                correlationId,
-                                                new ChunkedInfoMessage(swData, System.currentTimeMillis(),
-                                                        correlationId, switchCounter, iofSwitches.size(), region));
-            } catch (Exception e) {
-                logger.error("Failed to send network dump for {}", sw.getId());
-            }
-            switchCounter++;
+            NetworkDumpSwitchData payload = new NetworkDumpSwitchData(buildSwitch(sw));
+            emitDiscoveryEvent(sw.getId(), payload);
         }
     }
 
@@ -204,28 +194,33 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
 
     private void switchDiscoveryAction(DatapathId dpId, SwitchChangeType event) {
         logger.info("Send switch discovery ({} - {})", dpId, event);
-        Message message = null;
+        SwitchInfoData payload = null;
         if (SwitchChangeType.DEACTIVATED != event && SwitchChangeType.REMOVED != event) {
             try {
                 IOFSwitch sw = switchManager.lookupSwitch(dpId);
                 SpeakerSwitchView switchView = buildSwitch(sw);
-                message = buildSwitchMessage(sw, switchView, event);
+                payload = buildSwitchMessage(sw, switchView, event);
             } catch (SwitchNotFoundException e) {
                 logger.error(
                         "Switch {} is not in management state now({}), switch ISL discovery details will be degraded.",
                         dpId, e.getMessage());
             }
         }
-        if (message == null) {
-            message = buildSwitchMessage(dpId, event);
+        if (payload == null) {
+            payload = buildSwitchMessage(dpId, event);
         }
 
-        producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
+        emitDiscoveryEvent(dpId, payload);
     }
 
     private void portDiscoveryAction(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
         logger.info("Send port discovery ({}-{} - {})", dpId, portDesc.getPortNo(), changeType);
-        Message message = buildPortMessage(dpId, portDesc, changeType);
+        InfoData payload = OfPortDescConverter.INSTANCE.toPortInfoData(dpId, portDesc, changeType);
+        emitDiscoveryEvent(dpId, payload);
+    }
+
+    private void emitDiscoveryEvent(DatapathId dpId, InfoData payload) {
+        Message message = buildMessage(payload);
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
@@ -236,8 +231,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(IOFSwitch sw, SpeakerSwitchView switchView, SwitchChangeType eventType) {
-        return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, switchView, eventType));
+    private SwitchInfoData buildSwitchMessage(IOFSwitch sw, SpeakerSwitchView switchView, SwitchChangeType eventType) {
+        return IofSwitchConverter.buildSwitchInfoData(sw, switchView, eventType);
     }
 
     /**
@@ -247,21 +242,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(DatapathId dpId, SwitchChangeType eventType) {
-        return buildMessage(new SwitchInfoData(new SwitchId(dpId.getLong()), eventType));
-    }
-
-    /**
-     * Builds a port state change message with port number.
-     *
-     * @param switchId datapathId of switch
-     * @param portDesc port that triggered the event
-     * @param type type of port event
-     * @return Message
-     */
-    private Message buildPortMessage(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
-        InfoData data = OfPortDescConverter.INSTANCE.toPortInfoData(switchId, portDesc, type);
-        return buildMessage(data);
+    private SwitchInfoData buildSwitchMessage(DatapathId dpId, SwitchChangeType eventType) {
+        return new SwitchInfoData(new SwitchId(dpId.getLong()), eventType);
     }
 
     /**

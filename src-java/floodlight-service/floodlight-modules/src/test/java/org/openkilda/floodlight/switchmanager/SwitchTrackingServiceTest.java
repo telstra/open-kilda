@@ -33,8 +33,9 @@ import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
@@ -364,12 +365,14 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         replayAll();
 
         String correlationId = "unit-test-correlation-id";
-        service.dumpAllSwitches(correlationId);
+        try (CorrelationContextClosable dummy = CorrelationContext.create(correlationId)) {
+            service.dumpAllSwitches();
+        }
 
         verify(producerService);
 
         ArrayList<Message> expectedMessages = new ArrayList<>();
-        expectedMessages.add(new ChunkedInfoMessage(
+        expectedMessages.add(new InfoMessage(
                         new NetworkDumpSwitchData(new SpeakerSwitchView(
                                 new SwitchId(swAid.getLong()),
                                 new InetSocketAddress(Inet4Address.getByName("127.0.1.1"), 32768),
@@ -380,8 +383,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                                 ImmutableList.of(
                                         new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
                                         new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))),
-                0, correlationId, 0, 2, "1"));
-        expectedMessages.add(new ChunkedInfoMessage(
+                0, correlationId));
+        expectedMessages.add(new InfoMessage(
                 new NetworkDumpSwitchData(new SpeakerSwitchView(
                         new SwitchId(swBid.getLong()),
                         new InetSocketAddress(Inet4Address.getByName("127.0.1.2"), 32768),
@@ -393,7 +396,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                                 new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))),
-                0, correlationId, 1, 2, "1"));
+                0, correlationId));
         assertEquals(expectedMessages, producedMessages);
     }
 
