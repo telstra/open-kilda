@@ -19,54 +19,28 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
 @Slf4j
 public class NetworkWatcherService {
-    private final Clock clock;
-    private final Clock roundTripNotificationClock;
-    private Instant lastRoundTripNotification;
-
     private final IWatcherCarrier carrier;
     private final long awaitTime;
     private final Integer taskId;
 
     private long packetNo = 0;
-    private Set<Packet> discoveryPackets = new HashSet<>();
-    private Set<Packet> roundTripPackets = new HashSet<>();
-
+    private Set<Packet> producedPackets = new HashSet<>();
     private Set<Packet> confirmedPackets = new HashSet<>();
     private SortedMap<Long, Set<Packet>> timeouts = new TreeMap<>();
 
-    private Map<Endpoint, Instant> lastSeenRoundTrip = new HashMap<>();
-
-    public NetworkWatcherService(
-            IWatcherCarrier carrier, Duration roundTripNotificationPeriod, long awaitTime, Integer taskId) {
-        this(Clock.systemUTC(), carrier, roundTripNotificationPeriod, awaitTime, taskId);
-    }
-
-    @VisibleForTesting
-    NetworkWatcherService(
-            Clock clock, IWatcherCarrier carrier, Duration roundTripNotificationPeriod, long awaitTime,
-            Integer taskId) {
-        this.clock = clock;
-        this.roundTripNotificationClock = Clock.tick(this.clock, roundTripNotificationPeriod);
-        this.lastRoundTripNotification = this.roundTripNotificationClock.instant();
-
+    public NetworkWatcherService(IWatcherCarrier carrier, long awaitTime, Integer taskId) {
         this.carrier = carrier;
         this.awaitTime = awaitTime;
         this.taskId = taskId;
@@ -81,9 +55,7 @@ public class NetworkWatcherService {
         log.debug("Watcher service receive ADD-watch request for {} and produce packet id:{} task:{}",
                   endpoint, packet.packetNo, taskId);
 
-        discoveryPackets.add(packet);
-        roundTripPackets.add(packet);
-
+        producedPackets.add(packet);
         timeouts.computeIfAbsent(currentTime + awaitTime, key -> new HashSet<>())
                 .add(packet);
 
@@ -100,23 +72,11 @@ public class NetworkWatcherService {
     public void removeWatch(Endpoint endpoint) {
         log.debug("Watcher service receive REMOVE-watch request for {}", endpoint);
         carrier.clearDiscovery(endpoint);
-        discoveryPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
-        roundTripPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
+        producedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
         confirmedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
-
-        lastSeenRoundTrip.remove(endpoint);
-    }
-
-    public void tick() {
-        tick(now());
     }
 
     void tick(long tickTime) {
-        tickDiscovery(tickTime);
-        tickRoundTrip();
-    }
-
-    private void tickDiscovery(long tickTime) {
         SortedMap<Long, Set<Packet>> range = timeouts.subMap(0L, tickTime + 1);
         if (!range.isEmpty()) {
             for (Set<Packet> e : range.values()) {
@@ -128,17 +88,8 @@ public class NetworkWatcherService {
         }
     }
 
-    private void tickRoundTrip() {
-        Instant tick = roundTripNotificationClock.instant();
-        if (! lastRoundTripNotification.equals(tick)) {
-            lastRoundTripNotification = tick;
-
-            Instant now = clock.instant();
-            for (Map.Entry<Endpoint, Instant> entry : lastSeenRoundTrip.entrySet()) {
-                RoundTripStatus status = new RoundTripStatus(entry.getKey(), entry.getValue(), now);
-                carrier.sendRoundTripStatus(status);
-            }
-        }
+    public void tick() {
+        tick(now());
     }
 
     /**
@@ -147,7 +98,7 @@ public class NetworkWatcherService {
     public void confirmation(Endpoint endpoint, long packetNo) {
         log.debug("Watcher service receive SEND-confirmation for {} id:{} task:{}", endpoint, packetNo, taskId);
         Packet packet = Packet.of(endpoint, packetNo);
-        if (discoveryPackets.remove(packet)) {
+        if (producedPackets.remove(packet)) {
             confirmedPackets.add(packet);
         } else if (log.isDebugEnabled()) {
             log.debug("Can't find produced packet for {} id:{} task:{}", endpoint, packetNo, taskId);
@@ -174,7 +125,7 @@ public class NetworkWatcherService {
                       packet.endpoint, packet.packetNo, taskId, ref);
         }
 
-        boolean wasProduced = discoveryPackets.remove(packet);
+        boolean wasProduced = producedPackets.remove(packet);
         boolean wasConfirmed = confirmedPackets.remove(packet);
         if (wasProduced || wasConfirmed) {
             carrier.discoveryReceived(packet.endpoint, packet.packetNo, discoveryEvent, now());
@@ -184,24 +135,8 @@ public class NetworkWatcherService {
         }
     }
 
-    /**
-     * Process round trip discovery event.
-     */
-    public void roundTripDiscovery(Endpoint endpoint, long packetId) {
-        log.debug("Watcher service receive ROUND TRIP DISCOVERY for {} id:{} task:{}",
-                  endpoint, packetId, taskId);
-
-        if (roundTripPackets.remove(Packet.of(endpoint, packetId))) {
-            lastSeenRoundTrip.put(endpoint, clock.instant());
-        } else {
-            log.error("Receive invalid/stale/duplicate round trip discovery packet for {} id:{} task:{}",
-                      endpoint, packetId, taskId);
-        }
-    }
-
     private void timeoutAction(Packet packet) {
-        discoveryPackets.remove(packet);
-        roundTripPackets.remove(packet);
+        producedPackets.remove(packet);
 
         if (confirmedPackets.remove(packet)) {
             log.debug("Detect discovery packet lost sent via {} id:{} task:{}",
@@ -215,13 +150,8 @@ public class NetworkWatcherService {
     }
 
     @VisibleForTesting
-    Set<Packet> getDiscoveryPackets() {
-        return discoveryPackets;
-    }
-
-    @VisibleForTesting
-    Set<Packet> getRoundTripPackets() {
-        return roundTripPackets;
+    Set<Packet> getProducedPackets() {
+        return producedPackets;
     }
 
     @VisibleForTesting

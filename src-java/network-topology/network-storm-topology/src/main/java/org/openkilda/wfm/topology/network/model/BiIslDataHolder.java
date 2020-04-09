@@ -22,8 +22,6 @@ import lombok.Getter;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 public class BiIslDataHolder<T> {
     @Getter
@@ -52,11 +50,6 @@ public class BiIslDataHolder<T> {
         for (int idx = 0; idx < islData.size(); idx++) {
             islData.set(idx, data);
         }
-    }
-
-    public Stream<T> stream() {
-        return islData.stream()
-                .filter(Objects::nonNull);
     }
 
     public T getForward() {

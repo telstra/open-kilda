@@ -17,7 +17,6 @@ package org.openkilda.testing.service.database;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
-import org.openkilda.model.IslStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -53,8 +52,6 @@ public interface Database {
     boolean updateIslTimeUnstable(Isl isl, Instant newTimeUnstable);
 
     Instant getIslTimeUnstable(Isl isl);
-
-    IslStatus getIslRoundTripStatus(Isl isl);
 
     // Switches
 
