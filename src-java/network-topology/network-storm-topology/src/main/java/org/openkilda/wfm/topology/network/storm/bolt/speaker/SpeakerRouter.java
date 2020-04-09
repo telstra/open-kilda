@@ -28,7 +28,6 @@ import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.FeatureTogglesUpdate;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
@@ -59,7 +58,6 @@ import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchRemoveEven
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerRoundTripDiscovery;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerSendConfirmationCommand;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -131,9 +129,6 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof DiscoPacketSendingConfirmation) {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
                     input, new WatcherSpeakerSendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
-        } else if (payload instanceof IslRoundTripLatency) {
-            emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
-                    input, new WatcherSpeakerRoundTripDiscovery((IslRoundTripLatency) payload)));
         } else if (payload instanceof SwitchInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {

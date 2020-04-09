@@ -24,10 +24,8 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.See
 import spock.lang.Unroll
 
-@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown

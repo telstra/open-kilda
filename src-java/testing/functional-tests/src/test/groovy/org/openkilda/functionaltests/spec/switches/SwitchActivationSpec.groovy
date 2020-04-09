@@ -1,13 +1,13 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -39,7 +39,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Autowired
     SwitchHelper switchHelper
 
-    @Tags(VIRTUAL)
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -82,7 +81,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tags(VIRTUAL)
     def "Excess rules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().find { it.virtual }
@@ -128,7 +126,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags([VIRTUAL])
+    @Tags([Tag.VIRTUAL])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()

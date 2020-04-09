@@ -26,7 +26,6 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmContext;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
 
 import lombok.Builder;
@@ -91,10 +90,6 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         context.getOutput().notifyPortDiscoveryFailed(endpoint);
     }
 
-    public void proxyRoundTripStatus(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
-        context.getOutput().notifyPortRoundTripStatus(context.getRoundTripStatus());
-    }
-
     public void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         reportFsm.fire(PortFsmEvent.PORT_DOWN);
         IPortCarrier output = context.getOutput();
@@ -118,8 +113,6 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
         PortFsmFactory(PersistenceManager persistenceManager) {
             portPropertiesRepository = persistenceManager.getRepositoryFactory().createPortPropertiesRepository();
-
-            final String proxyRoundTripStatusMethod = "proxyRoundTripStatus";
 
             builder = StateMachineBuilderFactory.create(
                     PortFsm.class, PortFsmState.class, PortFsmEvent.class, PortFsmContext.class,
@@ -149,8 +142,6 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
                     .from(PortFsmState.UNOPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
             builder.internalTransition().within(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.FAIL)
                     .callMethod("proxyFail");
-            builder.internalTransition().within(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.ROUND_TRIP_STATUS)
-                    .callMethod(proxyRoundTripStatusMethod);
 
             // UNKNOWN
             builder.transition()
@@ -165,8 +156,6 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
                     .callMethod("proxyDiscovery");
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.FAIL)
                     .callMethod("proxyFail");
-            builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.ROUND_TRIP_STATUS)
-                    .callMethod(proxyRoundTripStatusMethod);
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.ENABLE_DISCOVERY)
                     .callMethod("enableDiscovery");
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.DISABLE_DISCOVERY)
@@ -204,7 +193,6 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
         private Isl history;
         private IslInfoData speakerDiscoveryEvent;
-        private RoundTripStatus roundTripStatus;
 
         public static PortFsmContextBuilder builder(IPortCarrier output) {
             return new PortFsmContextBuilder()
@@ -218,7 +206,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         ONLINE, OFFLINE,
         PORT_UP, PORT_DOWN, PORT_DEL,
         ENABLE_DISCOVERY, DISABLE_DISCOVERY,
-        DISCOVERY, FAIL, ROUND_TRIP_STATUS
+        DISCOVERY, FAIL
     }
 
     public enum PortFsmState {

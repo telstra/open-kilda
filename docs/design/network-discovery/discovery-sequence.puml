@@ -9,7 +9,7 @@ PortHandler -> WatchListBolt: del watch request switch_id+port\nrouting by switc
 WatchListBolt -> WatchListBolt: remove switch_id+port from watch list
 WatchListBolt -> WatcherBolt: remove switch_id+port
 WatcherBolt -> WatcherBolt: remove from await list
-WatcherBolt -> WatcherBolt: remove round-trip-status
+
 
 == Discovery process ==
 TickSpout -> WatchListBolt: tick
@@ -21,41 +21,28 @@ WatcherBolt -> FL: sent message with switch_id+port_list
 alt success
 FL --> WatcherBolt: discovery send confirmation\nrouting by switch_id
 WatcherBolt -> WatcherBolt: mark port with send confirmation
-WatcherBolt -> WatcherBolt: add port to wait-for-round-trip list
     alt success
     FL --> WatcherBolt: discovery packet\nrouting by switch_id
     WatcherBolt -> WatcherBolt: remove from await list
     WatcherBolt -> DecisionMakerBolt: discovery information\nrouting by switch_id+port_id
-    DecisionMakerBolt -> PortHandler
-
+    DecisionMakerBolt -> UniIslHandler
     else timeout
     ...
     TickSpout -> WatcherBolt: tick
     WatcherBolt -> WatcherBolt: find timeout ports
     WatcherBolt -> WatcherBolt: remove from await list
     WatcherBolt -> DecisionMakerBolt: discovery failed message\nrouting by switch_id+port_id
-    DecisionMakerBolt -> PortHandler
-    end alt
-
-    opt have round trip support
-        FL --> WatcherBolt: round trip notification
-        WatcherBolt -> WatcherBolt: remove from wait-for-round-trip list
-        WatcherBolt -> WatcherBolt: update round-trip-status
-    end opt
+    DecisionMakerBolt -> UniIslHandler
+end
 else timeout
 TickSpout -> WatcherBolt: tick
 WatcherBolt -> WatcherBolt: find timeout ports
 WatcherBolt -> WatcherBolt: remove from await list
-WatcherBolt -> WatcherBolt: remove from wait-for-round-trip list
 note over WatcherBolt
 	FL is offline so do nothing
 end note
 
 end
 
-== Each N time tick ==
-loop all managed network endpoints
-    WatcherBolt --> PortHandler: round-trip-status
-end loop
 
 @enduml

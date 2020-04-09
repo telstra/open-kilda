@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
@@ -35,7 +34,6 @@ import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +41,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -111,6 +108,7 @@ public class NetworkUniIslServiceTest {
         System.out.println(mockingDetails(carrier).printInvocations());
         verify(carrier, never()).notifyIslDown(any(Endpoint.class), any(IslReference.class), isA(IslDownReason.class));
     }
+
 
     @Test
     public void newIslFromUnknownToDownWithRemote() {
@@ -483,42 +481,6 @@ public class NetworkUniIslServiceTest {
 
         // ensure following discovery will be processed
         verifyIslCanBeDiscovered(service, makeIslBuilder(endpointAlpha1, endpointBeta3).build());
-    }
-
-    @Test
-    public void shouldProxyRoundTripStatus() {
-        final NetworkUniIslService service = new NetworkUniIslService(carrier);
-
-        final Endpoint endpointAlpha = Endpoint.of(alphaDatapath, 1);
-        final Endpoint endpointBeta = Endpoint.of(betaDatapath, 1);
-        service.uniIslSetup(endpointAlpha, null);
-
-        Switch alphaSwitch = Switch.builder().switchId(endpointAlpha.getDatapath()).build();
-        Switch betaSwitch = Switch.builder().switchId(endpointBeta.getDatapath()).build();
-        Isl islA1toB1 = Isl.builder()
-                .srcSwitch(alphaSwitch)
-                .srcPort(endpointAlpha.getPortNumber())
-                .destSwitch(betaSwitch)
-                .destPort(endpointBeta.getPortNumber())
-                .build();
-        IslInfoData discovery = IslMapper.INSTANCE.map(islA1toB1);
-        service.uniIslDiscovery(endpointAlpha, discovery);
-        verifyProxyRoundTripStatus(service, endpointAlpha, endpointBeta);
-
-        service.uniIslPhysicalDown(endpointAlpha);
-        verifyProxyRoundTripStatus(service, endpointAlpha, endpointBeta);
-
-        service.uniIslDiscovery(endpointAlpha, discovery);
-        verifyProxyRoundTripStatus(service, endpointAlpha, endpointBeta);
-    }
-
-    private void verifyProxyRoundTripStatus(NetworkUniIslService service, Endpoint endpoint, Endpoint remote) {
-        RoundTripStatus status = new RoundTripStatus(endpoint, Instant.EPOCH, Instant.ofEpochSecond(1));
-        service.roundTripStatusNotification(status);
-
-        IslReference reference = new IslReference(endpoint, remote);
-        verify(carrier).notifyIslRoundTripStatus(eq(reference), eq(status));
-        reset(carrier);
     }
 
     private void verifyIslCanBeDiscovered(NetworkUniIslService service, Isl link) {

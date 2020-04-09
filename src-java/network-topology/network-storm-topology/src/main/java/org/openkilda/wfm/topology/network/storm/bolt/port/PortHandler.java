@@ -33,7 +33,6 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IAntiFlapCarrier;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkAntiFlapService;
@@ -51,9 +50,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslDiscov
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslFailCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslPhysicalDownCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslRemoveCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslRoundTripStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslSetupCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListPollAddCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListPollRemoveCommand;
@@ -104,12 +101,10 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
-        if (CoordinatorSpout.ID.equals(source)) {
-            handleTimer();
-        } else if (WatcherHandler.BOLT_ID.equals(source)) {
-            handleWatcherCommand(input);
-        } else if (DecisionMakerHandler.BOLT_ID.equals(source)) {
+        if (DecisionMakerHandler.BOLT_ID.equals(source)) {
             handleDecisionMakerCommand(input);
+        } else if (CoordinatorSpout.ID.equals(source)) {
+            handleTimer();
         } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
@@ -117,10 +112,6 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         } else {
             unhandledInput(input);
         }
-    }
-
-    private void handleWatcherCommand(Tuple input) throws PipelineException {
-        handleCommand(input, WatcherHandler.FIELD_ID_COMMAND);
     }
 
     private void handleDecisionMakerCommand(Tuple input) throws PipelineException {
@@ -213,11 +204,6 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         emit(STREAM_NORTHBOUND_ID, getCurrentTuple(), makePortPropertiesTuple(payload));
     }
 
-    @Override
-    public void notifyPortRoundTripStatus(RoundTripStatus roundTripStatus) {
-        emit(getCurrentTuple(), makeDefaultTuple(new UniIslRoundTripStatusCommand(roundTripStatus)));
-    }
-
     // IAntiFlapCarrier
 
     @Override
@@ -266,10 +252,6 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     public void updatePortProperties(Endpoint endpoint, boolean discoveryEnabled) {
         portService.updatePortProperties(endpoint, discoveryEnabled);
-    }
-
-    public void processRoundTripStatus(RoundTripStatus status) {
-        portService.roundTripStatusNotification(status);
     }
 
     // Private

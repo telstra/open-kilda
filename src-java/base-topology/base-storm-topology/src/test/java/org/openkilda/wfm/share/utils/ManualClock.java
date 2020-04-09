@@ -18,7 +18,6 @@ package org.openkilda.wfm.share.utils;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.temporal.TemporalAmount;
 
 /**
@@ -28,10 +27,6 @@ import java.time.temporal.TemporalAmount;
 public class ManualClock extends Clock {
     private Instant instant;
     private final ZoneId zone;
-
-    public ManualClock() {
-        this(Instant.EPOCH, ZoneOffset.UTC);
-    }
 
     public ManualClock(Instant timeNow, ZoneId zone) {
         this.instant = timeNow;
@@ -60,8 +55,7 @@ public class ManualClock extends Clock {
         instant = timeNow;
     }
 
-    public Instant adjust(TemporalAmount offset) {
+    public void adjust(TemporalAmount offset) {
         instant = instant.plus(offset);
-        return instant;
     }
 }

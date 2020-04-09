@@ -28,7 +28,6 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
-import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import lombok.Data;
 
@@ -113,11 +112,6 @@ public class NetworkIntegrationCarrier
     @Override
     public void notifyPortPropertiesChanged(PortProperties portProperties) {
         // Northbound service is not covered by this test
-    }
-
-    @Override
-    public void notifyPortRoundTripStatus(RoundTripStatus status) {
-        uniIslService.roundTripStatusNotification(status);
     }
 
     @Override
@@ -217,11 +211,6 @@ public class NetworkIntegrationCarrier
     @Override
     public void notifyIslMove(Endpoint endpoint, IslReference reference) {
         islService.islMove(endpoint, reference);
-    }
-
-    @Override
-    public void notifyIslRoundTripStatus(IslReference reference, RoundTripStatus status) {
-        islService.roundTripStatusNotification(reference, status);
     }
 
     public void triggerReroute(RerouteFlows trigger) {
