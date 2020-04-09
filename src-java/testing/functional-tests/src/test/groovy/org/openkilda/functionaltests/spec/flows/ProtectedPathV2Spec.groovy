@@ -1016,7 +1016,9 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc1 = thrown(HttpClientErrorException)
         exc1.rawStatusCode == 400
-        exc1.responseBodyAsString.to(MessageError).errorDescription ==
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not swap paths for flow"
+        errorDetails.errorDescription ==
                 "Could not swap paths: Protected flow path $flow.flowId is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"

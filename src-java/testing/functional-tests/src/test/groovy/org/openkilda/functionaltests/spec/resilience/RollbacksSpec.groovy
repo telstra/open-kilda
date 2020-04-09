@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -8,13 +9,15 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchStatus
+import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
+import spock.lang.Unroll
 
 @Slf4j
 class RollbacksSpec extends HealthCheckSpecification {
@@ -111,5 +114,145 @@ and at least 1 path must remain safe"
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
+    }
+
+    @Tidy
+    @Unroll
+    def "System tries to retry rule installation during #data.description if previous one is failed"(){
+        given: "Two active neighboring switches with two diverse paths at least"
+        def allPaths
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            allPaths = it.paths
+            allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
+                    allPaths.find { it.size() > 2 }
+        }
+
+        List<PathNode> mainPath = allPaths.min { it.size() }
+        //find path with more than two switches
+        List<PathNode> protectedPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
+
+        and: "All alternative paths unavailable (bring ports down)"
+        def broughtDownIsls = []
+        def otherIsls = []
+        def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(protectedPath)).unique()
+        allPaths.findAll { it != mainPath && it != protectedPath }.each {
+            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
+                otherIsls.add(it)
+            }
+        }
+        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == otherIsls.size() * 2
+        }
+
+        and: "A protected flow"
+        /** At this point we have the following topology:
+         *
+         *   srcSwitch - - - - - dstSwitch <- swToManipulate
+         *          \              /
+         *           \           /
+         *           transitSwitch
+         *
+         **/
+        def flow = flowHelperV2.randomFlow(swPair)
+        flow.allocateProtectedPath = true
+        flowHelperV2.addFlow(flow)
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
+        assert pathHelper.convert(flowPathInfo) == mainPath
+        assert pathHelper.convert(flowPathInfo.protectedPath) == protectedPath
+
+        when: "Disconnect dst switch on protected path"
+        def swToManipulate = swPair.dst
+        def blockData = switchHelper.knockoutSwitch(swToManipulate, mgmtFlManager)
+        def isSwitchActivated = false
+
+        and: "Mark the transit switch as ACTIVE in db"
+        database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.ACTIVE)
+
+        and: "Init flow #data.description"
+        data.action(flow)
+
+        then: "System retried to #data.description"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowHistory(flow.flowId).findAll {
+                it.action == data.historyAction
+            }.last().histories*.details.findAll{ it =~ /.+ Retrying/}.size() == data.retriesAmount
+        }
+
+        then: "Flow is DOWN"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        }
+
+        and: "Flow is not rerouted"
+        def flowPathInfoAfterSwap = northbound.getFlowPath(flow.flowId)
+        pathHelper.convert(flowPathInfoAfterSwap) == mainPath
+        pathHelper.convert(flowPathInfoAfterSwap.protectedPath) == protectedPath
+
+
+        and: "All involved switches pass switch validation(except dst switch)"
+        def involvedSwitchIds = pathHelper.getInvolvedSwitches(protectedPath)[0..-2]*.dpId
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            involvedSwitchIds.each { swId ->
+                with(northbound.validateSwitch(swId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
+
+        when: "Connect dst switch back to the controller"
+        database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE) //set real status
+        switchHelper.reviveSwitch(swPair.dst, blockData)
+        isSwitchActivated = true
+
+        then: "Flow is UP"
+        Wrappers.wait(discoveryInterval + rerouteDelay + WAIT_OFFSET) {
+            northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
+
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (!isSwitchActivated && blockData) {
+            database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
+            switchHelper.reviveSwitch(swToManipulate, blockData)
+            northbound.synchronizeSwitch(swToManipulate.dpId, true)
+        }
+        broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+        database.resetCosts()
+
+        where:
+        data << [
+                //issue #3237
+                //[
+                //       description: "update",
+                //        historyAction: UPDATE_ACTION,
+                //        retriesAmount: 15, //
+                //        //install: ingress 2 * 3(attempts) + remove: ingress 2 * 3(attempts) + 1 egress * 3(attempts)
+                //        action: { FlowRequestV2 f ->
+                //           getNorthboundV2().updateFlow(f.flowId, f.tap { it.description = "updated" }) }
+                //],
+                [
+                        description: "swap paths",
+                        historyAction: PATH_SWAP_ACTION,
+                        retriesAmount: 9,
+                        // swap:  install: 3 attempts, revert: delete 3 attempts + install 3 attempts
+                        action:  { FlowRequestV2 f ->
+                            getNorthbound().swapFlowPath(f.flowId) }
+                ]
+        ]
     }
 }
