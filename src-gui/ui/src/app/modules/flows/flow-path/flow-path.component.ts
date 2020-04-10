@@ -58,6 +58,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   diverseGroupCommonSwitch = [];
   toggleFilter = 'pathforward';
   toggleFilterReverse = 'pathreverse';
+  showReverseProtectedPath:boolean = false;
+  showForwardProtectedPath:boolean = false;
 
   pathData = [] ;
   
@@ -96,7 +98,17 @@ export class FlowPathComponent implements OnInit, OnDestroy {
     );
   }
 
-  
+  showProtectedPath(type,e){
+    this.forwardPathGraph = false;
+    this.reversePathGraph = false;
+    if(type=='forward'){
+      this.forwardLabelText = "FORWARD PROTECTED PATH";
+      this.showForwardProtectedPath = (this.showForwardProtectedPath)? false : true;
+    }else if(type=='reverse'){
+      this.showReverseProtectedPath = (this.showReverseProtectedPath)? false: true;
+      this.reverseLabelText = "REVERSE PROTECTED PATH";
+    }
+  }
 
   plotForwardDiverse(){
     let self = this;
@@ -457,15 +469,22 @@ export class FlowPathComponent implements OnInit, OnDestroy {
  loadDiverseGroup(){
     var self = this;
     var protectedPath = null;
+    var currentFlow = {type:"current_Flow",flowid:this.flowPathData.flowid,flowpath_forward:this.flowPathData['flowpath_forward'],flowpath_reverse:this.flowPathData['flowpath_reverse']};
     if(this.flowPathData && this.flowPathData['protected_path'] && this.flowPathData['protected_path']['flowpath_forward']){
-      protectedPath = {type:"protected",flowid:this.flowPathData.flowid,flowpath_forward:this.flowPathData['protected_path']['flowpath_forward'],flowpath_reverse:this.flowPathData['protected_path']['flowpath_reverse']};
+      protectedPath = {type:"protected",flowid:"protected_path_"+this.flowPathData.flowid,flowpath_forward:this.flowPathData['protected_path']['flowpath_forward'],flowpath_reverse:this.flowPathData['protected_path']['flowpath_reverse']};
     }
+
      var otherFLows = this.flowPathData && this.flowPathData['diverse_group'] && this.flowPathData['diverse_group']['other_flows'] ? this.flowPathData['diverse_group']['other_flows'] :  null;
-    this.hasDiverseGroup = this.flowPathData && this.flowPathData['diverse_group'] && this.flowPathData['diverse_group']['other_flows'];
+     this.hasDiverseGroup = this.flowPathData && this.flowPathData['diverse_group'] && this.flowPathData['diverse_group']['other_flows'];
     if(otherFLows && otherFLows.length){
+      
+      if(currentFlow){
+        otherFLows.push(currentFlow);
+      }
       if(protectedPath){
         otherFLows.push(protectedPath);
       }
+      
      for(let flow in otherFLows){ 
          var coloCode = this.commonService.getCommonColorCode(flow,self.colourCodes);
           this.colourCodes.push(coloCode);
@@ -502,10 +521,11 @@ export class FlowPathComponent implements OnInit, OnDestroy {
         
       }
 
+      this.pathFlows = Object.keys(this.diversePath);
+
       this.pathFlows = Object.keys(this.diversePath).filter(function(f,k){
-          return f != self.flowId;
+          return f != 'protected_path_'+self.flowId;
       });
-      
   }
 
   viewDiverseGroup(type){
@@ -531,6 +551,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   }
  
   toggleDiversePath(type){
+    this.showForwardProtectedPath = false;
+    this.showReverseProtectedPath = false;
     switch(type){
       case 'forward':
           this.showFlowsForward = false;
@@ -551,6 +573,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   viewPathGraph(type) {
     
     if (type == "forward") {
+      this.showForwardProtectedPath = false;
       this.isDiverseForward = false;
       this.forwardDiverse = 0.5;
       this.forwardLabelText = "FORWARD PATH GRAPH";
@@ -562,7 +585,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
       }
       
     } else {
-      this.isDiverseReverse = false;
+      this.isDiverseReverse = false;      
+      this.showReverseProtectedPath = false;
       this.reverseDiverse = 0.5;
       this.reverseLabelText = "REVERSE PATH GRAPH";
       this.reversePathGraph = this.reversePathGraph ? false : true;

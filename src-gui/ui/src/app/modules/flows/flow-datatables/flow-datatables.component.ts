@@ -40,6 +40,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   expandedState : boolean = false;
   expandedStatus : boolean = false;
   expandedDescription : boolean = false;
+  expandedCreated : boolean = false;
   storeLinkSetting = false;
   loadFilter : boolean =  false;
   activeStatus :any = '';
@@ -85,6 +86,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         { sWidth: '9%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
+        { sWidth: '10%' },        
         { sWidth: '10%' },
         { sWidth: '1%' ,"bSortable": false},
         { sWidth: '10%' ,"bSortable": false},
@@ -101,7 +103,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
           "visible": false,
           "searchable": true
       },
-      { "targets": [12], "visible": false},
+      { "targets": [13], "visible": false},
       ],
       initComplete:function( settings, json ){
         setTimeout(function(){

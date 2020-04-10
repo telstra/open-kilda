@@ -1,0 +1,66 @@
+@startuml
+title Flow Swap Endpoints
+
+actor User
+boundary "NB v2" as NB
+box "Flow H&S Topology" #LightBlue
+    participant "RouterBolt  " as Router
+    participant FlowSwapEndpoints <<Hub>>
+    participant FlowUpdate <<Hub>> #LightGreen
+end box
+
+User -> NB : Swap endpoints
+activate NB
+NB -> Router : SwapFlowEndpointRequest
+deactivate NB
+activate Router
+Router -> FlowSwapEndpoints : SwapFlowEndpointRequest
+deactivate Router
+activate FlowSwapEndpoints
+
+alt
+    FlowSwapEndpoints -> FlowSwapEndpoints : Validate endpoints
+    FlowSwapEndpoints -> FlowSwapEndpoints : Build flow update requests
+    loop for each flow update request
+        FlowSwapEndpoints -> Router : Send flow update request
+        activate Router
+        Router -> FlowUpdate : FlowRequest\nType: Update
+        deactivate Router
+    end
+
+else Flow not found or validation failed
+    NB <- FlowSwapEndpoints : Swap endpoints failed
+    activate NB
+    User <- NB : Swap endpoints failed
+    deactivate NB
+end
+
+loop for each flow update response
+    FlowSwapEndpoints <- FlowUpdate : FlowResponse
+end
+
+alt Both flows were updated successfully
+    NB <- FlowSwapEndpoints : SwapFlowResponse
+    activate NB
+    User <- NB : Swap endpoints success
+    deactivate NB
+
+else Updating one or both flows was unsuccessful
+    FlowSwapEndpoints -> FlowSwapEndpoints : Build flow revert\nupdate requests
+    loop for each flow revert update request
+        FlowSwapEndpoints -> Router : Send flow update request
+        activate Router
+        Router -> FlowUpdate : FlowRequest\nType: Update
+        deactivate Router
+    end
+    loop for each flow revert update response
+        FlowSwapEndpoints <- FlowUpdate : Operation result
+    end
+    NB <- FlowSwapEndpoints : Swap endpoints failed
+    deactivate FlowSwapEndpoints
+    activate NB
+    User <- NB : Swap endpoints failed
+    deactivate NB
+end
+
+@enduml

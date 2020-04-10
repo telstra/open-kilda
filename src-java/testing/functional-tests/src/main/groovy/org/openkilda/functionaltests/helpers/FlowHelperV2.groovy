@@ -140,7 +140,7 @@ class FlowHelperV2 {
     FlowResponseV2 addFlow(FlowRequestV2 flow) {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         return response
     }
 
@@ -157,10 +157,10 @@ class FlowHelperV2 {
      * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
      */
     FlowResponseV2 deleteFlow(String flowId) {
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northbound.getFlowStatus(flowId) }
+        Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getFlowStatus(flowId) }
         return response
     }
 
@@ -171,7 +171,7 @@ class FlowHelperV2 {
     FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
+        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northboundV2.getFlowStatus(flowId).status == FlowState.UP }
         return response
     }
 
@@ -257,6 +257,24 @@ class FlowHelperV2 {
 
     static DetectConnectedDevicesV2 toV2(DetectConnectedDevicesPayload payload) {
         new DetectConnectedDevicesV2(payload.lldp, payload.arp)
+    }
+
+    static FlowRequestV2 toRequest(FlowResponseV2 flow) {
+        return FlowRequestV2.builder()
+                            .flowId(flow.flowId)
+                            .source(flow.source)
+                            .destination(flow.destination)
+                            .maximumBandwidth(flow.maximumBandwidth)
+                            .ignoreBandwidth(flow.ignoreBandwidth)
+                            .periodicPings(flow.periodicPings)
+                            .description(flow.description)
+                            .maxLatency(flow.maxLatency)
+                            .priority(flow.priority)
+                            .pinned(flow.pinned)
+                            .allocateProtectedPath(flow.allocateProtectedPath)
+                            .encapsulationType(flow.encapsulationType)
+                            .pathComputationStrategy(flow.pathComputationStrategy)
+                            .build()
     }
 
     /**

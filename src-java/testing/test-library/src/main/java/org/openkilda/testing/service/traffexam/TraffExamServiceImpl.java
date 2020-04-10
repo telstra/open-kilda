@@ -35,6 +35,7 @@ import org.openkilda.testing.service.traffexam.model.HostResource;
 import org.openkilda.testing.service.traffexam.model.LldpData;
 import org.openkilda.testing.service.traffexam.model.ProducerEndpoint;
 import org.openkilda.testing.service.traffexam.model.ReportResponse;
+import org.openkilda.testing.service.traffexam.model.UdpData;
 import org.openkilda.testing.service.traffexam.model.Vlan;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4NetworkPool;
@@ -387,6 +388,13 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         restTemplate.put(
                 makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/arp").build(),
                 arpData);
+    }
+    
+    @Override
+    public void sendUdp(Address address, UdpData udpData) {
+        restTemplate.put(
+                makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/udp").build(),
+                udpData);
     }
 
     private <T extends Endpoint> T assignEndpoint(Host host, T payload) {

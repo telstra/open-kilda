@@ -144,7 +144,7 @@ feature toogle"() {
         def initKildaConfig = northbound.getKildaConfiguration()
         def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = null }
         flowHelperV2.addFlow(flow)
-        assert northbound.getFlow(flow.flowId).encapsulationType == initKildaConfig.flowEncapsulationType
+        assert northboundV2.getFlow(flow.flowId).encapsulationType == initKildaConfig.flowEncapsulationType
 
         when: "Update default flow encapsulation type in kilda configuration"
         def newFlowEncapsulationType = initKildaConfig.flowEncapsulationType == "transit_vlan" ?
@@ -165,7 +165,7 @@ feature toogle"() {
         }
 
         and: "Encapsulation type is changed according to kilda configuration"
-        northbound.getFlow(flow.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
+        northboundV2.getFlow(flow.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
 
         when: "Update default flow encapsulation type in kilda configuration"
         northbound.updateKildaConfiguration(
@@ -194,7 +194,7 @@ feature toogle"() {
         }
 
         and: "Encapsulation type is not changed according to kilda configuration"
-        northbound.getFlow(flow.flowId).encapsulationType != initKildaConfig.flowEncapsulationType
+        northboundV2.getFlow(flow.flowId).encapsulationType != initKildaConfig.flowEncapsulationType
 
         and: "Cleanup: Revert system to origin state"
         northbound.toggleFeature(FeatureTogglesDto.builder()
@@ -246,31 +246,31 @@ feature toogle"() {
         }
 
         and: "Encapsulation type is NOT changed according to kilda configuration"
-        northbound.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
+        northboundV2.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
 
         and: "Flow is in UP state"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Update the flow"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.description = description + " updated" })
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northbound.getFlow(flow.flowId).description == flow.description
+            assert northboundV2.getFlow(flow.flowId).description == flow.description
         }
 
         then: "Encapsulation type is NOT changed according to kilda configuration"
-        northbound.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
+        northboundV2.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
 
         and: "Flow is in UP state"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
 
         then: "Encapsulation type is NOT changed according to kilda configuration"
-        northbound.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
+        northboundV2.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
 
         and: "Flow is in UP state"
-        northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
         and: "Cleanup: Revert system to origin state"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -320,7 +320,7 @@ feature toogle"() {
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -333,7 +333,7 @@ feature toogle"() {
         mainPortIsDown = false
 
         then: "The flow is still in 'Down' status, because flows_reroute_on_isl_discovery: false"
-        assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
 
         and: "Flow is not rerouted"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath

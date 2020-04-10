@@ -140,6 +140,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
             if (flow.getTargetPathComputationStrategy() != null) {
                 targetFlow.setPathComputationStrategy(flow.getTargetPathComputationStrategy());
                 flow.setPathComputationStrategy(flow.getTargetPathComputationStrategy());
+                flow.setTargetPathComputationStrategy(null);
             } else {
                 targetFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
             }

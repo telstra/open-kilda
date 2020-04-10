@@ -63,7 +63,7 @@ class ChaosSpec extends HealthCheckSpecification {
 
         Wrappers.wait(PATH_INSTALLATION_TIME * 3 + flowsAmount) {
             flows.each { flow ->
-                assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
                 northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
                 bothDirectionsHaveSamePath(northbound.getFlowPath(flow.flowId))
             }

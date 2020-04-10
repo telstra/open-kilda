@@ -54,6 +54,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
 
+import java.time.Instant
 import javax.inject.Provider
 
 @Slf4j
@@ -324,7 +325,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         northbound.swapFlowPath(flow.id)
 
         then: "Flow and src/dst switches are valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP }
         def swappedFlow = database.getFlow(flow.id)
         validateFlowAndSwitches(swappedFlow)
 
@@ -398,7 +399,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def devices1 = Wrappers.retry(3, 0.5) {
             def devices = northbound.getFlowConnectedDevices(flow.id).source.lldp
             assert devices.size() == 1
-            assert devices[0].timeFirstSeen == devices[0].timeLastSeen
+            assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices[0].timeLastSeen)
             devices
         } as List<ConnectedDeviceDto>
 
@@ -409,8 +410,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             def devices = northbound.getFlowConnectedDevices(flow.id).source.lldp
             assert devices.size() == 1
-            assert devices[0].timeFirstSeen == devices1[0].timeFirstSeen
-            assert devices[0].timeLastSeen > devices1[0].timeLastSeen //yes, groovy can compare it properly
+            assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices1[0].timeFirstSeen)
+            assert Instant.parse(devices[0].timeLastSeen) > Instant.parse(devices1[0].timeLastSeen)
         }
 
         cleanup: "Disconnect the device and remove the flow"
@@ -443,7 +444,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def devices1 = Wrappers.retry(3, 0.5) {
             def devices = northbound.getFlowConnectedDevices(flow.id).source.arp
             assert devices.size() == 1
-            assert devices[0].timeFirstSeen == devices[0].timeLastSeen
+            assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices[0].timeLastSeen)
             devices
         } as List<ConnectedDeviceDto>
 
@@ -454,8 +455,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
             def devices = northbound.getFlowConnectedDevices(flow.id).source.arp
             assert devices.size() == 1
-            assert devices[0].timeFirstSeen == devices1[0].timeFirstSeen
-            assert devices[0].timeLastSeen > devices1[0].timeLastSeen //yes, groovy can compare it properly
+            assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices1[0].timeFirstSeen)
+            assert Instant.parse(devices[0].timeLastSeen) > Instant.parse(devices1[0].timeLastSeen)
         }
 
         cleanup: "Disconnect the device and remove the flow"
@@ -504,7 +505,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         } as List<ConnectedDeviceDto>
 
         when: "Request devices list with 'since' param equal to last registered device"
-        def lastDevice = foundDevices.max { it.timeLastSeen }
+        def lastDevice = foundDevices.max { Instant.parse(it.timeLastSeen) }
         def filteredDevices = northbound.getFlowConnectedDevices(flow.id, lastDevice.timeLastSeen).destination.lldp
 
         then: "Only 1 device is returned (the latest registered)"
@@ -558,7 +559,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         } as List<ConnectedDeviceDto>
 
         when: "Request devices list with 'since' param equal to last registered device"
-        def lastDevice = foundDevices.max { it.timeLastSeen }
+        def lastDevice = foundDevices.max { Instant.parse(it.timeLastSeen) }
         def filteredDevices = northbound.getFlowConnectedDevices(flow.id, lastDevice.timeLastSeen).destination.arp
 
         then: "Only 1 device is returned (the latest registered)"

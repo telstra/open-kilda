@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.northbound;
 
+import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -30,6 +31,12 @@ import java.util.List;
 public interface NorthboundServiceV2 {
 
     //flows
+
+    FlowResponseV2 getFlow(String flowId);
+
+    List<FlowResponseV2> getAllFlows();
+
+    FlowIdStatusPayload getFlowStatus(String flowId);
 
     FlowResponseV2 addFlow(FlowRequestV2 request);
 

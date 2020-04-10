@@ -20,6 +20,7 @@ import static java.util.Collections.singleton;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
@@ -42,6 +43,7 @@ import java.util.Optional;
  */
 public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implements SwitchRepository {
     static final String SWITCH_NAME_PROPERTY_NAME = "name";
+    static final String SWITCH_STATUS_PROPERTY_NAME = "state";
 
     public Neo4jSwitchRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -52,6 +54,12 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
         Filter switchNameFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
 
         return getSession().count(getEntityType(), singleton(switchNameFilter)) > 0;
+    }
+
+    @Override
+    public Collection<Switch> findActive() {
+        Filter filter = new Filter(SWITCH_STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, SwitchStatus.ACTIVE);
+        return loadAll(filter);
     }
 
     @Override

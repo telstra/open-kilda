@@ -61,10 +61,7 @@ and at least 1 path must remain safe"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         switchPair.paths.findAll { it != failoverPath }.each { pathHelper.makePathMorePreferable(failoverPath, it) }
         //disconnect the switch, but make it look like 'active'
-        def blockData = lockKeeper.knockoutSwitch(switchToBreak, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToBreak.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(switchToBreak, mgmtFlManager)
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.ACTIVE)
 
         when: "Main path of the flow breaks initiating a reroute"
@@ -85,7 +82,7 @@ and at least 1 path must remain safe"
 
         then: "System finds another working path and successfully reroutes the flow (one of the auto-retries succeed)"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         currentPath != mainPath
@@ -104,10 +101,7 @@ and at least 1 path must remain safe"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         if(blockData) {
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
-            lockKeeper.reviveSwitch(switchToBreak, blockData)
-            Wrappers.wait(WAIT_OFFSET) {
-                assert northbound.getSwitch(switchToBreak.dpId).state == SwitchChangeType.ACTIVATED
-            }
+            switchHelper.reviveSwitch(switchToBreak, blockData)
         }
         if(portDown) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)

@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
@@ -41,6 +42,7 @@ import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.messaging.info.stats.TableStatsEntry;
+import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -265,6 +267,47 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
+
+    @Test
+    public void packetInOutStatsTest() throws IOException {
+        PacketInOutStatsDto data = new PacketInOutStatsDto();
+        data.setPacketInTotalPackets(1);
+        data.setPacketInTotalPacketsDataplane(2);
+        data.setPacketInNoMatchPackets(3);
+        data.setPacketInApplyActionPackets(4);
+        data.setPacketInInvalidTtlPackets(5);
+        data.setPacketInActionSetPackets(6);
+        data.setPacketInGroupPackets(7);
+        data.setPacketInPacketOutPackets(8);
+        data.setPacketOutTotalPacketsDataplane(9);
+        data.setPacketOutTotalPacketsHost(10);
+        data.setPacketOutEth0InterfaceUp(true);
+
+        sendStatsMessage(new GetPacketInOutStatsResponse(switchId, data));
+
+        List<Datapoint> datapoints = pollDatapoints(11);
+
+        Map<String, Datapoint> map = createDatapointMap(datapoints);
+
+        assertMetric(data.getPacketInTotalPackets(), "switch.packet-in.total-packets", map);
+        assertMetric(data.getPacketInTotalPacketsDataplane(), "switch.packet-in.total-packets.dataplane", map);
+        assertMetric(data.getPacketInNoMatchPackets(), "switch.packet-in.no-match.packets", map);
+        assertMetric(data.getPacketInApplyActionPackets(), "switch.packet-in.apply-action.packets", map);
+        assertMetric(data.getPacketInInvalidTtlPackets(), "switch.packet-in.invalid-ttl.packets", map);
+        assertMetric(data.getPacketInActionSetPackets(), "switch.packet-in.action-set.packets", map);
+        assertMetric(data.getPacketInGroupPackets(), "switch.packet-in.group.packets", map);
+        assertMetric(data.getPacketInPacketOutPackets(), "switch.packet-in.packet-out.packets", map);
+        assertMetric(data.getPacketOutTotalPacketsHost(), "switch.packet-out.total-packets.host", map);
+        assertMetric(data.getPacketOutTotalPacketsDataplane(), "switch.packet-out.total-packets.dataplane", map);
+        assertMetric(1, "switch.packet-out.eth0-interface-up", map);
+
+        datapoints.forEach(datapoint -> {
+            assertEquals(1, datapoint.getTags().size());
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals(timestamp, datapoint.getTime().longValue());
+        });
+    }
+
 
     @Test
     public void meterFlowRulesStatsTest() throws IOException {
@@ -591,6 +634,10 @@ public class StatsTopologyTest extends AbstractStormTest {
             return datapoints;
         }
         return datapoints;
+    }
+
+    private void assertMetric(long expected, String metricName, Map<String, Datapoint> datapointMap) {
+        assertEquals(expected, datapointMap.get(METRIC_PREFIX + metricName).getValue().longValue());
     }
 
     private Map<String, Datapoint> createDatapointMap(List<Datapoint> datapoints) {

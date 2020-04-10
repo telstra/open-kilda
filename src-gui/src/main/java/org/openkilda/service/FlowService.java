@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.openkilda.service;
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
@@ -30,6 +31,7 @@ import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowBandwidth;
 import org.openkilda.model.FlowCount;
 import org.openkilda.model.FlowDiscrepancy;
+import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowState;
@@ -40,6 +42,7 @@ import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.usermanagement.model.UserInfo;
@@ -219,8 +222,9 @@ public class FlowService {
         Flow flow = null;
         try {
             flow = flowsIntegrationService.getFlowById(flowId);
-        } catch (Exception ex) {
+        } catch (InvalidResponseException ex) {
             LOGGER.error("Error occurred while retrieving flows from controller", ex);
+            throw new InvalidResponseException(ex.getCode(), ex.getResponse());
         }
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
@@ -473,5 +477,16 @@ public class FlowService {
             LOGGER.info("Link store is not configured. ");
         }
         return status.getStatuses() != null ? status.getStatuses() : new HashSet<String>();
+    }
+
+    /**
+     * Gets the flow history by id.
+     *
+     * @param flowId
+     *            the flow id
+     * @return the flow history by id
+     */
+    public List<FlowHistory> getFlowHistory(String flowId, String timeFrom, String timeTo) {
+        return flowsIntegrationService.getFlowHistoryById(flowId, timeFrom, timeTo);
     }
 }

@@ -153,7 +153,7 @@ class LinkSpec extends HealthCheckSpecification {
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             [flow1, flow2, flow3, flow4].each {
-                assert northbound.getFlowStatus(it.flowId).status == FlowState.DOWN
+                assert northboundV2.getFlowStatus(it.flowId).status == FlowState.DOWN
                 def isls = pathHelper.getInvolvedIsls(northbound.getFlowPath(it.flowId))
                 assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
             }
@@ -182,7 +182,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + PATH_INSTALLATION_TIME) {
-            [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
+            [flow1, flow2, flow3, flow4].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
         }
 
         and: "Delete all created flows and reset costs"
@@ -194,16 +194,14 @@ class LinkSpec extends HealthCheckSpecification {
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
-        def blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED }
+        def blockData = switchHelper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
         lockKeeper.portsDown([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being down"
-        lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+        switchHelper.reviveSwitch(isl.srcSwitch, blockData)
 
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {
@@ -386,7 +384,7 @@ class LinkSpec extends HealthCheckSpecification {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
         Wrappers.wait(PATH_INSTALLATION_TIME) {
-            [flow1, flow2].each { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
+            [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
             assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
             assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
         }

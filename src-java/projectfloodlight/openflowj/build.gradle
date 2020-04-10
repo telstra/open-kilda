@@ -5,6 +5,8 @@ plugins {
 
 group = 'org.projectfloodlight'
 
+
+import com.sun.security.auth.module.UnixSystem
 import org.ajoberstar.grgit.Grgit
 
 configurations {
@@ -38,9 +40,16 @@ clean.dependsOn(cleanSources)
 
 task generateSources(type: Exec, dependsOn: cloneLoxigenRepo) {
     outputs.dir('loxigen/loxi_output/openflowj')
-
     workingDir 'loxigen'
-    commandLine 'make', 'java'
+
+    if (System.getenv('TRAVIS') == 'true') {
+        commandLine 'make', 'java'
+    }
+    else {
+        def uid = new UnixSystem().getUid()
+        def gid = new UnixSystem().getGid()
+        commandLine 'docker', 'run', '--rm', '-v', "$workingDir:$workingDir", '-w', "$workingDir", '-u', "$uid:$gid", 'kilda/base-ubuntu', 'make', 'java'
+    }
 }
 
 task compileMavenProject(type: Exec, dependsOn: generateSources) {

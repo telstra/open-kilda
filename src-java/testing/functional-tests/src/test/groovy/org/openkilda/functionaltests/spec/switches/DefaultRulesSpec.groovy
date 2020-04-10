@@ -45,12 +45,10 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
 
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(WAIT_OFFSET) { assert !(sw.dpId in northbound.getActiveSwitches()*.switchId) }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northbound.getActiveSwitches()*.switchId }
+        switchHelper.reviveSwitch(sw, blockData)
 
         then: "Default rules are installed on the switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {

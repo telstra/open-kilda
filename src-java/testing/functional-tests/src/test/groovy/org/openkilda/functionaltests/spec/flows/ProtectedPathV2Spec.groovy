@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -111,8 +112,8 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow is created without protected path"
         !northbound.getFlowPath(flow.flowId).protectedPath
-        def flowInfo = northbound.getFlow(flow.flowId)
-        !flowInfo.flowStatusDetails
+        def flowInfo = northboundV2.getFlow(flow.flowId)
+        !flowInfo.statusDetails
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         def currentLastUpdate = flowInfo.lastUpdated
@@ -121,12 +122,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Protected path is enabled"
         def flowPathInfoAfterUpdating = northbound.getFlowPath(flow.flowId)
         flowPathInfoAfterUpdating.protectedPath
-        northbound.getFlow(flow.flowId).flowStatusDetails
+        northboundV2.getFlow(flow.flowId).statusDetails
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
 
-        currentLastUpdate < northbound.getFlow(flow.flowId).lastUpdated
+        currentLastUpdate < northboundV2.getFlow(flow.flowId).lastUpdated
 
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
@@ -137,11 +138,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath
-        !northbound.getFlow(flow.flowId).flowStatusDetails
+        !northboundV2.getFlow(flow.flowId).statusDetails
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
@@ -244,7 +245,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
 
             assert pathHelper.convert(flowPathInfoAfterRerouting) == currentProtectedPath
@@ -315,7 +316,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow is rerouted"
         rerouteResponse.rerouted
         Wrappers.wait(WAIT_OFFSET) {
-            northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "Path is not changed to protected path"
@@ -327,7 +328,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def newCurrentProtectedPath = pathHelper.convert(flowPathInfoAfterRerouting.protectedPath)
         newCurrentProtectedPath != currentPath
         newCurrentProtectedPath != currentProtectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -377,7 +378,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             def newPathInfo = northbound.getFlowPath(flow.flowId)
             def newCurrentPath = pathHelper.convert(newPathInfo)
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert newCurrentPath != currentPath
 
             def newCurrentProtectedPath = pathHelper.convert(newPathInfo.protectedPath)
@@ -584,7 +585,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath)
             assert newProtectedPath != currentProtectedPath
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "Current path is not changed"
@@ -805,11 +806,11 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         when: "Swap flow paths"
         def srcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
         def dstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
-        def currentLastUpdate = northbound.getFlow(flow.flowId).lastUpdated
+        def currentLastUpdate = northboundV2.getFlow(flow.flowId).lastUpdated
         northbound.swapFlowPath(flow.flowId)
 
         then: "Flow paths are swapped"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         def flowPathInfoAfterSwapping = northbound.getFlowPath(flow.flowId)
         def newCurrentPath = pathHelper.convert(flowPathInfoAfterSwapping)
         def newCurrentProtectedPath = pathHelper.convert(flowPathInfoAfterSwapping.protectedPath)
@@ -818,7 +819,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         newCurrentProtectedPath != currentProtectedPath
         newCurrentProtectedPath == currentPath
 
-        currentLastUpdate < northbound.getFlow(flow.flowId).lastUpdated
+        currentLastUpdate < northboundV2.getFlow(flow.flowId).lastUpdated
 
         and: "New meter is created on the src and dst switches"
         def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
@@ -968,10 +969,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
 
         then: "Flow state is changed to DEGRADED"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
-        verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-            mainFlowPathStatus == "Up"
-            protectedFlowPathStatus == "Down"
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
+        verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
+            mainPath == "Up"
+            protectedPath == "Down"
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
@@ -979,12 +980,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
-        verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-            mainFlowPathStatus == "Down"
-            protectedFlowPathStatus == "Down"
+        verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
+            mainPath == "Down"
+            protectedPath == "Down"
         }
 
         when: "Try to swap paths when main/protected paths are not available"
@@ -1002,10 +1003,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
-            verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-                mainFlowPathStatus == "Up"
-                protectedFlowPathStatus == "Down"
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
+                mainPath == "Up"
+                protectedPath == "Down"
             }
         }
 
@@ -1025,7 +1026,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
         Wrappers.wait(discoveryInterval * 1.5 + WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
         and: "Cleanup: Restore topology, delete flows and reset costs"
@@ -1072,7 +1073,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def protectedIslToBreak = pathHelper.getInvolvedIsls(currentProtectedPath)[0]
         antiflap.portDown(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
 
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
 
         when: "Make the current path less preferable than alternative path"
         def alternativePath = switchPair.paths.find { it != currentPath && it != currentProtectedPath }
@@ -1091,7 +1092,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         }
 
         then: "Flow state is changed to UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Protected path is recalculated only"
         def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
@@ -1143,7 +1144,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow status is DEGRADED"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -1152,7 +1153,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = false })
 
         then: "Flow status is UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Restore topology, delete flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1291,16 +1292,144 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         and: "Flow and both its paths are UP"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlow(flow.flowId)) {
+            verifyAll(northboundV2.getFlow(flow.flowId)) {
                 status == "Up"
-                flowStatusDetails.mainFlowPathStatus == "Up"
-                flowStatusDetails.protectedFlowPathStatus == "Up"
+                statusDetails.mainPath == "Up"
+                statusDetails.protectedPath == "Up"
             }
         }
 
         cleanup: "Revert system to original state"
         flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+    }
+
+    @Tidy
+    def "Protected path is created in different POP even if this path is not preferable"(){
+        given: "Not neighboring switch pair with three diverse paths at least"
+        def allPaths // all possible paths
+        def allPathsWithThreeSwitches //all possible paths with 3 involved switches
+        def allPathCandidates // 3 diverse paths at least
+        def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            allPaths = swP.paths
+            allPathsWithThreeSwitches = allPaths.findAll { pathHelper.getInvolvedSwitches(it).size() == 3 }
+            allPathCandidates = allPathsWithThreeSwitches.unique(false) { a, b ->
+                a.intersect(b) == [] ? 1 : 0
+            } // just to avoid parallel links
+            allPathsWithThreeSwitches.unique(false) { a, b ->
+                def p1 = pathHelper.getInvolvedSwitches(a)[1..-2]*.dpId
+                def p2 = pathHelper.getInvolvedSwitches(b)[1..-2]*.dpId
+                p1.intersect(p2) == [] ? 1 : 0
+            }.size() >= 3
+        } ?: assumeTrue("No suiting switches found", false)
+
+        //select paths for further manipulations
+        def mainPath1 = allPathCandidates.first()
+        def mainPath2 = allPathCandidates.find { it != mainPath1 }
+        def protectedPath = allPathCandidates.find { it != mainPath1 && it != mainPath2}
+        def involvedSwP1 = pathHelper.getInvolvedSwitches(mainPath1)*.dpId
+        def involvedSwP2 = pathHelper.getInvolvedSwitches(mainPath2)*.dpId
+        def involvedSwProtected = pathHelper.getInvolvedSwitches(protectedPath)*.dpId
+
+        and: "Src, dst and transit switches belongs to different POPs(src:1, dst:4, tr1/tr2:2, tr3:3)"
+        // tr1/tr2 for the main path and tr3 for the protected path
+        database.setSwitchPop(swPair.src.dpId, "1")
+        [involvedSwP1[1], involvedSwP2[1]].each { swId -> database.setSwitchPop(swId, "2") }
+        database.setSwitchPop(swPair.dst.dpId, "4")
+        database.setSwitchPop(involvedSwProtected[1], "3")
+
+        and: "Path which contains tr3 is non preferable"
+        /** There is not possibility to use the 'makePathNotPreferable' method,
+         * because it sets too high value for protectedPath.
+         *
+         *  totalCostOFProtectedPath should be the following:
+         *  totalCostOfMainPath + (amountOfInvolvedIsls * diversity.pop.isl.cost * diversityGroupPerPopUseCounter) - 1,
+         *  where:
+         *  diversity.pop.isl.cost = 1000
+         *  diversityGroupPerPopUseCounter = amount of switches in the same POP
+         *  (in this test there are two switches in the same POP) */
+        List<Isl> islsToUpdate = []
+        allPathsWithThreeSwitches.findAll { involvedSwProtected[1] in pathHelper.getInvolvedSwitches(it)*.dpId }.each {
+            pathHelper.getInvolvedIsls(it).each {
+                islsToUpdate << it
+            }
+        }
+        def involvedIslsOfMainPath = pathHelper.getInvolvedIsls(mainPath1)
+        def defaultIslCost = 700
+        def totalCostOfMainPath = involvedIslsOfMainPath.sum { northbound.getLink(it).cost ?: defaultIslCost }
+        def amountOfIlslsOnMainPath = involvedIslsOfMainPath.size()
+        def diversityPopIslCost = 1000
+        def diversityGroupPerPopUseCounter = 2
+        Integer newIslCost = ((totalCostOfMainPath +
+                (amountOfIlslsOnMainPath * diversityPopIslCost * diversityGroupPerPopUseCounter) - 1) /
+                pathHelper.getInvolvedIsls(protectedPath).size()).toInteger()
+        log.debug("newCost: $newIslCost")
+
+        islsToUpdate.unique().each { isl ->
+            northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newIslCost.toString()])])
+        }
+
+        and: "All alternative paths unavailable (bring ports down on the source switch)"
+        List<PathNode> broughtDownPorts = []
+        def altPaths = allPaths.findAll { !(it in allPathsWithThreeSwitches) }
+        altPaths*.first().unique().findAll {
+            !(it in allPathsWithThreeSwitches*.first().unique())
+        }.each { broughtDownPorts.add(it) }
+        altPaths*.last().unique().findAll {
+            !(it in allPathsWithThreeSwitches*.last().unique())
+        }.each { broughtDownPorts.add(it) }
+        broughtDownPorts.each {
+            antiflap.portDown(it.switchId, it.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        when: "Create a protected flow"
+        /** At this point we have the following topology:
+         *
+         *             srcSwitch_POP_1
+         *             /       |       \
+         *            / 700    | 700    \ newIslCost
+         *           /         |         \
+         *   trSw1_POP_2   trSw2_POP_2   trSw3_POP_3
+         *          \          |         /
+         *           \ 700     | 700    / newIslCost
+         *            \        |       /
+         *             dstSwitch_POP_4
+         *
+         *  In the topology above the system is going to choose trSw1 or trSw2 for main path,
+         *  because these path are more preferable that the path with trSw3.
+         *
+         *  System takes into account PoP and try not to place protected path into the same transit PoPs.
+         *  So, the protected path will be built through the trSw3 because trSw1 and trSw2 are in the same PoP zone.
+         * */
+        def flow = flowHelperV2.randomFlow(swPair)
+        flow.allocateProtectedPath = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Main path is built through the preferable path(tr1 or tr2)"
+        def flowPaths = northbound.getFlowPath(flow.flowId)
+        def realFlowPathInvolvedSwitches = pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths))*.dpId
+        realFlowPathInvolvedSwitches == involvedSwP1 || realFlowPathInvolvedSwitches == involvedSwP2
+
+        and: "Protected path is built through the non preferable path(tr3)"
+        pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths.protectedPath))*.dpId == involvedSwProtected
+
+        cleanup:
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+        withPool {
+            (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
+                database.setSwitchPop(swId, null)
+            }
+        }
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

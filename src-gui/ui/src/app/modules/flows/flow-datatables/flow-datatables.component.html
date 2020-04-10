@@ -85,7 +85,18 @@
                  <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedDescription" id="expandedDescription"/>
                
         </th>
+
+
         <th >
+          <span title="Created">
+              Created
+             </span>
+               <i class="fa fa-search" (click)="toggleSearch($event,'expandedCreated')"></i>
+               <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedCreated" id="expandedCreated"/>
+             
+       </th>
+
+       <th >
           <span title="type">
               type
              </span>
@@ -129,10 +140,10 @@
         <td>{{row.maximum_bandwidth / 1000  || "-"}}</td>
         <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td title="{{row.description}}">{{row.description || "-"}}</td>
+        <td title="{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}">{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}</td>
         <td >{{ descrepancyString(row) }}</td>
         <td >
            <a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (row.hasOwnProperty('controller-flow')  && row['controller-flow'] ) ||  (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
-        
         
         
       </tr>

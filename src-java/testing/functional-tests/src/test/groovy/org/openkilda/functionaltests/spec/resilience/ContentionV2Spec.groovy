@@ -119,7 +119,7 @@ class ContentionV2Spec extends BaseSpecification {
 
         then: "Flow is Up and path has changed"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == newPath
         }
 

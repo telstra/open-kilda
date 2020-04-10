@@ -18,7 +18,7 @@ import pathlib
 import operator
 
 import nsenter
-from scapy.all import ARP, Ether, sendp
+from scapy.all import ARP, IP, TCP, UDP, Ether, sendp
 from scapy.contrib import lldp
 
 from kilda.traffexam import context as context_module
@@ -80,8 +80,41 @@ class ARPPush(Abstract):
         arp = ARP(hwsrc=entry.src_mac, psrc=entry.src_ipv4, pdst=self.dst_ipv4)
         return Ether(src=entry.src_mac, dst=self.eth_broadcast) / arp
 
+class UDPPush(Abstract):
+    ns_fs_location = pathlib.Path('/var/run/netns')
+
+    def __call__(self, iface, push_entry):
+        data = "TEST"
+        ether = Ether(src=push_entry.src_mac_address, dst=push_entry.dst_mac_address, type=push_entry.eth_type)
+        ip = IP(src=push_entry.src_ip, dst=push_entry.dst_ip)
+        udp = UDP(sport=push_entry.src_port, dport=push_entry.dst_port)
+        pkt = ether / ip / udp / data
+
+        ns_name = self.context.make_network_namespace_name()
+        ns_fd = self.ns_fs_location / ns_name
+        with nsenter.Namespace(str(ns_fd), 'net'):
+            sendp(pkt, iface=iface.name, verbose=False, promisc=False)
+
+
+class TCPPush(Abstract):
+    ns_fs_location = pathlib.Path('/var/run/netns')
+
+    def __call__(self, iface, push_entry):
+        data = "TEST"
+        ether = Ether(src=push_entry.src_mac_address, dst=push_entry.dst_mac_address, type=push_entry.eth_type)
+        ip = IP(src=push_entry.src_ip, dst=push_entry.dst_ip)
+        tcp = TCP(sport=push_entry.src_port, dport=push_entry.dst_port)
+        pkt = ether / ip / tcp / data
+
+        ns_name = self.context.make_network_namespace_name()
+        ns_fd = self.ns_fs_location / ns_name
+        with nsenter.Namespace(str(ns_fd), 'net'):
+            sendp(pkt, iface=iface.name, verbose=False, promisc=False)
+
 
 class Adapter(object):
     def __init__(self, context):
         self.lldp_push = LLDPPush(context)
         self.arp_push = ARPPush(context)
+        self.udp_push = UDPPush(context)
+        self.tcp_push = TCPPush(context)

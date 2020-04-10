@@ -246,8 +246,6 @@ export class FlowpathService {
     this.simulationArr[type] = forceSimulation;
   }
 
- 
-
   zoomFit = (g,svgElement,zoomLevel,zoom,nodes,type) => {
     var bounds = g.node().getBBox();
     var parent = g.node().parentElement;
@@ -343,7 +341,7 @@ export class FlowpathService {
       .attr("id", (d, index) => {
         return type+"_link" + index;
       }).attr('stroke-width', (d) =>{ return 4.5; }).attr("stroke", function(d, index) {
-              return d.colourCode;
+               return d.colourCode;
       }).attr("cursor","pointer")
       .on('mouseover',function(d,index){
         if(type == 'forwardDiverse' || type =='reverseDiverse' ){
@@ -420,13 +418,12 @@ export class FlowpathService {
              var rec: any = element.getBoundingClientRect();
              $('#'+hideValueID).css('display','none');
              $("#"+hoverTextID).css("display", "block");
-             $('#'+showValueID).html(d.target.switch_id);
+             $('#'+showValueID).html(d.target.switch_name || d.target.switch_id);
              $('#'+showValueID).css('display','block');
               var x =  document.getElementById("textCircle_target_"+type+"_"+d.target.switch_id).getBoundingClientRect().left - 70;
               var y =  document.getElementById("textCircle_target_"+type+"_"+d.target.switch_id).getBoundingClientRect().top - 50;
               $("#"+hoverTextID).css("top", (y) + "px");
-              $("#"+hoverTextID).css("left", (x) + "px");
-            
+              $("#"+hoverTextID).css("left", (x) + "px");            
               
           }
           
@@ -484,7 +481,7 @@ export class FlowpathService {
              var rec: any = element.getBoundingClientRect();
              $('#'+hideValueID).css('display','none');
               $("#"+hoverTextID).css("display", "block");
-              $('#'+showValueID).html(d.source.switch_id);
+              $('#'+showValueID).html(d.source.switch_name || d.source.switch_id);
               $('#'+showValueID).css('display','block');
               var x =  document.getElementById("textCircle_source_"+type+"_"+d.source.switch_id).getBoundingClientRect().left - 70;
               var y =  document.getElementById("textCircle_source_"+type+"_"+d.source.switch_id).getBoundingClientRect().top - 50;
@@ -769,17 +766,6 @@ export class FlowpathService {
         var processKey = ( linksSourceArr && typeof linksSourceArr[key] !== "undefined") ? key:key1;
         var processKeyValues = processKey.split("_");
         var linkArr = linksSourceArr[processKey];
-        if(linkArr && linkArr.length > 1){
-          
-        }
-        console.log('d',d);
-        for(var i = 0; i < linkArr.length; i++){
-          if(d.source.switch_id  === linkArr[i].source.switch_id && d.target.switch_id  === linkArr[i].target.switch_id){
-            console.log('direct');
-          }else if(d.source.switch_id  === linkArr[i].target.switch_id && d.target.switch_id  === linkArr[i].source.switch_id){
-            console.log('opposite')
-          }
-        }
         if(processKeyValues[0] == d.target.switch_id && processKeyValues[1] == d.source.switch_id){
           return "translate(" + (xvalue + 10) + "," + (yvalue-10) + ")";
         }

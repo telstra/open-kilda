@@ -24,6 +24,8 @@ import java.util.Optional;
 public interface SwitchRepository extends Repository<Switch> {
     boolean exists(SwitchId switchId);
 
+    Collection<Switch> findActive();
+
     Optional<Switch> findById(SwitchId switchId);
 
     Collection<Switch> findSwitchesInFlowPathByFlowId(String flowId);

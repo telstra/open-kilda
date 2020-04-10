@@ -2,8 +2,8 @@ package org.openkilda.functionaltests.helpers
 
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.northbound.dto.v2.flows.FlowPathV2
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -14,6 +14,9 @@ import org.openkilda.testing.tools.IslUtils
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+
+import java.util.AbstractMap.SimpleEntry
+import java.util.stream.Collectors
 
 /**
  * Holds utility methods for working with flow paths.
@@ -51,9 +54,8 @@ class PathHelper {
     }
 
     /**
-     * Selects ISL that is present only in less preferable path and is not present in more preferable one. Then
-     * compares total cost of less/more preferable paths, if totalCostOfLessPrefPath <= totalCostOfMorePrefPath
-     * we sets new cost(totalCostOfMorePrefPath + NOT_PREFERABLE_COST), so that the path indeed becomes less preferable.
+     * If required, makes one path more preferable than another.
+     * Finds a unique ISL of less preferable path and adds 'cost difference between paths + 1' to its cost
      *
      * @param morePreferablePath path that should become more preferable over the 'lessPreferablePath'
      * @param lessPreferablePath path that should become less preferable compared to 'morePreferablePath'
@@ -61,22 +63,30 @@ class PathHelper {
      */
     Isl makePathMorePreferable(List<PathNode> morePreferablePath, List<PathNode> lessPreferablePath) {
         def morePreferableIsls = getInvolvedIsls(morePreferablePath)
+        def lessPreferableIsls = getInvolvedIsls(lessPreferablePath)
+        List<Isl> uniqueIsls = (morePreferableIsls + lessPreferableIsls)
+                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        HashMap<Isl, Integer> islCosts = uniqueIsls.parallelStream().flatMap({ isl ->
+            Integer cost = northbound.getLink(isl).cost ?: 700
+            [isl, isl.reversed].stream().map({ biIsl -> new SimpleEntry<>(biIsl, cost) })
+        }).collect(Collectors.toMap({ it.getKey() }, { it.getValue() }))
         // under specific condition cost of isl can be 0, but at the same time for the system 0 == 700
-        def totalCostOfMorePrefPath = morePreferableIsls.sum { northbound.getLink(it).cost ?: 700 }
-        def totalCostOfLessPrefPath = getInvolvedIsls(lessPreferablePath).sum { northbound.getLink(it).cost ?: 700 }
+        def totalCostOfMorePrefPath = morePreferableIsls.sum { islCosts.get(it) }
+        def totalCostOfLessPrefPath = lessPreferableIsls.sum { islCosts.get(it) }
+        def difference = totalCostOfMorePrefPath - totalCostOfLessPrefPath
         def islToAvoid
-
-        if (totalCostOfLessPrefPath <= totalCostOfMorePrefPath) {
-            islToAvoid = getInvolvedIsls(lessPreferablePath).find {
+        if (difference >= 0) {
+            islToAvoid = lessPreferableIsls.find {
                 !morePreferableIsls.contains(it) && !morePreferableIsls.contains(it.reversed)
             }
             if (!islToAvoid) {
+                //this should be impossible
                 throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
             }
             log.debug "ISL to avoid: $islToAvoid"
 
             northbound.updateLinkProps([islUtils.toLinkProps(islToAvoid,
-                    ["cost": (totalCostOfMorePrefPath + NOT_PREFERABLE_COST).toString()])])
+                    ["cost": (islCosts.get(islToAvoid) + difference + 1).toString()])])
         }
         return islToAvoid
     }
@@ -113,7 +123,7 @@ class PathHelper {
         }
         return involvedIsls
     }
-    
+
     List<Isl> getInvolvedIsls(FlowPathPayload path) {
         getInvolvedIsls(convert(path))
     }
