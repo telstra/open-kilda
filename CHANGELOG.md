@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.53.0 (10/04/2020)
+
+### Features:
+-  [#3205](https://github.com/telstra/open-kilda/pull/3205) TraffExam update for apps scenario
+-  [#3340](https://github.com/telstra/open-kilda/pull/3340) add tests for grpc stats in opentsdb [**tests**]
+-  [#3346](https://github.com/telstra/open-kilda/pull/3346) Added feature toggle for GRPC stats [**storm-topologies**]
+-  [#3154](https://github.com/telstra/open-kilda/pull/3154) add tests for pop and protected path [**tests**]
+
+### Bug Fixes:
+-  [#3093](https://github.com/telstra/open-kilda/pull/3093) Fix the mess with flow endpoints during the flow update
+-  [#3355](https://github.com/telstra/open-kilda/pull/3355) Added termination awaiting into GRPC session
+-  [#3357](https://github.com/telstra/open-kilda/pull/3357) Get GRPC stats from Active switches [**storm-topologies**]
+-  [#3362](https://github.com/telstra/open-kilda/pull/3362) Fix flow patch issues (Issues: [#3351](https://github.com/telstra/open-kilda/issues/3351) [#3354](https://github.com/telstra/open-kilda/issues/3354)) [**northbound**]
+-  [#3363](https://github.com/telstra/open-kilda/pull/3363) Fix Toggle for GRPC PacketInOut stats [**storm-topologies**]
+-  [#3370](https://github.com/telstra/open-kilda/pull/3370) Fix issue in dependency version issue in gui build [**gui**]
+-  [#3378](https://github.com/telstra/open-kilda/pull/3378) Revert "Use round trip latency data for ISL alive confirmation" (Issue: [#3175](https://github.com/telstra/open-kilda/issues/3175)) [**storm-topologies**]
+
+### Improvements:
+-  [#3287](https://github.com/telstra/open-kilda/pull/3287) extract knockout/reviveSwitch into switchHelper (Issue: [#3244](https://github.com/telstra/open-kilda/issues/3244)) [**tests**]
+-  [#3358](https://github.com/telstra/open-kilda/pull/3358) Updated multi-table pipeline spec
+-  [#3301](https://github.com/telstra/open-kilda/pull/3301) minor fixes in README files according to new structure [**docs**]
+-  [#3175](https://github.com/telstra/open-kilda/pull/3175) Use round trip latency data for ISL alive confirmation [**floodlight**][**storm-topologies**]
+
+### Other changes:
+-  [#3343](https://github.com/telstra/open-kilda/pull/3343) Adding feature to display sum of flows on port and switch list (Issues: [#3306](https://github.com/telstra/open-kilda/issues/3306) [#3307](https://github.com/telstra/open-kilda/issues/3307)) [**gui**]
+-  [#3345](https://github.com/telstra/open-kilda/pull/3345) Improve test to reproduce race more often [**tests**]
+-  [#3347](https://github.com/telstra/open-kilda/pull/3347) Rework makePathMorePreferable method to not conflict with protected paths [**tests**]
+-  [#3348](https://github.com/telstra/open-kilda/pull/3348) Fix instabilities in time comparisons in ConnectedDevicesSpec [**tests**]
+-  [#3349](https://github.com/telstra/open-kilda/pull/3349) Generate openflowj resourses inside docker with python2.7 [**configuration**]
+-  [#3353](https://github.com/telstra/open-kilda/pull/3353) Fix perfomance tests run via gradle [**tests**]
+-  [#3293](https://github.com/telstra/open-kilda/pull/3293) Implement flow read in v2 over nbworker (Issue: [#3291](https://github.com/telstra/open-kilda/issues/3291)) [**api**][**northbound**][**storm-topologies**]
+-  [#3365](https://github.com/telstra/open-kilda/pull/3365) Feature/flows history and flow list updates [**gui**]
+-  [#3367](https://github.com/telstra/open-kilda/pull/3367) Improvement in flow diversity graph to display current flow in it (Issue: [#3265](https://github.com/telstra/open-kilda/issues/3265)) [**gui**]
+-  [#3314](https://github.com/telstra/open-kilda/pull/3314) Swap endpoints V2 design. (Issue: [#3291](https://github.com/telstra/open-kilda/issues/3291)) [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.52.0...v1.53.0).
+
+### Affected Components:
+flow-hs, network, grpc, fl, nbworker, stats, nb
+
+### Upgrade notes:
+
+---
+
 ## v1.52.0 (31/03/2020)
 
 ### Features:
