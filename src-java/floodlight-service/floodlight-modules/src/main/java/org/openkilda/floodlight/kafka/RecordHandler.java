@@ -191,8 +191,6 @@ class RecordHandler implements Runnable {
 
         try {
             handleCommand(message, replyToTopic, replyDestination);
-        } catch (SwitchOperationException e) {
-            logger.error("Unable to handle request {}: {}", message.getData().getClass().getName(), e.getMessage());
         } catch (FlowCommandException e) {
             String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
             logger.error("Failed to handle message {}: {}", message, errorMessage);
@@ -205,7 +203,7 @@ class RecordHandler implements Runnable {
     }
 
     private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException, SwitchOperationException {
+            throws FlowCommandException {
         logger.debug("Handling message: '{}'. Reply topic: '{}'. Reply destination: '{}'.",
                 message, replyToTopic, replyDestination);
         CommandData data = message.getData();
@@ -775,11 +773,11 @@ class RecordHandler implements Runnable {
      *
      * @param message NetworkCommandData
      */
-    private void doNetworkDump(final CommandMessage message) throws SwitchOperationException {
+    private void doNetworkDump(final CommandMessage message) {
         logger.info("Processing request from WFM to dump switches. {}", message.getCorrelationId());
 
         SwitchTrackingService switchTracking = context.getModuleContext().getServiceImpl(SwitchTrackingService.class);
-        switchTracking.dumpAllSwitches(message.getCorrelationId());
+        switchTracking.dumpAllSwitches();
     }
 
     private void doInstallSwitchRules(final CommandMessage message) {
