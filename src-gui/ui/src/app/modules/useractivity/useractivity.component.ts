@@ -8,6 +8,7 @@ import { NgxSpinnerService } from "ngx-spinner";
 import * as _moment from 'moment';
 import { LoaderService } from "../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
+import { tickStep } from 'd3';
 
 
 @Component({
@@ -20,6 +21,7 @@ export class UseractivityComponent implements OnInit {
 	userActivityData: any;
 	startDate: any;
 	endDate: any;
+	currentDate:any = this.moment().format('YYYY/MM/DD HH:mm');
 	type = [];
 	username = [];
 	showFilterBlock: boolean = false;
@@ -100,7 +102,13 @@ export class UseractivityComponent implements OnInit {
   }
 
   onEndDateChange(event){
-  	this.endDate = event.target.value;
+	  this.endDate = event.target.value;
+	  if(this.moment(new Date(this.startDate)).isAfter(this.moment(new Date(this.endDate)))){
+		  this.toastr.error('End Date must me greater than Start Date',"Error");
+		  this.endDate = null;
+		  event.target.value = '';
+		  return;
+	  }
   	if(this.endDate !== ''){
   		this.showEndDateFilter = true;
   	}

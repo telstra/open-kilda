@@ -24,6 +24,7 @@ declare var moment: any;
 export class FlowDetailComponent implements OnInit {
   openedTab = "graph";
   flowDetail: any;
+  hasConnectedDevices : boolean = false;
   controllerFilter:boolean=false;
   graphOptions = {
     radius: 35,
@@ -531,6 +532,7 @@ export class FlowDetailComponent implements OnInit {
        flowDetail["source_switch"] = this.convertSwitchPattern(flowDetail["source_switch"]);
         flowDetail["target_switch"] = this.convertSwitchPattern(flowDetail["target_switch"]);
         this.flowDetail = flowDetail;
+        this.hasConnectedDevices = (flowDetail.src_lldp || flowDetail.src_arp) || (flowDetail.dst_lldp || flowDetail.dst_arp);
         this.clipBoardItems = Object.assign(this.clipBoardItems,{
           flowName: flowDetail.flowid,
           sourceSwitchName: flowDetail["source_switch_name"],
@@ -563,6 +565,7 @@ export class FlowDetailComponent implements OnInit {
         flow["source_switch"] = this.convertSwitchPattern(flow["source_switch"]);
         flow["target_switch"] = this.convertSwitchPattern(flow["target_switch"]);
         this.flowDetail = flow;
+        this.hasConnectedDevices = this.flowDetail.src_lldp || this.flowDetail.dst_lldp;
         this.clipBoardItems = Object.assign(this.clipBoardItems,{
           flowName: flow.flowid,
           sourceSwitchName: flow["source_switch_name"],
@@ -683,12 +686,12 @@ export class FlowDetailComponent implements OnInit {
       },
       error => {
         this.flowIs  ='';
+        this.flowHistory = [];
         this.loading = false;
         this.toaster.error(error["error-auxiliary-message"], "Error!");
       }
     );
-
-  }
+ }
   /** Validate flow */
   validateFlow() {
     this.validatedFlow = null;

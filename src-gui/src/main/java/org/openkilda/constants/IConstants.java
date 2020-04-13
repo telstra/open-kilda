@@ -158,6 +158,7 @@ public abstract class IConstants {
         public static final String DELETE_SWITCH = GET_SWITCHES + "/{switch_id}?force={force}";
         public static final String UPDATE_LINK_BFD_FLAG = GET_LINKS + "/enable-bfd";
         public static final String GET_FLOW_HISTORY = GET_FLOW + "/{flow_id}/history";
+        public static final String GET_FLOW_CONNECTED_DEVICE = GET_FLOW + "/{flow_id}/devices";
     }
     
     public final class OpenTsDbUrl {

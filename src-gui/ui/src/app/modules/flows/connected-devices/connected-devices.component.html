@@ -1,0 +1,90 @@
+<div class="row">
+  <div class="col-lg-12 text-right" style="padding-bottom: 10px;position:absolute; z-index: 1; margin-bottom: 10px;">
+   <div class="pull-right"  style="margin-right:10px; margin-top:-4px;">
+      <input type="hidden" class="on-off-switch" value="0" style="display: none;">
+      <div class="pull-left">
+        <div class="onoffswitch onoffswitch-connected-devices">
+          <input type="checkbox" (change)="toggleView($event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchconnecteddevice">
+          <label class="onoffswitch-label" for="onoffswitchconnecteddevice">
+            <span class="onoffswitch-inner onoffswitch-inner-kilda-connected-devices"></span>
+            <span class="onoffswitch-switch onoffswitch-switch-connected-devices"></span>
+          </label>
+        </div>
+      </div>
+    </div>      
+ </div>
+  <div class="col-md-12">
+    <div class="tabularview table-responsive" *ngIf="tabularViewer" style="margin-top:40px;">
+      <table  class="row-border hover dataTable no-footer margin-top-zero">
+        <thead class="thead-light">
+          <tr class="tableHeading">
+          <th>Mac Addr</th>
+          <th>Chassis Id</th>
+          <th>Port Id</th>
+          <th>Port Desc</th>
+          <th>TTL</th>
+          <th>Sys Name</th>
+          <th>Sys Desc</th>
+          <th>Sys Capabilities</th>
+          <th>Mgmt Addr</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="text-align: center;">
+            <td colspan="9"><b>Source Devices</b></td>
+          </tr>
+          <tr style="text-align: center;" *ngIf="connectedDevicesTableData['source'].length == 0">
+            <td colspan="9"> No data available</td>
+          </tr>
+          <tr *ngFor="let device of connectedDevicesTableData['source']">
+            <td class="divTableCell">{{device.mac_address}}</td>
+            <td class="divTableCell">{{device.chassis_id}}</td>
+            <td class="divTableCell">{{device.port_id}}</td>
+            <td class="divTableCell">{{device.port_description}}</td>
+            <td class="divTableCell">{{device.ttl}}</td>
+            <td class="divTableCell">{{device.system_name}}</td>
+            <td class="divTableCell">{{device.system_description}}</td>
+            <td class="divTableCell">{{device.system_capabilities}}</td>
+            <td class="divTableCell">{{device.management_address}}</td>
+          </tr>
+          <tr style="text-align: center;">
+            <td colspan="9"><b>Destination Devices</b></td>
+          </tr>
+          <tr style="text-align: center;" *ngIf="connectedDevicesTableData['dst'].length == 0">
+            <td colspan="9"> No data available</td>
+          </tr>
+          <tr *ngFor="let device of connectedDevicesTableData['dst']">
+            <td class="divTableCell">{{device.mac_address}}</td>
+            <td class="divTableCell">{{device.chassis_id}}</td>
+            <td class="divTableCell">{{device.port_id}}</td>
+            <td class="divTableCell">{{device.port_description}}</td>
+            <td class="divTableCell">{{device.ttl}}</td>
+            <td class="divTableCell">{{device.system_name}}</td>
+            <td class="divTableCell">{{device.system_description}}</td>
+            <td class="divTableCell">{{device.system_capabilities}}</td>
+            <td class="divTableCell">{{device.management_address}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+   
+    <div [hidden]="!graphViewer" id="connectedGraphwrapper" class="topology-container">
+      <svg id="connectedGraph" width="1000" height="450"></svg>
+    </div>
+    <div id="tooltip_connected_device" style="display:none;">
+      <ul class="lldp_tooltip">
+        <li><label>Mac Addr : </label><span id="mac_address"></span></li>
+        <li><label>Chassis Id : </label><span id="chassis_id"></span></li>
+        <li><label>Port Id : </label><span id="port_id"></span></li>
+        <li><label>Port Desc : </label><span id="port_description"></span></li>
+        <li><label>TTL : </label><span id="ttl" ></span></li>
+        <li><label>System Name : </label><span id="system_name"></span></li>
+        <li><label>System Desc : </label> <span id="system_description"></span></li>
+        <li><label>System Capabilities : </label><span id="system_capabilities"></span></li>
+        <li><label>Management Address : </label><span id="management_address"></span></li>
+      </ul>
+    </div>
+    
+</div>
+</div>
+

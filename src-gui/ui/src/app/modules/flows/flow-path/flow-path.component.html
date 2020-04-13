@@ -15,8 +15,9 @@
              </div>
            
      </div> 
+   
       <div class="row">
-        <div class="col-md-12">
+         <div class="col-md-12">
             <div  *ngFor="let path of forwardPathData; let i = index;" class="path">
                 <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
                 <div class="line"></div>
@@ -90,10 +91,11 @@
               </a>
         </div>
       </div>
+      
       <div class="row">
         <div class="col-md-12">
             <div  *ngFor="let path of reversePathData; let i = index;" class="path">
-                <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
+                 <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
                 <div class="line"></div>
                 <div class="text cursor-pointer" id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
                 <div class="line"></div>
@@ -153,4 +155,6 @@
    <app-flow-path-graph [data]="flowPathData" path-type="reverse" *ngIf="reversePathGraph"></app-flow-path-graph>
   </div>
 </div>
+
+
 
