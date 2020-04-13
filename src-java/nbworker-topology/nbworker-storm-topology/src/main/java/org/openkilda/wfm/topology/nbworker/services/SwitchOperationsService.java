@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static java.lang.String.format;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
 import org.openkilda.messaging.model.SwitchPropertiesDto;
@@ -51,6 +52,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -193,7 +195,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
 
         if (sw.getStatus() == SwitchStatus.ACTIVE) {
-            String message = String.format("Switch '%s' is in 'Active' state.", switchId);
+            String message = format("Switch '%s' is in 'Active' state.", switchId);
             throw new IllegalSwitchStateException(switchId.toString(), message);
         }
     }
@@ -211,7 +213,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                     .map(Flow::getFlowId)
                     .collect(Collectors.toSet());
 
-            String message = String.format("Switch '%s' has %d assigned flows: %s.",
+            String message = format("Switch '%s' has %d assigned flows: %s.",
                     switchId, flowIds.size(), flowIds);
             throw new IllegalSwitchStateException(switchId.toString(), message);
         }
@@ -226,7 +228,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         Collection<FlowPath> flowPaths = flowPathRepository.findBySegmentSwitch(switchId);
 
         if (!flowPaths.isEmpty()) {
-            String message = String.format("Switch '%s' has %d assigned rules. It must be freed first.",
+            String message = format("Switch '%s' has %d assigned rules. It must be freed first.",
                     switchId, flowPaths.size());
             throw new IllegalSwitchStateException(switchId.toString(), message);
         }
@@ -247,11 +249,11 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                     .count();
 
             if (activeIslCount > 0) {
-                String message = String.format("Switch '%s' has %d active links. Unplug and remove them first.",
+                String message = format("Switch '%s' has %d active links. Unplug and remove them first.",
                         switchId, activeIslCount);
                 throw new IllegalSwitchStateException(switchId.toString(), message);
             } else {
-                String message = String.format("Switch '%s' has %d inactive links. Remove them first.",
+                String message = format("Switch '%s' has %d inactive links. Remove them first.",
                         switchId, outgoingIsls.size() + ingoingIsls.size());
                 throw new IllegalSwitchStateException(switchId.toString(), message);
             }
@@ -298,6 +300,9 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             switchProperties.setSwitchLldp(update.isSwitchLldp());
             switchProperties.setSwitchArp(update.isSwitchArp());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
+            switchProperties.setServer42FlowRtt(update.isServer42FlowRtt());
+            switchProperties.setServer42Port(update.getServer42Port());
+            switchProperties.setServer42MacAddress(update.getServer42MacAddress());
 
             switchPropertiesRepository.createOrUpdate(switchProperties);
 
@@ -314,7 +319,12 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
     private boolean isSwitchSyncNeeded(SwitchProperties current, SwitchProperties updated) {
         return current.isMultiTable() != updated.isMultiTable()
                 || current.isSwitchLldp() != updated.isSwitchLldp()
-                || current.isSwitchArp() != updated.isSwitchArp();
+                || current.isSwitchArp() != updated.isSwitchArp()
+                || current.isServer42FlowRtt() != updated.isServer42FlowRtt()
+                || (updated.isServer42FlowRtt() && !Objects.equals(
+                        current.getServer42Port(), updated.getServer42Port()))
+                || (updated.isServer42FlowRtt() && !Objects.equals(
+                        current.getServer42MacAddress(), updated.getServer42MacAddress()));
     }
 
     private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
@@ -322,11 +332,16 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             String propertyErrorMessage = "Illegal switch properties combination for switch %s. '%s' property "
                     + "can be set to 'true' only if 'multiTable' property is 'true'.";
             if (updatedSwitchProperties.isSwitchLldp()) {
-                throw new IllegalSwitchPropertiesException(String.format(propertyErrorMessage, switchId, "switchLldp"));
+                throw new IllegalSwitchPropertiesException(format(propertyErrorMessage, switchId, "switchLldp"));
             }
 
             if (updatedSwitchProperties.isSwitchArp()) {
-                throw new IllegalSwitchPropertiesException(String.format(propertyErrorMessage, switchId, "switchArp"));
+                throw new IllegalSwitchPropertiesException(format(propertyErrorMessage, switchId, "switchArp"));
+            }
+
+            if (updatedSwitchProperties.isServer42FlowRtt()) {
+                throw new IllegalSwitchPropertiesException(
+                        format(propertyErrorMessage, switchId, "server_42_flow_rtt"));
             }
 
             List<String> flowsWitchEnabledLldp = flowRepository.findByEndpointSwitchWithEnabledLldp(switchId).stream()
@@ -335,7 +350,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
             if (!flowsWitchEnabledLldp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
-                        String.format("Illegal switch properties combination for switch %s. "
+                        format("Illegal switch properties combination for switch %s. "
                               + "Detect Connected Devices feature is turn on for following flows [%s]. "
                               + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
                               + "Please disable detecting of connected devices via LLDP for each flow before set "
@@ -349,12 +364,23 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
             if (!flowsWithEnabledArp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
-                        String.format("Illegal switch properties combination for switch %s. "
+                        format("Illegal switch properties combination for switch %s. "
                               + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
                               + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
                               + "Please disable detecting of connected devices via ARP for each flow before set "
                               + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWithEnabledArp)));
+            }
+        }
+
+        if (updatedSwitchProperties.isServer42FlowRtt()) {
+            String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
+                    + "'server_42_flow_rtt' you need to specify valid property '%s'";
+            if (updatedSwitchProperties.getServer42Port() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server_42_port"));
+            }
+            if (updatedSwitchProperties.getServer42MacAddress() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server_42_mac_address"));
             }
         }
     }

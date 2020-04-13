@@ -45,6 +45,7 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -82,14 +83,28 @@ public class SwitchProperties implements Serializable {
     @Property(name = "switch_arp")
     private boolean switchArp;
 
+    @Property("server_42_flow_rtt")
+    private boolean server42FlowRtt;
+
+    @Property("server_42_port")
+    private Integer server42Port;
+
+    @Property("server_42_mac_address")
+    @Convert(graphPropertyType = String.class)
+    private MacAddress server42MacAddress;
+
     @Builder(toBuilder = true)
     public SwitchProperties(Switch switchObj, Set<FlowEncapsulationType> supportedTransitEncapsulation,
-                            boolean multiTable, boolean switchLldp, boolean switchArp) {
+                            boolean multiTable, boolean switchLldp, boolean switchArp, boolean server42FlowRtt,
+                            Integer server42Port, MacAddress server42MacAddress) {
         this.switchObj = switchObj;
         this.supportedTransitEncapsulation = supportedTransitEncapsulation;
         this.multiTable = multiTable;
         this.switchLldp = switchLldp;
         this.switchArp = switchArp;
+        this.server42FlowRtt = server42FlowRtt;
+        this.server42Port = server42Port;
+        this.server42MacAddress = server42MacAddress;
     }
 
     @VisibleForTesting
