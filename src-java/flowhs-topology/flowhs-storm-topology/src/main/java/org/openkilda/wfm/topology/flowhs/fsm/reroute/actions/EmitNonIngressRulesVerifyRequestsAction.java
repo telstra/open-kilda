@@ -28,7 +28,6 @@ import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -59,6 +58,6 @@ public class EmitNonIngressRulesVerifyRequestsAction extends
             stateMachine.saveActionToHistory("Started validation of installed non ingress rules");
         }
 
-        stateMachine.getPendingCommands().addAll(new HashSet<>(requestsStorage.keySet()));
+        requestsStorage.forEach((key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
     }
 }

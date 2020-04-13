@@ -17,10 +17,9 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.FlowStatus;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
@@ -31,7 +30,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
-import org.openkilda.wfm.topology.flowhs.utils.RerouteRetryManager;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -44,36 +42,22 @@ public class FlowRerouteService {
     @VisibleForTesting
     final Map<String, FlowRerouteFsm> fsms = new HashMap<>();
 
-    private final RerouteRetryManager retryManager = new RerouteRetryManager();
-
     private final FlowRerouteFsm.Factory fsmFactory;
     private final FsmExecutor<FlowRerouteFsm, State, Event, FlowRerouteContext> fsmExecutor
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowRerouteHubCarrier carrier;
-    private final PersistenceManager persistenceManager;
     private final FlowEventRepository flowEventRepository;
-    private final FlowRepository flowRepository;
-    private final PathComputer pathComputer;
-    private final FlowResourcesManager flowResourcesManager;
-    private final int transactionRetriesLimit;
-    private final int speakerCommandRetriesLimit;
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
                               PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                               int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                               int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.persistenceManager = persistenceManager;
 
         final RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowEventRepository = repositoryFactory.createFlowEventRepository();
 
-        this.pathComputer = pathComputer;
-        this.flowResourcesManager = flowResourcesManager;
-        this.transactionRetriesLimit = transactionRetriesLimit;
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         fsmFactory = new FlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 speakerCommandRetriesLimit);
@@ -83,27 +67,47 @@ public class FlowRerouteService {
      * Handles request for flow reroute.
      */
     public void handleRequest(FlowRerouteFact reroute) {
-        final String key = reroute.getKey();
-        final String flowId = reroute.getFlowId();
-        log.debug("Handling flow reroute request with key {} and flow ID: {}", key, flowId);
+        log.debug("Handling flow reroute request with key {} and flow ID: {}", reroute.getKey(), reroute.getFlowId());
+        final CommandContext commandContext = reroute.getCommandContext();
 
-        if (retryManager.record(reroute)) {
-            initReroute(reroute);
-        } else {
-            carrier.cancelTimeoutCallback(key);
-            log.warn("Postpone (queue/merge) reroute request for flow {} (key={}, reasod={})",
-                     flowId, key, reroute.getRerouteReason());
+        try {
+            checkRequestsCollision(reroute);
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            FlowRerouteFsm fsm = fsms.get(reroute.getKey());
+            if (fsm != null) {
+                removeIfFinished(fsm, reroute.getKey());
+            }
+            return;
         }
+
+        final String flowId = reroute.getFlowId();
+        if (isRerouteAlreadyInProgress(flowId)) {
+            carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
+                    reroute.getCommandContext().getCorrelationId());
+            return;
+        }
+
+        final String key = reroute.getKey();
+        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId);
+        fsms.put(key, fsm);
+
+        FlowRerouteContext context = FlowRerouteContext.builder()
+                .flowId(flowId)
+                .affectedIsl(reroute.getAffectedIsl())
+                .forceReroute(reroute.isForceReroute())
+                .effectivelyDown(reroute.isEffectivelyDown())
+                .rerouteReason(reroute.getRerouteReason())
+                .build();
+        fsmExecutor.fire(fsm, Event.NEXT, context);
+
+        removeIfFinished(fsm, key);
     }
 
-    /**
-     * Handle postponed flow reroute request.
-     */
-    public void handlePostponedRequest(FlowRerouteFact reroute) {
-        log.info("Handling postponed flow reroute request with key {} and flow ID: {}",
-                 reroute.getKey(), reroute.getFlowId());
-        carrier.setupTimeoutCallback(reroute.getKey());
-        initReroute(reroute);
+    private boolean isRerouteAlreadyInProgress(String flowId) {
+        return fsms.values().stream()
+                .map(FlowRerouteFsm::getFlowId)
+                .anyMatch(id -> id.equals(flowId));
     }
 
     /**
@@ -150,35 +154,6 @@ public class FlowRerouteService {
         removeIfFinished(fsm, key);
     }
 
-    private void initReroute(FlowRerouteFact reroute) {
-        final CommandContext commandContext = reroute.getCommandContext();
-
-        try {
-            checkRequestsCollision(reroute);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            performHousekeeping(reroute.getFlowId(), reroute.getKey());
-            fixFlowStatus(reroute);
-            return;
-        }
-
-        final String flowId =  reroute.getFlowId();
-        final String key = reroute.getKey();
-        FlowRerouteFsm fsm = fsmFactory.newInstance(commandContext, flowId, reroute.getRerouteCounter());
-        fsms.put(key, fsm);
-
-        FlowRerouteContext context = FlowRerouteContext.builder()
-                .flowId(flowId)
-                .affectedIsl(reroute.getAffectedIsl())
-                .forceReroute(reroute.isForceReroute())
-                .effectivelyDown(reroute.isEffectivelyDown())
-                .rerouteReason(reroute.getRerouteReason())
-                .build();
-        fsmExecutor.fire(fsm, Event.NEXT, context);
-
-        removeIfFinished(fsm, key);
-    }
-
     private void checkRequestsCollision(FlowRerouteFact reroute) {
         if (fsms.containsKey(reroute.getKey())) {
             throw new IllegalStateException(String.format(
@@ -197,31 +172,12 @@ public class FlowRerouteService {
     private void removeIfFinished(FlowRerouteFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            performHousekeeping(fsm.getFlowId(), key);
-
-            // use some sort of recursion here, because iterative way require too complex scheme to clean/use retryQueue
-            retryManager.read(fsm.getFlowId()).ifPresent(carrier::injectPostponedRequest);
+            performHousekeeping(key);
         }
     }
 
-    private void performHousekeeping(String flowId, String key) {
+    private void performHousekeeping(String key) {
         fsms.remove(key);
         carrier.cancelTimeoutCallback(key);
-
-        FlowRerouteFact reroute = retryManager.discard(flowId)
-                .orElseThrow(() -> new IllegalStateException(String.format(
-                        "There is no current reroute into retry queue (flow=\"%s\", key=\"%s\")",
-                        flowId, key)));
-        if (! reroute.getKey().equals(key)) {
-            log.error(
-                    "Retry queue is broken, expect to remove record with key \"{}\" but got record with key=\"{}\" "
-                    + "(flowId=\"{}\")", key, reroute.getKey(), flowId);
-        }
-    }
-
-    private void fixFlowStatus(FlowRerouteFact reroute) {
-        if (reroute.isEffectivelyDown()) {
-            flowRepository.updateStatusSafe(reroute.getFlowId(), FlowStatus.DOWN);
-        }
     }
 }

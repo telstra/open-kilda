@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 
 public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
     /**
@@ -25,9 +25,12 @@ public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
      */
     void cancelTimeoutCallback(String key);
 
-    void setupTimeoutCallback(String key);
-
-    void injectPostponedRequest(FlowRerouteFact retry);
-
-    void injectRetry(FlowRerouteFact retry);
+    /**
+     * Sends reroute result status to reroute topology.
+     *
+     * @param flowId flow id.
+     * @param rerouteError first error in reroute process if any.
+     * @param correlationId correlation id.
+     */
+    void sendRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId);
 }
