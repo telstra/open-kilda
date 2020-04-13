@@ -1,9 +1,14 @@
 package org.openkilda.functionaltests.spec.network
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 class PathComputationSpec extends HealthCheckSpecification {
@@ -101,5 +106,88 @@ class PathComputationSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+    }
+
+    @Tidy
+    def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {
+        given: "Switch pair with two paths at least"
+        def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
+
+        and: "A flow with cost strategy"
+        def latencyStrategy = PathComputationStrategy.LATENCY.toString().toLowerCase()
+        def costStrategy = PathComputationStrategy.COST.toString().toLowerCase()
+        def flow = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = costStrategy }
+        flowHelperV2.addFlow(flow)
+
+        when: "Update path computation strategy(cost -> latency) via partialUpdate"
+        northbound.partialUpdate(flow.flowId, new FlowPatchDto().tap {
+            it.targetPathComputationStrategy = latencyStrategy
+        })
+
+        then: "Path computation strategy is not changed"
+        with(northbound.getFlow(flow.flowId)) {
+            pathComputationStrategy == costStrategy
+            targetPathComputationStrategy == latencyStrategy
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        when: "Sync the flow"
+        northbound.synchronizeFlow(flow.flowId)
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
+        then: "Path computation strategy is updated and targetPathComputationStrategy is deleted"
+        with(northbound.getFlow(flow.flowId)) {
+            pathComputationStrategy == latencyStrategy
+            !targetPathComputationStrategy
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "Target path computation strategy is applied after updating/rerouting a flow"() {
+        given: "Switch pair with two paths at least"
+        def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
+
+        and: "A flow with cost strategy"
+        def latencyStrategy = PathComputationStrategy.LATENCY.toString().toLowerCase()
+        def costStrategy = PathComputationStrategy.COST.toString().toLowerCase()
+        def flow = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = costStrategy }
+        flowHelperV2.addFlow(flow)
+
+        when: "Update path computation strategy(cost -> latency) via partialUpdate"
+        northbound.partialUpdate(flow.flowId, new FlowPatchDto().tap {
+            it.targetPathComputationStrategy = latencyStrategy
+        })
+
+        and: "Reroute the flow"
+        northboundV2.rerouteFlow(flow.flowId)
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
+        then: "Path computation strategy is updated and targetPathComputationStrategy is deleted"
+        with(northbound.getFlow(flow.flowId)) {
+            pathComputationStrategy == latencyStrategy
+            !targetPathComputationStrategy
+        }
+
+        when: "Update path computation strategy(latency -> cost) via partialUpdate"
+        northbound.partialUpdate(flow.flowId, new FlowPatchDto().tap {
+            it.targetPathComputationStrategy = costStrategy
+        })
+
+        and: "Update the flow"
+        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.pathComputationStrategy = null })
+
+        then: "Path computation strategy is updated and targetPathComputationStrategy is deleted"
+        with(northbound.getFlow(flow.flowId)) {
+            pathComputationStrategy == costStrategy
+            !targetPathComputationStrategy
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }
