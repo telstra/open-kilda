@@ -30,7 +30,6 @@ export class BreadcrumbComponent implements OnInit {
 
   ngOnInit() {
     const ROUTE_DATA_BREADCRUMB: string = "breadcrumb";
-
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)) .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
@@ -68,7 +67,6 @@ export class BreadcrumbComponent implements OnInit {
       if (!child.snapshot.data.hasOwnProperty(ROUTE_DATA_BREADCRUMB)) {
         return this.getBreadcrumbs(child, url, breadcrumbs);
       }
-
       //get the route's URL segment
       let routeURL: string = child.snapshot.url
         .map(segment => segment.path)
@@ -124,6 +122,12 @@ export class BreadcrumbComponent implements OnInit {
 
   private filterBreadCrumbs(breadcrumbs){
       return breadcrumbs.filter(element=>{
+        if(element.url.includes('switches') && element.url.includes('details')){
+          let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON')) || null;
+          if(retrievedSwitchObject && retrievedSwitchObject.switch_id && element.label == retrievedSwitchObject.switch_id ){
+            element.label = retrievedSwitchObject.name;
+          }
+        }
         return element.label;
       })
 

@@ -190,6 +190,10 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
             for(let flow of this.portFlows){
                 this.flowBandwidthSum = this.flowBandwidthSum + (flow.maximum_bandwidth / 1000);
             }
+          }else{
+            if(this.portFlows == null){
+              this.portFlows = [];
+            }
           }
           this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
           this.flowBandwidthFlag = false;

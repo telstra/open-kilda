@@ -12,7 +12,6 @@
             <span title="Name">Name</span>
             <i class="fa fa-search" (click)="toggleSearch($event,'name')"></i>
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="name" [hidden]="!name" />
-        
         </th>
         <th class="">
             <span title="Name">Address</span>
@@ -37,22 +36,24 @@
           <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="sumofflows" [hidden]="!sumofflows" />
         </th>
         <th class="">
+          <span title="Number of Flows">No Of Flows</span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'noofflows')"></i>
+          <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="noofflows" [hidden]="!noofflows" />
+        </th>
+        <th class="">
             <span title="Name">Description</span>
             <i class="fa fa-search" (click)="toggleSearch($event,'description')"></i>
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="description" [hidden]="!description" />
-        
         </th>
         <th class="">
             <span title="Name">State</span>
             <i class="fa fa-search" (click)="toggleSearch($event,'state')"></i>
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="state" [hidden]="!state" />
-        
         </th>
-        <th >
+        <th>
           <span title="type">
               type
-             </span>
-              
+             </span>              
         </th>
       </tr>
     </thead>
@@ -87,6 +88,9 @@
             </td>
             <td class="divTableCell" title="{{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].sumofbandwidth || flowDataOfSwitch[row.switch_id].sumofbandwidth == 0) ) ? flowDataOfSwitch[row.switch_id].sumofbandwidth : 'loading..'}}" >
               {{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].sumofbandwidth || flowDataOfSwitch[row.switch_id].sumofbandwidth == 0) ) ? flowDataOfSwitch[row.switch_id].sumofbandwidth : 'loading..'}}
+            </td>
+            <td class="divTableCell" title="{{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].noofflows || flowDataOfSwitch[row.switch_id].noofflows == 0) ) ? flowDataOfSwitch[row.switch_id].noofflows : 'loading..'}}" >
+              {{(flowDataOfSwitch && flowDataOfSwitch.hasOwnProperty(row.switch_id) && (flowDataOfSwitch[row.switch_id].noofflows || flowDataOfSwitch[row.switch_id].noofflows == 0) ) ? flowDataOfSwitch[row.switch_id].noofflows : 'loading..'}}
             </td>
             <td class="divTableCell" title="{{checkValue(row.description)}}" >
               {{checkValue(row.description)}}
