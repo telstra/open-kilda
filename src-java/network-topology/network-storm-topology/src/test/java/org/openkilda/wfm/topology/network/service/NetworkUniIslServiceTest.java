@@ -18,10 +18,10 @@ package org.openkilda.wfm.topology.network.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -34,12 +34,14 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -304,7 +306,9 @@ public class NetworkUniIslServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier, times(2)).notifyIslUp(endpoint1, IslReference.of(islA1toB1), new IslDataHolder(islA1toB1));
+        InOrder order = inOrder(carrier);
+        order.verify(carrier).notifyBfdStatus(endpoint1, IslReference.of(islA1toB1), BfdStatus.UP);
+        order.verify(carrier).notifyBfdStatus(endpoint1, IslReference.of(islA1toB1), BfdStatus.KILL);
     }
 
     @Test
@@ -337,9 +341,13 @@ public class NetworkUniIslServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.PORT_DOWN);
-        verify(carrier, times(2)).notifyIslUp(endpoint1, IslReference.of(islA1toB1), new IslDataHolder(islA1toB1));
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.BFD_DOWN);
+        InOrder order = inOrder(carrier);
+
+        IslReference reference = IslReference.of(islA1toB1);
+        order.verify(carrier).notifyIslDown(endpoint1, reference, IslDownReason.PORT_DOWN);
+        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatus.UP);
+        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatus.DOWN);
+        order.verify(carrier).notifyBfdStatus(endpoint1, reference, BfdStatus.UP);
     }
 
     @Test
@@ -363,7 +371,7 @@ public class NetworkUniIslServiceTest {
         service.uniIslBfdUpDown(endpoint, true);
 
         // System.out.println(mockingDetails(carrier).printInvocations());
-        verify(carrier).notifyIslUp(endpoint, IslReference.of(link), new IslDataHolder(link));
+        verify(carrier).notifyBfdStatus(endpoint, IslReference.of(link), BfdStatus.UP);
     }
 
     @Test

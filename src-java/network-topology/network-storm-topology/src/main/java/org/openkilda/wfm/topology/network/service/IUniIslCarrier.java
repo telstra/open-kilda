@@ -19,6 +19,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
@@ -33,4 +34,6 @@ public interface IUniIslCarrier {
     void notifyIslMove(Endpoint endpoint, IslReference reference);
 
     void notifyIslRoundTripStatus(IslReference reference, RoundTripStatus roundTripStatus);
+
+    void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatus status);
 }
