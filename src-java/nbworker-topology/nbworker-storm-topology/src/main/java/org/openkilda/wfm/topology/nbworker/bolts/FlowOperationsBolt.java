@@ -256,14 +256,20 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         } catch (FlowNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, "Can not get flow: " + e.getMessage(),
                     "Flow not found");
+        } catch (Exception e) {
+            throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not get flow", "Internal Error");
         }
     }
 
     private List<FlowResponse> processFlowsDumpRequest() {
-        return flowOperationsService.getAllFlows().stream()
-                .map(FlowMapper.INSTANCE::map)
-                .map(FlowResponse::new)
-                .collect(Collectors.toList());
+        try {
+            return flowOperationsService.getAllFlows().stream()
+                    .map(FlowMapper.INSTANCE::map)
+                    .map(FlowResponse::new)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new MessageException(ErrorType.INTERNAL_ERROR, "Can not dump flows", "Internal Error");
+        }
     }
 
     @Override
