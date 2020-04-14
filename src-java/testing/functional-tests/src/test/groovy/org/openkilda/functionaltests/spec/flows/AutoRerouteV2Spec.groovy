@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -533,7 +534,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
-        lockKeeper.knockoutSwitch(swToDeactivate)
+        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
         def isSwDeactivated = true
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
         Wrappers.wait(WAIT_OFFSET * 4) {
@@ -544,7 +545,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Activate the src switch"
-        lockKeeper.reviveSwitch(swToDeactivate)
+        lockKeeper.reviveSwitch(swToDeactivate, blockData)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {
@@ -561,11 +562,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         if (isSwDeactivated) {
-            lockKeeper.reviveSwitch(swToDeactivate)
+            lockKeeper.reviveSwitch(swToDeactivate, blockData)
             Wrappers.wait(WAIT_OFFSET) {
                 assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 assert northbound.getAllLinks().findAll {
-                    it.state == DISCOVERED
+                    it.state == IslChangeType.DISCOVERED
                 }.size() == topology.islsForActiveSwitches.size() * 2
             }
         }
