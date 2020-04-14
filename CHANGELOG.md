@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.54.0 (13/04/2020)
+
+### Features:
+-  [#3375](https://github.com/telstra/open-kilda/pull/3375) Feature/flow connected devices (Issue: [#3044](https://github.com/telstra/open-kilda/issues/3044)) [**gui**]
+-  [#3359](https://github.com/telstra/open-kilda/pull/3359) add test for targetPathComputationStrategy and partialUpdate [**tests**]
+
+### Bug Fixes:
+-  [#3376](https://github.com/telstra/open-kilda/pull/3376) Remove potential reordering of OF events (Issue: [#3369](https://github.com/telstra/open-kilda/issues/3369)) [**floodlight**]
+
+### Improvements:
+-  [#3360](https://github.com/telstra/open-kilda/pull/3360) minor fixes in DefaultRulesSpec [**tests**]
+-  [#3295](https://github.com/telstra/open-kilda/pull/3295) Flow reroute retry [**northbound**][**storm-topologies**]
+-  [#3315](https://github.com/telstra/open-kilda/pull/3315) Extract ethernet packet body extractor into separate tool [**floodlight**]
+
+### Other changes:
+-  [#3332](https://github.com/telstra/open-kilda/pull/3332) Add ability to operate with qinq traffic into lab-service [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.53.0...v1.54.0).
+
+### Affected Components:
+fl, reroute, gui, nb, flow-hs
+
+---
+
 ## v1.53.0 (10/04/2020)
 
 ### Features:
