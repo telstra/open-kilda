@@ -40,6 +40,9 @@
             <th>
               <span title="Sum(Bandwidth) Of Flow(Mbps)">Sum(Bandwidth) Of Flow(Mbps)</span>
             </th>
+            <th>
+              <span title="Number Of Flow">Number Of Flow</span>
+            </th>
             
             <th class="sorting">
               <span title="Mbps" style="text-align: center;">Mbps</span>
@@ -98,6 +101,9 @@
             </td>
             <td class="divTableCell" title="{{(portFlowData && portFlowData.hasOwnProperty(item.port_number) && (portFlowData[item.port_number].sumflowbandwidth || portFlowData[item.port_number].sumflowbandwidth == 0)) ? portFlowData[item.port_number].sumflowbandwidth :'loading..'}}">
               <p>{{(portFlowData && portFlowData.hasOwnProperty(item.port_number) && (portFlowData[item.port_number].sumflowbandwidth || portFlowData[item.port_number].sumflowbandwidth == 0)) ? portFlowData[item.port_number].sumflowbandwidth :'loading..'}}</p>
+            </td>
+            <td class="divTableCell" title="{{(portFlowData && portFlowData.hasOwnProperty(item.port_number) && (portFlowData[item.port_number].noofflows || portFlowData[item.port_number].noofflows == 0)) ? portFlowData[item.port_number].noofflows :'loading..'}}">
+              <p>{{(portFlowData && portFlowData.hasOwnProperty(item.port_number) && (portFlowData[item.port_number].noofflows || portFlowData[item.port_number].noofflows == 0)) ? portFlowData[item.port_number].noofflows :'loading..'}}</p>
             </td>
            
             <td class="divTableCell subPortTable" title="">

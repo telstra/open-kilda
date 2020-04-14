@@ -46,10 +46,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
   ngOnInit() {
       let ref =this;
-    //this.titleService.setTitle('OPEN KILDA - Ports');
-  	//let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
-    //this.switch_id =retrievedSwitchObject.switch_id;
-    this.switch_id = this.switch;
+       this.switch_id = this.switch;
     this.dtOptions = {
       paging: false,
       retrieve: true,
@@ -65,6 +62,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "aoColumns": [
         { sWidth: '5%' },
+        { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
@@ -102,14 +100,13 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   }
 
   showPortDetail(item){
-     var portDataObject = item;
+    var portDataObject = item;
     localStorage.setItem('portDataObject', JSON.stringify(portDataObject));
     this.currentActivatedRoute = 'port-details';
     this.router.navigate(['/switches/details/'+this.switch_id+'/port/'+item.port_number]);
-
   }
 
-    getSwitchPortList(){
+   getSwitchPortList(){
       this.portListTimerId = setInterval(() => {
         if(this.loadinterval){
             this.portListData();
@@ -145,7 +142,6 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
             else{
                 this.switchPortDataSet[i].stats['tx-bytes'] =  this.commonService.convertBytesToMbps(this.switchPortDataSet[i].stats['tx-bytes']);;
             }
-  
   
             if(this.switchPortDataSet[i].stats['rx-bytes'] === '' || this.switchPortDataSet[i].stats['rx-bytes'] === undefined){
                 this.switchPortDataSet[i].stats['rx-bytes'] = '-';
@@ -203,8 +199,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       }
 
      },error=>{
-     
-      //this.toastr.error("No Switch Port data",'Error');
+      
      });
   }
 
@@ -214,15 +209,18 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
           let flowsData:any = data;
           this.portFlowData[portnumber] = {};
           this.portFlowData[portnumber].sumflowbandwidth = 0;
+          this.portFlowData[portnumber].noofflows = 0;
             if(flowsData && flowsData.length){
               for(let flow of flowsData){
                 this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth + (flow.maximum_bandwidth / 1000);
               }
+              this.portFlowData[portnumber].noofflows =flowsData.length;
               this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth.toFixed(3);
             }
           },error=>{
             this.portFlowData[portnumber] = {};
            this.portFlowData[portnumber].sumflowbandwidth = 0;
+           this.portFlowData[portnumber].noofflows =0;
           }) 
     }
   }
@@ -232,10 +230,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
         this.dtTrigger.next();
        }catch(err){
 
-       }
-
-    
-
+       }   
   }
 
   ngOnDestroy(): void {

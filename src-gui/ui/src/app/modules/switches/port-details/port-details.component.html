@@ -71,6 +71,10 @@
         <label class='col-sm-3 '>Sum(Bandwidth) Of Flows(Mbps):</label>
         <p class='col-sm-3 port_details_div_status'>{{ (!flowBandwidthFlag) ? flowBandwidthSum :'loading..'}}</p>
        </div>
+       <div class='row'>
+        <label class='col-sm-3 '>Number of Flows:</label>
+        <p class='col-sm-3 port_details_div_status'>{{ (portFlows && (portFlows.length || portFlows.length ==0)) ? portFlows.length :'loading..'}}</p>
+       </div>
       <div class='row' *ngIf="hasStoreSetting">
         <label class='col-sm-3 ' *ngIf="hasStoreSetting">Port X-connect:</label>
         <p class='col-sm-3 port_details_div_status'>{{portDataObject.crossconnect ? portDataObject.crossconnect:'-'}}</p>
