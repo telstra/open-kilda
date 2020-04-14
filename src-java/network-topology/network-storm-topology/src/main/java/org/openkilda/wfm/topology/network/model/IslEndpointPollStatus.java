@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,33 +15,19 @@
 
 package org.openkilda.wfm.topology.network.model;
 
-import org.openkilda.model.IslDownReason;
+import org.openkilda.model.IslStatus;
 
-import lombok.Data;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Value;
 
-// TODO - del?
-@Data
-public class IslEndpointStatus {
-    @Getter
-    private Status status;
+@Value
+@AllArgsConstructor
+public class IslEndpointPollStatus {
+    IslDataHolder islData;
 
-    @Getter
-    private IslDownReason downReason;
+    IslStatus status;
 
-    private boolean hasIslRules;
-
-    public IslEndpointStatus(Status status) {
-        this(status, null);
-    }
-
-    public IslEndpointStatus(Status status, IslDownReason downReason) {
-        this.status = status;
-        this.downReason = downReason;
-
-    }
-
-    public enum Status {
-        UP, DOWN, MOVED
+    public IslEndpointPollStatus(IslStatus status) {
+        this(null, status);
     }
 }

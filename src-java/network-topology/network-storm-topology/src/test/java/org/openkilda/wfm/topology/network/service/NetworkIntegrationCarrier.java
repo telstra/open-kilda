@@ -26,6 +26,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
@@ -222,6 +223,11 @@ public class NetworkIntegrationCarrier
     @Override
     public void notifyIslRoundTripStatus(IslReference reference, RoundTripStatus status) {
         islService.roundTripStatusNotification(reference, status);
+    }
+
+    @Override
+    public void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatus status) {
+        islService.bfdStatusUpdate(endpoint, reference, status);
     }
 
     public void triggerReroute(RerouteFlows trigger) {
