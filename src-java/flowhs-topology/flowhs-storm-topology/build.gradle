@@ -10,6 +10,7 @@ description = 'Flow H&S Storm Topology'
 dependencies {
     implementation project(':flow-messaging')
     implementation project(':ping-messaging')
+    implementation project(':reroute-messaging')
     implementation project(':base-storm-topology')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')

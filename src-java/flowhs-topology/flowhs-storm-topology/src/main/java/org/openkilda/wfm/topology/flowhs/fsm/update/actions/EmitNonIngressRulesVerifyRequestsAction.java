@@ -45,7 +45,7 @@ public class EmitNonIngressRulesVerifyRequestsAction
 
             SpeakerVerifySegmentEmitter.INSTANCE.emitBatch(
                     stateMachine.getCarrier(), requestFactories, requestsStorage);
-            stateMachine.getPendingCommands().addAll(requestsStorage.keySet());
+            requestsStorage.forEach((key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
             stateMachine.getRetriedCommands().clear();
 
             stateMachine.saveActionToHistory("Started validation of installed non ingress rules");

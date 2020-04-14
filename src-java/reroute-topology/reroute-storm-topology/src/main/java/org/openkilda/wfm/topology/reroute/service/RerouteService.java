@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
@@ -38,6 +39,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -73,6 +76,7 @@ public class RerouteService {
 
     /**
      * Handles reroute on ISL down events.
+     *
      * @param sender transport sender
      * @param correlationId correlation id to pass through
      * @param command origin command
@@ -99,7 +103,16 @@ public class RerouteService {
                 flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
             });
 
-            sender.emitRerouteCommand(correlationId, flow, Collections.singleton(affectedIsl), command.getReason());
+            FlowThrottlingData flowThrottlingData = FlowThrottlingData.builder()
+                    .correlationId(correlationId)
+                    .priority(flow.getPriority())
+                    .timeCreate(flow.getTimeCreate())
+                    .affectedIsl(Collections.singleton(affectedIsl))
+                    .force(false)
+                    .effectivelyDown(true)
+                    .reason(command.getReason())
+                    .build();
+            sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
         }
 
         Set<Flow> affectedPinnedFlows = groupAffectedPinnedFlows(affectedFlowPaths);
@@ -137,6 +150,7 @@ public class RerouteService {
 
     /**
      * Handles reroute on switch up events.
+     *
      * @param sender transport sender
      * @param correlationId correlation id to pass through
      * @param switchId switch id
@@ -152,14 +166,23 @@ public class RerouteService {
                 log.info("Produce reroute (attempt to restore inactive flow) request for {} (switch online {})",
                         flow.getFlowId(), switchId);
                 // Emit reroute command with empty affectedIsls to force flow to reroute despite it's current paths
-                sender.emitRerouteCommand(correlationId, flow, Collections.emptySet(),
-                        format("Switch '%s' online", switchId));
+                FlowThrottlingData flowThrottlingData = FlowThrottlingData.builder()
+                        .correlationId(correlationId)
+                        .priority(flow.getPriority())
+                        .timeCreate(flow.getTimeCreate())
+                        .affectedIsl(Collections.emptySet())
+                        .force(false)
+                        .effectivelyDown(true)
+                        .reason(format("Switch '%s' online", switchId))
+                        .build();
+                sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
             }
         }
     }
 
     /**
      * Handles reroute on ISL up events.
+     *
      * @param sender transport sender
      * @param correlationId correlation id to pass through
      * @param command origin command
@@ -219,7 +242,16 @@ public class RerouteService {
                 log.info("Produce reroute(attempt to restore inactive flows) request for {} (affected ISL "
                                 + "endpoints: {})",
                         flow.getFlowId(), allAffectedIslEndpoints);
-                sender.emitRerouteCommand(correlationId, flow, allAffectedIslEndpoints, command.getReason());
+                FlowThrottlingData flowThrottlingData = FlowThrottlingData.builder()
+                        .correlationId(correlationId)
+                        .priority(flow.getPriority())
+                        .timeCreate(flow.getTimeCreate())
+                        .affectedIsl(allAffectedIslEndpoints)
+                        .force(false)
+                        .effectivelyDown(true)
+                        .reason(command.getReason())
+                        .build();
+                sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
             }
         }
     }
@@ -228,7 +260,7 @@ public class RerouteService {
      * Get list of active affected flow paths with flows.
      *
      * @param switchId switch id.
-     * @param port     port.
+     * @param port port.
      * @return list affected flows and flow paths.
      */
     public Collection<FlowPath> getAffectedFlowPaths(SwitchId switchId, int port) {
@@ -292,9 +324,9 @@ public class RerouteService {
         return flowRepository.findDownFlows().stream()
                 .collect(toMap(Function.identity(),
                         flow -> flow.getPaths().stream()
-                        .filter(path -> FlowPathStatus.INACTIVE.equals(path.getStatus()))
-                        .map(FlowPath::getPathId)
-                        .collect(Collectors.toSet()))
+                                .filter(path -> FlowPathStatus.INACTIVE.equals(path.getStatus()))
+                                .map(FlowPath::getPathId)
+                                .collect(Collectors.toSet()))
                 );
     }
 
@@ -315,6 +347,23 @@ public class RerouteService {
         } catch (PersistenceException e) {
             log.error("Unable to set path {} status to {}: {}", path.getPathId(), status, e.getMessage());
         }
+    }
+
+    /**
+     * Process manual reroute request.
+     */
+    public void processManualRerouteRequest(MessageSender sender, String correlationId, FlowRerouteRequest request) {
+        Optional<Flow> flow = flowRepository.findById(request.getFlowId());
+        FlowThrottlingData flowThrottlingData = FlowThrottlingData.builder()
+                .correlationId(correlationId)
+                .priority(flow.map(Flow::getPriority).orElse(null))
+                .timeCreate(flow.map(Flow::getTimeCreate).orElse(null))
+                .affectedIsl(request.getAffectedIsl())
+                .force(request.isForce())
+                .effectivelyDown(request.isEffectivelyDown())
+                .reason(request.getReason())
+                .build();
+        sender.emitManualRerouteCommand(request.getFlowId(), flowThrottlingData);
     }
 
     @Value

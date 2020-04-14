@@ -16,47 +16,27 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
-import static org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.REROUTE_RETRY_LIMIT;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.model.Flow;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
 import java.util.UUID;
 
 @Slf4j
 public class OnReceivedInstallResponseAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final int speakerCommandRetriesLimit;
-    private FlowRepository flowRepository;
-    private FlowRerouteHubCarrier carrier;
-
-    private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
 
     public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
         this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-    }
-
-    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit, PersistenceManager persistenceManager,
-                                           FlowRerouteHubCarrier carrier) {
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.carrier = carrier;
     }
 
     @Override
@@ -64,7 +44,7 @@ public class OnReceivedInstallResponseAction extends
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getInstallCommand(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+        if (!stateMachine.getPendingCommands().containsKey(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
@@ -100,34 +80,13 @@ public class OnReceivedInstallResponseAction extends
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {
-            Collection<FlowErrorResponse> failedCommands
-                    = stateMachine.getFailedCommands().values();
-            if (failedCommands.isEmpty()) {
+            if (stateMachine.getFailedCommands().isEmpty()) {
                 log.debug("Received responses for all pending install commands of the flow {}",
                         stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_INSTALLED);
             } else {
-                String flowId = stateMachine.getFlowId();
-                Flow flow = flowRepository.findById(flowId)
-                        .orElseThrow(() -> new IllegalStateException(format("Flow %s not found", flowId)));
-                boolean isTerminatingSwitchFailed = failedCommands.stream()
-                        .anyMatch(errorResponse -> errorResponse.getSwitchId().equals(flow.getSrcSwitch().getSwitchId())
-                                || errorResponse.getSwitchId().equals(flow.getDestSwitch().getSwitchId()));
-                int rerouteCounter = stateMachine.getRerouteCounter();
-                if (!isTerminatingSwitchFailed && rerouteCounter < REROUTE_RETRY_LIMIT) {
-                    rerouteCounter += 1;
-                    String newReason = format("%s: retry #%d", stateMachine.getRerouteReason(), rerouteCounter);
-                    FlowRerouteFact flowRerouteFact = new FlowRerouteFact(commandIdGenerator.generate().toString(),
-                            stateMachine.getCommandContext().fork(format("retry #%d", rerouteCounter)),
-                            stateMachine.getFlowId(), stateMachine.getAffectedIsls(), stateMachine.isForceReroute(),
-                            stateMachine.isEffectivelyDown(), newReason, rerouteCounter);
-                    carrier.injectRetry(flowRerouteFact);
-                    stateMachine.saveActionToHistory("Inject reroute retry",
-                            format("Reroute counter %d", rerouteCounter));
-                }
-
                 String errorMessage = format("Received error response(s) for %d install commands",
-                        failedCommands.size());
+                        stateMachine.getFailedCommands().size());
                 stateMachine.saveErrorToHistory(errorMessage);
                 stateMachine.fireError(errorMessage);
             }

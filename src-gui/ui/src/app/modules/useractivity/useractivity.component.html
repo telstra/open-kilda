@@ -5,7 +5,7 @@
       <div class="row">
         <label class='col-sm-3 col-form-label'>Start Date:</label>
         <div class='col-sm-6'>
-          <input datetime-picker placeholder="Date Time" (change)="onStartDateChange($event)" formControlName="fromDateControl" style="height: 35px !important; font-size: 12px !important;">
+          <input datetime-picker placeholder="Date Time"  [maxDate] = "currentDate"  (change)="onStartDateChange($event)" formControlName="fromDateControl" style="height: 35px !important; font-size: 12px !important;">
         </div>
       </div>
     </div>

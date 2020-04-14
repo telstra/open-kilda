@@ -55,25 +55,22 @@ public class ExtendableTimeWindow {
     }
 
     /**
-     * Clear state and starts new time window.
-     */
-    public void flush() {
-        firstEventTime = null;
-        lastEventTime = null;
-    }
-
-    /**
      * Return flag about time window is closed and can be flushed.
      *
-     * @return true if time period for the last event is longer than minDelay or if time since first event longer
-     *     than max time window size.
+     * @return is time period flushed. True when time window for the last event is longer than
+     *     minDelay or if time since first event longer than max time window size.
      */
-    public boolean isTimeToFlush() {
+    public boolean flushIfReady() {
         if (firstEventTime == null) {
             return false;
         }
         LocalDateTime now = LocalDateTime.now(clock);
-        return lastEventTime.plus(minDelay, ChronoUnit.SECONDS).isBefore(now)
+        boolean isTimeToFlush = lastEventTime.plus(minDelay, ChronoUnit.SECONDS).isBefore(now)
                 || firstEventTime.plus(maxDelay, ChronoUnit.SECONDS).isBefore(now);
+        if (isTimeToFlush) {
+            firstEventTime = null;
+            lastEventTime = null;
+        }
+        return isTimeToFlush;
     }
 }

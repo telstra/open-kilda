@@ -33,7 +33,7 @@ public class HandleNotCompletedCommandsAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        for (UUID commandId : stateMachine.getPendingCommands()) {
+        for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
             FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommands().get(commandId);
             if (removeCommand != null) {
                 stateMachine.saveErrorToHistory("Command is not finished yet",

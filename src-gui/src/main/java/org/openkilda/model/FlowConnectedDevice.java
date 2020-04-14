@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.reroute;
+package org.openkilda.model;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import lombok.Data;
+
 
 /**
- * Represents stream used in {@link RerouteTopology}.
+ * The Class FlowConnectedDevice.
+ *
+ * @author Swati Sharma
  */
-public enum StreamType {
-    SWAP
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonPropertyOrder({"source", "destination"})
+@Data
+public class FlowConnectedDevice {
+
+    @JsonProperty("source")
+    private Source source;
+    
+    @JsonProperty("destination")
+    private Destination destination;
+
 }

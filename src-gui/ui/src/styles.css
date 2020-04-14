@@ -667,6 +667,15 @@ div.switch5 > input.switch:focus ~ label:before {
   text-align: right;
 }
 
+.onoffswitch-inner-kilda-connected-devices::before{
+  content:'Tabular View';
+  text-align: left;
+}
+.onoffswitch-inner-kilda-connected-devices::after{
+  content:'Graphical View';
+  text-align: right;
+}
+
 .onoffswitch-inner-maintenance-switch::before{
   content:'ON';
   text-align: left;
@@ -687,6 +696,12 @@ div.switch5 > input.switch:focus ~ label:before {
 }
 .onoffswitch-meter {
   width: 110px;
+}
+.onoffswitch-switch-connected-devices {
+  right: 85px; 
+}
+.onoffswitch-connected-devices {
+ width: 110px;
 }
 
 /*End : Switch Css*/
@@ -1115,7 +1130,7 @@ text {
 }
 
 
-#topology-hover-txt,#ping-hover-txt,
+#topology-hover-txt,#ping-hover-txt,#tooltip_connected_device,
 #topology-click-txt {
   width: 300px;
   position: fixed;
@@ -1124,6 +1139,18 @@ text {
   border: 1px solid #ccc;
   margin: 0 0 0 85px;
   display: none;
+}
+
+#tooltip_connected_device:after,
+#tooltip_connected_device:before{
+  right: 100%;
+  top: 25px;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
 }
 #ping-hover-txt:after,
 #ping-hover-txt:before{
@@ -1152,6 +1179,7 @@ text {
 
 #topology-hover-txt:after,
 #ping-hover-txt:after,
+#tooltip_connected_device:after,
 #topology-click-txt:after {
   border-color: rgba(255, 255, 255, 0);
   border-right-color: #fff;
@@ -1160,6 +1188,7 @@ text {
 }
 #topology-hover-txt:before,
 #ping-hover-txt:before,
+#tooltip_connected_device:before,
 #topology-click-txt:before {
   border-color: rgba(204, 204, 204, 0);
   border-right-color: #bebaba;
@@ -1171,6 +1200,18 @@ text {
 #diversepath-hover-txt .form-wrapper,
 #topology-click-txt .form-wrapper {
   border: none;
+}
+
+#tooltip_connected_device.left:after,
+#tooltip_connected_device.left:before{
+  left: 100%;
+  top: 25px;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
 }
 #ping-hover-txt.left:after,
 #ping-hover-txt.left:before{
@@ -1199,6 +1240,7 @@ text {
 
 #topology-hover-txt.left:after,
 #ping-hover-txt.left:after,
+#tooltip_connected_device.left:after,
 #topology-click-txt.left:after {
   border-color: rgba(255, 255, 255, 0);
   border-left-color: #fff;
@@ -1207,6 +1249,7 @@ text {
 }
 #topology-hover-txt.left:before,
 #ping-hover-txt.left:before,
+#tooltip_connected_device.left:before,
 #topology-click-txt.left:before {
   border-color: rgba(204, 204, 204, 0);
   border-left-color: #bebaba;
@@ -1218,6 +1261,8 @@ text {
 #topology-hover-txt p,
 #ping-hover-txt label,
 #ping-hover-txt p,
+#tooltip_connected_device label,
+#tooltip_connected_device p,
 #diversepath-hover-txt label,
 #diversepath-hover-txt p,
 #topology-click-txt label,
@@ -2507,7 +2552,7 @@ a.badge.badge-dark.custom-button {
 }
 .rightbar_overlay ul{
   position: absolute;
-  right: 7px;
+  right: 5px;
   max-height: 550px;
   overflow: hidden;
   overflow-y: auto;
@@ -2515,14 +2560,14 @@ a.badge.badge-dark.custom-button {
   border: 1px solid #ccc;
 }
 .rightbar_overlay ul li.selectedFLow {
-  background: #FFF;
+  background: #00baff;
 }
 .rightbar_overlay ul li.active {
   background: #CCC;
 }
 
 .rightbar_overlay ul li{
-  padding: 7px;
+  padding: 7px 4px;
   border-top: 1px solid #ccc;
   margin: 0px;
   cursor: pointer;
@@ -2708,6 +2753,34 @@ table.network-path-tbl thead {
     text-align: center!important;
   }
 
+  .connected_device{
+    background: url(assets/images/server-regular.svg) no-repeat;
+    width: 30px;
+    height: 30px;
+    float: left;
+    margin: -1px 0;
+  }
+
+  ul.lldp_tooltip {
+    list-style-type: none;
+    background: #FFF;
+    color: #000;
+}
+  ul.lldp_tooltip li {
+    text-align: left;
+    padding: 2px;
+}
+  ul.lldp_tooltip li label {
+    font-weight: bold;
+    font-size: 12px;
+}
+  ul.lldp_tooltip li span {
+    font-size: 11px;
+    text-align: left;
+    line-height: 2px;
+    width: auto;
+}
+
 /* table.network-path-tbl tbody,
 table.network-path-tbl thead { display: block; }
 
@@ -2743,3 +2816,6 @@ left: calc(100% - 16px);
 }
 
 .dropdown-toggle:after {display: none;}
+.switchdetails_div_click_name span{
+  word-break: break-all;
+}

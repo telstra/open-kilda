@@ -91,6 +91,7 @@ import { SwitchFlowsComponent } from './modules/switches/switch-flows/switch-flo
 import { NetworkpathComponent } from './modules/networkpath/networkpath.component';
 import { PortFlowsComponent } from './modules/switches/port-flows/port-flows.component';
 import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-flows/port-inventory-flows.component';
+import { ConnectedDevicesComponent } from './modules/flows/connected-devices/connected-devices.component';
 
 @NgModule({
   declarations: [
@@ -168,6 +169,7 @@ import { PortInventoryFlowsComponent } from './modules/switches/port-inventory-f
     NetworkpathComponent,
     PortFlowsComponent,
     PortInventoryFlowsComponent,
+    ConnectedDevicesComponent,
   ],
   imports: [
     HttpClientModule,

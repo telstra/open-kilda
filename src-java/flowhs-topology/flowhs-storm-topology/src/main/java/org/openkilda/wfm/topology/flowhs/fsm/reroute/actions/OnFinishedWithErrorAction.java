@@ -21,21 +21,29 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnFinishedWithErrorAction extends
         HistoryRecordingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public OnFinishedWithErrorAction(FlowOperationsDashboardLogger dashboardLogger) {
+    private final FlowOperationsDashboardLogger dashboardLogger;
+    private final FlowRerouteHubCarrier carrier;
+
+    public OnFinishedWithErrorAction(FlowOperationsDashboardLogger dashboardLogger, FlowRerouteHubCarrier carrier) {
         this.dashboardLogger = dashboardLogger;
+        this.carrier = carrier;
     }
 
     @Override
     public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         dashboardLogger.onFailedFlowReroute(stateMachine.getFlowId(), stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to reroute the flow", stateMachine.getErrorReason());
+        log.info("Flow {} reroute result failed with error {}", stateMachine.getFlowId(),
+                stateMachine.getRerouteError());
+        carrier.sendRerouteResultStatus(stateMachine.getFlowId(), stateMachine.getRerouteError(),
+                stateMachine.getCommandContext().getCorrelationId());
     }
 }

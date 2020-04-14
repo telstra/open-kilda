@@ -147,14 +147,16 @@ export class NetworkpathComponent implements OnInit {
     this.loaderService.show('fetching network paths...');
     self.networkPaths = [];
     this.switchService.getNetworkPath(this.networkpathForm.controls['source_switch'].value,this.networkpathForm.controls['target_switch'].value).subscribe(function(paths){
-       self.networkPaths = paths.paths;
+       self.networkPaths = paths.paths.filter(function(d){
+         return d.nodes.length;
+       });
        if(self.networkPaths.length == 0){
-        this.toastr.error("No data found",'Success');
+        self.toastr.error("No data found",'Success');
        }
        self.loaderService.hide();
     },error=>{
       self.loaderService.hide();
-      this.toastr.error("Error:"+error.error['error-auxiliary-message'],'Error');
+      self.toastr.error("Error:"+error.error['error-auxiliary-message'],'Error');
     })
   }
   
@@ -907,8 +909,8 @@ export class NetworkpathComponent implements OnInit {
       let newtranformation = d3.zoomIdentity
       .scale(this.zoomLevel)
      .translate(
-      (fullWidth - this.min_zoom*midX),
-      (fullHeight - this.min_zoom*midY)
+      (fullWidth/2 - this.min_zoom*midX),
+      (fullHeight/2 - this.min_zoom*midY)
       ); 
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }

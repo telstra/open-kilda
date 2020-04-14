@@ -45,7 +45,7 @@ public class ValidateIngressRulesAction extends
         UUID commandId = response.getCommandId();
 
         FlowSegmentRequestFactory command = stateMachine.getIngressCommands().get(commandId);
-        if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
+        if (!stateMachine.getPendingCommands().containsKey(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }

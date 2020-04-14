@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,21 +15,26 @@
 
 package org.openkilda.integration.model;
 
+import org.openkilda.model.DetectedDevice;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import lombok.Data;
+
 import java.io.Serializable;
 
 /**
- * The Class Destination.
+ * The Class FlowEndpoint.
  *
  * @author Gaurav Chugh
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"switch-id", "port-id", "vlan-id"})
+@Data
 public class FlowEndpoint implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -45,6 +50,9 @@ public class FlowEndpoint implements Serializable {
     
     @JsonProperty("switch-name")
     private String switchName;
+    
+    @JsonProperty("detect-connected-devices")
+    private DetectedDevice detectedDevice;
 
     public String getSwitchId() {
         return switchId;

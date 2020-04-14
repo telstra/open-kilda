@@ -15,14 +15,14 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.IslEndpoint;
-
-import java.util.Set;
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
 public interface MessageSender {
-    void emitRerouteCommand(String correlationId, Flow flow, Set<IslEndpoint> affectedIsl, String reason);
+
+    void emitRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
+
+    void emitManualRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
 
     void emitPathSwapCommand(String correlationId, FlowPath path, String reason);
 }

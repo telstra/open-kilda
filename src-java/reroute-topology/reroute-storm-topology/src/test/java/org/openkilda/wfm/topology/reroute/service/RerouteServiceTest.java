@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
@@ -49,6 +51,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -57,10 +60,12 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
 public class RerouteServiceTest {
@@ -140,7 +145,9 @@ public class RerouteServiceTest {
         pinnedFlow.setReversePath(pinnedFlowReversePath);
 
         regularFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
-                .destSwitch(SWITCH_C).pinned(false).build();
+                .destSwitch(SWITCH_C).pinned(false)
+                .priority(2).timeCreate(Instant.now())
+                .build();
         FlowPath regularFlowForwardPath = FlowPath.builder().pathId(new PathId("3"))
                 .flow(regularFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(3))
                 .status(FlowPathStatus.ACTIVE)
@@ -310,10 +317,16 @@ public class RerouteServiceTest {
         rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
 
         verify(flowRepository).updateStatusSafe(eq(regularFlow.getFlowId()), eq(FlowStatus.DOWN));
-        verify(carrier).emitRerouteCommand(
-                eq(CORRELATION_ID), eq(regularFlow),
-                eq(Collections.singleton(new IslEndpoint(islSide.getSwitchId(), islSide.getPortNo()))),
-                any(String.class));
+        FlowThrottlingData expected = FlowThrottlingData.builder()
+                .correlationId(CORRELATION_ID)
+                .priority(regularFlow.getPriority())
+                .timeCreate(regularFlow.getTimeCreate())
+                .affectedIsl(Collections.singleton(new IslEndpoint(islSide.getSwitchId(), islSide.getPortNo())))
+                .force(false)
+                .effectivelyDown(true)
+                .reason(request.getReason())
+                .build();
+        verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
     }
 
     @Test
@@ -335,11 +348,49 @@ public class RerouteServiceTest {
         regularFlow.setStatus(FlowStatus.DOWN);
         rerouteService.rerouteInactiveAffectedFlows(carrier, CORRELATION_ID, regularFlow.getSrcSwitch().getSwitchId());
 
-        verify(carrier).emitRerouteCommand(
-                eq(CORRELATION_ID), eq(regularFlow),
-                eq(Collections.emptySet()),
-                any(String.class));
+        FlowThrottlingData expected = FlowThrottlingData.builder()
+                .correlationId(CORRELATION_ID)
+                .priority(regularFlow.getPriority())
+                .timeCreate(regularFlow.getTimeCreate())
+                .affectedIsl(Collections.emptySet())
+                .force(false)
+                .effectivelyDown(true)
+                .reason(format("Switch '%s' online", regularFlow.getSrcSwitch().getSwitchId()))
+                .build();
+        verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
 
         regularFlow.setStatus(FlowStatus.UP);
+    }
+
+    @Test
+    public void processManualRerouteRequest() {
+        FlowRepository flowRepository = mock(FlowRepository.class);
+        when(flowRepository.findById(regularFlow.getFlowId()))
+                .thenReturn(Optional.of(regularFlow));
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createFlowRepository())
+                .thenReturn(flowRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        FlowRerouteRequest request = new FlowRerouteRequest(regularFlow.getFlowId(), true, true,
+                Collections.emptySet(), "reason");
+        rerouteService.processManualRerouteRequest(carrier, CORRELATION_ID, request);
+
+        FlowThrottlingData expected = FlowThrottlingData.builder()
+                .correlationId(CORRELATION_ID)
+                .priority(regularFlow.getPriority())
+                .timeCreate(regularFlow.getTimeCreate())
+                .affectedIsl(Collections.emptySet())
+                .force(true)
+                .effectivelyDown(true)
+                .reason("reason")
+                .build();
+        verify(carrier).emitManualRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
     }
 }
