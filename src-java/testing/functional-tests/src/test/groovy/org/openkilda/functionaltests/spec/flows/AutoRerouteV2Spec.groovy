@@ -683,11 +683,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 triggering one more reroute of the current path"
         //add latency to make reroute process longer to allow us break the target path while rules are being installed
         lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
-        //do the 2nd portdown a little bit earlier, since there is an antiflapMin time before the actual port down
-        //and we want to break the second ISL right when the first reroute starts and is in progress
-        sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000))
+        //break the second ISL when the first reroute has started and is in progress
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
+        }
         antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
         TimeUnit.SECONDS.sleep(rerouteDelay)
+        //first reroute should not be finished at this point, otherwise increase the latency to switches
+        assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
+            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.histories.last().action)
 
         then: "System reroutes the flow twice and flow ends up in UP state"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) {
