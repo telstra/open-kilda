@@ -7,7 +7,7 @@
       "host": "{{ getv "/kilda_logging_logstash_host" }}",
       "version": 1,
       "message_type": "kilda-lab",
-      "port": {{ getv "/kilda_logging_port_topology_engine_rest" }}
+      "port": {{ getv "/kilda_logging_port_lab_service" }}
     },
 {{ end }}
 {{ if eq (getv "/kilda_logging_json_file") "true" }}
