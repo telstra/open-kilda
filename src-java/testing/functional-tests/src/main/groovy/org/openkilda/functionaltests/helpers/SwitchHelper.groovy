@@ -329,7 +329,7 @@ class SwitchHelper {
      * Based on that you have to use extra filter to detect these rules in missing/excess/misconfigured sections.
      */
     static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                                           List<String> sections = ["missing", "proper", "excess"]) {
+                                           List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
         sections.each { String section ->
             if (section == "proper") {
                 assert switchValidateInfo.rules.proper.findAll { !isDefaultRule(it) }.empty
