@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -30,7 +31,6 @@ verify their consistency after restart.
  * Aborting it in the middle of execution may lead to Kilda malfunction.
  */
 @Tags(VIRTUAL)
-@Ignore
 class StormLcmSpec extends HealthCheckSpecification {
     @Shared
     WfmManipulator wfmManipulator
@@ -44,6 +44,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         wfmManipulator = new WfmManipulator(dockerHost)
     }
 
+    @Tags(LOW_PRIORITY) // note: it takes ~15 minutes to run this test
     def "System survives Storm topologies restart"() {
         given: "Non-empty system with some flows created"
         List<FlowPayload> flows = []

@@ -30,6 +30,14 @@ class DockerHelper {
         }.networkSettings().networks()[networkName].ipAddress()
     }
 
+    void restartContainer(String containerId) {
+        dockerClient.restartContainer(containerId)
+    }
+
+    void waitContainer(String containerId) {
+        dockerClient.waitContainer(containerId)
+    }
+
     private String getNetworkName() {
         dockerClient.listNetworks()*.name().find { it.contains('_default')}
     }
