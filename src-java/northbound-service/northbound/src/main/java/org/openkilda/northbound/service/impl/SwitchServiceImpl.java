@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.service.impl;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -65,6 +67,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.messaging.payload.switches.PortPropertiesPayload;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
@@ -466,6 +469,20 @@ public class SwitchServiceImpl implements SwitchService {
 
         String correlationId = RequestCorrelationId.getId();
         logger.debug("Update switch properties for the switch: {}", switchId);
+
+        if (switchPropertiesDto.getServer42Port() != null && switchPropertiesDto.getServer42Port() <= 0) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, format(
+                    "Property 'server_42_port' for switch %s has invalid value '%d'. Port must be positive",
+                    switchId, switchPropertiesDto.getServer42Port()), "Invalid server 42 Port");
+        }
+
+        if (switchPropertiesDto.getServer42MacAddress() != null
+                && !MacAddress.isValid(switchPropertiesDto.getServer42MacAddress())) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, format(
+                    "Property 'server_42_mac_address' for switch %s has invalid value '%s'.",
+                    switchId, switchPropertiesDto.getServer42MacAddress()), "Invalid server 42 Mac Address");
+        }
+
         UpdateSwitchPropertiesRequest data = null;
         try {
             data = new UpdateSwitchPropertiesRequest(switchId, switchMapper.map(switchPropertiesDto));
@@ -532,7 +549,7 @@ public class SwitchServiceImpl implements SwitchService {
                 adminDownState = true;
                 break;
             default:
-                throw new IllegalArgumentException(String.format(
+                throw new IllegalArgumentException(format(
                         "Unsupported enum %s value: %s", PortStatus.class.getName(), status));
         }
         return adminDownState;

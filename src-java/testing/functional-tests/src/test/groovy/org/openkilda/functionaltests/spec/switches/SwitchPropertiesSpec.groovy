@@ -13,9 +13,11 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
+import groovy.transform.AutoClone
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Unroll
 
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
 and deleted once switch is deleted.
@@ -102,6 +104,60 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         ["test"]                      | "Unable to parse request payload"
         []                            | "Supported transit encapsulations should not be null or empty"
         null                          | "Supported transit encapsulations should not be null or empty"
+    }
+
+    @Tidy
+    @Unroll
+    def "Error is returned when trying to #data.desc"() {
+        given: "A switch"
+        def sw = topology.activeSwitches.first()
+
+        when: "Try to update switch properties with incorrect server 42 properties combination"
+        def switchProperties = new SwitchPropertiesDto()
+        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        switchProperties.multiTable = data.multiTable
+        switchProperties.server42FlowRtt = data.server42FlowRtt
+        switchProperties.server42Port = data.server42Port
+        switchProperties.server42MacAddress = data.server42MacAddress
+        northbound.updateSwitchProperties(sw.dpId, switchProperties)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).errorMessage == String.format(data.error, sw.dpId)
+
+        where:
+        data << [
+                new PropertiesData(desc: "enable server_42_flow_rtt property without enabling multiTable property",
+                        multiTable: false, server42FlowRtt: true, server42Port: null, server42MacAddress: null,
+                        error: "Illegal switch properties combination for switch %s. 'server_42_flow_rtt' " +
+                                       "property can be set to 'true' only if 'multiTable' property is 'true'."),
+
+                new PropertiesData(desc: "enable server_42_flow_rtt property without server_42_port property",
+                        multiTable: true, server42FlowRtt: true, server42Port: null, server42MacAddress: "42:42:42:42:42:42",
+                        error: "Illegal switch properties combination for switch %s. To enable property " +
+                                "'server_42_flow_rtt' you need to specify valid property 'server_42_port'"),
+
+                new PropertiesData(desc: "enable server_42_flow_rtt property without server_42_mac_address property",
+                        multiTable: true, server42FlowRtt: true, server42Port: 42, server42MacAddress: null,
+                        error: "Illegal switch properties combination for switch %s. To enable property " +
+                                "'server_42_flow_rtt' you need to specify valid property 'server_42_mac_address'"),
+
+                new PropertiesData(desc: "set invalid server_42_port property",
+                        multiTable: true, server42FlowRtt: true, server42Port: -1, server42MacAddress: null,
+                        error: "Property 'server_42_port' for switch %s has invalid value '-1'. Port must be positive"),
+
+                new PropertiesData(desc: "set invalid server_42_mac_address property",
+                        multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
+                        error: "Property 'server_42_mac_address' for switch %s has invalid value 'INVALID'."),
+        ]
+    }
+
+    @AutoClone
+    private static class PropertiesData {
+        boolean multiTable, server42FlowRtt
+        Integer server42Port
+        String server42MacAddress, desc, error
     }
 
     @Tidy

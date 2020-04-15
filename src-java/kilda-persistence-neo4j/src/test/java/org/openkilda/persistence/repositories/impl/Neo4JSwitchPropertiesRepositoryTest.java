@@ -16,9 +16,12 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -35,6 +38,8 @@ import java.util.Optional;
 
 public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
+    private static final Integer SERVER_42_PORT = 10;
+    private static final MacAddress SERVER_42_MAC_ADDRESS = new MacAddress("42:42:42:42:42:42");
 
     static SwitchRepository switchRepository;
     static SwitchPropertiesRepository switchPropertiesRepository;
@@ -74,4 +79,45 @@ public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
         assertTrue(switchPropertiesOptional.isPresent());
     }
 
+    @Test
+    public void shouldCreatePropertiesWithServer42Props() {
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
+                .description("Some description").build();
+
+        switchRepository.createOrUpdate(origSwitch);
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(origSwitch)
+                .server42FlowRtt(true)
+                .server42Port(SERVER_42_PORT)
+                .server42MacAddress(SERVER_42_MAC_ADDRESS)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                .build();
+
+        switchPropertiesRepository.createOrUpdate(switchProperties);
+        Optional<SwitchProperties> switchPropertiesOptional = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
+        assertTrue(switchPropertiesOptional.isPresent());
+        assertTrue(switchPropertiesOptional.get().isServer42FlowRtt());
+        assertEquals(SERVER_42_PORT, switchPropertiesOptional.get().getServer42Port());
+        assertEquals(SERVER_42_MAC_ADDRESS, switchPropertiesOptional.get().getServer42MacAddress());
+    }
+
+    @Test
+    public void shouldCreatePropertiesWithNullServer42Props() {
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
+                .description("Some description").build();
+
+        switchRepository.createOrUpdate(origSwitch);
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(origSwitch)
+                .server42Port(null)
+                .server42MacAddress(null)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+
+        switchPropertiesRepository.createOrUpdate(switchProperties);
+        Optional<SwitchProperties> switchPropertiesOptional = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
+        assertTrue(switchPropertiesOptional.isPresent());
+        assertFalse(switchPropertiesOptional.get().isServer42FlowRtt());
+        assertNull(switchPropertiesOptional.get().getServer42Port());
+        assertNull(switchPropertiesOptional.get().getServer42MacAddress());
+    }
 }
