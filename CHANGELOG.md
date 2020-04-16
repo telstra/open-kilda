@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.55.0 (16/04/2020)
+
+### Features:
+-  [#3382](https://github.com/telstra/open-kilda/pull/3382) Added switch properties for server 42 Flow RTT feature [**storm-topologies**]
+-  [#3383](https://github.com/telstra/open-kilda/pull/3383) Adding feature to display number of flows on switch list and port list (Issue: [#3368](https://github.com/telstra/open-kilda/issues/3368)) [**gui**]
+
+### Bug Fixes:
+-  [#3386](https://github.com/telstra/open-kilda/pull/3386) Fixed incorrect NoviflowSpecificFeature methods [**floodlight**]
+
+### Improvements:
+-  [#3364](https://github.com/telstra/open-kilda/pull/3364) Add test that reveals #3341 [**tests**]
+-  [#3238](https://github.com/telstra/open-kilda/pull/3238) Cleanup outdated template variables 
+-  [#3273](https://github.com/telstra/open-kilda/pull/3273) [Snyk] Security upgrade urllib3 from 1.25.3 to 1.25.8 
+-  [#3385](https://github.com/telstra/open-kilda/pull/3385) Add retries due to #3384. Refactor an autoreroute test [**tests**]
+-  [#3387](https://github.com/telstra/open-kilda/pull/3387) add missing import and fix knockoutSwitch operation in AutoRerouteV2Spec [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.54.0...v1.55.0).
+
+### Affected Components:
+gui, nbworker
+
+---
+
 ## v1.54.0 (13/04/2020)
 
 ### Features:
