@@ -135,6 +135,10 @@
           <label class="col-sm-2 col-form-label">Sum(Bandwidth) Of Flows(Mbps):</label>
           <p class="col-sm-4 switchdetails_div_no_of_flows col-form-label" >{{ (!flowBandwidthFlag) ?  flowBandwidthSum : 'loading..'  }}</p>
        </div>
+       <div class="row">
+        <label class="col-sm-2 col-form-label">Number of Flows:</label>
+        <p class="col-sm-4 switchdetails_div_no_of_flows col-form-label" >{{ (switchFlows && (switchFlows.length || switchFlows.length == 0)) ?  switchFlows.length : 'loading..'  }}</p>
+     </div>
       </div>
     </div>
     <!-- HERE -->

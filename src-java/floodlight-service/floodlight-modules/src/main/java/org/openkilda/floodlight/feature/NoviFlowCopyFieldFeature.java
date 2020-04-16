@@ -25,7 +25,7 @@ import java.util.Optional;
 public class NoviFlowCopyFieldFeature extends NoviflowSpecificFeature {
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {
-        if (isNoviSwitch(sw) && !is100GbHw(sw) && !isVirtual(sw)) {
+        if (isNoviSwitch(sw) && !isWbSeries(sw) && !isSmSeries(sw)) {
             return Optional.of(SwitchFeature.NOVIFLOW_COPY_FIELD);
         }
 

@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -533,7 +534,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
-        lockKeeper.knockoutSwitch(swToDeactivate)
+        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
         def isSwDeactivated = true
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
         Wrappers.wait(WAIT_OFFSET * 4) {
@@ -544,7 +545,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Activate the src switch"
-        lockKeeper.reviveSwitch(swToDeactivate)
+        lockKeeper.reviveSwitch(swToDeactivate, blockData)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {
@@ -561,11 +562,11 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         if (isSwDeactivated) {
-            lockKeeper.reviveSwitch(swToDeactivate)
+            lockKeeper.reviveSwitch(swToDeactivate, blockData)
             Wrappers.wait(WAIT_OFFSET) {
                 assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 assert northbound.getAllLinks().findAll {
-                    it.state == DISCOVERED
+                    it.state == IslChangeType.DISCOVERED
                 }.size() == topology.islsForActiveSwitches.size() * 2
             }
         }
@@ -683,11 +684,15 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 triggering one more reroute of the current path"
         //add latency to make reroute process longer to allow us break the target path while rules are being installed
         lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
-        //do the 2nd portdown a little bit earlier, since there is an antiflapMin time before the actual port down
-        //and we want to break the second ISL right when the first reroute starts and is in progress
-        sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000))
+        //break the second ISL when the first reroute has started and is in progress
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
+        }
         antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
         TimeUnit.SECONDS.sleep(rerouteDelay)
+        //first reroute should not be finished at this point, otherwise increase the latency to switches
+        assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
+            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.histories.last().action)
 
         then: "System reroutes the flow twice and flow ends up in UP state"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) {

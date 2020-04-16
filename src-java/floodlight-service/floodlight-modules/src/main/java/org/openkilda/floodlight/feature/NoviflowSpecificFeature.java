@@ -23,15 +23,34 @@ import java.util.Optional;
 abstract class NoviflowSpecificFeature extends AbstractFeature {
     public static final String NOVIFLOW_MANUFACTURER_SUFFIX = "noviflow";
 
-    boolean isNoviSwitch(IOFSwitch sw) {
-        Optional<SwitchDescription> description = Optional.ofNullable(sw.getSwitchDescription());
-        return description
-                .map(SwitchDescription::getManufacturerDescription)
+    /**
+     * Switch manufactured by NoviFlow Inc.
+     */
+    static boolean isNoviSwitch(IOFSwitch sw) {
+        if (sw == null || sw.getSwitchDescription() == null) {
+            return false;
+        }
+
+        SwitchDescription description = sw.getSwitchDescription();
+
+        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(description.getManufacturerDescription())) {
+            return true;
+        }
+
+        if (E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
+                Optional.ofNullable(description.getHardwareDescription()).orElse("")).matches()) {
+            return true;
+        }
+
+        return Optional.ofNullable(description.getManufacturerDescription())
                 .map(String::toLowerCase)
                 .orElse("").contains(NOVIFLOW_MANUFACTURER_SUFFIX);
     }
 
-    boolean is100GbHw(IOFSwitch sw) {
+    /**
+     * Noviflow Switch WB Series (also known as E-switches). Has several restrictions comparing with NS Series.
+     */
+    static boolean isWbSeries(IOFSwitch sw) {
         if (! isNoviSwitch(sw)) {
             return false;
         }
@@ -42,7 +61,7 @@ abstract class NoviflowSpecificFeature extends AbstractFeature {
                 .orElse("");
 
         if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(manufacturer)) {
-            return false;
+            return true;
         }
 
         return E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
@@ -51,7 +70,10 @@ abstract class NoviflowSpecificFeature extends AbstractFeature {
                 .orElse("")).matches();
     }
 
-    boolean isVirtual(IOFSwitch sw) {
+    /**
+     * Noviflow Switch SM Series. Virtual emulation of WB Series switch.
+     */
+    static boolean isSmSeries(IOFSwitch sw) {
         if (! isNoviSwitch(sw)) {
             return false;
         }

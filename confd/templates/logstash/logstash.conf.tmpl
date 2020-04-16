@@ -2,12 +2,6 @@
 # Do not change this file, all changes will be lost. Change corresponding template.
 input {
   tcp {
-    port => {{ getv "/kilda_logging_port_topology_engine" }}
-    codec => json
-    type => "kilda-TE"
-    tags => ["kilda-tpe"]
-  }
-  tcp {
     port => {{ getv "/kilda_logging_port_storm" }}
     codec => json
     type => "kilda-storm"
@@ -20,16 +14,10 @@ input {
     tags => ["kilda-floodlight"]
   }
   tcp {
-    port => {{ getv "/kilda_logging_port_topology_engine_rest" }}
+    port => {{ getv "/kilda_logging_port_lab_service" }}
     codec => json
-    type => "kilda-TER"
-    tags => ["kilda-tpe-rest"]
-  }
-  tcp {
-    port => {{ getv "/kilda_logging_port_mininet" }}
-    codec => json
-    type => "kilda-MN"
-    tags => ["kilda-mininet"]
+    type => "kilda-lab-service"
+    tags => ["kilda-lab-service"]
   }
   tcp {
     port => {{ getv "/kilda_logging_port_northbound" }}

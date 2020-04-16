@@ -28,7 +28,7 @@ import java.util.Optional;
 public class InaccurateMeterFeature extends NoviflowSpecificFeature {
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {
-        if (is100GbHw(sw)) {
+        if (isWbSeries(sw)) {
             return Optional.of(SwitchFeature.INACCURATE_METER);
         }
         return Optional.empty();

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
+import org.openkilda.model.MacAddress;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -36,4 +37,13 @@ public class SwitchPropertiesDto implements Serializable {
 
     @JsonProperty("switch_arp")
     private boolean switchArp;
+
+    @JsonProperty("server_42_flow_rtt")
+    private boolean server42FlowRtt;
+
+    @JsonProperty("server_42_port")
+    private Integer server42Port;
+
+    @JsonProperty("server_42_mac_address")
+    private MacAddress server42MacAddress;
 }

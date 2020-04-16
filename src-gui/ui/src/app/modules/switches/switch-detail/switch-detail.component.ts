@@ -32,7 +32,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   hostname: string;
   description: string;
   state: string;
-  switchFlows:any;
+  switchFlows:any=[];
   openedTab : string = 'port';
   isSwitchNameEdit = false;
   isStorageDBType= false;
@@ -209,6 +209,10 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
       if(this.switchFlows && this.switchFlows.length){
         for(let flow of this.switchFlows){
             this.flowBandwidthSum = this.flowBandwidthSum + (flow.maximum_bandwidth / 1000);
+        }
+      }else{
+        if(this.switchFlows == null){
+          this.switchFlows = [];
         }
       }
       this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);

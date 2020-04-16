@@ -32,6 +32,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   poplocation : boolean = false;
   description : boolean = false;
   sumofflows:boolean = false;
+  noofflows:boolean=false;
   state : boolean = false;
   clipBoardItems = [];
   flowDataOfSwitch:any={};
@@ -60,8 +61,9 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
-        { sWidth: '10%' },
-        { sWidth: '30%' },
+        { sWidth: '10%' },        
+        { sWidth: '15%' },
+        { sWidth: '25%' },
         { sWidth: '10%' }],
       language: {
         searchPlaceholder: "Search"
@@ -74,7 +76,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       },
       columnDefs:[
         { targets: [4], visible: false},
-        { targets: [8], visible: false},
+        { targets: [9], visible: false},
       ]
     };
 
@@ -89,23 +91,24 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
           let flowsData:any = data;
           this.flowDataOfSwitch[switchData.switch_id] = {};
           this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
+          this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
             if(flowsData && flowsData.length){
               for(let flow of flowsData){
                 this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth + (flow.maximum_bandwidth / 1000);
               }
               this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3);
+             this.flowDataOfSwitch[switchData.switch_id].noofflows = flowsData.length;
             }
           },error=>{
             this.flowDataOfSwitch[switchData.switch_id] = {};
            this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
+           this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
           })          
       }
     }
   }
 
-  
-
-
+   
   ngAfterViewInit(): void {
     this.dtTrigger.next();
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {

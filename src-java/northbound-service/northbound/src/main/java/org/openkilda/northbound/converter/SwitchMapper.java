@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
@@ -46,7 +47,7 @@ import org.mapstruct.Mapping;
 
 import java.util.Date;
 
-@Mapper(componentModel = "spring", uses = {FlowMapper.class}, imports = {Date.class})
+@Mapper(componentModel = "spring", uses = {FlowMapper.class}, imports = {Date.class, MacAddress.class})
 public interface SwitchMapper {
 
     @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
@@ -108,6 +109,8 @@ public interface SwitchMapper {
     @Mapping(target = "supportedTransitEncapsulation",
             expression = "java(entry.getSupportedTransitEncapsulation().stream()"
                        + ".map(e -> e.toString().toLowerCase()).collect(java.util.stream.Collectors.toList()))")
+    @Mapping(target = "server42MacAddress", expression = "java(entry.getServer42MacAddress() == null ? null "
+            + ": entry.getServer42MacAddress().toString())")
     SwitchPropertiesDto map(org.openkilda.messaging.model.SwitchPropertiesDto entry);
 
     @Mapping(target = "supportedTransitEncapsulation",
@@ -115,6 +118,8 @@ public interface SwitchMapper {
                     + "entry.getSupportedTransitEncapsulation().stream()"
                     + ".map(e-> org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(e.toUpperCase()))"
                     + ".collect(java.util.stream.Collectors.toSet()))")
+    @Mapping(target = "server42MacAddress", expression = "java(entry.getServer42MacAddress() == null ? null "
+            + ": new MacAddress(entry.getServer42MacAddress()))")
     org.openkilda.messaging.model.SwitchPropertiesDto map(SwitchPropertiesDto entry);
 
     @Mapping(source = "upEventsCount", target = "upCount")
