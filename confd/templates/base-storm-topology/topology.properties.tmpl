@@ -3,9 +3,9 @@
 
 environment.naming.prefix = {{ getv "/kilda_environment_naming_prefix" }}
 
-parallelism.new = 2
-parallelism = 1
-workers = 1
+parallelism.new = {{ getv "/kilda_storm_parallelism_level_new" }}
+parallelism = {{ getv "/kilda_storm_parallelism_level" }}
+workers = {{ getv "/kilda_storm_parallelism_workers_count" }}
 
 #######
 # Storm-specific topology configuration.
