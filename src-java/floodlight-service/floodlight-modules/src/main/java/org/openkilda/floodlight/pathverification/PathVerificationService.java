@@ -36,6 +36,7 @@ import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.FloodlightDummyDashboardLogger;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -109,6 +110,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
     private static final Logger logIsl = LoggerFactory.getLogger(
             String.format("%s.ISL", PathVerificationService.class.getName()));
+
+    private static final FloodlightDummyDashboardLogger dashboardLogger = new FloodlightDummyDashboardLogger(logIsl);
 
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE);
     public static final U64 OF_ROUND_TRIP_RULE_COOKIE = U64.of(Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE);
@@ -569,10 +572,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private void handleDiscoveryPacket(OfInput input, IOFSwitch destSwitch, DiscoveryPacketData data) {
         OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
-        long latency = measureLatency(input, data.getTimestamp());
-        logIsl.info("link discovered: {}-{} ===( {} ns )===> {}-{} id:{} OF-xid:{}",
-                    data.getRemoteSwitchId(), data.getRemotePort(), latency, input.getDpId(), inPort,
-                    data.getPacketId(), input.getMessage().getXid());
+        long latencyMs = measureLatency(input, data.getTimestamp());
+        dashboardLogger.onIslDiscovery(
+                data.getRemoteSwitchId(), data.getRemotePort(), input.getDpId(), inPort, latencyMs, data.getPacketId(),
+                input.getMessage().getXid());
 
         // this discovery packet was sent from remote switch/port to received switch/port
         // so the link direction is from remote switch/port to received switch/port
@@ -601,7 +604,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 source.getPortNo(),
                 destination.getSwitchId(),
                 destination.getPortNo(),
-                latency,
+                scaleLatencyMsToNs(latencyMs),  // TODO(surabujin): do we really need fake ns accuracy?
                 data.getPacketId());
 
         sendLatency(islOneWayLatency, source.getSwitchId());
@@ -709,12 +712,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private long measureLatency(OfInput input, long sendTime) {
         long latency = -1;
         if (sendTime != 0) {
-            latency = TimeUnit.MILLISECONDS.toNanos(input.getReceiveTime() - sendTime);
-            if (latency < 0L) {
-                latency = -1;
-            }
+            latency = input.getReceiveTime() - sendTime;
         }
-        return latency;
+        return Math.max(latency, -1);
     }
 
     private long getSwitchPortSpeed(IOFSwitch sw, OFPort inPort) {
@@ -739,5 +739,15 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private long getAvailableBandwidth(long speed) {
         return (long) (speed * islBandwidthQuotient);
+    }
+
+    /**
+     * Convert milliseconds into nanoseconds, taking in account illegal (-1) latency value.
+     */
+    private static long scaleLatencyMsToNs(long latencyMs) {
+        if (latencyMs < 0) {
+            return latencyMs;
+        }
+        return TimeUnit.MILLISECONDS.toNanos(latencyMs);
     }
 }

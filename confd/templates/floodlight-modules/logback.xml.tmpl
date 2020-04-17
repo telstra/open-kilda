@@ -40,7 +40,7 @@ Do not change this file, all changes will be lost. Change corresponding template
         </nestedField>
         <stackTrace/>
         <pattern>
-          <pattern>{"role":"${FL_ROLE}","region":"${FL_REGION}"}</pattern>
+          <pattern>{"role":"${FL_ROLE}","region":"${FL_REGION}","decoded_latency_ms":"#asLong{%mdc{latency_ms}}"}</pattern>
         </pattern>
       </providers>
     </encoder>
@@ -70,7 +70,7 @@ Do not change this file, all changes will be lost. Change corresponding template
         </nestedField>
         <stackTrace/>
         <pattern>
-          <pattern>{"role":"${FL_ROLE}","region":"${FL_REGION}"}</pattern>
+          <pattern>{"role":"${FL_ROLE}","region":"${FL_REGION}","decoded_latency_ms":"#asLong{%mdc{latency_ms}}"}</pattern>
         </pattern>
       </providers>
     </encoder>
