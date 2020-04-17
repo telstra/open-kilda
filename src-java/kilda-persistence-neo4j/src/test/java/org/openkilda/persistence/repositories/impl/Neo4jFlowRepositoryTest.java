@@ -478,6 +478,22 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertEquals(TEST_GROUP_ID, groupOptional.get());
     }
 
+    @Test
+    public void shouldComputeSumOfFlowsBandwidth() {
+        long firstFlowBandwidth = 100000L;
+        long secondFlowBandwidth = 500000L;
+        Flow firstFlow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        firstFlow.setBandwidth(firstFlowBandwidth);
+        Flow secondFlow = buildTestFlow(TEST_FLOW_ID_2, switchA, switchB);
+        secondFlow.setBandwidth(secondFlowBandwidth);
+        flowRepository.createOrUpdate(firstFlow);
+        flowRepository.createOrUpdate(secondFlow);
+
+        long foundBandwidth = flowRepository.computeFlowsBandwidthSum(Sets.newHashSet(TEST_FLOW_ID, TEST_FLOW_ID_2));
+
+        assertEquals(firstFlowBandwidth + secondFlowBandwidth, foundBandwidth);
+    }
+
     private Flow buildTestFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
         return buildTestFlow(flowId, srcSwitch, PORT_1, VLAN_1, destSwitch, PORT_2, VLAN_2);
     }

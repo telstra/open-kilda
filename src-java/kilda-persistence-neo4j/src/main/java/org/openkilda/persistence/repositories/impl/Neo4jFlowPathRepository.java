@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -145,6 +145,21 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         Set<PathId> pathIds = new HashSet<>();
         queryForStrings("MATCH (f:flow {group_id: $flow_group_id})-[:owns]-(fp:flow_path) "
                 + "RETURN fp.path_id as path_id", flowParameters, "path_id")
+                .forEach(pathId -> pathIds.add(pathIdConverter.toEntityAttribute(pathId)));
+
+        return pathIds;
+    }
+
+    @Override
+    public Collection<PathId> findPathIdsByFlowIds(Set<String> flowIds) {
+        Map<String, Object> parameters = ImmutableMap.of("flow_ids", flowIds);
+
+        Set<PathId> pathIds = new HashSet<>();
+        queryForStrings("MATCH (f:flow) WHERE f.flow_id IN $flow_ids "
+                + "UNWIND [f.forward_path_id, f.reverse_path_id, "
+                + "f.protected_forward_path_id, f.protected_reverse_path_id] AS path_id "
+                + "MATCH (path_id) WHERE path_id IS NOT NULL "
+                + "RETURN path_id", parameters, "path_id")
                 .forEach(pathId -> pathIds.add(pathIdConverter.toEntityAttribute(pathId)));
 
         return pathIds;

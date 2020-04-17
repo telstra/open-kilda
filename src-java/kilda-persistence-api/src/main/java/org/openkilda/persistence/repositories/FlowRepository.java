@@ -22,6 +22,7 @@ import org.openkilda.persistence.FetchStrategy;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 
 public interface FlowRepository extends Repository<Flow> {
     long countFlows();
@@ -91,4 +92,6 @@ public interface FlowRepository extends Repository<Flow> {
      * components must use this method, which guarantee safety such flows status.
      */
     void updateStatusSafe(String flowId, FlowStatus flowStatus);
+
+    long computeFlowsBandwidthSum(Set<String> flowIds);
 }
