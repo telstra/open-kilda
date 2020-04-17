@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.helpers
 
-import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import com.spotify.docker.client.DockerClient.ListContainersParam
 import com.spotify.docker.client.messages.Container
@@ -12,7 +11,6 @@ import java.util.concurrent.TimeUnit
 @Slf4j
 class WfmManipulator {
     private static final String WFM_CONTAINER_NAME = "/wfm"
-    private static final String KILDA_NETWORK_NAME = "open-kilda_default"
     /* Storm topologies require some time to fully roll after booting.
      * TODO(rtretiak): find a more reliable way to wait for the H-hour
      * Not respecting this wait may lead to subsequent tests instability
@@ -20,10 +18,12 @@ class WfmManipulator {
     private static final int WFM_WARMUP_SECONDS = 180
 
     DockerClient dockerClient
+    DockerHelper dockerHelper
     Container wfmContainer
 
-    WfmManipulator() {
-        dockerClient = DefaultDockerClient.fromEnv().build()
+    WfmManipulator(String dockerHost) {
+        dockerHelper = new DockerHelper(dockerHost)
+        dockerClient = dockerHelper.dockerClient
         wfmContainer = dockerClient.listContainers(ListContainersParam.allContainers()).find {
             it.names().contains(WFM_CONTAINER_NAME)
         }
@@ -35,9 +35,9 @@ class WfmManipulator {
      */
     def restartWfm(boolean wait = true) {
         log.warn "Restarting wfm"
-        dockerClient.restartContainer(wfmContainer.id())
+        dockerHelper.restartContainer(wfmContainer.id())
         if (wait) {
-            dockerClient.waitContainer(wfmContainer.id())
+            dockerHelper.waitContainer(wfmContainer.id())
             TimeUnit.SECONDS.sleep(WFM_WARMUP_SECONDS)
         }
     }
@@ -63,7 +63,7 @@ class WfmManipulator {
                                          "PATH=\${PATH}:/opt/storm/bin;make -C /app $action-$topologyName".toString()])
                                    .build(), null, null)
             container = dockerClient.createContainer(ContainerConfig.builder().image(image.id()).build())
-            def network = dockerClient.listNetworks().find { it.name() == KILDA_NETWORK_NAME }
+            def network = dockerClient.listNetworks().find { it.name() == dockerHelper.networkName }
             dockerClient.connectToNetwork(container.id(), network.id())
             dockerClient.startContainer(container.id())
         } finally {

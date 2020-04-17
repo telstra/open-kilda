@@ -5,3 +5,4 @@ lab-service/*.whl
 lab-service/log.json
 lock-keeper/README.md
 lock-keeper/*.py
+grpc-stub/*.py

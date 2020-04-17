@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.grpc.speaker.model.LicenseDto
 import org.openkilda.messaging.error.MessageError
@@ -16,6 +19,7 @@ If you want to test full functionality then you have to perform the following ma
 class LicenseSpec extends GrpcBaseSpecification {
     @Tidy
     @Unroll
+    @Tags(HARDWARE)
     def "Not able to set incorrect license on the #switches.switchId switch"() {
         when: "Try to set incorrect license key"
         String licenseFileName = "incorrectLicenseFileName.key"

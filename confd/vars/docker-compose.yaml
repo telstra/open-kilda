@@ -8,3 +8,4 @@
 #no_opentsdb: true
 #no_elasticsearch: true
 #no_logstash: true
+#no_grpc_stub: true

@@ -210,6 +210,12 @@ def remove_floodlight_access_restrictions():
     return jsonify({'status': 'All iptables rules in INPUT/OUTPUT chains were removed'})
 
 
+@app.route('/get-container-ip/<string:name>')
+def get_container_ip(name):
+    response = docker.from_env().containers.get(name).exec_run("hostname -i").output
+    return Response(response)
+
+
 def get_iptables_commands(address, operation):
     commands = []
     if 'ip' in address and 'port' in address:
