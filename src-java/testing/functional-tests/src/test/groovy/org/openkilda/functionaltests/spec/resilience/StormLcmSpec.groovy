@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -13,6 +14,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -29,18 +31,20 @@ verify their consistency after restart.
  * Aborting it in the middle of execution may lead to Kilda malfunction.
  */
 @Tags(VIRTUAL)
-@Ignore
 class StormLcmSpec extends HealthCheckSpecification {
     @Shared
     WfmManipulator wfmManipulator
+    @Value('${docker.host}')
+    String dockerHost
 
     def setupOnce() {
         //since we simulate storm restart by restarting the docker container, for now this is only possible on virtual
         //TODO(rtretiak): this can possibly be achieved for 'hardware' via lock-keeper instance
         requireProfiles("virtual")
-        wfmManipulator = new WfmManipulator()
+        wfmManipulator = new WfmManipulator(dockerHost)
     }
 
+    @Tags(LOW_PRIORITY) // note: it takes ~15 minutes to run this test
     def "System survives Storm topologies restart"() {
         given: "Non-empty system with some flows created"
         List<FlowPayload> flows = []

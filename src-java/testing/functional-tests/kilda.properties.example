@@ -71,3 +71,5 @@ use.multitable=true
 cleanup.verifier=true
 
 flow.ping.interval=5
+# remote docker host http://<ip>:2376
+docker.host=localhost

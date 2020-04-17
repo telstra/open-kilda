@@ -1,6 +1,9 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.error.MessageError
 
@@ -66,6 +69,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     }
 
     @Unroll
+    @Tags(HARDWARE)
     def "Not able to create logical port with incorrect port number(lPort/sPort): \
 #data.logicalPortNumber/#data.portNumber on the #sw.switchId switch"() {
         when:
@@ -98,6 +102,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tidy
     @Unroll
+    @Tags(HARDWARE)
     def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"
         //        TODO(andriidovhan) add check that fakeNumber is not exist on a switch
