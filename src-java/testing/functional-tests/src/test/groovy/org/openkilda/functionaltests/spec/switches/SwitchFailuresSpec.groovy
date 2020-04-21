@@ -2,13 +2,14 @@ package org.openkilda.functionaltests.spec.switches
 
 import static groovyx.gpars.dataflow.Dataflow.task
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.FlowHelperV2
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -16,9 +17,8 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -75,6 +75,47 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+    }
+
+    @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/3398")
+    def "System is able to finish the reroute if switch blinks in the middle of it"() {
+        given: "A flow"
+        def swPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.paths.size() > 1 }
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Current path breaks and reroute starts"
+        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
+        def islToBreak = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId)).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+
+        and: "Switch reconnects in the middle of reroute"
+        Wrappers.wait(WAIT_OFFSET, 0) {
+            def reroute = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
+            assert reroute.histories.last().action == "Started validation of installed non ingress rules"
+        }
+        lockKeeper.reviveSwitch(swPair.src, lockKeeper.knockoutSwitch(swPair.src, mgmtFlManager))
+
+        then: "Flow reroute is successful"
+        Wrappers.wait(PATH_INSTALLATION_TIME * 2) { //double timeout since rerouted is slowed by delay
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == REROUTE_SUCCESS
+        }
+
+        and: "Blinking switch has no rule anomalies"
+        def validation = northbound.validateSwitch(swPair.src.dpId)
+        validation.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+
+        and: "Flow validation is OK"
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+
+        cleanup:
+        lockKeeper.cleanupTrafficShaperRules(swPair.dst.region)
+        flowHelperV2.deleteFlow(flow.flowId)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        database.resetCosts()
     }
 
     @Ignore("Not ready yet")

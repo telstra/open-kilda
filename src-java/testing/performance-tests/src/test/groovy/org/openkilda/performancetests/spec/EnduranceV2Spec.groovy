@@ -86,7 +86,8 @@ class EnduranceV2Spec extends BaseSpecification {
         Wrappers.wait(flows.size() / 2) {
             flows.each {
                 assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP
-                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
+                //https://github.com/telstra/open-kilda/issues/3077
+//                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
             }
         }
 
@@ -107,14 +108,9 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
             assert northboundV2.getAllFlows().findAll { it.status == FlowState.IN_PROGRESS.toString() }.empty
         }
 
-        then: "All flows are writting stats"
+        then: "All Up flows are pingable"
         def allFlows = northboundV2.getAllFlows()
         def assertions = new SoftAssertions()
-        assertions.checkSucceeds {
-            statsHelper.verifyFlowsWriteStats(allFlows.findAll { it.status == FlowState.UP.toString() }*.flowId)
-        } ?: true
-
-        and: "All Up flows are pingable"
         def pingVerifications = new SoftAssertions()
         allFlows.findAll { it.status == FlowState.UP.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
@@ -168,7 +164,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
                         islsAmount        : 60,
                         eventsAmount      : 40,
                         flowsToStartWith  : 400,
-                        pauseBetweenEvents: 1, //seconds
+                        pauseBetweenEvents: 3, //seconds
                 ],
                 [
                         debug             : false,
@@ -187,13 +183,15 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         }
         //'dice' below defines events and their chances to appear
         dice = new Dice([
-                new Face(name: "delete flow", chance: 19, event: { deleteFlow() }),
+                new Face(name: "delete flow", chance: 25, event: { deleteFlow() }),
                 new Face(name: "update flow", chance: 0, event: { updateFlow() }),
-                new Face(name: "create flow", chance: 19, event: { createFlow(makeFlowPayload(), true) }),
-                new Face(name: "blink isl", chance: 32, event: { blinkIsl() }),
+                new Face(name: "create flow", chance: 25, event: { createFlow(makeFlowPayload(), true) }),
+                new Face(name: "blink isl", chance: 25, event: { blinkIsl() }),
                 new Face(name: "idle", chance: 0, event: { TimeUnit.SECONDS.sleep(3) }),
                 new Face(name: "manual reroute 5% of flows", chance: 0, event: { massReroute() }),
-                new Face(name: "break isl", chance: 30, event: { breakIsl() })
+                new Face(name: "break isl", chance: 25, event: { breakIsl() }),
+                //switch blink cause missing rules due to https://github.com/telstra/open-kilda/issues/3398
+                new Face(name: "blink switch", chance: 0, event: { blinkSwitch() })
         ])
         debugText = preset.debug ? " (debug mode)" : ""
     }
@@ -397,6 +395,17 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
                 }
             }
         }
+    }
+
+    def blinkSwitch() {
+        def sw = topology.activeSwitches[r.nextInt(topology.activeSwitches.size())]
+        log.info "blink sw $sw.dpId"
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
+        def sleepBeforeSwUp = r.nextInt(5) + 1
+        task {
+            TimeUnit.SECONDS.sleep(sleepBeforeSwUp)
+            lockKeeper.reviveSwitch(sw, blockData)
+        }.then({ it }, { throw it })
     }
 
     boolean isFlowPingable(FlowRequestV2 flow) {
