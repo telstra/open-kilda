@@ -5,7 +5,7 @@ TASK := functionalTest
 check-java-version:
 	if  [ `java -version 2>&1 | awk -F '"' '/version/ { print $$2 }' | awk -F'.' '{ print $$1"."$$2 }'` != "$(java_version)" ]; then false; fi
 
-build-base: build-grpc-stub build-lock-keeper update-props docker/storm/lib
+build-base: {{if not (exists "/no_grpc_stub")}}build-grpc-stub {{end}}build-lock-keeper update-props docker/storm/lib
 	docker build -t kilda/base-ubuntu:latest docker/base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest docker/zookeeper
 	docker build -t kilda/kafka:latest docker/kafka
