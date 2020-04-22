@@ -44,6 +44,7 @@ import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpTransit
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVxlanFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42TurningFlowGenerator;
 import org.openkilda.model.MacAddress;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -269,6 +270,15 @@ public class SwitchFlowFactory implements IService {
                 .server42Port(server42Port)
                 .customerPort(customerPort)
                 .server42macAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get Server 42 turning flow generator.
+     */
+    public SwitchFlowGenerator getServer42TurningFlowGenerator() {
+        return Server42TurningFlowGenerator.builder()
+                .featureDetectorService(featureDetectorService)
                 .build();
     }
 
