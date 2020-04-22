@@ -78,7 +78,7 @@ export class ChangepasswordComponent implements OnInit {
   */
   submitForm(){
     this.submitted = true;
-    if (this.changePasswordForm.invalid && this.changePasswordFormGroup.invalid) {
+    if (this.changePasswordForm.invalid || this.changePasswordFormGroup.invalid) {
       return;
     }
 
@@ -90,8 +90,7 @@ export class ChangepasswordComponent implements OnInit {
     if(this.is2FaEnabled == 'true'){
       this.formData.code = this.changePasswordForm.value.otp
     }
-
-    this.userService.changePassword(this.userId, this.formData).subscribe(user => {
+     this.userService.changePassword(this.userId, this.formData).subscribe(user => {
       this.toastr.success("Password changed successfully!",'Success! ');
       this.modalService.dismissAll();
     },error =>{

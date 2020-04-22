@@ -55,6 +55,13 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       colResize:false,
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "responsive": true,
+        drawCallback:function(){
+          if(jQuery('#switchDataTable tbody tr').length < 10){
+            jQuery('#switchDataTable_next').addClass('disabled');
+          }else{
+            jQuery('#switchDataTable_next').removeClass('disabled');
+          }
+        },
       "aoColumns": [
         { sWidth: '10%' },
         { sWidth: '10%',"sType": "name","bSortable": true },

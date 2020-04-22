@@ -96,7 +96,16 @@
              
        </th>
 
-      
+       <!-- <th >
+        <span title="Updated">
+          Updated
+           </span>
+             <i class="fa fa-search" (click)="toggleSearch($event,'expandedUpdated')"></i>
+             <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedUpdated" id="expandedUpdated"/>
+            
+      </th> -->
+
+
         <th >
           <span title="type">
               type
@@ -142,6 +151,7 @@
         <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td title="{{row.description}}">{{row.description || "-"}}</td>
         <td title="{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}">{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}</td>
+        <!-- <td>{{row['last-updated']}}</td> -->
         <td >{{ descrepancyString(row) }}</td>
         <td >
            <a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (row.hasOwnProperty('controller-flow')  && row['controller-flow'] ) ||  (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>

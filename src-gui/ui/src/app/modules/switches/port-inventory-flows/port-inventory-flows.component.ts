@@ -47,6 +47,12 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges
       buttons:[
         { extend: 'csv', text: 'Export', className: 'btn btn-dark',exportOptions:{columns: ':visible'} }
       ]
+    },drawCallback:function(){
+      if(jQuery('#port_inventory_flow_tbl tbody tr').length < 10){
+        jQuery('#port_inventory_flow_tbl_next').addClass('disabled');
+      }else{
+        jQuery('#port_inventory_flow_tbl_next').removeClass('disabled');
+      }
     },
     "aoColumns": [
       { sWidth: '15%' },

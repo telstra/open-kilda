@@ -125,7 +125,7 @@ export class BreadcrumbComponent implements OnInit {
         if(element.url.includes('switches') && element.url.includes('details')){
           let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON')) || null;
           if(retrievedSwitchObject && retrievedSwitchObject.switch_id && element.label == retrievedSwitchObject.switch_id ){
-            element.label = retrievedSwitchObject.name;
+            element.label = retrievedSwitchObject.name || retrievedSwitchObject.switch_name;
           }
         }
         return element.label;

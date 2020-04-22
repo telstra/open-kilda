@@ -91,7 +91,18 @@ export class UseractivityComponent implements OnInit {
   }
 
   onStartDateChange(event){
-  	this.startDate = event.target.value;
+	  this.startDate = event.target.value;
+	  if(this.moment(new Date(this.startDate)).isAfter(this.moment(new Date(this.endDate)))){
+		this.toastr.error('Start Date must me less than End Date',"Error");
+		this.startDate = null;
+		event.target.value = '';
+		return;
+	}else if(this.moment(new Date(this.startDate)).isAfter(this.moment(new Date()))){
+		this.toastr.error('Start Date must me less than current Date and Time',"Error");
+		this.startDate = null;
+		event.target.value = '';
+		return;
+	}
   	if(this.startDate !== ''){
   		this.showStartDateFilter = true;
   	}
