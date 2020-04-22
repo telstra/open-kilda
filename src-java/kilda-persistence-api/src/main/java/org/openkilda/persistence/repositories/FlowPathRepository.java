@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.persistence.FetchStrategy;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 
 public interface FlowPathRepository extends Repository<FlowPath> {
     Optional<FlowPath> findById(PathId pathId);
@@ -39,6 +40,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
 
     Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId);
+
+    Collection<PathId> findPathIdsByFlowIds(Set<String> flowIds);
 
     /**
      * Finds paths that starts with passed {@param switchId} switch.

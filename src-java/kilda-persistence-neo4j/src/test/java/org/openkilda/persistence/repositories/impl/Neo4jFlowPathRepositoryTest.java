@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -51,9 +52,17 @@ import java.util.Optional;
 
 public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final String TEST_FLOW_ID_1 = "test_flow_1";
+    static final String TEST_FLOW_ID_2 = "test_flow_2";
+    static final String TEST_FLOW_ID_3 = "test_flow_3";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
+    static final int PORT_1 = 1;
+    static final int PORT_2 = 2;
+    static final int PORT_3 = 3;
+    public static final int VLAN_1 = 3;
+    public static final int VLAN_2 = 4;
 
     static FlowPathRepository flowPathRepository;
     static FlowRepository flowRepository;
@@ -396,6 +405,26 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         assertEquals(foundPath.get().getSegments().get(0).getDestSwitch().getSwitchId(), switchC.getSwitchId());
     }
 
+    @Test
+    public void shouldFindFlowPathIdsByFlowIds() {
+        Flow flowA = buildTestProtectedFlow(TEST_FLOW_ID_1, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2);
+        flowRepository.createOrUpdate(flowA);
+        Flow flowB = buildTestFlow(TEST_FLOW_ID_2, switchA, PORT_1, VLAN_2, switchB, PORT_2, 0);
+        flowRepository.createOrUpdate(flowB);
+        Flow flowC = buildTestProtectedFlow(TEST_FLOW_ID_3, switchB, PORT_1, VLAN_1, switchB, PORT_3, VLAN_1);
+        flowRepository.createOrUpdate(flowC);
+
+        Collection<PathId> pathIds =
+                flowPathRepository.findPathIdsByFlowIds(Sets.newHashSet(TEST_FLOW_ID_1, TEST_FLOW_ID_2));
+        assertEquals(6, pathIds.size());
+        assertTrue(pathIds.contains(flowA.getForwardPathId()));
+        assertTrue(pathIds.contains(flowA.getReversePathId()));
+        assertTrue(pathIds.contains(flowA.getProtectedForwardPathId()));
+        assertTrue(pathIds.contains(flowA.getProtectedReversePathId()));
+        assertTrue(pathIds.contains(flowB.getForwardPathId()));
+        assertTrue(pathIds.contains(flowB.getReversePathId()));
+    }
+
     private FlowPath buildTestFlowPath() {
         FlowPath flowPath = buildFlowPath(flow, "_path", 1, 1, switchA, switchB);
 
@@ -460,5 +489,113 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         flowPath.setSegments(asList(segment1, segment2));
 
         return flowPath;
+    }
+
+    private Flow buildTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
+                               Switch destSwitch, int destPort, int destVlan) {
+        Flow flow = Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .srcVlan(srcVlan)
+                .destSwitch(destSwitch)
+                .destPort(destPort)
+                .destVlan(destVlan)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .status(FlowStatus.UP)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+
+        FlowPath forwardFlowPath = FlowPath.builder()
+                .pathId(new PathId(flowId + "_forward_path"))
+                .flow(flow)
+                .cookie(Cookie.buildForwardCookie(1L))
+                .meterId(new MeterId(1))
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setForwardPath(forwardFlowPath);
+
+        PathSegment forwardSegment = PathSegment.builder()
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .destSwitch(destSwitch)
+                .destPort(destPort)
+                .build();
+        forwardFlowPath.setSegments(Collections.singletonList(forwardSegment));
+
+        FlowPath reverseFlowPath = FlowPath.builder()
+                .pathId(new PathId(flowId + "_reverse_path"))
+                .flow(flow)
+                .cookie(Cookie.buildReverseCookie(1L))
+                .meterId(new MeterId(2))
+                .srcSwitch(destSwitch)
+                .destSwitch(srcSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setReversePath(reverseFlowPath);
+
+        PathSegment reverseSegment = PathSegment.builder()
+                .srcSwitch(destSwitch)
+                .srcPort(destPort)
+                .destSwitch(srcSwitch)
+                .destPort(srcPort)
+                .build();
+        reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
+
+        return flow;
+    }
+
+    private Flow buildTestProtectedFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
+                                        Switch destSwitch, int destPort, int destVlan) {
+        Flow flow = buildTestFlow(flowId, srcSwitch, srcPort, srcVlan, destSwitch, destPort, destVlan);
+
+        FlowPath forwardProtectedFlowPath = FlowPath.builder()
+                .pathId(new PathId(flowId + "_forward_protected_path"))
+                .flow(flow)
+                .cookie(Cookie.buildForwardCookie(2L))
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setProtectedForwardPath(forwardProtectedFlowPath);
+
+        PathSegment forwardSegment = PathSegment.builder()
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .destSwitch(destSwitch)
+                .destPort(destPort)
+                .build();
+        forwardProtectedFlowPath.setSegments(Collections.singletonList(forwardSegment));
+
+        FlowPath reverseProtectedFlowPath = FlowPath.builder()
+                .pathId(new PathId(flowId + "_reverse_protected_path"))
+                .flow(flow)
+                .cookie(Cookie.buildReverseCookie(2L))
+                .srcSwitch(destSwitch)
+                .destSwitch(srcSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setProtectedReversePath(reverseProtectedFlowPath);
+
+        PathSegment reverseSegment = PathSegment.builder()
+                .srcSwitch(destSwitch)
+                .srcPort(destPort)
+                .destSwitch(srcSwitch)
+                .destPort(srcPort)
+                .build();
+        reverseProtectedFlowPath.setSegments(Collections.singletonList(reverseSegment));
+
+        return flow;
     }
 }

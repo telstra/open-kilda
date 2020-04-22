@@ -5,7 +5,7 @@ TASK := functionalTest
 check-java-version:
 	if  [ `java -version 2>&1 | awk -F '"' '/version/ { print $$2 }' | awk -F'.' '{ print $$1"."$$2 }'` != "$(java_version)" ]; then false; fi
 
-build-base: build-lock-keeper update-props docker/storm/lib
+build-base: build-grpc-stub build-lock-keeper update-props docker/storm/lib
 	docker build -t kilda/base-ubuntu:latest docker/base/kilda-base-ubuntu/
 	docker build -t kilda/zookeeper:latest docker/zookeeper
 	docker build -t kilda/kafka:latest docker/kafka
@@ -23,6 +23,11 @@ build-lock-keeper:
 	docker build -t kilda/lock-keeper:latest docker/lock-keeper/
 
 .PHONY: build-lock-keeper
+
+.PHONY: build-grpc-stub
+build-grpc-stub:
+	cp src-python/grpc-stub/* docker/grpc-stub/
+	docker build -t kilda/grpc-stub:latest docker/grpc-stub/
 
 docker/storm/lib:
 	docker/base/hacks/storm.requirements.download.sh

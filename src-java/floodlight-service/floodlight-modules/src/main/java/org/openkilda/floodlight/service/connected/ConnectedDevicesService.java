@@ -149,13 +149,16 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             return;
         }
 
-        logger.info("Receive connected device packet from {} OF-xid:{}", input.getDpId(), input.getMessage().getXid());
         long cookie = rawCookie.getValue();
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 
         if (isLldpRelated(cookie)) {
+            logger.debug("Receive connected device LLDP packet from {} OF-xid:{}, cookie: {}",
+                    input.getDpId(), input.getMessage().getXid(), cookie);
             handleSwitchLldp(input, switchId, cookie);
         } else if (isArpRelated(cookie)) {
+            logger.debug("Receive connected device ARP packet from {} OF-xid:{}, cookie: {}",
+                    input.getDpId(), input.getMessage().getXid(), cookie);
             handleArp(input, switchId, cookie);
         }
     }

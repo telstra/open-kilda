@@ -505,6 +505,13 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
+    public long computeFlowsBandwidthSum(Set<String> flowIds) {
+        Map<String, Object> parameters = ImmutableMap.of("flow_ids", flowIds);
+        return queryForLong("MATCH (f:flow) WHERE f.flow_id IN $flow_ids "
+                + "RETURN sum(f.bandwidth) as bandwidth", parameters, "bandwidth").orElse(0L);
+    }
+
+    @Override
     protected Class<Flow> getEntityType() {
         return Flow.class;
     }

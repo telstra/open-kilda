@@ -80,8 +80,8 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup: "revert system to original state"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         database.resetCosts()

@@ -19,7 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.MDC;
 import org.slf4j.event.Level;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractDashboardLogger {
 
@@ -47,14 +49,7 @@ public abstract class AbstractDashboardLogger {
         try {
             invokeLogger(level, message);
         } finally {
-            for (String key : logData.keySet()) {
-                String original = oldValues.get(key);
-                if (original != null) {
-                    MDC.put(key, original);
-                } else {
-                    MDC.remove(key);
-                }
-            }
+            restoreMdc(logData.keySet(), oldValues);
         }
     }
 
@@ -77,6 +72,21 @@ public abstract class AbstractDashboardLogger {
                 break;
             default:
                 throw new IllegalArgumentException(String.format("Unhandled log level %s", level));
+        }
+    }
+
+    private void restoreMdc(Set<String> keys, Map<String, String> origin) {
+        if (origin == null) {
+            origin = Collections.emptyMap();
+        }
+
+        for (String key : keys) {
+            String original = origin.get(key);
+            if (original != null) {
+                MDC.put(key, original);
+            } else {
+                MDC.remove(key);
+            }
         }
     }
 }
