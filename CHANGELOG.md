@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.55.1 (21/04/2020)
+
+### Features:
+-  [#3366](https://github.com/telstra/open-kilda/pull/3366) Added GRPC service stub [**tests**]
+-  [#3371](https://github.com/telstra/open-kilda/pull/3371) Neo4j changes for migrating swap endpoints. (Issue: [#3291](https://github.com/telstra/open-kilda/issues/3291)) 
+
+### Bug Fixes:
+-  [#3395](https://github.com/telstra/open-kilda/pull/3395) Fixed incorrect Connected devices packet logging [**floodlight**]
+
+### Improvements:
+-  [#3393](https://github.com/telstra/open-kilda/pull/3393) Expose discovery latency as separate log field [**floodlight**]
+-  [#3234](https://github.com/telstra/open-kilda/pull/3234) Make parallelism level configurable 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.55.0...v1.55.1).
+
+### Affected Components:
+neo4j, grpc, fl
+
+---
+
 ## v1.55.0 (16/04/2020)
 
 ### Features:
