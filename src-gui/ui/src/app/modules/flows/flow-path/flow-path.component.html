@@ -41,7 +41,7 @@
                   <ul *ngIf="showFlowsForward">
                       <li [ngClass]="{'active':commonSwitchFlagForward}" (click)="showCommonSwitch('forward')"> <span class="switch-circle"><i class="switch-image"></i></span>common switch</li>
                       <li *ngIf="hasProtectedPath" [ngClass]="{'selectedFLow': flowPathFlagForward['protected_path_'+flowId]}" (click)="showFlowPath('protected_path_'+flowId,'forward')"><span style="margin-right:5px;" class="isl_switch_icon"><i class="icon-flows"></i></span><span>Protected Path</span></li>
-                      <li [ngClass]="{'selectedFLow': flowPathFlagForward[flow]}" (click)="showFlowPath(flow,'forward')" class=""   *ngFor="let flow of pathFlows; let i=index;">
+                      <li [ngClass]="{'selectedFLow': flowPathFlagForward[flow]}" (click)="showFlowPath(flow,'forward')" class="" title="{{flow}}"  *ngFor="let flow of pathFlows; let i=index;">
                         <span  [ngStyle]="{'background': colourCodes[i]}"  class="color-pointer">&nbsp;&nbsp;&nbsp;&nbsp;</span>  
                         {{flow}}      
                       </li>
@@ -119,7 +119,7 @@
               <li [ngClass]="{'active':commonSwitchFlagReverse}" (click)="showCommonSwitch('reverse')"> <span class="switch-circle"><i class="switch-image"></i></span>common switch</li>
               <li *ngIf="hasProtectedPath" [ngClass]="{'selectedFLow': flowPathFlagReverse['protected_path_'+flowId]}" (click)="showFlowPath('protected_path_'+flowId,'reverse')"> <span style="margin-right:5px;" class="isl_switch_icon"><i class="icon-flows"></i></span><span>Protected Path</span></li>
              
-              <li [ngClass]="{'selectedFLow': flowPathFlagReverse[flow]}" (click)="showFlowPath(flow,'reverse')" class=""*ngFor="let flow of pathFlows; let i=index;">
+              <li [ngClass]="{'selectedFLow': flowPathFlagReverse[flow]}" (click)="showFlowPath(flow,'reverse')" class="" title="{{flow}}" *ngFor="let flow of pathFlows; let i=index;">
                 <span  [ngStyle]="{'background': colourCodes[i]}"  class="color-pointer">&nbsp;&nbsp;&nbsp;&nbsp;</span>  
                  {{flow}}      
               </li>
