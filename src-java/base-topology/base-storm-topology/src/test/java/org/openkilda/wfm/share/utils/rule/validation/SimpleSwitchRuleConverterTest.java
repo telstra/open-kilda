@@ -380,7 +380,8 @@ public class SimpleSwitchRuleConverterTest {
                 .instructions(FlowInstructions.builder()
                         .applyActions(FlowApplyActions.builder()
                                 .flowOutput(dstPort)
-                                .fieldAction(flowSetFieldAction)
+                                .setFieldActions(flowSetFieldAction == null
+                                        ? Lists.newArrayList() : Lists.newArrayList(flowSetFieldAction))
                                 .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
                                 .build())
                         .goToMeter(meterId)

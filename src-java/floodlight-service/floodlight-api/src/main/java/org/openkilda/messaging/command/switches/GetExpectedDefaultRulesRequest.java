@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -43,6 +44,15 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("switch_arp")
     private boolean switchArp;
 
+    @JsonProperty("server_42_flow_rtt")
+    private boolean server42FlowRtt;
+
+    @JsonProperty("server_42_port")
+    private Integer server42Port;
+
+    @JsonProperty("server_42_mac_address")
+    private MacAddress server42MacAddress;
+
     @JsonProperty("isl_ports")
     private  List<Integer> islPorts;
 
@@ -59,6 +69,9 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
                                           @JsonProperty("multi_table") boolean multiTable,
                                           @JsonProperty("switch_lldp") boolean switchLldp,
                                           @JsonProperty("switch_arp") boolean switchArp,
+                                          @JsonProperty("server_42_flow_rtt") boolean server42FlowRtt,
+                                          @JsonProperty("server_42_port") Integer server42Port,
+                                          @JsonProperty("server_42_mac_address") MacAddress server42MacAddress,
                                           @JsonProperty("isl_ports") List<Integer> islPorts,
                                           @JsonProperty("flow_ports") List<Integer> flowPorts,
                                           @JsonProperty("flow_lldp_ports") Set<Integer> flowLldpPorts,
@@ -67,6 +80,9 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
         this.multiTable = multiTable;
         this.switchLldp = switchLldp;
         this.switchArp = switchArp;
+        this.server42FlowRtt = server42FlowRtt;
+        this.server42Port = server42Port;
+        this.server42MacAddress = server42MacAddress;
         this.islPorts = islPorts;
         this.flowPorts = flowPorts;
         this.flowLldpPorts = flowLldpPorts;
