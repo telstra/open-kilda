@@ -32,7 +32,6 @@ class ChaosSpec extends HealthCheckSpecification {
      * This test simulates a busy network with a lot of flows. Random ISLs across the topology begin to blink,
      * causing some of the flows to reroute. Verify that system remains stable.
      */
-    @Ignore("https://github.com/telstra/open-kilda/issues/3256")
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
         def flowsAmount = topology.activeSwitches.size() * 10
@@ -70,7 +69,10 @@ class ChaosSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: remove flows and reset costs"
-        flows.each { northboundV2.deleteFlow(it.flowId) }
+        flows.each {
+            northboundV2.deleteFlow(it.flowId)
+            sleep(1000) //https://github.com/telstra/open-kilda/issues/3411
+        }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
