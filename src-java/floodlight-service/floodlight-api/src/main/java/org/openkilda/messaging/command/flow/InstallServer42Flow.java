@@ -38,7 +38,7 @@ import java.util.UUID;
 public class InstallServer42Flow extends BaseInstallFlow {
     private static final long serialVersionUID = -5129567926339150982L;
 
-    @JsonProperty("server_42_mac_address")
+    @JsonProperty("server42_mac_address")
     protected MacAddress server42MacAddress;
 
     @Builder
@@ -50,7 +50,7 @@ public class InstallServer42Flow extends BaseInstallFlow {
                                @JsonProperty("input_port") Integer inputPort,
                                @JsonProperty("output_port") Integer outputPort,
                                @JsonProperty("multi_table") boolean multiTable,
-                               @JsonProperty("server_42_mac_address") MacAddress server42MacAddress) {
+                               @JsonProperty("server42_mac_address") MacAddress server42MacAddress) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         this.server42MacAddress = server42MacAddress;
     }

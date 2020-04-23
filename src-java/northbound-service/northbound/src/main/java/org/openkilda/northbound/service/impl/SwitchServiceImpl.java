@@ -472,14 +472,14 @@ public class SwitchServiceImpl implements SwitchService {
 
         if (switchPropertiesDto.getServer42Port() != null && switchPropertiesDto.getServer42Port() <= 0) {
             throw new MessageException(ErrorType.REQUEST_INVALID, format(
-                    "Property 'server_42_port' for switch %s has invalid value '%d'. Port must be positive",
+                    "Property 'server42_port' for switch %s has invalid value '%d'. Port must be positive",
                     switchId, switchPropertiesDto.getServer42Port()), "Invalid server 42 Port");
         }
 
         if (switchPropertiesDto.getServer42MacAddress() != null
                 && !MacAddress.isValid(switchPropertiesDto.getServer42MacAddress())) {
             throw new MessageException(ErrorType.REQUEST_INVALID, format(
-                    "Property 'server_42_mac_address' for switch %s has invalid value '%s'.",
+                    "Property 'server42_mac_address' for switch %s has invalid value '%s'.",
                     switchId, switchPropertiesDto.getServer42MacAddress()), "Invalid server 42 Mac Address");
         }
 
