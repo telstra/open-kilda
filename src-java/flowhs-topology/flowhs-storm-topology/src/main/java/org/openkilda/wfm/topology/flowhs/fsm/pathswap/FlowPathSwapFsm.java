@@ -21,6 +21,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.AbandonPendingCommandsAction;
@@ -88,6 +89,18 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
     @Override
     public void sendResponse(Message message) {
         carrier.sendNorthboundResponse(message);
+    }
+
+    @Override
+    public void reportError(Event event) {
+        if (Event.TIMEOUT == event) {
+            reportGlobalTimeout();
+        }
+    }
+
+    @Override
+    protected String getCrudActionName() {
+        return "path swap";
     }
 
     public static class Factory {
