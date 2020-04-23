@@ -40,6 +40,7 @@ import org.openkilda.floodlight.utils.FloodlightDummyDashboardLogger;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslBaseLatency;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
@@ -593,10 +594,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 .packetId(data.getPacketId())
                 .build();
 
-        Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null,
-                region);
-
-        producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
+        sendDiscovery(path);
         logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
         IslOneWayLatency islOneWayLatency = new IslOneWayLatency(
@@ -630,18 +628,36 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         long roundTripLatency = calculateRoundTripLatency(
                 switchId, port, packetData.getSwitchT0(), packetData.getSwitchT1());
 
-        IslRoundTripLatency islRoundTripLatency = new IslRoundTripLatency(switchId, port, roundTripLatency,
-                packetData.getPacketId());
-        sendLatency(islRoundTripLatency, switchId);
+        IslRoundTripLatency latency = new IslRoundTripLatency(switchId, port, roundTripLatency,
+                                                              packetData.getPacketId());
         logger.debug("Round trip latency packet processed for endpoint {}_{}. "
                         + "t0 timestamp {}, t1 timestamp {}, latency {}.", switchId, port,
                 packetData.getSwitchT0(), packetData.getSwitchT1(), roundTripLatency);
+
+        sendLatency(latency, switchId);
+        sendRoundTripDiscovery(latency);
     }
 
-    private void sendLatency(InfoData latencyData, SwitchId switchId) {
-        InfoMessage infoMessage = new InfoMessage(
-                latencyData, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
-        producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), infoMessage);
+    private void sendDiscovery(IslInfoData discovery) {
+        String key = discovery.getSource().getSwitchId().toString();
+        Message message = addInfoEnvelope(discovery);
+        producerService.sendMessageAndTrack(topoDiscoTopic, key, message);
+    }
+
+    private void sendRoundTripDiscovery(IslRoundTripLatency latencyData) {
+        String key = latencyData.getSrcSwitchId().toString();
+        Message message = addInfoEnvelope(latencyData);
+        producerService.sendMessageAndTrack(topoDiscoTopic, key, message);
+    }
+
+    private void sendLatency(IslBaseLatency latencyData, SwitchId switchId) {
+        Message message = addInfoEnvelope(latencyData);
+        producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), message);
+    }
+
+    private InfoMessage addInfoEnvelope(InfoData payload) {
+        return new InfoMessage(
+                payload, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
     }
 
     @VisibleForTesting

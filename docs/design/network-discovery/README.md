@@ -60,17 +60,17 @@ storm for processing.
 
 # Processing layers
 
-Whole event process is slitted into several layers or serveral nested finite
+Whole event processing is split into several layers or several nested finite
 state machines. Each layer is responsible for some specific "function".
 
 ## Switch layer
 Track switch online/offline status and track port change between switch reconnects.
-Also update DB with swich data.
+Also, populate DB with switch objects (and directly related to them objects).
 
 ![Switch FSM](switch-FSM.png)
 
 ## Port anti-flapping layer
-Filter out port flapping events.
+Detect and filter out port flapping events.
 
 ![Port AntiFlapping](AF-FSM.png)
 
@@ -80,7 +80,10 @@ Track port UP/DOWN state and control discovery poll process.
 ![Port FSM](port-FSM.png)
 
 ## Uni-ISL layer
-Abstract the way how we track ISL status and responsible for ISL-MOVE detection.
+Collect info about both ISL endpoint(by extracting remote point from discovery
+events). Responsible for addressing ISL event processor (correctly populate
+storm tuple with fields used in stream fields grouping), also responsible for 
+tracking moved state.
 
 ![Uni-ISL FSM](uni-isl-FSM.png)
 
@@ -99,3 +102,43 @@ Manage setup/remove BFD sessions
 Responsible for global BFD toggle.
 
 ![BFDGlobalToggleFSM](bfd-global-toggle.png)
+
+
+# Discovery poll process
+Discovery poll represented by 3 services, each one responsible for some small
+particular part.
+
+![discovery-sequence-diagram](discovery-sequence.png)
+
+## Watch list service
+Keep the list of ISL endpoints (switch + port) available for the discovery
+process i.e. The port event processor is responsible for managing add and for
+remove events into this list. Periodically for each entry in this the list,
+it produces request to the `watcher` service.
+
+## Watcher service
+This service track the state of the particular discovery request. Using request
+from watch list service it produces discovery requests to the `speaker`.
+
+Each produced discovery request contains a unique identifier, discovery sent
+confirmation, discovery response and round trip notification are bring this
+identifier back to the watcher service. If unique identifier extracted from one
+of these responses is missing in the "wait" list of the watcher, this is
+stale/foreign response and must be ignored. See the discovery sequence diagram
+above for details.
+
+Also watcher is responsible for tracking round trip status (this status is
+represented with "last round trip received time" for each network endpoint). On
+receive-round-trip event from the `speaker`, the watcher updates stored
+round-trip-status.
+
+With some constant time interval (1 second should be good default) watcher
+emits round-trip-status for all managed by it network endpoints into port
+handler (it is responsible to route it to correct ISL handler). ISL handler can
+use this round-trip-status data to measure the affected time frame and use it
+during ISL state evaluation. 
+
+## Decision maker service
+![decision-maker-service](DiscoveryDecisionMaker-FSM.png)
+
+The decision-maker collects and aggregates events from the `watcher` service.

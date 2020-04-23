@@ -32,6 +32,7 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkIslService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
@@ -198,6 +199,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     public void processIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
         service.islDown(endpoint, reference, reason);
+    }
+
+    public void processRoundTripStatus(IslReference reference, RoundTripStatus status) {
+        service.roundTripStatusNotification(reference, status);
     }
 
     public void processBfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {

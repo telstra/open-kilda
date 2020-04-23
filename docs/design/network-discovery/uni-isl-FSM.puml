@@ -10,6 +10,7 @@ Input signals
 * bfd-up
 * bfd-down
 * bfd-kill
+* round-trip-status
 
 Ouput signals
 * isl-move
@@ -17,6 +18,7 @@ Ouput signals
 * isl-down
 * isl-history
 * physical-down
+* round-trip-status
 
 @startuml
 title UniISL FSM
@@ -29,15 +31,14 @@ INIT : activate [have-history] / set remote, emit emit isl-history
 state moveChoice <<choice>>
 
 UNKNOWN --> moveChoice : discovery
-UNKNOWN --> DOWN : fail
-UNKNOWN --> DOWN : physical-down
+UNKNOWN --> DOWN : fail\nphysical-down
 
 UP --> moveChoice : discovery
-UP --> DOWN : fail
-UP --> DOWN : physical-down
+UP --> DOWN : fail\nphysical-down
 UP --> BFD : bfd-up
 UP : enter [have speaker event] / set remote
 UP : enter [have speaker event] / emit isl-up
+UP : round-trip-status / emit round-trip-status
 
 state selfLoopChoice <<choice>>
 
@@ -50,10 +51,11 @@ selfLoopChoice -r-> UNKNOWN : [self-loop]
 DOWN --> moveChoice : discovery
 DOWN --> BFD : bfd-up
 DOWN : enter [has remote] / emit isl-down
+DOWN : round-trip-status [has remote] / emit round-trip-status
 
-BFD --> DOWN : physical-down
-BFD --> DOWN : bfd-down
+BFD --> DOWN : physical-down\nbfd-down
 BFD --> UP : bfd-kill
 BFD : enter / emit isl-up
+BFD : round-trip-status / emit round-trip-status
 
 @enduml
