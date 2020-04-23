@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -713,7 +713,7 @@ public class FlowServiceImpl implements FlowService {
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
+        return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(SwapFlowResponse.class::cast)
                 .thenApply(response -> new SwapFlowEndpointPayload(
                         flowMapper.toSwapOutput(response.getFirstFlow().getPayload()),
