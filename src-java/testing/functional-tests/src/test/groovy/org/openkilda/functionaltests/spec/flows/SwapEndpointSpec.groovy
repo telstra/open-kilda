@@ -33,6 +33,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -506,8 +507,9 @@ switches"() {
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "Flow ${flow2.id} not found"
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription == "Flow ${flow2.id} not found"
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow1.id)
@@ -532,8 +534,9 @@ switches"() {
         then: "An error is received (409 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 409
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Can not swap endpoints for flows: " +
-                "Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription.contains("Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
 
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
@@ -611,8 +614,9 @@ switches"() {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "New requested endpoint for '$flow2.id' conflicts with existing endpoint for '$flow1.id'"
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription == "New requested endpoint for '$flow2.id' conflicts with existing endpoint for '$flow1.id'"
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -658,8 +662,9 @@ switches"() {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "The port $islPort on the switch '${swPair.src.dpId}' is occupied by an ISL."
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription == "The port $islPort on the switch '${swPair.src.dpId}' is occupied by an ISL."
 
         cleanup: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -820,12 +825,12 @@ switches"() {
                 new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow2Src),
                         flowHelper.toFlowEndpointV2(flow2Dst)))
 
-        then: "An error is received (400 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "Failed to find path with requested bandwidth=${flow1.maximumBandwidth}: " +
-                "Switch ${flow2SwitchPair.src.dpId} doesn't have links with enough bandwidth"
+        then: "An error is received (500 code)"
+        def exc = thrown(HttpServerErrorException)
+        exc.rawStatusCode == 500
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription.contains("Not enough bandwidth or no path found")
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -965,12 +970,12 @@ switches"() {
                 new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow1.source),
                         flowHelper.toFlowEndpointV2(flow2.destination)))
 
-        then: "An error is received (400 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "Failed to find path with requested bandwidth=${flow2.maximumBandwidth}: " +
-                "Switch ${flow1SwitchPair.src.dpId} doesn't have links with enough bandwidth"
+        then: "An error is received (500 code)"
+        def exc = thrown(HttpServerErrorException)
+        exc.rawStatusCode == 500
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription.contains("Not enough bandwidth or no path found")
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }

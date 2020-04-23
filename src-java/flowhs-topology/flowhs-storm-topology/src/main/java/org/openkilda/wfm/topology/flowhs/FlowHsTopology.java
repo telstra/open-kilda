@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,11 +18,14 @@ package org.openkilda.wfm.topology.flowhs;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_CREATE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_DELETE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_REROUTE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_UPDATE;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.flowhs.bolts.RouterBolt.FLOW_ID_FIELD;
 
 import org.openkilda.messaging.AbstractMessage;
@@ -35,6 +38,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
+import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt.Config;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubBolt;
@@ -43,6 +47,7 @@ import org.openkilda.wfm.topology.flowhs.bolts.FlowDeleteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowDeleteHubBolt.FlowDeleteConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowRerouteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowRerouteHubBolt.FlowRerouteConfig;
+import org.openkilda.wfm.topology.flowhs.bolts.FlowSwapEndpointsHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowUpdateHubBolt.FlowUpdateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.RouterBolt;
@@ -81,6 +86,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         flowUpdateHub(tb, persistenceManager);
         flowRerouteHub(tb, persistenceManager);
         flowDeleteHub(tb, persistenceManager);
+        flowSwapEndpointsHub(tb, persistenceManager);
 
         speakerSpout(tb);
         flowCreateSpeakerWorker(tb);
@@ -108,7 +114,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void inputRouter(TopologyBuilder topologyBuilder) {
         topologyBuilder.setBolt(ComponentId.FLOW_ROUTER_BOLT.name(), new RouterBolt(), parallelism)
-                .shuffleGrouping(ComponentId.FLOW_SPOUT.name());
+                .shuffleGrouping(ComponentId.FLOW_SPOUT.name())
+                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT.name());
     }
 
     private void flowCreateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
@@ -203,6 +210,24 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_DELETE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_DELETE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_DELETE.name())
+                .directGrouping(CoordinatorBolt.ID);
+    }
+
+    private void flowSwapEndpointsHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getSwapEndpointsHubTimeoutSeconds());
+
+        HubBolt.Config config = HubBolt.Config.builder()
+                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
+                .workerComponent(ComponentId.FLOW_UPDATE_HUB.name())
+                .timeoutMs(hubTimeout)
+                .build();
+
+        FlowSwapEndpointsHubBolt hubBolt = new FlowSwapEndpointsHubBolt(config, persistenceManager);
+        topologyBuilder.setBolt(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), hubBolt, parallelism)
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
+                        ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(), FIELDS_KEY)
+                .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(),
+                        UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB.name(), FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
     }
 
@@ -305,7 +330,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .fieldsGrouping(ComponentId.FLOW_CREATE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(ComponentId.FLOW_REROUTE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
-                .fieldsGrouping(ComponentId.FLOW_DELETE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+                .fieldsGrouping(ComponentId.FLOW_DELETE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
     }
 
     private void northboundOutput(TopologyBuilder topologyBuilder) {
@@ -314,7 +340,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
     }
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
@@ -337,7 +364,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
                 .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name());
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name())
+                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name());
     }
 
     public enum ComponentId {
@@ -349,6 +377,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FLOW_UPDATE_HUB("flow.update.hub.bolt"),
         FLOW_REROUTE_HUB("flow.reroute.hub.bolt"),
         FLOW_DELETE_HUB("flow.delete.hub.bolt"),
+        FLOW_SWAP_ENDPOINTS_HUB("flow.swap.endpoints.hub.bolt"),
 
         FLOW_CREATE_SPEAKER_WORKER("flow.create.worker.bolt"),
         FLOW_UPDATE_SPEAKER_WORKER("flow.update.worker.bolt"),
@@ -357,6 +386,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         NB_RESPONSE_SENDER("nb.kafka.bolt"),
         REROUTE_RESPONSE_SENDER("reroute.kafka.bolt"),
+        RESPONSE_SENDER("response.kafka.bolt"),
         FLOW_PING_SENDER("ping.kafka.bolt"),
 
         SPEAKER_REQUEST_SENDER("speaker.kafka.bolt"),
@@ -381,6 +411,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         ROUTER_TO_FLOW_UPDATE_HUB,
         ROUTER_TO_FLOW_REROUTE_HUB,
         ROUTER_TO_FLOW_DELETE_HUB,
+        ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB,
 
         HUB_TO_SPEAKER_WORKER,
         HUB_TO_HISTORY_BOLT,
@@ -390,11 +421,13 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         SPEAKER_WORKER_TO_HUB_REROUTE,
         SPEAKER_WORKER_TO_HUB_DELETE,
 
+        SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT,
         UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB,
 
         SPEAKER_WORKER_REQUEST_SENDER,
         HUB_TO_NB_RESPONSE_SENDER,
         HUB_TO_REROUTE_RESPONSE_SENDER,
+        HUB_TO_RESPONSE_SENDER,
         HUB_TO_PING_SENDER
     }
 

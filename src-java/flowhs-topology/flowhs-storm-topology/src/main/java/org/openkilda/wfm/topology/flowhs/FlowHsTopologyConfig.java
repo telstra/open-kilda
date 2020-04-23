@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -76,6 +76,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.update.hub.timeout.seconds")
     @Default("30")
     int getUpdateHubTimeoutSeconds();
+
+    @Key("flow.swap.endpoints.hub.timeout.seconds")
+    @Default("30")
+    int getSwapEndpointsHubTimeoutSeconds();
 
     @Key("flow.update.speaker.timeout.seconds")
     @Default("10")
