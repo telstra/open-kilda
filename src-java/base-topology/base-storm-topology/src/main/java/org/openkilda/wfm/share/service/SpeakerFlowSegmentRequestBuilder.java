@@ -84,15 +84,18 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     @Override
-    public List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, @NonNull Flow flow) {
-        return buildIngressOnly(context, flow, flow.getForwardPath(), flow.getReversePath());
+    public List<FlowSegmentRequestFactory> buildIngressOnly(
+            CommandContext context, @NonNull Flow flow, SpeakerRequestBuildContext speakerRequestBuildContext) {
+        return buildIngressOnly(context, flow, flow.getForwardPath(), flow.getReversePath(),
+                speakerRequestBuildContext);
     }
 
     @Override
     public List<FlowSegmentRequestFactory> buildIngressOnly(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            SpeakerRequestBuildContext speakerRequestBuildContext) {
         return makeRequests(context, flow, path, oppositePath, true, false, false,
-                SpeakerRequestBuildContext.EMPTY);
+                speakerRequestBuildContext);
     }
 
     private List<FlowSegmentRequestFactory> makeRequests(
@@ -135,7 +138,11 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         return new RulesContext(
                 pathContext.isRemoveCustomerPortRule(),
                 pathContext.isRemoveCustomerPortLldpRule(),
-                pathContext.isRemoveCustomerPortArpRule());
+                pathContext.isRemoveCustomerPortArpRule(),
+                pathContext.isRemoveServer42InputRule(),
+                pathContext.isInstallServer42InputRule(),
+                pathContext.getServer42Port(),
+                pathContext.getServer42MacAddress());
     }
 
     @SuppressWarnings("squid:S00107")

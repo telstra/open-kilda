@@ -80,6 +80,10 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
             if (rulesContext.isRemoveCustomerArpRule()) {
                 ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
             }
+            if (rulesContext.isRemoveServer42InputRule()) {
+                getFlowModFactory().makeServer42InputFlowMessage(getKildaCoreConfig().getServer42UdpPortOffset())
+                        .ifPresent(ofMessages::add);
+            }
         }
         return ofMessages;
     }

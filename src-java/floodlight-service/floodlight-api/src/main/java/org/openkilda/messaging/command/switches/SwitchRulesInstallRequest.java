@@ -73,6 +73,9 @@ public class SwitchRulesInstallRequest extends CommandData {
     @JsonProperty("flow_arp_ports")
     private Set<Integer> flowArpPorts = new HashSet<>();
 
+    @JsonProperty("server42_flow_rtt_ports")
+    private Set<Integer> server42FlowRttPorts;
+
     /**
      * Constructs an install switch rules request.
      *

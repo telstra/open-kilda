@@ -20,6 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
@@ -54,9 +55,13 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowPathSwap
 
         FlowPath newPrimaryForward = flow.getForwardPath();
         FlowPath newPrimaryReverse = flow.getReversePath();
+
+        SpeakerRequestBuildContext speakerContext = buildBaseSpeakerContextForInstall(
+                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(
                 commandBuilder.buildIngressOnly(
-                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
+                        stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 

@@ -79,6 +79,10 @@ public class SwitchRulesDeleteRequest extends CommandData {
     @JsonProperty("flow_arp_ports")
     private Set<Integer> flowArpPorts = new HashSet<>();
 
+    @JsonProperty("server42_flow_rtt_ports")
+    private Set<Integer> server42FlowRttPorts;
+
+
     /**
      * Constructs a delete switch rules request.
      *

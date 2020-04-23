@@ -45,11 +45,13 @@ public interface FlowCommandBuilder {
     /**
      * Build install commands for ingress rules for active forward and reverse paths.
      */
-    List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow);
+    List<FlowSegmentRequestFactory> buildIngressOnly(
+            CommandContext context, Flow flow, SpeakerRequestBuildContext speakerRequestBuildContext);
 
     /**
      * Build install commands for ingress rules for provided paths.
      */
     List<FlowSegmentRequestFactory> buildIngressOnly(
-            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            SpeakerRequestBuildContext speakerRequestBuildContext);
 }

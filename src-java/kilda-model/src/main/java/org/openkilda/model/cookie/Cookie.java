@@ -173,6 +173,10 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
         return new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, port).getValue();
     }
 
+    public static long encodeServer42InputInput(int port) {
+        return new PortColourCookie(CookieType.SERVER_42_INPUT, port).getValue();
+    }
+
     /**
      * Create Cookie from meter ID of default rule by using of `DEFAULT_RULES_FLAG`.
      *

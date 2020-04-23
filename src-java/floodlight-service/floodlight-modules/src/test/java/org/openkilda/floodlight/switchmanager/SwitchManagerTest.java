@@ -958,7 +958,8 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true, true);
+                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
+                true, true, true, true);
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
@@ -1035,7 +1036,8 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true, true);
+                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
+                true, true, true, true);
 
         // then
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,

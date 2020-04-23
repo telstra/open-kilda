@@ -78,6 +78,6 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         RequestedFlow originalFlow = stateMachine.getOriginalFlow();
         RequestedFlow targetFlow = stateMachine.getTargetFlow();
 
-        return buildSpeakerContextForRemoval(originalFlow, targetFlow);
+        return buildSpeakerContextForRemovalIngressAndShared(originalFlow, targetFlow);
     }
 }

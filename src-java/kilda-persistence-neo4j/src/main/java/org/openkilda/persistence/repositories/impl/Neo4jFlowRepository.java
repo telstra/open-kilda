@@ -249,6 +249,21 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
+    public Collection<String> findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
+            SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId),
+                "port", port,
+                "multi_table", true);
+
+        return queryForStrings("MATCH (src:switch)-[:source]-(f:flow)-[:destination]-(dst:switch) "
+                + "WHERE src.name <> dst.name "
+                + "AND (src.name=$switch_id AND f.src_port=$port AND f.src_with_multi_table=$multi_table "
+                + "OR dst.name=$switch_id AND f.dst_port=$port AND f.dst_with_multi_table=$multi_table) "
+                + "RETURN f.flow_id as flow_id", parameters, "flow_id");
+    }
+
+    @Override
     public Collection<Flow> findByEndpointSwitch(SwitchId switchId) {
         Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
         Filter dstSwitchFilter = createDstSwitchFilter(switchId);

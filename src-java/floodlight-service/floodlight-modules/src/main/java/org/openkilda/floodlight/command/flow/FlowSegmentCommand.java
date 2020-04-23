@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.error.SwitchMissingFlowsException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
@@ -49,6 +51,9 @@ public abstract class FlowSegmentCommand extends SpeakerCommand<FlowSegmentRepor
     @Getter(AccessLevel.PROTECTED)
     private Set<SwitchFeature> switchFeatures;
 
+    @Getter(AccessLevel.PROTECTED)
+    private KildaCoreConfig kildaCoreConfig;
+
     public FlowSegmentCommand(
             MessageContext messageContext, SwitchId switchId, UUID commandId, @NonNull FlowSegmentMetadata metadata) {
         super(messageContext, switchId, commandId);
@@ -62,6 +67,9 @@ public abstract class FlowSegmentCommand extends SpeakerCommand<FlowSegmentRepor
 
         FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
         switchFeatures = featureDetectorService.detectSwitch(getSw());
+
+        KildaCore kildaCore = moduleContext.getServiceImpl(KildaCore.class);
+        kildaCoreConfig = kildaCore.getConfig();
     }
 
     protected CompletableFuture<FlowSegmentReport> makeVerifyPlan(List<OFFlowMod> expected) {
