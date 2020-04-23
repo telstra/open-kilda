@@ -31,20 +31,18 @@ abstract class NoviflowSpecificFeature extends AbstractFeature {
             return false;
         }
 
-        SwitchDescription description = sw.getSwitchDescription();
-
-        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(description.getManufacturerDescription())) {
+        String manufacturer = getManufacturer(sw);
+        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(manufacturer)) {
             return true;
         }
 
+        SwitchDescription description = sw.getSwitchDescription();
         if (E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
                 Optional.ofNullable(description.getHardwareDescription()).orElse("")).matches()) {
             return true;
         }
 
-        return Optional.ofNullable(description.getManufacturerDescription())
-                .map(String::toLowerCase)
-                .orElse("").contains(NOVIFLOW_MANUFACTURER_SUFFIX);
+        return manufacturer.toLowerCase().contains(NOVIFLOW_MANUFACTURER_SUFFIX);
     }
 
     /**
@@ -55,15 +53,11 @@ abstract class NoviflowSpecificFeature extends AbstractFeature {
             return false;
         }
 
-        Optional<SwitchDescription> description = Optional.ofNullable(sw.getSwitchDescription());
-        String manufacturer = description
-                .map(SwitchDescription::getManufacturerDescription)
-                .orElse("");
-
-        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(manufacturer)) {
+        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(getManufacturer(sw))) {
             return true;
         }
 
+        Optional<SwitchDescription> description = Optional.ofNullable(sw.getSwitchDescription());
         return E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
                 description
                 .map(SwitchDescription::getHardwareDescription)
@@ -83,5 +77,11 @@ abstract class NoviflowSpecificFeature extends AbstractFeature {
         return NOVIFLOW_VIRTUAL_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(
                 description.map(SwitchDescription::getHardwareDescription)
                         .orElse("")).matches();
+    }
+
+    protected static String getManufacturer(IOFSwitch sw) {
+        return Optional.ofNullable(sw.getSwitchDescription())
+                .map(SwitchDescription::getManufacturerDescription)
+                .orElse("");
     }
 }

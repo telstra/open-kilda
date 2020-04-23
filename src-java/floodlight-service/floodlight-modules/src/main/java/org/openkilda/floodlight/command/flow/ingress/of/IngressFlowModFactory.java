@@ -15,15 +15,11 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
-import static org.openkilda.model.Metadata.METADATA_ARP_MASK;
-import static org.openkilda.model.Metadata.METADATA_ARP_VALUE;
-import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
-import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
-
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterId;
@@ -125,9 +121,11 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeLldpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build(switchFeatures);
         OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
-                .setMetadata(U64.of(METADATA_LLDP_VALUE))
-                .setMetadataMask(U64.of(METADATA_LLDP_MASK)).build();
+                .setMetadata(metadata.getValue())
+                .setMetadataMask(metadata.getMask())
+                .build();
 
         return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
                 .setPriority(SwitchManager.LLDP_INPUT_CUSTOMER_PRIORITY)
@@ -150,9 +148,11 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeArpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build(switchFeatures);
         OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
-                .setMetadata(U64.of(METADATA_ARP_VALUE))
-                .setMetadataMask(U64.of(METADATA_ARP_MASK)).build();
+                .setMetadata(metadata.getValue())
+                .setMetadataMask(metadata.getMask())
+                .build();
 
         return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
                 .setPriority(SwitchManager.ARP_INPUT_CUSTOMER_PRIORITY)

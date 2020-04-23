@@ -22,13 +22,12 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VXLAN_UDP_DST;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
-import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
-import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
@@ -64,9 +63,9 @@ public class LldpPostIngressVxlanFlowGenerator extends LldpFlowGenerator {
             return null;
         }
 
+        RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().lldpFlag(true), sw);
         Match match = ofFactory.buildMatch()
-                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(METADATA_LLDP_VALUE),
-                        OFMetadata.ofRaw(METADATA_LLDP_MASK))
+                .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
                 .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))

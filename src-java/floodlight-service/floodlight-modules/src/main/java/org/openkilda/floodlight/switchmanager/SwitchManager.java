@@ -51,12 +51,6 @@ import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
-import static org.openkilda.model.Metadata.METADATA_ARP_MASK;
-import static org.openkilda.model.Metadata.METADATA_ARP_VALUE;
-import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
-import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
-import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_MASK;
-import static org.openkilda.model.Metadata.METADATA_ONE_SWITCH_FLOW_VALUE;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
@@ -83,6 +77,7 @@ import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenera
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -608,9 +603,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         if (multiTable) {
             // to distinguish LLDP packets in one switch flow and in common flow
+            RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().oneSwitchFlowFlag(true), sw);
             OFInstructionWriteMetadata writeMetadata = ofFactory.instructions().buildWriteMetadata()
-                    .setMetadata(U64.of(METADATA_ONE_SWITCH_FLOW_VALUE))
-                    .setMetadataMask(U64.of(METADATA_ONE_SWITCH_FLOW_MASK)).build();
+                    .setMetadata(metadata.getValue())
+                    .setMetadataMask(metadata.getMask())
+                    .build();
             instructions.add(writeMetadata);
         }
 
@@ -1568,9 +1565,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                 .build();
 
+        RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().lldpFlag(true), sw);
         OFInstructionWriteMetadata writeMetadata = ofFactory.instructions().buildWriteMetadata()
-                .setMetadata(U64.of(METADATA_LLDP_VALUE))
-                .setMetadataMask(U64.of(METADATA_LLDP_MASK)).build();
+                .setMetadata(metadata.getValue())
+                .setMetadataMask(metadata.getMask()).build();
 
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         return prepareFlowModBuilder(
@@ -1622,9 +1620,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setExact(MatchField.ETH_TYPE, EthType.ARP)
                 .build();
 
+        RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().arpFlag(true), sw);
         OFInstructionWriteMetadata writeMetadata = ofFactory.instructions().buildWriteMetadata()
-                .setMetadata(U64.of(METADATA_ARP_VALUE))
-                .setMetadataMask(U64.of(METADATA_ARP_MASK)).build();
+                .setMetadata(metadata.getValue())
+                .setMetadataMask(metadata.getMask())
+                .build();
 
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(PRE_INGRESS_TABLE_ID));
         return prepareFlowModBuilder(
@@ -2717,5 +2717,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         pushFlow(sw, "--InstallGroup--", groupAdd);
         sendBarrierRequest(sw);
+    }
+
+    private RoutingMetadata buildMetadata(RoutingMetadata.RoutingMetadataBuilder builder, IOFSwitch sw) {
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        return builder.build(features);
     }
 }
