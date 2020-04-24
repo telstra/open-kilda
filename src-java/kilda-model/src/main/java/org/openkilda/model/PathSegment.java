@@ -15,9 +15,9 @@
 
 package org.openkilda.model;
 
-import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -26,82 +26,63 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.Transient;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Represents a segment of a flow path.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "path"})
-@ToString(exclude = {"path"})
-@NodeEntity(label = "path_segment")
-public class PathSegment implements Serializable {
-    private static final long serialVersionUID = 1L;
+@ToString
+public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private PathSegmentData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private PathSegment() {
+        data = new PathSegmentDataImpl();
+    }
 
-    // No setter as initialized by FlowPath.
-    @Transient
-    @Setter(AccessLevel.PACKAGE)
-    private FlowPath path;
+    /**
+     * Cloning constructor which performs deep copy of segment data.
+     *
+     * @param entityToClone the segment entity to copy data from.
+     * @param path the path to be referred ({@code PathSegment.getPath()}) by the new segment.
+     */
+    public PathSegment(@NonNull PathSegment entityToClone, FlowPath path) {
+        this();
+        PathSegmentCloner.INSTANCE.copyWithoutSwitches(entityToClone.getData(), data);
+        data.setSrcSwitch(new Switch(entityToClone.getSrcSwitch()));
+        data.setDestSwitch(new Switch(entityToClone.getDestSwitch()));
+        ((PathSegmentDataImpl) data).path = path;
+    }
 
-    @NonNull
-    @Relationship(type = "source", direction = OUTGOING)
-    private Switch srcSwitch;
+    @Builder
+    public PathSegment(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
+                       boolean srcWithMultiTable, boolean destWithMultiTable, int seqId, Long latency, boolean failed) {
+        data = PathSegmentDataImpl.builder().srcSwitch(srcSwitch).destSwitch(destSwitch)
+                .srcPort(srcPort).destPort(destPort).srcWithMultiTable(srcWithMultiTable)
+                .destWithMultiTable(destWithMultiTable).seqId(seqId).latency(latency).failed(failed).build();
+    }
 
-    @NonNull
-    @Relationship(type = "destination", direction = OUTGOING)
-    private Switch destSwitch;
-
-    @Property(name = "src_port")
-    private int srcPort;
-
-    @Property(name = "dst_port")
-    private int destPort;
-
-    @Property(name = "src_with_multi_table")
-    private boolean srcWithMultiTable;
-
-    @Property(name = "dst_with_multi_table")
-    private boolean destWithMultiTable;
-
-    // Hidden as used only by mapping to keep the order within a list of segments.
-    @Property(name = "seq_id")
-    @Setter(AccessLevel.PACKAGE)
-    private int seqId;
-
-    private Long latency;
-
-    private boolean failed = false;
-
-    @Builder(toBuilder = true)
-    public PathSegment(@NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                       int srcPort, int destPort, Long latency, boolean srcWithMultiTable,
-                       boolean destWithMultiTable) {
-        this.srcSwitch = srcSwitch;
-        this.destSwitch = destSwitch;
-        this.srcPort = srcPort;
-        this.destPort = destPort;
-        this.latency = latency;
-        this.srcWithMultiTable = srcWithMultiTable;
-        this.destWithMultiTable = destWithMultiTable;
+    public PathSegment(@NonNull PathSegmentData data) {
+        this.data = data;
     }
 
     /**
      * Checks whether endpoint belongs to segment or not.
+     *
      * @param switchId target switch
      * @param port target port
      * @return result of check
@@ -110,7 +91,149 @@ public class PathSegment implements Serializable {
         if (switchId == null) {
             throw new IllegalArgumentException("Switch id must be not null");
         }
-        return (switchId.equals(srcSwitch.getSwitchId()) && port == srcPort)
-                || (switchId.equals(destSwitch.getSwitchId()) && port == destPort);
+        return (switchId.equals(getSrcSwitchId()) && port == getSrcPort())
+                || (switchId.equals(getDestSwitchId()) && port == getDestPort());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        PathSegment that = (PathSegment) o;
+        return new EqualsBuilder()
+                .append(getSrcPort(), that.getSrcPort())
+                .append(getDestPort(), that.getDestPort())
+                .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
+                .append(isDestWithMultiTable(), that.isDestWithMultiTable())
+                .append(getSeqId(), that.getSeqId())
+                .append(isFailed(), that.isFailed())
+                .append(getPathId(), that.getPathId())
+                .append(getSrcSwitchId(), that.getSrcSwitchId())
+                .append(getDestSwitchId(), that.getDestSwitchId())
+                .append(getLatency(), that.getLatency())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getSrcPort(), getDestPort(),
+                isSrcWithMultiTable(), isDestWithMultiTable(), getSeqId(), getLatency(), isFailed());
+    }
+
+    /**
+     * Defines persistable data of the PathSegment.
+     */
+    public interface PathSegmentData {
+        PathId getPathId();
+
+        FlowPath getPath();
+
+        SwitchId getSrcSwitchId();
+
+        Switch getSrcSwitch();
+
+        void setSrcSwitch(Switch srcSwitch);
+
+        SwitchId getDestSwitchId();
+
+        Switch getDestSwitch();
+
+        void setDestSwitch(Switch destSwitch);
+
+        int getSrcPort();
+
+        void setSrcPort(int srcPort);
+
+        int getDestPort();
+
+        void setDestPort(int destPort);
+
+        boolean isSrcWithMultiTable();
+
+        void setSrcWithMultiTable(boolean srcWithMultiTable);
+
+        boolean isDestWithMultiTable();
+
+        void setDestWithMultiTable(boolean destWithMultiTable);
+
+        int getSeqId();
+
+        void setSeqId(int seqId);
+
+        Long getLatency();
+
+        void setLatency(Long latency);
+
+        boolean isFailed();
+
+        void setFailed(boolean failed);
+    }
+
+    /**
+     * POJO implementation of PathSegmentData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class PathSegmentDataImpl implements PathSegmentData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @Setter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        FlowPath path;
+        @NonNull Switch srcSwitch;
+        @NonNull Switch destSwitch;
+        int srcPort;
+        int destPort;
+        boolean srcWithMultiTable;
+        boolean destWithMultiTable;
+        int seqId;
+        Long latency;
+        boolean failed;
+
+        @Override
+        public PathId getPathId() {
+            return path != null ? path.getPathId() : null;
+        }
+
+        @Override
+        public SwitchId getSrcSwitchId() {
+            return srcSwitch.getSwitchId();
+        }
+
+        @Override
+        public SwitchId getDestSwitchId() {
+            return destSwitch.getSwitchId();
+        }
+    }
+
+    /**
+     * A cloner for PathSegment entity.
+     */
+    @Mapper
+    public interface PathSegmentCloner {
+        PathSegmentCloner INSTANCE = Mappers.getMapper(PathSegmentCloner.class);
+
+        void copy(PathSegmentData source, @MappingTarget PathSegmentData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default PathSegmentData copy(PathSegmentData source) {
+            PathSegmentData result = new PathSegmentDataImpl();
+            copyWithoutSwitches(source, result);
+            result.setSrcSwitch(new Switch(source.getSrcSwitch()));
+            result.setDestSwitch(new Switch(source.getDestSwitch()));
+            return result;
+        }
+
+        @Mapping(target = "srcSwitch", ignore = true)
+        @Mapping(target = "destSwitch", ignore = true)
+        void copyWithoutSwitches(PathSegmentData source, @MappingTarget PathSegmentData target);
     }
 }

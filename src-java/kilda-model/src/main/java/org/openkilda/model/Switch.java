@@ -15,125 +15,76 @@
 
 package org.openkilda.model;
 
-import org.openkilda.converters.InetSocketAddressConverter;
-import org.openkilda.converters.SwitchFeatureConverter;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Delegate;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
  * Represents a switch.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
-@NodeEntity(label = "switch")
-public class Switch implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+@ToString
+public class Switch implements CompositeDataEntity<Switch.SwitchData> {
     private static final Pattern NOVIFLOW_SOFTWARE_REGEX = Pattern.compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
     private static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = Pattern.compile("^WB5\\d{3}-E$");
     private static final String E_SWITCH_MANUFACTURER_DESCRIPTION = "E";
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    private Long entityId;
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private SwitchData data;
 
-    @NonNull
-    @Property(name = "name")
-    @Convert(graphPropertyType = String.class)
-    @Index(unique = true)
-    private SwitchId switchId;
-
-    @NonNull
-    @Property(name = "state")
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private SwitchStatus status;
-
-    // switch socket address on FL side
-    @Convert(InetSocketAddressConverter.class)
-    private InetSocketAddress socketAddress;
-
-    private String hostname;
-
-    private String controller;
-
-    private String description;
-
-    private String ofVersion;
-
-    private String ofDescriptionManufacturer;
-    private String ofDescriptionHardware;
-    private String ofDescriptionSoftware;
-    private String ofDescriptionSerialNumber;
-    private String ofDescriptionDatapath;
-
-    @Convert(SwitchFeatureConverter.class)
-    private Set<SwitchFeature> features = new HashSet<>();
-
-    @Property(name = "under_maintenance")
-    private boolean underMaintenance;
-
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
-
-    @Property(name = "time_modify")
-    @Convert(InstantStringConverter.class)
-    private Instant timeModify;
-
-    private String pop;
-
-    @Builder(toBuilder = true)
-    public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,
-                  String hostname, String controller, String description, boolean underMaintenance,
-                  Instant timeCreate, Instant timeModify, Set<SwitchFeature> features, String pop) {
-        this.switchId = switchId;
-        this.status = status;
-        this.socketAddress = socketAddress;
-        this.hostname = hostname;
-        this.controller = controller;
-        this.description = description;
-        this.underMaintenance = underMaintenance;
-        this.timeCreate = timeCreate;
-        this.timeModify = timeModify;
-        setFeatures(features);
-        this.pop = pop;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private Switch() {
+        data = new SwitchDataImpl();
     }
 
     /**
-     * Set features for the switch.
-     * @param features target features
+     * Cloning constructor which performs deep copy of the switch.
+     *
+     * @param entityToClone the entity to copy switch data from.
      */
-    public void setFeatures(Set<SwitchFeature> features) {
-        if (features == null) {
-            features = new HashSet<>();
+    public Switch(@NonNull Switch entityToClone) {
+        data = SwitchCloner.INSTANCE.copy(entityToClone.getData());
+    }
+
+    @Builder
+    public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,
+                  String hostname, String controller, String description, Set<SwitchFeature> features,
+                  boolean underMaintenance, String pop) {
+        SwitchDataImpl.SwitchDataImplBuilder builder = SwitchDataImpl.builder()
+                .switchId(switchId).status(status).socketAddress(socketAddress).hostname(hostname)
+                .controller(controller).description(description).underMaintenance(underMaintenance).pop(pop);
+        if (features != null) {
+            builder.features(features);
         }
-        this.features = features;
+        data = builder.build();
+    }
+
+    public Switch(@NonNull SwitchData data) {
+        this.data = data;
     }
 
     /**
@@ -161,13 +112,184 @@ public class Switch implements Serializable {
 
     @JsonIgnore
     public boolean isActive() {
-        return status == SwitchStatus.ACTIVE;
+        return getStatus() == SwitchStatus.ACTIVE;
     }
 
     /**
      * Checks switch feature support.
      */
     public boolean supports(SwitchFeature feature) {
-        return features.contains(feature);
+        return getFeatures().contains(feature);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Switch that = (Switch) o;
+        return new EqualsBuilder()
+                .append(isUnderMaintenance(), that.isUnderMaintenance())
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getStatus(), that.getStatus())
+                .append(getSocketAddress(), that.getSocketAddress())
+                .append(getHostname(), that.getHostname())
+                .append(getController(), that.getController())
+                .append(getDescription(), that.getDescription())
+                .append(getOfVersion(), that.getOfVersion())
+                .append(getOfDescriptionManufacturer(), that.getOfDescriptionManufacturer())
+                .append(getOfDescriptionHardware(), that.getOfDescriptionHardware())
+                .append(getOfDescriptionSoftware(), that.getOfDescriptionSoftware())
+                .append(getOfDescriptionSerialNumber(), that.getOfDescriptionSerialNumber())
+                .append(getOfDescriptionDatapath(), that.getOfDescriptionDatapath())
+                .append(getFeatures(), that.getFeatures())
+                .append(getTimeCreate(), that.getTimeCreate())
+                .append(getTimeModify(), that.getTimeModify())
+                .append(getPop(), that.getPop())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSwitchId(), getStatus(), getSocketAddress(), getHostname(), getController(),
+                getDescription(), getOfVersion(), getOfDescriptionManufacturer(), getOfDescriptionHardware(),
+                getOfDescriptionSoftware(), getOfDescriptionSerialNumber(), getOfDescriptionDatapath(),
+                getFeatures(), isUnderMaintenance(), getTimeCreate(), getTimeModify(), getPop());
+    }
+
+    /**
+     * Defines persistable data of the Switch.
+     */
+    public interface SwitchData {
+        SwitchId getSwitchId();
+
+        void setSwitchId(SwitchId switchId);
+
+        SwitchStatus getStatus();
+
+        void setStatus(SwitchStatus status);
+
+        InetSocketAddress getSocketAddress();
+
+        void setSocketAddress(InetSocketAddress socketAddress);
+
+        String getHostname();
+
+        void setHostname(String hostname);
+
+        String getController();
+
+        void setController(String controller);
+
+        String getDescription();
+
+        void setDescription(String description);
+
+        String getOfVersion();
+
+        void setOfVersion(String ofVersion);
+
+        String getOfDescriptionManufacturer();
+
+        void setOfDescriptionManufacturer(String ofDescriptionManufacturer);
+
+        String getOfDescriptionHardware();
+
+        void setOfDescriptionHardware(String ofDescriptionHardware);
+
+        String getOfDescriptionSoftware();
+
+        void setOfDescriptionSoftware(String ofDescriptionSoftware);
+
+        String getOfDescriptionSerialNumber();
+
+        void setOfDescriptionSerialNumber(String ofDescriptionSerialNumber);
+
+        String getOfDescriptionDatapath();
+
+        void setOfDescriptionDatapath(String ofDescriptionDatapath);
+
+        boolean isUnderMaintenance();
+
+        void setUnderMaintenance(boolean underMaintenance);
+
+        Instant getTimeCreate();
+
+        void setTimeCreate(Instant timeCreate);
+
+        Instant getTimeModify();
+
+        void setTimeModify(Instant timeModify);
+
+        String getPop();
+
+        void setPop(String pop);
+
+        Set<SwitchFeature> getFeatures();
+
+        void setFeatures(Set<SwitchFeature> features);
+    }
+
+    /**
+     * POJO implementation of SwitchData entity.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class SwitchDataImpl implements SwitchData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull SwitchId switchId;
+        SwitchStatus status;
+        InetSocketAddress socketAddress;
+        String hostname;
+        String controller;
+        String description;
+        String ofVersion;
+        String ofDescriptionManufacturer;
+        String ofDescriptionHardware;
+        String ofDescriptionSoftware;
+        String ofDescriptionSerialNumber;
+        String ofDescriptionDatapath;
+        @Builder.Default
+        Set<SwitchFeature> features = new HashSet<>();
+        boolean underMaintenance;
+        Instant timeCreate;
+        Instant timeModify;
+        String pop;
+
+        /**
+         * Set features for the switch.
+         *
+         * @param features target features
+         */
+        public void setFeatures(Set<SwitchFeature> features) {
+            if (features == null) {
+                features = new HashSet<>();
+            }
+            this.features = features;
+        }
+    }
+
+    /**
+     * A cloner for Switch entity.
+     */
+    @Mapper
+    public interface SwitchCloner {
+        SwitchCloner INSTANCE = Mappers.getMapper(SwitchCloner.class);
+
+        void copy(SwitchData source, @MappingTarget SwitchData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default SwitchData copy(SwitchData source) {
+            SwitchData result = new SwitchDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

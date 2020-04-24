@@ -15,156 +15,73 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.EndNode;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.RelationshipEntity;
-import org.neo4j.ogm.annotation.StartNode;
-import org.neo4j.ogm.annotation.Transient;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Represents an inter-switch link (ISL). This includes the source and destination, link status,
  * maximum and available bandwidth.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
-@RelationshipEntity(type = "isl")
-public class Isl implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
-
-    @NonNull
-    @StartNode
-    private Switch srcSwitch;
-
-    @NonNull
-    @EndNode
-    private Switch destSwitch;
-
-    @Property(name = "src_port")
-    private int srcPort;
-
-    @Property(name = "dst_port")
-    private int destPort;
-
-    private long latency;
-
-    private long speed;
-
-    private int cost;
-
-    @Property(name = "max_bandwidth")
-    private long maxBandwidth;
-
-    @Property(name = "default_max_bandwidth")
-    private long defaultMaxBandwidth;
-
-    @Property(name = "available_bandwidth")
-    private long availableBandwidth;
-
-    @NonNull
-    @Property(name = "status")
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private IslStatus status;
-
-    @NonNull
-    @Property(name = "actual")
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private IslStatus actualStatus;
-
-    @Property(name = "down_reason")
-    @Convert(graphPropertyType = String.class)
-    private IslDownReason downReason;
-
-    @NonNull
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
-
-    @NonNull
-    @Property(name = "time_modify")
-    @Convert(InstantStringConverter.class)
-    private Instant timeModify;
-
-    @Property(name = "under_maintenance")
-    private boolean underMaintenance;
-
-    @Property(name = "enable_bfd")
-    private boolean enableBfd;
-
-    @Property(name = "bfd_session_status")
-    private String bfdSessionStatus;
-
-    @Property(name = "time_unstable")
-    @Convert(InstantStringConverter.class)
-    private Instant timeUnstable;
-
-    @Transient
+@ToString
+public class Isl implements CompositeDataEntity<Isl.IslData> {
+    @Setter
+    @Getter
     private transient IslConfig islConfig;
 
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private IslData data;
+
     /**
-     * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
+     * No args constructor for deserialization purpose.
      */
-    @Builder(toBuilder = true)
-    public Isl(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
-               long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
-               IslStatus status, IslStatus actualStatus,
-               Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
-               String bfdSessionStatus, Instant timeUnstable) {
-        this.srcSwitch = srcSwitch;
-        this.destSwitch = destSwitch;
-        this.srcPort = srcPort;
-        this.destPort = destPort;
-        this.latency = latency;
-        this.speed = speed;
-        this.cost = cost;
-        this.maxBandwidth = maxBandwidth;
-        this.defaultMaxBandwidth = defaultMaxBandwidth;
-        this.availableBandwidth = availableBandwidth;
-        this.status = status;
-        this.actualStatus = actualStatus;
-        this.timeCreate = timeCreate;
-        this.timeModify = timeModify;
-        this.underMaintenance = underMaintenance;
-        this.enableBfd = enableBfd;
-        this.bfdSessionStatus = bfdSessionStatus;
-        this.timeUnstable = timeUnstable;
+    private Isl() {
+        data = new IslDataImpl();
     }
 
-    @Override
-    public String toString() {
-        return "Isl{"
-                + "srcSwitch=" + srcSwitch.getSwitchId()
-                + ", destSwitch=" + destSwitch.getSwitchId()
-                + ", srcPort=" + srcPort
-                + ", destPort=" + destPort
-                + ", cost=" + cost
-                + ", availableBandwidth=" + availableBandwidth
-                + ", status=" + status
-                + '}';
+    /**
+     * Cloning constructor which performs deep copy of the ISL.
+     *
+     * @param entityToClone the entity to copy ISL data from.
+     */
+    public Isl(@NonNull Isl entityToClone) {
+        data = IslCloner.INSTANCE.copy(entityToClone.getData());
+    }
+
+    @Builder
+    public Isl(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
+               long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth,
+               long availableBandwidth, IslStatus status, IslStatus actualStatus, IslDownReason downReason,
+               boolean underMaintenance, boolean enableBfd, String bfdSessionStatus, Instant timeUnstable) {
+        data = IslDataImpl.builder().srcSwitch(srcSwitch).destSwitch(destSwitch).srcPort(srcPort).destPort(destPort)
+                .latency(latency).speed(speed).cost(cost).maxBandwidth(maxBandwidth)
+                .defaultMaxBandwidth(defaultMaxBandwidth).availableBandwidth(availableBandwidth)
+                .status(status).actualStatus(actualStatus).downReason(downReason)
+                .underMaintenance(underMaintenance).enableBfd(enableBfd).bfdSessionStatus(bfdSessionStatus)
+                .timeUnstable(timeUnstable).build();
+    }
+
+    public Isl(@NonNull IslData data) {
+        this.data = data;
     }
 
     /**
@@ -175,6 +92,195 @@ public class Isl implements Serializable {
             throw new IllegalStateException("IslConfig has not initialized.");
         }
 
-        return timeUnstable != null && timeUnstable.plus(islConfig.getUnstableIslTimeout()).isAfter(Instant.now());
+        return getTimeUnstable() != null
+                && getTimeUnstable().plus(islConfig.getUnstableIslTimeout()).isAfter(Instant.now());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Isl that = (Isl) o;
+        return new EqualsBuilder()
+                .append(getSrcPort(), that.getSrcPort())
+                .append(getDestPort(), that.getDestPort())
+                .append(getLatency(), that.getLatency())
+                .append(getSpeed(), that.getSpeed())
+                .append(getCost(), that.getCost())
+                .append(getMaxBandwidth(), that.getMaxBandwidth())
+                .append(getDefaultMaxBandwidth(), that.getDefaultMaxBandwidth())
+                .append(getAvailableBandwidth(), that.getAvailableBandwidth())
+                .append(isUnderMaintenance(), that.isUnderMaintenance())
+                .append(isEnableBfd(), that.isEnableBfd())
+                .append(getSrcSwitchId(), that.getSrcSwitchId())
+                .append(getDestSwitchId(), that.getDestSwitchId())
+                .append(getStatus(), that.getStatus())
+                .append(getActualStatus(), that.getActualStatus())
+                .append(getDownReason(), that.getDownReason())
+                .append(getTimeCreate(), that.getTimeCreate())
+                .append(getTimeModify(), that.getTimeModify())
+                .append(getBfdSessionStatus(), that.getBfdSessionStatus())
+                .append(getTimeUnstable(), that.getTimeUnstable())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSrcSwitchId(), getDestSwitchId(), getSrcPort(), getDestPort(), getLatency(),
+                getSpeed(), getCost(), getMaxBandwidth(), getDefaultMaxBandwidth(), getAvailableBandwidth(),
+                getStatus(), getActualStatus(), getDownReason(), getTimeCreate(), getTimeModify(),
+                isUnderMaintenance(), isEnableBfd(), getBfdSessionStatus(), getTimeUnstable());
+    }
+
+    /**
+     * Defines persistable data of the IslData.
+     */
+    public interface IslData {
+        SwitchId getSrcSwitchId();
+
+        Switch getSrcSwitch();
+
+        void setSrcSwitch(Switch srcSwitch);
+
+        SwitchId getDestSwitchId();
+
+        Switch getDestSwitch();
+
+        void setDestSwitch(Switch destSwitch);
+
+        int getSrcPort();
+
+        void setSrcPort(int srcPort);
+
+        int getDestPort();
+
+        void setDestPort(int destPort);
+
+        long getLatency();
+
+        void setLatency(long latency);
+
+        long getSpeed();
+
+        void setSpeed(long speed);
+
+        int getCost();
+
+        void setCost(int cost);
+
+        long getMaxBandwidth();
+
+        void setMaxBandwidth(long maxBandwidth);
+
+        long getDefaultMaxBandwidth();
+
+        void setDefaultMaxBandwidth(long defaultMaxBandwidth);
+
+        long getAvailableBandwidth();
+
+        void setAvailableBandwidth(long availableBandwidth);
+
+        IslStatus getStatus();
+
+        void setStatus(IslStatus status);
+
+        IslStatus getActualStatus();
+
+        void setActualStatus(IslStatus actualStatus);
+
+        IslDownReason getDownReason();
+
+        void setDownReason(IslDownReason downReason);
+
+        Instant getTimeCreate();
+
+        void setTimeCreate(Instant timeCreate);
+
+        Instant getTimeModify();
+
+        void setTimeModify(Instant timeModify);
+
+        boolean isUnderMaintenance();
+
+        void setUnderMaintenance(boolean underMaintenance);
+
+        boolean isEnableBfd();
+
+        void setEnableBfd(boolean enableBfd);
+
+        String getBfdSessionStatus();
+
+        void setBfdSessionStatus(String bfdSessionStatus);
+
+        Instant getTimeUnstable();
+
+        void setTimeUnstable(Instant timeUnstable);
+    }
+
+    /**
+     * POJO implementation of IslData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class IslDataImpl implements IslData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull Switch srcSwitch;
+        @NonNull Switch destSwitch;
+        int srcPort;
+        int destPort;
+        long latency;
+        long speed;
+        int cost;
+        long maxBandwidth;
+        long defaultMaxBandwidth;
+        long availableBandwidth;
+        IslStatus status;
+        IslStatus actualStatus;
+        IslDownReason downReason;
+        Instant timeCreate;
+        Instant timeModify;
+        boolean underMaintenance;
+        boolean enableBfd;
+        String bfdSessionStatus;
+        Instant timeUnstable;
+
+        @Override
+        public SwitchId getSrcSwitchId() {
+            return srcSwitch.getSwitchId();
+        }
+
+        @Override
+        public SwitchId getDestSwitchId() {
+            return destSwitch.getSwitchId();
+        }
+    }
+
+    /**
+     * A cloner for FlowPath entity.
+     */
+    @Mapper
+    public interface IslCloner {
+        IslCloner INSTANCE = Mappers.getMapper(IslCloner.class);
+
+        @Mapping(target = "srcSwitch", ignore = true)
+        @Mapping(target = "destSwitch", ignore = true)
+        void copyWithoutSwitches(IslData source, @MappingTarget IslData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default IslData copy(IslData source) {
+            IslData result = new IslDataImpl();
+            copyWithoutSwitches(source, result);
+            result.setSrcSwitch(new Switch(source.getSrcSwitch()));
+            result.setDestSwitch(new Switch(source.getDestSwitch()));
+            return result;
+        }
     }
 }

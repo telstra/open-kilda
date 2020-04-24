@@ -15,74 +15,132 @@
 
 package org.openkilda.model.history;
 
+import org.openkilda.model.CompositeDataEntity;
 import org.openkilda.model.SwitchId;
 
-import lombok.AccessLevel;
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
-import org.neo4j.ogm.typeconversion.UuidStringConverter;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
+import java.io.Serializable;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
-@NodeEntity(label = "port_history")
-public class PortHistory {
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+public class PortHistory implements CompositeDataEntity<PortHistory.PortHistoryData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private PortHistoryData data;
 
-    @NonNull
-    @Setter(AccessLevel.NONE)
-    @Convert(UuidStringConverter.class)
-    private UUID id;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    public PortHistory() {
+        data = new PortHistoryDataImpl();
+    }
 
-    @NonNull
-    @Property(name = "switch_id")
-    @Convert(graphPropertyType = String.class)
-    private SwitchId switchId;
+    public PortHistory(@NonNull PortHistoryData data) {
+        this.data = data;
+    }
 
-    @Property(name = "port_number")
-    private int portNumber;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        PortHistory that = (PortHistory) o;
+        return new EqualsBuilder()
+                .append(getPortNumber(), that.getPortNumber())
+                .append(getUpEventsCount(), that.getUpEventsCount())
+                .append(getDownEventsCount(), that.getDownEventsCount())
+                .append(getRecordId(), that.getRecordId())
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getEvent(), that.getEvent())
+                .append(getTime(), that.getTime())
+                .isEquals();
+    }
 
-    @NonNull
-    private String event;
+    @Override
+    public int hashCode() {
+        return Objects.hash(getRecordId(), getSwitchId(), getPortNumber(), getEvent(), getTime(),
+                getUpEventsCount(), getDownEventsCount());
+    }
 
-    @NonNull
-    @Convert(InstantStringConverter.class)
-    private Instant time;
+    /**
+     * Defines persistable data of the PortHistory.
+     */
+    public interface PortHistoryData {
+        UUID getRecordId();
 
-    @Property(name = "up_count")
-    private int upEventsCount;
+        void setRecordId(UUID id);
 
-    @Property(name = "down_count")
-    private int downEventsCount;
+        SwitchId getSwitchId();
 
-    @Builder(toBuilder = true)
-    public PortHistory(@NonNull SwitchId switchId, int portNumber, @NonNull String event, @NonNull Instant time,
-                       int upEventsCount, int downEventsCount) {
-        this.id = UUID.randomUUID();
-        this.switchId = switchId;
-        this.portNumber = portNumber;
-        this.event = event;
-        this.time = time;
-        this.upEventsCount = upEventsCount;
-        this.downEventsCount = downEventsCount;
+        void setSwitchId(SwitchId switchId);
+
+        int getPortNumber();
+
+        void setPortNumber(int portNumber);
+
+        String getEvent();
+
+        void setEvent(String event);
+
+        Instant getTime();
+
+        void setTime(Instant time);
+
+        int getUpEventsCount();
+
+        void setUpEventsCount(int upEventsCount);
+
+        int getDownEventsCount();
+
+        void setDownEventsCount(int downEventsCount);
+    }
+
+    /**
+     * POJO implementation of PortHistoryData entity.
+     */
+    @Data
+    @NoArgsConstructor
+    static final class PortHistoryDataImpl implements PortHistoryData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull UUID recordId;
+        @NonNull SwitchId switchId;
+        int portNumber;
+        @NonNull String event;
+        @NonNull Instant time;
+        int upEventsCount;
+        int downEventsCount;
+    }
+
+    @Mapper
+    public interface PortHistoryCloner {
+        PortHistoryCloner INSTANCE = Mappers.getMapper(PortHistoryCloner.class);
+
+        void copy(PortHistoryData source, @MappingTarget PortHistoryData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default PortHistoryData copy(PortHistoryData source) {
+            PortHistoryData result = new PortHistoryDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

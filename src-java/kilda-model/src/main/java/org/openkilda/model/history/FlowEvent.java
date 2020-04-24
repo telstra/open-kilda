@@ -15,57 +15,129 @@
 
 package org.openkilda.model.history;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import org.openkilda.model.CompositeDataEntity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.experimental.Delegate;
+import org.mapstruct.CollectionMappingStrategy;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
+import java.io.Serializable;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents information about the flow event.
  * The event has an actor and represents actions from outside of Kilda.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
-@NodeEntity(label = "flow_event")
-@Builder
-@AllArgsConstructor
-public class FlowEvent {
+public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowEventData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    public FlowEvent() {
+        data = new FlowEventDataImpl();
+    }
 
-    @Index
-    @Property(name = "flow_id")
-    private String flowId;
+    /**
+     * Cloning constructor which performs deep copy of the flow event with related records and dumps.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public FlowEvent(@NonNull FlowEvent entityToClone) {
+        data = FlowEventCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    @Convert(InstantStringConverter.class)
-    private Instant timestamp;
+    public FlowEvent(@NonNull FlowEventData data) {
+        this.data = data;
+    }
 
-    private String actor;
+    /**
+     * Defines persistable data of the FlowEvent.
+     */
+    public interface FlowEventData {
+        String getFlowId();
 
-    private String action;
+        void setFlowId(String flowId);
 
-    @Index(unique = true)
-    @Property(name = "task_id")
-    private String taskId;
+        Instant getTimestamp();
 
-    private String details;
+        void setTimestamp(Instant timestamp);
+
+        String getActor();
+
+        void setActor(String actor);
+
+        String getAction();
+
+        void setAction(String action);
+
+        String getTaskId();
+
+        void setTaskId(String taskId);
+
+        String getDetails();
+
+        void setDetails(String details);
+
+        List<FlowHistory> getHistoryRecords();
+
+        List<FlowDump> getFlowDumps();
+    }
+
+    /**
+     * POJO implementation of FlowEventData.
+     */
+    @Data
+    @NoArgsConstructor
+    static final class FlowEventDataImpl implements FlowEventData, Serializable {
+        private static final long serialVersionUID = 1L;
+        String flowId;
+        Instant timestamp;
+        String actor;
+        String action;
+        String taskId;
+        String details;
+        List<FlowHistory> historyRecords = new ArrayList<>();
+        List<FlowDump> flowDumps = new ArrayList<>();
+    }
+
+    @Mapper(collectionMappingStrategy = CollectionMappingStrategy.TARGET_IMMUTABLE)
+    public interface FlowEventCloner {
+        FlowEventCloner INSTANCE = Mappers.getMapper(FlowEventCloner.class);
+
+        @Mapping(target = "historyRecords", ignore = true)
+        @Mapping(target = "flowDumps", ignore = true)
+        void copyWithoutRecordsAndDumps(FlowEventData source, @MappingTarget FlowEventData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowEventData copy(FlowEventData source) {
+            FlowEventDataImpl result = new FlowEventDataImpl();
+            copyWithoutRecordsAndDumps(source, result);
+            result.setHistoryRecords(source.getHistoryRecords().stream()
+                    .map(FlowHistory::new)
+                    .collect(Collectors.toList()));
+            result.setFlowDumps(source.getFlowDumps().stream()
+                    .map(FlowDump::new)
+                    .collect(Collectors.toList()));
+            return result;
+        }
+    }
 }

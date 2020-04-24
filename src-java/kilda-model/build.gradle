@@ -1,8 +1,12 @@
 description = 'Kilda Data Model'
 dependencies {
-    implementation('org.neo4j:neo4j-ogm-core')
     implementation 'com.google.guava:guava'
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'org.apache.commons:commons-lang3'
+
+    implementation 'org.mapstruct:mapstruct-jdk8'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
 
     testImplementation 'junit:junit'
 

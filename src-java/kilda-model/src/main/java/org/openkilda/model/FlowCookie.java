@@ -15,50 +15,113 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Represents a cookie allocated for a flow.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
-@NodeEntity(label = "flow_cookie")
-public class FlowCookie implements Serializable {
-    private static final long serialVersionUID = 1L;
+@ToString
+public class FlowCookie implements CompositeDataEntity<FlowCookie.FlowCookieData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowCookieData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private FlowCookie() {
+        data = new FlowCookieDataImpl();
+    }
 
-    @NonNull
-    @Property(name = "flow_id")
-    private String flowId;
-
-    @Property(name = "unmasked_cookie")
-    @Index(unique = true)
-    private long unmaskedCookie;
-
-    @Builder(toBuilder = true)
+    @Builder
     public FlowCookie(@NonNull String flowId, long unmaskedCookie) {
-        this.flowId = flowId;
-        this.unmaskedCookie = unmaskedCookie;
+        data = FlowCookieDataImpl.builder().flowId(flowId).unmaskedCookie(unmaskedCookie).build();
+    }
+
+    public FlowCookie(@NonNull FlowCookieData data) {
+        this.data = data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        FlowCookie that = (FlowCookie) o;
+        return new EqualsBuilder()
+                .append(getUnmaskedCookie(), that.getUnmaskedCookie())
+                .append(getFlowId(), that.getFlowId())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getFlowId(), getUnmaskedCookie());
+    }
+
+    /**
+     * Defines persistable data of the FlowCookie.
+     */
+    public interface FlowCookieData {
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        long getUnmaskedCookie();
+
+        void setUnmaskedCookie(long unmaskedCookie);
+    }
+
+    /**
+     * POJO implementation of FlowCookieData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class FlowCookieDataImpl implements FlowCookieData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull String flowId;
+        long unmaskedCookie;
+    }
+
+    /**
+     * A cloner for FlowCookie entity.
+     */
+    @Mapper
+    public interface FlowCookieCloner {
+        FlowCookieCloner INSTANCE = Mappers.getMapper(FlowCookieCloner.class);
+
+        void copy(FlowCookieData source, @MappingTarget FlowCookieData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowCookieData copy(FlowCookieData source) {
+            FlowCookieData result = new FlowCookieDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

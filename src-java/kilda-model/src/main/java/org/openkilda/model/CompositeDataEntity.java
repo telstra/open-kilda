@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,8 @@
 
 package org.openkilda.model;
 
-/**
- * Interface for different encapsulation types in model.
- */
-public interface EncapsulationId {
+public interface CompositeDataEntity<D> {
+    D getData();
 
-    /**
-     * Get encapsulation resource id.
-     *
-     * @return encapsulation id
-     */
-    int getEncapsulationId();
+    void setData(D data);
 }

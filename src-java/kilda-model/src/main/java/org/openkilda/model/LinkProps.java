@@ -15,78 +15,162 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
+import java.io.Serializable;
 import java.time.Instant;
+import java.util.Objects;
 
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
-@NodeEntity(label = "link_props")
-public class LinkProps {
-
+@ToString
+public class LinkProps implements CompositeDataEntity<LinkProps.LinkPropsData> {
     public static final String COST_PROP_NAME = "cost";
     public static final String MAX_BANDWIDTH_PROP_NAME = "max_bandwidth";
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
-
-    @Property(name = "src_port")
-    private int srcPort;
-
-    @Property(name = "dst_port")
-    private int dstPort;
-
-    @Property(name = "src_switch")
-    @Convert(graphPropertyType = String.class)
-    private SwitchId srcSwitchId;
-
-    @Property(name = "dst_switch")
-    @Convert(graphPropertyType = String.class)
-    private SwitchId dstSwitchId;
-
-    private Integer cost;
-
-    @Property(name = "max_bandwidth")
-    private Long maxBandwidth;
-
-    @Property(name = "time_create")
-    @Convert(InstantStringConverter.class)
-    private Instant timeCreate;
-
-    @Property(name = "time_modify")
-    @Convert(InstantStringConverter.class)
-    private Instant timeModify;
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private LinkPropsData data;
 
     /**
-     * Constructor used by the builder only.
+     * No args constructor for deserialization purpose.
      */
-    @Builder(toBuilder = true)
-    LinkProps(int srcPort, int dstPort, SwitchId srcSwitchId, SwitchId dstSwitchId, Integer cost, //NOSONAR
-              Long maxBandwidth, Instant timeCreate, Instant timeModify) {
-        this.srcPort = srcPort;
-        this.dstPort = dstPort;
-        this.srcSwitchId = srcSwitchId;
-        this.dstSwitchId = dstSwitchId;
-        this.cost = cost;
-        this.maxBandwidth = maxBandwidth;
-        this.timeCreate = timeCreate;
-        this.timeModify = timeModify;
+    private LinkProps() {
+        data = new LinkPropsDataImpl();
+    }
+
+    /**
+     * Cloning constructor which performs deep copy of link properties.
+     *
+     * @param entityToClone the entity to copy link data from.
+     */
+    public LinkProps(@NonNull LinkProps entityToClone) {
+        data = LinkPropsCloner.INSTANCE.copy(entityToClone.getData());
+    }
+
+    @Builder
+    public LinkProps(@NonNull SwitchId srcSwitchId, @NonNull SwitchId dstSwitchId, int srcPort, int dstPort,
+                     Integer cost, Long maxBandwidth) {
+        data = LinkPropsDataImpl.builder().srcSwitchId(srcSwitchId).dstSwitchId(dstSwitchId)
+                .srcPort(srcPort).dstPort(dstPort).cost(cost).maxBandwidth(maxBandwidth).build();
+    }
+
+    public LinkProps(@NonNull LinkPropsData data) {
+        this.data = data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        LinkProps that = (LinkProps) o;
+        return new EqualsBuilder()
+                .append(getSrcPort(), that.getSrcPort())
+                .append(getDstPort(), that.getDstPort())
+                .append(getSrcSwitchId(), that.getSrcSwitchId())
+                .append(getDstSwitchId(), that.getDstSwitchId())
+                .append(getCost(), that.getCost())
+                .append(getMaxBandwidth(), that.getMaxBandwidth())
+                .append(getTimeCreate(), that.getTimeCreate())
+                .append(getTimeModify(), that.getTimeModify())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSrcPort(), getDstPort(), getSrcSwitchId(), getDstSwitchId(), getCost(),
+                getMaxBandwidth(), getTimeCreate(), getTimeModify());
+    }
+
+    /**
+     * Defines persistable data of the LinkProps.
+     */
+    public interface LinkPropsData {
+        int getSrcPort();
+
+        void setSrcPort(int srcPort);
+
+        int getDstPort();
+
+        void setDstPort(int dstPort);
+
+        SwitchId getSrcSwitchId();
+
+        void setSrcSwitchId(SwitchId srcSwitchId);
+
+        SwitchId getDstSwitchId();
+
+        void setDstSwitchId(SwitchId dstSwitchId);
+
+        Integer getCost();
+
+        void setCost(Integer cost);
+
+        Long getMaxBandwidth();
+
+        void setMaxBandwidth(Long maxBandwidth);
+
+        Instant getTimeCreate();
+
+        void setTimeCreate(Instant timeCreate);
+
+        Instant getTimeModify();
+
+        void setTimeModify(Instant timeModify);
+    }
+
+    /**
+     * POJO implementation of LinkProps entity.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class LinkPropsDataImpl implements LinkPropsData, Serializable {
+        private static final long serialVersionUID = 1L;
+        int srcPort;
+        int dstPort;
+        @NonNull SwitchId srcSwitchId;
+        @NonNull SwitchId dstSwitchId;
+        Integer cost;
+        Long maxBandwidth;
+        Instant timeCreate;
+        Instant timeModify;
+    }
+
+    /**
+     * A cloner for LinkProps entity.
+     */
+    @Mapper
+    public interface LinkPropsCloner {
+        LinkPropsCloner INSTANCE = Mappers.getMapper(LinkPropsCloner.class);
+
+        void copy(LinkPropsData source, @MappingTarget LinkPropsData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default LinkPropsData copy(LinkPropsData source) {
+            LinkPropsData result = new LinkPropsDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }
