@@ -22,6 +22,8 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface SwitchRepository extends Repository<Switch> {
+    Collection<Switch> findAll();
+
     boolean exists(SwitchId switchId);
 
     Collection<Switch> findActive();
@@ -30,9 +32,5 @@ public interface SwitchRepository extends Repository<Switch> {
 
     Collection<Switch> findSwitchesInFlowPathByFlowId(String flowId);
 
-    Switch reload(Switch entity);
-
-    void lockSwitches(Switch... switches);
-
-    void forceDelete(SwitchId switchId);
+    boolean removeIfNoDependant(Switch sw);
 }

@@ -25,7 +25,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import lombok.ToString;
 import lombok.experimental.Delegate;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.mapstruct.Mapper;
@@ -42,7 +41,6 @@ import java.util.Objects;
  * maximum and available bandwidth.
  */
 @DefaultSerializer(BeanSerializer.class)
-@ToString
 public class Isl implements CompositeDataEntity<Isl.IslData> {
     @Setter
     @Getter

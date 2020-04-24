@@ -51,7 +51,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
             Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN);
     @Getter
     @Setter
-    @Delegate
+    @Delegate(excludes = SwitchPropertiesInternalData.class)
     @JsonIgnore
     private SwitchPropertiesData data;
 
@@ -88,6 +88,45 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
     public SwitchProperties(@NonNull SwitchPropertiesData data) {
         this.data = data;
+    }
+
+
+    /**
+     * Sets multi-table flag. Validates it against supported features under the hood.
+     *
+     * @param multiTable target flag
+     */
+    public void setMultiTable(boolean multiTable) {
+        if (multiTable) {
+            validateProp(SwitchFeature.MULTI_TABLE);
+        }
+        data.setMultiTable(multiTable);
+    }
+
+    /**
+     * Sets allowed transit encapsulations. Validates it against supported features under the hood.
+     *
+     * @param supportedTransitEncapsulation target supported transit encapsulations.
+     */
+    public void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation) {
+        if (supportedTransitEncapsulation != null
+                && supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN)) {
+            validateProp(SwitchFeature.NOVIFLOW_COPY_FIELD);
+        }
+        data.setSupportedTransitEncapsulation(supportedTransitEncapsulation);
+    }
+
+    /**
+     * Checks whether the feature is set for the switch.
+     */
+    @VisibleForTesting
+    public boolean validateProp(SwitchFeature feature) {
+        if (getSwitchObj() != null && !getSwitchObj().getFeatures().contains(feature)) {
+            String message = String.format("Switch %s doesn't support requested feature %s",
+                    getSwitchId(), feature);
+            throw new IllegalArgumentException(message);
+        }
+        return true;
     }
 
     @Override
@@ -127,7 +166,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
     /**
      * Defines persistable data of the SwitchProperties.
      */
-    public interface SwitchPropertiesData {
+    public interface SwitchPropertiesData extends SwitchPropertiesInternalData {
         SwitchId getSwitchId();
 
         Switch getSwitchObj();
@@ -136,11 +175,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
         Set<FlowEncapsulationType> getSupportedTransitEncapsulation();
 
-        void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation);
-
         boolean isMultiTable();
-
-        void setMultiTable(boolean multiTable);
 
         boolean isSwitchLldp();
 
@@ -181,19 +216,15 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         Integer getTelescopeEgressVlan();
 
         void setTelescopeEgressVlan(Integer telescopeEgressVlan);
+    }
 
-        /**
-         * Checks whether the feature is set for the switch.
-         */
-        @VisibleForTesting
-        default boolean validateProp(SwitchFeature feature) {
-            if (!getSwitchObj().getFeatures().contains(feature)) {
-                String message = String.format("Switch %s doesn't support requested feature %s",
-                        getSwitchId(), feature);
-                throw new IllegalArgumentException(message);
-            }
-            return true;
-        }
+    /**
+     * Defines methods which don't need to be delegated.
+     */
+    interface SwitchPropertiesInternalData {
+        void setMultiTable(boolean multiTable);
+
+        void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation);
     }
 
     /**
@@ -224,33 +255,6 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         @Override
         public SwitchId getSwitchId() {
             return switchObj.getSwitchId();
-        }
-
-        /**
-         * Sets multi-table flag. Validates it against supported features under the hood.
-         *
-         * @param multiTable target flag
-         */
-        @Override
-        public void setMultiTable(boolean multiTable) {
-            if (multiTable) {
-                validateProp(SwitchFeature.MULTI_TABLE);
-            }
-            this.multiTable = multiTable;
-        }
-
-        /**
-         * Sets allowed transit encapsulations. Validates it against supported features under the hood.
-         *
-         * @param supportedTransitEncapsulation target supported transit encapsulations.
-         */
-        @Override
-        public void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation) {
-            if (supportedTransitEncapsulation != null
-                    && supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN)) {
-                validateProp(SwitchFeature.NOVIFLOW_COPY_FIELD);
-            }
-            this.supportedTransitEncapsulation = supportedTransitEncapsulation;
         }
     }
 
