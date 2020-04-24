@@ -15,51 +15,105 @@
 
 package org.openkilda.model.history;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import org.openkilda.model.CompositeDataEntity;
+
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantLongConverter;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 /**
  * Represents information about the flow history.
  * The history log always related to particular Flow Event and represents inside Kilda actions caused by the Flow Event.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = "entityId")
-@NodeEntity(label = "flow_history")
-@Builder
-@AllArgsConstructor
-public class FlowHistory {
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class FlowHistory implements CompositeDataEntity<FlowHistory.FlowHistoryData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private FlowHistoryData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    public FlowHistory() {
+        data = new FlowHistoryDataImpl();
+    }
 
-    @Convert(InstantLongConverter.class)
-    private Instant timestamp;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public FlowHistory(@NonNull FlowHistory entityToClone) {
+        data = FlowHistoryCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    private String action;
+    public FlowHistory(@NonNull FlowHistoryData data) {
+        this.data = data;
+    }
 
-    @Index
-    @Property(name = "task_id")
-    private String taskId;
+    /**
+     * Defines persistable data of the FlowHistory.
+     */
+    public interface FlowHistoryData {
+        Instant getTimestamp();
 
-    private String details;
+        void setTimestamp(Instant timestamp);
+
+        String getAction();
+
+        void setAction(String action);
+
+        String getTaskId();
+
+        void setTaskId(String taskId);
+
+        String getDetails();
+
+        void setDetails(String details);
+    }
+
+    /**
+     * POJO implementation of FlowHistoryData.
+     */
+    @Data
+    @NoArgsConstructor
+    static final class FlowHistoryDataImpl implements FlowHistoryData, Serializable {
+        private static final long serialVersionUID = 1L;
+        Instant timestamp;
+        String action;
+        String taskId;
+        String details;
+    }
+
+    @Mapper
+    public interface FlowHistoryCloner {
+        FlowHistoryCloner INSTANCE = Mappers.getMapper(FlowHistoryCloner.class);
+
+        void copy(FlowHistoryData source, @MappingTarget FlowHistoryData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default FlowHistoryData copy(FlowHistoryData source) {
+            FlowHistoryData result = new FlowHistoryDataImpl();
+            copy(source, result);
+            return result;
+        }
+    }
 }

@@ -15,63 +15,152 @@
 
 package org.openkilda.model;
 
-import static java.lang.String.format;
-import static org.neo4j.ogm.annotation.Relationship.INCOMING;
-
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.Objects;
 
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "switchObj"})
-@NodeEntity(label = "port_properties")
-@ToString(exclude = {"switchObj"})
-public class PortProperties implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class PortProperties implements CompositeDataEntity<PortProperties.PortPropertiesData> {
     public static final boolean DISCOVERY_ENABLED_DEFAULT = true;
 
-    public static PortPropertiesBuilder builder() {
-        return new PortPropertiesBuilder()
-                .discoveryEnabled(DISCOVERY_ENABLED_DEFAULT);
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private PortPropertiesData data;
+
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private PortProperties() {
+        data = new PortPropertiesDataImpl();
     }
 
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy properties data from.
+     */
+    public PortProperties(@NonNull PortProperties entityToClone) {
+        data = PortPropertiesCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    @NonNull
-    @Relationship(type = "owns", direction = INCOMING)
-    private Switch switchObj;
+    @Builder
+    public PortProperties(@NonNull Switch switchObj, int port, Boolean discoveryEnabled) {
+        PortPropertiesDataImpl.PortPropertiesDataImplBuilder builder = PortPropertiesDataImpl.builder()
+                .switchObj(switchObj).port(port);
+        builder.discoveryEnabled(discoveryEnabled != null ? discoveryEnabled : DISCOVERY_ENABLED_DEFAULT);
+        data = builder.build();
+    }
 
-    @Property(name = "port_no")
-    private int port;
+    public PortProperties(@NonNull PortPropertiesData data) {
+        this.data = data;
+    }
 
-    @Property(name = "discovery_enabled")
-    private boolean discoveryEnabled;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        PortProperties that = (PortProperties) o;
+        return new EqualsBuilder()
+                .append(getPort(), that.getPort())
+                .append(isDiscoveryEnabled(), that.isDiscoveryEnabled())
+                .append(getSwitchId(), that.getSwitchId())
+                .isEquals();
+    }
 
-    @Property(name = "discriminator")
-    private String discriminator;
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSwitchId(), getPort(), isDiscoveryEnabled());
+    }
 
-    @Builder(toBuilder = true)
-    public PortProperties(@NonNull Switch switchObj, int port, boolean discoveryEnabled) {
-        this.switchObj = switchObj;
-        this.port = port;
-        this.discoveryEnabled = discoveryEnabled;
-        this.discriminator = format("%s_%d", switchObj.getSwitchId().toString(), port);
+    /**
+     * Defines persistable data of the PortProperties.
+     */
+    public interface PortPropertiesData {
+        SwitchId getSwitchId();
+
+        Switch getSwitchObj();
+
+        void setSwitchObj(Switch switchObj);
+
+        int getPort();
+
+        void setPort(int port);
+
+        boolean isDiscoveryEnabled();
+
+        void setDiscoveryEnabled(boolean discoveryEnabled);
+    }
+
+    /**
+     * POJO implementation of PortPropertiesData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class PortPropertiesDataImpl implements PortPropertiesData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        @NonNull Switch switchObj;
+        int port;
+        @Builder.Default
+        boolean discoveryEnabled = DISCOVERY_ENABLED_DEFAULT;
+
+        @Override
+        public SwitchId getSwitchId() {
+            return switchObj.getSwitchId();
+        }
+    }
+
+    /**
+     * A cloner for PortProperties entity.
+     */
+    @Mapper
+    public interface PortPropertiesCloner {
+        PortPropertiesCloner INSTANCE = Mappers.getMapper(PortPropertiesCloner.class);
+
+        default void copy(PortPropertiesData source, PortPropertiesData target) {
+            copyWithoutSwitch(source, target);
+            target.setSwitchObj(new Switch(source.getSwitchObj()));
+        }
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default PortPropertiesData copy(PortPropertiesData source) {
+            PortPropertiesData result = new PortPropertiesDataImpl();
+            copyWithoutSwitch(source, result);
+            result.setSwitchObj(new Switch(source.getSwitchObj()));
+            return result;
+        }
+
+        @Mapping(target = "switchObj", ignore = true)
+        void copyWithoutSwitch(PortPropertiesData source, @MappingTarget PortPropertiesData target);
     }
 }

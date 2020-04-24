@@ -15,83 +15,141 @@
 
 package org.openkilda.model;
 
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
+import lombok.ToString;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
-@Data
-@NoArgsConstructor
-@NodeEntity(label = "bfd_session")
-public class BfdSession {
+import java.io.Serializable;
+import java.util.Objects;
 
-    public static final String SWITCH_PROPERTY_NAME = "switch";
-    public static final String IP_ADDRESS_PROPERTY_NAME = "ip_address";
-    public static final String REMOTE_SWITCH_PROPERTY_NAME = "remote_switch";
-    public static final String REMOVE_IP_ADDRESS_PROPERTY_NAME = "remote_ip_address";
-    public static final String PORT_PROPERTY_NAME = "port";
-    public static final String DISCRIMINATOR_PROPERTY_NAME = "discriminator";
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class BfdSession implements CompositeDataEntity<BfdSession.BfdSessionData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private BfdSessionData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    private Long entityId;
-
-    @NonNull
-    @Property(name = SWITCH_PROPERTY_NAME)
-    @Convert(graphPropertyType = String.class)
-    private SwitchId switchId;
-
-    @Property(name = IP_ADDRESS_PROPERTY_NAME)
-    private String ipAddress;
-
-    @Property(name = REMOTE_SWITCH_PROPERTY_NAME)
-    @Convert(graphPropertyType = String.class)
-    private SwitchId remoteSwitchId;
-
-    @Property(name = REMOVE_IP_ADDRESS_PROPERTY_NAME)
-    private String remoteIpAddress;
-
-    @NonNull
-    @Property(name = PORT_PROPERTY_NAME)
-    private Integer port;
-
-    @Property(name = DISCRIMINATOR_PROPERTY_NAME)
-    @Index(unique = true)
-    private Integer discriminator;
-
-    public BfdSession(@NonNull SwitchId switchId,
-                      @NonNull Integer port) {
-        this(switchId, null, null, null, port, null);
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private BfdSession() {
+        data = new BfdSessionDataImpl();
     }
 
     @Builder
-    private BfdSession(SwitchId switchId, String ipAddress, SwitchId remoteSwitchId, String remoteIpAddress,
-                         Integer port, Integer discriminator) {
-        this.switchId = switchId;
-        this.ipAddress = ipAddress;
-        this.remoteSwitchId = remoteSwitchId;
-        this.remoteIpAddress = remoteIpAddress;
-        this.port = port;
-        this.discriminator = discriminator;
+    public BfdSession(@NonNull SwitchId switchId, String ipAddress, SwitchId remoteSwitchId,
+                      String remoteIpAddress, @NonNull Integer port, Integer discriminator) {
+        data = BfdSessionDataImpl.builder()
+                .switchId(switchId).ipAddress(ipAddress).remoteSwitchId(remoteSwitchId)
+                .remoteIpAddress(remoteIpAddress).port(port).discriminator(discriminator).build();
+    }
+
+    public BfdSession(@NonNull BfdSessionData data) {
+        this.data = data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        BfdSession that = (BfdSession) o;
+        return new EqualsBuilder()
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getIpAddress(), that.getIpAddress())
+                .append(getRemoteSwitchId(), that.getRemoteSwitchId())
+                .append(getRemoteIpAddress(), that.getRemoteIpAddress())
+                .append(getPort(), that.getPort())
+                .append(getDiscriminator(), that.getDiscriminator())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSwitchId(), getIpAddress(), getRemoteSwitchId(), getRemoteIpAddress(),
+                getPort(), getDiscriminator());
     }
 
     /**
-     * BfdSession builder with prefilled mandatory fields.
+     * Defines persistable data of the BfdSession.
      */
-    public static BfdSessionBuilder builder(@NonNull SwitchId switchId,
-                                            @NonNull Integer port) {
-        return new BfdSessionBuilder()
-                .switchId(switchId)
-                .port(port);
+    public interface BfdSessionData {
+        SwitchId getSwitchId();
+
+        void setSwitchId(SwitchId switchId);
+
+        String getIpAddress();
+
+        void setIpAddress(String ipAddress);
+
+        SwitchId getRemoteSwitchId();
+
+        void setRemoteSwitchId(SwitchId remoteSwitchId);
+
+        String getRemoteIpAddress();
+
+        void setRemoteIpAddress(String remoteIpAddress);
+
+        Integer getPort();
+
+        void setPort(Integer port);
+
+        Integer getDiscriminator();
+
+        void setDiscriminator(Integer discriminator);
+    }
+
+    /**
+     * POJO implementation of BfdSessionData.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class BfdSessionDataImpl implements BfdSessionData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @NonNull SwitchId switchId;
+        String ipAddress;
+        SwitchId remoteSwitchId;
+        String remoteIpAddress;
+        @NonNull Integer port;
+        Integer discriminator;
+    }
+
+    /**
+     * A cloner for BfdSession entity.
+     */
+    @Mapper
+    public interface BfdSessionCloner {
+        BfdSessionCloner INSTANCE = Mappers.getMapper(BfdSessionCloner.class);
+
+        void copy(BfdSessionData source, @MappingTarget BfdSessionData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default BfdSessionData copy(BfdSessionData source) {
+            BfdSessionData result = new BfdSessionDataImpl();
+            copy(source, result);
+            return result;
+        }
     }
 }

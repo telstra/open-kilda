@@ -15,10 +15,10 @@
 
 package org.openkilda.model;
 
-import static java.lang.String.format;
-import static org.neo4j.ogm.annotation.Relationship.INCOMING;
-
-import lombok.AccessLevel;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -27,189 +27,233 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
-import org.neo4j.ogm.annotation.GeneratedValue;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
-import org.neo4j.ogm.typeconversion.InstantStringConverter;
+import lombok.experimental.Delegate;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Represents a flow connected device.
  */
-@Data
-@NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "switchObj"})
-@NodeEntity(label = "switch_connected_device")
-@ToString(exclude = {"switchObj"})
-public class SwitchConnectedDevice implements Serializable {
-    private static final long serialVersionUID = 4191175994460517407L;
+@DefaultSerializer(BeanSerializer.class)
+@ToString
+public class SwitchConnectedDevice implements CompositeDataEntity<SwitchConnectedDevice.SwitchConnectedDeviceData> {
+    @Getter
+    @Setter
+    @Delegate
+    @JsonIgnore
+    private SwitchConnectedDeviceData data;
 
-    // Hidden as needed for OGM only.
-    @Id
-    @GeneratedValue
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    private Long entityId;
+    /**
+     * No args constructor for deserialization purpose.
+     */
+    private SwitchConnectedDevice() {
+        data = new SwitchConnectedDeviceDataImpl();
+    }
 
-    @NonNull
-    @Relationship(type = "has", direction = INCOMING)
-    private Switch switchObj;
+    /**
+     * Cloning constructor which performs deep copy of the entity.
+     *
+     * @param entityToClone the entity to copy entity data from.
+     */
+    public SwitchConnectedDevice(@NonNull SwitchConnectedDevice entityToClone) {
+        data = SwitchConnectedDeviceCloner.INSTANCE.copy(entityToClone.getData());
+    }
 
-    @Index
-    @Property("port_number")
-    private int portNumber;
-
-    @Index
-    @Property("vlan")
-    private int vlan;
-
-    @Property("flow_id")
-    private String flowId;
-
-    @Property("source")
-    private Boolean source;
-
-    @Index
-    @NonNull
-    @Property("mac_address")
-    private String macAddress;
-
-    @Index
-    @NonNull
-    @Property(name = "type")
-    @Convert(graphPropertyType = String.class)
-    private ConnectedDeviceType type;
-
-    @Index
-    @Property("ip_address")
-    private String ipAddress;
-
-    @Index
-    @Property("chassis_id")
-    private String chassisId;
-
-    @Index
-    @Property("port_id")
-    private String portId;
-
-    @Property("ttl")
-    private Integer ttl;
-
-    @Property("port_description")
-    private String portDescription;
-
-    @Property("system_name")
-    private String systemName;
-
-    @Property("system_description")
-    private String systemDescription;
-
-    @Property("system_capabilities")
-    private String systemCapabilities;
-
-    @Property("management_address")
-    private String managementAddress;
-
-    @Property(name = "time_first_seen")
-    @Convert(InstantStringConverter.class)
-    private Instant timeFirstSeen;
-
-    @Property(name = "time_last_seen")
-    @Convert(InstantStringConverter.class)
-    private Instant timeLastSeen;
-
-    // Setter hidden as used to imitate unique composite index for non-enterprise Neo4j versions.
-    // Getter is used for tests
-    @Setter(AccessLevel.NONE)
-    @Property(name = "unique_index")
-    @Index(unique = true)
-    private String uniqueIndex;
-
-    @Builder(toBuilder = true)
+    @Builder
     public SwitchConnectedDevice(@NonNull Switch switchObj, int portNumber, int vlan, String flowId, Boolean source,
                                  @NonNull String macAddress, @NonNull ConnectedDeviceType type, String ipAddress,
                                  String chassisId, String portId, Integer ttl, String portDescription,
                                  String systemName, String systemDescription, String systemCapabilities,
                                  String managementAddress, Instant timeFirstSeen, Instant timeLastSeen) {
-        this.switchObj = switchObj;
-        this.portNumber = portNumber;
-        this.vlan = vlan;
-        this.flowId = flowId;
-        this.source = source;
-        this.macAddress = macAddress;
-        this.type = type;
-        this.ipAddress = ipAddress;
-        this.chassisId = chassisId;
-        this.portId = portId;
-        this.ttl = ttl;
-        this.portDescription = portDescription;
-        this.systemName = systemName;
-        this.systemDescription = systemDescription;
-        this.systemCapabilities = systemCapabilities;
-        this.managementAddress = managementAddress;
-        this.timeFirstSeen = timeFirstSeen;
-        this.timeLastSeen = timeLastSeen;
-        calculateUniqueIndex();
+        data = new SwitchConnectedDeviceDataImpl(switchObj, portNumber, vlan, flowId, source, macAddress, type,
+                ipAddress, chassisId, portId, ttl, portDescription, systemName, systemDescription,
+                systemCapabilities, managementAddress, timeFirstSeen, timeLastSeen);
     }
 
-    public void setSwitch(@NonNull Switch switchObj) {
-        this.switchObj = switchObj;
-        calculateUniqueIndex();
+    public SwitchConnectedDevice(@NonNull SwitchConnectedDeviceData data) {
+        this.data = data;
     }
 
-    public void setPortNumber(int portNumber) {
-        this.portNumber = portNumber;
-        calculateUniqueIndex();
-    }
-
-    public void setMacAddress(@NonNull String macAddress) {
-        this.macAddress = macAddress;
-        calculateUniqueIndex();
-    }
-
-    public void setVlan(int vlan) {
-        this.vlan = vlan;
-        calculateUniqueIndex();
-    }
-
-    public void setType(@NonNull ConnectedDeviceType type) {
-        this.type = type;
-        calculateUniqueIndex();
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-        calculateUniqueIndex();
-    }
-
-    public void setChassisId(String chassisId) {
-        this.chassisId = chassisId;
-        calculateUniqueIndex();
-    }
-
-    public void setPortId(String portId) {
-        this.portId = portId;
-        calculateUniqueIndex();
-    }
-
-    private void calculateUniqueIndex() {
-        switch (type) {
-            case LLDP:
-                uniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
-                        switchObj.getSwitchId(), portNumber, vlan, macAddress, type, chassisId, portId);
-                break;
-            case ARP:
-                uniqueIndex = format("%s_%s_%s_%s_%s_%s",
-                        switchObj.getSwitchId(), portNumber, vlan, macAddress, type, ipAddress);
-                break;
-            default:
-                throw new IllegalArgumentException(format("Unknown connected device type %s", type));
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
         }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SwitchConnectedDevice that = (SwitchConnectedDevice) o;
+        return new EqualsBuilder()
+                .append(getPortNumber(), that.getPortNumber())
+                .append(getVlan(), that.getVlan())
+                .append(getSwitchId(), that.getSwitchId())
+                .append(getFlowId(), that.getFlowId())
+                .append(getSource(), that.getSource())
+                .append(getMacAddress(), that.getMacAddress())
+                .append(getType(), that.getType())
+                .append(getIpAddress(), that.getIpAddress())
+                .append(getChassisId(), that.getChassisId())
+                .append(getPortId(), that.getPortId())
+                .append(getTtl(), that.getTtl())
+                .append(getPortDescription(), that.getPortDescription())
+                .append(getSystemName(), that.getSystemName())
+                .append(getSystemDescription(), that.getSystemDescription())
+                .append(getSystemCapabilities(), that.getSystemCapabilities())
+                .append(getManagementAddress(), that.getManagementAddress())
+                .append(getTimeFirstSeen(), that.getTimeFirstSeen())
+                .append(getTimeLastSeen(), that.getTimeLastSeen())
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getSwitchId(), getPortNumber(), getVlan(), getFlowId(), getSource(), getMacAddress(),
+                getType(), getIpAddress(), getChassisId(), getPortId(), getTtl(), getPortDescription(),
+                getSystemName(), getSystemDescription(), getSystemCapabilities(), getManagementAddress(),
+                getTimeFirstSeen(), getTimeLastSeen());
+    }
+
+    /**
+     * Defines persistable data of the SwitchConnectedDevice.
+     */
+    public interface SwitchConnectedDeviceData {
+        SwitchId getSwitchId();
+
+        Switch getSwitchObj();
+
+        void setSwitchObj(Switch switchObj);
+
+        int getPortNumber();
+
+        void setPortNumber(int portNumber);
+
+        int getVlan();
+
+        void setVlan(int vlan);
+
+        String getFlowId();
+
+        void setFlowId(String flowId);
+
+        Boolean getSource();
+
+        void setSource(Boolean source);
+
+        String getMacAddress();
+
+        void setMacAddress(String macAddress);
+
+        ConnectedDeviceType getType();
+
+        void setType(ConnectedDeviceType connectedDeviceType);
+
+        String getIpAddress();
+
+        void setIpAddress(String ipAddress);
+
+        String getChassisId();
+
+        void setChassisId(String chassisId);
+
+        String getPortId();
+
+        void setPortId(String portId);
+
+        Integer getTtl();
+
+        void setTtl(Integer ttl);
+
+        String getPortDescription();
+
+        void setPortDescription(String portDescription);
+
+        String getSystemName();
+
+        void setSystemName(String systemName);
+
+        String getSystemDescription();
+
+        void setSystemDescription(String systemDescription);
+
+        String getSystemCapabilities();
+
+        void setSystemCapabilities(String systemCapabilities);
+
+        String getManagementAddress();
+
+        void setManagementAddress(String managementAddress);
+
+        Instant getTimeFirstSeen();
+
+        void setTimeFirstSeen(Instant timeFirstSeen);
+
+        Instant getTimeLastSeen();
+
+        void setTimeLastSeen(Instant timeLastSeen);
+    }
+
+    /**
+     * POJO implementation of SwitchConnectedDeviceData.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static final class SwitchConnectedDeviceDataImpl implements SwitchConnectedDeviceData, Serializable {
+        private static final long serialVersionUID = 1L;
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        @NonNull Switch switchObj;
+        int portNumber;
+        int vlan;
+        String flowId;
+        Boolean source;
+        @NonNull String macAddress;
+        @NonNull ConnectedDeviceType type;
+        String ipAddress;
+        String chassisId;
+        String portId;
+        Integer ttl;
+        String portDescription;
+        String systemName;
+        String systemDescription;
+        String systemCapabilities;
+        String managementAddress;
+        Instant timeFirstSeen;
+        Instant timeLastSeen;
+
+        @Override
+        public SwitchId getSwitchId() {
+            return switchObj.getSwitchId();
+        }
+    }
+
+    /**
+     * A cloner for SwitchConnectedDevice entity.
+     */
+    @Mapper
+    public interface SwitchConnectedDeviceCloner {
+        SwitchConnectedDeviceCloner INSTANCE = Mappers.getMapper(SwitchConnectedDeviceCloner.class);
+
+        void copy(SwitchConnectedDeviceData source, @MappingTarget SwitchConnectedDeviceData target);
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default SwitchConnectedDeviceData copy(SwitchConnectedDeviceData source) {
+            SwitchConnectedDeviceData result = new SwitchConnectedDeviceDataImpl();
+            copyWithoutSwitch(source, result);
+            result.setSwitchObj(new Switch(source.getSwitchObj()));
+            return result;
+        }
+
+        @Mapping(target = "switchObj", ignore = true)
+        void copyWithoutSwitch(SwitchConnectedDeviceData source, @MappingTarget SwitchConnectedDeviceData target);
     }
 }
