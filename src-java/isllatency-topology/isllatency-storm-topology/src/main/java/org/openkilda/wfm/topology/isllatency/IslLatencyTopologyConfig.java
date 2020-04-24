@@ -42,7 +42,7 @@ public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
     @Default("kilda.")
     String getMetricPrefix();
 
-    @Key("latency.update.interval") // how often we send average latency to neo4j in seconds
+    @Key("latency.update.interval") // how often we send average latency to the database in seconds
     @Default("300")
     @Min(1)
     int getLatencyUpdateInterval();

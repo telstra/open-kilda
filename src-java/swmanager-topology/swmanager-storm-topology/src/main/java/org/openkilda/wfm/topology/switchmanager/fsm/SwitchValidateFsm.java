@@ -183,29 +183,34 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     public void emitRequests(SwitchValidateState from, SwitchValidateState to, SwitchValidateEvent event,
                              SwitchValidateContext context) {
-        SwitchId switchId = getSwitchId();
-        log.info("The switch validate process for {} has been started (key={})", switchId, key);
+        try {
+            SwitchId switchId = getSwitchId();
+            log.info("The switch validate process for {} has been started (key={})", switchId, key);
 
-        // FIXME(surabujin): not reliable check - corresponding error from speaker is much more better
-        if (!switchRepository.exists(switchId)) {
-            throw new SwitchNotFoundException(switchId);
-        }
+            // FIXME(surabujin): not reliable check - corresponding error from speaker is much more better
+            if (!switchRepository.exists(switchId)) {
+                throw new SwitchNotFoundException(switchId);
+            }
 
-        final SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
-                .orElseThrow(() -> new InconsistentDataException(switchId, "switch properties not found"));
+            final SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
+                    .orElseThrow(() -> new InconsistentDataException(switchId, "switch properties not found"));
 
-        boolean isMultiTable = switchProperties.isMultiTable() || checkMultiTableFlowExistence();
-        boolean isSwitchLldp = switchProperties.isSwitchLldp();
-        boolean isSwitchArp = switchProperties.isSwitchArp();
+            boolean isMultiTable = switchProperties.isMultiTable() || checkMultiTableFlowExistence();
+            boolean isSwitchLldp = switchProperties.isSwitchLldp();
+            boolean isSwitchArp = switchProperties.isSwitchArp();
 
-        requestSwitchOfFlows();
-        requestExpectedServiceOfFlows(switchProperties, isMultiTable, isSwitchLldp, isSwitchArp);
+            requestSwitchOfFlows();
+            requestExpectedServiceOfFlows(switchProperties, isMultiTable, isSwitchLldp, isSwitchArp);
 
-        requestSwitchOfGroups();
+            requestSwitchOfGroups();
 
-        if (request.isProcessMeters()) {
-            requestSwitchMeters();
-            requestExpectedServiceMeters(isMultiTable, isSwitchLldp, isSwitchArp);
+            if (request.isProcessMeters()) {
+                requestSwitchMeters();
+                requestExpectedServiceMeters(isMultiTable, isSwitchLldp, isSwitchArp);
+            }
+        } catch (Exception ex) {
+            log.error("Failure in emitRequests", ex);
+            throw ex;
         }
     }
 

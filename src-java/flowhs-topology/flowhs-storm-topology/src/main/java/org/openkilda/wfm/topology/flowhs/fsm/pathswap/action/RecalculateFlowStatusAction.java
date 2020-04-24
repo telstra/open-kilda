@@ -21,7 +21,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
@@ -30,20 +29,16 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 @Slf4j
 public class RecalculateFlowStatusAction extends
         FlowProcessingAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext> {
 
-    private final int transactionRetriesLimit;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public RecalculateFlowStatusAction(PersistenceManager persistenceManager, int transactionRetriesLimit,
+    public RecalculateFlowStatusAction(PersistenceManager persistenceManager,
                                        FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
-        this.transactionRetriesLimit = transactionRetriesLimit;
         this.dashboardLogger = dashboardLogger;
     }
 
@@ -52,22 +47,16 @@ public class RecalculateFlowStatusAction extends
                            FlowPathSwapFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
 
-        RetryPolicy retryPolicy = new RetryPolicy()
-                .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
-                .withMaxRetries(transactionRetriesLimit);
-
-        FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
+        FlowStatus resultStatus = transactionManager.doInTransaction(() -> {
             Flow flow = getFlow(flowId);
             FlowPathStatus pathStatus = stateMachine.getFailedCommands().isEmpty() ? FlowPathStatus.ACTIVE :
                     FlowPathStatus.INACTIVE;
             flow.getPaths().forEach(flowPath -> {
                 flowPath.setStatus(pathStatus);
-                flowPathRepository.updateStatus(flowPath.getPathId(), pathStatus);
             });
 
             FlowStatus status = flow.computeFlowStatus();
-            flowRepository.updateStatus(flowId, status);
+            flow.setStatus(status);
 
             return status;
         });

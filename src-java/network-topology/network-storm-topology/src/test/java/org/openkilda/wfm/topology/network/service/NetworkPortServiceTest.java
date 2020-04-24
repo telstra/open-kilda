@@ -34,11 +34,11 @@ import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionCallbackWithoutResult;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -100,6 +100,9 @@ public class NetworkPortServiceTest {
         }).when(transactionManager).doInTransaction(any(TransactionCallbackWithoutResult.class));
 
         reset(portPropertiesRepository);
+        doAnswer(invocation -> invocation.getArgument(0))
+                .when(portPropertiesRepository).add(any());
+
         reset(switchRepository);
 
         reset(repositoryFactory);
@@ -245,7 +248,7 @@ public class NetworkPortServiceTest {
         verify(carrier).notifyPortPropertiesChanged(any(PortProperties.class));
         verify(carrier).removeUniIslHandler(endpoint);
 
-        verify(portPropertiesRepository).createOrUpdate(PortProperties.builder()
+        verify(portPropertiesRepository).add(PortProperties.builder()
                 .switchObj(getDefaultSwitch())
                 .port(port)
                 .discoveryEnabled(false)
@@ -277,7 +280,7 @@ public class NetworkPortServiceTest {
         verify(carrier, new Times(0)).enableDiscoveryPoll(endpoint);
         verify(carrier).removeUniIslHandler(endpoint);
 
-        verify(portPropertiesRepository).createOrUpdate(PortProperties.builder()
+        verify(portPropertiesRepository).add(PortProperties.builder()
                 .switchObj(getDefaultSwitch())
                 .port(port)
                 .discoveryEnabled(false)

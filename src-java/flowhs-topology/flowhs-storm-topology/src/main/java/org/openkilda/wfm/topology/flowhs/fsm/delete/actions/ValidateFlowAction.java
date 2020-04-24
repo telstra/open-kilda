@@ -19,10 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -57,30 +55,31 @@ public class ValidateFlowAction extends NbTrackableAction<FlowDeleteFsm, State, 
         String flowId = stateMachine.getFlowId();
         dashboardLogger.onFlowDelete(flowId);
 
-        boolean isOperationAllowed = featureTogglesRepository.find()
-                .map(FeatureToggles::getDeleteFlowEnabled)
-                .orElse(FeatureToggles.DEFAULTS.getDeleteFlowEnabled());
+        boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getDeleteFlowEnabled();
         if (!isOperationAllowed) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow delete feature is disabled");
         }
 
-        Flow flow = persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow foundFlow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
-            if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
+        Flow resultFlow = transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(flowId);
+            if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
 
             // Keep it, just in case we have to revert it.
-            stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
+            stateMachine.setOriginalFlowStatus(flow.getStatus());
 
-            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
-            return foundFlow;
+            flow.setStatus(FlowStatus.IN_PROGRESS);
+            return flow;
         });
+
+        stateMachine.setDstSwitchId(resultFlow.getDestSwitchId());
+        stateMachine.setSrcSwitchId(resultFlow.getSrcSwitchId());
 
         stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.DELETE);
 
-        return Optional.of(buildResponseMessage(flow, stateMachine.getCommandContext()));
+        return Optional.of(buildResponseMessage(resultFlow, stateMachine.getCommandContext()));
     }
 
     @Override

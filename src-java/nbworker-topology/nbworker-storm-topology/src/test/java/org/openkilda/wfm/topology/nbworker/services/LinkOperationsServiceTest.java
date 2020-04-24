@@ -37,7 +37,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -63,7 +63,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
-public class LinkOperationsServiceTest extends Neo4jBasedTest {
+public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
     private static IslRepository islRepository;
     private static SwitchRepository switchRepository;
     private static FlowRepository flowRepository;
@@ -198,7 +198,6 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
         islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT)
                 .ifPresent(isl -> {
                     isl.setEnableBfd(true);
-                    islRepository.createOrUpdate(isl);
                 });
 
         Collection<Isl> result = linkOperationsService.updateEnableBfdFlag(
@@ -222,16 +221,16 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
 
     @Test(expected = IslNotFoundException.class)
     public void shouldFailIfThereIsUniIslOnlyForBfdEnableFlagUpdateRequest() throws IslNotFoundException {
-        Isl isl = new Isl();
-        isl.setSrcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID));
-        isl.setSrcPort(TEST_SWITCH_A_PORT);
-        isl.setDestSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID));
-        isl.setDestPort(TEST_SWITCH_B_PORT);
-        isl.setCost(0);
-        isl.setStatus(IslStatus.ACTIVE);
-        islRepository.createOrUpdate(isl);
+        Isl isl = Isl.builder()
+                .srcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID))
+                .srcPort(TEST_SWITCH_A_PORT)
+                .destSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID))
+                .destPort(TEST_SWITCH_B_PORT)
+                .cost(0)
+                .status(IslStatus.ACTIVE)
+                .build();
+        islRepository.add(isl);
 
-        islRepository.createOrUpdate(isl);
         linkOperationsService.updateEnableBfdFlag(
                 Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
                 Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), true);
@@ -252,31 +251,33 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
     }
 
     private void createIsl(IslStatus status) {
-        Isl isl = new Isl();
-        isl.setSrcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID));
-        isl.setSrcPort(TEST_SWITCH_A_PORT);
-        isl.setDestSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID));
-        isl.setDestPort(TEST_SWITCH_B_PORT);
-        isl.setCost(0);
+        Isl isl = Isl.builder()
+                .srcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID))
+                .srcPort(TEST_SWITCH_A_PORT)
+                .destSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID))
+                .destPort(TEST_SWITCH_B_PORT)
+                .cost(0)
+                .build();
         isl.setStatus(status);
 
-        islRepository.createOrUpdate(isl);
+        islRepository.add(isl);
 
-        isl = new Isl();
-        isl.setSrcSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID));
-        isl.setSrcPort(TEST_SWITCH_B_PORT);
-        isl.setDestSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID));
-        isl.setDestPort(TEST_SWITCH_A_PORT);
-        isl.setCost(0);
+        isl = Isl.builder()
+                .srcSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID))
+                .srcPort(TEST_SWITCH_B_PORT)
+                .destSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID))
+                .destPort(TEST_SWITCH_A_PORT)
+                .cost(0)
+                .build();
         isl.setStatus(status);
 
-        islRepository.createOrUpdate(isl);
+        islRepository.add(isl);
     }
 
     private Switch createSwitchIfNotExist(SwitchId switchId) {
         return switchRepository.findById(switchId).orElseGet(() -> {
             Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
-            switchRepository.createOrUpdate(sw);
+            switchRepository.add(sw);
             return sw;
         });
     }
@@ -295,7 +296,6 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
 
 
         FlowPath forwardPath = FlowPath.builder()
-                .flow(flow)
                 .pathId(new PathId("forward_path_id"))
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
@@ -303,7 +303,6 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
                 .build();
 
         FlowPath reversePath = FlowPath.builder()
-                .flow(flow)
                 .pathId(new PathId("reverse_path_id"))
                 .srcSwitch(dstSwitch)
                 .destSwitch(srcSwitch)
@@ -315,21 +314,17 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
 
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
-        flowRepository.createOrUpdate(flow);
-        flowPathRepository.createOrUpdate(forwardPath);
-        flowPathRepository.createOrUpdate(reversePath);
+        flowRepository.add(flow);
 
         return flow;
     }
 
     private PathSegment createPathSegment(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
-        PathSegment pathSegment = PathSegment.builder()
+        return PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .destSwitch(dstSwitch)
                 .destPort(dstPort)
                 .build();
-        pathSegmentRepository.createOrUpdate(pathSegment);
-        return pathSegment;
     }
 }

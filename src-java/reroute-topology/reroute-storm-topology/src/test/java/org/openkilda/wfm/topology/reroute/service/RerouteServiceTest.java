@@ -48,15 +48,13 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionCallback;
-import org.openkilda.persistence.TransactionCallbackWithoutResult;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.exceptions.EntityNotFoundException;
-import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
@@ -67,7 +65,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -112,15 +109,12 @@ public class RerouteServiceTest {
             arg.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult<?>>any());
-        doAnswer(invocation -> {
-            TransactionCallback<?, ?> arg = invocation.getArgument(0);
-            return arg.doInTransaction();
-        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallback<?, ?>>any());
 
         pinnedFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(true).build();
-        FlowPath pinnedFlowForwardPath = FlowPath.builder().pathId(new PathId("1"))
-                .flow(pinnedFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
+        FlowPath pinnedFlowForwardPath = FlowPath.builder()
+                .pathId(new PathId("1"))
+                .srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1))
                 .build();
         List<PathSegment> pinnedFlowForwardSegments = new ArrayList<>();
@@ -139,7 +133,7 @@ public class RerouteServiceTest {
         pinnedFlowForwardPath.setSegments(pinnedFlowForwardSegments);
 
         FlowPath pinnedFlowReversePath = FlowPath.builder().pathId(new PathId("2"))
-                .flow(pinnedFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
+                .srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 2))
                 .build();
         List<PathSegment> pinnedFlowReverseSegments = new ArrayList<>();
@@ -161,10 +155,10 @@ public class RerouteServiceTest {
 
         regularFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(false)
-                .priority(2).timeCreate(Instant.now())
+                .priority(2)
                 .build();
         FlowPath regularFlowForwardPath = FlowPath.builder().pathId(new PathId("3"))
-                .flow(regularFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
+                .srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 3))
                 .status(FlowPathStatus.ACTIVE)
                 .build();
@@ -184,7 +178,7 @@ public class RerouteServiceTest {
         regularFlowForwardPath.setSegments(unpinnedFlowForwardSegments);
 
         FlowPath regularFlowReversePath = FlowPath.builder().pathId(new PathId("4"))
-                .flow(regularFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
+                .srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 3))
                 .status(FlowPathStatus.ACTIVE)
                 .build();
@@ -209,12 +203,12 @@ public class RerouteServiceTest {
                 .destSwitch(SWITCH_A)
                 .build();
         FlowPath oneSwitchFlowForwardPath = FlowPath.builder().pathId(new PathId("5"))
-                .flow(oneSwitchFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_A)
+                .srcSwitch(SWITCH_A).destSwitch(SWITCH_A)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 4))
                 .status(FlowPathStatus.ACTIVE)
                 .build();
         FlowPath oneSwitchFlowReversePath = FlowPath.builder().pathId(new PathId("6"))
-                .flow(oneSwitchFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_A)
+                .srcSwitch(SWITCH_A).destSwitch(SWITCH_A)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 4))
                 .status(FlowPathStatus.ACTIVE)
                 .build();
@@ -236,21 +230,15 @@ public class RerouteServiceTest {
         }
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         FlowRepository flowRepository = mock(FlowRepository.class);
-        when(flowRepository.findDownFlows())
+        when(flowRepository.findInactiveFlows())
                 .thenReturn(Collections.singletonList(pinnedFlow));
         doAnswer(invocation -> {
             FlowStatus status = invocation.getArgument(1);
             pinnedFlow.setStatus(status);
             return null;
-        }).when(flowRepository).updateStatusSafe(eq(pinnedFlow.getFlowId()), any(), any());
+        }).when(flowRepository).updateStatusSafe(eq(pinnedFlow), any(), any());
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
-        doAnswer(invocation -> {
-            PathId pathId = invocation.getArgument(0);
-            FlowPathStatus status = invocation.getArgument(1);
-            pinnedFlow.getPath(pathId).get().setStatus(status);
-            return null;
-        }).when(pathRepository).updateStatus(any(), any());
         when(repositoryFactory.createFlowPathRepository()).thenReturn(pathRepository);
         PathSegmentRepository pathSegmentRepository = mock(PathSegmentRepository.class);
         when(repositoryFactory.createPathSegmentRepository()).thenReturn(pathSegmentRepository);
@@ -289,7 +277,7 @@ public class RerouteServiceTest {
         }
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         FlowRepository flowRepository = mock(FlowRepository.class);
-        when(flowRepository.findDownFlows())
+        when(flowRepository.findInactiveFlows())
                 .thenReturn(Collections.singletonList(pinnedFlow));
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
@@ -341,15 +329,12 @@ public class RerouteServiceTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
 
-        doThrow(new PersistenceException("Path not found exception (dummy)"))
-                .when(pathRepository).updateStatus(eq(regularFlow.getForwardPath().getPathId()), any());
-
         RerouteService rerouteService = new RerouteService(persistenceManager);
 
         RerouteAffectedFlows request = new RerouteAffectedFlows(islSide, "dummy-reason - unittest");
         rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
 
-        verify(flowRepository).updateStatusSafe(eq(regularFlow.getFlowId()), eq(FlowStatus.DOWN), any());
+        verify(flowRepository).updateStatusSafe(eq(regularFlow), eq(FlowStatus.DOWN), any());
         FlowThrottlingData expected = FlowThrottlingData.builder()
                 .correlationId(CORRELATION_ID)
                 .priority(regularFlow.getPriority())
@@ -381,10 +366,10 @@ public class RerouteServiceTest {
         RerouteService rerouteService = new RerouteService(persistenceManager);
 
         rerouteService.processSingleSwitchFlowStatusUpdate(
-                new SwitchStateChanged(oneSwitchFlow.getSrcSwitch().getSwitchId(), SwitchStatus.INACTIVE));
+                new SwitchStateChanged(oneSwitchFlow.getSrcSwitchId(), SwitchStatus.INACTIVE));
 
-        verify(flowRepository).updateStatus(oneSwitchFlow.getFlowId(), FlowStatus.DOWN,
-                format("Switch %s is inactive", oneSwitchFlow.getSrcSwitch().getSwitchId()));
+        assertEquals(format("Switch %s is inactive", oneSwitchFlow.getSrcSwitchId()),
+                FlowStatus.DOWN, oneSwitchFlow.getStatus());
     }
 
     @Test
@@ -424,7 +409,7 @@ public class RerouteServiceTest {
     @Test
     public void handleRerouteInactiveAffectedFlows() {
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
-        when(pathRepository.findInactiveBySegmentSwitch(regularFlow.getSrcSwitch().getSwitchId()))
+        when(pathRepository.findInactiveBySegmentSwitch(regularFlow.getSrcSwitchId()))
                 .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
 
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
@@ -438,7 +423,7 @@ public class RerouteServiceTest {
         RerouteService rerouteService = new RerouteService(persistenceManager);
 
         regularFlow.setStatus(FlowStatus.DOWN);
-        rerouteService.rerouteInactiveAffectedFlows(carrier, CORRELATION_ID, regularFlow.getSrcSwitch().getSwitchId());
+        rerouteService.rerouteInactiveAffectedFlows(carrier, CORRELATION_ID, regularFlow.getSrcSwitchId());
 
         FlowThrottlingData expected = FlowThrottlingData.builder()
                 .correlationId(CORRELATION_ID)
@@ -447,7 +432,7 @@ public class RerouteServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .force(false)
                 .effectivelyDown(true)
-                .reason(format("Switch '%s' online", regularFlow.getSrcSwitch().getSwitchId()))
+                .reason(format("Switch '%s' online", regularFlow.getSrcSwitchId()))
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
 

@@ -20,7 +20,7 @@ import org.openkilda.model.FeatureToggles.FeatureTogglesData;
 import com.syncleus.ferma.annotations.Property;
 
 public abstract class FeatureTogglesFrame extends KildaBaseVertexFrame implements FeatureTogglesData {
-    public static final String FRAME_LABEL = "feature_toggles";
+    public static final String FRAME_LABEL = "config";
     public static final String UNIQUE_PROPERTY = "unique";
 
     @Override

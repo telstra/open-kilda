@@ -21,6 +21,7 @@ import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -53,13 +54,14 @@ public class FlowUpdateService {
 
     public FlowUpdateService(FlowUpdateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
-                             int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                             int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                              int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
-        kildaConfigurationRepository = persistenceManager.getRepositoryFactory().createKildaConfigurationRepository();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowEventRepository = repositoryFactory.createFlowEventRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         fsmFactory = new FlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 speakerCommandRetriesLimit);
     }
 
@@ -88,7 +90,8 @@ public class FlowUpdateService {
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
-            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+            requestedFlow.setFlowEncapsulationType(
+                    kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
         }
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .targetFlow(requestedFlow)

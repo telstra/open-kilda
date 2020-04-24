@@ -36,7 +36,7 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     public ControlTopology(LaunchEnvironment env) {
         super(env, ControlTopologyConfig.class);
 
-        persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        persistenceManager = PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
     }
 
     /**

@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -43,10 +42,10 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
         String flowId = stateMachine.getFlowId();
         log.debug("Updating the flow status of {} after 'no path found' event", flowId);
 
-        FlowStatus flowStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
+        FlowStatus flowStatus = transactionManager.doInTransaction(() -> {
             stateMachine.setOriginalFlowStatus(null);
 
-            Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
+            Flow flow = getFlow(flowId);
             if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
                     && stateMachine.getNewPrimaryReversePath() == null) {
                 if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
@@ -55,45 +54,32 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                     log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getForwardPathId(), flow.getReversePathId());
                     if (flow.getForwardPathId() != null) {
-                        flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
-                        if (flow.getForwardPath() != null) {
-                            flow.getForwardPath().setStatus(FlowPathStatus.INACTIVE);
-                        }
+                        flow.getForwardPath().setStatus(FlowPathStatus.INACTIVE);
                     }
                     if (flow.getReversePathId() != null) {
-                        flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
-                        if (flow.getReversePath() != null) {
-                            flow.getReversePath().setStatus(FlowPathStatus.INACTIVE);
-                        }
+                        flow.getReversePath().setStatus(FlowPathStatus.INACTIVE);
                     }
                 }
             }
 
             if (stateMachine.isRerouteProtected() && stateMachine.getNewProtectedForwardPath() == null
                     && stateMachine.getNewProtectedReversePath() == null) {
-                if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
+                if (flow.getProtectedForwardPathId() == null && flow.getProtectedReversePathId() == null) {
                     log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
                             flowId);
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
                     if (flow.getProtectedForwardPathId() != null) {
-                        flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
-                        if (flow.getProtectedForwardPath() != null) {
-                            flow.getProtectedForwardPath().setStatus(FlowPathStatus.INACTIVE);
-                        }
+                        flow.getProtectedForwardPath().setStatus(FlowPathStatus.INACTIVE);
                     }
                     if (flow.getProtectedReversePathId() != null) {
-                        flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
-                        if (flow.getProtectedReversePath() != null) {
-                            flow.getProtectedReversePath().setStatus(FlowPathStatus.INACTIVE);
-                        }
+                        flow.getProtectedReversePath().setStatus(FlowPathStatus.INACTIVE);
                     }
                 }
             }
 
             FlowStatus newFlowStatus = flow.computeFlowStatus();
-
             if (newFlowStatus != FlowStatus.DOWN && newFlowStatus != FlowStatus.DEGRADED) {
                 log.error("Computed unexpected status {} of flow {} after 'no path found' event", newFlowStatus, flow);
                 newFlowStatus = FlowStatus.DOWN;
@@ -101,7 +87,7 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
 
             log.debug("Setting the flow status of {} to {}", flowId, newFlowStatus);
             dashboardLogger.onFlowStatusUpdate(flowId, newFlowStatus);
-            flowRepository.updateStatus(flowId, newFlowStatus);
+            flow.setStatus(newFlowStatus);
             stateMachine.setNewFlowStatus(newFlowStatus);
             return newFlowStatus;
         });

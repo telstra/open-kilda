@@ -151,19 +151,19 @@ public abstract class FlowDumpFrame extends KildaBaseVertexFrame implements Flow
 
     @Override
     @Property("src_inner_vlan")
-    public abstract int getSourceInnerVlan();
+    public abstract Integer getSourceInnerVlan();
 
     @Override
     @Property("src_inner_vlan")
-    public abstract void setSourceInnerVlan(int sourceInnerVlan);
+    public abstract void setSourceInnerVlan(Integer sourceInnerVlan);
 
     @Override
     @Property("dst_inner_vlan")
-    public abstract int getDestinationInnerVlan();
+    public abstract Integer getDestinationInnerVlan();
 
     @Override
     @Property("dst_inner_vlan")
-    public abstract void setDestinationInnerVlan(int destinationInnerVlan);
+    public abstract void setDestinationInnerVlan(Integer destinationInnerVlan);
 
     @Override
     @Property("forward_meter_id")
@@ -231,27 +231,27 @@ public abstract class FlowDumpFrame extends KildaBaseVertexFrame implements Flow
 
     @Override
     @Property("allocate_protected_path")
-    public abstract boolean isAllocateProtectedPath();
+    public abstract Boolean isAllocateProtectedPath();
 
     @Override
     @Property("allocate_protected_path")
-    public abstract void setAllocateProtectedPath(boolean allocateProtectedPath);
+    public abstract void setAllocateProtectedPath(Boolean allocateProtectedPath);
 
     @Override
     @Property("pinned")
-    public abstract boolean isPinned();
+    public abstract Boolean isPinned();
 
     @Override
     @Property("pinned")
-    public abstract void setPinned(boolean pinned);
+    public abstract void setPinned(Boolean pinned);
 
     @Override
     @Property("periodic_pings")
-    public abstract boolean isPeriodicPings();
+    public abstract Boolean isPeriodicPings();
 
     @Override
     @Property("periodic_pings")
-    public abstract void setPeriodicPings(boolean periodicPings);
+    public abstract void setPeriodicPings(Boolean periodicPings);
 
     @Override
     @Property("encapsulation_type")
@@ -275,9 +275,9 @@ public abstract class FlowDumpFrame extends KildaBaseVertexFrame implements Flow
 
     @Override
     @Property("max_latency")
-    public abstract long getMaxLatency();
+    public abstract Long getMaxLatency();
 
     @Override
     @Property("max_latency")
-    public abstract void setMaxLatency(long maxLatency);
+    public abstract void setMaxLatency(Long maxLatency);
 }

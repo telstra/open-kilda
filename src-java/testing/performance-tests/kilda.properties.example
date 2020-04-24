@@ -12,9 +12,9 @@ floodlight.modes=rw,rw,ro
 floodlight.alive.timeout=10
 floodlight.alive.interval=2
 
-neo.uri=bolt://localhost:7687
-neo.user=
-neo.password=
+orientdb.url = remote:localhost:2424,localhost:2425,localhost:2426/kilda
+orientdb.user = root
+orientdb.password = root
 
 elasticsearch.endpoint=http://localhost:9200
 elasticsearch.username=kilda

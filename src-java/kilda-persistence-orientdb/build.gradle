@@ -1,0 +1,16 @@
+description = 'Kilda Persistence OrientDB Implemention'
+dependencies {
+    implementation project(':kilda-persistence-tinkerpop')
+    implementation project(':kilda-configuration')
+
+    implementation('com.orientechnologies:orientdb-gremlin:3.0.34') {
+        exclude group: 'org.yaml', module: 'snakeyaml'
+        exclude group: 'org.slf4j', module: 'jcl-over-slf4j'
+        exclude group: 'org.codehaus.groovy'
+        exclude group: 'javax.activation', module: 'javax.activation-api'
+        exclude group: 'javax.xml.bind', module: 'jaxb-api'
+    }
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}

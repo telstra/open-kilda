@@ -29,7 +29,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.openkilda.northbound.controller.NorthboundBaseTest;
 import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.openkilda.northbound.utils.RequestCorrelationInspectorFilter;
@@ -53,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
-public class SwitchControllerTest extends NorthboundBaseTest {
+public class SwitchControllerTest {
 
     private static final String USERNAME = "kilda";
     private static final String PASSWORD = "kilda";

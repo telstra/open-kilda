@@ -38,47 +38,49 @@ public class CompleteFlowPathInstallationAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            PathComputationStrategy targetStrategy = stateMachine.getTargetPathComputationStrategy();
-            if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-                PathId newForward = stateMachine.getNewPrimaryForwardPath();
-                PathId newReverse = stateMachine.getNewPrimaryReversePath();
+        PathComputationStrategy targetStrategy = stateMachine.getTargetPathComputationStrategy();
+        if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
+            PathId newForward = stateMachine.getNewPrimaryForwardPath();
+            PathId newReverse = stateMachine.getNewPrimaryReversePath();
 
-                log.debug("Completing installation of the flow primary path {} / {}", newForward, newReverse);
-                FlowPathStatus targetPathStatus;
-                if (stateMachine.isIgnoreBandwidth()
-                        || !targetStrategy.equals(stateMachine.getNewPrimaryPathComputationStrategy())) {
-                    targetPathStatus = FlowPathStatus.DEGRADED;
-                } else {
-                    targetPathStatus = FlowPathStatus.ACTIVE;
-                }
-                flowPathRepository.updateStatus(newForward, targetPathStatus);
-                flowPathRepository.updateStatus(newReverse, targetPathStatus);
-
-                stateMachine.saveActionToHistory("Flow paths were installed",
-                        format("The flow paths %s / %s were installed", newForward, newReverse));
+            log.debug("Completing installation of the flow primary path {} / {}", newForward, newReverse);
+            FlowPathStatus targetPathStatus;
+            if (stateMachine.isIgnoreBandwidth()
+                    || !targetStrategy.equals(stateMachine.getNewPrimaryPathComputationStrategy())) {
+                targetPathStatus = FlowPathStatus.DEGRADED;
+            } else {
+                targetPathStatus = FlowPathStatus.ACTIVE;
             }
 
-            if (stateMachine.getNewProtectedForwardPath() != null
-                    && stateMachine.getNewProtectedReversePath() != null) {
-                PathId newForward = stateMachine.getNewProtectedForwardPath();
-                PathId newReverse = stateMachine.getNewProtectedReversePath();
-
-                FlowPathStatus targetPathStatus;
-                if (stateMachine.isIgnoreBandwidth()
-                        || !targetStrategy.equals(stateMachine.getNewProtectedPathComputationStrategy())) {
-                    targetPathStatus = FlowPathStatus.DEGRADED;
-                } else {
-                    targetPathStatus = FlowPathStatus.ACTIVE;
-                }
-
-                log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
+            transactionManager.doInTransaction(() -> {
                 flowPathRepository.updateStatus(newForward, targetPathStatus);
                 flowPathRepository.updateStatus(newReverse, targetPathStatus);
+            });
 
-                stateMachine.saveActionToHistory("Flow paths were installed",
-                        format("The flow paths %s / %s were installed", newForward, newReverse));
+            stateMachine.saveActionToHistory("Flow paths were installed",
+                    format("The flow paths %s / %s were installed", newForward, newReverse));
+        }
+
+        if (stateMachine.getNewProtectedForwardPath() != null
+                && stateMachine.getNewProtectedReversePath() != null) {
+            PathId newForward = stateMachine.getNewProtectedForwardPath();
+            PathId newReverse = stateMachine.getNewProtectedReversePath();
+            FlowPathStatus targetPathStatus;
+            if (stateMachine.isIgnoreBandwidth()
+                    || !targetStrategy.equals(stateMachine.getNewProtectedPathComputationStrategy())) {
+                targetPathStatus = FlowPathStatus.DEGRADED;
+            } else {
+                targetPathStatus = FlowPathStatus.ACTIVE;
             }
-        });
+            log.debug("Completing installation of the flow protected path {} / {}", newForward, newReverse);
+
+            transactionManager.doInTransaction(() -> {
+                flowPathRepository.updateStatus(newForward, targetPathStatus);
+                flowPathRepository.updateStatus(newReverse, targetPathStatus);
+            });
+
+            stateMachine.saveActionToHistory("Flow paths were installed",
+                    format("The flow paths %s / %s were installed", newForward, newReverse));
+        }
     }
 }

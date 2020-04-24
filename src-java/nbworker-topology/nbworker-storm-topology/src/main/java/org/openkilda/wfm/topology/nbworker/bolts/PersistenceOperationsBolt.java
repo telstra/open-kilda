@@ -22,8 +22,8 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 

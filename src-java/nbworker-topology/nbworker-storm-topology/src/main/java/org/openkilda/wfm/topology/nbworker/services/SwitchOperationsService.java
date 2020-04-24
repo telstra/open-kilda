@@ -32,7 +32,6 @@ import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -41,6 +40,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -95,8 +95,10 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      * @param switchId switch id.
      */
     public GetSwitchResponse getSwitch(SwitchId switchId) throws SwitchNotFoundException {
-        return new GetSwitchResponse(
-                switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId)));
+        Switch sw = switchRepository.findById(switchId)
+                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        switchRepository.detach(sw);
+        return new GetSwitchResponse(sw);
     }
 
     /**
@@ -106,6 +108,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      */
     public List<GetSwitchResponse> getAllSwitches() {
         return switchRepository.findAll().stream()
+                .peek(aSwitch -> switchRepository.detach(aSwitch))
                 .map(GetSwitchResponse::new)
                 .collect(Collectors.toList());
     }
@@ -129,20 +132,19 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             Switch sw = foundSwitch.get();
 
             if (sw.isUnderMaintenance() == underMaintenance) {
+                switchRepository.detach(sw);
                 return Optional.of(sw);
             }
 
             sw.setUnderMaintenance(underMaintenance);
 
-            switchRepository.createOrUpdate(sw);
-
             linkOperationsService.getAllIsls(switchId, null, null, null)
                     .forEach(isl -> {
                         try {
                             linkOperationsService.updateLinkUnderMaintenanceFlag(
-                                    isl.getSrcSwitch().getSwitchId(),
+                                    isl.getSrcSwitchId(),
                                     isl.getSrcPort(),
-                                    isl.getDestSwitch().getSwitchId(),
+                                    isl.getDestSwitchId(),
                                     isl.getDestPort(),
                                     underMaintenance);
                         } catch (IslNotFoundException e) {
@@ -150,6 +152,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                         }
                     });
 
+            switchRepository.detach(sw);
             return Optional.of(sw);
         }).orElseThrow(() -> new SwitchNotFoundException(switchId));
     }
@@ -164,20 +167,21 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
      * @throws SwitchNotFoundException if switch is not found
      */
     public boolean deleteSwitch(SwitchId switchId, boolean force) throws SwitchNotFoundException {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
-
         transactionManager.doInTransaction(() -> {
+            Switch sw = switchRepository.findById(switchId)
+                    .orElseThrow(() -> new SwitchNotFoundException(switchId));
+
             switchPropertiesRepository.findBySwitchId(sw.getSwitchId())
-                    .ifPresent(sp -> switchPropertiesRepository.delete(sp));
+                    .ifPresent(sp -> switchPropertiesRepository.remove(sp));
             portPropertiesRepository.getAllBySwitchId(sw.getSwitchId())
-                    .forEach(portPropertiesRepository::delete);
+                    .forEach(portPropertiesRepository::remove);
             if (force) {
-                // forceDelete() removes switch along with all relationships.
-                switchRepository.forceDelete(sw.getSwitchId());
+                // remove() removes switch along with all relationships.
+                switchRepository.remove(sw);
             } else {
-                // delete() is used to be sure that we wouldn't delete switch if it has even one relationship.
-                switchRepository.delete(sw);
+                // removeIfNoDependant() is used to be sure that we wouldn't delete switch
+                // if it has even one relationship.
+                switchRepository.removeIfNoDependant(sw);
             }
         });
 
@@ -306,8 +310,6 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             switchProperties.setServer42Vlan(update.getServer42Vlan());
             switchProperties.setServer42MacAddress(update.getServer42MacAddress());
 
-            switchPropertiesRepository.createOrUpdate(switchProperties);
-
             return new UpdateSwitchPropertiesResult(
                     SwitchPropertiesMapper.INSTANCE.map(switchProperties), isSwitchSyncNeeded);
         });
@@ -331,11 +333,11 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                 || current.isSwitchArp() != updated.isSwitchArp()
                 || current.isServer42FlowRtt() != updated.isServer42FlowRtt()
                 || (updated.isServer42FlowRtt() && !Objects.equals(
-                        current.getServer42Port(), updated.getServer42Port()))
+                current.getServer42Port(), updated.getServer42Port()))
                 || (updated.isServer42FlowRtt() && !Objects.equals(
-                        current.getServer42MacAddress(), updated.getServer42MacAddress()))
+                current.getServer42MacAddress(), updated.getServer42MacAddress()))
                 || (updated.isServer42FlowRtt() && !Objects.equals(
-                        current.getServer42Vlan(), updated.getServer42Vlan()));
+                current.getServer42Vlan(), updated.getServer42Vlan()));
     }
 
     private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
@@ -357,10 +359,10 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             if (!flowsWitchEnabledLldp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
                         format("Illegal switch properties combination for switch %s. "
-                              + "Detect Connected Devices feature is turn on for following flows [%s]. "
-                              + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                              + "Please disable detecting of connected devices via LLDP for each flow before set "
-                              + "'multiTable' property to 'false'",
+                                + "Detect Connected Devices feature is turn on for following flows [%s]. "
+                                + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
+                                + "Please disable detecting of connected devices via LLDP for each flow before set "
+                                + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWitchEnabledLldp)));
             }
 
@@ -371,10 +373,10 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             if (!flowsWithEnabledArp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
                         format("Illegal switch properties combination for switch %s. "
-                              + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
-                              + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                              + "Please disable detecting of connected devices via ARP for each flow before set "
-                              + "'multiTable' property to 'false'",
+                                + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
+                                + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
+                                + "Please disable detecting of connected devices via ARP for each flow before set "
+                                + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWithEnabledArp)));
             }
         }
@@ -450,8 +452,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                 Optional.ofNullable(location.getCity()).ifPresent(foundSwitch::setCity);
                 Optional.ofNullable(location.getCountry()).ifPresent(foundSwitch::setCountry);
             });
-
-            switchRepository.createOrUpdate(foundSwitch);
+            switchRepository.detach(foundSwitch);
             return foundSwitch;
         });
     }

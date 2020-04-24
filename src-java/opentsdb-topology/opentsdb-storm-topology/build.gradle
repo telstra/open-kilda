@@ -12,8 +12,7 @@ dependencies {
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
-    runtimeOnly project(':kilda-persistence-neo4j')
-    testImplementation project(':kilda-persistence-neo4j')
+    runtimeClasspath project(':kilda-persistence-orientdb')
 
     implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude(group: 'org.apache.httpcomponents', module: 'httpclient')
@@ -31,9 +30,6 @@ dependencies {
     testImplementation 'org.mockito:mockito-core'
     testImplementation 'org.clojure:clojure'
     testImplementation 'org.hamcrest:hamcrest-library'
-    testImplementation 'org.neo4j:neo4j'
-    testImplementation 'org.neo4j:neo4j-ogm-core'
-    testImplementation 'org.neo4j.driver:neo4j-java-driver'
     testRuntimeOnly 'org.glassfish:javax.el'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
     testImplementation('org.mock-server:mockserver-netty') {
