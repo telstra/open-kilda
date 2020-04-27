@@ -1,4 +1,3 @@
-
 <form class="flow-card row" id="flowAddForm" novalidate (ngSubmit)="addFlow()" [formGroup]="flowAddForm">
   <div class="col-lg-12">
     <div class="row mb-4">
@@ -24,14 +23,13 @@
                     class="form-control"></textarea>
                 </div>
               </div>
-
               <div class='form-group row flow_details' [ngClass]="{'error': f.maximum_bandwidth.errors && submitted}">
-                <label class='col-sm-3 col-form-label required'>Maximum Bandwidth:</label>
+                <label class='col-sm-3 col-form-label required'>Bandwidth:</label>
                 <div class="col-sm-4">
                   <input formControlName="maximum_bandwidth" id="max_bandwidth" class="form-control" name="max_bandwidth"
                     type="number" min="0"  required />
                   <div *ngIf="submitted && f.maximum_bandwidth.errors" class="invalid-feedback">
-                    <div *ngIf="f.maximum_bandwidth.errors.required">Maximum bandwidth is required</div>
+                    <div *ngIf="f.maximum_bandwidth.errors.required">bandwidth is required</div>
                   </div>
                 </div>
               </div>

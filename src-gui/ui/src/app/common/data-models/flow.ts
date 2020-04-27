@@ -12,6 +12,7 @@ export interface Flow {
     target_switch_name: string;
     source_switch_name: string;
     dummytest:string;
+    diverse_with:any;
     'last-updated':string,
     created:string,
     allocate_protected_path:boolean,

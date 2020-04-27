@@ -113,6 +113,7 @@ export class NetworkpathComponent implements OnInit {
       this.sortFlag[type] = !this.sortFlag[type];
       this.networkPaths = this.networkPaths.sort(function(a,b){
         if(type == 'nodes'){
+         
           return a[type].length - b[type].length;
         }
         return a[type] - b[type];
@@ -121,7 +122,7 @@ export class NetworkpathComponent implements OnInit {
       this.sortFlag[type] = !this.sortFlag[type];
       this.networkPaths = this.networkPaths.sort(function(a,b){
         if(type == 'nodes'){
-          return a[type].length - b[type].length;
+          return b[type].length - a[type].length;
         }
         return b[type] - a[type];
       })
@@ -147,7 +148,8 @@ export class NetworkpathComponent implements OnInit {
     this.loaderService.show('fetching network paths...');
     self.networkPaths = [];
     this.switchService.getNetworkPath(this.networkpathForm.controls['source_switch'].value,this.networkpathForm.controls['target_switch'].value).subscribe(function(paths){
-       self.networkPaths = paths.paths.filter(function(d){
+      self.submitted = false; 
+      self.networkPaths = paths.paths.filter(function(d){
          return d.nodes.length;
        });
        if(self.networkPaths.length == 0){
@@ -155,6 +157,7 @@ export class NetworkpathComponent implements OnInit {
        }
        self.loaderService.hide();
     },error=>{
+      self.submitted = false;
       self.loaderService.hide();
       self.toastr.error("Error:"+error.error['error-auxiliary-message'],'Error');
     })
@@ -235,7 +238,7 @@ export class NetworkpathComponent implements OnInit {
       self.zoomLevel = 0.45;     
       self.svgElement.html(""); 
       var width = $("#"+graphWrapper)[0].clientWidth || window.innerWidth;
-      var height = self.svgElement.attr('height')
+      var height = window.innerHeight - 100 || $("#"+graphWrapper)[0].clientHeight
       self.svgElement.style('cursor','move');
       self.svgElement.attr("width",width);
       self.svgElement.attr("height",height);
@@ -750,6 +753,13 @@ export class NetworkpathComponent implements OnInit {
       }
     }
   };
+  nodeclick= (d, index) => {   
+    this.showSwitchDetails(d);
+  };
+  showSwitchDetails = d => {
+    localStorage.setItem("switchDetailsJSON", JSON.stringify(d));
+    window.location.href = "switches/details/" + d.switch_id;
+  };
   private insertNodes(nodes) {
     let ref = this;
 
@@ -764,6 +774,7 @@ export class NetworkpathComponent implements OnInit {
         return "node "+d.switch_id.replace(/:+/g,"_");
       })
       .on("dblclick", null)
+      .on("click", this.nodeclick)
       .call(
         d3
           .drag()
@@ -910,7 +921,7 @@ export class NetworkpathComponent implements OnInit {
       .scale(this.zoomLevel)
      .translate(
       (fullWidth/2 - this.min_zoom*midX),
-      (fullHeight/2 - this.min_zoom*midY)
+      (fullHeight/2 - this.min_zoom*midY) - 200
       ); 
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }

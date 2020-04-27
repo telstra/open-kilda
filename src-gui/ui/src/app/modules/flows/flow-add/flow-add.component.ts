@@ -90,7 +90,9 @@ export class FlowAddComponent implements OnInit {
   getflowList(){
       let filtersOptions = {controller:true,_:new Date().getTime()};
         this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
-          this.diverseFlowList = data || [];
+          this.diverseFlowList = data.filter((d:any)=>{
+            return d.status != 'DOWN';
+          }) || [];
         },error=>{
            this.diverseFlowList = [];  
         });

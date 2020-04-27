@@ -5,3 +5,8 @@ ul.submenu li a{
     font-size: 12px;
     padding-left: 30px;
 }
+
+ul.sidebar-menu li a.active{
+    background: #1e242c;
+    border-left: 3px solid #00ccbe
+}
