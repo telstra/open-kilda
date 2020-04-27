@@ -8,7 +8,6 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchStatus
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -112,4 +111,5 @@ and at least 1 path must remain safe"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
+
 }
