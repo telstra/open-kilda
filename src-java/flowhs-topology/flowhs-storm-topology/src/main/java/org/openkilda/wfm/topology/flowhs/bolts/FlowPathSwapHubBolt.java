@@ -91,7 +91,7 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        // service.handleTimeout(key);
+        service.handleTimeout(key);
     }
 
     @Override

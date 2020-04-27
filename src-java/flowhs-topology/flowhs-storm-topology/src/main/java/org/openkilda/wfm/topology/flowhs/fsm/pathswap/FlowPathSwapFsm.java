@@ -21,7 +21,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.AbandonPendingCommandsAction;
@@ -116,6 +116,8 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
             this.carrier = carrier;
             this.resourcesManager = resourcesManager;
 
+            final ReportErrorAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext>
+                    reportErrorAction = new ReportErrorAction<>();
 
             builder = StateMachineBuilderFactory.create(FlowPathSwapFsm.class, State.class, Event.class,
                     FlowPathSwapContext.class, CommandContext.class, FlowPathSwapHubCarrier.class, String.class);
@@ -154,21 +156,27 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
             builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
 
+            builder.transitions().from(State.VALIDATING_INGRESS_RULES)
+                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
+                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND);
+
             builder.transition().from(State.INGRESS_RULES_VALIDATED).to(State.REMOVING_OLD_RULES).on(Event.NEXT)
                     .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
-            builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
-                    .on(Event.RULES_REMOVED);
+            builder.transitions().from(State.REMOVING_OLD_RULES)
+                    .toAmong(State.OLD_RULES_REMOVED, State.OLD_RULES_REMOVED, State.OLD_RULES_REMOVED)
+                    .onEach(Event.RULES_REMOVED, Event.TIMEOUT, Event.ERROR);
 
+            builder.onEntry(State.OLD_RULES_REMOVED).perform(reportErrorAction);
             builder.transition().from(State.OLD_RULES_REMOVED).to(State.UPDATING_FLOW_STATUS)
                     .on(Event.NEXT);
             builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
                     .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger, transactionRetriesLimit));
 
-
+            builder.onEntry(State.REVERTING_PATHS_SWAP).perform(reportErrorAction);
             builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
                     .on(Event.NEXT)
                     .perform(new RevertPathsSwapAction(persistenceManager, transactionRetriesLimit));
