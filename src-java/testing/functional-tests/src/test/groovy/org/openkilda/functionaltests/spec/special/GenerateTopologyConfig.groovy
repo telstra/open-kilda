@@ -26,6 +26,6 @@ class GenerateTopologyConfig extends BaseSpecification {
         then: "Able to serialize and save it to 'target'"
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory().configure(Feature.USE_NATIVE_OBJECT_ID, false))
         mapper.setSerializationInclusion(Include.NON_NULL)
-        new File("target/topology.yaml").write(mapper.writeValueAsString(topo))
+        new File("build/topology.yaml").write(mapper.writeValueAsString(topo))
     }
 }
