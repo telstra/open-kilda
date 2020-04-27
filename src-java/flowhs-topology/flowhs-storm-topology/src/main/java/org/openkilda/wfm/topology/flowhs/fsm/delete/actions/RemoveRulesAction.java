@@ -25,6 +25,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -83,15 +84,8 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                                 stateMachine.getCommandContext(), flow, path, oppositePath));
                     } else {
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                                .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
-                                .removeOppositeCustomerPortRule(
-                                        isRemoveCustomerPortSharedCatchRule(flow, oppositePath))
-                                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
-                                .removeOppositeCustomerPortLldpRule(
-                                        isRemoveCustomerPortSharedLldpCatchRule(flow, oppositePath))
-                                .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
-                                .removeOppositeCustomerPortArpRule(
-                                        isRemoveCustomerPortSharedArpCatchRule(flow, oppositePath))
+                                .forward(buildPathContext(flow, path))
+                                .reverse(buildPathContext(flow, oppositePath))
                                 .build();
                         commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
                                 path, oppositePath, speakerRequestBuildContext));
@@ -106,8 +100,8 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                                 stateMachine.getCommandContext(), flow, path, null));
                     } else {
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                                .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
-                                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
+                                .forward(buildPathContext(flow, path))
+                                .reverse(PathContext.builder().build())
                                 .build();
                         commands.addAll(commandBuilder.buildAll(
                                 stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
@@ -174,5 +168,14 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
         boolean isForward = flow.isForward(path);
         return isFlowTheLastUserOfSharedArpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
                 isForward ? flow.getSrcPort() : flow.getDestPort());
+    }
+
+    private PathContext buildPathContext(Flow flow, FlowPath path) {
+
+        return PathContext.builder()
+                .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
+                .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
+                .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
+                .build();
     }
 }
