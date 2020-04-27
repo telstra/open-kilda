@@ -35,6 +35,7 @@ import java.util.Optional;
 
 public class Neo4JMirrorGroupRepository extends Neo4jGenericRepository<MirrorGroup> implements MirrorGroupRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";
+    static final String SWITCH_ID_PROPERTY_NAME = "switch_id";
 
     public Neo4JMirrorGroupRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -50,6 +51,13 @@ public class Neo4JMirrorGroupRepository extends Neo4jGenericRepository<MirrorGro
                     + " One path must have up to 1 group.", pathId));
         }
         return groups;
+    }
+
+    @Override
+    public Collection<MirrorGroup> findBySwitchId(SwitchId switchId) {
+        Filter pathIdFilter = new Filter(SWITCH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
+
+        return loadAll(pathIdFilter);
     }
 
     @Override

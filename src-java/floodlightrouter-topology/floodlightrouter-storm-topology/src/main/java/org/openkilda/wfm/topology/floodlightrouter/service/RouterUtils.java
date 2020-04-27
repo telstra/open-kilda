@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -54,10 +55,12 @@ import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.SwitchId;
 
 public final class RouterUtils {
-    private  RouterUtils(){}
+    private RouterUtils() {
+    }
 
     /**
      * Checks if the message should be broadcasted among regions or not.
+     *
      * @param message target
      * @return flag
      */
@@ -65,8 +68,8 @@ public final class RouterUtils {
         if (message instanceof CommandMessage) {
             CommandData commandData = ((CommandMessage) message).getData();
             if (commandData instanceof PortsCommandData
-                     || commandData instanceof ConnectModeRequest
-                     || commandData instanceof StatsRequest) {
+                    || commandData instanceof ConnectModeRequest
+                    || commandData instanceof StatsRequest) {
                 return true;
             }
         }
@@ -75,6 +78,7 @@ public final class RouterUtils {
 
     /**
      * lookup SwitchId in message object.
+     *
      * @param message - target
      * @return - SwitchId or null
      */
@@ -137,6 +141,8 @@ public final class RouterUtils {
                 return ((InstallIslDefaultRulesCommand) commandData).getSrcSwitch();
             } else if (commandData instanceof RemoveIslDefaultRulesCommand) {
                 return ((RemoveIslDefaultRulesCommand) commandData).getSrcSwitch();
+            } else if (commandData instanceof DumpGroupsRequest) {
+                return ((DumpGroupsRequest) commandData).getSwitchId();
             }
         }
         return null;
@@ -144,6 +150,7 @@ public final class RouterUtils {
 
     /**
      * Lookup SwitchId in message object.
+     *
      * @param message - target
      * @return - SwitchId or null
      */

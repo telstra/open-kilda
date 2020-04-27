@@ -42,6 +42,7 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.SwitchId;
@@ -202,13 +203,14 @@ public class SwitchValidateServiceImplTest {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
-        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleGroupEntriesResponse(KEY, new SwitchGroupEntries(SWITCH_ID, emptyList()));
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-
+        verify(validationService).validateGroups(eq(SWITCH_ID), any());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
@@ -230,9 +232,10 @@ public class SwitchValidateServiceImplTest {
         service.handleMetersUnsupportedResponse(KEY);
         service.handleExpectedDefaultMeterEntriesResponse(KEY,
                 new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
+        service.handleGroupEntriesResponse(KEY, new SwitchGroupEntries(SWITCH_ID, emptyList()));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-
+        verify(validationService).validateGroups(eq(SWITCH_ID), any());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
@@ -250,7 +253,7 @@ public class SwitchValidateServiceImplTest {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
-        when(validationService.validateMeters(any(), any(), any()))
+        when(validationService.validateGroups(any(), any()))
                 .thenThrow(new IllegalArgumentException(errorMessage));
         handleDataReceiveAndValidate();
 
@@ -289,7 +292,7 @@ public class SwitchValidateServiceImplTest {
         verify(carrier, times(1)).getTopologyConfig();
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(4)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(5)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
     }
 
@@ -298,11 +301,14 @@ public class SwitchValidateServiceImplTest {
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         service.handleMeterEntriesResponse(KEY, new SwitchMeterEntries(SWITCH_ID, singletonList(meterEntry)));
+        service.handleGroupEntriesResponse(KEY, new SwitchGroupEntries(SWITCH_ID, emptyList()));
+
         service.handleExpectedDefaultMeterEntriesResponse(KEY,
                 new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
         verify(validationService).validateMeters(eq(SWITCH_ID), any(), any());
+        verify(validationService).validateGroups(eq(SWITCH_ID), any());
     }
 
     private ErrorMessage getErrorMessage() {
