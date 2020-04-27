@@ -158,4 +158,13 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
         }
         return lastHistoryEntryTime;
     }
+
+    public abstract void reportError(E event);
+
+    protected void reportGlobalTimeout() {
+        saveErrorToHistory(String.format(
+                "Global timeout reached for %s operation on flow \"%s\"", getCrudActionName(), getFlowId()));
+    }
+
+    protected abstract String getCrudActionName();
 }
