@@ -29,6 +29,7 @@ import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -82,8 +83,12 @@ public class LinkController extends BaseController {
     @ApiOperation(value = "Delete link.", response = LinkDto.class, responseContainer = "List")
     @DeleteMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<LinkDto>> deleteLink(@RequestBody LinkParametersDto linkParameters) {
-        return linkService.deleteLink(linkParameters);
+    public CompletableFuture<List<LinkDto>> deleteLink(
+            @ApiParam(value = "default: false. True value means that all link checks (link is inactive, "
+                    + "there is no flow with this link) will be ignored.")
+            @RequestParam(name = "force", required = false, defaultValue = "false") boolean force,
+            @RequestBody LinkParametersDto linkParameters) {
+        return linkService.deleteLink(linkParameters, force);
     }
 
     /**
