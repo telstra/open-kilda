@@ -20,9 +20,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -198,7 +198,7 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
                 .pathId(new PathId("forward_path_id"))
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
-                .cookie(Cookie.buildForwardCookie(1L))
+                .cookie(new FlowSegmentCookie(1L))
                 .build();
 
         FlowPath reversePath = FlowPath.builder()
@@ -206,7 +206,7 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
                 .pathId(new PathId("reverse_path_id"))
                 .srcSwitch(dstSwitch)
                 .destSwitch(srcSwitch)
-                .cookie(Cookie.buildReverseCookie(1L))
+                .cookie(new FlowSegmentCookie(1L))
                 .build();
 
         forwardPath.setSegments(newArrayList(createPathSegment(srcSwitch, srcPort, dstSwitch, dstPort)));
