@@ -186,6 +186,7 @@ public abstract class OfFlowStatsMapper {
         Map<OFActionType, OFAction> actions = ((OFInstructionApplyActions) instruction).getActions()
                 .stream()
                 .filter(ofAction -> !ofAction.getType().equals(OFActionType.EXPERIMENTER))
+                .filter(ofAction -> !ofAction.getType().equals(OFActionType.SET_FIELD))
                 .collect(Collectors.toMap(OFAction::getType, action -> action));
         // NOTE(tdurakov): there are could be more then one action of type experimenter, better to filter them out
         // and handle independently
@@ -193,6 +194,11 @@ public abstract class OfFlowStatsMapper {
                 .stream()
                 .filter(ofAction -> ofAction.getType().equals(OFActionType.EXPERIMENTER))
                 .collect(Collectors.toSet());
+        Set<OFAction> setFieldActions = ((OFInstructionApplyActions) instruction).getActions()
+                .stream()
+                .filter(ofAction -> ofAction.getType().equals(OFActionType.SET_FIELD))
+                .collect(Collectors.toSet());
+
         return FlowApplyActions.builder()
                 .meter(Optional.ofNullable(actions.get(OFActionType.METER))
                         .map(action -> String.valueOf(((OFActionMeter) action).getMeterId()))
@@ -204,9 +210,9 @@ public abstract class OfFlowStatsMapper {
                 .flowOutput(Optional.ofNullable(actions.get(OFActionType.OUTPUT))
                         .map(action -> String.valueOf(((OFActionOutput) action).getPort().toString()))
                         .orElse(null))
-                .fieldAction(Optional.ofNullable(actions.get(OFActionType.SET_FIELD))
+                .setFieldActions(setFieldActions.stream()
                         .map(this::toFlowSetFieldAction)
-                        .orElse(null))
+                        .collect(Collectors.toList()))
                 .pushVxlan(experimenterActions.stream()
                         .filter(ofAction -> ofAction instanceof OFActionNoviflowPushVxlanTunnel)
                         .map(action -> String.valueOf(((OFActionNoviflowPushVxlanTunnel) action).getVni()))

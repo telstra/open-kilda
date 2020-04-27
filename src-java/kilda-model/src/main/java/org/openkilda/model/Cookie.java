@@ -88,6 +88,10 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.ARP_POST_INGRESS_VXLAN_COOKIE).getValue();
     public static final long ARP_POST_INGRESS_ONE_SWITCH_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.ARP_POST_INGRESS_ONE_SWITCH_COOKIE).getValue();
+    public static final long SERVER_42_OUTPUT_VLAN_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VLAN_COOKIE).getValue();
+    public static final long SERVER_42_OUTPUT_VXLAN_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VXLAN_COOKIE).getValue();
 
     @JsonCreator
     public Cookie(long value) {

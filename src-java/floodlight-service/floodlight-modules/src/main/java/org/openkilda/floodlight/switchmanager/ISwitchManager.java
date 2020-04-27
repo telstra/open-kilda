@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -31,7 +32,6 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.net.InetAddress;
 import java.util.List;
@@ -210,6 +210,28 @@ public interface ISwitchManager extends IFloodlightService {
     Long installArpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Install Server 42 output vlan rule which will send Ping packet back to Server 42.
+     *
+     * @param dpid datapathId of the switch
+     * @param port server 42 port
+     * @param macAddress server 42 mac address
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42OutputVlanFlow(DatapathId dpid, int port, MacAddress macAddress)
+            throws SwitchOperationException;
+
+    /**
+     * Install Server 42 output VXLAN rule which will send Ping packet back to Server 42.
+     *
+     * @param dpid datapathId of the switch
+     * @param port server 42 port
+     * @param macAddress server 42 mac address
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42OutputVxlanFlow(DatapathId dpid, int port, MacAddress macAddress)
+            throws SwitchOperationException;
+
+    /**
      * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
      *
      * @param dpid datapathId of the switch
@@ -363,6 +385,18 @@ public interface ISwitchManager extends IFloodlightService {
      * @return modification command
      */
     OFFlowMod buildArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchNotFoundException;
+
+    /**
+     * Build all expected Server 42 rules.
+     *
+     * @param dpid switch id
+     * @param server42Port server 42 port
+     * @param server42MacAddress mac address of server 42
+     * @return modification command
+     */
+    List<OFFlowMod> buildExpectedServer42Flows(
+            DatapathId dpid, int server42Port, MacAddress server42MacAddress)
+            throws SwitchNotFoundException;
 
     /**
      * Install default pass through rule for pre ingress table.
@@ -628,12 +662,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @param multiTable multiTableMode
      * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
      * @param switchArp switch Arp enabled. True means that switch has rules for catching ARP packets.
+     * @param server42FlowRtt server 42 flow RTT. True means that switch has rules for pinging Flows from server 42.
      * @return the list of cookies for removed rules
      * @throws SwitchOperationException Switch not found
      */
     List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
                                   List<Integer> flowPorts, Set<Integer> flowLldpPorts, Set<Integer> flowArpPorts,
-                                  boolean multiTable, boolean switchLldp, boolean switchArp)
+                                  boolean multiTable, boolean switchLldp, boolean switchArp, boolean server42FlowRtt)
             throws SwitchOperationException;
 
     /**
@@ -674,14 +709,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found.
      */
     List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
-
-    /**
-     * Create a MAC address based on the DPID.
-     *
-     * @param dpId switch object
-     * @return {@link MacAddress}
-     */
-    MacAddress dpIdToMac(final DatapathId dpId);
 
     /**
      * Return if tracking is enabled.

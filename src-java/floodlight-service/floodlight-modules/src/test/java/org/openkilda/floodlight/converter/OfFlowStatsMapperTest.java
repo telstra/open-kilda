@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
@@ -80,6 +81,8 @@ public class OfFlowStatsMapperTest {
     public static final long oxmSrcHeader = 22;
     public static final long oxmDstHeader = 23;
     public static final TableId goToTable = TableId.of(24);
+    private static final String MAC_ADDRESS_1 = "01:01:01:01:01:01";
+    private static final String MAC_ADDRESS_2 = "02:02:02:02:02:02";
 
     @Test
     public void testToFlowStatsData() {
@@ -126,7 +129,8 @@ public class OfFlowStatsMapperTest {
         assertEquals(udpSrc.toString(), entry.getMatch().getUdpSrc());
         assertEquals(udpDst.toString(), entry.getMatch().getUdpDst());
 
-        FlowSetFieldAction flowSetFieldAction = new FlowSetFieldAction("eth_type", ethType.toString());
+        FlowSetFieldAction flowSetEthSrcAction = new FlowSetFieldAction("eth_src", MAC_ADDRESS_1);
+        FlowSetFieldAction flowSetEthDstAction = new FlowSetFieldAction("eth_dst", MAC_ADDRESS_2);
         FlowCopyFieldAction flowCopyFieldAction = FlowCopyFieldAction.builder()
                 .bits(String.valueOf(bits))
                 .srcOffset(String.valueOf(srcOffset))
@@ -134,8 +138,9 @@ public class OfFlowStatsMapperTest {
                 .srcOxm(String.valueOf(oxmSrcHeader))
                 .dstOxm(String.valueOf(oxmDstHeader))
                 .build();
-        FlowApplyActions applyActions = new FlowApplyActions(port.toString(), flowSetFieldAction, ethType.toString(),
-                null, null, null, group.toString(), flowCopyFieldAction);
+        FlowApplyActions applyActions = new FlowApplyActions(port.toString(),
+                Lists.newArrayList(flowSetEthSrcAction, flowSetEthDstAction), ethType.toString(), null, null, null,
+                group.toString(), flowCopyFieldAction);
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
         assertEquals(instructions, entry.getInstructions());
     }
@@ -174,7 +179,8 @@ public class OfFlowStatsMapperTest {
 
         actions.add(factory.actions().pushVlan(ethType));
         actions.add(factory.actions().output(port, 0));
-        actions.add(factory.actions().setField(factory.oxms().ethType(ethType)));
+        actions.add(factory.actions().setField(factory.oxms().ethSrc(MacAddress.of(MAC_ADDRESS_1))));
+        actions.add(factory.actions().setField(factory.oxms().ethDst(MacAddress.of(MAC_ADDRESS_2))));
         actions.add(factory.actions().group(group));
         actions.add(factory.actions().buildNoviflowCopyField()
                 .setNBits(bits)

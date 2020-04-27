@@ -41,6 +41,9 @@ import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIng
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressOneSwitchFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressVxlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpTransitFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVlanFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVxlanFlowGenerator;
+import org.openkilda.model.MacAddress;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 
@@ -251,6 +254,28 @@ public class SwitchFlowFactory implements IService {
         return ArpTransitFlowGenerator.builder()
                 .config(config)
                 .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get Server 42 output vlan flow generator.
+     */
+    public SwitchFlowGenerator getServer42OutputVlanFlowGenerator(int server42Port, MacAddress server42MacAddress) {
+        return Server42OutputVlanFlowGenerator.builder()
+                .featureDetectorService(featureDetectorService)
+                .server42Port(server42Port)
+                .server42MacAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get Server 42 output VXLAN flow generator.
+     */
+    public SwitchFlowGenerator getServer42OutputVxlanFlowGenerator(int server42Port, MacAddress server42MacAddress) {
+        return Server42OutputVxlanFlowGenerator.builder()
+                .featureDetectorService(featureDetectorService)
+                .server42Port(server42Port)
+                .server42MacAddress(server42MacAddress)
                 .build();
     }
 }
