@@ -20,10 +20,10 @@ import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
@@ -217,7 +217,7 @@ public abstract class FlowMapper {
         return FlowPath.builder()
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
-                .cookie(new Cookie(flowDto.getCookie()))
+                .cookie(new FlowSegmentCookie(flowDto.getCookie()))
                 .bandwidth(flowDto.getBandwidth())
                 .ignoreBandwidth(flowDto.isIgnoreBandwidth())
                 .flow(flow)

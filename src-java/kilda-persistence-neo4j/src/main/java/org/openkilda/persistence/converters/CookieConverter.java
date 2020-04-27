@@ -16,16 +16,17 @@
 package org.openkilda.persistence.converters;
 
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowSegmentCookie;
 
 import org.neo4j.ogm.typeconversion.AttributeConverter;
 
 /**
  * Converter to convert {@link Cookie} to {@link Long} and back.
  */
-public class CookieConverter implements AttributeConverter<Cookie, Long> {
+public class CookieConverter implements AttributeConverter<FlowSegmentCookie, Long> {
 
     @Override
-    public Long toGraphProperty(Cookie value) {
+    public Long toGraphProperty(FlowSegmentCookie value) {
         if (value == null) {
             return null;
         }
@@ -33,10 +34,10 @@ public class CookieConverter implements AttributeConverter<Cookie, Long> {
     }
 
     @Override
-    public Cookie toEntityAttribute(Long value) {
+    public FlowSegmentCookie toEntityAttribute(Long value) {
         if (value == null) {
             return null;
         }
-        return new Cookie(value);
+        return new FlowSegmentCookie(value);
     }
 }

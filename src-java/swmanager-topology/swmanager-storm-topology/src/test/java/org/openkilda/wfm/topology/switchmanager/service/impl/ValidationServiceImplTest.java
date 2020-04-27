@@ -30,10 +30,11 @@ import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -290,7 +291,7 @@ public class ValidationServiceImplTest {
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .pathId(new PathId(pathId))
-                .cookie(new Cookie(cookie))
+                .cookie(new FlowSegmentCookie(cookie))
                 .build();
     }
 
@@ -354,7 +355,7 @@ public class ValidationServiceImplTest {
             when(flowPathA.getSrcSwitch()).thenReturn(switchB);
             when(flowPathA.getDestSwitch()).thenReturn(switchA);
             when(flowPathA.getBandwidth()).thenReturn(10000L);
-            when(flowPathA.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
+            when(flowPathA.getCookie()).thenReturn(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1));
             when(flowPathA.getMeterId()).thenReturn(new MeterId(32L));
             when(flowPathA.getPathId()).thenReturn(flowAPathId);
 
@@ -381,7 +382,7 @@ public class ValidationServiceImplTest {
             when(flowPathB.getSrcSwitch()).thenReturn(switchE);
             when(flowPathB.getDestSwitch()).thenReturn(switchA);
             when(flowPathB.getBandwidth()).thenReturn(FLOW_E_BANDWIDTH);
-            when(flowPathB.getCookie()).thenReturn(Cookie.buildForwardCookie(1));
+            when(flowPathB.getCookie()).thenReturn(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1));
             when(flowPathB.getMeterId()).thenReturn(new MeterId(32L));
             when(flowPathB.getPathId()).thenReturn(flowBPathId);
 

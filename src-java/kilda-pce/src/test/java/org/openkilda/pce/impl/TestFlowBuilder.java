@@ -15,10 +15,11 @@
 
 package org.openkilda.pce.impl;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -71,9 +72,11 @@ public class TestFlowBuilder {
                 .build();
 
         FlowPath forwardPath =
-                buildFlowPath(flow, srcSwitch, destSwitch, Cookie.buildForwardCookie(unmaskedCookie));
+                buildFlowPath(flow, srcSwitch, destSwitch, new FlowSegmentCookie(
+                        FlowPathDirection.FORWARD, unmaskedCookie));
         FlowPath reversePath =
-                buildFlowPath(flow, destSwitch, srcSwitch, Cookie.buildReverseCookie(unmaskedCookie));
+                buildFlowPath(flow, destSwitch, srcSwitch, new FlowSegmentCookie(
+                        FlowPathDirection.REVERSE, unmaskedCookie));
 
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
@@ -81,7 +84,7 @@ public class TestFlowBuilder {
         return flow;
     }
 
-    private FlowPath buildFlowPath(Flow flow, Switch pathSrc, Switch pathDest, Cookie cookie) {
+    private FlowPath buildFlowPath(Flow flow, Switch pathSrc, Switch pathDest, FlowSegmentCookie cookie) {
         return FlowPath.builder()
                 .flow(flow)
                 .pathId(new PathId(UUID.randomUUID().toString()))

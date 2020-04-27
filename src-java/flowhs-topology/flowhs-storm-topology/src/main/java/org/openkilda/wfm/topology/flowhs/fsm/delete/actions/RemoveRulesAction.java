@@ -144,7 +144,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
         }
 
         return FlowResources.builder()
-                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .unmaskedCookie(forwardPath.getCookie().getFlowEffectiveId())
                 .forward(PathResources.builder()
                         .pathId(forwardPath.getPathId())
                         .meterId(forwardPath.getMeterId())
