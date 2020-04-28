@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -73,6 +74,17 @@ public abstract class CookieBase implements Serializable {
     }
 
     /**
+     * Extract and return "type" field is save way (return empty {@link Optional} object if type is invalid).
+     */
+    public Optional<CookieType> getTypeSafe() {
+        try {
+            return Optional.of(getType());
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Extract and return "type" field.
      */
     public CookieType getType() {
@@ -119,7 +131,7 @@ public abstract class CookieBase implements Serializable {
         }
 
         throw new IllegalArgumentException(String.format(
-                "Unable to map value %x value into %s value", needle, typeRef.getSimpleName()));
+                "Unable to map value 0x%x value into %s value", needle, typeRef.getSimpleName()));
     }
 
     protected static long setField(long value, BitField field, long payload) {

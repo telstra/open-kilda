@@ -683,7 +683,8 @@ class RecordHandler implements Runnable {
 
         Cookie encodedCookie = new Cookie(cookie);
         PortColourCookie portColourCookie = new PortColourCookie(cookie);
-        CookieType cookieType = encodedCookie.getType();
+        Optional<CookieType> cookieTypeOption = portColourCookie.getTypeSafe();
+
         if (cookie == DROP_RULE_COOKIE) {
             return switchManager.installDropFlow(dpid);
         } else if (cookie == VERIFICATION_BROADCAST_RULE_COOKIE) {
@@ -734,22 +735,24 @@ class RecordHandler implements Runnable {
             return switchManager.installArpPostIngressOneSwitchFlow(dpid);
         } else if (cookie == ARP_TRANSIT_COOKIE) {
             return switchManager.installArpTransitFlow(dpid);
-        } else if (cookieType == CookieType.MULTI_TABLE_INGRESS_RULES) {
-            return switchManager.installIntermediateIngressRule(dpid, portColourCookie.getPortNumber());
-        } else if (cookieType == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES) {
-            return switchManager.installEgressIslVlanRule(dpid, portColourCookie.getPortNumber());
-        } else if (cookieType == CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES) {
-            return switchManager.installTransitIslVxlanRule(dpid, portColourCookie.getPortNumber());
-        } else if (cookieType == CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES) {
-            return switchManager.installEgressIslVxlanRule(dpid, portColourCookie.getPortNumber());
-        } else if (cookieType == CookieType.LLDP_INPUT_CUSTOMER_TYPE) {
-            return switchManager.installLldpInputCustomerFlow(dpid, portColourCookie.getPortNumber());
-        } else if (cookieType == CookieType.ARP_INPUT_CUSTOMER_TYPE) {
-            return switchManager.installArpInputCustomerFlow(dpid, portColourCookie.getPortNumber());
-        } else {
-            logger.warn("Skipping the installation of unexpected default switch rule {} for switch {}",
-                    encodedCookie, switchId);
+        } else if (cookieTypeOption.isPresent()) {
+            CookieType cookieType = cookieTypeOption.get();
+            if (cookieType == CookieType.MULTI_TABLE_INGRESS_RULES) {
+                return switchManager.installIntermediateIngressRule(dpid, portColourCookie.getPortNumber());
+            } else if (cookieType == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES) {
+                return switchManager.installEgressIslVlanRule(dpid, portColourCookie.getPortNumber());
+            } else if (cookieType == CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES) {
+                return switchManager.installTransitIslVxlanRule(dpid, portColourCookie.getPortNumber());
+            } else if (cookieType == CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES) {
+                return switchManager.installEgressIslVxlanRule(dpid, portColourCookie.getPortNumber());
+            } else if (cookieType == CookieType.LLDP_INPUT_CUSTOMER_TYPE) {
+                return switchManager.installLldpInputCustomerFlow(dpid, portColourCookie.getPortNumber());
+            } else if (cookieType == CookieType.ARP_INPUT_CUSTOMER_TYPE) {
+                return switchManager.installArpInputCustomerFlow(dpid, portColourCookie.getPortNumber());
+            }
         }
+        logger.warn("Skipping the installation of unexpected default switch rule {} for switch {}",
+                encodedCookie, switchId);
         return null;
     }
 

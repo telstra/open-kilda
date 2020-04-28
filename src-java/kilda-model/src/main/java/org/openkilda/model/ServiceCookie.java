@@ -22,6 +22,8 @@ import org.openkilda.model.bitops.NumericEnumField;
 import lombok.Builder;
 import org.apache.commons.lang3.ArrayUtils;
 
+import java.util.Optional;
+
 public class ServiceCookie extends CookieBase implements Comparable<ServiceCookie> {
     // update ALL_FIELDS if modify fields list
     //                           used by generic cookie -> 0x9FF0_0000_0000_0000L
@@ -63,7 +65,18 @@ public class ServiceCookie extends CookieBase implements Comparable<ServiceCooki
 
     // TODO - replace existing meter-id generation approach
     public MeterId getMeterId() {
-        return new MeterId(getServiceTag().getValue());
+        return new MeterId(getField(SERVICE_TAG_FIELD));
+    }
+
+    /**
+     * Extract and return "service tag" field is save way (return empty {@link Optional} object if tag is invalid).
+     */
+    public Optional<ServiceCookieTag> getServiceTagSafe() {
+        try {
+            return Optional.of(getServiceTag());
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 
     public ServiceCookieTag getServiceTag() {
