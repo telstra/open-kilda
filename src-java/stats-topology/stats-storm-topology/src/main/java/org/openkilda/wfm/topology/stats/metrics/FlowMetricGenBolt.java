@@ -60,9 +60,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
 
     private void emit(FlowStatsEntry entry, long timestamp, @Nonnull SwitchId switchId,
                       @Nullable CacheFlowEntry flowEntry) throws FlowCookieException {
-        boolean isFlowSegmentEntry = new Cookie(entry.getCookie()).getTypeSafe()
-                .map(value -> value == CookieType.SERVICE_OR_FLOW_SEGMENT)
-                .orElse(false);
+        boolean isFlowSegmentEntry = new Cookie(entry.getCookie()).getType() == CookieType.SERVICE_OR_FLOW_SEGMENT;
 
         String flowId = "unknown";
         if (flowEntry != null) {

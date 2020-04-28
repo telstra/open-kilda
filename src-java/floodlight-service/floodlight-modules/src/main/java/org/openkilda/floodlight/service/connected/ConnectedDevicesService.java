@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 public class ConnectedDevicesService implements IService, IInputTranslator {
@@ -142,18 +141,15 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         ServiceCookie cookie = new ServiceCookie(rawCookie.getValue());
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 
-        Optional<ServiceCookieTag> serviceTagOption = cookie.getServiceTagSafe();
-        if (serviceTagOption.isPresent()) {
-            ServiceCookieTag serviceTag = serviceTagOption.get();
-            if (lldpServiceTags.contains(serviceTag)) {
-                logger.debug("Receive connected device LLDP packet from {} OF-xid:{}, cookie: {}",
-                        input.getDpId(), input.getMessage().getXid(), cookie);
-                handleSwitchLldp(input, switchId, cookie.getValue());
-            } else if (arpServiceTags.contains(serviceTag)) {
-                logger.debug("Receive connected device ARP packet from {} OF-xid:{}, cookie: {}",
-                        input.getDpId(), input.getMessage().getXid(), cookie);
-                handleArp(input, switchId, cookie.getValue());
-            }
+        final ServiceCookieTag serviceTag = cookie.getServiceTag();
+        if (lldpServiceTags.contains(serviceTag)) {
+            logger.debug("Receive connected device LLDP packet from {} OF-xid:{}, cookie: {}",
+                    input.getDpId(), input.getMessage().getXid(), cookie);
+            handleSwitchLldp(input, switchId, cookie.getValue());
+        } else if (arpServiceTags.contains(serviceTag)) {
+            logger.debug("Receive connected device ARP packet from {} OF-xid:{}, cookie: {}",
+                    input.getDpId(), input.getMessage().getXid(), cookie);
+            handleArp(input, switchId, cookie.getValue());
         }
     }
 
