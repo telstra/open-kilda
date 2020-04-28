@@ -215,7 +215,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
           this.switchFlows = [];
         }
       }
-      this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+      if(this.flowBandwidthSum){
+        this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+      }
       this.loadswitchFlows = true;
       this.loaderService.hide();
       this.flowBandwidthFlag = false;
@@ -380,7 +382,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     
     
   }
-
+  
   switchMaintenance(e){
     const modalRef = this.modalService.open(IslmaintenancemodalComponent);
     modalRef.componentInstance.title = "Confirmation";
