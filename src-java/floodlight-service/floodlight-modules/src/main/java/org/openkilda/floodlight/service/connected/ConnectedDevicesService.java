@@ -138,7 +138,6 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             return;
         }
 
-        logger.info("Receive connected device packet from {} OF-xid:{}", input.getDpId(), input.getMessage().getXid());
         ServiceCookie cookie = new ServiceCookie(rawCookie.getValue());
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 
