@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -127,16 +127,18 @@ public abstract class IConstants {
 
         }
 
-        public static final String GET_FLOW = "/flows";
+        public static final String VERSION_ONE = "/v1";
+        public static final String VERSION_TWO = "/v2";
+        public static final String GET_FLOW = VERSION_ONE + "/flows";
         public static final String GET_FLOW_STATUS = GET_FLOW + "/status/";
         public static final String GET_FLOW_REROUTE = GET_FLOW + "/{flow_id}/reroute";
         public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
         public static final String GET_PATH_FLOW = GET_FLOW + "/path";
-        public static final String GET_SWITCHES = "/switches";
+        public static final String GET_SWITCHES = VERSION_ONE + "/switches";
         public static final String GET_SWITCH = GET_SWITCHES + "/{switch_id}";
         public static final String GET_SWITCH_RULES = GET_SWITCHES + "/{switch_id}/rules";
-        public static final String GET_LINKS = "/links";
-        public static final String GET_LINK_PROPS = "/link/props";
+        public static final String GET_LINKS = VERSION_ONE + "/links";
+        public static final String GET_LINK_PROPS = VERSION_ONE + "/link/props";
         public static final String UPDATE_FLOW = GET_FLOW + "/{flow_id}";
         public static final String GET_FLOW_PATH = GET_FLOW + "/{flow_id}/path";
         public static final String RESYNC_FLOW = GET_FLOW + "/{flow_id}/sync";
@@ -154,11 +156,16 @@ public abstract class IConstants {
         public static final String UPDATE_LINK_BANDWIDTH = GET_LINKS 
                 + "/bandwidth?src_switch={src_switch}&src_port={src_port}&"
                 + "dst_switch={dst_switch}&dst_port={dst_port}";
-        public static final String GET_NETWORK_PATH = "/network/paths?src_switch={src_switch}&dst_switch={dst_switch}";
+        public static final String GET_NETWORK_PATH = VERSION_ONE + "/network/paths?src_switch={src_switch}"
+                + "&dst_switch={dst_switch}";
         public static final String DELETE_SWITCH = GET_SWITCHES + "/{switch_id}?force={force}";
         public static final String UPDATE_LINK_BFD_FLAG = GET_LINKS + "/enable-bfd";
         public static final String GET_FLOW_HISTORY = GET_FLOW + "/{flow_id}/history";
         public static final String GET_FLOW_CONNECTED_DEVICE = GET_FLOW + "/{flow_id}/devices";
+        public static final String UPDATE_SWITCH_PORT_PROPERTY = VERSION_TWO 
+                + "/switches/{switch_id}/ports/{port}/properties";
+        public static final String GET_SWITCH_PORT_PROPERTY = VERSION_TWO + "/switches/{switch_id}"
+                + "/ports/{port}/properties";
     }
     
     public final class OpenTsDbUrl {
@@ -279,6 +286,8 @@ public abstract class IConstants {
         public static final String ISL_UPDATE_BFD_FLAG = "isl_update_bfd_flag";
         
         public static final String FW_FLOW_HISTORY = "fw_flow_history";
+        
+        public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
         
     }
 

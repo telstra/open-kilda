@@ -20,7 +20,7 @@ public interface TestSwitchMock {
     static final String SWITCH_ID = "00:00:00:22:3d:5a:04:87";
     static final String SWITCH_ID_NULL = null;
     static final String PORT = "27";
+    static final int SWITCH_PORT = 27;
     static final boolean MAINTENANCE_STATUS = false;
     static final boolean EVACUATE_STATUS = false;
-    static final boolean CONTROLLER_FLAG = false;
 }
