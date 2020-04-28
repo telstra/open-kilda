@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -24,6 +25,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -32,7 +34,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Unroll
 
@@ -1140,6 +1141,76 @@ switches"() {
                 [flow2.source, flow1.destination, flow1.source, flow2.destination],
                 [flow1.source, flow2.destination, flow2.source, flow1.destination]
         ]
+    }
+
+    @Tidy
+    def "System reverts both flows if fails during rule installation when swapping endpoints"() {
+        given: "Two flows with different src switches and same dst"
+        def swPair1
+        def swPair2 = topologyHelper.switchPairs.find { second ->
+            swPair1 = topologyHelper.switchPairs.find { first ->
+                first.src != second.src && first.dst == second.dst
+            }
+        }
+        assumeTrue("Unable to find 2 switch pairs with different src and same dst switches", swPair1 && swPair2)
+        def flow1 = flowHelperV2.randomFlow(swPair1).tap {
+            it.source.portNumber = getFreePort(swPair1.src, [swPair2.src])
+        }
+        def flow2 = flowHelperV2.randomFlow(swPair2).tap {
+            it.source.portNumber = getFreePort(swPair2.src, [swPair1.src])
+        }
+        flowHelperV2.addFlow(flow1)
+        flowHelperV2.addFlow(flow2)
+
+        when: "Try to swap flow src endoints, but flow1 src switch does not respond"
+        def blockData = switchHelper.knockoutSwitch(swPair1.src, mgmtFlManager)
+        database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.ACTIVE)
+        northbound.swapFlowEndpoint(new SwapFlowPayload(flow1.flowId, flow2.source, flow1.destination),
+                new SwapFlowPayload(flow2.flowId, flow1.source, flow2.destination))
+
+        then: "Receive error response"
+        def exc = thrown(HttpServerErrorException)
+        exc.rawStatusCode == 500
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not swap endpoints"
+        error.errorDescription == sprintf("Reverted flows: [%s, %s]", flow2.flowId, flow1.flowId)
+
+        and: "First flow is reverted to Down"
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northboundV2.getFlowStatus(flow1.flowId).status == FlowState.DOWN
+        }
+        with(northboundV2.getFlow(flow1.flowId)) {
+            source == flow1.source
+            destination == flow1.destination
+        }
+
+        and: "Second flow is reverted to UP"
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northboundV2.getFlowStatus(flow2.flowId).status == FlowState.UP
+        }
+        with(northboundV2.getFlow(flow2.flowId)) {
+            source == flow2.source
+            destination == flow2.destination
+        }
+
+        when: "Delete both flows"
+        def switches = (pathHelper.getInvolvedSwitches(flow1.flowId) +
+                pathHelper.getInvolvedSwitches(flow2.flowId)).unique().findAll { it.dpId != swPair1.src.dpId }
+        def deleteResponses = [flow1, flow2].collect { flowHelperV2.deleteFlow(it.flowId) }
+
+        then: "Related switch have no rule anomalies"
+        switches.each {
+            def validation = northbound.validateSwitch(it.dpId)
+            validation.verifyRuleSectionsAreEmpty()
+            validation.verifyMeterSectionsAreEmpty()
+        }
+
+        cleanup:
+        deleteResponses?.size() != 2 && [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        if(blockData) {
+            database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
+            switchHelper.reviveSwitch(swPair1.src, blockData, true)
+        }
     }
 
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,
