@@ -590,7 +590,7 @@ public class FlowServiceImpl implements FlowService {
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
+        return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
