@@ -19,6 +19,8 @@ import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
+import org.openkilda.model.cookie.FlowSegmentCookie;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;

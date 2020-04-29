@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 
 import groovy.util.logging.Slf4j
@@ -164,7 +165,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
         def protectedPath = flowPathInfo.protectedPath.forwardPath
         def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !org.openkilda.model.Cookie.isDefaultRule(it.cookie)
+            !Cookie.isDefaultRule(it.cookie)
         }
 
         def ruleToDelete = rules.find {

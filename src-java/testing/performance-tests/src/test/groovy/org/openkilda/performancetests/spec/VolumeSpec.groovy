@@ -1,7 +1,7 @@
 package org.openkilda.performancetests.spec
 
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch

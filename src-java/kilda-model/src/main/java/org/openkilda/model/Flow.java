@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
 import org.openkilda.converters.DetectConnectedDevicesConverter;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import lombok.AccessLevel;
 import lombok.Builder;

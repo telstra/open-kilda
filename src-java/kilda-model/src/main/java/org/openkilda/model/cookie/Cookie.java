@@ -13,7 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.model.cookie;
+
+import org.openkilda.model.MeterId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Builder;

@@ -15,8 +15,8 @@
 
 package org.openkilda.testing;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 
 import java.util.UUID;
 

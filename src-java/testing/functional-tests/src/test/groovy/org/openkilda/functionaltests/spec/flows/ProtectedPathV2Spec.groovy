@@ -21,7 +21,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService

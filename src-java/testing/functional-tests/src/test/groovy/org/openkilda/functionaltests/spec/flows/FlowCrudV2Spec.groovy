@@ -29,7 +29,7 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput

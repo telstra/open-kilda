@@ -12,12 +12,10 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.KildaConfigurationDto
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.CookieBase.CookieType
+import org.openkilda.model.cookie.CookieBase.CookieType
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus

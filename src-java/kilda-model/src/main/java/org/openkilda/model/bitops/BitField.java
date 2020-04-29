@@ -15,7 +15,7 @@
 
 package org.openkilda.model.bitops;
 
-import org.openkilda.model.Cookie;
+import org.openkilda.model.cookie.Cookie;
 
 import lombok.Getter;
 

@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.lang.String.format;
-import static org.openkilda.model.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
-import static org.openkilda.model.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
 
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
@@ -28,13 +28,13 @@ import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;

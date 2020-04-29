@@ -2,43 +2,43 @@ package org.openkilda.functionaltests.helpers
 
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.containsInAnyOrder
-import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE
-import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE
-import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE
-import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE
-import static org.openkilda.model.Cookie.DROP_RULE_COOKIE
-import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE
-import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE
-import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
-import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE
-import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
-import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
-import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
-import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
-import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
-import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
-import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
-import static org.openkilda.model.Cookie.encodeArpInputCustomer
-import static org.openkilda.model.Cookie.encodeIngressRulePassThrough
-import static org.openkilda.model.Cookie.encodeIslVlanEgress
-import static org.openkilda.model.Cookie.encodeIslVxlanEgress
-import static org.openkilda.model.Cookie.encodeIslVxlanTransit
-import static org.openkilda.model.Cookie.encodeLldpInputCustomer
-import static org.openkilda.model.Cookie.isDefaultRule
-import static org.openkilda.model.Cookie.isIngressRulePassThrough
+import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
+import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.ARP_TRANSIT_COOKIE
+import static org.openkilda.model.cookie.Cookie.CATCH_BFD_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
+import static org.openkilda.model.cookie.Cookie.encodeArpInputCustomer
+import static org.openkilda.model.cookie.Cookie.encodeIngressRulePassThrough
+import static org.openkilda.model.cookie.Cookie.encodeIslVlanEgress
+import static org.openkilda.model.cookie.Cookie.encodeIslVxlanEgress
+import static org.openkilda.model.cookie.Cookie.encodeIslVxlanTransit
+import static org.openkilda.model.cookie.Cookie.encodeLldpInputCustomer
+import static org.openkilda.model.cookie.Cookie.isDefaultRule
+import static org.openkilda.model.cookie.Cookie.isIngressRulePassThrough
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId

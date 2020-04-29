@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.stats;
 
 import org.openkilda.exception.InvalidCookieException;
-import org.openkilda.model.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 public final class FlowDirectionHelper {
     private FlowDirectionHelper() {}

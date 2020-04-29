@@ -21,10 +21,10 @@ import org.openkilda.floodlight.command.AbstractSpeakerCommandTest;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.cookie.Cookie;
 
 import org.easymock.EasyMock;
 import org.junit.After;

@@ -29,7 +29,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId

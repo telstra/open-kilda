@@ -17,8 +17,8 @@ package org.openkilda.persistence.converters;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Cookie;
-import org.openkilda.model.FlowSegmentCookie;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import org.junit.Test;
 

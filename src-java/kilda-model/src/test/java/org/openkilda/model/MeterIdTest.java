@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import org.openkilda.model.cookie.Cookie;
+
 import org.junit.Assert;
 import org.junit.Test;
 

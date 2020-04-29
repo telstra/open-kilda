@@ -17,8 +17,8 @@ package org.openkilda.floodlight.api.response;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;

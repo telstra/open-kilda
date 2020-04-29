@@ -19,10 +19,10 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import lombok.Setter;
 import lombok.experimental.Accessors;

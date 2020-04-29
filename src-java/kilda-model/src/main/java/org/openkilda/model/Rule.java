@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import org.openkilda.model.cookie.Cookie;
+
 import lombok.Data;
 
 import java.io.Serializable;

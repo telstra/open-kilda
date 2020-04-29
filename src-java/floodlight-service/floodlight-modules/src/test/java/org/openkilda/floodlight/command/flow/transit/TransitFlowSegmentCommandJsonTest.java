@@ -20,10 +20,10 @@ import org.openkilda.floodlight.api.request.factory.TransitFlowSegmentRequestFac
 import org.openkilda.floodlight.command.AbstractSpeakerCommandJsonTest;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 
 import org.junit.Assert;
 

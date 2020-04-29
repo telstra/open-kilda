@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -31,6 +30,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;

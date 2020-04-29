@@ -30,11 +30,11 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import org.junit.Test;
 
