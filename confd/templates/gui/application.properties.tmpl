@@ -25,8 +25,8 @@ logging.config=logback.xml
 spring.mvc.throw-exception-if-no-handler-found=true
 
 #Northbound Base URL
-nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api/v1
-
+#nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api/v1
+nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api
 
 #OPEN TSDB Base URL and metric prefix
 opentsdb.base.url=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
