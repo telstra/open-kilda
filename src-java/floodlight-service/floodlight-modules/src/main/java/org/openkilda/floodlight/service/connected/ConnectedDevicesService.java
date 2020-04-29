@@ -30,10 +30,10 @@ import org.openkilda.floodlight.utils.EthernetPacketToolbox;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.ArpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
-import org.openkilda.model.Cookie;
-import org.openkilda.model.ServiceCookie;
-import org.openkilda.model.ServiceCookie.ServiceCookieTag;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.ServiceCookie;
+import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;

@@ -13,9 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.model.cookie;
 
 import org.openkilda.exception.InvalidCookieException;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.bitops.BitField;
 import org.openkilda.model.bitops.NumericEnumField;
 

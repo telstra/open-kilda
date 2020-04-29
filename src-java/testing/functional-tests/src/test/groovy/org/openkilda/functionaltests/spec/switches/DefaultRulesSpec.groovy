@@ -19,8 +19,8 @@ import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.model.Cookie
-import org.openkilda.model.CookieBase.CookieType
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Unroll

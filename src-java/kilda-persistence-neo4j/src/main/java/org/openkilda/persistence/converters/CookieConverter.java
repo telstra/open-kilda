@@ -15,8 +15,8 @@
 
 package org.openkilda.persistence.converters;
 
-import org.openkilda.model.Cookie;
-import org.openkilda.model.FlowSegmentCookie;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import org.neo4j.ogm.typeconversion.AttributeConverter;
 

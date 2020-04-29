@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import org.openkilda.model.cookie.FlowSegmentCookie;
+
 public enum FlowPathDirection {
     /**
      * At this moment there is no strict requirement to define direction bit in {@link FlowSegmentCookie} so direction

@@ -20,9 +20,9 @@ import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIEL
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.model.Cookie;
-import org.openkilda.model.CookieBase.CookieType;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;

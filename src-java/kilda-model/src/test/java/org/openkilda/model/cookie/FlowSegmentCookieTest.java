@@ -13,13 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.model.cookie;
 
 import org.junit.Test;
 
-public class ServiceCookieTest extends GenericCookieTest {
+public class FlowSegmentCookieTest extends GenericCookieTest {
+    @Test
+    public void flowForwardDirectionFlagLocation() {
+        testFieldReadWrite(-1L, ~0x4000_0000_0000_0000L, FlowSegmentCookie.FLOW_FORWARD_DIRECTION_FLAG, 0);
+    }
+
+    @Test
+    public void flowReverseDirectionFlagLocation() {
+        testFieldReadWrite(-1L, ~0x2000_0000_0000_0000L, FlowSegmentCookie.FLOW_REVERSE_DIRECTION_FLAG, 0);
+    }
+
+    @Test
+    public void effectiveFlowIdFieldLocation() {
+        testFieldReadWrite(-1L, ~0x0000_0000_000F_FFFF, FlowSegmentCookie.FLOW_EFFECTIVE_ID_FIELD, 0);
+    }
+
     @Test
     public void ensureNoFieldsIntersection() {
-        testFieldsIntersection(ServiceCookie.ALL_FIELDS);
+        testFieldsIntersection(FlowSegmentCookie.ALL_FIELDS);
     }
 }

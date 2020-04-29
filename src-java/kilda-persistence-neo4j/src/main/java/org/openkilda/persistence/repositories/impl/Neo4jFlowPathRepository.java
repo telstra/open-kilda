@@ -20,7 +20,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.openkilda.persistence.repositories.impl.Neo4jFlowRepository.FLOW_ID_PROPERTY_NAME;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -28,6 +27,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;

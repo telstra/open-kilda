@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.model.Cookie.isDefaultRule;
+import static org.openkilda.model.cookie.Cookie.isDefaultRule;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;

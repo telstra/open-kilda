@@ -19,11 +19,11 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSendT
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_TRANSIT_ISL_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.TRANSIT_TABLE_ID;
-import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
-import org.openkilda.model.Cookie;
+import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;

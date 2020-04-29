@@ -22,9 +22,9 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.utils.OfFlowDumpProducer;
 import org.openkilda.floodlight.utils.OfFlowPresenceVerifier;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 
 import lombok.AccessLevel;
 import lombok.Getter;

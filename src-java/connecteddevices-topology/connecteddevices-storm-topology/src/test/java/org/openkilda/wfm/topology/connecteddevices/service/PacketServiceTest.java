@@ -19,8 +19,8 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 
 import org.openkilda.messaging.info.event.ArpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;

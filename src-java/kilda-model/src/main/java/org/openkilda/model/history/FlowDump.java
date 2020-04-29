@@ -15,10 +15,10 @@
 
 package org.openkilda.model.history;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
