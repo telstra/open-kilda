@@ -19,10 +19,12 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowSegmentCookie;
+import org.openkilda.model.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
@@ -190,12 +192,16 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
     protected FlowPathPair createFlowPathPair(Flow flow, FlowPathPair pathsToReuseBandwidth,
                                               PathPair pathPair, FlowResources flowResources) {
-        long cookie = flowResources.getUnmaskedCookie();
-        FlowPath newForwardPath = flowPathBuilder.buildFlowPath(flow, flowResources.getForward(),
-                pathPair.getForward(), Cookie.buildForwardCookie(cookie));
+        final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
+                .flowEffectiveId(flowResources.getUnmaskedCookie());
+
+        FlowPath newForwardPath = flowPathBuilder.buildFlowPath(
+                flow, flowResources.getForward(), pathPair.getForward(),
+                cookieBuilder.direction(FlowPathDirection.FORWARD).build());
         newForwardPath.setStatus(FlowPathStatus.IN_PROGRESS);
-        FlowPath newReversePath = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
-                pathPair.getReverse(), Cookie.buildReverseCookie(cookie));
+        FlowPath newReversePath = flowPathBuilder.buildFlowPath(
+                flow, flowResources.getReverse(), pathPair.getReverse(),
+                cookieBuilder.direction(FlowPathDirection.REVERSE).build());
         newReversePath.setStatus(FlowPathStatus.IN_PROGRESS);
         FlowPathPair newFlowPaths = FlowPathPair.builder().forward(newForwardPath).reverse(newReversePath).build();
 

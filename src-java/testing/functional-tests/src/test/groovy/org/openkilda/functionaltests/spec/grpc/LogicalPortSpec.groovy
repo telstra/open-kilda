@@ -68,6 +68,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         switches << getNoviflowSwitches()
     }
 
+    @Tidy
     @Unroll
     @Tags(HARDWARE)
     def "Not able to create logical port with incorrect port number(lPort/sPort): \

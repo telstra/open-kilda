@@ -50,6 +50,8 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        abandonPendingCommands(stateMachine);
+
         Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
@@ -94,5 +96,10 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
         stateMachine.saveActionToHistory(
                 "Commands for removing new rules and re-installing original ingress rule have been sent");
+    }
+
+    private void abandonPendingCommands(FlowRerouteFsm stateMachine) {
+        log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
+        stateMachine.getPendingCommands().clear();
     }
 }

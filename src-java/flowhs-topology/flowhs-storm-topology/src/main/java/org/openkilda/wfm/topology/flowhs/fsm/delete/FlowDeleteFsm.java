@@ -25,6 +25,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.CompleteFlowPathRemovalAction;
@@ -106,6 +107,19 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
         carrier.sendNorthboundResponse(message);
     }
 
+    @Override
+    public void reportError(Event event) {
+        if (Event.TIMEOUT == event) {
+            reportGlobalTimeout();
+        }
+        // other errors reported inside actions and can be ignored here
+    }
+
+    @Override
+    protected String getCrudActionName() {
+        return "delete";
+    }
+
     public static class Factory {
         private final StateMachineBuilder<FlowDeleteFsm, State, Event, FlowDeleteContext> builder;
         private final FlowDeleteHubCarrier carrier;
@@ -118,7 +132,9 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
             builder = StateMachineBuilderFactory.create(FlowDeleteFsm.class, State.class, Event.class,
                     FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class);
 
-            FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+            final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+            final ReportErrorAction<FlowDeleteFsm, State, Event, FlowDeleteContext>
+                    reportErrorAction = new ReportErrorAction<>();
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -163,10 +179,15 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
             builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED).on(Event.NEXT);
             builder.transition().from(State.FLOW_REMOVED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
 
+            builder.onEntry(State.REVERTING_FLOW_STATUS)
+                    .perform(reportErrorAction);
             builder.transitions().from(State.REVERTING_FLOW_STATUS)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new RevertFlowStatusAction(persistenceManager));
+
+            builder.onEntry(State.FINISHED_WITH_ERROR)
+                    .perform(reportErrorAction);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));

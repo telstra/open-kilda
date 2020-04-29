@@ -18,6 +18,7 @@ package org.openkilda.persistence.converters;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowSegmentCookie;
 
 import org.junit.Test;
 
@@ -25,7 +26,7 @@ public class CookieConverterTest {
     @Test
     public void shouldConvertIdToLong() {
         // given
-        Cookie cookie = new Cookie((long) 0x123);
+        FlowSegmentCookie cookie = new FlowSegmentCookie((long) 0x123);
 
         // when
         Long graphObject = new CookieConverter().toGraphProperty(cookie);
@@ -37,7 +38,7 @@ public class CookieConverterTest {
     @Test
     public void shouldConvertLongToId() {
         // given
-        Cookie cookie = new Cookie((long) 0x123);
+        FlowSegmentCookie cookie = new FlowSegmentCookie((long) 0x123);
 
         // when
         Cookie actualEntity = new CookieConverter().toEntityAttribute(cookie.getValue());

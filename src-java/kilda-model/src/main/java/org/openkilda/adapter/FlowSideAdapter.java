@@ -18,6 +18,7 @@ package org.openkilda.adapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 
 import lombok.Getter;
 
@@ -29,7 +30,7 @@ public abstract class FlowSideAdapter {
      * Determine "forward" direction for provided flow/path pair and create adapter to access source endpoint.
      */
     public static FlowSideAdapter makeIngressAdapter(Flow flow, FlowPath path) {
-        if (path.getCookie().isMaskedAsForward()) {
+        if (path.getCookie().getDirection() == FlowPathDirection.FORWARD) {
             return new FlowSourceAdapter(flow);
         } else {
             return new FlowDestAdapter(flow);
@@ -40,7 +41,7 @@ public abstract class FlowSideAdapter {
      * Determine "forward" direction for provided flow/path pair and create adapter to access dest endpoint.
      */
     public static FlowSideAdapter makeEgressAdapter(Flow flow, FlowPath path) {
-        if (path.getCookie().isMaskedAsForward()) {
+        if (path.getCookie().getDirection() == FlowPathDirection.FORWARD) {
             return new FlowDestAdapter(flow);
         } else {
             return new FlowSourceAdapter(flow);

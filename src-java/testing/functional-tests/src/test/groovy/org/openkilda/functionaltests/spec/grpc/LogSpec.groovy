@@ -109,6 +109,7 @@ class LogSpec extends GrpcBaseSpecification {
         switches << getNoviflowSwitches()
     }
 
+    @Tidy
     @Unroll
     @Tags(HARDWARE)
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \

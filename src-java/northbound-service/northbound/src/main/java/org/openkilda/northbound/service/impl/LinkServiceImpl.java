@@ -281,14 +281,14 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters) {
+    public CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters, boolean force) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Delete link request received: {}", linkParameters);
 
         DeleteLinkRequest request;
         try {
             request = new DeleteLinkRequest(new SwitchId(linkParameters.getSrcSwitch()), linkParameters.getSrcPort(),
-                    new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort());
+                    new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort(), force);
         } catch (IllegalArgumentException e) {
             logger.error("Could not parse delete link request arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,

@@ -72,6 +72,9 @@ public class MessageUtils {
     
     @Value("${store.not.configured.message}")
     private String storeMustConfigured;
+    
+    @Value("${attribute.length.invalid.message}")
+    private String attributeLengthInvalid;
 
     /**
      * Gets the attribute unique.
@@ -102,6 +105,16 @@ public class MessageUtils {
      */
     public String getAttributeInvalid(final String attribute, final String value) {
         return attributeInvalid.replace("{{ATTRIBUTE}}", attribute).replace("{{VALUE}}", value);
+    }
+    
+    /**
+     * Gets the attribute length invalid.
+     *
+     * @param attribute the attribute
+     * @return the attribute length invalid
+     */
+    public String getAttributeLengthInvalid(final String attribute) {
+        return attributeLengthInvalid.replace("{{ATTRIBUTE}}", attribute);
     }
 
     /**

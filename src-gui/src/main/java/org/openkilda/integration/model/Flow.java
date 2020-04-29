@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import lombok.Data;
 
+import java.util.List;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
@@ -77,8 +79,8 @@ public class Flow {
     @JsonProperty("created")
     private String created;
     
-    //@JsonProperty("diverse_with")
-    //private List<String> diverseWith;
+    @JsonProperty("diverse_with")
+    private List<String> diverseWith;
     
     
     public String getId() {

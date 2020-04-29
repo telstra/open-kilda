@@ -78,13 +78,6 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         RequestedFlow originalFlow = stateMachine.getOriginalFlow();
         RequestedFlow targetFlow = stateMachine.getTargetFlow();
 
-        return SpeakerRequestBuildContext.builder()
-                .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(originalFlow, targetFlow))
-                .removeOppositeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(originalFlow, targetFlow))
-                .removeCustomerPortLldpRule(removeForwardSharedLldpRule(originalFlow, targetFlow))
-                .removeOppositeCustomerPortLldpRule(removeReverseSharedLldpRule(originalFlow, targetFlow))
-                .removeCustomerPortArpRule(removeForwardSharedArpRule(originalFlow, targetFlow))
-                .removeOppositeCustomerPortArpRule(removeReverseSharedArpRule(originalFlow, targetFlow))
-                .build();
+        return buildSpeakerContextForRemoval(originalFlow, targetFlow);
     }
 }

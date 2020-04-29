@@ -83,7 +83,9 @@ public class FlowConverter {
         flowInfo.setPathComputationStrategy(flow.getPathComputationStrategy());
         flowInfo.setPinned(flow.isPinned());
         flowInfo.setPeriodicPings(flow.isPeriodicPings());
-        //flowInfo.setDiverseWith(flow.getDiverseWith());
+        if (flow.getDiverseWith() != null) {
+            flowInfo.setDiverseWith(flow.getDiverseWith());
+        }
         flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {

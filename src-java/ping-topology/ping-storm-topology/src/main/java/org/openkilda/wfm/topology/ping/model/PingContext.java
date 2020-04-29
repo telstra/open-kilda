@@ -104,7 +104,7 @@ public class PingContext implements Serializable {
     public long getCookie() {
         long value;
         if (direction == null) {
-            value = flow.getForwardPath().getCookie().getUnmaskedValue();
+            value = flow.getForwardPath().getCookie().getFlowEffectiveId();
         } else if (direction == FlowDirection.FORWARD) {
             value = flow.getForwardPath().getCookie().getValue();
         } else if (direction == FlowDirection.REVERSE) {

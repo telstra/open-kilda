@@ -1,17 +1,46 @@
 # Changelog
 
+## v1.56.0 (27/04/2020)
+
+### Features:
+-  [#3331](https://github.com/telstra/open-kilda/pull/3331) OF metadata bit manipulation toolset [**floodlight**]
+-  [#3408](https://github.com/telstra/open-kilda/pull/3408) Server 42 RTT: Added Output rules [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#3396](https://github.com/telstra/open-kilda/pull/3396) Fixed flow corruption by reroute after this flow has been updated. (Issue: [#3338](https://github.com/telstra/open-kilda/issues/3338))
+-  [#3406](https://github.com/telstra/open-kilda/pull/3406) Fix/flow diversity update issue (Issue: [#3404](https://github.com/telstra/open-kilda/issues/3404)) [**gui**]
+-  [#3418](https://github.com/telstra/open-kilda/pull/3418) Fix CTE exceptions introduced by merge [**storm-topologies**]
+-  [#3388](https://github.com/telstra/open-kilda/pull/3388) Fixed response timeout for flow read ops. (Issue: [#3384](https://github.com/telstra/open-kilda/issues/3384)) [**storm-topologies**]
+
+### Improvements:
+-  [#3397](https://github.com/telstra/open-kilda/pull/3397) Do not build grpc-stub if no_grpc_stub is true
+-  [#3268](https://github.com/telstra/open-kilda/pull/3268) Add ISL busy check when deleting ISL. [**northbound**][**storm-topologies**]
+-  [#3109](https://github.com/telstra/open-kilda/pull/3109) Obviously report operation timeout into flow CRUD operations (Issue: [#3249](https://github.com/telstra/open-kilda/issues/3249))
+-  [#3403](https://github.com/telstra/open-kilda/pull/3403) set Tidy annotation for grpc tests [**tests**]
+-  [#3313](https://github.com/telstra/open-kilda/pull/3313) Toolset for cookie bit manipulations [**floodlight**][**storm-topologies**]
+-  [#3416](https://github.com/telstra/open-kilda/pull/3416) SpeakerRequestBuildContext refactoring [**floodlight**]
+
+### Other changes:
+-  [#3399](https://github.com/telstra/open-kilda/pull/3399) Add test that blinks switch during reroute (Issue: [#3398](https://github.com/telstra/open-kilda/issues/3398)) [**tests**]
+-  [#3414](https://github.com/telstra/open-kilda/pull/3414) Put test reports to 'build' instead of 'target' [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.55.1...v1.56.0).
+
+### Affected Components:
+nbworker, stats, gui, flow, flow-hs, fl, connected, nb
+
 ## v1.55.1 (21/04/2020)
 
 ### Features:
 -  [#3366](https://github.com/telstra/open-kilda/pull/3366) Added GRPC service stub [**tests**]
--  [#3371](https://github.com/telstra/open-kilda/pull/3371) Neo4j changes for migrating swap endpoints. (Issue: [#3291](https://github.com/telstra/open-kilda/issues/3291)) 
+-  [#3371](https://github.com/telstra/open-kilda/pull/3371) Neo4j changes for migrating swap endpoints. (Issue: [#3291](https://github.com/telstra/open-kilda/issues/3291))
 
 ### Bug Fixes:
 -  [#3395](https://github.com/telstra/open-kilda/pull/3395) Fixed incorrect Connected devices packet logging [**floodlight**]
 
 ### Improvements:
 -  [#3393](https://github.com/telstra/open-kilda/pull/3393) Expose discovery latency as separate log field [**floodlight**]
--  [#3234](https://github.com/telstra/open-kilda/pull/3234) Make parallelism level configurable 
+-  [#3234](https://github.com/telstra/open-kilda/pull/3234) Make parallelism level configurable
 
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.55.0...v1.55.1).
@@ -32,8 +61,8 @@ neo4j, grpc, fl
 
 ### Improvements:
 -  [#3364](https://github.com/telstra/open-kilda/pull/3364) Add test that reveals #3341 [**tests**]
--  [#3238](https://github.com/telstra/open-kilda/pull/3238) Cleanup outdated template variables 
--  [#3273](https://github.com/telstra/open-kilda/pull/3273) [Snyk] Security upgrade urllib3 from 1.25.3 to 1.25.8 
+-  [#3238](https://github.com/telstra/open-kilda/pull/3238) Cleanup outdated template variables
+-  [#3273](https://github.com/telstra/open-kilda/pull/3273) [Snyk] Security upgrade urllib3 from 1.25.3 to 1.25.8
 -  [#3385](https://github.com/telstra/open-kilda/pull/3385) Add retries due to #3384. Refactor an autoreroute test [**tests**]
 -  [#3387](https://github.com/telstra/open-kilda/pull/3387) add missing import and fix knockoutSwitch operation in AutoRerouteV2Spec [**tests**]
 
@@ -120,12 +149,12 @@ flow-hs, network, grpc, fl, nbworker, stats, nb
 -  [#3070](https://github.com/telstra/open-kilda/pull/3070) Design for Multiple ISLs on the same port (VLANs). (Issue: [#3053](https://github.com/telstra/open-kilda/issues/3053)) [**docs**]
 
 ### Bug Fixes:
--  [#3324](https://github.com/telstra/open-kilda/pull/3324) Improve get Flow DB requests for Connected Devices Service 
--  [#3325](https://github.com/telstra/open-kilda/pull/3325) Ignore unmapped target properties in RequestedFlow 
+-  [#3324](https://github.com/telstra/open-kilda/pull/3324) Improve get Flow DB requests for Connected Devices Service
+-  [#3325](https://github.com/telstra/open-kilda/pull/3325) Ignore unmapped target properties in RequestedFlow
 
 ### Improvements:
 -  [#3330](https://github.com/telstra/open-kilda/pull/3330) add missed else statement [**tests**]
--  [#3333](https://github.com/telstra/open-kilda/pull/3333) GRPC speaker messaging refactor 
+-  [#3333](https://github.com/telstra/open-kilda/pull/3333) GRPC speaker messaging refactor
 -  [#3231](https://github.com/telstra/open-kilda/pull/3231) Control docker-compose and makefile from confd [**configuration**]
 -  [#3310](https://github.com/telstra/open-kilda/pull/3310) minor improvements in MetersSpec [**tests**]
 -  [#3319](https://github.com/telstra/open-kilda/pull/3319) improve selecting swPair with diverse path in MultitableFlowsSpec [**tests**]

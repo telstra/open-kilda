@@ -37,7 +37,6 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -54,6 +53,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
+import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.ArrayList;
 import java.util.Collection;

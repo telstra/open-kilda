@@ -20,11 +20,10 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlow
 import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_POST_INGRESS_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
 import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
-import static org.openkilda.model.Metadata.METADATA_LLDP_MASK;
-import static org.openkilda.model.Metadata.METADATA_LLDP_VALUE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -50,9 +49,9 @@ public class LldpPostIngressFlowGenerator extends LldpFlowGenerator {
     @Override
     OFFlowMod getLldpFlowMod(IOFSwitch sw, OFInstructionMeter meter, List<OFAction> actionList) {
         OFFactory ofFactory = sw.getOFFactory();
+        RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().lldpFlag(true), sw);
         Match match = ofFactory.buildMatch()
-                .setMasked(MatchField.METADATA, OFMetadata.ofRaw(METADATA_LLDP_VALUE),
-                        OFMetadata.ofRaw(METADATA_LLDP_MASK))
+                .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
                 .build();
 
         actionList.add(actionSendToController(sw.getOFFactory()));

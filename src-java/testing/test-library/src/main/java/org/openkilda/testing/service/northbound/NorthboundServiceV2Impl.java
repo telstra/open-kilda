@@ -28,9 +28,6 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.SyncFailsafe;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
@@ -74,10 +71,8 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public FlowIdStatusPayload getFlowStatus(String flowId) {
         try {
-            //TODO: remove retry policy after fix of https://github.com/telstra/open-kilda/issues/3384
-            return (FlowIdStatusPayload) getTimeoutFailsafe().get(() ->
-                    restTemplate.exchange("/api/v2/flows/status/{flow_id}", HttpMethod.GET, new HttpEntity(
-                            buildHeadersWithCorrelationId()), FlowIdStatusPayload.class, flowId).getBody());
+            return restTemplate.exchange("/api/v2/flows/status/{flow_id}", HttpMethod.GET, new HttpEntity(
+                            buildHeadersWithCorrelationId()), FlowIdStatusPayload.class, flowId).getBody();
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
                 throw ex;
@@ -168,17 +163,5 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
         return headers;
-    }
-
-    private SyncFailsafe getTimeoutFailsafe() {
-        return Failsafe.with(new RetryPolicy()
-                .retryOn(e -> {
-                    if (e instanceof HttpClientErrorException) {
-                        return ((HttpClientErrorException) e).getStatusCode() == HttpStatus.REQUEST_TIMEOUT;
-                    }
-                    return false;
-                })
-                .withMaxRetries(2))
-                .onRetry(e -> log.warn("Retrying request timeout", e));
     }
 }

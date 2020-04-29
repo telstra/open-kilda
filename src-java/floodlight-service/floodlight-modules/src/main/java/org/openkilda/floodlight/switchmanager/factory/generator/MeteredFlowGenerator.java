@@ -22,6 +22,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.Meter;
 import org.openkilda.model.SwitchFeature;
 
@@ -88,5 +89,11 @@ public abstract class MeteredFlowGenerator implements SwitchFlowGenerator {
         }
 
         return meterInstruction;
+    }
+
+    protected RoutingMetadata buildMetadata(RoutingMetadata.RoutingMetadataBuilder builder, IOFSwitch sw) {
+        // FIXME(surabujin): get rid from multiple features detection requests
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        return builder.build(features);
     }
 }

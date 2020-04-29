@@ -74,6 +74,13 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
           { extend: 'csv', text: 'Export', className: 'btn btn-dark' }
         ]
       },
+      drawCallback:function(){
+        if(jQuery('#flowDataTable tbody tr').length < 10){
+          jQuery('#flowDataTable_next').addClass('disabled');
+        }else{
+          jQuery('#flowDataTable_next').removeClass('disabled');
+        }
+      },
       "aoColumns": [
         { sWidth: '15%' },
         { sWidth:  '13%',"sType": "name","bSortable": true },

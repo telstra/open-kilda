@@ -13,24 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.model;
+package org.openkilda.floodlight.utils.metadata;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
-@Builder
-public class RemoveSharedRulesContext implements Serializable {
-    private boolean removeCustomerCatchRule;
-    private boolean removeCustomerLldpRule;
-    private boolean removeCustomerArpRule;
+public class RoutingMetadata32 extends RoutingMetadata {
+    /**
+     * Must raise error for fields not available in 32 bits schema.
+     */
+    protected RoutingMetadata32(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag) {
+        super(lldpFlag, arpFlag, oneSwitchFlowFlag);
+    }
 }

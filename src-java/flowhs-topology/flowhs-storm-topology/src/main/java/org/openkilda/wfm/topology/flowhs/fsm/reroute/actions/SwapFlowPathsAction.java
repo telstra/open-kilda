@@ -114,7 +114,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
         EncapsulationResources encapsulationResources = resourcesManager.getEncapsulationResources(
                 forwardPath.getPathId(), reversePath.getPathId(), flow.getEncapsulationType()).orElse(null);
         return FlowResources.builder()
-                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .unmaskedCookie(forwardPath.getCookie().getFlowEffectiveId())
                 .forward(PathResources.builder()
                         .pathId(forwardPath.getPathId())
                         .meterId(forwardPath.getMeterId())

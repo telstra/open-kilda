@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.IllegalIslStateException;
@@ -37,6 +39,7 @@ public class LinkOperationsService {
 
     private final ILinkOperationsServiceCarrier carrier;
     private IslRepository islRepository;
+    private FlowPathRepository flowPathRepository;
     private TransactionManager transactionManager;
 
 
@@ -45,6 +48,7 @@ public class LinkOperationsService {
                                  TransactionManager transactionManager) {
         this.carrier = carrier;
         this.islRepository = repositoryFactory.createIslRepository();
+        this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.transactionManager = transactionManager;
     }
 
@@ -109,7 +113,7 @@ public class LinkOperationsService {
      * @throws IllegalIslStateException if ISL is in 'active' state
      */
     public Collection<Isl> deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch,
-                                     int destinationPort)
+                                     int destinationPort, boolean force)
             throws IllegalIslStateException, IslNotFoundException {
         log.info("Delete ISL with following parameters: "
                         + "source switch '{}', source port '{}', destination switch '{}', destination port '{}'",
@@ -126,9 +130,18 @@ public class LinkOperationsService {
             throw new IslNotFoundException(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
         }
 
-        if (isls.stream().anyMatch(x -> x.getStatus() == IslStatus.ACTIVE)) {
-            throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
-                    "ISL must NOT be in active state.");
+        if (!force) {
+            if (isls.stream().anyMatch(x -> x.getStatus() == IslStatus.ACTIVE)) {
+                throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
+                        "ISL must NOT be in active state.");
+            }
+
+            Collection<FlowPath> flowPaths = flowPathRepository.findWithPathSegment(sourceSwitch, sourcePort,
+                    destinationSwitch, destinationPort);
+            if (!flowPaths.isEmpty()) {
+                throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
+                        "This ISL is busy by flow paths.");
+            }
         }
 
         isls.forEach(islRepository::delete);

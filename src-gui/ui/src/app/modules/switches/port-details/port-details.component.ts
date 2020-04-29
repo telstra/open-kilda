@@ -142,6 +142,16 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     }
   }
 
+  getPortStatus = (status)=>{
+    if(status.toLowerCase() == 'good'){
+      return 'UP';
+    }else if(status.toLowerCase() == 'bad'){
+      return 'DOWN';
+    }
+   return status;
+    
+  }
+
   commitConfig(){
       let portStatus = this.portForm.value.portStatus;
       this.switchService.configurePort(this.retrievedSwitchObject.switch_id,

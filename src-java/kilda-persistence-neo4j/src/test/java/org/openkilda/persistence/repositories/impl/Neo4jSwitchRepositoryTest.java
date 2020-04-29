@@ -19,11 +19,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -152,7 +153,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_A + "_forward_path"))
                 .flow(flow)
-                .cookie(Cookie.buildForwardCookie(1L))
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1L))
                 .meterId(new MeterId(1))
                 .srcSwitch(switchA)
                 .destSwitch(switchA)
@@ -166,7 +167,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         FlowPath reverseFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_A + "_reverse_path"))
                 .flow(flow)
-                .cookie(Cookie.buildReverseCookie(1L))
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 1L))
                 .meterId(new MeterId(2))
                 .srcSwitch(switchA)
                 .destSwitch(switchA)
@@ -204,7 +205,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_A + "_forward_path"))
                 .flow(flow)
-                .cookie(Cookie.buildForwardCookie(1L))
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1L))
                 .meterId(new MeterId(1))
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
@@ -225,7 +226,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         FlowPath reverseFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_A + "_reverse_path"))
                 .flow(flow)
-                .cookie(Cookie.buildReverseCookie(1L))
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 1L))
                 .meterId(new MeterId(2))
                 .srcSwitch(switchB)
                 .destSwitch(switchA)
@@ -261,7 +262,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_B + "_forward_path"))
                 .flow(flow)
-                .cookie(Cookie.buildForwardCookie(1L))
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1L))
                 .meterId(new MeterId(3))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
@@ -289,7 +290,7 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
         reverseFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_B + "_reverse_path"))
                 .flow(flow)
-                .cookie(Cookie.buildReverseCookie(1L))
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 1L))
                 .meterId(new MeterId(4))
                 .srcSwitch(switchC)
                 .destSwitch(switchA)

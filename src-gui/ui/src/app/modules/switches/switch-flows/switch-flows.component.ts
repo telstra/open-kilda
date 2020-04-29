@@ -66,6 +66,13 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit,OnChanges, AfterV
           { extend: 'csv', text: 'Export', className: 'btn btn-dark' }
         ]
       },
+      drawCallback:function(){
+        if(jQuery('#switchflowDataTable tbody tr').length < 10){
+          jQuery('#switchflowDataTable_next').addClass('disabled');
+        }else{
+          jQuery('#switchflowDataTable_next').removeClass('disabled');
+        }
+      },
       "aoColumns": [
         { sWidth: '15%' },
         { sWidth:  '13%',"sType": "name","bSortable": true },

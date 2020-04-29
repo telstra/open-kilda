@@ -15,11 +15,9 @@
 
 package org.openkilda.messaging.command.switches;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.openkilda.messaging.Utils.TIMESTAMP;
-
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -53,6 +51,15 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     @JsonProperty("switch_arp")
     private boolean switchArp = false;
+
+    @JsonProperty("server_42_flow_rtt")
+    private boolean server42FlowRtt = false;
+
+    @JsonProperty("server_42_port")
+    private Integer server42Port;
+
+    @JsonProperty("server_42_mac_address")
+    private MacAddress server42MacAddress;
 
     @JsonProperty("isl_ports")
     private List<Integer> islPorts = new ArrayList<>();
@@ -123,14 +130,5 @@ public class SwitchRulesInstallRequest extends CommandData {
 
     public void setFlowPorts(List<Integer> flowPorts) {
         this.flowPorts = flowPorts;
-    }
-
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(TIMESTAMP, timestamp)
-                .add("switch_id", switchId)
-                .add("install_rules", installRulesAction)
-                .toString();
     }
 }

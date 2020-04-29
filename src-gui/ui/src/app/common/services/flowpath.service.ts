@@ -214,7 +214,7 @@ export class FlowpathService {
         return distance; 
       }).strength(0.1));
       forceSimulation.stop();
-      var graphNode = this.graphNodeArr[type] =this.insertNodes(graphNodeGroup,nodes,type);
+      var graphNode = this.graphNodeArr[type] =this.insertNodes(graphNodeGroup,nodes,type,hoverTextID,showValueID,hideValueID);
       var graphLink = this.graphLinkArr[type] =  this.insertLinks(graphWrapper,graphLinkGroup,processedlinks,type,hoverTextID,showValueID,hideValueID);
        var graphPortSource =this.graphPortArrSource[type] =  this.insertSourcePorts(processedlinks,type,hoverTextID,showValueID,hideValueID);
        var graphPortTarget =this.graphPortArrTarget[type] =  this.insertTargetPorts(processedlinks,type,hoverTextID,showValueID,hideValueID);
@@ -519,7 +519,7 @@ export class FlowpathService {
       
       return linkCircleTextSource.merge(linkText);
   }
-  insertNodes(graphNodeGroup,nodes,type){
+  insertNodes(graphNodeGroup,nodes,type,hoverTextID,showValueID,hideValueID){
     let ref = this;
     let graphNodesData = graphNodeGroup.selectAll("g.node").data(nodes,d=>d.switch_id);
     let graphNodeElement :any;
@@ -580,7 +580,25 @@ export class FlowpathService {
                       .attr("id", function(d, index) {
                         return "image_" + index;
                       })
-                      .attr("cursor", "pointer");
+                      .attr("cursor", "pointer")
+                      .on('mouseover',function(d,index){
+                        if(type == 'forwardDiverse' || type =='reverseDiverse' ){
+                          var element = document.getElementById(type+"_circle_" + d.switch_id);
+                           var rec: any = element.getBoundingClientRect();
+                           $('#'+hideValueID).css('display','none');
+                           $("#"+hoverTextID).css("display", "block");
+                           $('#'+showValueID).html(d.switch_name || d.switch_id);
+                           $('#'+showValueID).css('display','block');
+                            var x =  document.getElementById(type+"_circle_" + d.switch_id).getBoundingClientRect().left - 70;
+                            var y =  document.getElementById(type+"_circle_" + d.switch_id).getBoundingClientRect().top - 50;
+                            $("#"+hoverTextID).css("top", (y) + "px");
+                            $("#"+hoverTextID).css("left", (x) + "px");            
+                            
+                        }
+                        
+                      }).on('mouseout',function(d,index){
+                        $("#"+hoverTextID).css("display", "none");
+                      });
 
     return graphNodeElement.merge(graphNodesData);
                         

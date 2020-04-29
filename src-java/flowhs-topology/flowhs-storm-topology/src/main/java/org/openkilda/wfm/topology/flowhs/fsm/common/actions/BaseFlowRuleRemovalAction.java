@@ -24,6 +24,8 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -141,5 +143,25 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
 
         return dstArpWasSwitchedOff && isFlowTheLastUserOfSharedArpPortRule(
                 oldFlow.getFlowId(), oldFlow.getDestSwitch(), oldFlow.getDestPort());
+    }
+
+    protected SpeakerRequestBuildContext buildSpeakerContextForRemoval(RequestedFlow oldFlow, RequestedFlow newFlow) {
+
+        PathContext forwardPathContext = PathContext.builder()
+                .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
+                .removeCustomerPortLldpRule(removeForwardSharedLldpRule(oldFlow, newFlow))
+                .removeCustomerPortArpRule(removeForwardSharedArpRule(oldFlow, newFlow))
+                .build();
+
+        PathContext reversePathContext = PathContext.builder()
+                .removeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(oldFlow, newFlow))
+                .removeCustomerPortLldpRule(removeReverseSharedLldpRule(oldFlow, newFlow))
+                .removeCustomerPortArpRule(removeReverseSharedArpRule(oldFlow, newFlow))
+                .build();
+
+        return SpeakerRequestBuildContext.builder()
+                .forward(forwardPathContext)
+                .reverse(reversePathContext)
+                .build();
     }
 }

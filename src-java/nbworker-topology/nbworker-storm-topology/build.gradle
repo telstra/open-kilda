@@ -26,6 +26,8 @@ dependencies {
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
 
+    implementation 'org.neo4j.driver:neo4j-java-driver'
+
     testImplementation 'junit:junit'
     testImplementation 'pl.pragmatists:JUnitParams'
     testImplementation 'org.mockito:mockito-core'

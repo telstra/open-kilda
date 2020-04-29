@@ -286,7 +286,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
     private List<IslInfoData> deleteLink(DeleteLinkRequest request) {
         try {
             Collection<Isl> operationsResult = linkOperationsService.deleteIsl(request.getSrcSwitch(),
-                    request.getSrcPort(), request.getDstSwitch(), request.getDstPort());
+                    request.getSrcPort(), request.getDstSwitch(), request.getDstPort(), request.isForce());
             List<IslInfoData> responseResult = operationsResult.stream()
                     .map(IslMapper.INSTANCE::map)
                     .collect(Collectors.toList());
