@@ -78,5 +78,6 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeModify", ignore = true)
+    @Mapping(target = "targetPathComputationStrategy", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 }

@@ -221,7 +221,7 @@ public class FlowValidator {
     @VisibleForTesting
     void checkFlags(RequestedFlow flow) throws InvalidFlowException  {
         if (flow.isPinned() && flow.isAllocateProtectedPath()) {
-            throw new InvalidFlowException("Flow flags are not valid, unable to process pinned protected flow",
+            throw new InvalidFlowException("Flow flags are not valid, unable to create pinned protected flow",
                     ErrorType.DATA_INVALID);
         }
 

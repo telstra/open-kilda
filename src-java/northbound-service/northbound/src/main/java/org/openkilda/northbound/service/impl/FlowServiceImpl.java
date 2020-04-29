@@ -21,7 +21,6 @@ import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
@@ -170,9 +169,9 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
 
-        FlowCreateRequest payload;
+        FlowRequest flowRequest;
         try {
-            payload = new FlowCreateRequest(new FlowDto(input), input.getDiverseFlowId());
+            flowRequest =  flowMapper.toFlowCreateRequest(input);
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
@@ -180,9 +179,9 @@ public class FlowServiceImpl implements FlowService {
         }
 
         CommandMessage request = new CommandMessage(
-                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+                flowRequest, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
+        return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);

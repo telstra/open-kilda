@@ -209,7 +209,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+        errorDetails.errorDescription == "Flow flags are not valid, unable to create pinned protected flow"
 
         cleanup:
         !exc && flowHelperV2.deleteFlow(flow.flowId)
@@ -232,7 +232,7 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+        errorDetails.errorDescription == "Flow flags are not valid, unable to create pinned protected flow"
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)

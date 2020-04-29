@@ -17,8 +17,10 @@ package org.openkilda.messaging.info.reroute.error;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class RerouteInProgressError extends RerouteError {
 
     @JsonCreator

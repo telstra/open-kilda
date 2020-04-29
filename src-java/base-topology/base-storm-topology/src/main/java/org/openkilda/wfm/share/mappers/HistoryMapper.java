@@ -148,6 +148,8 @@ public abstract class HistoryMapper {
     @Mapping(source = "dumpType", target = "dumpType")
     @Mapping(target = "forwardCookie", ignore = true)
     @Mapping(target = "reverseCookie", ignore = true)
+    @Mapping(target = "forwardStatus", ignore = true)
+    @Mapping(target = "reverseStatus", ignore = true)
     protected abstract FlowDumpData generatedMap(Flow flow, FlowResources resources, DumpType dumpType);
 
     /**

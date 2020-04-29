@@ -28,6 +28,7 @@ import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -77,7 +78,7 @@ public interface FlowMapper {
     /**
      * Map FlowReadResponse.
      *
-     * @param r  {@link FlowReadResponse} instance.
+     * @param r {@link FlowReadResponse} instance.
      * @return {@link FlowResponsePayload} instance.
      */
     default FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
@@ -159,6 +160,41 @@ public interface FlowMapper {
     @Mapping(target = "type", ignore = true)
     FlowRequest toFlowRequest(FlowRequestV2 request);
 
+
+    @Mapping(target = "flowId", source = "id")
+    @Mapping(target = "sourceSwitch", source = "source.switchDpId")
+    @Mapping(target = "destinationSwitch", source = "destination.switchDpId")
+    @Mapping(target = "sourcePort", source = "source.portNumber")
+    @Mapping(target = "destinationPort", source = "destination.portNumber")
+    @Mapping(target = "sourceVlan", source = "source.vlanId")
+    @Mapping(target = "destinationVlan", source = "destination.vlanId")
+    @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "type", ignore = true)
+    @Mapping(target = "detectConnectedDevices", ignore = true)
+    FlowRequest toFlowRequest(FlowCreatePayload request);
+
+    /**
+     * Map FlowCreatePayload.
+     *
+     * @param source {@link FlowCreatePayload} instance.
+     * @return {@link FlowRequest} instance.
+     */
+    default FlowRequest toFlowCreateRequest(FlowCreatePayload source) {
+        FlowRequest target = toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+        if (source.getSource().getDetectConnectedDevices() != null) {
+            DetectConnectedDevicesPayload srcDevs = source.getSource().getDetectConnectedDevices();
+            target.getDetectConnectedDevices().setSrcArp(srcDevs.isArp());
+            target.getDetectConnectedDevices().setSrcLldp(srcDevs.isLldp());
+        }
+        if (source.getDestination().getDetectConnectedDevices() != null) {
+            DetectConnectedDevicesPayload dstDevs = source.getDestination().getDetectConnectedDevices();
+            target.getDetectConnectedDevices().setDstArp(dstDevs.isArp());
+            target.getDetectConnectedDevices().setDstLldp(dstDevs.isLldp());
+        }
+        return target;
+    }
+
     default FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
         return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
     }
@@ -222,10 +258,11 @@ public interface FlowMapper {
     @Mapping(target = "mainPath", source = "mainFlowPathStatus")
     @Mapping(target = "protectedPath", source = "protectedFlowPathStatus")
     PathStatus map(FlowStatusDetails flowStatusDetails);
+
     /**
      * Convert {@link FlowPathStatus} to {@link String}.
      */
-    
+
     default String map(FlowPathStatus flowPathStatus) {
         if (flowPathStatus == null) {
             return null;

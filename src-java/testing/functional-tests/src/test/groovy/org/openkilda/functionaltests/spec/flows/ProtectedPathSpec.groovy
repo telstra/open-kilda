@@ -163,8 +163,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Couldn't setup protected path for one-switch flow"
+        with(exc.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not create flow"
+            errorDescription == "Couldn't setup protected path for one-switch flow"
+        }
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -429,9 +431,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. " +
-                "Couldn't find non overlapping protected path"
+        with(exc.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not create flow"
+            errorDescription == "Not enough bandwidth or no path found. Couldn't find non overlapping protected path"
+        }
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -621,9 +624,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found." +
-                " Couldn't find non overlapping protected path"
+        with(exc.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not create flow"
+            errorDescription == "Not enough bandwidth or no path found. Couldn't find non overlapping protected path"
+        }
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
