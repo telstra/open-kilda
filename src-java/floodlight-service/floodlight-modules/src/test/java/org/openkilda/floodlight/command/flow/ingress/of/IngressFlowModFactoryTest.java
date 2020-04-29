@@ -17,7 +17,11 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import static org.easymock.EasyMock.expect;
 
+import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.utils.OfAdapter;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathDirection;
@@ -28,7 +32,10 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMockSupport;
@@ -38,6 +45,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -50,7 +58,6 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Collections;
-import java.util.Optional;
 import java.util.Set;
 
 abstract class IngressFlowModFactoryTest extends EasyMockSupport {
@@ -70,10 +77,12 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
     protected static final String flowId = "flow-id-unit-test";
     protected static final Cookie cookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1);
 
-    protected static final FlowEndpoint endpointSingleVlan = new FlowEndpoint(
-            new SwitchId(datapathIdAlpha.getLong()), 10, 100);
     protected static final FlowEndpoint endpointZeroVlan = new FlowEndpoint(
-            new SwitchId(datapathIdAlpha.getLong()), 11, 0);
+            new SwitchId(datapathIdAlpha.getLong()), 10, 0);
+    protected static final FlowEndpoint endpointSingleVlan = new FlowEndpoint(
+            new SwitchId(datapathIdAlpha.getLong()), 11, 100);
+    protected static final FlowEndpoint endpointDoubleVlan = new FlowEndpoint(
+            new SwitchId(datapathIdAlpha.getLong()), 12, 200, 210);
 
     protected static final MeterConfig meterConfig = new MeterConfig(new MeterId(20), 200);
 
@@ -95,6 +104,37 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
         verifyAll();
     }
 
+    // --- makeOuterVlanMatchSharedMessage
+
+    @Test
+    public void makeOuterVlanMatchSharedMessage() {
+        final IngressFlowModFactory factory = makeFactory();
+        final IngressFlowSegmentBase command = factory.getCommand();
+        final FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(Collections.emptySet());
+        OFFlowAdd expected = of.buildFlowAdd()
+                .setTableId(getTargetPreIngressTableId())
+                .setPriority(FlowSegmentCommand.FLOW_PRIORITY)
+                .setCookie(U64.of(
+                        FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
+                                .portNumber(endpoint.getPortNumber())
+                                .vlanId(endpoint.getOuterVlanId())
+                                .build().getValue()))
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().applyActions(Collections.singletonList(of.actions().popVlan())),
+                        of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()),
+                        of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID))))
+                .build();
+        verifyOfMessageEquals(expected, factory.makeOuterVlanMatchSharedMessage());
+    }
+
+    // --- makeCustomerPortSharedCatchInstallMessage
+
     @Test
     public void makeCustomerPortSharedCatchInstallMessage() {
         IngressFlowModFactory factory = makeFactory();
@@ -114,7 +154,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
 
     // --- verify methods
 
-    protected void verifyGoToTableInstruction(Optional<TableId> expected, OFFlowMod message) {
+    protected void verifyGoToTableInstruction(OFFlowMod message) {
         OFInstructionGotoTable match = null;
         for (OFInstruction instruction : message.getInstructions()) {
             if (instruction instanceof OFInstructionGotoTable) {
@@ -123,9 +163,9 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
             }
         }
 
-        if (expected.isPresent()) {
+        if (expectPostIngressTableRedirect()) {
             Assert.assertNotNull(match);
-            Assert.assertEquals(expected.get(), match.getTableId());
+            Assert.assertEquals(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID), match.getTableId());
         } else {
             Assert.assertNull(match);
         }
@@ -137,7 +177,15 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
         }
     }
 
+    protected boolean expectPostIngressTableRedirect() {
+        return false;
+    }
+
     abstract IngressFlowModFactory makeFactory();
+
+    abstract TableId getTargetPreIngressTableId();
+
+    abstract TableId getTargetIngressTableId();
 
     MeterId getEffectiveMeterId(MeterConfig meterConfig) {
         if (meterConfig != null) {

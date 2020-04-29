@@ -87,12 +87,14 @@ public abstract class AbstractSpeakerCommandTest extends EasyMockSupport {
             75, FlowEncapsulationType.VXLAN);
 
     protected static final FlowEndpoint endpointEgressZeroVlan = new FlowEndpoint(mapSwitchId(dpIdNext), 11, 0);
-    protected static final FlowEndpoint endpointEgressOneVlan = new FlowEndpoint(mapSwitchId(dpIdNext), 12, 60);
+    protected static final FlowEndpoint endpointEgressSingleVlan = new FlowEndpoint(mapSwitchId(dpIdNext), 12, 60);
 
     protected static final FlowEndpoint endpointIngressZeroVlan = new FlowEndpoint(
             mapSwitchId(dpId), 21, 0);
-    protected static final FlowEndpoint endpointIngressOneVlan = new FlowEndpoint(
+    protected static final FlowEndpoint endpointIngressSingleVlan = new FlowEndpoint(
             mapSwitchId(dpId), 22, 70);
+    protected static final FlowEndpoint endpointIngressDoubleVlan = new FlowEndpoint(
+            mapSwitchId(dpId), 23, 80, 81);
 
     private final SwitchDescription swDesc = SwitchDescription.builder()
             .setManufacturerDescription("manufacturer")

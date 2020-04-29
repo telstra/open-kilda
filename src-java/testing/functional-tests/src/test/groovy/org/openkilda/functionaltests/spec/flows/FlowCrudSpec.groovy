@@ -845,7 +845,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         excessMeterIds.each { meterId ->
             producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                     new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, null, sw.dpId,
-                            5, 6, 5, meterId, FlowEncapsulationType.TRANSIT_VLAN,
+                            5, 6, 5, 0, meterId, FlowEncapsulationType.TRANSIT_VLAN,
                             OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false, false)).toJson()))
         }
         producer.close()

@@ -89,33 +89,27 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
     }
 
     @Override
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
-        if (metadata.isMultiTable()) {
-            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
-
-            if (getEndpoint().isTrackLldpConnectedDevices()) {
-                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
-            }
-
-            if (getEndpoint().isTrackArpConnectedDevices()) {
-                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
-            }
-
-            if (rulesContext.isInstallServer42InputRule()) {
-                Optional<OFFlowMod> server42InputRule = getFlowModFactory().makeServer42InputFlowMessage(
-                        getKildaCoreConfig().getServer42UdpPortOffset());
-                if (server42InputRule.isPresent()) {
-                    ofMessages.add(server42InputRule.get());
-                } else {
-                    log.info("Skip installation of server 42 input rule for flow witch cookie {} on switch {}",
-                            getCookie(), getSwitchId());
-                }
-            }
-        }
-
-        if (rulesContext.isInstallServer42IngressRule()) {
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
+        if (rulesContext != null && rulesContext.isInstallServer42IngressRule()) {
             ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
+        }
+        ofMessages.addAll(makeSharedFlowModInstallMessages());
+        return ofMessages;
+    }
+
+    @Override
+    protected List<OFFlowMod> makeSharedFlowModInstallMessages() {
+        List<OFFlowMod> ofMessages = super.makeSharedFlowModInstallMessages();
+        if (metadata.isMultiTable() && rulesContext != null && rulesContext.isInstallServer42InputRule()) {
+            Optional<OFFlowMod> server42InputRule = getFlowModFactory().makeServer42InputFlowMessage(
+                    getKildaCoreConfig().getServer42UdpPortOffset());
+            if (server42InputRule.isPresent()) {
+                ofMessages.add(server42InputRule.get());
+            } else {
+                log.info("Skip installation of server 42 input rule for flow witch cookie {} on switch {}",
+                        getCookie(), getSwitchId());
+            }
         }
         return ofMessages;
     }

@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -29,6 +30,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -65,11 +68,17 @@ public class InstallEgressFlow extends InstallTransitFlow {
     @JsonProperty("output_vlan_type")
     protected OutputVlanType outputVlanType;
 
-    /**
-     * Output vlan id value.
-     */
     @JsonProperty("output_vlan_id")
-    protected Integer outputVlanId;
+    @Getter
+    protected int outputVlanId;
+
+    @JsonProperty("output_inner_vlan_id")
+    @Getter
+    protected int outputInnerVlanId;
+
+    @JsonProperty("ingress_endpoint")
+    @Getter @Setter
+    protected FlowEndpoint ingressEndpoint;
 
     /**
      * Instance constructor.
@@ -83,8 +92,10 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @param transitEncapsulationId  transit encapsulation id value
      * @param transitEncapsulationType  transit encapsulation type value
      * @param outputVlanId   output vlan id value
+     * @param outputInnerVlanId output inner vlan id value
      * @param outputVlanType output vlan tag action
      * @param multiTable     multitable flag
+     * @param ingressEndpoint ingress flow endpoint
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -95,15 +106,18 @@ public class InstallEgressFlow extends InstallTransitFlow {
                              @JsonProperty("input_port") final Integer inputPort,
                              @JsonProperty("output_port") final Integer outputPort,
                              @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
-                             @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
-                                         transitEncapsulationType,
+                             @JsonProperty("transit_encapsulation_type") FlowEncapsulationType transitEncapsulationType,
                              @JsonProperty("output_vlan_id") final Integer outputVlanId,
+                             @JsonProperty("output_inner_vlan_id") Integer outputInnerVlanId,
                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
-                             @JsonProperty("multi_table") final boolean multiTable) {
+                             @JsonProperty("multi_table") final boolean multiTable,
+                             @JsonProperty("ingress_endpoint") FlowEndpoint ingressEndpoint) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
         setOutputVlanId(outputVlanId);
+        setOutputInnerVlanId(outputInnerVlanId);
         setOutputVlanType(outputVlanType);
+        setIngressEndpoint(ingressEndpoint);
     }
 
     /**
@@ -130,28 +144,12 @@ public class InstallEgressFlow extends InstallTransitFlow {
         }
     }
 
-    /**
-     * Returns output vlan id value.
-     *
-     * @return output vlan id value
-     */
-    public Integer getOutputVlanId() {
-        return outputVlanId;
+    public void setOutputVlanId(final Integer value) {
+        outputVlanId = adaptVlanId(value);
     }
 
-    /**
-     * Sets output vlan id value.
-     *
-     * @param outputVlanId output vlan id value
-     */
-    public void setOutputVlanId(final Integer outputVlanId) {
-        if (outputVlanId == null) {
-            this.outputVlanId = 0;
-        } else if (Utils.validateVlanRange(outputVlanId)) {
-            this.outputVlanId = outputVlanId;
-        } else {
-            throw new IllegalArgumentException("need to set valid value for output_vlan_id");
-        }
+    public void setOutputInnerVlanId(Integer value) {
+        outputInnerVlanId = adaptVlanId(value);
     }
 
     /**
@@ -169,8 +167,10 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 .add("transit_encapsulation_id", transitEncapsulationId)
                 .add("transit_encapsulation_type", transitEncapsulationType)
                 .add("output_vlan_id", outputVlanId)
+                .add("output_inner_vlan_id", outputInnerVlanId)
                 .add("output_vlan_type", outputVlanType)
                 .add("multi_table", multiTable)
+                .add("ingress_endpoint", ingressEndpoint)
                 .toString();
     }
 
@@ -196,8 +196,10 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 && Objects.equals(getTransitEncapsulationId(), that.getTransitEncapsulationId())
                 && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
+                && Objects.equals(getOutputInnerVlanId(), that.getOutputInnerVlanId())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
-                && Objects.equals(isMultiTable(), that.isMultiTable());
+                && Objects.equals(isMultiTable(), that.isMultiTable())
+                && Objects.equals(getIngressEndpoint(), that.getIngressEndpoint());
     }
 
     /**
@@ -206,6 +208,6 @@ public class InstallEgressFlow extends InstallTransitFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, outputVlanType, outputVlanId, multiTable);
+                transitEncapsulationType, outputVlanType, outputVlanId, outputInnerVlanId, multiTable, ingressEndpoint);
     }
 }

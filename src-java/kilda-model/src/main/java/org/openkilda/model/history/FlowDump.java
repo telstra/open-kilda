@@ -96,6 +96,12 @@ public class FlowDump {
     @Property(name = "dst_vlan")
     private int destinationVlan;
 
+    @Property(name = "src_inner_vlan")
+    private int sourceInnerVlan;
+
+    @Property(name = "dst_inner_vlan")
+    private int destinationInnerVlan;
+
     @Property(name = "forward_meter_id")
     @Convert(graphPropertyType = Long.class)
     private MeterId forwardMeterId;

@@ -26,6 +26,7 @@ import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
+import org.openkilda.wfm.topology.stats.FlowDirectionHelper.Direction;
 
 import org.apache.storm.tuple.Tuple;
 
@@ -109,7 +110,9 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("outPort", String.valueOf(entry.getOutPort()));
         tags.put("inPort", String.valueOf(entry.getInPort()));
         tags.put("flowid", flowId);
-        tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
+        tags.put("direction", FlowDirectionHelper.findDirectionSafe(entry.getCookie())
+                .orElse(Direction.UNKNOWN)
+                .name().toLowerCase());
 
         emitMetric("flow.raw.packets", timestamp, entry.getPacketCount(), tags);
         emitMetric("flow.raw.bytes", timestamp, entry.getByteCount(), tags);

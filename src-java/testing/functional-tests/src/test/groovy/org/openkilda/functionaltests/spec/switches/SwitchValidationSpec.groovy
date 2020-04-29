@@ -23,6 +23,7 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
+import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
@@ -589,15 +590,15 @@ misconfigured"
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.dst.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1,
-                        OutputVlanType.REPLACE, false)).toJson()))
+                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(switchPair.src.dpId, 1))).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.flowId, 1L, transitSw, 1, 2, 1,
                             FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
                         switchPair.dst.dpId, false, false, false)).toJson()))

@@ -62,7 +62,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVlanZeroVlanToSingleVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressOneVlan, endpointIngressZeroVlan, encapsulationVlan);
+                endpointEgressSingleVlan, endpointIngressZeroVlan, encapsulationVlan);
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
@@ -84,7 +84,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVlanSingleVlanToZeroVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressZeroVlan, endpointIngressOneVlan, encapsulationVlan);
+                endpointEgressZeroVlan, endpointIngressSingleVlan, encapsulationVlan);
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
@@ -106,7 +106,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVlanSingleVlanToSingleVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressOneVlan, endpointIngressOneVlan, encapsulationVlan);
+                endpointEgressSingleVlan, endpointIngressSingleVlan, encapsulationVlan);
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
@@ -153,7 +153,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVxLanZeroVlanToSingleVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressOneVlan, endpointIngressZeroVlan, encapsulationVxLan);
+                endpointEgressSingleVlan, endpointIngressZeroVlan, encapsulationVxLan);
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
@@ -180,7 +180,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVlanSingleVxLanToZeroVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressZeroVlan, endpointIngressOneVlan, encapsulationVxLan);
+                endpointEgressZeroVlan, endpointIngressSingleVlan, encapsulationVxLan);
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
@@ -195,7 +195,6 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 of.actions().noviflowPopVxlanTunnel(),
-                                of.actions().popVlan(),
                                 of.actions().buildOutput()
                                         .setPort(OFPort.of(command.getEndpoint().getPortNumber()))
                                         .build()))))
@@ -206,7 +205,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVlanSingleVxLanToSingleVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressOneVlan, endpointIngressOneVlan, encapsulationVxLan);
+                endpointEgressSingleVlan, endpointIngressSingleVlan, encapsulationVxLan);
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
@@ -221,6 +220,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 of.actions().noviflowPopVxlanTunnel(),
+                                of.actions().pushVlan(EthType.VLAN_FRAME),
                                 OfAdapter.INSTANCE.setVlanIdAction(of, command.getEndpoint().getOuterVlanId()),
                                 of.actions().buildOutput()
                                         .setPort(OFPort.of(command.getEndpoint().getPortNumber()))
@@ -232,7 +232,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     @Test
     public void happyPathTransitVlanMultiTable() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
-                endpointEgressOneVlan, endpointIngressOneVlan, encapsulationVlan,
+                endpointEgressSingleVlan, endpointIngressSingleVlan, encapsulationVlan,
                 new FlowSegmentMetadata("egress-flow-segment-multitable", new Cookie(3), true));
         executeCommand(command, 1);
 

@@ -16,7 +16,10 @@
 package org.openkilda.wfm.topology.stats;
 
 import org.openkilda.exception.InvalidCookieException;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+
+import java.util.Optional;
 
 public final class FlowDirectionHelper {
     private FlowDirectionHelper() {}
@@ -28,17 +31,23 @@ public final class FlowDirectionHelper {
     }
 
     /**
-     * Trys to determine the direction of the flow based on the cookie.
-     *
-     * @param rawCookie cookie
-     * @return flow direction
+     * Try to extract the direction of the flow from cookie. Raises {@link FlowCookieException} in case of failure.
      */
     public static Direction findDirection(long rawCookie) throws FlowCookieException {
+        return findDirectionSafe(rawCookie)
+                .orElseThrow(() -> new FlowCookieException(String.format(
+                        "unknown direction for %s", new Cookie(rawCookie))));
+    }
+
+    /**
+     * Try to extract the direction of the flow from cookie.
+     */
+    public static Optional<Direction> findDirectionSafe(long rawCookie) {
         FlowSegmentCookie cookie = new FlowSegmentCookie(rawCookie);
         try {
             cookie.validate();
         } catch (InvalidCookieException e) {
-            throw new FlowCookieException(e.getMessage());
+            return Optional.empty();
         }
 
         Direction direction;
@@ -50,9 +59,9 @@ public final class FlowDirectionHelper {
                 direction = Direction.REVERSE;
                 break;
             default:
-                throw new FlowCookieException("unknown direction for " + cookie);
+                direction = null;
         }
 
-        return direction;
+        return Optional.ofNullable(direction);
     }
 }

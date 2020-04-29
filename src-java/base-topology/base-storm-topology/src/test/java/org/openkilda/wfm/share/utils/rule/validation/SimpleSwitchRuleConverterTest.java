@@ -404,7 +404,7 @@ public class SimpleSwitchRuleConverterTest {
                 .inPort(FLOW_A_SRC_PORT)
                 .outPort(FLOW_A_SEGMENT_A_SRC_PORT)
                 .inVlan(FLOW_A_SRC_VLAN)
-                .outVlan(FLOW_A_ENCAP_ID)
+                .outVlan(Collections.singletonList(FLOW_A_ENCAP_ID))
                 .meterId(FLOW_A_FORWARD_METER_ID)
                 .meterRate(FLOW_A_BANDWIDTH)
                 .meterBurstSize(Meter
@@ -424,7 +424,7 @@ public class SimpleSwitchRuleConverterTest {
                 .inPort(FLOW_A_SEGMENT_B_DST_PORT)
                 .outPort(FLOW_A_DST_PORT)
                 .inVlan(FLOW_A_ENCAP_ID)
-                .outVlan(FLOW_A_DST_VLAN)
+                .outVlan(Collections.singletonList(FLOW_A_DST_VLAN))
                 .build());
         return simpleSwitchRules;
     }
@@ -457,7 +457,7 @@ public class SimpleSwitchRuleConverterTest {
                 .inPort(FLOW_A_SEGMENT_B_DST_PORT)
                 .outPort(FLOW_A_DST_PORT)
                 .tunnelId(FLOW_A_ENCAP_ID)
-                .outVlan(FLOW_A_DST_VLAN)
+                .outVlan(Collections.singletonList(FLOW_A_DST_VLAN))
                 .build());
         return simpleSwitchRules;
     }
@@ -470,7 +470,7 @@ public class SimpleSwitchRuleConverterTest {
                 .inPort(FLOW_B_SRC_PORT)
                 .outPort(FLOW_B_SRC_PORT)
                 .inVlan(FLOW_B_SRC_VLAN)
-                .outVlan(FLOW_B_DST_VLAN)
+                .outVlan(Collections.singletonList(FLOW_B_DST_VLAN))
                 .meterId(FLOW_B_FORWARD_METER_ID)
                 .meterRate(FLOW_B_BANDWIDTH)
                 .meterBurstSize(Meter

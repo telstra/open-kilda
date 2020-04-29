@@ -28,27 +28,32 @@ import java.util.Set;
 
 public class RoutingMetadata extends MetadataBase {
     // update ALL_FIELDS if modify fields list
-    //                                              used by parent -> 0x0000_0000_F000_0000L
-    private static final BitField LLDP_MARKER_FLAG     = new BitField(0x0000_0000_0000_0001L);
-    private static final BitField ONE_SWITCH_FLOW_FLAG = new BitField(0x0000_0000_0000_0002L);
-    private static final BitField ARP_MARKER_FLAG      = new BitField(0x0000_0000_0000_0004L);
-    private static final BitField INPUT_PORT_FIELD     = new BitField(0x0000_0000_007F_0000L);
+    //                                                  used by parent -> 0x0000_0000_F000_0000L
+    private static final BitField LLDP_MARKER_FLAG         = new BitField(0x0000_0000_0000_0001L);
+    private static final BitField ONE_SWITCH_FLOW_FLAG     = new BitField(0x0000_0000_0000_0002L);
+    private static final BitField ARP_MARKER_FLAG          = new BitField(0x0000_0000_0000_0004L);
+    private static final BitField OUTER_VLAN_PRESENCE_FLAG = new BitField(0x0000_0000_0000_0008L);
+    private static final BitField OUTER_VLAN_FIELD         = new BitField(0x0000_0000_0000_fff0L);
+    private static final BitField INPUT_PORT_FIELD         = new BitField(0x0000_0000_007F_0000L);
 
     static final long MAX_INPUT_PORT = INPUT_PORT_FIELD.getMask() >> INPUT_PORT_FIELD.getOffset();
 
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             MetadataBase.ALL_FIELDS,
-            LLDP_MARKER_FLAG, ONE_SWITCH_FLOW_FLAG, ARP_MARKER_FLAG);
+            LLDP_MARKER_FLAG, ONE_SWITCH_FLOW_FLAG, ARP_MARKER_FLAG, OUTER_VLAN_PRESENCE_FLAG, OUTER_VLAN_FIELD,
+            INPUT_PORT_FIELD);
 
     @Builder
-    protected RoutingMetadata(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
+    protected RoutingMetadata(
+            Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer outerVlanId, Integer inputPort) {
         super(
                 MetadataType.ROUTING,
-                makeValue(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort),
-                makeMask(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort));
+                makeValue(lldpFlag, arpFlag, oneSwitchFlowFlag, outerVlanId, inputPort),
+                makeMask(lldpFlag, arpFlag, oneSwitchFlowFlag, outerVlanId, inputPort));
     }
 
-    private static U64 makeValue(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
+    private static U64 makeValue(
+            Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer outerVlanId, Integer inputPort) {
         U64 result = U64.ZERO;
         if (lldpFlag != null) {
             result = setField(result, lldpFlag ? 1 : 0, LLDP_MARKER_FLAG);
@@ -58,6 +63,10 @@ public class RoutingMetadata extends MetadataBase {
         }
         if (oneSwitchFlowFlag != null) {
             result = setField(result, oneSwitchFlowFlag ? 1 : 0, ONE_SWITCH_FLOW_FLAG);
+        }
+        if (outerVlanId != null) {
+            result = setField(result, 1, OUTER_VLAN_PRESENCE_FLAG);
+            result = setField(result, outerVlanId, OUTER_VLAN_FIELD);
         }
         if (inputPort != null) {
             if (inputPort < 0 || inputPort > MAX_INPUT_PORT) {
@@ -69,7 +78,8 @@ public class RoutingMetadata extends MetadataBase {
         return result;
     }
 
-    private static U64 makeMask(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
+    private static U64 makeMask(
+            Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer outerVlanId, Integer inputPort) {
         U64 result = U64.ZERO;
         if (lldpFlag != null) {
             result = setField(result, -1, LLDP_MARKER_FLAG);
@@ -79,6 +89,10 @@ public class RoutingMetadata extends MetadataBase {
         }
         if (oneSwitchFlowFlag != null) {
             result = setField(result, -1, ONE_SWITCH_FLOW_FLAG);
+        }
+        if (outerVlanId != null) {
+            result = setField(result, -1, OUTER_VLAN_PRESENCE_FLAG);
+            result = setField(result, -1, OUTER_VLAN_FIELD);
         }
         if (inputPort != null) {
             result = setField(result, -1, INPUT_PORT_FIELD);
@@ -99,11 +113,11 @@ public class RoutingMetadata extends MetadataBase {
         }
 
         private RoutingMetadata buildTruncatedTo32Bits() {
-            return new RoutingMetadata32(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort);
+            return new RoutingMetadata32(lldpFlag, arpFlag, oneSwitchFlowFlag, outerVlanId, inputPort);
         }
 
         private RoutingMetadata buildGeneric() {
-            return new RoutingMetadata(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort);
+            return new RoutingMetadata(lldpFlag, arpFlag, oneSwitchFlowFlag, outerVlanId, inputPort);
         }
     }
 }

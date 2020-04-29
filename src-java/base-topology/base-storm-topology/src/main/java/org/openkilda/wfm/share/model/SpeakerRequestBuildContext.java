@@ -43,6 +43,8 @@ public class SpeakerRequestBuildContext {
         private boolean removeCustomerPortRule;
         private boolean removeCustomerPortLldpRule;
         private boolean removeCustomerPortArpRule;
+        private boolean removeOuterVlanMatchSharedRule;
+
         private boolean removeServer42InputRule;
         private boolean removeServer42IngressRule;
         private boolean installServer42InputRule;

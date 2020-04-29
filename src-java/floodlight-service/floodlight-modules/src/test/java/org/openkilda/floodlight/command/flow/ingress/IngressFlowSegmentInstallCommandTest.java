@@ -39,25 +39,31 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
     @Test
     public void zeroVlanSingleTable() throws Exception {
         processZeroVlanSingleTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
-    public void oneVlanSingleTable() throws Exception {
+    public void singleVlanSingleTable() throws Exception {
         processOneVlanSingleTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
     public void zeroVlanMultiTable() throws Exception {
         processZeroVlanMultiTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
     }
 
     @Test
-    public void oneVlanMultiTable() throws Exception {
+    public void singleVlanMultiTable() throws Exception {
         processOneVlanMultiTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
+    }
+
+    @Test
+    public void doubleVlanMultiTable() throws Exception {
+        processDoubleVlanMultiTable(makeCommand(
+                endpointIngressDoubleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
     }
 
     @Override
@@ -74,7 +80,7 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
     @Override
     protected IngressFlowSegmentBase makeCommand(
             FlowEndpoint endpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
-        return makeCommand(endpoint, endpointEgressOneVlan, meterConfig, metadata);
+        return makeCommand(endpoint, endpointEgressSingleVlan, meterConfig, metadata);
     }
 
     protected IngressFlowSegmentInstallCommand makeCommand(

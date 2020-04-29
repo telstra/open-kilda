@@ -19,21 +19,23 @@ import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCo
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.types.TableId;
-
-import java.util.Optional;
 
 public class IngressFlowSegmentInstallMultiTableFlowModFactoryTest extends IngressFlowSegmentInstallFlowModFactoryTest {
 
     @Override
-    TableId getTargetTableId() {
+    TableId getTargetIngressTableId() {
         return TableId.of(SwitchManager.INGRESS_TABLE_ID);
     }
 
     @Override
-    Optional<OFInstructionGotoTable> getGoToTableInstruction() {
-        return Optional.of(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
+    protected boolean expectPostIngressTableRedirect() {
+        return true;
+    }
+
+    @Override
+    TableId getTargetPreIngressTableId() {
+        return TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID);
     }
 
     @Override

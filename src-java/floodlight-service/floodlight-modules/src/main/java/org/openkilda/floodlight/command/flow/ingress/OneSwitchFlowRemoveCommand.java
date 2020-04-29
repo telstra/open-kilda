@@ -25,7 +25,6 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.SwitchFeature;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -64,19 +63,9 @@ public class OneSwitchFlowRemoveCommand extends OneSwitchFlowCommand {
     }
 
     @Override
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
-        if (getSwitchFeatures().contains(SwitchFeature.MULTI_TABLE) && rulesContext != null) {
-            if (rulesContext.isRemoveCustomerCatchRule()) {
-                ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
-            }
-            if (rulesContext.isRemoveCustomerLldpRule()) {
-                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
-            }
-            if (rulesContext.isRemoveCustomerArpRule()) {
-                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
-            }
-        }
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
+        ofMessages.addAll(makeSharedFlowModRemoveMessages());
         return ofMessages;
     }
 

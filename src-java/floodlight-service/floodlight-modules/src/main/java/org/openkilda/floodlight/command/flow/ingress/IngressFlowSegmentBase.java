@@ -154,7 +154,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<FlowSegmentReport> planOfFlowsInstall(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = makeIngressModMessages(effectiveMeterId);
+        List<OFFlowMod> ofMessages = makeFlowModMessages(effectiveMeterId);
         List<CompletableFuture<Optional<OFMessage>>> writeResults = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {
             for (OFFlowMod message : ofMessages) {
@@ -166,7 +166,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<MeterId> planOfFlowsRemove(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = new ArrayList<>(makeIngressModMessages(effectiveMeterId));
+        List<OFFlowMod> ofMessages = new ArrayList<>(makeFlowModMessages(effectiveMeterId));
 
         List<CompletableFuture<?>> requests = new ArrayList<>(ofMessages.size());
         try (Session session = getSessionService().open(messageContext, getSw())) {
@@ -180,7 +180,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     private CompletableFuture<FlowSegmentReport> planOfFlowsVerify(MeterId effectiveMeterId) {
-        return makeVerifyPlan(makeIngressModMessages(effectiveMeterId));
+        return makeVerifyPlan(makeFlowModMessages(effectiveMeterId));
     }
 
     private MeterId handleMeterReport(MeterInstallReport report) {
@@ -206,12 +206,87 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         }
     }
 
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        if (metadata.isMultiTable()) {
+            return makeMultiTableFlowModMessages(effectiveMeterId);
+        } else {
+            return makeSingleTableFlowModMessages(effectiveMeterId);
+        }
+    }
+
+    protected List<OFFlowMod> makeMultiTableFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = new ArrayList<>(2);
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
+                ofMessages.add(flowModFactory.makeDoubleVlanForwardMessage(effectiveMeterId));
+            } else {
+                ofMessages.add(flowModFactory.makeSingleVlanForwardMessage(effectiveMeterId));
+            }
+        } else {
+            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveMeterId));
+        }
+
+        return ofMessages;
+    }
+
+    protected List<OFFlowMod> makeSingleTableFlowModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterVlanOnlyForwardMessage(effectiveMeterId));
+            ofMessages.add(flowModFactory.makeOuterOnlyVlanForwardMessage(effectiveMeterId));
         } else {
-            ofMessages.add(flowModFactory.makeDefaultPortFlowMatchAndForwardMessage(effectiveMeterId));
+            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveMeterId));
+        }
+        return ofMessages;
+    }
+
+    /**
+     * Make flow-mod-requests to install shared OF flow. Shared OF flows can be used from 1 up to many kilda-flows. They
+     * are required to route network packets into the correct OF table or to make a complex packet match that can't be
+     * done in a single OF table (QinQ case).
+     *
+     * <p>Because there shared rules for all kilda-flows use the same priority and match fields, it is safe to install
+     * them for each kilda-flows they are used in. If there is no such OF flow on the switch - it will be installed, if
+     * it already there - it will replace existing (there will be no change in any meaning OF flow field).
+     */
+    protected List<OFFlowMod> makeSharedFlowModInstallMessages() {
+        List<OFFlowMod> ofMessages = new ArrayList<>();
+        if (metadata.isMultiTable()) {
+            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+
+            if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+                ofMessages.add(flowModFactory.makeOuterVlanMatchSharedMessage());
+            }
+
+            if (getEndpoint().isTrackLldpConnectedDevices()) {
+                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
+            }
+
+            if (getEndpoint().isTrackArpConnectedDevices()) {
+                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
+        }
+        return ofMessages;
+    }
+
+    /**
+     * Make flow-mod-requests to remove shared OF flow. The Caller must define which shared OF flows must be removed.
+     * I.e. shared OF flow can be removed only when there is no more kilda-flows uses it.
+     */
+    protected List<OFFlowMod> makeSharedFlowModRemoveMessages() {
+        List<OFFlowMod> ofMessages = new ArrayList<>();
+        if (getSwitchFeatures().contains(SwitchFeature.MULTI_TABLE) && rulesContext != null) {
+            if (rulesContext.isRemoveCustomerCatchRule()) {
+                ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+            }
+            if (rulesContext.isRemoveCustomerLldpRule()) {
+                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
+            }
+            if (rulesContext.isRemoveCustomerArpRule()) {
+                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
+            if (rulesContext.isRemoveOuterVlanMatchSharedRule()) {
+                ofMessages.add(getFlowModFactory().makeOuterVlanMatchSharedMessage());
+            }
         }
         return ofMessages;
     }
@@ -219,7 +294,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     protected List<OFFlowMod> makeIngressServer42IngressFlowModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterVlanOnlyServer42IngressFlowMessage(
+            ofMessages.add(flowModFactory.makeOuterOnlyVlanServer42IngressFlowMessage(
                     effectiveMeterId, getKildaCoreConfig().getServer42UdpPortOffset()));
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortServer42IngressFlowMessage(

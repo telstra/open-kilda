@@ -2,6 +2,7 @@
 	"clazz": "org.openkilda.messaging.command.CommandMessage",
 	"destination": "CONTROLLER",
 	"timestamp": 42,
+	"correlation_id": "dummy-correlation-ID",
 	"payload": {
 		"clazz": "org.openkilda.messaging.command.flow.InstallIngressFlow",
 		"flowid": "7B",

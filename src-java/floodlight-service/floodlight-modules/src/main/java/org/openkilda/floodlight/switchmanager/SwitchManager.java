@@ -97,7 +97,9 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Meter;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchFeature;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -673,6 +675,30 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return pushFlow(sw, flowId, builder.build());
+    }
+
+    @Override
+    public void installOuterVlanMatchSharedFlow(SwitchId switchId, String flowId, FlowSharedSegmentCookie cookie)
+            throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(DatapathId.of(switchId.toLong()));
+        OFFactory of = sw.getOFFactory();
+
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(cookie.getVlanId())
+                .build(featureDetectorService.detectSwitch(sw));
+        ImmutableList<OFInstruction> instructions = ImmutableList.of(
+                of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
+                of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()),
+                of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID)));
+
+        OFFlowMod flow = prepareFlowModBuilder(of, cookie.getValue(), FLOW_PRIORITY, PRE_INGRESS_TABLE_ID)
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(cookie.getPortNumber()))
+                        .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(cookie.getVlanId()))
+                        .build())
+                .setInstructions(instructions)
+                .build();
+        pushFlow(sw, flowId, flow);
     }
 
     /**

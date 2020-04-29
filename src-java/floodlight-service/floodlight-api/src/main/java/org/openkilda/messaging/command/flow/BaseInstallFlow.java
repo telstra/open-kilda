@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.OF_CONTROLLER_PORT;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
+import org.openkilda.messaging.Utils;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -152,7 +153,15 @@ public class BaseInstallFlow extends BaseFlow {
         this.multiTable = multiTable;
     }
 
-
+    protected int adaptVlanId(Integer raw) {
+        if (raw == null) {
+            return 0;
+        }
+        if (! Utils.validateVlanRange(raw)) {
+            throw new IllegalArgumentException(String.format("invalid vlanId value: %s", raw));
+        }
+        return raw;
+    }
 
     /**
      * {@inheritDoc}

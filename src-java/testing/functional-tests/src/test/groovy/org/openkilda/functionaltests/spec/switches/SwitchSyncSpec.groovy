@@ -171,11 +171,12 @@ class SwitchSyncSpec extends BaseSpecification {
 
         def producer = new KafkaProducer(producerProps)
         def excessRuleCookie = 1234567890L
-        def excessMeterId = ((MIN_FLOW_METER_ID..100) -
-                northbound.getAllMeters(dstSwitch.dpId).meterEntries*.meterId)[0]
+        def excessMeterId = ((MIN_FLOW_METER_ID..100)
+                - northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId
+                - northbound.getAllMeters(dstSwitch.dpId).meterEntries*.meterId)[0]
 
         producer.send(new ProducerRecord(flowTopic, srcSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
                         false, false)).toJson()))
@@ -186,9 +187,9 @@ class SwitchSyncSpec extends BaseSpecification {
                     .toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, dstSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
+                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, srcSwitch.dpId, false,
                         false, false)).toJson()))
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {

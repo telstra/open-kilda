@@ -161,7 +161,7 @@ public abstract class OfFlowStatsMapper {
                 .collect(Collectors.toMap(OFInstruction::getType, instruction -> instruction));
 
         FlowApplyActions applyActions = Optional.ofNullable(instructionMap.get(OFInstructionType.APPLY_ACTIONS))
-                .map(this::toFlowApplyActions)
+                .map(entry -> toFlowApplyActions(((OFInstructionApplyActions) entry).getActions()))
                 .orElse(null);
 
         Long meter = Optional.ofNullable(instructionMap.get(OFInstructionType.METER))
@@ -181,34 +181,37 @@ public abstract class OfFlowStatsMapper {
 
     /**
      * Convert {@link OFInstruction} to {@link FlowApplyActions}.
-     * @param instruction instruction to be converted.
      * @return result of transformation {@link FlowApplyActions}.
      */
-    public FlowApplyActions toFlowApplyActions(OFInstruction instruction) {
-        Map<OFActionType, OFAction> actions = ((OFInstructionApplyActions) instruction).getActions()
+    public FlowApplyActions toFlowApplyActions(List<OFAction> applyActions) {
+        // FIXME(surabujin): avoid map/set usage, avoid multiple traversal over instructions/actions lists.
+        Map<OFActionType, OFAction> actions = applyActions
                 .stream()
                 .filter(ofAction -> !ofAction.getType().equals(OFActionType.EXPERIMENTER))
                 .filter(ofAction -> !ofAction.getType().equals(OFActionType.SET_FIELD))
+                .filter(ofAction -> !ofAction.getType().equals(OFActionType.PUSH_VLAN))
                 .collect(Collectors.toMap(OFAction::getType, action -> action));
         // NOTE(tdurakov): there are could be more then one action of type experimenter, better to filter them out
         // and handle independently
-        Set<OFAction> experimenterActions = ((OFInstructionApplyActions) instruction).getActions()
+        Set<OFAction> experimenterActions = applyActions
                 .stream()
                 .filter(ofAction -> ofAction.getType().equals(OFActionType.EXPERIMENTER))
                 .collect(Collectors.toSet());
-        Set<OFAction> setFieldActions = ((OFInstructionApplyActions) instruction).getActions()
+        List<OFAction> setFieldActions = applyActions
                 .stream()
                 .filter(ofAction -> ofAction.getType().equals(OFActionType.SET_FIELD))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
+        String pushVlan = applyActions.stream()
+                .filter(ofAction -> ofAction.getType().equals(OFActionType.PUSH_VLAN))
+                .findFirst()
+                .map(action -> String.valueOf(((OFActionPushVlan) action).getEthertype().toString()))
+                .orElse(null);
 
         return FlowApplyActions.builder()
                 .meter(Optional.ofNullable(actions.get(OFActionType.METER))
                         .map(action -> String.valueOf(((OFActionMeter) action).getMeterId()))
                         .orElse(null))
-                .pushVlan(Optional.ofNullable(actions.get(OFActionType.PUSH_VLAN))
-                        .map(action ->
-                                String.valueOf(((OFActionPushVlan) action).getEthertype().toString()))
-                        .orElse(null))
+                .pushVlan(pushVlan)
                 .flowOutput(Optional.ofNullable(actions.get(OFActionType.OUTPUT))
                         .map(action -> String.valueOf(((OFActionOutput) action).getPort().toString()))
                         .orElse(null))

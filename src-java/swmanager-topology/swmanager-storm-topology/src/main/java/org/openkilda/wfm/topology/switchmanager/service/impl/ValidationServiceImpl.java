@@ -17,11 +17,14 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.util.stream.Collectors.toList;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
@@ -33,6 +36,8 @@ import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -83,23 +88,8 @@ public class ValidationServiceImpl implements ValidationService {
                                              List<FlowEntry> expectedDefaultRules) throws SwitchNotFoundException {
         log.debug("Validating rules on switch {}", switchId);
 
-        Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitch(switchId).stream()
-                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
-                .map(FlowPath::getCookie)
-                .map(Cookie::getValue)
-                .collect(Collectors.toSet());
-
-        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchId);
-
-        paths.stream()
-                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
-                .map(FlowPath::getCookie)
-                .map(Cookie::getValue)
-                .forEach(expectedCookies::add);
-
-        expectedCookies.addAll(getExpectedServer42IngressCookies(switchId, paths));
-        return makeRulesResponse(
-                expectedCookies, presentRules, expectedDefaultRules, switchId);
+        Set<Long> expectedCookies = getExpectedFlowRules(switchId);
+        return makeRulesResponse(expectedCookies, presentRules, expectedDefaultRules, switchId);
     }
 
     private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths)
@@ -226,6 +216,44 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+    }
+
+    private Set<Long> getExpectedFlowRules(SwitchId switchId) throws SwitchNotFoundException {
+        Set<Long> result = new HashSet<>();
+
+        // collect transit segments
+        flowPathRepository.findBySegmentDestSwitch(switchId).stream()
+                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
+                .forEach(result::add);
+
+        // collect termination segments
+        Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId);
+        for (FlowPath path : affectedPaths) {
+            Flow flow = path.getFlow();
+            if (! flow.isActualPathId(path.getPathId())) {
+                continue;
+            }
+
+            result.add(path.getCookie().getValue());
+
+            // shared outer vlan match rule
+            FlowSideAdapter ingress = FlowSideAdapter.makeIngressAdapter(flow, path);
+            FlowEndpoint endpoint = ingress.getEndpoint();
+            if (ingress.isMultiTableSegment()
+                    && switchId.equals(endpoint.getSwitchId())
+                    && FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())
+                    && ingress.isPrimaryEgressPath(path.getPathId())) {
+                result.add(FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
+                        .portNumber(endpoint.getPortNumber())
+                        .vlanId(endpoint.getOuterVlanId())
+                        .build().getValue());
+            }
+        }
+
+        result.addAll(getExpectedServer42IngressCookies(switchId, affectedPaths));
+        return result;
     }
 
     private ValidateMetersResult comparePresentedAndExpectedMeters(

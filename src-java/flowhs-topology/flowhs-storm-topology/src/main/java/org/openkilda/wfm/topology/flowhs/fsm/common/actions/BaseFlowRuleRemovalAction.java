@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
@@ -153,15 +154,36 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
                 oldFlow.getFlowId(), oldFlow.getDestSwitch(), oldFlow.getDestPort());
     }
 
+    protected boolean removeOuterVlanMatchSharedRule(String flowId, FlowEndpoint current, FlowEndpoint goal) {
+        if (current.isSwitchPortEquals(goal)
+                && current.getOuterVlanId() == goal.getOuterVlanId()) {
+            return false;
+        }
+        return findOuterVlanMatchSharedRuleUsage(current).stream()
+                .allMatch(entry -> flowId.equals(entry.getFlowId()));
+    }
+
     protected SpeakerRequestBuildContext buildSpeakerContextForRemovalIngressAndShared(
             RequestedFlow oldFlow, RequestedFlow newFlow) {
         SwitchProperties srcSwitchProperties = getSwitchProperties(oldFlow.getSrcSwitch());
         boolean server42FlowRttToggle = isServer42FlowRttFeatureToggle();
 
+        FlowEndpoint oldIngress = new FlowEndpoint(
+                oldFlow.getSrcSwitch(), oldFlow.getSrcPort(), oldFlow.getSrcVlan(), oldFlow.getSrcInnerVlan());
+        FlowEndpoint oldEgress = new FlowEndpoint(
+                oldFlow.getDestSwitch(), oldFlow.getDestPort(), oldFlow.getDestVlan(), oldFlow.getDestInnerVlan());
+
+        FlowEndpoint newIngress = new FlowEndpoint(
+                newFlow.getSrcSwitch(), newFlow.getSrcPort(), newFlow.getSrcVlan(), newFlow.getSrcInnerVlan());
+        FlowEndpoint newEgress = new FlowEndpoint(
+                newFlow.getDestSwitch(), newFlow.getDestPort(), newFlow.getDestVlan(), newFlow.getDestInnerVlan());
+
         PathContext forwardPathContext = PathContext.builder()
                 .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
                 .removeCustomerPortLldpRule(removeForwardSharedLldpRule(oldFlow, newFlow))
                 .removeCustomerPortArpRule(removeForwardSharedArpRule(oldFlow, newFlow))
+                .removeOuterVlanMatchSharedRule(
+                        removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldIngress, newIngress))
                 .removeServer42InputRule(removeForwardSharedServer42InputRule(
                         oldFlow, newFlow, srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle))
                 .removeServer42IngressRule(srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle)
@@ -175,6 +197,8 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
                 .removeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(oldFlow, newFlow))
                 .removeCustomerPortLldpRule(removeReverseSharedLldpRule(oldFlow, newFlow))
                 .removeCustomerPortArpRule(removeReverseSharedArpRule(oldFlow, newFlow))
+                .removeOuterVlanMatchSharedRule(
+                        removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldEgress, newEgress))
                 .removeServer42InputRule(removeReverseSharedServer42InputRule(
                         oldFlow, newFlow, dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle))
                 .removeServer42IngressRule(dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle)
