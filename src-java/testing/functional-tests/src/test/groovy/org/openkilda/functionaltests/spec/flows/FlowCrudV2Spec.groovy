@@ -404,7 +404,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.CONFLICT
         def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == data.getErrorMessage(flow, conflictingFlow)
+        errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == data.getErrorDescription(flow, conflictingFlow)
 
         cleanup: "Delete the dominant flow"
@@ -417,10 +417,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
                     flowToConflict.flowId = dominantFlow.flowId
                 },
-                getErrorMessage            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
-                    "Could not create flow"
-                },
-                getErrorDescription            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
+                getErrorDescription : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
                     "Flow $dominantFlow.flowId already exists"
                 }
         ]
