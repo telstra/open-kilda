@@ -75,9 +75,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    //pure v1
     @Shared
-    def getPortViolationError = { String endpoint, int port, SwitchId swId ->
-        "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
+    def getPortViolationError = { String action, int port, SwitchId swId ->
+        "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
     }
 
     @Tags([TOPOLOGY_DEPENDENT])

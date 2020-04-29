@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
