@@ -103,7 +103,10 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
               for(let flow of flowsData){
                 this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth + (flow.maximum_bandwidth / 1000);
               }
-              this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3);
+              if(this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth){
+                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3); 
+              }
+              
              this.flowDataOfSwitch[switchData.switch_id].noofflows = flowsData.length;
             }
           },error=>{

@@ -102,8 +102,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
         else{
           this.currentRoute = 'switch-details';
         }
-   
-      });
+   });
     this.loadPortFlows();
   }
 
@@ -178,7 +177,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     const modalRef = this.modalService.open(ModalconfirmationComponent);
     modalRef.componentInstance.title = "Confirmation";
     modalRef.componentInstance.content = 'Are you sure you want to configure the port?';
-    
     modalRef.result.then((response) => {
       if(response && response == true){
         this.editConfigStatus = true;
@@ -205,7 +203,10 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
               this.portFlows = [];
             }
           }
-          this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+          if(this.flowBandwidthSum){
+            this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+          }
+          
           this.flowBandwidthFlag = false;
         },error=>{
           this.portFlows = [];
