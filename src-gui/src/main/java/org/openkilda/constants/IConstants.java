@@ -280,6 +280,8 @@ public abstract class IConstants {
         
         public static final String FW_FLOW_HISTORY = "fw_flow_history";
         
+        public static final String SW_SWITCH_METERS = "sw_switch_meters";
+        
     }
 
     public final class Settings {
