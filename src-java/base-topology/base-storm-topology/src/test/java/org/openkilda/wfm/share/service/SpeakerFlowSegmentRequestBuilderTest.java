@@ -136,7 +136,8 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         Switch sw = Switch.builder().switchId(SWITCH_1).build();
         Flow flow = buildFlow(sw, 1, 10, sw, 2, 12, 1000);
         List<FlowSegmentRequestFactory> commands = target.buildAll(
-                COMMAND_CONTEXT, flow, flow.getForwardPath(), flow.getReversePath());
+                COMMAND_CONTEXT, flow, flow.getForwardPath(), flow.getReversePath(),
+                SpeakerRequestBuildContext.EMPTY);
 
         assertEquals(2, commands.size());
 

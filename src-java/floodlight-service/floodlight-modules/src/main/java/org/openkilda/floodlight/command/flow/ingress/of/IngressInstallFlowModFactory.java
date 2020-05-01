@@ -78,7 +78,29 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
                         .build());
     }
 
+    @Override
+    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+        List<OFAction> applyActions = new ArrayList<>();
+        List<OFInstruction> instructions = new ArrayList<>();
+
+        if (effectiveMeterId != null) {
+            OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
+        }
+
+        applyActions.addAll(makeServer42IngressFlowTransformActions());
+        applyActions.add(makeOutputAction());
+
+        instructions.add(of.instructions().applyActions(applyActions));
+        if (command.getMetadata().isMultiTable()) {
+            instructions.add(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
+        }
+
+        return instructions;
+    }
+
     protected abstract List<OFAction> makeTransformActions();
+
+    protected abstract List<OFAction> makeServer42IngressFlowTransformActions();
 
     protected abstract List<OFInstruction> makeMetadataInstructions();
 

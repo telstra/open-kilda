@@ -112,6 +112,9 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
                             getCookie(), getSwitchId());
                 }
             }
+            if (rulesContext.isInstallServer42IngressRule()) {
+                ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
+            }
         }
         return ofMessages;
     }

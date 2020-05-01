@@ -164,6 +164,7 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
@@ -505,6 +506,43 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return instructions;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long installServer42IngressFlow(
+            DatapathId dpid, DatapathId dstDpid, Long cookie, int server42Port, int outputPort, int customerPort,
+            int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType, long meterId,
+            FlowEncapsulationType encapsulationType) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        List<OFAction> actionList = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, actionList);
+
+        actionList.addAll(pushTransitEncapsulationForServer42IngressFlow(ofFactory, transitTunnelId, outputVlanType,
+                encapsulationType, dpid, dstDpid));
+
+        actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
+
+        OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
+        // build match by server 42 port (input port), input vlan id and customer port (metadata match)
+        Match match = matchServer42IngressFlow(sw, server42Port, customerPort, inputVlanId);
+
+        int flowPriority = getFlowPriority(inputVlanId);
+
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, true);
+
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
+                INGRESS_TABLE_ID)
+                .setInstructions(instructions)
+                .setMatch(match);
+
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
+        return pushFlow(sw, "--InstallServer42IngressFlow--", builder.build());
     }
 
     /**
@@ -2015,6 +2053,22 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
+    private Match matchServer42IngressFlow(IOFSwitch sw, int server42Port, int customerPort, int vlanId) {
+        OFFactory ofFactory = sw.getOFFactory();
+        Match.Builder builder = ofFactory.buildMatch();
+        if (vlanId > 0) {
+            matchVlan(ofFactory, builder, vlanId);
+        }
+
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .inputPort(customerPort)
+                .build(featureDetectorService.detectSwitch(sw));
+
+        builder.setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()));
+        builder.setExact(MatchField.IN_PORT, OFPort.of(server42Port));
+        return builder.build();
+    }
+
     /**
      * Builds OFAction list based on flow parameters for replace scheme.
      *
@@ -2128,14 +2182,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         List<OFAction> actionList = new ArrayList<>(3);
         switch (encapsulationType) {
             case TRANSIT_VLAN:
-                if (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType)) {
-                    actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
-                }
-                actionList.add(actionReplaceVlan(ofFactory, transitTunnelId));
+                pushVlanTransitEncapsulation(ofFactory, transitTunnelId, outputVlanType, actionList);
                 break;
             case VXLAN:
                 actionList.add(actionPushVxlan(ofFactory, transitTunnelId, convertDpIdToMac(ethSrc),
-                        convertDpIdToMac((ethDst))));
+                        convertDpIdToMac((ethDst)), STUB_VXLAN_UDP_SRC));
                 actionList.add(actionVxlanEthSrcCopyField(ofFactory));
                 break;
             default:
@@ -2144,6 +2195,45 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return actionList;
+    }
+
+    /**
+     * Create transit encapsulation OFActions for server 42 ingress Flow.
+     */
+    private List<OFAction> pushTransitEncapsulationForServer42IngressFlow(
+            OFFactory ofFactory, int transitTunnelId, OutputVlanType outputVlanType,
+            FlowEncapsulationType encapsulationType, DatapathId ethSrc, DatapathId ethDst) {
+        List<OFAction> actionList = new ArrayList<>();
+        switch (encapsulationType) {
+            case TRANSIT_VLAN:
+                actionList.add(ofFactory.actions().setField(ofFactory.oxms().ethSrc(MacAddress.of(ethSrc))));
+                actionList.add(ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of(ethDst))));
+                pushVlanTransitEncapsulation(ofFactory, transitTunnelId, outputVlanType, actionList);
+                break;
+            case VXLAN:
+                if (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType)) {
+                    // Server 42 requires constant number of Vlans in packet.
+                    // TRANSIT_VLAN encapsulation always keeps 1 Vlan in packet.
+                    // VXLAN encapsulation for NON default port also keeps 1 Vlan in packet.
+                    // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
+                    actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
+                }
+                actionList.add(actionPushVxlan(ofFactory, transitTunnelId, convertDpIdToMac(ethSrc),
+                        convertDpIdToMac(ethDst), SERVER_42_FORWARD_UDP_PORT));
+                break;
+            default:
+                throw new UnsupportedOperationException(
+                        String.format("Unknown encapsulation type: %s", encapsulationType));
+        }
+        return actionList;
+    }
+
+    private void pushVlanTransitEncapsulation(
+            OFFactory ofFactory, int transitTunnelId, OutputVlanType outputVlanType, List<OFAction> actionList) {
+        if (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType)) {
+            actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
+        }
+        actionList.add(actionReplaceVlan(ofFactory, transitTunnelId));
     }
 
     /**
@@ -2192,13 +2282,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return actions.buildPushVlan().setEthertype(EthType.of(etherType)).build();
     }
 
-    private OFAction actionPushVxlan(OFFactory ofFactory, long tunnelId, MacAddress ethSrc, MacAddress ethDst) {
+    private OFAction actionPushVxlan(
+            OFFactory ofFactory, long tunnelId, MacAddress ethSrc, MacAddress ethDst, int udpSrc) {
         OFActions actions = ofFactory.actions();
         return actions.buildNoviflowPushVxlanTunnel()
                 .setVni(tunnelId)
                 .setEthSrc(ethSrc)
                 .setEthDst(ethDst)
-                .setUdpSrc(STUB_VXLAN_UDP_SRC)
+                .setUdpSrc(udpSrc)
                 .setIpv4Src(STUB_VXLAN_IPV4_SRC)
                 .setIpv4Dst(STUB_VXLAN_IPV4_DST)
                 .setFlags((short) 0x01)

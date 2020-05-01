@@ -191,6 +191,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                 .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
                 .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, properties.isServer42FlowRtt()))
+                .removeServer42IngressRule(properties.isServer42FlowRtt())
                 .server42Port(properties.getServer42Port())
                 .server42MacAddress(properties.getServer42MacAddress())
                 .build();
