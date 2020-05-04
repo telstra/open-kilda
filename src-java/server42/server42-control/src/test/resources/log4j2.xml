@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Configuration monitorInterval="30">
-
     <Properties>
         <Property name="LOG_EXCEPTION_CONVERSION_WORD">%xwEx</Property>
         <Property name="LOG_LEVEL_PATTERN">%5p</Property>
@@ -14,8 +13,6 @@
             : %m%n${sys:LOG_EXCEPTION_CONVERSION_WORD}
         </Property>
     </Properties>
-
-
     <Appenders>
 
         <Console name="STDOUT" target="SYSTEM_OUT" follow="true">
@@ -25,7 +22,6 @@
         <Console name="STDOUT" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{ISO8601} %-5p [%t] %c{1.} - [%X] %m%n"/>
         </Console>
-
     </Appenders>
     <Loggers>
         <Logger name="org.openkilda" level="INFO"/>

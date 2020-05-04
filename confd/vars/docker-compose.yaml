@@ -9,3 +9,8 @@
 #no_elasticsearch: true
 #no_logstash: true
 #no_grpc_stub: true
+#no_server42: true
+#no_server42_control: true
+#no_server42_stats: true
+#no_server42_server_stub: true
+#no_server42_storm_stub: true

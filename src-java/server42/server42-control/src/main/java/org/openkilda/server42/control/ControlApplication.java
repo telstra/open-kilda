@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,16 +15,18 @@
 
 package org.openkilda.server42.control;
 
+import org.openkilda.server42.control.config.SwitchToVlanMapping;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
+@EnableConfigurationProperties(SwitchToVlanMapping.class)
 public class ControlApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(ControlApplication.class, args);
     }
-
 }
