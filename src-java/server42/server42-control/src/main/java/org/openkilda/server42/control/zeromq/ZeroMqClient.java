@@ -53,68 +53,79 @@ public class ZeroMqClient {
     @PostConstruct
     private void init() {
         ctx = new ZContext();
-        log.info("connecting to server {}", serverEndpoint);
-        client = ctx.createSocket(ZMQ.REQ);
-        assert (client != null);
-        client.connect(serverEndpoint);
-        poller = ctx.createPoller(1);
-        poller.register(client, Poller.POLLIN);
     }
+
 
     @PreDestroy
     private void clear() {
         ctx.close();
     }
 
+    /**
+     * Send message to server and return result is success.
+     * @return CommandPacketResponse or null in case of error
+     */
     public CommandPacketResponse send(CommandPacket commandPacket) throws InvalidProtocolBufferException {
-        return CommandPacketResponse.parseFrom(sendRequest(commandPacket.toByteArray()));
+
+        byte[] response = sendRequest(commandPacket.toByteArray());
+
+        if (response == null) {
+            return null;
+        }
+
+        return CommandPacketResponse.parseFrom(response);
     }
 
     private byte[] sendRequest(byte[] request) {
-        try {
-            int sequence = 0;
-            long retriesLeft = requestRetries;
-            while (retriesLeft > 0 && !Thread.currentThread().isInterrupted()) {
-                try {
+        long retriesLeft = requestRetries;
+        while (retriesLeft > 0 && !Thread.currentThread().isInterrupted()) {
+            try {
+                if (client == null) {
+                    reconnect();
+                }
+
+                client.send(request);
+
+                int rc = poller.poll(requestTimeout);
+                if (rc == -1) {
+                    break; //  Interrupted
+                }
+                if (poller.pollin(0)) {
+                    return client.recv();
+                } else if (--retriesLeft == 0) {
+                    log.error("server seems to be offline, abandoning\n");
+                    break;
+                } else {
+                    log.warn("no response from server, retrying");
+                    //  Old socket is confused; close it and open a new one
+                    reconnect();
+
+                    //  Send request again, on new socket
                     client.send(request);
-
-                    int rc = poller.poll(requestTimeout);
-                    if (rc == -1) {
-                        break; //  Interrupted
-                    }
-                    if (poller.pollin(0)) {
-                        return client.recv();
-                    } else if (--retriesLeft == 0) {
-                        log.error("server seems to be offline, abandoning\n");
-                        break;
-                    } else {
-                        log.warn("no response from server, retrying");
-                        //  Old socket is confused; close it and open a new one
-                        reconnect();
-
-                        //  Send request again, on new socket
-                        client.send(request);
-                    }
-                } catch (org.zeromq.ZMQException ex) {
-                    log.error(ex.toString());
-                    if (ex.getErrorCode() == ZError.EFSM) {
-                        reconnect();
-                    }
+                }
+            } catch (org.zeromq.ZMQException ex) {
+                log.error(ex.toString());
+                if (ex.getErrorCode() == ZError.EFSM) {
+                    reconnect();
                 }
             }
-        } catch (org.zeromq.ZMQException ex) {
-            log.error(ex.toString());
         }
         return null;
     }
 
     private void reconnect() {
-        poller.unregister(client);
-        ctx.destroySocket(client);
-
+        if (client != null) {
+            if (poller != null) {
+                poller.unregister(client);
+            }
+            ctx.destroySocket(client);
+        }
         log.info("reconnecting to server {}", serverEndpoint);
         client = ctx.createSocket(ZMQ.REQ);
         client.connect(serverEndpoint);
+        if (poller == null) {
+            poller = ctx.createPoller(1);
+        }
         poller.register(client, Poller.POLLIN);
     }
 }
