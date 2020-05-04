@@ -208,7 +208,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void setUpResourcesTimeout(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (--islRulesAttempts >= 0) {
-            log.info("Retrying ISL resoruces setup for {} (attempts lefs:{})", reference, islRulesAttempts);
+            long maxAttempts = options.getRulesSynchronizationAttempts();
+            log.info("Retrying ISL resources setup for {} (attempt {} of {})",
+                    reference, maxAttempts - islRulesAttempts, maxAttempts);
             sendInstallMultiTable(context.getOutput());
         } else {
             log.warn("Failed to install rules for multi table mode on isl {}, required manual rule sync",
@@ -273,7 +275,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void cleanUpResourcesTimeout(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (--islRulesAttempts >= 0) {
-            log.info("Retrying ISL resoruces removal for {} (attempts lefs:{})", reference, islRulesAttempts);
+            long maxAttempts = options.getRulesSynchronizationAttempts();
+            log.info("Retrying ISL resources removal for {} (attempt {} of {})",
+                    reference, maxAttempts - islRulesAttempts, maxAttempts);
             sendRemoveMultiTable(context.getOutput());
         } else {
             log.warn("Failed to remove rules for multi table mode on isl {}, required manual rule sync",

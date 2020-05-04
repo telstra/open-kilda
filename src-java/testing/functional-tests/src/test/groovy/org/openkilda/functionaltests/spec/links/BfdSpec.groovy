@@ -11,6 +11,8 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.IslStatus
+import org.openkilda.model.SwitchFeature
 
 import spock.lang.Narrative
 import spock.lang.See
@@ -24,10 +26,14 @@ class BfdSpec extends HealthCheckSpecification {
     @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to create a valid BFD session between two Noviflow switches"() {
-        given: "An a-switch ISL between two Noviflow switches"
+        given: "An a-switch ISL between two Noviflow switches with BFD and RTL"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
-                it.aswitch?.inPort && it.aswitch?.outPort }
-        assumeTrue("Require at least one a-switch BFD ISL between Noviflow switches", isl as boolean)
+                it.aswitch?.inPort && it.aswitch?.outPort &&
+                it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
+                it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        }
+        assumeTrue("The test requires at least one a-switch BFD and RTL ISL between Noviflow switches",
+                isl as boolean)
 
         when: "Create a BFD session on the ISL"
         def createBfdResponse = northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
@@ -42,7 +48,7 @@ class BfdSpec extends HealthCheckSpecification {
         def costBeforeFailure = islUtils.getIslInfo(isl).get().cost
         lockKeeper.removeFlows([isl.aswitch])
 
-        then: "ISL immediately gets failed"
+        then: "ISL immediately gets failed because bfd has higher priority than RTL"
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getLink(isl).state == IslChangeType.FAILED
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
@@ -51,6 +57,10 @@ class BfdSpec extends HealthCheckSpecification {
         and: "Cost of ISL is unchanged"
         islUtils.getIslInfo(isl).get().cost == costBeforeFailure
 
+        and: "Round trip latency status is ACTIVE"
+        [isl, isl.reversed].each { assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE }
+
+        //TODO(andriidovhan) verify #3430 (remove bfd session then restore connection)
         when: "Restore connection"
         lockKeeper.addFlows([isl.aswitch])
 

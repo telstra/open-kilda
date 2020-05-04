@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.network.model;
 
 import lombok.Getter;
 
-// TODO - del
 public class TickClock {
     @Getter
     private long currentTimeMs = 0;
