@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 
 import org.springframework.web.client.HttpClientErrorException
@@ -39,6 +40,7 @@ class PathsSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Unable to get paths between one switch"() {
         given: "An active switch"
         def sw = topology.getActiveSwitches()[0]
@@ -51,6 +53,7 @@ class PathsSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
     }
 
+    @Tidy
     def "Unable to get paths between nonexistent switch"() {
         given: "An active switch"
         def sw = topology.getActiveSwitches()[0]
