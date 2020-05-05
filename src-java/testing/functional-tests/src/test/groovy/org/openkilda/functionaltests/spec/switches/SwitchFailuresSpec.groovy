@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static groovyx.gpars.dataflow.Dataflow.task
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
@@ -118,8 +117,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Ignore("Not ready yet")
-    //expected to work only via v2 API
+    @Ignore("https://github.com/telstra/open-kilda/issues/2954, https://github.com/telstra/open-kilda/issues/3028")
     def "System can handle situation when switch reconnects while flow is being created"() {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -184,53 +182,4 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.flowId)
     }
 
-    @Ignore("Too unstable due to race condition when doing switch disconnect + reroute")
-    def "No discrepancies when target transit switch disconnects while flow is being rerouted to it"() {
-        given: "A flow with alternative paths available"
-        assumeTrue("This test is only viable for h&s reroutes", northbound.getFeatureToggles().flowsRerouteViaFlowHs)
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:
-                assumeTrue("No suiting switches found", false)
-        def flow = flowHelperV2.randomFlow(switchPair)
-        northboundV2.addFlow(flow)
-        def originalPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
-
-        and: "There is a more preferable alternative path"
-        Switch uniqueSwitch = null
-        def preferredPath = switchPair.paths.find { path ->
-            uniqueSwitch = pathHelper.getInvolvedSwitches(path).find {
-                !pathHelper.getInvolvedSwitches(originalPath).contains(it)
-            }
-            uniqueSwitch && path != originalPath
-        }
-        assert preferredPath.asBoolean(), "Didn't find a proper alternative path"
-        switchPair.paths.findAll { it != preferredPath }.each { pathHelper.makePathMorePreferable(preferredPath, it) }
-
-        when: "Init reroute of the flow to a better path"
-        def task = task {
-            with(northboundV2.rerouteFlow(flow.flowId)) {
-                rerouted
-                path.nodes*.switchId.contains(uniqueSwitch.dpId)
-            }
-        }
-
-        and: "Immediately disconnect a switch on the new path"
-        def blockData = lockKeeper.knockoutSwitch(uniqueSwitch, mgmtFlManager)
-        task.get()
-
-        then: "The flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        and: "The flow did not actually change path and fell back to original path"
-        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == originalPath
-
-        and: "Revive switch, remove the flow"
-        flowHelper.deleteFlow(flow.flowId)
-        lockKeeper.reviveSwitch(uniqueSwitch, blockData)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(uniqueSwitch.dpId).state == SwitchChangeType.ACTIVATED }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        Wrappers.wait(discoveryInterval) { northbound.getAllLinks().each { it.state == IslChangeType.DISCOVERED } }
-    }
 }

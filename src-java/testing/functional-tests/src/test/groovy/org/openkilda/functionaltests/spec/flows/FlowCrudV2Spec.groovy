@@ -1129,7 +1129,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "The new and old dst switches pass switch validation"
-        Wrappers.wait(RULES_DELETION_TIME / 2) {
+        Wrappers.wait(RULES_DELETION_TIME) {
             [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
                 with(northbound.validateSwitch(switchId)) { validation ->
                     validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])

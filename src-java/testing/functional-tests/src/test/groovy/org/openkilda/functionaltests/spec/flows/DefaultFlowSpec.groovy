@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -171,6 +172,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         [defaultFlow, simpleflow].each { flowHelper.deleteFlow(it.id) }
     }
 
+    @Tidy
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -193,7 +195,8 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 port=$defaultFlow2.source.portId vlan=0, existing flow '$defaultFlow1.id' \
 source: switch=$defaultFlow1.source.switchDpId port=$defaultFlow1.source.portId vlan=0"
 
-        and: "Cleanup: Delete the flow"
+        cleanup:
         flowHelper.deleteFlow(defaultFlow1.id)
+        defaultFlow2 && !exc && flowHelper.deleteFlow(defaultFlow2.id)
     }
 }

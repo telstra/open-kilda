@@ -459,15 +459,20 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<LinkDto> deleteLink(LinkParametersDto linkParameters) {
-        LinkDto[] updatedLink = restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
+        return deleteLink(linkParameters, false);
+    }
+
+    @Override
+    public List<LinkDto> deleteLink(LinkParametersDto linkParameters, boolean force) {
+        LinkDto[] updatedLink = restTemplate.exchange("/api/v1/links?force={force}", HttpMethod.DELETE,
                 new HttpEntity<>(linkParameters, buildHeadersWithCorrelationId()),
-                LinkDto[].class).getBody();
+                LinkDto[].class, force).getBody();
         return Arrays.asList(updatedLink);
     }
 
     @Override
     public List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link) {
-        LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
+        LinkDto[] updatedLink = restTemplate.exchange("/api/v1/links/under-maintenance", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Arrays.asList(updatedLink);
     }

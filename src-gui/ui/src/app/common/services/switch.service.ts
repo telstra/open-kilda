@@ -76,6 +76,14 @@ getNetworkPath(source_switch,target_switch){
   switchMaintenance(data,switchid){
     return this.httpClient.post<any>(`${environment.apiEndPoint}/switch/under-maintenance/${switchid}`,data);
   }
+  updatediscoveryPackets(switchId,portNumber,value){
+    const url = `${environment.apiEndPoint}/switch/${switchId}/ports/${portNumber}/properties`; 
+    return this.httpClient.put(url,{"discovery_enabled":value});
+  }
+  getdiscoveryPackets(switchId,portNumber){
+    let timestamp = new Date().getTime();
+    return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/${switchId}/ports/${portNumber}/properties?_=${timestamp}`);
+  }
 
   deleteSwitch(switchId,data,successCb,errorCb): void{
     var requestBody = JSON.stringify(data);
