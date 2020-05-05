@@ -257,6 +257,7 @@ public class SwitchController {
      */
     @RequestMapping(path = "/{switchId}/rules", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.SW_PERMISSION_RULES})
     public @ResponseBody String getSwitchRules(@PathVariable final String switchId) {
         activityLogger.log(ActivityType.SWITCH_RULES, switchId);
         return serviceSwitch.getSwitchRules(switchId);
@@ -321,6 +322,7 @@ public class SwitchController {
      */
     @RequestMapping(value = "/meters/{switchId}")
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.SW_SWITCH_METERS})
     public @ResponseBody SwitchMeter getSwitchMeters(@PathVariable final String switchId) {
         return serviceSwitch.getMeters(switchId);
     }
