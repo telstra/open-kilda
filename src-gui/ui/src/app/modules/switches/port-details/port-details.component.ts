@@ -41,7 +41,8 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   editConfigStatus: boolean = false;
   currentPortState: string;
   requestedPortState: string;
-  dateMessage:string;
+  dateMessage:string;  
+  discoverypackets:boolean=false;
   clipBoardItems = {
     sourceSwitch:"",
   }
@@ -102,9 +103,18 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
         else{
           this.currentRoute = 'switch-details';
         }
-   
-      });
+   });
     this.loadPortFlows();
+     this.getDiscoveryPackets();
+  }
+
+  getDiscoveryPackets(){
+    this.switchService.getdiscoveryPackets(this.retrievedSwitchObject.switch_id,this.portDataObject.port_number).subscribe((response:any)=>{
+       this.discoverypackets = response.discovery_enabled;
+       console.log(response);
+    },error => {
+      //this.toastr.error('Error in updating discovery packets mode! ','Error');
+    });
   }
 
   maskSwitchId(switchType, e) {
@@ -174,11 +184,34 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
       })
   }
 
+  enableDisableDiscoveryPackets(e){
+   const modalRef = this.modalService.open(ModalconfirmationComponent);
+   modalRef.componentInstance.title = "Confirmation";
+   modalRef.componentInstance.content = 'Are you sure you want to update discovery packets value?';
+   var OldValue = this.discoverypackets;
+   this.discoverypackets = e.target.checked;
+   modalRef.result.then((response) => {
+    if(response && response == true){
+        this.loaderService.show("Updating Discovery Packets Flag ...");
+         this.switchService.updatediscoveryPackets(this.retrievedSwitchObject.switch_id,this.portDataObject.port_number,this.discoverypackets).subscribe((response)=>{
+           this.toastr.success('Discovery Packets mode updated successful','Success');
+           this.loaderService.hide();
+           this.discoverypackets = e.target.checked;
+         },error => {
+          this.discoverypackets = OldValue;
+          this.loaderService.hide();
+           this.toastr.error('Error in updating discovery packets mode! ','Error');
+         });
+    }else{
+      this.discoverypackets = OldValue;
+    }
+  });
+ }
+
   configurePortDetails(){
     const modalRef = this.modalService.open(ModalconfirmationComponent);
     modalRef.componentInstance.title = "Confirmation";
     modalRef.componentInstance.content = 'Are you sure you want to configure the port?';
-    
     modalRef.result.then((response) => {
       if(response && response == true){
         this.editConfigStatus = true;
@@ -205,7 +238,10 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
               this.portFlows = [];
             }
           }
-          this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+          if(this.flowBandwidthSum){
+            this.flowBandwidthSum = this.flowBandwidthSum.toFixed(3);
+          }
+          
           this.flowBandwidthFlag = false;
         },error=>{
           this.portFlows = [];
