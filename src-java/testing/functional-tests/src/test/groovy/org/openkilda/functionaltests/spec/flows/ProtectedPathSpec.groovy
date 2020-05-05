@@ -12,6 +12,7 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -149,6 +150,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to create a single switch flow with protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -163,8 +165,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not create flow: Couldn't setup protected path for one-switch flow"
+
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to update a single switch flow to enable protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -182,7 +188,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update flow: Couldn't setup protected path for one-switch flow"
 
-        and: "Cleanup: revert system to original state"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
     }
 
@@ -404,6 +410,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -426,10 +433,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 "Could not create flow: Not enough bandwidth found or path not found. " +
                 "Couldn't find non overlapping protected path"
 
-        and: "Cleanup: restore available bandwidth"
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
         isls.each { database.resetIslBandwidth(it) }
     }
 
+    @Tidy
     def "Unable to update a flow to enable protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -458,7 +467,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 "Could not update flow: Not enough bandwidth found or path not found. " +
                 "Couldn't find non overlapping protected path"
 
-        and: "Cleanup: delete the flow and restore available bandwidth"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
         isls.each { database.resetIslBandwidth(it) }
     }
@@ -581,6 +590,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
@@ -615,7 +625,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 "Could not create flow: Not enough bandwidth found or path not found." +
                 " Couldn't find non overlapping protected path"
 
-        and: "Restore topology, delete flows and reset costs"
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -628,6 +639,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tidy
     @Unroll
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
@@ -667,7 +679,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 "Could not update flow: Not enough bandwidth found or path not found." +
                 " Couldn't find non overlapping protected path"
 
-        and: "Restore topology, delete flows and reset costs"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -830,6 +842,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -850,10 +863,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.id doesn't have protected path"
 
-        and: "Cleanup: revert system to original state"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to swap paths for a non-existent flow"() {
         when: "Try to swap path on a non-existent flow"
         northbound.swapFlowPath(NON_EXISTENT_FLOW_ID)

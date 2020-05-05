@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -103,6 +104,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
     }
 
+    @Tidy
     @Unroll
     def "Unable to #action a non-existent flow"() {
         when: "Trying to #action a non-existent flow"

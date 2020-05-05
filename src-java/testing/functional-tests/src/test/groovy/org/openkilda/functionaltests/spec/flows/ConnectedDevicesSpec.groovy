@@ -942,10 +942,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         descr = "default(no-vlan) flow endpoints on ${getDescr(srcDefault, dstDefault)}"
     }
 
+    @Tidy
     @Unroll
     def "System forbids to turn on '#propertyToTurnOn' on a single-table-mode switch"() {
         when: "Try to change switch props so that connected devices are 'on' but switch is in a single-table mode"
         def sw = topology.activeSwitches.first()
+        def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
         northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
             it.multiTable = false
             it."$propertyToTurnOn" = true
@@ -956,6 +958,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         e.statusCode == HttpStatus.BAD_REQUEST
         e.responseBodyAsString.to(MessageError).errorMessage == "Illegal switch properties combination for switch " +
                 "$sw.dpId. '$propertyToTurnOn' property can be set to 'true' only if 'multiTable' property is 'true'."
+
+        cleanup:
+        !e && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
 
         where:
         propertyToTurnOn << ["switchLldp", "switchArp"]
