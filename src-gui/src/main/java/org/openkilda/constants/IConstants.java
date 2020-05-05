@@ -286,9 +286,9 @@ public abstract class IConstants {
         public static final String ISL_UPDATE_BFD_FLAG = "isl_update_bfd_flag";
         
         public static final String FW_FLOW_HISTORY = "fw_flow_history";
-		
+        
         public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
-		
+        
         public static final String SW_SWITCH_METERS = "sw_switch_meters";
         
     }
