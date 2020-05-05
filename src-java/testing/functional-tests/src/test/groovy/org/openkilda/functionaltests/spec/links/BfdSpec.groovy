@@ -60,7 +60,6 @@ class BfdSpec extends HealthCheckSpecification {
         and: "Round trip latency status is ACTIVE"
         [isl, isl.reversed].each { assert database.getIslRoundTripStatus(it) == IslStatus.ACTIVE }
 
-        //TODO(andriidovhan) verify #3430 (remove bfd session then restore connection)
         when: "Restore connection"
         lockKeeper.addFlows([isl.aswitch])
 
@@ -201,6 +200,48 @@ class BfdSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
+        }
+    }
+
+    @Tidy
+    @Tags([SMOKE_SWITCHES])
+    def "System is able to rediscover failed link after deleting BFD session"() {
+        given: "An interrupted a-switch ISL with BFD session"
+        def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
+                it.aswitch?.inPort && it.aswitch?.outPort
+        }
+        assumeTrue("The test requires at least one a-switch BFD ISL", isl as boolean)
+        northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
+        def isBfdEnabled = true
+        lockKeeper.removeFlows([isl.aswitch])
+        def isAswitchRuleDeleted = true
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert northbound.getLink(isl).state == IslChangeType.FAILED
+            assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
+        }
+
+        when: "Remove existing BFD session"
+        northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, false))
+        isBfdEnabled = false
+
+        and: "Restore connection"
+        lockKeeper.addFlows([isl.aswitch])
+        isAswitchRuleDeleted = false
+
+        then: "ISL is rediscovered"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
+            assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
+        }
+
+        cleanup:
+        isBfdEnabled && northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, false))
+        if(isAswitchRuleDeleted) {
+            lockKeeper.addFlows([isl.aswitch])
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
+                assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
+            }
         }
     }
 }
