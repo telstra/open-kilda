@@ -23,13 +23,13 @@ import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

@@ -18,8 +18,8 @@ package org.openkilda.floodlight.command.flow.transit;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.cookie.Cookie;
 
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;

@@ -38,6 +38,7 @@ import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchMeter;
+import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.service.ApplicationSettingService;
 import org.openkilda.utility.ApplicationProperties;
@@ -696,6 +697,52 @@ public class SwitchIntegrationService {
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurred while updating isl bfd-flag", e);
             throw new IntegrationException(e);
+        }
+        return null;
+    }
+
+    /**
+     * Updates the switch port property.
+     *
+     * @return the SwitchProperty
+     */
+    public SwitchProperty updateSwitchPortProperty(String switchId, int port, SwitchProperty switchProperty) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_SWITCH_PORT_PROPERTY
+                    .replace("{switch_id}", switchId).replace("{port}", String.valueOf(port)), 
+                    HttpMethod.PUT, objectMapper.writeValueAsString(switchProperty), 
+                    "application/json", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchProperty.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while updating switch port property", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error occurred while updating switch port property", e);
+            throw new IntegrationException(e);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets the switch port property.
+     *
+     * @return the SwitchProperty
+     */
+    public SwitchProperty getSwitchPortProperty(String switchId, int port) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCH_PORT_PROPERTY
+                    .replace("{switch_id}", switchId).replace("{port}", String.valueOf(port)), 
+                    HttpMethod.GET, "", "application/json", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchProperty.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while getting switch port property", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
     }

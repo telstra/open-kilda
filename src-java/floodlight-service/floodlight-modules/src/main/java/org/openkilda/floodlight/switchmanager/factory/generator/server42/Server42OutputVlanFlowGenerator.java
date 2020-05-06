@@ -26,8 +26,8 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIME
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_OUTPUT_VLAN_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_REVERSE_UDP_PORT;
-import static org.openkilda.model.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;

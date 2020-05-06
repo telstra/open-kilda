@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.links
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
@@ -660,6 +661,106 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
         getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+    }
+
+    @Tidy
+    def "Unable to delete inactive link with flowPath"() {
+        given: "An inactive link with flow on it"
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.pinned = true
+        flowHelperV2.addFlow(flow)
+        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+
+        def isl = pathHelper.getInvolvedIsls(flowPath)[0]
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+        }
+
+        when: "Try to delete the link"
+        northbound.deleteLink(islUtils.toLinkParameters(isl))
+        def linkIsActive = false
+
+        then: "Get 400 BadRequest error because the link with flow path"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !linkIsActive && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+        database.resetCosts()
+    }
+
+    @Tidy
+    def "Able to delete an active link with flowPath if using force delete"() {
+        given: "Two active neighboring switches and two possible paths at least"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "An active link with flow on it"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flowHelperV2.addFlow(flow)
+        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def isl = pathHelper.getInvolvedIsls(flowPath)[0]
+
+        when: "Delete the link using force"
+        def response = northbound.deleteLink(islUtils.toLinkParameters(isl), true)
+        def linkIsDeleted = true
+
+        then: "The link is actually deleted"
+        response.size() == 2
+        Wrappers.wait(2) {
+            assert !islUtils.getIslInfo(isl)
+            assert !islUtils.getIslInfo(isl.reversed)
+        }
+
+        and: "Flow is not rerouted and UP"
+        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        when: "Removed link becomes active again (port brought DOWN/UP)"
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        linkIsDeleted = false
+
+        then: "The link is rediscovered in both directions"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+        }
+
+        and: "Source and destination switches pass switch validation"
+        withPool {
+            [switchPair.src.dpId, switchPair.dst.dpId].eachParallel { SwitchId swId ->
+                with(northbound.validateSwitch(swId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (linkIsDeleted) {
+            antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+                def links = northbound.getAllLinks()
+                assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            }
+        }
+        database.resetCosts()
     }
 
     @Memoized

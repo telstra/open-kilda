@@ -15,11 +15,23 @@
 
 package org.openkilda.model;
 
-import org.junit.Test;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class ServiceCookieTest extends GenericCookieTest {
-    @Test
-    public void ensureNoFieldsIntersection() {
-        testFieldsIntersection(ServiceCookie.ALL_FIELDS);
-    }
+import lombok.Data;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+@Data
+public class SwitchProperty {
+    
+    @JsonProperty("switch_id")
+    private String switchId;
+    
+    @JsonProperty("discovery_enabled")
+    private boolean discoveryEnabled;
+    
+    @JsonProperty("port_number")
+    private Integer port;
 }

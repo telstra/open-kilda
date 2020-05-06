@@ -16,7 +16,7 @@
 package org.openkilda.floodlight.error;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.model.Cookie;
+import org.openkilda.model.cookie.Cookie;
 
 import lombok.Getter;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;

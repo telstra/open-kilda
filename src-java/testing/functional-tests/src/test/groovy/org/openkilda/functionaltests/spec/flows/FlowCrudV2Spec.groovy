@@ -29,7 +29,7 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -1129,7 +1129,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
 
         and: "The new and old dst switches pass switch validation"
-        Wrappers.wait(RULES_DELETION_TIME / 2) {
+        Wrappers.wait(RULES_DELETION_TIME) {
             [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
                 with(northbound.validateSwitch(switchId)) { validation ->
                     validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])

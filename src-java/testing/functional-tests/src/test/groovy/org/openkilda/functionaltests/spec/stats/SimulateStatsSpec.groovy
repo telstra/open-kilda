@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.stats
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -10,7 +9,7 @@ import org.openkilda.messaging.info.InfoData
 import org.openkilda.messaging.info.InfoMessage
 import org.openkilda.messaging.info.stats.FlowStatsData
 import org.openkilda.messaging.info.stats.FlowStatsEntry
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.tools.SoftAssertions
 

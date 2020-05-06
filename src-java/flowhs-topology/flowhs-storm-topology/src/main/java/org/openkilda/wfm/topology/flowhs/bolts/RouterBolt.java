@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.bolts;
 import static java.lang.String.format;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_PATH_SWAP_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
@@ -26,6 +27,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.wfm.AbstractBolt;
@@ -85,6 +87,12 @@ public class RouterBolt extends AbstractBolt {
                     key, input.getMessageId());
             Values values = new Values(key, deleteRequest.getFlowId(), data);
             emitWithContext(ROUTER_TO_FLOW_DELETE_HUB.name(), input, values);
+        } else if (data instanceof FlowPathSwapRequest) {
+            FlowPathSwapRequest pathSwapRequest = (FlowPathSwapRequest) data;
+            log.debug("Received a path swap request {} with key {}. MessageId {}", pathSwapRequest.getFlowId(),
+                    key, input.getMessageId());
+            Values values = new Values(key, pathSwapRequest.getFlowId(), data);
+            emitWithContext(ROUTER_TO_FLOW_PATH_SWAP_HUB.name(), input, values);
         } else {
             unhandledInput(input);
         }
@@ -96,5 +104,6 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_FLOW_UPDATE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_REROUTE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_DELETE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_FLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
     }
 }

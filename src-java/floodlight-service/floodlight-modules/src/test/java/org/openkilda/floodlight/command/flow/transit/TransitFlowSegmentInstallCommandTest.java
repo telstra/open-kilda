@@ -19,8 +19,8 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;

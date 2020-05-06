@@ -15,7 +15,7 @@
 
 package org.openkilda.exception;
 
-import org.openkilda.model.CookieBase;
+import org.openkilda.model.cookie.CookieBase;
 
 import lombok.Getter;
 

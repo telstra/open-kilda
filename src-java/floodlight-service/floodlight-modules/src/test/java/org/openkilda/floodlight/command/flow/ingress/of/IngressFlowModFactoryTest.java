@@ -18,16 +18,16 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.FlowSegmentCookie;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;

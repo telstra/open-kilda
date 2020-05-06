@@ -18,6 +18,8 @@ package org.openkilda.model;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.model.cookie.FlowSegmentCookie;
+
 import org.junit.Before;
 import org.junit.Test;
 

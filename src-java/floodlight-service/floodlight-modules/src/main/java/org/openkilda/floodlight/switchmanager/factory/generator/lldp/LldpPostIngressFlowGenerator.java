@@ -19,7 +19,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSendT
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.prepareFlowModBuilder;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.LLDP_POST_INGRESS_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.POST_INGRESS_TABLE_ID;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE;
 
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
