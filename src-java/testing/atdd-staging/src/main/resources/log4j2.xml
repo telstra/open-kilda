@@ -4,10 +4,10 @@
         <Console name="STDOUT" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </Console>
-        <File name="RequestLogsFile" fileName="target/logs/request_logs.log">
+        <File name="RequestLogsFile" fileName="build/logs/request_logs.log">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </File>
-        <File name="KildaLogFile" fileName="target/logs/logs.log">
+        <File name="KildaLogFile" fileName="build/logs/logs.log">
             <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
         </File>
     </Appenders>

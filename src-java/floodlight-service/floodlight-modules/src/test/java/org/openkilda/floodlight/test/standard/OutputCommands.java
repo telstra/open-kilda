@@ -37,8 +37,8 @@ import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
 import org.openkilda.floodlight.OFFactoryMock;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;

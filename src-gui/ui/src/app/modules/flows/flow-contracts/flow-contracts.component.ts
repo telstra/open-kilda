@@ -47,6 +47,12 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
       stateSave: false,
       language: {
         searchPlaceholder: "Search"
+      },drawCallback:function(){
+        if(jQuery('#flow_contract_table tbody tr').length < 10){
+          jQuery('#flow_contract_table_next').addClass('disabled');
+        }else{
+          jQuery('#flow_contract_table_next').removeClass('disabled');
+        }
       },
       "aoColumns": [
         { sWidth: '13%' },

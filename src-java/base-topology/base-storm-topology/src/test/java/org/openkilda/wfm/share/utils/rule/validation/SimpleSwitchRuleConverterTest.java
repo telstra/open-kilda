@@ -27,10 +27,10 @@ import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Meter;
@@ -41,6 +41,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.Vxlan;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.collect.Lists;
 import org.junit.Test;
@@ -70,12 +71,14 @@ public class SimpleSwitchRuleConverterTest {
     private static final PathId FLOW_A_FORWARD_PATH_ID = new PathId(TEST_FLOW_ID_A + "_forward_path");
     private static final int FLOW_A_DST_VLAN = 140;
     private static final long FLOW_A_FORWARD_METER_ID = 32L;
-    private static final long FLOW_A_FORWARD_COOKIE = Cookie.buildForwardCookie(1L).getValue();
+    private static final long FLOW_A_FORWARD_COOKIE = new FlowSegmentCookie(
+            FlowPathDirection.FORWARD, 1L).getValue();
     private static final long FLOW_A_BANDWIDTH = 10000;
     private static final int FLOW_B_SRC_PORT = 1;
     private static final int FLOW_B_SRC_VLAN = 150;
     private static final int FLOW_B_DST_VLAN = 160;
-    private static final long FLOW_B_FORWARD_COOKIE = Cookie.buildForwardCookie(2L).getValue();
+    private static final long FLOW_B_FORWARD_COOKIE = new FlowSegmentCookie(
+            FlowPathDirection.FORWARD, 2L).getValue();
     private static final long FLOW_B_FORWARD_METER_ID = 34L;
     private static final long FLOW_B_BANDWIDTH = 11000;
 
@@ -200,7 +203,7 @@ public class SimpleSwitchRuleConverterTest {
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(FLOW_A_FORWARD_PATH_ID)
                 .flow(flow)
-                .cookie(new Cookie(FLOW_A_FORWARD_COOKIE))
+                .cookie(new FlowSegmentCookie(FLOW_A_FORWARD_COOKIE))
                 .meterId(new MeterId(FLOW_A_FORWARD_METER_ID))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
@@ -250,7 +253,7 @@ public class SimpleSwitchRuleConverterTest {
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_B + "_forward_path"))
                 .flow(flow)
-                .cookie(new Cookie(FLOW_B_FORWARD_COOKIE))
+                .cookie(new FlowSegmentCookie(FLOW_B_FORWARD_COOKIE))
                 .meterId(new MeterId(FLOW_B_FORWARD_METER_ID))
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
@@ -377,7 +380,8 @@ public class SimpleSwitchRuleConverterTest {
                 .instructions(FlowInstructions.builder()
                         .applyActions(FlowApplyActions.builder()
                                 .flowOutput(dstPort)
-                                .fieldAction(flowSetFieldAction)
+                                .setFieldActions(flowSetFieldAction == null
+                                        ? Lists.newArrayList() : Lists.newArrayList(flowSetFieldAction))
                                 .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
                                 .build())
                         .goToMeter(meterId)

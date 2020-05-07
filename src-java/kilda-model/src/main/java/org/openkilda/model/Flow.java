@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
 import org.openkilda.converters.DetectConnectedDevicesConverter;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -348,7 +349,8 @@ public class Flow implements Serializable {
         return Objects.equals(path.getFlow().getFlowId(), this.getFlowId())
                 && Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
                 && Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId())
-                && (!isOneSwitchFlow() || path.getCookie() != null && path.getCookie().isMaskedAsForward());
+                && (!isOneSwitchFlow() || path.getCookie() != null
+                && path.getCookie().getDirection() == FlowPathDirection.FORWARD);
     }
 
     /**
@@ -358,7 +360,8 @@ public class Flow implements Serializable {
         return Objects.equals(path.getFlow().getFlowId(), this.getFlowId())
                 && Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId())
                 && Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                && (!isOneSwitchFlow() || path.getCookie() != null && path.getCookie().isMaskedAsReversed());
+                && (!isOneSwitchFlow() || path.getCookie() != null
+                && path.getCookie().getDirection() == FlowPathDirection.REVERSE);
     }
 
     private FlowPath validateForwardPath(FlowPath path) {
@@ -474,11 +477,11 @@ public class Flow implements Serializable {
                     .filter(path -> path.getPathId().equals(pathId))
                     .findAny()
                     .map(FlowPath::getCookie)
-                    .map(Cookie::getUnmaskedValue);
+                    .map(FlowSegmentCookie::getFlowEffectiveId);
             if (requestedPathCookie.isPresent()) {
                 return paths.stream()
                         .filter(path -> !path.getPathId().equals(pathId))
-                        .filter(path -> path.getCookie().getUnmaskedValue() == requestedPathCookie.get())
+                        .filter(path -> path.getCookie().getFlowEffectiveId() == requestedPathCookie.get())
                         .findAny()
                         .map(FlowPath::getPathId);
             } else {

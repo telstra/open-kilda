@@ -18,7 +18,6 @@ package org.openkilda.persistence.repositories.impl;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -34,6 +33,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -445,7 +445,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
                 .pathId(new PathId(TEST_FLOW_ID + "_forward_path"))
-                .cookie(new Cookie(1))
+                .cookie(new FlowSegmentCookie(1))
                 .flow(flow)
                 .meterId(new MeterId(1))
                 .status(FlowPathStatus.ACTIVE)
@@ -468,7 +468,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
                 .srcSwitch(switchB)
                 .destSwitch(switchA)
                 .pathId(new PathId(TEST_FLOW_ID + "_reverse_path"))
-                .cookie(new Cookie(2))
+                .cookie(new FlowSegmentCookie(2))
                 .flow(flow)
                 .meterId(new MeterId(2))
                 .status(FlowPathStatus.ACTIVE)

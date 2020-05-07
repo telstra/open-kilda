@@ -15,19 +15,6 @@
 
 package org.openkilda.floodlight.service.connected;
 
-import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
-import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
-
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
@@ -43,10 +30,13 @@ import org.openkilda.floodlight.utils.EthernetPacketToolbox;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.ArpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.ServiceCookie;
+import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
 import lombok.Value;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.ARP;
@@ -60,9 +50,27 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public class ConnectedDevicesService implements IService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(ConnectedDevicesService.class);
+
+    private static final Set<ServiceCookieTag> lldpServiceTags = ImmutableSet.of(
+            ServiceCookieTag.LLDP_INPUT_PRE_DROP_COOKIE,
+            ServiceCookieTag.LLDP_TRANSIT_COOKIE,
+            ServiceCookieTag.LLDP_INGRESS_COOKIE,
+            ServiceCookieTag.LLDP_POST_INGRESS_COOKIE,
+            ServiceCookieTag.LLDP_POST_INGRESS_VXLAN_COOKIE,
+            ServiceCookieTag.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
+
+    private static final Set<ServiceCookieTag> arpServiceTags = ImmutableSet.of(
+            ServiceCookieTag.ARP_INPUT_PRE_DROP_COOKIE,
+            ServiceCookieTag.ARP_TRANSIT_COOKIE,
+            ServiceCookieTag.ARP_INGRESS_COOKIE,
+            ServiceCookieTag.ARP_POST_INGRESS_COOKIE,
+            ServiceCookieTag.ARP_POST_INGRESS_VXLAN_COOKIE,
+            ServiceCookieTag.ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
 
     private IKafkaProducerService producerService;
     private String topic;
@@ -124,24 +132,6 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
         return null;
     }
 
-    private boolean isLldpRelated(long value) {
-        return value == LLDP_INPUT_PRE_DROP_COOKIE
-                || value == LLDP_TRANSIT_COOKIE
-                || value == LLDP_INGRESS_COOKIE
-                || value == LLDP_POST_INGRESS_COOKIE
-                || value == LLDP_POST_INGRESS_VXLAN_COOKIE
-                || value == LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
-    }
-
-    private boolean isArpRelated(long value) {
-        return value == ARP_INPUT_PRE_DROP_COOKIE
-                || value == ARP_TRANSIT_COOKIE
-                || value == ARP_INGRESS_COOKIE
-                || value == ARP_POST_INGRESS_COOKIE
-                || value == ARP_POST_INGRESS_VXLAN_COOKIE
-                || value == ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
-    }
-
     private void handlePacketIn(OfInput input) {
         U64 rawCookie = input.packetInCookie();
 
@@ -149,17 +139,21 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             return;
         }
 
-        long cookie = rawCookie.getValue();
+        ServiceCookie cookie = new ServiceCookie(rawCookie.getValue());
         SwitchId switchId = new SwitchId(input.getDpId().getLong());
 
-        if (isLldpRelated(cookie)) {
-            logger.debug("Receive connected device LLDP packet from {} OF-xid:{}, cookie: {}",
-                    input.getDpId(), input.getMessage().getXid(), cookie);
-            handleSwitchLldp(input, switchId, cookie);
-        } else if (isArpRelated(cookie)) {
-            logger.debug("Receive connected device ARP packet from {} OF-xid:{}, cookie: {}",
-                    input.getDpId(), input.getMessage().getXid(), cookie);
-            handleArp(input, switchId, cookie);
+        Optional<ServiceCookieTag> serviceTagOption = cookie.getServiceTagSafe();
+        if (serviceTagOption.isPresent()) {
+            ServiceCookieTag serviceTag = serviceTagOption.get();
+            if (lldpServiceTags.contains(serviceTag)) {
+                logger.debug("Receive connected device LLDP packet from {} OF-xid:{}, cookie: {}",
+                        input.getDpId(), input.getMessage().getXid(), cookie);
+                handleSwitchLldp(input, switchId, cookie.getValue());
+            } else if (arpServiceTags.contains(serviceTag)) {
+                logger.debug("Receive connected device ARP packet from {} OF-xid:{}, cookie: {}",
+                        input.getDpId(), input.getMessage().getXid(), cookie);
+                handleArp(input, switchId, cookie.getValue());
+            }
         }
     }
 

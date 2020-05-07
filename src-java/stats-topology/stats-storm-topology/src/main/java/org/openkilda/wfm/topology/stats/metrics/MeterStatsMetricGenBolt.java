@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.model.Cookie.createCookieForDefaultRule;
 import static org.openkilda.model.MeterId.isMeterIdOfDefaultRule;
+import static org.openkilda.model.cookie.Cookie.createCookieForDefaultRule;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.METER_CACHE_FIELD;
 

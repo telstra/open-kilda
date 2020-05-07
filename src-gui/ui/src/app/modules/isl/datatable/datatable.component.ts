@@ -132,6 +132,12 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       language: {
         searchPlaceholder: "Search"
+      },drawCallback:function(){
+        if(jQuery('#isl-list-table tbody tr').length < 10){
+          jQuery('#isl-list-table_next').addClass('disabled');
+        }else{
+          jQuery('#isl-list-table_next').removeClass('disabled');
+        }
       },"aoColumns": [
         { sWidth: '14%',"sType": "name","bSortable": true },
         { sWidth:  '8%' },

@@ -55,6 +55,13 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       colResize:false,
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "responsive": true,
+        drawCallback:function(){
+          if(jQuery('#switchDataTable tbody tr').length < 10){
+            jQuery('#switchDataTable_next').addClass('disabled');
+          }else{
+            jQuery('#switchDataTable_next').removeClass('disabled');
+          }
+        },
       "aoColumns": [
         { sWidth: '10%' },
         { sWidth: '10%',"sType": "name","bSortable": true },
@@ -96,7 +103,10 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
               for(let flow of flowsData){
                 this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth + (flow.maximum_bandwidth / 1000);
               }
-              this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3);
+              if(this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth){
+                this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth.toFixed(3); 
+              }
+              
              this.flowDataOfSwitch[switchData.switch_id].noofflows = flowsData.length;
             }
           },error=>{

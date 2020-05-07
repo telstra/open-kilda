@@ -2819,3 +2819,93 @@ left: calc(100% - 16px);
 .switchdetails_div_click_name span{
   word-break: break-all;
 }
+
+/** start discovery switch **/
+.enabledisableswitch {
+  position: relative;
+  width: 95px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+
+
+
+.enabledisableswitch-checkbox{
+  display: none;
+}
+
+.enabledisableswitch-label {
+  display: block;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 20px;
+  margin: 0;
+}
+
+.enabledisableswitch-inner {
+  display: block;
+  width: 200%;
+  margin-left: -100%;
+  -moz-transition: margin 0.3s ease-in 0s;
+  -webkit-transition: margin 0.3s ease-in 0s;
+  -o-transition: margin 0.3s ease-in 0s;
+  transition: margin 0.3s ease-in 0s;
+}
+
+.enabledisableswitch-inner:before,
+.enabledisableswitch-inner:after {
+  display: block;
+  float: left;
+  width: 50%;
+  height: 22px;
+  padding: 0;
+  line-height: 22px;
+  font-size: 12px;
+  color: white;
+  font-family: Trebuchet, Arial, sans-serif;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.enabledisableswitch-inner:before {
+  content: "ENABLED";
+  padding-left: 30px;
+  background-color: #00ccbe;
+  color: #ffffff;
+}
+
+.enabledisableswitch-inner:after {
+  content: "DISABLED";
+  padding-right: 10px;
+  background-color: #b0b0b0;
+  text-align: right;
+  color: #000;
+}
+
+
+.enabledisableswitch-switch {
+  display: block;
+  width: 22px;
+  margin: 5px;
+  background: #262d37;
+  border-radius: 20px;
+  position: absolute;
+  top: -5px;
+  bottom: -4px;
+  right: 68px;
+  transition: all 0.3s ease-in 0s;
+  -moz-transition: all 0.3s ease-in 0s;
+  -webkit-transition: all 0.3s ease-in 0s;
+  -o-transition: all 0.3s ease-in 0s;
+}
+
+.enabledisableswitch-checkbox:checked + .enabledisableswitch-label .enabledisableswitch-inner {
+  margin-left: 0;
+}
+
+.enabledisableswitch-checkbox:checked + .enabledisableswitch-label .onoffswitch-switch {
+  right: -6px;
+}

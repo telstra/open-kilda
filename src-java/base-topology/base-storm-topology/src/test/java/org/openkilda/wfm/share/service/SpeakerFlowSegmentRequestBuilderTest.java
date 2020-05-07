@@ -28,11 +28,11 @@ import org.openkilda.floodlight.api.request.OneSwitchFlowRequest;
 import org.openkilda.floodlight.api.request.TransitFlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.request.factory.IngressFlowSegmentRequestFactory;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
@@ -41,6 +41,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
@@ -154,9 +155,11 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
 
         // then new set of paths are created
         FlowPath goalForwardPath = buildFlowPath(
-                origin, origin.getSrcSwitch(), origin.getDestSwitch(), Cookie.buildForwardCookie(cookieFactory.next()));
+                origin, origin.getSrcSwitch(), origin.getDestSwitch(), new FlowSegmentCookie(
+                        FlowPathDirection.FORWARD, cookieFactory.next()));
         FlowPath goalReversePath = buildFlowPath(
-                origin, origin.getDestSwitch(), origin.getSrcSwitch(), Cookie.buildReverseCookie(cookieFactory.next()));
+                origin, origin.getDestSwitch(), origin.getSrcSwitch(), new FlowSegmentCookie(
+                        FlowPathDirection.REVERSE, cookieFactory.next()));
         setSegmentsWithTransitSwitches(goalForwardPath, goalReversePath);
 
         // than new version of flow is created to fulfill update request
@@ -430,7 +433,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         reverse.setSegments(ImmutableList.of(switch3ToSwitch2, switch2ToSwitch1));
     }
 
-    private FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, Cookie cookie) {
+    private FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, FlowSegmentCookie cookie) {
         PathId forwardPathId = new PathId(UUID.randomUUID().toString());
         TransitVlan forwardVlan = TransitVlan.builder()
                 .flowId(flow.getFlowId())
@@ -466,9 +469,11 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
         Long rawCookie = cookieFactory.next();
 
         flow.setForwardPath(buildFlowPath(
-                flow, flow.getSrcSwitch(), flow.getDestSwitch(), Cookie.buildForwardCookie(rawCookie)));
+                flow, flow.getSrcSwitch(), flow.getDestSwitch(), new FlowSegmentCookie(
+                        FlowPathDirection.FORWARD, rawCookie)));
         flow.setReversePath(buildFlowPath(
-                flow, flow.getDestSwitch(), flow.getSrcSwitch(), Cookie.buildReverseCookie(rawCookie)));
+                flow, flow.getDestSwitch(), flow.getSrcSwitch(), new FlowSegmentCookie(
+                        FlowPathDirection.REVERSE, rawCookie)));
 
         return flow;
     }

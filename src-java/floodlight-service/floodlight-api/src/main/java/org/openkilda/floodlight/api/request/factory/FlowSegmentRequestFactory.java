@@ -16,8 +16,8 @@
 package org.openkilda.floodlight.api.request.factory;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 
 import java.util.UUID;
 

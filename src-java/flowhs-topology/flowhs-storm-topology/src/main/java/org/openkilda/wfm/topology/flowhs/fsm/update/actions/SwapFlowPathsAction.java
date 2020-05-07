@@ -109,6 +109,9 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
                         newProtectedForward, newProtectedReverse);
 
                 saveHistory(stateMachine, flow.getFlowId(), newProtectedForward, newProtectedReverse);
+            } else {
+                flow.setProtectedForwardPath((FlowPath) null);
+                flow.setProtectedReversePath((FlowPath) null);
             }
 
             flowRepository.createOrUpdate(flow);
@@ -120,7 +123,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
         EncapsulationResources encapsulationResources = resourcesManager.getEncapsulationResources(
                 forwardPath.getPathId(), reversePath.getPathId(), flowEncapsulationType).orElse(null);
         return FlowResources.builder()
-                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .unmaskedCookie(forwardPath.getCookie().getFlowEffectiveId())
                 .forward(PathResources.builder()
                         .pathId(forwardPath.getPathId())
                         .meterId(forwardPath.getMeterId())

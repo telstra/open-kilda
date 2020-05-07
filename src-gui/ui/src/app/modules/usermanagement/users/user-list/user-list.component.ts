@@ -58,6 +58,14 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
       autoWidth: true,
       colResize: false,
       dom: 'tpli',
+      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      drawCallback:function(){
+        if(jQuery('#users_table tbody tr').length < 10){
+          jQuery('#users_table_next').addClass('disabled');
+        }else{
+          jQuery('#users_table_next').removeClass('disabled');
+        }
+      },
       "aoColumns": [{
           sWidth: '30%',
         },{

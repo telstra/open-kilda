@@ -54,6 +54,10 @@ public class PermissionValidator {
             LOGGER.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
                     + messageUtil.getAttributeNotNull("name"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name"));
+        } else if (permission.getName().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Permission name"));
+        } else if (permission.getDescription().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
         }
 
         PermissionEntity permissionEntity = permissionRepository.findByName(permission.getName());
@@ -82,6 +86,10 @@ public class PermissionValidator {
                     + permission.getDescription() + "," + permission.getStatus() + "). Error: "
                     + messageUtil.getAttributeNotNull("name,description and status"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name,description and status"));
+        } else if (permission.getName().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Permission name"));
+        } else if (permission.getDescription().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
         }
 
         if (!ValidatorUtil.isNull(permission.getName())) {

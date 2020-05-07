@@ -13,24 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.model;
+package org.openkilda.model.cookie;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.junit.Test;
 
-import java.io.Serializable;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
-@Builder
-public class RemoveSharedRulesContext implements Serializable {
-    private boolean removeCustomerCatchRule;
-    private boolean removeCustomerLldpRule;
-    private boolean removeCustomerArpRule;
+public class ServiceCookieTest extends GenericCookieTest {
+    @Test
+    public void ensureNoFieldsIntersection() {
+        testFieldsIntersection(ServiceCookie.ALL_FIELDS);
+    }
 }

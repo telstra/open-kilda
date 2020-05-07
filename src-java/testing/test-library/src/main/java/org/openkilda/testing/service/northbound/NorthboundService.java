@@ -183,6 +183,8 @@ public interface NorthboundService {
 
     List<LinkDto> deleteLink(LinkParametersDto linkParameters);
 
+    List<LinkDto> deleteLink(LinkParametersDto linkParameters, boolean force);
+
     List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link);
 
     LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort,

@@ -54,7 +54,7 @@ Note that other properties should
 correspond to actual Kilda properties that were used for deployment of the target env.
 - Check your `topology.yaml`. It should represent your actual expected hardware topology. You can automatically generate 
 `topology.yaml` based on currently discovered topology, but be aware that this will prevent you from catching
-some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/target/topology.yaml functional-tests/`
+some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/build/topology.yaml functional-tests/`
 - Now you can run tests by executing the following command in the terminal:  
 `make func-tests`.
 
@@ -80,10 +80,10 @@ Common usages:
 func tests for each PR on github 
 
 ## Artifacts
-* Logs - ```target/logs```
+* Logs - ```build/logs```
   * `request_logs` - stores all HTTP transactions being made during test run
   * `logs` - casual test log including DEBUG+ messages
-* Reports - ```target/spock-reports```
+* Reports - ```build/reports```
 
 # How to create a test
 - Get understanding of what [SpockFramework](http://spockframework.org/) and [Groovy](http://groovy-lang.org/) is.

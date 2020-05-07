@@ -51,6 +51,13 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
       stateSave: false,
       language: {
         searchPlaceholder: "Search"
+      }, 
+      drawCallback:function(){
+        if(jQuery('#portflowDataTable tbody tr').length < 10){
+          jQuery('#portflowDataTable_next').addClass('disabled');
+        }else{
+          jQuery('#portflowDataTable_next').removeClass('disabled');
+        }
       },
       buttons:{
         buttons:[

@@ -25,7 +25,7 @@ import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.model.Cookie;
+import org.openkilda.model.cookie.Cookie;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;

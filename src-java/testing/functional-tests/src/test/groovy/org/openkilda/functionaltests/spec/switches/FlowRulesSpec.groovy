@@ -27,7 +27,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -794,7 +794,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def rules = northbound.getSwitchRules(flowEndpoint.switchId).flowEntries
         def ingressRule = filterRules(rules, flowEndpoint.portNumber, flowEndpoint.vlanId, null)[0]
         def egressRule = filterRules(rules, null, null, flowEndpoint.portNumber).find {
-            it.instructions.applyActions.fieldAction.fieldValue == flowEndpoint.vlanId.toString()
+            it.instructions.applyActions.setFieldActions*.fieldValue.contains(flowEndpoint.vlanId.toString())
         }
 
         assert ingressRule.flags.contains("RESET_COUNTS")

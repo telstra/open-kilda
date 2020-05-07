@@ -24,7 +24,7 @@ import org.openkilda.floodlight.api.request.factory.IngressFlowSegmentRequestFac
 import org.openkilda.floodlight.api.request.factory.OneSwitchFlowRequestFactory;
 import org.openkilda.floodlight.api.request.factory.TransitFlowSegmentRequestFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.model.RemoveSharedRulesContext;
+import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -38,6 +38,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 
 import com.fasterxml.uuid.Generators;
@@ -60,7 +61,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     @Override
     public List<FlowSegmentRequestFactory> buildAll(
             CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
-        return buildAll(context, flow, forwardPath, reversePath, SpeakerRequestBuildContext.builder().build());
+        return buildAll(context, flow, forwardPath, reversePath, SpeakerRequestBuildContext.EMPTY);
     }
 
     @Override
@@ -79,7 +80,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     public List<FlowSegmentRequestFactory> buildAllExceptIngress(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
         return makeRequests(context, flow, path, oppositePath, false, true, true,
-                SpeakerRequestBuildContext.builder().build());
+                SpeakerRequestBuildContext.EMPTY);
     }
 
     @Override
@@ -91,7 +92,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     public List<FlowSegmentRequestFactory> buildIngressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
         return makeRequests(context, flow, path, oppositePath, true, false, false,
-                SpeakerRequestBuildContext.builder().build());
+                SpeakerRequestBuildContext.EMPTY);
     }
 
     private List<FlowSegmentRequestFactory> makeRequests(
@@ -102,12 +103,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             path = oppositePath;
             oppositePath = null;
             speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
-                    .removeCustomerPortRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortRule())
-                    .removeOppositeCustomerPortRule(speakerRequestBuildContext.isRemoveCustomerPortRule())
-                    .removeCustomerPortLldpRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule())
-                    .removeOppositeCustomerPortLldpRule(speakerRequestBuildContext.isRemoveCustomerPortLldpRule())
-                    .removeCustomerPortArpRule(speakerRequestBuildContext.isRemoveOppositeCustomerPortArpRule())
-                    .removeOppositeCustomerPortArpRule(speakerRequestBuildContext.isRemoveCustomerPortArpRule())
+                    .forward(speakerRequestBuildContext.getReverse())
+                    .reverse(speakerRequestBuildContext.getForward())
                     .build();
         }
         if (path == null) {
@@ -122,28 +119,29 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         }
 
         List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(flow, path, context, encapsulation,
-                doIngress, doTransit, doEgress, new RemoveSharedRulesContext(
-                        speakerRequestBuildContext.isRemoveCustomerPortRule(),
-                        speakerRequestBuildContext.isRemoveCustomerPortLldpRule(),
-                        speakerRequestBuildContext.isRemoveCustomerPortArpRule())));
+                doIngress, doTransit, doEgress, createRulesContext(speakerRequestBuildContext.getForward())));
         if (oppositePath != null) {
             if (!flow.isOneSwitchFlow()) {
                 encapsulation = getEncapsulation(
                         flow.getEncapsulationType(), oppositePath.getPathId(), path.getPathId());
             }
             requests.addAll(makePathRequests(flow, oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
-                    new RemoveSharedRulesContext(
-                            speakerRequestBuildContext.isRemoveOppositeCustomerPortRule(),
-                            speakerRequestBuildContext.isRemoveOppositeCustomerPortLldpRule(),
-                            speakerRequestBuildContext.isRemoveOppositeCustomerPortArpRule())));
+                    createRulesContext(speakerRequestBuildContext.getReverse())));
         }
         return requests;
+    }
+
+    private RulesContext createRulesContext(PathContext pathContext) {
+        return new RulesContext(
+                pathContext.isRemoveCustomerPortRule(),
+                pathContext.isRemoveCustomerPortLldpRule(),
+                pathContext.isRemoveCustomerPortArpRule());
     }
 
     @SuppressWarnings("squid:S00107")
     private List<FlowSegmentRequestFactory> makePathRequests(
             @NonNull Flow flow, @NonNull FlowPath path, CommandContext context, FlowTransitEncapsulation encapsulation,
-            boolean doIngress, boolean doTransit, boolean doEgress, RemoveSharedRulesContext removeSharedRulesContext) {
+            boolean doIngress, boolean doTransit, boolean doEgress, RulesContext rulesContext) {
         final FlowSideAdapter ingressSide = FlowSideAdapter.makeIngressAdapter(flow, path);
         final FlowSideAdapter egressSide = FlowSideAdapter.makeEgressAdapter(flow, path);
 
@@ -154,7 +152,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             if (lastSegment == null) {
                 if (doIngress) {
                     requests.add(makeIngressRequest(context, path, encapsulation, ingressSide, segment, egressSide,
-                            removeSharedRulesContext));
+                            rulesContext));
                 }
             } else {
                 if (doTransit) {
@@ -170,7 +168,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             }
         } else if (doIngress) {
             // one switch flow (path without path segments)
-            requests.add(makeOneSwitchRequest(context, path, ingressSide, egressSide, removeSharedRulesContext));
+            requests.add(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext));
         }
 
         return requests;
@@ -179,7 +177,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     private FlowSegmentRequestFactory makeIngressRequest(
             CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
             FlowSideAdapter flowSide, PathSegment segment, FlowSideAdapter egressFlowSide,
-            RemoveSharedRulesContext removeSharedRulesContext) {
+            RulesContext rulesContext) {
         PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
 
         UUID commandId = commandIdGenerator.generate();
@@ -197,7 +195,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .egressSwitchId(egressFlowSide.getEndpoint().getSwitchId())
                 .islPort(segmentSide.getEndpoint().getPortNumber())
                 .encapsulation(encapsulation)
-                .removeSharedRulesContext(removeSharedRulesContext)
+                .rulesContext(rulesContext)
                 .build();
     }
 
@@ -256,7 +254,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
     private FlowSegmentRequestFactory makeOneSwitchRequest(
             CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
-            RemoveSharedRulesContext removeSharedRulesContext) {
+            RulesContext rulesContext) {
         Flow flow = ingressSide.getFlow();
 
         UUID commandId = commandIdGenerator.generate();
@@ -271,7 +269,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .endpoint(ingressSide.getEndpoint())
                 .meterConfig(getMeterConfig(path))
                 .egressEndpoint(egressSide.getEndpoint())
-                .removeSharedRulesContext(removeSharedRulesContext)
+                .rulesContext(rulesContext)
                 .build();
     }
 

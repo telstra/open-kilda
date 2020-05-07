@@ -17,13 +17,13 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -100,13 +100,12 @@ public class FlowPathBuilder {
 
     /**
      * Build a flow path entity for the flow using provided path and resources.
-     *
-     * @param flow a flow the flow path will be associated with.
+     *  @param flow a flow the flow path will be associated with.
      * @param pathResources resources to be used for the flow path.
      * @param path path to be used for the flow path.
      * @param cookie cookie to be used for the flow path.
      */
-    public FlowPath buildFlowPath(Flow flow, PathResources pathResources, Path path, Cookie cookie) {
+    public FlowPath buildFlowPath(Flow flow, PathResources pathResources, Path path, FlowSegmentCookie cookie) {
         Map<SwitchId, Switch> switches = new HashMap<>();
         Map<SwitchId, SwitchProperties> switchProperties = new HashMap<>();
         switches.put(flow.getSrcSwitch().getSwitchId(), switchRepository.reload(flow.getSrcSwitch()));

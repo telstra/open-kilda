@@ -19,7 +19,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -28,6 +27,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
@@ -142,7 +142,7 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         FlowPath forwardPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID + "_forward_path"))
                 .flow(flow)
-                .cookie(new Cookie(1))
+                .cookie(new FlowSegmentCookie(1))
                 .meterId(new MeterId(1))
                 .srcSwitch(switchA)
                 .destSwitch(switchB)
@@ -156,7 +156,7 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         FlowPath reversePath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID + "_reverse_path"))
                 .flow(flow)
-                .cookie(new Cookie(2))
+                .cookie(new FlowSegmentCookie(2))
                 .meterId(new MeterId(2))
                 .srcSwitch(switchB)
                 .destSwitch(switchA)

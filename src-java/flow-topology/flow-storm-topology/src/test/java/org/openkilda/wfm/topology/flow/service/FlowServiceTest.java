@@ -30,10 +30,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
 import org.openkilda.model.MeterId;
@@ -43,6 +43,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
@@ -415,9 +416,11 @@ public class FlowServiceTest extends Neo4jBasedTest {
         PathResources reversePathResources = PathResources.builder().pathId(REVERSE_PATH_ID).build();
 
         FlowPath forward = flowPathBuilder.buildFlowPath(
-                flow, forwardPathResources, pathPair.forward, new Cookie(FORWARD_COOKIE));
+                flow, forwardPathResources, pathPair.forward,
+                new FlowSegmentCookie(FlowPathDirection.FORWARD, FORWARD_COOKIE));
         FlowPath reverse = flowPathBuilder.buildFlowPath(
-                flow, reversePathResources, pathPair.reverse, new Cookie(REVERSE_COOKIE));
+                flow, reversePathResources, pathPair.reverse,
+                new FlowSegmentCookie(FlowPathDirection.REVERSE, REVERSE_COOKIE));
 
         flow.setForwardPath(forward);
         flow.setReversePath(reverse);

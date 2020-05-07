@@ -5,11 +5,13 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 
 import groovy.util.logging.Slf4j
@@ -102,6 +104,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
     }
 
+    @Tidy
     @Unroll
     def "Unable to #action a non-existent flow"() {
         when: "Trying to #action a non-existent flow"
@@ -139,7 +142,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         def flowPathInfo = northbound.getFlowPath(flow.id)
         def protectedPath = flowPathInfo.protectedPath.forwardPath
         def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !org.openkilda.model.Cookie.isDefaultRule(it.cookie)
+            !Cookie.isDefaultRule(it.cookie)
         }
 
         def ruleToDelete = rules.find {

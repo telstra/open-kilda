@@ -22,13 +22,13 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -152,7 +152,7 @@ public class CacheBoltTest {
                 .flow(flow)
                 .srcSwitch(src)
                 .destSwitch(dest)
-                .cookie(new Cookie(cookie))
+                .cookie(new FlowSegmentCookie(cookie))
                 .meterId(new MeterId(meterId))
                 .build();
     }

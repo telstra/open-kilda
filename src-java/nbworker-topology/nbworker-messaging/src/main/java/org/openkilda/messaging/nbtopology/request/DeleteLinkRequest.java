@@ -42,4 +42,7 @@ public class DeleteLinkRequest extends LinksBaseRequest {
 
     @JsonProperty(value = "dst_port")
     private Integer dstPort;
+
+    @JsonProperty(value = "force")
+    private boolean force;
 }

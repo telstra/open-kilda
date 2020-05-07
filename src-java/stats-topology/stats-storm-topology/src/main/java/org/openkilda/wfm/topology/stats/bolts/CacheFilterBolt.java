@@ -31,10 +31,10 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 

@@ -15,11 +15,11 @@
 
 package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.persistence.FetchStrategy;
 
 import java.util.Collection;

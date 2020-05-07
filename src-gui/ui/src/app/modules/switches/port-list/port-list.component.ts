@@ -46,7 +46,9 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
   ngOnInit() {
       let ref =this;
-       this.switch_id = this.switch;
+    // //this.titleService.setTitle('OPEN KILDA - Ports');
+  	// let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
+    this.switch_id = this.switch;
     this.dtOptions = {
       paging: false,
       retrieve: true,
@@ -199,7 +201,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
       }
 
      },error=>{
-      
+        //this.toastr.error("No Switch Port data",'Error');
      });
   }
 
@@ -215,7 +217,10 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
                 this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth + (flow.maximum_bandwidth / 1000);
               }
               this.portFlowData[portnumber].noofflows =flowsData.length;
-              this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth.toFixed(3);
+              if(this.portFlowData[portnumber].sumflowbandwidth){
+                this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth.toFixed(3);
+              }
+              
             }
           },error=>{
             this.portFlowData[portnumber] = {};

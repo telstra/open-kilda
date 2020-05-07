@@ -480,7 +480,7 @@ export class FlowDetailComponent implements OnInit {
   getFlowStatus(status){
     this.flowService.getFlowStatus(this.flowDetail.flowid).subscribe(
       flowStatus =>{
-        if(flowStatus.status == 'IN PROGRESS'){
+        if(flowStatus.status == 'IN PROGRESS' || flowStatus.status =="IN_PROGRESS"){
           this.getFlowStatus(flowStatus.status);
         }else{
           this.flowDetail.status = (flowStatus && flowStatus.status) ?  flowStatus.status : this.flowDetail.status;
@@ -554,7 +554,7 @@ export class FlowDetailComponent implements OnInit {
           }
         }
         setTimeout(function(){
-          if(flowDetail && flowDetail.status == 'IN PROGRESS'){
+          if(flowDetail && (flowDetail.status == 'IN PROGRESS' || flowDetail.status =="IN_PROGRESS")){
             self.getFlowStatus(flowDetail.status);
           }
         },100);
@@ -589,7 +589,7 @@ export class FlowDetailComponent implements OnInit {
         
         this.loaderService.hide();
         setTimeout(function(){
-          if(flow && flow.status == 'IN PROGRESS'){
+          if(flow && (self.flowDetail.status == 'IN PROGRESS' || self.flowDetail.status =="IN_PROGRESS")){
             self.getFlowStatus(flow.status);
           }
         },100);

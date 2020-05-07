@@ -21,7 +21,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -910,7 +910,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.flowId doesn't have protected path"
 
         cleanup: "Revert system to original state"
@@ -926,7 +926,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
@@ -994,7 +994,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
+        exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Protected flow path $flow.flowId is not in ACTIVE state"
 
         when: "Restore ISL for the main path only"
@@ -1016,7 +1016,9 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc1 = thrown(HttpClientErrorException)
         exc1.rawStatusCode == 400
-        exc1.responseBodyAsString.to(MessageError).errorMessage ==
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not swap paths for flow"
+        errorDetails.errorDescription ==
                 "Could not swap paths: Protected flow path $flow.flowId is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"

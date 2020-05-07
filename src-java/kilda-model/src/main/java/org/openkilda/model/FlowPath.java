@@ -19,6 +19,8 @@ import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
+import org.openkilda.model.cookie.FlowSegmentCookie;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -83,7 +85,7 @@ public class FlowPath implements Serializable {
     private Flow flow;
 
     @Convert(graphPropertyType = Long.class)
-    private Cookie cookie;
+    private FlowSegmentCookie cookie;
 
     @Property(name = "meter_id")
     @Convert(graphPropertyType = Long.class)
@@ -115,11 +117,9 @@ public class FlowPath implements Serializable {
     @Setter(AccessLevel.NONE)
     private List<PathSegment> segments = new ArrayList<>();
 
-
-
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                    @NonNull Flow flow, Cookie cookie, MeterId meterId,
+                    @NonNull Flow flow, FlowSegmentCookie cookie, MeterId meterId,
                     long latency, long bandwidth, boolean ignoreBandwidth,
                     Instant timeCreate, Instant timeModify,
                     FlowPathStatus status, List<PathSegment> segments) {
@@ -184,7 +184,7 @@ public class FlowPath implements Serializable {
     }
 
     public boolean isForward() {
-        return cookie.isMaskedAsForward();
+        return cookie.getDirection() == FlowPathDirection.FORWARD;
     }
 
     public boolean isProtected() {

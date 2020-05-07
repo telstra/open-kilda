@@ -10,6 +10,7 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.performancetests.helpers.TopologyHelper
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.ManagementFloodlightManager
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -28,6 +29,8 @@ class BaseSpecification extends Specification implements SetupOnce {
     NorthboundService northbound
     @Autowired
     NorthboundServiceV2 northboundV2
+    @Autowired
+    ManagementFloodlightManager mgmtFlManager
     @Autowired
     FlowHelperV2 flowHelperV2
     @Autowired

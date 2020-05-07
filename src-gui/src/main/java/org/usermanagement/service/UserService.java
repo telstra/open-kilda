@@ -352,7 +352,7 @@ public class UserService implements UserDetailsService {
                 } else if (!TwoFactorUtility.validateOtp(userInfo.getCode(), userEntity.getTwoFaKey())) {
                     LOGGER.warn("Invalid OTP for user (id: " + userId + "). Error: "
                             + messageUtil.getAttributeNotvalid("OTP"));
-                    throw new InvalidOtpException(messageUtil.getAttributeNotvalid("OTP"));
+                    throw new RequestValidationException(messageUtil.getAttributeNotvalid("OTP"));
                 }
             }
         }

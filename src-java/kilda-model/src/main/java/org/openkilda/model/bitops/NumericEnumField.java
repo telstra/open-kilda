@@ -16,8 +16,8 @@
 package org.openkilda.model.bitops;
 
 /**
- * Interface used by {@code org.openkilda.model.Cookie.resolveEnum} to map fields numeric representation into enum
- * constant.
+ * Interface used by {@code org.openkilda.model.cookie.Cookie.resolveEnum} to map fields numeric representation
+ * into enum constant.
  */
 public interface NumericEnumField {
     int getValue();

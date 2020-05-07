@@ -9,12 +9,13 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -361,6 +362,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(defaultFlow.id)
     }
 
+    @Tidy
     def "System doesn't allow to create a flow with 'VXLAN' encapsulation on a non-noviflow switches"() {
         setup:
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { !it.src.noviflow &&  !it.dst.noviflow }
@@ -375,8 +377,12 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
+
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System doesn't allow to create a vxlan flow when transit switch is not Noviflow"() {
         setup:
@@ -410,7 +416,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 404
         //TODO(andriidovhan)add errorMessage when the 2587 issue is fixed
 
-        and: "Cleanup: Reset costs"
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -418,6 +425,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Tags(HARDWARE)
     def "System doesn't allow to create a vxlan flow when dst switch is not Noviflow"() {
         given: "Noviflow and non-Noviflow switches"
@@ -435,6 +443,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
+
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     @Unroll
@@ -520,6 +531,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         FlowEncapsulationType.VXLAN | FlowEncapsulationType.TRANSIT_VLAN
     }
 
+    @Tidy
     def "System doesn't allow to enable a flow with 'VXLAN' encapsulation on a non-noviflow switch"() {
         given: "A flow with 'TRANSIT_VLAN' encapsulation"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { !it.src.noviflow &&  !it.dst.noviflow }
@@ -535,7 +547,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 404
         //TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
 
-        and: "Cleanup: Delete the flow"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
     }
 }

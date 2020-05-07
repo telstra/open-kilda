@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * The Class FlowResponse.
@@ -111,9 +112,6 @@ public class FlowInfo implements Serializable {
     @JsonProperty("created")
     private String created;
     
-    //@JsonProperty("diverse_with")
-    //private List<String> diverseWith;
-    
     @JsonProperty("src_lldp")
     private boolean srcLldp;
 
@@ -125,6 +123,9 @@ public class FlowInfo implements Serializable {
 
     @JsonProperty("dst_arp")
     private boolean dstArp;
+    
+    @JsonProperty("diverse_with")
+    private List<String> diverseWith;
 
     private static final long serialVersionUID = -7015976328478701934L;
 

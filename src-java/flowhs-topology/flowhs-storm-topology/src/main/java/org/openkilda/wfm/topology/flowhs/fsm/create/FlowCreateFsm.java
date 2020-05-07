@@ -29,6 +29,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.CompleteFlowCreateAction;
@@ -191,6 +192,19 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         protectedReversePathId = null;
     }
 
+    @Override
+    public void reportError(Event event) {
+        if (Event.TIMEOUT == event) {
+            reportGlobalTimeout();
+        }
+        // other errors reported inside actions and can be ignored here
+    }
+
+    @Override
+    protected String getCrudActionName() {
+        return "create";
+    }
+
     public static FlowCreateFsm.Factory factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier,
                                                 Config config, FlowResourcesManager resourcesManager,
                                                 PathComputer pathComputer) {
@@ -258,6 +272,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     persistenceManager);
             final RollbackInstalledRulesAction rollbackInstalledRules = new RollbackInstalledRulesAction(
                     commandExecutorFsmBuilder, persistenceManager);
+            final ReportErrorAction<FlowCreateFsm, State, Event, FlowCreateContext>
+                    reportErrorAction = new ReportErrorAction<>();
 
             // validate the flow
             builder.transition()
@@ -377,6 +393,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .perform(rollbackInstalledRules);
 
             // rules deletion
+            builder.onEntry(State.REMOVING_RULES)
+                    .perform(reportErrorAction);
             builder.transition()
                     .from(State.REMOVING_RULES)
                     .to(State.REMOVING_RULES)
@@ -392,6 +410,8 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .on(Event.NEXT);
 
             // resources deallocation
+            builder.onEntry(State.REVERTING)
+                    .perform(reportErrorAction);
             builder.transition()
                     .from(State.REVERTING)
                     .to(State.RESOURCES_DE_ALLOCATED)
@@ -425,10 +445,15 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .perform(new ResourcesAllocationAction(pathComputer, persistenceManager,
                             config.getTransactionRetriesLimit(), resourcesManager));
 
+            builder.onEntry(State._FAILED)
+                    .perform(reportErrorAction);
             builder.transitions()
                     .from(State._FAILED)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.ERROR, Event.TIMEOUT);
+
+            builder.onEntry(State.FINISHED_WITH_ERROR)
+                    .perform(reportErrorAction);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));

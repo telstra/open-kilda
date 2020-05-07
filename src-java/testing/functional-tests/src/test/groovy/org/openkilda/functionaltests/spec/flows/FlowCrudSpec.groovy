@@ -15,6 +15,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -29,7 +30,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
@@ -368,6 +369,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelper.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -381,8 +383,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         error.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not create flow: It is not allowed to create one-switch flow for the same ports and vlans"
+
+        cleanup:
+        !error && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     @Unroll("Unable to create flow with #data.conflict")
     def "Unable to create flow with conflicting vlans or flow IDs"() {
         given: "A potential flow"
@@ -406,6 +412,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Cleanup: delete the dominant flow"
         flowHelper.deleteFlow(flow.id)
+        !error && flowHelper.deleteFlow(conflictingFlow.id)
 
         where:
         data << getConflictingData() + [
@@ -419,6 +426,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll("Unable to update flow (#data.conflict)")
     def "Unable to update flow when there are conflicting vlans"() {
         given: "Two potential flows"
@@ -442,7 +450,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.CONFLICT
         error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow1, conflictingFlow, "update")
 
-        and: "Cleanup: delete flows"
+        cleanup:
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
@@ -485,6 +493,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     @Unroll
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
@@ -512,7 +521,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth"
 
-        and: "Cleanup: restore connection to the isolated switch and reset costs"
+        cleanup:
+        !error && flowHelper.deleteFlow(flow.id)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portUp(isolatedSwitch.dpId, port)
         }
@@ -562,6 +572,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Unroll
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
@@ -577,6 +588,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
 
         where:
         data << [
@@ -597,6 +611,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     @Unroll
     def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
         given: "An isl"
@@ -615,7 +630,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
 
-        and: "Cleanup: delete the flow"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
 
         where:
@@ -637,6 +652,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tidy
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -655,7 +671,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
 
-        and: "Cleanup: Restore state of the ISL"
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         database.resetCosts()

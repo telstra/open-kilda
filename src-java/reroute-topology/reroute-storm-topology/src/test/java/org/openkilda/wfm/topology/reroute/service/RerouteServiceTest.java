@@ -32,9 +32,9 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
@@ -42,6 +42,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
@@ -109,7 +110,9 @@ public class RerouteServiceTest {
         pinnedFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(true).build();
         FlowPath pinnedFlowForwardPath = FlowPath.builder().pathId(new PathId("1"))
-                .flow(pinnedFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(1)).build();
+                .flow(pinnedFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1))
+                .build();
         List<PathSegment> pinnedFlowForwardSegments = new ArrayList<>();
         pinnedFlowForwardSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_A)
@@ -126,7 +129,9 @@ public class RerouteServiceTest {
         pinnedFlowForwardPath.setSegments(pinnedFlowForwardSegments);
 
         FlowPath pinnedFlowReversePath = FlowPath.builder().pathId(new PathId("2"))
-                .flow(pinnedFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A).cookie(Cookie.buildReverseCookie(2)).build();
+                .flow(pinnedFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 2))
+                .build();
         List<PathSegment> pinnedFlowReverseSegments = new ArrayList<>();
         pinnedFlowReverseSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_C)
@@ -149,7 +154,8 @@ public class RerouteServiceTest {
                 .priority(2).timeCreate(Instant.now())
                 .build();
         FlowPath regularFlowForwardPath = FlowPath.builder().pathId(new PathId("3"))
-                .flow(regularFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(3))
+                .flow(regularFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 3))
                 .status(FlowPathStatus.ACTIVE)
                 .build();
         List<PathSegment> unpinnedFlowForwardSegments = new ArrayList<>();
@@ -168,7 +174,8 @@ public class RerouteServiceTest {
         regularFlowForwardPath.setSegments(unpinnedFlowForwardSegments);
 
         FlowPath regularFlowReversePath = FlowPath.builder().pathId(new PathId("4"))
-                .flow(regularFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A).cookie(Cookie.buildReverseCookie(3))
+                .flow(regularFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 3))
                 .status(FlowPathStatus.ACTIVE)
                 .build();
         List<PathSegment> unpinnedFlowReverseSegments = new ArrayList<>();

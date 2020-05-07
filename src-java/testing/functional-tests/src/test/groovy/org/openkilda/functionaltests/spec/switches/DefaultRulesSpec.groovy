@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -20,7 +19,8 @@ import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.model.Cookie
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Unroll
@@ -77,7 +77,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             compareRules(northbound.getSwitchRules(sw.dpId).flowEntries
-                    .findAll { !Cookie.isIslVlanEgress(it.cookie) }, expectedRules)
+                    .findAll { new Cookie(it.cookie).getType() != CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES },
+                    expectedRules)
         }
 
         cleanup: "Install missing default rules"

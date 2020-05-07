@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@ import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Meter;
@@ -37,6 +37,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.Vxlan;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -85,16 +86,18 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     private static final int FLOW_A_REVERSE_METER_ID = 33;
     private static final int FLOW_A_FORWARD_METER_ID_PROTECTED = 42;
     private static final int FLOW_A_REVERSE_METER_ID_PROTECTED = 43;
-    private static final long FLOW_A_FORWARD_COOKIE = Cookie.buildForwardCookie(1L).getValue();
-    private static final long FLOW_A_REVERSE_COOKIE = Cookie.buildReverseCookie(1L).getValue();
-    private static final long FLOW_A_FORWARD_COOKIE_PROTECTED = Cookie.buildForwardCookie(2L).getValue();
-    private static final long FLOW_A_REVERSE_COOKIE_PROTECTED = Cookie.buildReverseCookie(2L).getValue();
+    private static final long FLOW_A_FORWARD_COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1L).getValue();
+    private static final long FLOW_A_REVERSE_COOKIE = new FlowSegmentCookie(FlowPathDirection.REVERSE, 1L).getValue();
+    private static final long FLOW_A_FORWARD_COOKIE_PROTECTED = new FlowSegmentCookie(
+            FlowPathDirection.FORWARD, 2L).getValue();
+    private static final long FLOW_A_REVERSE_COOKIE_PROTECTED = new FlowSegmentCookie(
+            FlowPathDirection.REVERSE, 2L).getValue();
     private static final long FLOW_A_BANDWIDTH = 10000;
     private static final int FLOW_B_SRC_PORT = 1;
     private static final int FLOW_B_SRC_VLAN = 15;
     private static final int FLOW_B_DST_VLAN = 16;
-    private static final long FLOW_B_FORWARD_COOKIE = Cookie.buildForwardCookie(2L).getValue();
-    private static final long FLOW_B_REVERSE_COOKIE = Cookie.buildReverseCookie(2L).getValue();
+    private static final long FLOW_B_FORWARD_COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 2L).getValue();
+    private static final long FLOW_B_REVERSE_COOKIE = new FlowSegmentCookie(FlowPathDirection.REVERSE, 2L).getValue();
     private static final int FLOW_B_FORWARD_METER_ID = 34;
     private static final int FLOW_B_REVERSE_METER_ID = 35;
     private static final long FLOW_B_BANDWIDTH = 11000;
@@ -179,7 +182,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(FLOW_A_FORWARD_PATH_ID)
                 .flow(flow)
-                .cookie(new Cookie(FLOW_A_FORWARD_COOKIE))
+                .cookie(new FlowSegmentCookie(FLOW_A_FORWARD_COOKIE))
                 .meterId(new MeterId(FLOW_A_FORWARD_METER_ID))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
@@ -208,7 +211,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         FlowPath forwardProtectedFlowPath = FlowPath.builder()
                 .pathId(FLOW_A_FORWARD_PATH_ID_PROTECTED)
                 .flow(flow)
-                .cookie(new Cookie(FLOW_A_FORWARD_COOKIE_PROTECTED))
+                .cookie(new FlowSegmentCookie(FLOW_A_FORWARD_COOKIE_PROTECTED))
                 .meterId(new MeterId(FLOW_A_FORWARD_METER_ID_PROTECTED))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
@@ -237,7 +240,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         FlowPath reverseFlowPath = FlowPath.builder()
                 .pathId(FLOW_A_REVERSE_PATH_ID)
                 .flow(flow)
-                .cookie(new Cookie(FLOW_A_REVERSE_COOKIE))
+                .cookie(new FlowSegmentCookie(FLOW_A_REVERSE_COOKIE))
                 .meterId(new MeterId(FLOW_A_REVERSE_METER_ID))
                 .srcSwitch(switchC)
                 .destSwitch(switchA)
@@ -266,7 +269,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         FlowPath reverseProtectedFlowPath = FlowPath.builder()
                 .pathId(FLOW_A_REVERSE_PATH_ID_PROTECTED)
                 .flow(flow)
-                .cookie(new Cookie(FLOW_A_REVERSE_COOKIE_PROTECTED))
+                .cookie(new FlowSegmentCookie(FLOW_A_REVERSE_COOKIE_PROTECTED))
                 .meterId(new MeterId(FLOW_A_REVERSE_METER_ID_PROTECTED))
                 .srcSwitch(switchC)
                 .destSwitch(switchA)
@@ -317,7 +320,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_B + "_forward_path"))
                 .flow(flow)
-                .cookie(new Cookie(FLOW_B_FORWARD_COOKIE))
+                .cookie(new FlowSegmentCookie(FLOW_B_FORWARD_COOKIE))
                 .meterId(new MeterId(FLOW_B_FORWARD_METER_ID))
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
@@ -332,7 +335,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         FlowPath reverseFlowPath = FlowPath.builder()
                 .pathId(new PathId(TEST_FLOW_ID_B + "_reverse_path"))
                 .flow(flow)
-                .cookie(new Cookie(FLOW_B_REVERSE_COOKIE))
+                .cookie(new FlowSegmentCookie(FLOW_B_REVERSE_COOKIE))
                 .meterId(new MeterId(FLOW_B_REVERSE_METER_ID))
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
@@ -656,7 +659,8 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .instructions(FlowInstructions.builder()
                         .applyActions(FlowApplyActions.builder()
                                 .flowOutput(dstPort)
-                                .fieldAction(flowSetFieldAction)
+                                .setFieldActions(flowSetFieldAction == null
+                                        ? Lists.newArrayList() : Lists.newArrayList(flowSetFieldAction))
                                 .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
                                 .build())
                         .goToMeter(meterId)

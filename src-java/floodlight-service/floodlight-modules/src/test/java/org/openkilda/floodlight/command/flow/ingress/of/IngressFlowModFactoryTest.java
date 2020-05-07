@@ -18,14 +18,16 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -66,7 +68,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
             SwitchFeature.METERS);
 
     protected static final String flowId = "flow-id-unit-test";
-    protected static final Cookie cookie = Cookie.buildForwardCookie(1);
+    protected static final Cookie cookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1);
 
     protected static final FlowEndpoint endpointSingleVlan = new FlowEndpoint(
             new SwitchId(datapathIdAlpha.getLong()), 10, 100);

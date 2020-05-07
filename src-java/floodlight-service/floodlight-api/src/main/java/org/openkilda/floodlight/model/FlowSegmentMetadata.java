@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.model;
 
-import org.openkilda.model.Cookie;
+import org.openkilda.model.cookie.Cookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

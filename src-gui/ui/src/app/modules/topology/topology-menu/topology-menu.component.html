@@ -47,23 +47,18 @@
   </div>
 <div class="topology-txt" id="topology-txt" [@changeState]="showInfoFlag">
   <h1 align="center">Information</h1>
-  <p>1. Graph represents all logical and physical links between
-    switches.</p>
-  <p>2. Hover over switch will show switch name and on click, it
-    will show switch detail information along with port details.</p>
-  <p>3. Click on Physical link will lead to link details page
-    which will provide source &amp; Destination details along with
-    ISL details. It will also provide graph of data being transferred
-    through this link.</p>
-  <p>4. No. mentioned on Logical link represents no. of logical
-    links present between these switches.</p>
-  <p>5. Click on logical link will share list of all logical
-    links present between these switches which will further provide
-    source &amp; destination details of flow along with flow details.
-    It will also provide graph of data being transferred and path
-    (Forward &amp; Reverse) followed by link.</p>
-  <p>6. Select switch and drag for better view of connections.</p>
-  <p>7. Double click on switch to restore graph.</p>
+  <p> 1. Graph represents all logical (Flows) and physical (ISLs) links between switches and their state.</p>
+  <p> 2. One can drag the switches in any direction to have a better view of the connections.</p>
+  <p> 3. Hovering over a switch or a physical link will show the details, resp.</p>
+  <p> 4. Single click in case of physical link and double click in case of switch will redirect one to the details page of the clicked object.</p>
+  <p> 5. Clicking on the physical link will redirect one to the details page of the ISL along with the graph of data being transferred through it.</p>
+  <p> 6. Clicking on logical link will redirect one to the Flows LIST page that lists all the flows, present between the two switches, and their details in a tabular form.</p>
+  <p> 7. Number mentioned on logical link represents the number of flows present between two switches.</p>
+  <p> 8. Clicking, twice, on the switch will redirect one to the Switch details page along with the PORT DETAILS.</p>
+  <p> 9. One can perform the following operations by using the button menu on the mid-right corner of the Canvas:</p>
+    <p> >> Search for the desired switch.</p>
+    <p> >> Maximize or Minimize the topology.</p>
+    <p> >> Reset the topology to its initial state.</p>
   <div class="clear clearfix"></div>
 </div>
 

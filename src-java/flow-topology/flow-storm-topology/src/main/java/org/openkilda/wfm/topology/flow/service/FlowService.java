@@ -29,11 +29,11 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.model.Cookie;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
@@ -42,6 +42,8 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
@@ -1016,16 +1018,19 @@ public class FlowService extends BaseFlowService {
     }
 
     private void setResourcesInPaths(FlowPathPair pathPair, FlowResources flowResources) {
+        final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
+                .flowEffectiveId(flowResources.getUnmaskedCookie());
+
         FlowPath forwardPath = pathPair.getForward();
         forwardPath.setPathId(flowResources.getForward().getPathId());
-        forwardPath.setCookie(Cookie.buildForwardCookie(flowResources.getUnmaskedCookie()));
+        forwardPath.setCookie(cookieBuilder.direction(FlowPathDirection.FORWARD).build());
         if (flowResources.getForward().getMeterId() != null) {
             forwardPath.setMeterId(flowResources.getForward().getMeterId());
         }
 
         FlowPath reversePath = pathPair.getReverse();
         reversePath.setPathId(flowResources.getReverse().getPathId());
-        reversePath.setCookie(Cookie.buildReverseCookie(flowResources.getUnmaskedCookie()));
+        reversePath.setCookie(cookieBuilder.direction(FlowPathDirection.REVERSE).build());
         if (flowResources.getReverse().getMeterId() != null) {
             reversePath.setMeterId(flowResources.getReverse().getMeterId());
         }
@@ -1403,7 +1408,7 @@ public class FlowService extends BaseFlowService {
         List<CommandData> deallocationCommands = flowPaths.stream()
                 .map(flowPath ->
                         new DeallocateFlowResourcesRequest(flowId,
-                                flowPath.getFlowPath().getCookie().getUnmaskedValue(),
+                                flowPath.getFlowPath().getCookie().getFlowEffectiveId(),
                                 flowPath.getFlowPath().getPathId(),
                                 flowPath.getFlowPath().getFlow().getEncapsulationType()))
                 .collect(Collectors.toList());

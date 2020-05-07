@@ -43,7 +43,8 @@ public class FlowEventData {
         CREATE("Flow creating"),
         UPDATE("Flow updating"),
         REROUTE("Flow rerouting"),
-        DELETE("Flow deleting");
+        DELETE("Flow deleting"),
+        PATH_SWAP("Flow paths swap");
 
         private String description;
     }

@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import org.openkilda.model.cookie.Cookie;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;

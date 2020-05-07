@@ -51,30 +51,6 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterM
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.model.Cookie.ARP_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
-import static org.openkilda.model.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
-import static org.openkilda.model.Cookie.ARP_TRANSIT_COOKIE;
-import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
-import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
-import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
-import static org.openkilda.model.Cookie.LLDP_TRANSIT_COOKIE;
-import static org.openkilda.model.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
-import static org.openkilda.model.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
-import static org.openkilda.model.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
-import static org.openkilda.model.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
-import static org.openkilda.model.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
-import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
-import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
-import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
-import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
@@ -86,6 +62,32 @@ import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
+import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ARP_TRANSIT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.CATCH_BFD_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
@@ -942,10 +944,10 @@ public class SwitchManagerTest {
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
                 LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE,
                 ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
-                ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_OUTPUT_VLAN_COOKIE, SERVER_42_OUTPUT_VXLAN_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(24);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(26);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -956,11 +958,11 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true);
+                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true, true);
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(24, actual.size());
+        assertEquals(26, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -986,6 +988,8 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_VXLAN_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_OUTPUT_VLAN_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_OUTPUT_VXLAN_COOKIE)))));
 
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
@@ -995,7 +999,8 @@ public class SwitchManagerTest {
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE,
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
                 LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE,
-                ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE));
+                ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE,
+                SERVER_42_OUTPUT_VLAN_COOKIE, SERVER_42_OUTPUT_VXLAN_COOKIE));
     }
 
     @Test
@@ -1015,10 +1020,11 @@ public class SwitchManagerTest {
                 MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE,
                 LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
                 ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE,
-                ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
+                ARP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_OUTPUT_VLAN_COOKIE,
+                SERVER_42_OUTPUT_VXLAN_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(40);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(42);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -1029,7 +1035,7 @@ public class SwitchManagerTest {
 
         // when
         List<Long> deletedRules = switchManager.deleteDefaultRules(dpid, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true);
+                Collections.emptyList(), Collections.emptySet(), Collections.emptySet(), true, true, true, true);
 
         // then
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -1040,13 +1046,13 @@ public class SwitchManagerTest {
                 LLDP_INGRESS_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_VXLAN_COOKIE,
                 LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE,
                 ARP_INGRESS_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE,
-                ARP_POST_INGRESS_ONE_SWITCH_COOKIE));
+                ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SERVER_42_OUTPUT_VLAN_COOKIE, SERVER_42_OUTPUT_VXLAN_COOKIE));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(40, actual.size());
+        assertEquals(42, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 24);
+        List<OFFlowMod> rulesMod = actual.subList(0, 26);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -1073,6 +1079,8 @@ public class SwitchManagerTest {
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_VXLAN_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ARP_POST_INGRESS_ONE_SWITCH_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_OUTPUT_VLAN_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(SERVER_42_OUTPUT_VXLAN_COOKIE)))));
 
 
         // verify meters deletion

@@ -1,5 +1,5 @@
 <div class="usermanagement-table-wrapper" [hidden]="hide"></div>
-<table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
+<table datatable id="permission_table" [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
   <thead>
     <tr class="tableHeading" role="row">
       <th class="tableColumn">
@@ -25,7 +25,7 @@
         <!-- <i title="Edit" (click)="OpenTab('permission-edit' ,permission.permission_id)" class="fa fa-pencil-square-o fa-2x cursor-pointer" *ngIf="commonService.hasPermission('um_user_edit')"></i> -->
         <i title="Assign Roles" (click)="OpenTab('permission-assign' ,permission.permission_id)" class="fa fa-users fa-2x" *ngIf="commonService.hasPermission('um_assign_permission_to_roles')"></i>
         <i title="View Roles" (click)="OpenTab('permission-view' ,permission.permission_id)" class="fa fa-user fa-2x" *ngIf="commonService.hasPermission('um_permission_view_roles')"></i>
-        <i title="Inactive" (click)="activeInactivePermission(permission.permission_id, permission.status)" [ngClass]="{'fa-toggle-on': permission.status== 'Active', 'fa-toggle-off': permission.status== 'Inactive'}" class="fa cursor-pointer fa-2x" *ngIf="commonService.hasPermission('um_permission_activate')"></i>
+        <i title="Active/Inactive" (click)="activeInactivePermission(permission.permission_id, permission.status)" [ngClass]="{'fa-toggle-on': permission.status== 'Active', 'fa-toggle-off': permission.status== 'Inactive'}" class="fa cursor-pointer fa-2x" *ngIf="commonService.hasPermission('um_permission_activate')"></i>
         <!-- <i title="Delete" (click)="deletePemission(permission.permission_id)" class="fa fa-trash-o fa-2x cursor-pointer" *ngIf="commonService.hasPermission('um_user_delete')"></i> -->
         </td>
     </tr>

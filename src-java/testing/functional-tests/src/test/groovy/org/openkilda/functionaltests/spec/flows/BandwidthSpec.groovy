@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -104,6 +105,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         [flow1.id, flow2.id].each { flowHelper.deleteFlow(it) }
     }
 
+    @Tidy
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -123,8 +125,12 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
+
+        cleanup:
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "Unable to exceed bandwidth limit on ISL when updating a flow"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -152,7 +158,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         e.rawStatusCode == 404
 
-        and: "Delete the flow"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
     }
 

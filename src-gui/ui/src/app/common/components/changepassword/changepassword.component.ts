@@ -3,6 +3,7 @@ import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { UserService } from '../../services/user.service';
 import { ToastrService } from 'ngx-toastr';
+import { LoaderService } from '../../services/loader.service';
 
 
 @Component({
@@ -24,7 +25,8 @@ export class ChangepasswordComponent implements OnInit {
     private formBuilder:FormBuilder, 
     private userService: UserService,
     private toastr: ToastrService,
-    private modalService: NgbModal
+    private modalService: NgbModal,
+    private loader:LoaderService
   ) {
 
     // Get userId from session
@@ -78,7 +80,7 @@ export class ChangepasswordComponent implements OnInit {
   */
   submitForm(){
     this.submitted = true;
-    if (this.changePasswordForm.invalid && this.changePasswordFormGroup.invalid) {
+    if (this.changePasswordForm.invalid || this.changePasswordFormGroup.invalid) {
       return;
     }
 
@@ -90,11 +92,13 @@ export class ChangepasswordComponent implements OnInit {
     if(this.is2FaEnabled == 'true'){
       this.formData.code = this.changePasswordForm.value.otp
     }
-
-    this.userService.changePassword(this.userId, this.formData).subscribe(user => {
+     this.loader.show('Changing password..');
+     this.userService.changePassword(this.userId, this.formData).subscribe(user => {
       this.toastr.success("Password changed successfully!",'Success! ');
       this.modalService.dismissAll();
+      this.loader.hide();
     },error =>{
+      this.loader.hide();
       this.toastr.error(error.error['error-message'],'Error! ');
     });
   }

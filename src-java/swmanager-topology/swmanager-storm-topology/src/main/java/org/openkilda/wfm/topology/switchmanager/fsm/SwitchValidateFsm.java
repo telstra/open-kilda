@@ -236,9 +236,11 @@ public class SwitchValidateFsm
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
         boolean switchLldp = switchProperties.isSwitchLldp();
         boolean switchArp = switchProperties.isSwitchArp();
+        boolean server42FlowRtt = switchProperties.isServer42FlowRtt();
 
         carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp,
-                switchArp, islPorts, flowPorts, flowLldpPorts, flowArpPorts));
+                switchArp, server42FlowRtt, switchProperties.getServer42Port(),
+                switchProperties.getServer42MacAddress(), islPorts, flowPorts, flowLldpPorts, flowArpPorts));
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));

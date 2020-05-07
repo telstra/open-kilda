@@ -133,6 +133,14 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
       autoWidth: true,
       colResize: false,
       dom: 'tpli',
+      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      drawCallback:function(){
+        if(jQuery('#permission_table tbody tr').length < 10){
+          jQuery('#permission_table_next').addClass('disabled');
+        }else{
+          jQuery('#permission_table_next').removeClass('disabled');
+        }
+      },
       "aoColumns": [{
           sWidth: '20%',
         },{

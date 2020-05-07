@@ -22,6 +22,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
@@ -30,8 +31,8 @@ public class FlowApplyActions implements Serializable {
 
     @JsonProperty("output")
     private String flowOutput;
-    @JsonProperty("set_field")
-    private FlowSetFieldAction fieldAction;
+    @JsonProperty("set_field_actions")
+    private List<FlowSetFieldAction> setFieldActions;
     @JsonProperty("push_vlan")
     private String pushVlan;
     @JsonProperty("POP_VLAN")
@@ -47,12 +48,13 @@ public class FlowApplyActions implements Serializable {
 
     @JsonCreator
     public FlowApplyActions(
-            @JsonProperty("output") String flowOutput, @JsonProperty("set_field") FlowSetFieldAction fieldAction,
+            @JsonProperty("output") String flowOutput,
+            @JsonProperty("set_field_actions") List<FlowSetFieldAction> setFieldActions,
             @JsonProperty("push_vlan") String pushVlan, @JsonProperty("POP_VLAN") String popVlan,
             @JsonProperty("meter") String meter, @JsonProperty("push_vxlan") String pushVxlan,
             @JsonProperty("group") String group, @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction) {
         this.flowOutput = flowOutput;
-        this.fieldAction = fieldAction;
+        this.setFieldActions = setFieldActions;
         this.pushVlan = pushVlan;
         this.popVlan = popVlan;
         this.meter = meter;

@@ -56,6 +56,10 @@ public class RoleValidator {
             LOGGER.warn("Validation fail for role(name: " + role.getName() + "). Error: "
                     + messageUtil.getAttributeNotNull("name"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name"));
+        } else if (role.getName().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Role name"));
+        } else if (role.getDescription().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
         }
 
         List<RoleEntity> roleEntityList = roleRepository.findAll();
@@ -86,6 +90,10 @@ public class RoleValidator {
                     + messageUtil.getAttributeNotNull("name, status, description and permissions"));
             throw new RequestValidationException(
                     messageUtil.getAttributeNotNull("name, status, description and permissions"));
+        } else if (role.getName().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Role name"));
+        } else if (role.getDescription().length() > 255) {
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
         }
 
         if (!ValidatorUtil.isNull(role.getName())) {
