@@ -32,7 +32,9 @@ import org.openkilda.testing.service.traffexam.model.Host;
 import org.openkilda.testing.service.traffexam.model.TimeLimit;
 import org.openkilda.testing.service.traffexam.model.Vlan;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -66,6 +68,13 @@ public class FlowTrafficExamBuilder {
 
         checkIsFlowApplicable(flow, source.isPresent(), dest.isPresent());
 
+        List<Vlan> srcVlanIds = new ArrayList<Vlan>();
+        srcVlanIds.add(new Vlan(flow.getSource().getVlanId()));
+        srcVlanIds.add(new Vlan(flow.getSource().getInnerVlanId()));
+        List<Vlan> dstVlanIds = new ArrayList<Vlan>();
+        dstVlanIds.add(new Vlan(flow.getDestination().getVlanId()));
+        dstVlanIds.add(new Vlan(flow.getDestination().getInnerVlanId()));
+
         //noinspection ConstantConditions
         Host sourceHost = traffExam.hostByName(source.get().getName());
         //noinspection ConstantConditions
@@ -76,9 +85,9 @@ public class FlowTrafficExamBuilder {
         Exam forward = Exam.builder()
                 .flow(flow)
                 .source(sourceHost)
-                .sourceVlan(new Vlan(flow.getSource().getVlanId()))
+                .sourceVlans(srcVlanIds)
                 .dest(destHost)
-                .destVlan(new Vlan(flow.getDestination().getVlanId()))
+                .destVlans(dstVlanIds)
                 .bandwidthLimit(new Bandwidth(bandwidth))
                 .burstPkt(100)
                 .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
@@ -86,9 +95,9 @@ public class FlowTrafficExamBuilder {
         Exam reverse = Exam.builder()
                 .flow(flow)
                 .source(destHost)
-                .sourceVlan(new Vlan(flow.getDestination().getVlanId()))
+                .sourceVlans(dstVlanIds)
                 .dest(sourceHost)
-                .destVlan(new Vlan(flow.getSource().getVlanId()))
+                .destVlans(srcVlanIds)
                 .bandwidthLimit(new Bandwidth(bandwidth))
                 .burstPkt(100)
                 .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
@@ -127,6 +136,13 @@ public class FlowTrafficExamBuilder {
         checkIsFlowApplicable(flow, source.isPresent() && !"OF_12".equals(srcOfVersion),
                 dest.isPresent() && !"OF_12".equals(dstOfVersion));
 
+        List<Vlan> srcVlanIds = new ArrayList<Vlan>();
+        srcVlanIds.add(new Vlan(flow.getSource().getVlanId()));
+        srcVlanIds.add(new Vlan(flow.getSource().getInnerVlanId()));
+        List<Vlan> dstVlanIds = new ArrayList<Vlan>();
+        dstVlanIds.add(new Vlan(flow.getDestination().getVlanId()));
+        dstVlanIds.add(new Vlan(flow.getDestination().getInnerVlanId()));
+
         //noinspection ConstantConditions
         Host sourceHost = traffExam.hostByName(source.get().getName());
         //noinspection ConstantConditions
@@ -137,9 +153,9 @@ public class FlowTrafficExamBuilder {
         return Exam.builder()
                 .flow(flow)
                 .source(sourceHost)
-                .sourceVlan(new Vlan(flow.getSource().getVlanId()))
+                .sourceVlans(srcVlanIds)
                 .dest(destHost)
-                .destVlan(new Vlan(flow.getDestination().getVlanId()))
+                .destVlans(dstVlanIds)
                 .bandwidthLimit(new Bandwidth(bandwidth))
                 .burstPkt(100)
                 .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
