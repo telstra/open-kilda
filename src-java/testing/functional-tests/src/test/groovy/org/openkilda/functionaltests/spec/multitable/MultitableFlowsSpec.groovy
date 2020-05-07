@@ -759,7 +759,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP ||
                     northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
-            assert newFlowPath2 != desiredPath
+            assert newFlowPath2 == desiredPath
         }
 
         then: "Flow rules are still in the same table mode as previously"
