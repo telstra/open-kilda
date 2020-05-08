@@ -57,9 +57,11 @@ public class RoleValidator {
                     + messageUtil.getAttributeNotNull("name"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name"));
         } else if (role.getName().length() > 255) {
-            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Role name"));
-        } else if (role.getDescription().length() > 255) {
-            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Role Name"));
+        } else if (!ValidatorUtil.isNull(role.getDescription())) {
+            if (role.getDescription().length() > 255) {
+                throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
+            }
         }
 
         List<RoleEntity> roleEntityList = roleRepository.findAll();
@@ -91,7 +93,7 @@ public class RoleValidator {
             throw new RequestValidationException(
                     messageUtil.getAttributeNotNull("name, status, description and permissions"));
         } else if (role.getName().length() > 255) {
-            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Role name"));
+            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Name"));
         } else if (role.getDescription().length() > 255) {
             throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Description"));
         }

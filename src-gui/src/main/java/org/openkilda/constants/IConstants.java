@@ -289,6 +289,8 @@ public abstract class IConstants {
         
         public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
         
+        public static final String SW_SWITCH_METERS = "sw_switch_meters";
+        
     }
 
     public final class Settings {
