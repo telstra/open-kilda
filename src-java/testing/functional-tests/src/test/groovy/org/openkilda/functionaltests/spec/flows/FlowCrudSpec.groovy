@@ -410,7 +410,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.CONFLICT
         error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow, conflictingFlow)
 
-        and: "Cleanup: delete the dominant flow"
+        cleanup:
         flowHelper.deleteFlow(flow.id)
         !error && flowHelper.deleteFlow(conflictingFlow.id)
 
