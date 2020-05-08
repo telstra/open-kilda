@@ -81,11 +81,8 @@ Track port UP/DOWN state and control discovery poll process.
 
 ## Uni-ISL layer
 Collect info about both ISL endpoint(by extracting remote point from discovery
-events). Responsible for addressing ISL event processor (correctly populate
-storm tuple with fields used in stream fields grouping), also responsible for 
-tracking moved state.
-
-![Uni-ISL FSM](uni-isl-FSM.png)
+events). Responsible for routing ISL event (correctly populate storm tuple with 
+fields used in stream fields grouping), also responsible for tracking moved state.
 
 ## ISL events processor
 Collect both discovery-event for both ISL directions, manage DB representation of

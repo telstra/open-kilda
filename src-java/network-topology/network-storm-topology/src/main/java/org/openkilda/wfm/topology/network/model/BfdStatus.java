@@ -15,16 +15,6 @@
 
 package org.openkilda.wfm.topology.network.model;
 
-import org.openkilda.model.IslStatus;
-
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-
-import java.time.Instant;
-
-@Value
-@EqualsAndHashCode(of = {"status"})
-public class IslEndpointRoundTripStatus {
-    Instant expireAt;
-    IslStatus status;
+public enum BfdStatus {
+    UP, DOWN, KILL
 }

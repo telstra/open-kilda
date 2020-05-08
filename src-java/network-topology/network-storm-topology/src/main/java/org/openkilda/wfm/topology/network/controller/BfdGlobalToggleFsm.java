@@ -92,6 +92,9 @@ public class BfdGlobalToggleFsm
             builder.transition()
                     .from(BfdGlobalToggleFsmState.DOWN_ENABLED).to(BfdGlobalToggleFsmState.UP_ENABLED)
                     .on(BfdGlobalToggleFsmEvent.BFD_UP);
+            builder.internalTransition()
+                    .within(BfdGlobalToggleFsmState.DOWN_ENABLED).on(BfdGlobalToggleFsmEvent.BFD_KILL)
+                    .callMethod("emitBfdKill");
 
             // DOWN_DISABLED
             builder.transition()

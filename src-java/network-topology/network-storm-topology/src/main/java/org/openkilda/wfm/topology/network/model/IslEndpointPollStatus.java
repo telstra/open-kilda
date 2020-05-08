@@ -17,14 +17,17 @@ package org.openkilda.wfm.topology.network.model;
 
 import org.openkilda.model.IslStatus;
 
-import lombok.EqualsAndHashCode;
+import lombok.AllArgsConstructor;
 import lombok.Value;
 
-import java.time.Instant;
-
 @Value
-@EqualsAndHashCode(of = {"status"})
-public class IslEndpointRoundTripStatus {
-    Instant expireAt;
+@AllArgsConstructor
+public class IslEndpointPollStatus {
+    IslDataHolder islData;
+
     IslStatus status;
+
+    public IslEndpointPollStatus(IslStatus status) {
+        this(null, status);
+    }
 }
