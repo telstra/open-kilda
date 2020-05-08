@@ -37,6 +37,7 @@ import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.controller.port.PortReportFsm;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -156,6 +157,20 @@ public class NetworkPortService {
         PortFsmContext context = PortFsmContext.builder(carrier).build();
 
         controllerExecutor.fire(portFsm, PortFsmEvent.FAIL, context);
+    }
+
+    /**
+     * Handle round trip status notification.
+     */
+    public void roundTripStatusNotification(RoundTripStatus status) {
+        log.debug("Port service receive round trip status notification: {}", status);
+
+        PortFsm portFsm = locateController(status.getEndpoint());
+        PortFsmContext context = PortFsmContext.builder(carrier)
+                .roundTripStatus(status)
+                .build();
+
+        controllerExecutor.fire(portFsm, PortFsmEvent.ROUND_TRIP_STATUS, context);
     }
 
     /**

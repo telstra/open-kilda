@@ -31,11 +31,13 @@ import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.isl.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,16 +51,16 @@ public class NetworkIslService {
     private final NetworkOptions options;
 
     public NetworkIslService(IIslCarrier carrier, PersistenceManager persistenceManager, NetworkOptions options) {
-        this(carrier, persistenceManager, options, NetworkTopologyDashboardLogger.builder());
+        this(carrier, persistenceManager, options, NetworkTopologyDashboardLogger.builder(), Clock.systemUTC());
     }
 
     @VisibleForTesting
     NetworkIslService(IIslCarrier carrier, PersistenceManager persistenceManager, NetworkOptions options,
-                      NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+                      NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder, Clock clock) {
         this.carrier = carrier;
         this.options = options;
 
-        controllerFactory = IslFsm.factory(persistenceManager, dashboardLoggerBuilder);
+        controllerFactory = IslFsm.factory(clock, persistenceManager, dashboardLoggerBuilder);
         controllerExecutor = controllerFactory.produceExecutor();
     }
 
@@ -114,6 +116,18 @@ public class NetworkIslService {
         IslFsm islFsm = locateController(reference).fsm;
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
+    }
+
+    /**
+     * Handle round trip status notification.
+     */
+    public void roundTripStatusNotification(IslReference reference, RoundTripStatus status) {
+        log.debug("ISL service receive ROUND TRIP STATUS for {} (on {})", reference, status.getEndpoint());
+        IslFsm islFsm = locateController(reference).fsm;
+        IslFsmContext context = IslFsmContext.builder(carrier, status.getEndpoint())
+                .roundTripStatus(status)
+                .build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.ROUND_TRIP_STATUS, context);
     }
 
     /**

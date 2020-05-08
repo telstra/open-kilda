@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.service;
+package org.openkilda.wfm.topology.network.storm.bolt.uniisl.command;
 
-import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
+import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 
-public interface IWatcherCarrier {
-    void discoveryReceived(Endpoint endpoint, long packetNo, IslInfoData discoveryEvent, long currentTime);
+public class UniIslRoundTripStatusCommand extends UniIslCommand {
+    private final RoundTripStatus status;
 
-    void discoveryFailed(Endpoint endpoint, long packetNo, long currentTime);
+    public UniIslRoundTripStatusCommand(RoundTripStatus status) {
+        super(status.getEndpoint());
+        this.status = status;
+    }
 
-    void sendRoundTripStatus(RoundTripStatus status);
-
-    void sendDiscovery(DiscoverIslCommandData discoveryRequest);
-
-    void clearDiscovery(Endpoint endpoint);
+    @Override
+    public void apply(UniIslHandler handler) {
+        handler.processRoundTripStatus(status);
+    }
 }

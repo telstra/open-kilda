@@ -95,6 +95,10 @@ public class Isl implements Serializable {
     @Convert(graphPropertyType = String.class)
     private IslStatus actualStatus;
 
+    @Property("round_trip_status")
+    @Convert(graphPropertyType = String.class)
+    private IslStatus roundTripStatus;
+
     @Property(name = "down_reason")
     @Convert(graphPropertyType = String.class)
     private IslDownReason downReason;
@@ -131,7 +135,7 @@ public class Isl implements Serializable {
     @Builder(toBuilder = true)
     public Isl(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
                long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
-               IslStatus status, IslStatus actualStatus,
+               IslStatus status, IslStatus actualStatus, IslStatus roundTripStatus,
                Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
                String bfdSessionStatus, Instant timeUnstable) {
         this.srcSwitch = srcSwitch;
@@ -146,6 +150,7 @@ public class Isl implements Serializable {
         this.availableBandwidth = availableBandwidth;
         this.status = status;
         this.actualStatus = actualStatus;
+        this.roundTripStatus = roundTripStatus;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.underMaintenance = underMaintenance;
