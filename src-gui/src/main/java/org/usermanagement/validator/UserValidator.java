@@ -112,14 +112,11 @@ public class UserValidator {
             LOGGER.warn("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributeInvalid("status", userInfo.getStatus()));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("status", userInfo.getStatus()));
-        } else if (userInfo.getName().length() > 255) {
-            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Name"));
-        } else if (userInfo.getEmail().length() > 255) {
-            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Email"));
-        } else if (userInfo.getUsername().length() > 255) {
-            throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Username"));
+        } else if (!ValidatorUtil.isNull(userInfo.getName())) {
+            if (userInfo.getName().length() > 255) {
+                throw new RequestValidationException(messageUtil.getAttributeLengthInvalid("Name"));
+            }
         }
-
         if (!ValidatorUtil.isNull(userInfo.getUsername())) {
             UserEntity userEntityTemp = userRepository.findByUsernameIgnoreCase(userInfo.getUsername());
             if (userEntityTemp != null && !userEntityTemp.getUserId().equals(userInfo.getUserId())) {
