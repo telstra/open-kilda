@@ -74,22 +74,11 @@ public abstract class CookieBase implements Serializable {
     }
 
     /**
-     * Extract and return "type" field is save way (return empty {@link Optional} object if type is invalid).
-     */
-    public Optional<CookieType> getTypeSafe() {
-        try {
-            return Optional.of(getType());
-        } catch (IllegalArgumentException e) {
-            return Optional.empty();
-        }
-    }
-
-    /**
      * Extract and return "type" field.
      */
     public CookieType getType() {
         int numericType = (int) getField(TYPE_FIELD);
-        return resolveEnum(CookieType.values(), numericType, CookieType.class);
+        return resolveEnum(CookieType.values(), numericType).orElse(CookieType.INVALID);
     }
 
     protected long getField(BitField field) {
@@ -123,15 +112,13 @@ public abstract class CookieBase implements Serializable {
      * Scan all enum elements and compare their numberic representation with {@code needle} argument. Returns matched
      * enum element.
      */
-    protected static <T extends NumericEnumField> T resolveEnum(T[] valuesSpace, long needle, Class<T> typeRef) {
+    protected static <T extends NumericEnumField> Optional<T> resolveEnum(T[] valuesSpace, long needle) {
         for (T entry : valuesSpace) {
             if (entry.getValue() == needle) {
-                return entry;
+                return Optional.of(entry);
             }
         }
-
-        throw new IllegalArgumentException(String.format(
-                "Unable to map value 0x%x value into %s value", needle, typeRef.getSimpleName()));
+        return Optional.empty();
     }
 
     protected static long setField(long value, BitField field, long payload) {
@@ -163,9 +150,13 @@ public abstract class CookieBase implements Serializable {
         MULTI_TABLE_INGRESS_RULES(0x005),
         ARP_INPUT_CUSTOMER_TYPE(0x006),
         INGRESS_SEGMENT(0x007),   // used for ingress flow segment and for one switch flow segments
-        SHARED_OF_FLOW(0x008);
+        SHARED_OF_FLOW(0x008),
 
-        private int value;
+        // This do not consume any value from allowed address space - you can define another field with -1 value.
+        // (must be last entry)
+        INVALID(-1);
+
+        private final int value;
 
         CookieType(int value) {
             this.value = value;
