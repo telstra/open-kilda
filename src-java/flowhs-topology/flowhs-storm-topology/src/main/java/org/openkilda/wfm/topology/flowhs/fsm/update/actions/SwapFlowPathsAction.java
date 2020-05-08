@@ -36,6 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Optional;
+
 @Slf4j
 public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowResourcesManager resourcesManager;
@@ -50,20 +52,29 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
         persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
-            FlowPath oldPrimaryForward = getFlowPath(flow, flow.getForwardPathId());
-            stateMachine.setOldPrimaryForwardPath(oldPrimaryForward.getPathId());
-            stateMachine.setOldPrimaryForwardPathStatus(oldPrimaryForward.getStatus());
-            flowPathRepository.updateStatus(oldPrimaryForward.getPathId(), FlowPathStatus.IN_PROGRESS);
+            Optional<FlowPath> oldPrimaryForward = flow.getPath(flow.getForwardPathId());
+            oldPrimaryForward.ifPresent(path -> {
+                stateMachine.setOldPrimaryForwardPath(path.getPathId());
+                stateMachine.setOldPrimaryForwardPathStatus(path.getStatus());
+                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
+            });
 
-            FlowPath oldPrimaryReverse = getFlowPath(flow, flow.getReversePathId());
-            stateMachine.setOldPrimaryReversePath(oldPrimaryReverse.getPathId());
-            stateMachine.setOldPrimaryReversePathStatus(oldPrimaryReverse.getStatus());
-            flowPathRepository.updateStatus(oldPrimaryReverse.getPathId(), FlowPathStatus.IN_PROGRESS);
+            Optional<FlowPath> oldPrimaryReverse = flow.getPath(flow.getReversePathId());
+            oldPrimaryReverse.ifPresent(path -> {
+                stateMachine.setOldPrimaryReversePath(path.getPathId());
+                stateMachine.setOldPrimaryReversePathStatus(path.getStatus());
+                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
+            });
 
             FlowEncapsulationType oldFlowEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
-            FlowResources oldPrimaryResources = getResources(oldPrimaryForward, oldPrimaryReverse,
-                    oldFlowEncapsulationType);
-            stateMachine.getOldResources().add(oldPrimaryResources);
+
+            if (oldPrimaryForward.isPresent() || oldPrimaryReverse.isPresent()) {
+                FlowResources oldPrimaryResources = getResources(
+                        oldPrimaryForward.orElseGet(oldPrimaryReverse::get),
+                        oldPrimaryReverse.orElseGet(oldPrimaryForward::get),
+                        oldFlowEncapsulationType);
+                stateMachine.getOldResources().add(oldPrimaryResources);
+            }
 
             PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
             flow.setForwardPath(newPrimaryForward);
@@ -71,29 +82,30 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
             flow.setReversePath(newPrimaryReverse);
 
             log.debug("Swapping the primary paths {}/{} with {}/{}",
-                    oldPrimaryForward.getPathId(), oldPrimaryReverse.getPathId(),
+                    oldPrimaryForward.map(FlowPath::getPathId).orElse(null),
+                    oldPrimaryReverse.map(FlowPath::getPathId).orElse(null),
                     newPrimaryForward, newPrimaryReverse);
 
             saveHistory(stateMachine, flow.getFlowId(), newPrimaryForward, newPrimaryReverse);
 
-            FlowPath oldProtectedForward = null;
-            if (flow.getProtectedForwardPathId() != null) {
-                oldProtectedForward = getFlowPath(flow, flow.getProtectedForwardPathId());
-                stateMachine.setOldProtectedForwardPath(oldProtectedForward.getPathId());
-                stateMachine.setOldProtectedForwardPathStatus(oldProtectedForward.getStatus());
-                flowPathRepository.updateStatus(oldProtectedForward.getPathId(), FlowPathStatus.IN_PROGRESS);
-            }
+            Optional<FlowPath> oldProtectedForward = flow.getPath(flow.getProtectedForwardPathId());
+            oldProtectedForward.ifPresent(path -> {
+                stateMachine.setOldProtectedForwardPath(path.getPathId());
+                stateMachine.setOldProtectedForwardPathStatus(path.getStatus());
+                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
+            });
 
-            FlowPath oldProtectedReverse = null;
-            if (flow.getProtectedReversePathId() != null) {
-                oldProtectedReverse = getFlowPath(flow, flow.getProtectedReversePathId());
-                stateMachine.setOldProtectedReversePath(oldProtectedReverse.getPathId());
-                stateMachine.setOldProtectedReversePathStatus(oldProtectedReverse.getStatus());
-                flowPathRepository.updateStatus(oldProtectedReverse.getPathId(), FlowPathStatus.IN_PROGRESS);
-            }
+            Optional<FlowPath> oldProtectedReverse = flow.getPath(flow.getProtectedReversePathId());
+            oldProtectedReverse.ifPresent(path -> {
+                stateMachine.setOldProtectedReversePath(path.getPathId());
+                stateMachine.setOldProtectedReversePathStatus(path.getStatus());
+                flowPathRepository.updateStatus(path.getPathId(), FlowPathStatus.IN_PROGRESS);
+            });
 
-            if (oldProtectedForward != null || oldProtectedReverse != null) {
-                FlowResources oldProtectedResources = getResources(oldProtectedForward, oldProtectedReverse,
+            if (oldProtectedForward.isPresent() || oldProtectedReverse.isPresent()) {
+                FlowResources oldProtectedResources = getResources(
+                        oldProtectedForward.orElseGet(oldProtectedReverse::get),
+                        oldProtectedReverse.orElseGet(oldProtectedForward::get),
                         oldFlowEncapsulationType);
                 stateMachine.getOldResources().add(oldProtectedResources);
             }

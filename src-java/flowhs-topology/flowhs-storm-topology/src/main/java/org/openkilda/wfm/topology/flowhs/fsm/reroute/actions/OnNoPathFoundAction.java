@@ -57,8 +57,12 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getForwardPathId(), flow.getReversePathId());
-                    flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
-                    flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                    if (flow.getForwardPathId() != null) {
+                        flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
+                    }
+                    if (flow.getReversePathId() != null) {
+                        flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                    }
                 }
             }
 
@@ -70,8 +74,12 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",
                             flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
-                    flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
-                    flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                    if (flow.getProtectedForwardPathId() != null) {
+                        flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
+                    }
+                    if (flow.getProtectedReversePathId() != null) {
+                        flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                    }
                 }
             }
         });

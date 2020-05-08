@@ -77,9 +77,10 @@ public class AllocateProtectedResourcesAction extends
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow, pathsToReuse);
 
-        boolean overlappingProtectedPathFound =
-                flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
-                        || flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
+        boolean overlappingProtectedPathFound = primaryForwardPath != null
+                && flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
+                || primaryReversePath != null
+                && flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
             String message = "Couldn't find non overlapping protected path";
             stateMachine.saveActionToHistory(message);

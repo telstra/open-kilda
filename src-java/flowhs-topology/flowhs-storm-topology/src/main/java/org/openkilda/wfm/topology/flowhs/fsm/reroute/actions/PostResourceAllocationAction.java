@@ -66,7 +66,7 @@ public class PostResourceAllocationAction extends
             Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             currentForwardId = flow.getForwardPathId();
         }
-        FlowPath currentForwardPath = getFlowPath(currentForwardId);
+        FlowPath currentForwardPath = currentForwardId != null ? getFlowPath(currentForwardId) : null;
 
         if (stateMachine.getNewPrimaryForwardPath() == null && stateMachine.getNewPrimaryReversePath() == null
                 && stateMachine.getNewProtectedForwardPath() == null

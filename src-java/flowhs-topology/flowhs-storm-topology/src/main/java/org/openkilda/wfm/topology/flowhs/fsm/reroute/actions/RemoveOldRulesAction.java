@@ -56,22 +56,45 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
         Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
 
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
+        if (stateMachine.getOldPrimaryForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             oldForward.setFlow(flow);
+
+            if (stateMachine.getOldPrimaryReversePath() != null) {
+                FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
+                oldReverse.setFlow(flow);
+                factories.addAll(commandBuilder.buildAll(
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            } else {
+                factories.addAll(commandBuilder.buildAll(
+                        stateMachine.getCommandContext(), flow, oldForward));
+
+            }
+        } else if (stateMachine.getOldPrimaryReversePath() != null) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
             oldReverse.setFlow(flow);
             factories.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+                    stateMachine.getCommandContext(), flow, oldReverse));
         }
 
-        if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
+        if (stateMachine.getOldProtectedForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
             oldForward.setFlow(flow);
+
+            if (stateMachine.getOldProtectedReversePath() != null) {
+                FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+                oldReverse.setFlow(flow);
+                factories.addAll(commandBuilder.buildAllExceptIngress(
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            } else {
+                factories.addAll(commandBuilder.buildAllExceptIngress(
+                        stateMachine.getCommandContext(), flow, oldForward));
+            }
+        } else if (stateMachine.getOldProtectedReversePath() != null) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
             oldReverse.setFlow(flow);
             factories.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+                    stateMachine.getCommandContext(), flow, oldReverse));
         }
 
         Map<UUID, FlowSegmentRequestFactory> requestsStorage = stateMachine.getRemoveCommands();
@@ -85,6 +108,12 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
         requestsStorage.forEach((key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
         stateMachine.getRetriedCommands().clear();
 
-        stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+        if (factories.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to remove old rules");
+
+            stateMachine.fire(Event.RULES_REMOVED);
+        } else {
+            stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+        }
     }
 }

@@ -24,6 +24,17 @@ import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import java.util.List;
 
 public interface FlowCommandBuilder {
+    /**
+     * Build install commands for ingress, transit(if needed) and egress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path);
+
+    /**
+     * Build install commands for ingress, transit(if needed) and egress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
+                                             SpeakerRequestBuildContext speakerRequestBuildContext);
+
     List<FlowSegmentRequestFactory> buildAll(
             CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath);
 
@@ -37,6 +48,11 @@ public interface FlowCommandBuilder {
     List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow);
 
     /**
+     * Build install commands for transit(if needed) and egress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow, FlowPath path);
+
+    /**
      * Build install commands for transit(if needed) and egress rules for provided paths.
      */
     List<FlowSegmentRequestFactory> buildAllExceptIngress(
@@ -46,6 +62,11 @@ public interface FlowCommandBuilder {
      * Build install commands for ingress rules for active forward and reverse paths.
      */
     List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow);
+
+    /**
+     * Build install commands for ingress rules for provided path only.
+     */
+    List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow, FlowPath path);
 
     /**
      * Build install commands for ingress rules for provided paths.
