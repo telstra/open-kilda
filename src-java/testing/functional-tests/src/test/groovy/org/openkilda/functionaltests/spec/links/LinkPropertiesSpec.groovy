@@ -206,6 +206,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
+            assert northbound.getLink(isl.reversed).actualState == IslChangeType.FAILED
         }
 
         and: "Delete the link"
