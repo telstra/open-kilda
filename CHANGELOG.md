@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.56.1 (06/05/2020)
+
+### Features:
+-  [#3427](https://github.com/telstra/open-kilda/pull/3427) Feature/port discovery packets (Issue: [#3043](https://github.com/telstra/open-kilda/issues/3043)) [**gui**]
+
+
+### Improvements:
+-  [#3428](https://github.com/telstra/open-kilda/pull/3428) group cookie classes in single package 
+-  [#3405](https://github.com/telstra/open-kilda/pull/3405) add tests for link-delete spec according to #3268 [**tests**]
+-  [#3437](https://github.com/telstra/open-kilda/pull/3437) add tidy annotation for negative tests [**tests**]
+-  [#3373](https://github.com/telstra/open-kilda/pull/3373) Protected Path Swap in Flow HS topology [**northbound**]
+
+### Other changes:
+-  [#3429](https://github.com/telstra/open-kilda/pull/3429) Remove some old tests and add references to #2954, #3028 [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.56.0...v1.56.1).
+
+### Affected Components:
+nb, gui, flow-hs
+
+---
+
 ## v1.56.0 (27/04/2020)
 
 ### Features:
