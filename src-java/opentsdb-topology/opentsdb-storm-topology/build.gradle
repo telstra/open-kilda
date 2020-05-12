@@ -1,6 +1,6 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving' version '4.1.6'
-    id 'com.github.johnrengelman.shadow' version '5.2.0'
+    id 'io.freefair.aspectj.post-compile-weaving'
+    id 'com.github.johnrengelman.shadow'
 }
 
 compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
@@ -8,22 +8,16 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'OpenTSDB Storm Topology'
 dependencies {
-    implementation(project(':base-storm-topology')) {
-        // Flux-Core conflicts with Apache HTTP Client
-        exclude(group: 'org.apache.storm', module: 'flux-core')
-        exclude(group: 'org.apache.storm', module: 'flux-wrappers')
-    }
+    implementation project(':base-storm-topology')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
-    testImplementation(project(path: ':base-storm-topology', configuration: 'testArtifacts')) {
-        // Flux-Core conflicts with Apache HTTP Client
-        exclude(group: 'org.apache.storm', module: 'flux-core')
-        exclude(group: 'org.apache.storm', module: 'flux-wrappers')
-    }
+    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     runtimeOnly project(':kilda-persistence-neo4j')
     testImplementation project(':kilda-persistence-neo4j')
 
-    implementation 'org.apache.storm:storm-opentsdb'
+    implementation('org.apache.storm:storm-opentsdb:1.1.0') {
+        exclude(group: 'org.apache.httpcomponents', module: 'httpclient')
+    }
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core') {
@@ -31,7 +25,6 @@ dependencies {
     }
 
     implementation 'org.hibernate.validator:hibernate-validator'
-    implementation 'org.slf4j:jcl-over-slf4j:1.7.30'
 
     testImplementation 'junit:junit'
     testImplementation 'pl.pragmatists:JUnitParams'
@@ -50,7 +43,10 @@ dependencies {
 
     implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.26'
     implementation 'org.glassfish.jersey.core:jersey-client:2.26'
-    implementation 'org.glassfish.jersey.inject:jersey-hk2:2.26'
+    implementation('org.glassfish.jersey.inject:jersey-hk2:2.26') {
+        // These classes are bundled in org.glassfish.hk2.external:javax.inject
+        exclude(group: 'javax.inject', module: 'javax.inject')
+    }
     implementation 'org.glassfish.jersey.core:jersey-common:2.26'
     implementation 'org.glassfish.jersey.connectors:jersey-apache-connector:2.26'
 

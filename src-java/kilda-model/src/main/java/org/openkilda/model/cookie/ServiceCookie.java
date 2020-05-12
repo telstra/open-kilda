@@ -23,8 +23,6 @@ import org.openkilda.model.bitops.NumericEnumField;
 import lombok.Builder;
 import org.apache.commons.lang3.ArrayUtils;
 
-import java.util.Optional;
-
 public class ServiceCookie extends CookieBase implements Comparable<ServiceCookie> {
     // update ALL_FIELDS if modify fields list
     //                           used by generic cookie -> 0x9FF0_0000_0000_0000L
@@ -69,20 +67,9 @@ public class ServiceCookie extends CookieBase implements Comparable<ServiceCooki
         return new MeterId(getField(SERVICE_TAG_FIELD));
     }
 
-    /**
-     * Extract and return "service tag" field is save way (return empty {@link Optional} object if tag is invalid).
-     */
-    public Optional<ServiceCookieTag> getServiceTagSafe() {
-        try {
-            return Optional.of(getServiceTag());
-        } catch (IllegalArgumentException e) {
-            return Optional.empty();
-        }
-    }
-
     public ServiceCookieTag getServiceTag() {
         long raw = getField(SERVICE_TAG_FIELD);
-        return resolveEnum(ServiceCookieTag.values(), raw, ServiceCookieTag.class);
+        return resolveEnum(ServiceCookieTag.values(), raw).orElse(ServiceCookieTag.INVALID);
     }
 
     @Override
@@ -97,6 +84,10 @@ public class ServiceCookie extends CookieBase implements Comparable<ServiceCooki
         return new ServiceCookieBuilder()
                 .type(getType())
                 .serviceTag(getServiceTag());
+    }
+
+    public static ServiceCookieBuilder builder() {
+        return new ServiceCookieBuilder().type(VALID_TYPE);
     }
 
     private static long makeValue(MeterId meterId) {
@@ -143,9 +134,13 @@ public class ServiceCookie extends CookieBase implements Comparable<ServiceCooki
         ARP_POST_INGRESS_VXLAN_COOKIE(0x17),
         ARP_POST_INGRESS_ONE_SWITCH_COOKIE(0x18),
         SERVER_42_OUTPUT_VLAN_COOKIE(0x19),
-        SERVER_42_OUTPUT_VXLAN_COOKIE(0x1A);
+        SERVER_42_OUTPUT_VXLAN_COOKIE(0x1A),
 
-        private int value;
+        // This do not consume any value from allowed address space - you can define another field with -1 value
+        // (must be last entry)
+        INVALID(-1);
+
+        private final int value;
 
         ServiceCookieTag(int value) {
             this.value = value;

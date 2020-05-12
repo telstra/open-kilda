@@ -17,12 +17,12 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.network.controller.UniIslFsm;
-import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
-import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmEvent;
-import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmState;
+import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdStatus;
+import org.openkilda.wfm.topology.network.model.IslDataHolder;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,17 +31,12 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkUniIslService {
-    private final UniIslFsm.UniIslFsmFactory controllerFactory;
-    private final Map<Endpoint, UniIslFsm> controller = new HashMap<>();
-    private final FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> controllerExecutor;
+    private final Map<Endpoint, IslReference> endpointData = new HashMap<>();
 
     private final IUniIslCarrier carrier;
 
     public NetworkUniIslService(IUniIslCarrier carrier) {
         this.carrier = carrier;
-
-        controllerFactory = UniIslFsm.factory();
-        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     /**
@@ -49,12 +44,15 @@ public class NetworkUniIslService {
      */
     public void uniIslSetup(Endpoint endpoint, Isl history) {
         log.info("Uni-ISL service receive SETUP request for {}", endpoint);
-        UniIslFsm fsm = controllerFactory.produce(endpoint);
-        UniIslFsmContext context = UniIslFsmContext.builder(carrier)
-                .history(history)
-                .build();
-        controllerExecutor.fire(fsm, UniIslFsmEvent.ACTIVATE, context);
-        controller.put(endpoint, fsm);
+
+        IslReference reference;
+        if (history != null) {
+            reference = IslReference.of(history);
+            carrier.setupIslFromHistory(endpoint, reference, history);
+        } else {
+            reference = IslReference.of(endpoint);
+        }
+        endpointData.put(endpoint, reference);
     }
 
     /**
@@ -62,10 +60,27 @@ public class NetworkUniIslService {
      */
     public void uniIslDiscovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
         log.debug("Uni-ISL service receive DISCOVERED notification for {}", endpoint);
-        UniIslFsmContext context = UniIslFsmContext.builder(carrier)
-                .discoveryEvent(speakerDiscoveryEvent)
-                .build();
-        controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.DISCOVERY, context);
+
+        IslReference reference = lookupEndpointData(endpoint);
+        IslReference effectiveReference = IslReference.of(speakerDiscoveryEvent);
+        IslDataHolder islData = new IslDataHolder(speakerDiscoveryEvent);
+        if (reference.equals(effectiveReference)) {
+            carrier.notifyIslUp(endpoint, reference, islData);
+            return;
+        }
+
+        if (isIslReferenceUsable(reference)) {
+            carrier.notifyIslMove(endpoint, reference);
+        } else {
+            log.debug("Do not emit ISL move for incomplete ISL reference {}", reference);
+        }
+
+        if (!effectiveReference.isSelfLoop()) {
+            carrier.notifyIslUp(endpoint, effectiveReference, islData);
+        } else {
+            log.error("Self looped ISL discovery received: {}", effectiveReference);
+        }
+        endpointData.put(endpoint, effectiveReference);
     }
 
     /**
@@ -73,8 +88,7 @@ public class NetworkUniIslService {
      */
     public void uniIslFail(Endpoint endpoint) {
         log.debug("Uni-ISL service receive FAILED notification for {}", endpoint);
-        UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
-        controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.FAIL, context);
+        handleDiscoveryFail(endpoint, IslDownReason.POLL_TIMEOUT);
     }
 
     /**
@@ -82,26 +96,25 @@ public class NetworkUniIslService {
      */
     public void uniIslPhysicalDown(Endpoint endpoint) {
         log.debug("Uni-ISL service receive PHYSICAL-DOWN notification for {}", endpoint);
-        UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
-        controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.PHYSICAL_DOWN, context);
+        handleDiscoveryFail(endpoint, IslDownReason.PORT_DOWN);
+    }
+
+    /**
+     * Process round trip status notification.
+     */
+    public void roundTripStatusNotification(RoundTripStatus status) {
+        log.debug("Uni-ISL service receive ROUND TRIP STATUS notification");
+        IslReference reference = lookupEndpointData(status.getEndpoint());
+        if (isIslReferenceUsable(reference)) {
+            carrier.notifyIslRoundTripStatus(reference, status);
+        }
     }
 
     /**
      * .
      */
     public void uniIslBfdUpDown(Endpoint endpoint, boolean isUp) {
-        UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
-        UniIslFsmEvent event = isUp ? UniIslFsmEvent.BFD_UP : UniIslFsmEvent.BFD_DOWN;
-        log.debug("Uni-ISL service receive BFD status update for {} - status:{}", endpoint, event);
-        controllerExecutor.fire(locateController(endpoint), event, context);
-    }
-
-    /**
-     * .
-     */
-    public void uniIslRemove(Endpoint endpoint) {
-        log.info("Uni-ISL service receive KILL request for {}", endpoint);
-        controller.remove(endpoint);
+        handleBfdNotification(endpoint, isUp ? BfdStatus.UP : BfdStatus.DOWN);
     }
 
     /**
@@ -109,17 +122,43 @@ public class NetworkUniIslService {
      */
     public void uniIslBfdKill(Endpoint endpoint) {
         log.debug("Uni-ISL service receive BFD-KILL notification for {}", endpoint);
-        UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
-        controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.BFD_KILL, context);
+        handleBfdNotification(endpoint, BfdStatus.KILL);
+    }
+
+    /**
+     * .
+     */
+    public void uniIslRemove(Endpoint endpoint) {
+        log.info("Uni-ISL service receive KILL request for {}", endpoint);
+        endpointData.remove(endpoint);
     }
 
     // -- private --
 
-    private UniIslFsm locateController(Endpoint endpoint) {
-        UniIslFsm uniIslFsm = controller.get(endpoint);
-        if (uniIslFsm == null) {
-            throw new IllegalStateException(String.format("Uni-ISL FSM not found (%s).", endpoint));
+    private void handleDiscoveryFail(Endpoint endpoint, IslDownReason downReason) {
+        IslReference reference = lookupEndpointData(endpoint);
+        if (isIslReferenceUsable(reference)) {
+            carrier.notifyIslDown(endpoint, reference, downReason);
         }
-        return uniIslFsm;
+    }
+
+    private void handleBfdNotification(Endpoint endpoint, BfdStatus status) {
+        log.debug("Uni-ISL service receive BFD status update for {} - status:{}", endpoint, status);
+        IslReference reference = lookupEndpointData(endpoint);
+        if (isIslReferenceUsable(reference)) {
+            carrier.notifyBfdStatus(endpoint, reference, status);
+        }
+    }
+
+    private IslReference lookupEndpointData(Endpoint endpoint) {
+        IslReference data = endpointData.get(endpoint);
+        if (data == null) {
+            throw new IllegalStateException(String.format("Uni-ISL not found (%s).", endpoint));
+        }
+        return data;
+    }
+
+    private static boolean isIslReferenceUsable(IslReference reference) {
+        return !reference.isIncomplete() && !reference.isSelfLoop();
     }
 }

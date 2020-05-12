@@ -15,15 +15,16 @@
 
 package org.openkilda.wfm.topology.network.service;
 
-import static java.time.Duration.between;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -32,7 +33,6 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
@@ -57,12 +57,19 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.share.utils.ManualClock;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
+import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -74,6 +81,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.neo4j.driver.v1.exceptions.TransientException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -81,6 +89,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkIslServiceTest {
@@ -89,12 +98,17 @@ public class NetworkIslServiceTest {
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
 
+    private final ManualClock clock = new ManualClock();
+
+    private final StubIslStorage islStorage = new StubIslStorage();
+
     private final Endpoint endpointAlpha1 = Endpoint.of(new SwitchId(1), 1);
     private final Endpoint endpointBeta2 = Endpoint.of(new SwitchId(2), 2);
     private final Map<SwitchId, Switch> allocatedSwitches = new HashMap<>();
 
     private final NetworkOptions options = NetworkOptions.builder()
             .dbRepeatMaxDurationSeconds(30)
+            .discoveryTimeout(TimeUnit.SECONDS.toNanos(3))
             .build();
 
     @Mock
@@ -144,13 +158,13 @@ public class NetworkIslServiceTest {
         when(transactionManager.makeRetryPolicyBlank())
                 .thenReturn(new RetryPolicy().withMaxRetries(2));
         doAnswer(invocation -> {
-            TransactionCallbackWithoutResult tr = invocation.getArgument(0);
+            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(0);
             tr.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
         doAnswer(invocation -> {
             RetryPolicy retryPolicy = invocation.getArgument(0);
-            TransactionCallbackWithoutResult tr = invocation.getArgument(1);
+            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
             Failsafe.with(retryPolicy)
                     .run(tr::doInTransaction);
             return null;
@@ -160,7 +174,21 @@ public class NetworkIslServiceTest {
         NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder = mock(
                 NetworkTopologyDashboardLogger.Builder.class);
         when(dashboardLoggerBuilder.build(any())).thenReturn(dashboardLogger);
-        service = new NetworkIslService(carrier, persistenceManager, options, dashboardLoggerBuilder);
+        service = new NetworkIslService(carrier, persistenceManager, options, dashboardLoggerBuilder, clock);
+    }
+
+    private void setupIslStorageStub() {
+        doAnswer(invocation -> {
+            Endpoint ingress = Endpoint.of(invocation.getArgument(0), invocation.getArgument(1));
+            Endpoint egress = Endpoint.of(invocation.getArgument(2), invocation.getArgument(3));
+            return islStorage.lookup(ingress, egress)
+                    .map(entry -> entry.toBuilder().build());  // ugly attempt to clone object
+        }).when(islRepository).findByEndpoints(any(SwitchId.class), anyInt(), any(SwitchId.class), anyInt());
+        doAnswer(invocation -> {
+            Isl payload = invocation.getArgument(0);
+            islStorage.save(payload);
+            return null;
+        }).when(islRepository).createOrUpdate(any(Isl.class));
     }
 
     @Test
@@ -272,145 +300,26 @@ public class NetworkIslServiceTest {
     }
 
     @Test
-    public void initializeFromHistoryDoNotReAllocateUsedBandwidth() {
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
-                .availableBandwidth(90)
-                .build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
-                .availableBandwidth(90)
-                .build();
-
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
-        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
-        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
-        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 10L);
-        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 10L);
-
-        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
-        service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
-
-        verify(islRepository).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getDestPort() == this.endpointBeta2.getPortNumber()
-                                && link.getActualStatus() == IslStatus.ACTIVE
-                                && link.getStatus() == IslStatus.ACTIVE
-                                && link.getAvailableBandwidth() == 90));
-        verify(islRepository).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getSrcPort() == this.endpointBeta2.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getDestPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getActualStatus() == IslStatus.ACTIVE
-                                && link.getStatus() == IslStatus.ACTIVE
-                                && link.getAvailableBandwidth() == 90));
-
-        verify(dashboardLogger).onIslUp(reference);
-        verifyNoMoreInteractions(dashboardLogger);
-
-        verifyNoMoreInteractions(carrier);
-    }
-
-    @Test
-    public void initializeFromHistoryDoNotResetDefaultMaxBandwidth() {
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
-                .availableBandwidth(100)
-                .defaultMaxBandwidth(200)
-                .build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
-                .availableBandwidth(100)
-                .defaultMaxBandwidth(200)
-                .build();
-
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
-        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
-        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
-        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0L);
-        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0L);
-
-        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
-        service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
-
-        verify(islRepository).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getDestPort() == this.endpointBeta2.getPortNumber()
-                                && link.getAvailableBandwidth() == 100
-                                && link.getDefaultMaxBandwidth() == 200));
-        verify(islRepository).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getSrcPort() == this.endpointBeta2.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getDestPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getAvailableBandwidth() == 100
-                                && link.getDefaultMaxBandwidth() == 200));
-
-        verify(dashboardLogger).onIslUp(reference);
-        verifyNoMoreInteractions(dashboardLogger);
-
-        verifyNoMoreInteractions(carrier);
-    }
-
-    @Test
     public void setIslUnstableTimeOnPortDown() {
-        // prepare data
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false).build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false).build();
+        setupIslStorageStub();
+        IslReference reference = prepareActiveIsl();
 
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
-
-        // setup alpha -> beta half
-        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
-        service.islUp(endpointAlpha1, reference, new IslDataHolder(islAlphaBeta));
-
-        verify(dashboardLogger).onIslDown(reference);
-        verifyNoMoreInteractions(dashboardLogger);
-        reset(dashboardLogger);
-
-        // setup beta -> alpha half
-        reset(islRepository);
-        when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                                           endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
-                .thenReturn(Optional.of(islAlphaBeta.toBuilder().build()));
-        when(islRepository.findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                                           endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
-                .thenReturn(Optional.of(islBetaAlpha.toBuilder().build()));
-        service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
+        Instant updateTime = clock.adjust(Duration.ofSeconds(1));
 
         // isl fail by PORT DOWN
         service.islDown(endpointAlpha1, reference, IslDownReason.PORT_DOWN);
 
         // ensure we have marked ISL as unstable
-        int timeOutUnstableSec = 1;
-        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getDestPort() == this.endpointBeta2.getPortNumber()
-                                && link.getTimeUnstable() != null
-                                && between(link.getTimeUnstable(), Instant.now()).getSeconds() < timeOutUnstableSec));
-        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getSrcPort() == this.endpointBeta2.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getDestPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getTimeUnstable() != null
-                                && between(link.getTimeUnstable(), Instant.now()).getSeconds() < timeOutUnstableSec));
+        Isl forward = lookupIsl(reference.getSource(), reference.getDest());
+        Assert.assertEquals(updateTime, forward.getTimeUnstable());
+
+        Isl reverse = lookupIsl(reference.getDest(), reference.getSource());
+        Assert.assertEquals(updateTime, reverse.getTimeUnstable());
     }
 
     @Test
     public void deleteWhenActive() {
+        setupIslStorageStub();
         prepareAndPerformDelete(IslStatus.ACTIVE, false);
 
         // ISL can't be delete in ACTIVE state
@@ -419,25 +328,28 @@ public class NetworkIslServiceTest {
 
     @Test
     public void deleteWhenActiveMultiTable() {
+        setupIslStorageStub();
         prepareAndPerformDelete(IslStatus.ACTIVE, true);
         verifyNoMoreInteractions(carrier);
     }
 
-
     @Test
     public void deleteWhenInactive() {
+        setupIslStorageStub();
         prepareAndPerformDelete(IslStatus.INACTIVE, false);
         verifyDelete();
     }
 
     @Test
     public void deleteWhenInactiveMultiTable() {
+        setupIslStorageStub();
         prepareAndPerformDelete(IslStatus.INACTIVE, true);
         verifyDelete();
     }
 
     @Test
     public void deleteWhenMoved() {
+        setupIslStorageStub();
         prepareAndPerformDelete(IslStatus.MOVED, false);
         verifyDelete();
     }
@@ -479,8 +391,8 @@ public class NetworkIslServiceTest {
                 .build();
 
         // prepare
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+        islStorage.save(islAlphaBeta);
+        islStorage.save(islBetaAlpha);
 
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
         mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
@@ -490,28 +402,6 @@ public class NetworkIslServiceTest {
 
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
-
-        if (multiTable && initialStatus == IslStatus.ACTIVE) {
-            service.islDefaultRuleInstalled(reference,
-                    new InstallIslDefaultRulesResult(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                            endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(), true));
-            service.islDefaultRuleInstalled(reference,
-                    new InstallIslDefaultRulesResult(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                            endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(), true));
-        }
-
-        switch (initialStatus) {
-            case ACTIVE:
-                break;
-            case INACTIVE:
-                verify(dashboardLogger).onIslDown(reference);
-                break;
-            case MOVED:
-                verify(dashboardLogger).onIslMoved(reference);
-                break;
-            default:
-                // nothing to do here
-        }
 
         reset(carrier);
 
@@ -540,6 +430,8 @@ public class NetworkIslServiceTest {
 
     @Test
     public void considerLinkPropsDataOnHistory() {
+        setupIslStorageStub();
+
         Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
                 .maxBandwidth(100L)
                 .build();
@@ -547,8 +439,8 @@ public class NetworkIslServiceTest {
                 .maxBandwidth(100L)
                 .build();
 
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+        islStorage.save(islAlphaBeta);
+        islStorage.save(islBetaAlpha);
 
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
                                  makeLinkProps(endpointAlpha1, endpointBeta2)
@@ -562,22 +454,15 @@ public class NetworkIslServiceTest {
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
 
+        // need to change at least one ISL field to force DB sync
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(200L, 200L, 200L));
+
         verifyIslBandwidthUpdate(50L, 100L);
     }
 
     @Test
     public void considerLinkPropsDataOnCreate() {
-        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
-                .defaultMaxBandwidth(250L)
-                .availableBandwidth(200L)
-                .build();
-        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
-                .defaultMaxBandwidth(250L)
-                .availableBandwidth(200L)
-                .build();
-
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
+        setupIslStorageStub();
 
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
                                  makeLinkProps(endpointAlpha1, endpointBeta2)
@@ -591,14 +476,15 @@ public class NetworkIslServiceTest {
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islUp(endpointAlpha1, reference, new IslDataHolder(200L, 200L, 200L));
 
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
         service.islUp(endpointBeta2, reference, new IslDataHolder(200L, 200L, 200L));
+
         verifyIslBandwidthUpdate(50L, 200L);
     }
 
     @Test
     public void considerLinkPropsDataOnRediscovery() {
+        setupIslStorageStub();
+
         final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
                 .defaultMaxBandwidth(300L)
                 .availableBandwidth(300L)
@@ -609,32 +495,22 @@ public class NetworkIslServiceTest {
                 .build();
 
         // initial discovery
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
-
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
         mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
 
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 300L, 300L));
-
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
         service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 300L, 300L));
 
         verifyIslBandwidthUpdate(300L, 300L);
 
-        // fail (half)
+        // fail
         service.islDown(endpointAlpha1, reference, IslDownReason.POLL_TIMEOUT);
         service.islDown(endpointBeta2, reference, IslDownReason.POLL_TIMEOUT);
 
-        reset(islRepository);
         reset(linkPropsRepository);
 
         // rediscovery
-        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
-        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
-
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
                                  makeLinkProps(endpointAlpha1, endpointBeta2)
                                          .maxBandwidth(50L)
@@ -647,24 +523,239 @@ public class NetworkIslServiceTest {
         verifyIslBandwidthUpdate(50L, 300L);
     }
 
-    private void verifyIslBandwidthUpdate(long expectedAlphaBetaBandwidth, long expectedBetaAlphaBandwidth) {
-        // System.out.println(mockingDetails(islRepository).printInvocations());
-        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getDestPort() == this.endpointBeta2.getPortNumber()
-                                && link.getMaxBandwidth() == expectedAlphaBetaBandwidth
-                                && link.getAvailableBandwidth() == expectedAlphaBetaBandwidth));
-        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
-                link ->
-                        link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
-                                && link.getSrcPort() == this.endpointBeta2.getPortNumber()
-                                && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
-                                && link.getDestPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getMaxBandwidth() == expectedBetaAlphaBandwidth
-                                && link.getAvailableBandwidth() == expectedBetaAlphaBandwidth));
+    @Test
+    public void considerRoundTripDiscovery() {
+        setupIslStorageStub();
+
+        final IslReference reference = prepareActiveIsl();
+
+        final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
+        final Duration halfExpirationTime = Duration.ofNanos(options.getDiscoveryTimeout() / 2);
+
+        Instant lastSeen = clock.instant();
+        Instant now = clock.adjust(halfExpirationTime);
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+
+        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
+        service.islDown(reference.getDest(), reference, IslDownReason.POLL_TIMEOUT);
+
+        verify(dashboardLogger, times(0)).onIslDown(reference);
+
+        // postpone
+        lastSeen = now;
+        now = clock.adjust(halfExpirationTime);
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+
+        verify(dashboardLogger, times(0)).onIslDown(reference);
+
+        // expire
+        now = clock.adjust(expirationTime);
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+        verify(dashboardLogger).onIslDown(reference);
+    }
+
+    @Test
+    public void considerRecoveryAfterRoundTrip() {
+        setupIslStorageStub();
+
+        final IslReference reference = prepareActiveIsl();
+
+        final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
+        final Duration halfExpirationTime = Duration.ofNanos(options.getDiscoveryTimeout() / 2);
+
+        Instant lastSeen = clock.instant();
+        Instant now = clock.adjust(halfExpirationTime);
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+
+        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
+        service.islDown(reference.getDest(), reference, IslDownReason.POLL_TIMEOUT);
+        verify(dashboardLogger, times(0)).onIslDown(reference);
+
+        // postpone
+        lastSeen = now;
+        now = clock.adjust(halfExpirationTime);
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+
+        verify(dashboardLogger, times(0)).onIslDown(reference);
+
+        service.islUp(reference.getSource(), reference, new IslDataHolder(200L, 200L, 200L));
+        service.islUp(reference.getDest(), reference, new IslDataHolder(200L, 200L, 200L));
+
+        now = clock.adjust(expirationTime);
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+        // must not fail, because of successful discovery notifications
+        verify(dashboardLogger, times(0)).onIslDown(reference);
+    }
+
+    @Test
+    public void ignoreStaleRoundTripStatus() {
+        setupIslStorageStub();
+
+        final IslReference reference = prepareActiveIsl();
+
+        final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
+
+        Instant lastSeen = clock.instant();
+        clock.adjust(expirationTime);
+        Instant now = clock.adjust(expirationTime); // 2 expiration time have passed i.e. round trip have been expired
+        service.roundTripStatusNotification(reference, new RoundTripStatus(reference.getSource(), lastSeen, now));
+
+        // should fail on first poll fail event
+        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
+        verify(dashboardLogger).onIslDown(reference);
+    }
+
+    @Test
+    public void considerBfdEventOnlyWhenBfdEnabledForBothEndpoints() {
+        setupIslStorageStub();
+
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
+                .enableBfd(true)
+                .build();
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
+                .enableBfd(true)
+                .build();
+
+        islStorage.save(islAlphaBeta);
+        islStorage.save(islBetaAlpha);
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+
+        // system start
+        service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
+
+        // BFD setup requests
+        verify(carrier).bfdEnableRequest(eq(reference.getSource()), eq(reference));
+        verify(carrier).bfdEnableRequest(eq(reference.getDest()), eq(reference));
+
+        reset(dashboardLogger);
+
+        // one BFD session is removed
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+
+        // one BFD session is reinstalled
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+
+        // second BFD session is reinstalled
+        service.bfdStatusUpdate(endpointBeta2, reference, BfdStatus.UP);
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
+
+        verify(dashboardLogger, never()).onIslDown(eq(reference));
+
+        // only now BFD events must be able to control ISL state
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+        verify(dashboardLogger, never()).onIslDown(eq(reference));  // opposite session still UP
+        service.bfdStatusUpdate(endpointBeta2, reference, BfdStatus.DOWN);
+
+        verify(dashboardLogger).onIslDown(eq(reference));  // both BFD session are down
+        reset(dashboardLogger);
+
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
+        verify(dashboardLogger).onIslUp(eq(reference));  // one BFD session enough to raise ISL UP
+        verifyNoMoreInteractions(dashboardLogger);
+        reset(dashboardLogger);
+
+        service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.DOWN);
+        verify(dashboardLogger).onIslDown(eq(reference));  // both BFD session are down (again)
+    }
+
+    @Test
+    public void bfdUpOverriderPollDown() {
+        setupIslStorageStub();
+
+        IslReference reference = prepareBfdEnabledIsl();
+
+        reset(dashboardLogger);
+        service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
+        verifyNoMoreInteractions(dashboardLogger);
+
+        service.islUp(reference.getSource(), reference, new IslDataHolder(100, 100, 100));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatus.DOWN);
+        service.bfdStatusUpdate(reference.getDest(), reference, BfdStatus.DOWN);
+
+        // from poll point of view ISL is UP but BFD must force status to DOWN
+        verify(dashboardLogger).onIslDown(eq(reference));
+    }
+
+    @Test
+    public void portDownOverriderBfdUp() {
+        setupIslStorageStub();
+
+        IslReference reference = prepareBfdEnabledIsl();
+
+        reset(dashboardLogger);
+        service.islDown(reference.getSource(), reference, IslDownReason.PORT_DOWN);
+        verify(dashboardLogger).onIslDown(reference);
+    }
+
+    private IslReference prepareBfdEnabledIsl() {
+        IslReference reference = prepareActiveIsl();
+
+        service.bfdStatusUpdate(reference.getSource(), reference, BfdStatus.UP);
+        service.bfdStatusUpdate(reference.getDest(), reference, BfdStatus.UP);
+
+        return reference;
+    }
+
+    private IslReference prepareActiveIsl() {
+        // prepare data
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false).build();
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false).build();
+
+        // setup alpha -> beta half
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(islAlphaBeta));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        // setup beta -> alpha half
+        service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
+
+        verify(dashboardLogger).onIslUp(reference);
+        reset(dashboardLogger);
+
+        return reference;
+    }
+
+    private IslReference prepareActiveIslOld() {
+        // prepare data
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false).build();
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false).build();
+
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
+
+        // setup alpha -> beta half
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(islAlphaBeta));
+        verifyNoMoreInteractions(dashboardLogger);
+
+        // setup beta -> alpha half
+        reset(islRepository);
+        when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                                           endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
+                .thenReturn(Optional.of(islAlphaBeta.toBuilder().build()));
+        when(islRepository.findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                                           endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
+                .thenReturn(Optional.of(islBetaAlpha.toBuilder().build()));
+        service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
+
+        verify(dashboardLogger).onIslUp(reference);
+        reset(dashboardLogger);
+
+        return reference;
+    }
+
+    private void verifyIslBandwidthUpdate(long expectedForward, long expectedReverse) {
+        Isl forward = lookupIsl(endpointAlpha1, endpointBeta2);
+        Assert.assertEquals(expectedForward, forward.getMaxBandwidth());
+        Assert.assertEquals(expectedForward, forward.getAvailableBandwidth());
+
+        Isl reverse = lookupIsl(endpointBeta2, endpointAlpha1);
+        Assert.assertEquals(expectedReverse, reverse.getMaxBandwidth());
+        Assert.assertEquals(expectedReverse, reverse.getAvailableBandwidth());
     }
 
     private void emulateEmptyPersistentDb() {
@@ -735,5 +826,47 @@ public class NetworkIslServiceTest {
         }
 
         return entry;
+    }
+
+    private Isl lookupIsl(Endpoint ingress, Endpoint egress) {
+        return islStorage.lookup(ingress, egress)
+                .orElseThrow(() -> new AssertionError(
+                        String.format(
+                                "The ISL object between %s and %s endpoints is missing",
+                                ingress, egress)));
+    }
+
+    @Getter
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    private static class StubIslKey {
+        private final Endpoint ingress;
+        private final Endpoint egress;
+    }
+
+    private static class StubIslStorage {
+        private final Map<StubIslKey, Isl> storage = new HashMap<>();
+
+        public Optional<Isl> lookup(Isl reference) {
+            return lookup(makeIngressEndpoint(reference), makeEgressEndpoint(reference));
+        }
+
+        public Optional<Isl> lookup(Endpoint ingress, Endpoint egress) {
+            StubIslKey key = new StubIslKey(ingress, egress);
+            return Optional.ofNullable(storage.get(key));
+        }
+
+        public void save(Isl payload) {
+            StubIslKey key = new StubIslKey(makeIngressEndpoint(payload), makeEgressEndpoint(payload));
+            storage.put(key, payload);
+        }
+
+        private static Endpoint makeIngressEndpoint(Isl entity) {
+            return Endpoint.of(entity.getSrcSwitch().getSwitchId(), entity.getSrcPort());
+        }
+
+        private static Endpoint makeEgressEndpoint(Isl entity) {
+            return Endpoint.of(entity.getDestSwitch().getSwitchId(), entity.getDestPort());
+        }
     }
 }

@@ -143,8 +143,8 @@ public abstract class IConstants {
         public static final String GET_FLOW_PATH = GET_FLOW + "/{flow_id}/path";
         public static final String RESYNC_FLOW = GET_FLOW + "/{flow_id}/sync";
         public static final String CONFIG_SWITCH_PORT = GET_SWITCHES + "/{switch_id}/port/{port_no}/config";
-        public static final String GET_ISL_FLOW = 
-                "/links/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
+        public static final String GET_ISL_FLOW = GET_LINKS
+                + "/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
         public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
         public static final String UPDATE_SWITCH_UNDER_MAINTENANCE = GET_SWITCHES + "/{switch_id}/under-maintenance";
@@ -288,6 +288,8 @@ public abstract class IConstants {
         public static final String FW_FLOW_HISTORY = "fw_flow_history";
         
         public static final String SW_UPDATE_PORT_PROPERTIES = "sw_update_port_properties";
+        
+        public static final String SW_SWITCH_METERS = "sw_switch_meters";
         
     }
 

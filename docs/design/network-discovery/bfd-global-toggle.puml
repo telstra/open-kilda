@@ -18,6 +18,7 @@ title BFD global toggle
 
 DOWN_ENABLED -r-> DOWN_DISABLED : disable
 DOWN_ENABLED --> UP_ENABLED : bfd-up
+DOWN_ENABLED : bfd-kill / proxy bfd-kill
 
 DOWN_DISABLED -l-> DOWN_ENABLED : enable
 DOWN_DISABLED --> UP_DISABLED : bfd-up

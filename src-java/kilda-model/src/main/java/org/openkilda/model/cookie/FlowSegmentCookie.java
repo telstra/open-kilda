@@ -41,9 +41,13 @@ public class FlowSegmentCookie extends Cookie {
         super(value);
     }
 
-    @Builder
     public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        super(makeValue(direction, flowEffectiveId), CookieType.SERVICE_OR_FLOW_SEGMENT);
+        this(VALID_TYPE, direction, flowEffectiveId);
+    }
+
+    @Builder
+    private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
+        super(makeValue(type, direction, flowEffectiveId), type);
     }
 
     @Override
@@ -71,6 +75,7 @@ public class FlowSegmentCookie extends Cookie {
     @Override
     public FlowSegmentCookieBuilder toBuilder() {
         return new FlowSegmentCookieBuilder()
+                .type(getType())
                 .direction(getDirection())
                 .flowEffectiveId(getFlowEffectiveId());
     }
@@ -105,7 +110,16 @@ public class FlowSegmentCookie extends Cookie {
         return getField(FLOW_EFFECTIVE_ID_FIELD);
     }
 
-    private static long makeValue(FlowPathDirection direction, long flowEffectiveId) {
+    public static FlowSegmentCookieBuilder builder() {
+        return new FlowSegmentCookieBuilder()
+                .type(VALID_TYPE);
+    }
+
+    private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
+        if (type != VALID_TYPE) {
+            throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPE));
+        }
+
         long value = 0;
         if (direction != null) {
             value = makeValueDirection(direction);
@@ -144,10 +158,5 @@ public class FlowSegmentCookie extends Cookie {
      */
     public static class FlowSegmentCookieBuilder extends CookieBuilder {
         // lombok is responsible for injecting here all required methods fields
-
-        public FlowSegmentCookieBuilder type(CookieType type) {
-            super.type(type);
-            return this;
-        }
     }
 }

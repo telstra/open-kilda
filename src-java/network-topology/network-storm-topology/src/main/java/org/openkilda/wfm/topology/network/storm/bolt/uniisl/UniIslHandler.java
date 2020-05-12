@@ -22,14 +22,18 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.model.BfdStatus;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
+import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IUniIslCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkUniIslService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslBfdStatusUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDownCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslMoveCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslRoundTripStatusCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslSetupFromHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
@@ -108,6 +112,16 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
         emit(getCurrentTuple(), makeDefaultTuple(new IslMoveCommand(endpoint, reference)));
     }
 
+    @Override
+    public void notifyIslRoundTripStatus(IslReference reference, RoundTripStatus status) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslRoundTripStatusCommand(reference, status)));
+    }
+
+    @Override
+    public void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatus status) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslBfdStatusUpdateCommand(endpoint, reference, status)));
+    }
+
     private Values makeDefaultTuple(IslCommand command) {
         IslReference reference = command.getReference();
         return new Values(reference.getSource(), reference.getDest(), command, getCommandContext());
@@ -141,5 +155,9 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
 
     public void processUniIslDiscovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
         service.uniIslDiscovery(endpoint, speakerDiscoveryEvent);
+    }
+
+    public void processRoundTripStatus(RoundTripStatus status) {
+        service.roundTripStatusNotification(status);
     }
 }

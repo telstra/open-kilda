@@ -20,14 +20,13 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.FeatureTogglesUpdate;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
@@ -41,8 +40,6 @@ import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslBfdFlagUpdatedCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDefaultRuleCreatedCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDefaultRuleRemovedCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDeleteCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.UpdatePortPropertiesCommand;
@@ -58,6 +55,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchRemoveEven
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerRoundTripDiscovery;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerSendConfirmationCommand;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -129,6 +127,9 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof DiscoPacketSendingConfirmation) {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
                     input, new WatcherSpeakerSendConfirmationCommand((DiscoPacketSendingConfirmation) payload)));
+        } else if (payload instanceof IslRoundTripLatency) {
+            emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
+                    input, new WatcherSpeakerRoundTripDiscovery((IslRoundTripLatency) payload)));
         } else if (payload instanceof SwitchInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {
@@ -145,12 +146,6 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof BfdSessionResponse) {
             emit(STREAM_WORKER_ID, input, makeWorkerTuple(new SpeakerBfdSessionResponseCommand(
                     input.getStringByField(FIELD_ID_KEY), (BfdSessionResponse) payload)));
-        } else if (payload instanceof InstallIslDefaultRulesResult) {
-            emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslDefaultRuleCreatedCommand(
-                    (InstallIslDefaultRulesResult) payload)));
-        } else if (payload instanceof RemoveIslDefaultRulesResult) {
-            emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslDefaultRuleRemovedCommand(
-                    (RemoveIslDefaultRulesResult) payload)));
         } else if (payload instanceof IslBfdFlagUpdated) {
             // FIXME(surabujin): is it ok to consume this "event" from speaker stream?
             emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslBfdFlagUpdatedCommand((IslBfdFlagUpdated) payload)));

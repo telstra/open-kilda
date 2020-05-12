@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.57.0 (12/05/2020)
+
+### Bug Fixes:
+-  [#3453](https://github.com/telstra/open-kilda/pull/3453) Fixed the issue for flow list in isl (Issue: [#3451](https://github.com/telstra/open-kilda/issues/3451)) [**gui**]
+
+### Improvements:
+-  [#3458](https://github.com/telstra/open-kilda/pull/3458) Use round trip latency data for ISL alive confirmation (Issues: [#3175](https://github.com/telstra/open-kilda/issues/3175) [#3378](https://github.com/telstra/open-kilda/issues/3378) [#3407](https://github.com/telstra/open-kilda/issues/3407)) [**floodlight**][**storm-topologies**]
+-  [#3426](https://github.com/telstra/open-kilda/pull/3426) Introduce bitfield enum types invalid entry [**floodlight**]
+-  [#3407](https://github.com/telstra/open-kilda/pull/3407) Prioritize BFD alive status over round trip status (Issues: [#2353](https://github.com/telstra/open-kilda/issues/2353) [#3430](https://github.com/telstra/open-kilda/issues/3430)) [**storm-topologies**]
+-  [#3442](https://github.com/telstra/open-kilda/pull/3442) Improvement/add switch meter permission (Issues: [#3420](https://github.com/telstra/open-kilda/issues/3420) [#3455](https://github.com/telstra/open-kilda/issues/3455)) [**gui**]
+-  [#3443](https://github.com/telstra/open-kilda/pull/3443) use signleTable by default for func tests [**tests**]
+-  [#3445](https://github.com/telstra/open-kilda/pull/3445) fix cleanup in "Unable to create flow with conflicting vlans" test [**tests**]
+-  [#3449](https://github.com/telstra/open-kilda/pull/3449) fix swap protected path in multiTableFlow spec [**tests**]
+
+### Other changes:
+-  [#3202](https://github.com/telstra/open-kilda/pull/3202) Update README with project reorganization changes. [**docs**]
+-  [#3247](https://github.com/telstra/open-kilda/pull/3247) Fix and prevent dependency classes conflict in src-java 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.56.1...v1.57.0).
+
+### Affected Components:
+fl, gui, network
+
+---
+
 ## v1.56.1 (06/05/2020)
 
 ### Features:
