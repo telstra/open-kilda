@@ -1,122 +1,108 @@
 # Kilda Data storage V2
 
 ## Overview
-This doc describes the proposed solutions for migration OpenKilda from Neo4j to another data storage.
+This doc describes the proposed solutions for migration OpenKilda from Neo4j to another data storage(s).
 
 ## Goals
-The goal is to implement support of a data storage solution that satisfies the system requirements.
+The goal is to implement a data storage solution that satisfies the system requirements.
 
 Currently, Kilda uses [Neo4j](https://neo4j.com/) as a persistent storage for its [data model](../domain-model/domain-model.md),
 and [Neo4j-OGM](https://github.com/neo4j/neo4j-ogm) as the mapping library in the persistence layer.
 
-Since the persistence layer was introduced, we faced multiple related issues: Neo4j-OGM performance on concurrent updates (https://github.com/telstra/open-kilda/pull/2747),
+Since the persistence layer was introduced, we faced multiple issues related to it: 
+Neo4j-OGM performance on concurrent updates (https://github.com/telstra/open-kilda/pull/2747),
 missed changes in persistent objects (https://github.com/telstra/open-kilda/issues/3064), 
 improper handling of data types and converters (https://github.com/telstra/open-kilda/issues/3166).
 
-Considering the above mentioned, it was decided that Neo4j version 3.x along with Neo4j-OGM  
-doesn't correspond to the current 
-and emerging system requirements, although perform the basic functions. 
+Considering the above mentioned along with a lack of high-availability configuration and online backups in the Neo4j community edition, 
+it was decided that Neo4j along with Neo4j-OGM doesn't correspond to the current and emerging system requirements -
+https://github.com/telstra/open-kilda/issues/940. 
 
 ## Requirements for Data storage
 Kilda architecture among other requirements to the data storage, expects flexibility in choice of the storage options:
-from single instance deployed on a developer's workstation, up to scalable and distributed, which provides high-availability 
-(https://github.com/telstra/open-kilda/issues/940). 
+from single instance deployed on a developer's workstation, up to scalable and distributed, which provides high-availability.
 
-**TBD: durability, backups, replication, HA** 
+A dedicated storage for a specific data may have own requirements, but all of them share the following:
+- Durable writes with strong or eventual consistency.
+- Support configuration with high availability and failover.
+- Support online or incremental backups.
+- Minimal overhead introduced by the persistence layer on CPU and memory resources.
 
-## Data stored by Kilda
-Kilda operates with and stores the following data:
+## Data groups
+The data model consists of elements which can be split into several groups by their purpose,
+specific use cases and requirements to storage:
 - Network topology: switches and links (ISLs)
-- Flows (each one contains multiple Flow paths and correspoing Path segments)
-- History records (flow events, port status changes, etc) 
+- Flows (each one contains multiple Flow paths and corresponding Path segments)
+- History records (flow events, port status changes, etc)
 - Resources pools (flow encapsulation, meter, etc) 
 
-Each data type has own use cases and handling requirements:
-- Network topology, flow data:
-	- Transactional CRUD on entities that represent the network.
-	- Find a path between nodes (via PCE).
-	- Find related entities (flows by an ISL or by a switch)
-	- Visualize as a graph model on GUI / web application.
-	- Analyze connectivity in the network, and identify required backup links
-	- Execute custom traversals over the network structure for ad-hoc investigations.
-	
-- History records:
-	- Record an event / event details
-	- Find by keys, time periods, etc.
-	- Free-text search in event details (task_id, switch, etc.)
-	
-- Resources pools:
-    - Reliable allocation under high contention of requests.  
+## The solutions
+Each data group has own and specific use cases, so we evaluate it separately from others:
 
-## Possible solutions
+#### Network topology, flow data
+_Use cases:_
+- Transactional CRUD operations on entities that represent the network.
+- Find a path between nodes (via PCE).
+- Find related entities (flows by an ISL or by a switch)
+- Visualize as a graph model on GUI / web application.
+- Analyze connectivity in the network, and identify required backup links
+- Execute custom traversals over the network structure for ad-hoc investigations.
 
-### Graph database with support of a standard API / query language 
-Store the whole data model in the same graph database, use a one of existing standard API / query language.
-Implement custom data mapping for Kilda.
+_The solution:_ 
+- The data is stored in a graph database ([OrientDB](https://orientdb.com/) or [JanusGraph](https://janusgraph.org/)) 
+which has complete implementation of [Tinkerpop Graph API](http://tinkerpop.apache.org/docs/3.4.6/reference/#graph).
+- The persistence layer utilizes a one of existing OGM for data mapping: [Tinkerpop](https://tinkerpop.apache.org/) / [Ferma](http://syncleus.com/Ferma/).
+- PCE utilizes graph traversal on the database side.
 
-- [OpenCypher](http://www.opencypher.org/) query language. Databases: Neo4j or [AgensGraph](http://www.agensgraph.org/). 
-- [Gremlin](https://tinkerpop.apache.org/gremlin.html) traversal language. 
-Databases: [JanusGraph](https://janusgraph.org/), [OrientDB](https://orientdb.com/), [Amazon Neptune](https://aws.amazon.com/neptune/), [Azure Cosmos DB](https://azure.microsoft.com/services/cosmos-db/).  
+_Known issues / problems:_
+- The planned 2-step migration (via Neo4j + Tinkerpop) can't be implemented due to [a fundamental performance issue 
+in neo4j-gremlin-bolt](#neo4j).
+- No exising options for schema versioning: [Liquigraph](https://www.liquigraph.org/) supports Neo4j only.
 
-Pros:
-- Data in a storage can be easily mapped to the business entities (as has the similar graph model).
-- We can benefit from build-in functions / libraries. E.g. Neo4j has [the graph algorithm library](https://neo4j.com/docs/graph-algorithms/current/projected-graph-model/) which 
-demonstrated very good results comparing to the current PCE implementation (https://github.com/telstra/open-kilda/pull/2770)    
+_Alternative solutions:_
+- Use a graph database which supports [Gremlin](https://tinkerpop.apache.org/gremlin.html) traversal language,
+but doesn't have complete implementation of Tinkerpop Graph API: [Amazon Neptune](https://aws.amazon.com/neptune/), 
+[Azure Cosmos DB](https://azure.microsoft.com/services/cosmos-db/). This requires custom data mapping to be coded in the persistence layer.
+- Use a relational database. In this case, persistent data kept in a way that differs from how the business sees it. This may complicate future integrations
+with external systems, data migrations, data analysis, visualization. Also, this type of storage limits the PCE implementation to an in-memory one coded by us.	
 
-Cons:
-- Custom data mapping must be coded, tested and supported.
-- Limited or paid-only administration and monitoring tools.
-- Limited options for schema versioning: [Liquigraph](https://www.liquigraph.org/) supports Neo4j only.
+#### History records
+Use cases:
+- Record an event / event details
+- Find by keys, time periods, etc.
+- Free-text search in event details (task_id, switch, etc.)
 
-### Graph database with OGM 
-Store the whole data model in the same graph database, use a one of existing OGM for data mapping in the persistence layer.
+_The solution:_ 
+- The data is stored in a relational database (Postgre, MySQL, RDS) or multi-model storage ([OrientDB](https://orientdb.com/multi-model-database/)). 
+- The persistence layer utilizes ORM frameworks (e.g. Hibernate) for data mapping.
+- Use a one of powerful schema versioning tools: [Flyway](https://flywaydb.org/), Liquibase.
 
-- [Neo4j-OGM](https://neo4j.com/docs/ogm-manual/current/)
-- [Tinkerpop](https://tinkerpop.apache.org/) / [Ferma](http://syncleus.com/Ferma/)
+_Alternative solutions:_
+- Use [Elasticsearch](https://www.elastic.co/what-is/elk-stack) as a storage. Easy to configure and use free-text search. But direct writes to Kibana may demonstrate low performance.
 
-Pros:
-- Data in a storage can be easily mapped to the business entities (as has the similar graph model).
+#### Resources pools
+Use cases:
+- Reliable allocation under high contention of requests.  
 
-Cons:
-- Although OGM frameworks exist, but either non-portable (Neo4j-OGM is for Neo4j only) 
-or require a specific implementation (Ferma works only with a complete implementation of [Tinkerpop Graph API](http://tinkerpop.apache.org/docs/3.4.6/reference/#graph)
- which is OrientDB) or https://janusgraph.org/ as for now)
-- Limited or paid-only administration and monitoring tools.
-- Limited options for schema versioning: Liquigraph supports Neo4j only.
+_The solution:_ 
+- The data is stored in a relational database (Postgre, MySQL, RDS) or multi-model storage ([OrientDB](https://orientdb.com/multi-model-database/)).
+- The database must be ACID complaint.
+- The persistence layer utilizes ORM frameworks (e.g. Hibernate) for data mapping.
+- Use a one of powerful schema versioning tools: [Flyway](https://flywaydb.org/), Liquibase.
 
-**Note**: Hibernate OGM differs form other OGM solutions as relies on JPQL as a query language, 
-which is closer by nature to SQL. So even a simple graph traversal becomes a bunch of JOINs. 
+_Alternative solutions:_
+- Use the same graph database as for Network topology, flow data.
 
-### Combination of graph database and other storages
-Store the network topology and flows in a graph database, while history records directed to relational / NoSQL storage.
+### The next steps
+1. Complete the Tinkerpop-based implementation of the persistence layer. Use OrientDB as the reference data storage.
+2. Separate the History records from the data model: database schema, ORM mapping. Use OrientDB as the reference data storage.
+3. Separate the Resource pools from the data model: database schema, ORM mapping, transactional allocation. 
+Use OrientDB as the reference data storage.
+4. Test with a relational database as a storage for #2 and #3.
 
-- OrientDB with OGM (Ferma) + RDBMS (Postgre, MySQL, RDS) with ORM (Hibernate)
-- OrientDB as multi-model database with OGM (Ferma) and ORM (Hibernate)
-- Neo4j with custom mapping + RDBMS (Postgre, MySQL, RDS) with ORM (Hibernate)
+### Implementation details
 
-Pros:
-- Network topology data in a graph storage can be easily mapped to the business entities (as has the similar graph model).
-- NoSQL storages may propose more flexible indexing for History records.
-
-Cons:
-- Multiple storages complicate their administration and support.
-
-### Relational database 
-Store the whole data model in the same relational database.
-
-Pros:
-- Extensive administration and monitoring tools available.
-- ORM frameworks (e.g. Hibernate) can be used in the persistence layer. This should simplify the code.
-- Powerful schema versioning tools: [Flyway](https://flywaydb.org/), Liquibase.
-
-Cons:
-- Data in a storage kept in a way that differs from how the business sees it. This may complicate future integrations
-with external systems, data migrations, data analysis.
-- Graph traversal operations can be implemented as in-memory PCE only. 
-
-## Implementation details
-
-### Neo4j
+#### Neo4j
 Neo4j invest into development of own language (Cypher) and push to make it as a standard for graph databases (http://www.opencypher.org/, https://www.gqlstandards.org/, 
 https://gql.today/wp-content/uploads/2018/05/a-proposal-to-the-database-industry-not-three-but-one-gql.pdf, https://www.linkedin.com/pulse/sql-now-gql-alastair-green/).
 
@@ -128,22 +114,19 @@ This does NOT work with OGM like Ferma.
 - Access a remote Neo4j server via Tinkerpop Java API using the BOLT protocol (https://github.com/SteelBridgeLabs/neo4j-gremlin-bolt - contributors keep it up to date, e.g. Neo4j 4.0.0 is already supported).
 This complies with Ferma.
 
-  **Important**: The implementation has a fundamental performance issue - it fetchs ALL vertex or edges into memory on the first Gremlin request. 
+    **Important**: The implementation has a fundamental performance issue - it fetchs ALL vertex or edges into memory on the first Gremlin request. 
   https://github.com/SteelBridgeLabs/neo4j-gremlin-bolt/issues/70, https://github.com/SteelBridgeLabs/neo4j-gremlin-bolt/issues/46
   
-### Tinkerpop
+#### Tinkerpop
 The major advocates of Tinkerpop are JanusGraph developers (supported by IBM - http://rredux.com/the-path-to-tinkerpop4.html, https://janusgraph.org/, 
 https://yearofthegraph.xyz/newsletter/2019/04/graphs-in-the-cloud-the-year-of-the-graph-newsletter-april-2019/)
 
-### Ferma
+#### Ferma
 Requires Tinkerpop Graph API implementation, not only Gremlin support. It doesn't work with Neptune or CosmosDB
 https://stackoverflow.com/questions/48417910/how-is-it-possible-to-use-ferma-ogm-over-gremlin-server
 https://docs.aws.amazon.com/neptune/latest/userguide/access-graph-gremlin-java.html
 https://docs.microsoft.com/en-us/azure/cosmos-db/create-graph-java
 
-### OrientDB
+#### OrientDB
 The previous version got some negative feedback related to stability and support. 
 https://www.reddit.com/r/nosql/comments/9rs3q8/neo4j_vs_orientdb/
-
-## The next steps
-**TBD**
