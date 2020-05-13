@@ -960,22 +960,22 @@ class RecordHandler implements Runnable {
                         installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
                                 ARP_INGRESS_COOKIE));
                     }
-                    Integer server42Port = request.getServer42Port();
-                    Integer server42Vlan = request.getServer42Vlan();
-                    MacAddress server42MacAddress = request.getServer42MacAddress();
-                    if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
-                            && server42MacAddress != null) {
-                        installedRules.add(
-                                processInstallDefaultFlowByCookie(request.getSwitchId(), SERVER_42_TURNING_COOKIE));
-                        installedRules.add(switchManager.installServer42OutputVlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress));
-                        installedRules.add(switchManager.installServer42OutputVxlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress));
+                }
+                Integer server42Port = request.getServer42Port();
+                Integer server42Vlan = request.getServer42Vlan();
+                MacAddress server42MacAddress = request.getServer42MacAddress();
+                if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
+                        && server42MacAddress != null) {
+                    installedRules.add(
+                            processInstallDefaultFlowByCookie(request.getSwitchId(), SERVER_42_TURNING_COOKIE));
+                    installedRules.add(switchManager.installServer42OutputVlanFlow(
+                            dpid, server42Port, server42Vlan, server42MacAddress));
+                    installedRules.add(switchManager.installServer42OutputVxlanFlow(
+                            dpid, server42Port, server42Vlan, server42MacAddress));
 
-                        for (Integer port : request.getServer42FlowRttPorts()) {
-                            installedRules.add(switchManager.installServer42InputFlow(
-                                    dpid, server42Port, port, server42MacAddress));
-                        }
+                    for (Integer port : request.getServer42FlowRttPorts()) {
+                        installedRules.add(switchManager.installServer42InputFlow(
+                                dpid, server42Port, port, server42MacAddress));
                     }
                 }
             }
@@ -1212,20 +1212,20 @@ class RecordHandler implements Runnable {
                         processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_TRANSIT_COOKIE);
                         processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_INGRESS_COOKIE);
                     }
-                    Integer server42Port = request.getServer42Port();
-                    Integer server42Vlan = request.getServer42Vlan();
-                    MacAddress server42MacAddress = request.getServer42MacAddress();
-                    if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
-                            && server42MacAddress != null) {
-                        switchManager.installServer42TurningFlow(dpid);
-                        switchManager.installServer42OutputVlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress);
-                        switchManager.installServer42OutputVxlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress);
+                }
+                Integer server42Port = request.getServer42Port();
+                Integer server42Vlan = request.getServer42Vlan();
+                MacAddress server42MacAddress = request.getServer42MacAddress();
+                if (request.isServer42FlowRtt() && server42Port != null && server42Vlan != null
+                        && server42MacAddress != null) {
+                    switchManager.installServer42TurningFlow(dpid);
+                    switchManager.installServer42OutputVlanFlow(
+                            dpid, server42Port, server42Vlan, server42MacAddress);
+                    switchManager.installServer42OutputVxlanFlow(
+                            dpid, server42Port, server42Vlan, server42MacAddress);
 
-                        for (Integer port : request.getServer42FlowRttPorts()) {
-                            switchManager.installServer42InputFlow(dpid, server42Port, port, server42MacAddress);
-                        }
+                    for (Integer port : request.getServer42FlowRttPorts()) {
+                        switchManager.installServer42InputFlow(dpid, server42Port, port, server42MacAddress);
                     }
                 }
             }
@@ -1313,12 +1313,13 @@ class RecordHandler implements Runnable {
                 for (Integer port : flowArpPorts) {
                     defaultRules.add(context.getSwitchManager().buildArpInputCustomerFlow(dpid, port));
                 }
-                if (server42FlowRtt) {
-                    defaultRules.addAll(context.getSwitchManager()
-                            .buildExpectedServer42Flows(dpid, server42Port, server42Vlan, server42MacAddress,
-                                    server42FlowRttPorts));
-                }
             }
+            if (server42FlowRtt) {
+                defaultRules.addAll(context.getSwitchManager()
+                        .buildExpectedServer42Flows(dpid, server42Port, server42Vlan, server42MacAddress,
+                                server42FlowRttPorts));
+            }
+
             List<FlowEntry> flows = defaultRules.stream()
                     .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
                     .collect(Collectors.toList());

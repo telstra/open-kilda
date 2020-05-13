@@ -322,7 +322,8 @@ public class FlowCommandFactory {
      * @return install server 42 ingress flow command
      */
     public InstallServer42IngressFlow buildInstallServer42IngressFlow(
-            Flow flow, FlowPath flowPath, int outputPort, int server42Port, EncapsulationResources resources) {
+            Flow flow, FlowPath flowPath, int outputPort, int server42Port, EncapsulationResources resources,
+            boolean multiTable) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         SwitchId egressSwitchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
@@ -336,7 +337,8 @@ public class FlowCommandFactory {
 
         return new InstallServer42IngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 cookie, switchId, server42Port, outputPort, customerPort, inVlan, resources.getTransitEncapsulationId(),
-                resources.getEncapsulationType(), getOutputVlanType(flow, flowPath), meterId, egressSwitchId);
+                resources.getEncapsulationType(), getOutputVlanType(flow, flowPath), meterId, egressSwitchId,
+                multiTable);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo, boolean multiTable,

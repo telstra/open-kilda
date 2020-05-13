@@ -90,9 +90,10 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
                                           transitEncapsulationType,
                                       @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                       @JsonProperty("meter_id") final Long meterId,
-                                      @JsonProperty("egress_switch_id") final SwitchId egressSwitchId) {
+                                      @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
+                                      @JsonProperty("multi_table") final boolean multiTable) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, true);
+                transitEncapsulationType, multiTable);
         setCustomerPort(customerPort);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);

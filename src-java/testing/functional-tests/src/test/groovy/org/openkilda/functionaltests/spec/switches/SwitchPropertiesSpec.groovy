@@ -129,12 +129,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         where:
         data << [
-                new PropertiesData(desc: "enable server42_flow_rtt property without enabling multiTable property",
-                        multiTable: false, server42FlowRtt: true, server42Port: null, server42MacAddress: null,
-                        server42Vlan: null,
-                        error: "Illegal switch properties combination for switch %s. 'server42_flow_rtt' " +
-                                       "property can be set to 'true' only if 'multiTable' property is 'true'."),
-
                 new PropertiesData(desc: "enable server42_flow_rtt property without server42_port property",
                         multiTable: true, server42FlowRtt: true, server42Port: null, server42MacAddress: "42:42:42:42:42:42",
                         server42Vlan: 15,

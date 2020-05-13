@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIMESTAMP_SIZE_IN_BITS;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 
@@ -34,6 +35,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,6 +81,12 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
 
                 actions.add(of.actions().setField(of.oxms().ethSrc(ethSrc)));
                 actions.add(of.actions().setField(of.oxms().ethDst(ethDst)));
+
+                if (!getCommand().getMetadata().isMultiTable()) {
+                    actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(makeServer42CopyTimestamp());
+                }
                 actions.addAll(makeVlanEncapsulationTransformActions());
                 break;
             case VXLAN:
@@ -89,6 +97,9 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                     // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
                     actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
                 }
+                if (!getCommand().getMetadata().isMultiTable()) {
+                    actions.add(makeServer42CopyTimestamp());
+                }
                 actions.add(pushVxlanAction(SERVER_42_FORWARD_UDP_PORT));
                 break;
             default:
@@ -96,6 +107,16 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                         getClass(), encapsulation.getType(), command.getSwitchId(), command.getMetadata().getFlowId());
         }
         return actions;
+    }
+
+    private OFAction makeServer42CopyTimestamp() {
+        return of.actions().buildNoviflowCopyField()
+                .setNBits(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)
+                .setSrcOffset(0)
+                .setDstOffset(0)
+                .setOxmSrcHeader(of.oxms().buildNoviflowTxtimestamp().getTypeLen())
+                .setOxmDstHeader(of.oxms().buildNoviflowUpdPayload().getTypeLen())
+                .build();
     }
 
     private List<OFAction> makeVlanEncapsulationTransformActions() {
