@@ -87,6 +87,9 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
                 if (featureToggles.getCollectGrpcStats() != null) {
                     updatedFeatureToggles.setCollectGrpcStats(featureToggles.getCollectGrpcStats());
                 }
+                if (featureToggles.getServer42FlowRtt() != null) {
+                    updatedFeatureToggles.setServer42FlowRtt(featureToggles.getServer42FlowRtt());
+                }
 
                 super.createOrUpdate(updatedFeatureToggles);
             }

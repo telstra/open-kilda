@@ -185,13 +185,14 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
 
     private PathContext buildPathContext(Flow flow, FlowPath path) {
         SwitchProperties properties = getSwitchProperties(path.getSrcSwitch().getSwitchId());
+        boolean server42FlowRtt = isServer42FlowRttFeatureToggle() && properties.isServer42FlowRtt();
 
         return PathContext.builder()
                 .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
                 .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                 .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
-                .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, properties.isServer42FlowRtt()))
-                .removeServer42IngressRule(properties.isServer42FlowRtt())
+                .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, server42FlowRtt))
+                .removeServer42IngressRule(server42FlowRtt)
                 .server42Port(properties.getServer42Port())
                 .server42MacAddress(properties.getServer42MacAddress())
                 .build();

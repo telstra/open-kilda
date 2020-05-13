@@ -44,6 +44,8 @@ public class Neo4jFeatureTogglesRepositoryTest extends Neo4jBasedTest {
                 .pushFlowEnabled(false)
                 .unpushFlowEnabled(false)
                 .useBfdForIslIntegrityCheck(false)
+                .collectGrpcStats(false)
+                .server42FlowRtt(true)
                 .build();
 
         featureTogglesRepository.createOrUpdate(featureTogglesA);
@@ -69,6 +71,8 @@ public class Neo4jFeatureTogglesRepositoryTest extends Neo4jBasedTest {
                 .pushFlowEnabled(true)
                 .unpushFlowEnabled(false)
                 .useBfdForIslIntegrityCheck(false)
+                .collectGrpcStats(false)
+                .server42FlowRtt(true)
                 .build();
 
         assertEquals(featureTogglesC, featureTogglesCollection.iterator().next());
