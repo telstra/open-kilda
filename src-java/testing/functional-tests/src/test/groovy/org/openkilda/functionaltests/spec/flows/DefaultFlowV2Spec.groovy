@@ -71,9 +71,8 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         and: "Create a QinQ flow with the same src and dst switch"
         def qinqFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
         qinqFlow.maximumBandwidth = bandwidth
-        //TODO(andriidovhan) remove '+ 1' when 3496 is merged
-        qinqFlow.source.vlanId = vlanFlow.source.vlanId + 1
-        qinqFlow.destination.vlanId = vlanFlow.destination.vlanId + 1
+        qinqFlow.source.vlanId = vlanFlow.source.vlanId
+        qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
         qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
         qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
         qinqFlow.allocateProtectedPath = true
