@@ -7,7 +7,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -28,13 +32,28 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([SMOKE_SWITCHES])
-    def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
+   def "Systems allows to pass traffic via default/vlan and qinq flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
         assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 2) as boolean)
 
         when: "Create a vlan flow"
         def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
+        Switch newDstSwitch = allTraffGenSwitches.find { it != dstSwitch && it != srcSwitch }
+        assumeTrue( "MultiTable mode should be supported by the src and dst switches",
+        (srcSwitch.features.contains(SwitchFeature.MULTI_TABLE) &&
+            dstSwitch.features.contains(SwitchFeature.MULTI_TABLE) &&
+            newDstSwitch.features.contains(SwitchFeature.MULTI_TABLE)))
+
+        Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
+            [(it): northbound.getSwitchProperties(it.dpId)]
+        }
+        initSwProps.each { sw, swProps ->
+            switchHelper.updateSwitchProperties(sw, swProps.jacksonCopy().tap {
+                it.multiTable = true
+            })
+        }
+
         def bandwidth = 100
         def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         vlanFlow.maximumBandwidth = bandwidth
@@ -42,7 +61,6 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(vlanFlow)
 
         and: "Create a default flow with the same srcSwitch and different dstSwitch"
-        Switch newDstSwitch = allTraffGenSwitches.find { it != dstSwitch && it != srcSwitch }
         def defaultFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
         defaultFlow.maximumBandwidth = bandwidth
         defaultFlow.source.vlanId = 0
@@ -50,41 +68,24 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         defaultFlow.allocateProtectedPath = true
         flowHelperV2.addFlow(defaultFlow)
 
-        then: "The default flow  has less priority than the vlan flow"
-        def flowVlanPortInfo = database.getFlow(vlanFlow.flowId)
-        def flowFullPortInfo = database.getFlow(defaultFlow.flowId)
+        and: "Create a QinQ flow with the same src and dst switch"
+        def qinqFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
+        qinqFlow.maximumBandwidth = bandwidth
+        //TODO(andriidovhan) remove '+ 1' when 3496 is merged
+        qinqFlow.source.vlanId = vlanFlow.source.vlanId + 1
+        qinqFlow.destination.vlanId = vlanFlow.destination.vlanId + 1
+        qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
+        qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
+        qinqFlow.allocateProtectedPath = true
+        flowHelperV2.addFlow(qinqFlow)
 
-        def rules = [srcSwitch.dpId, dstSwitch.dpId, newDstSwitch.dpId].collectEntries {
-            [(it): northbound.getSwitchRules(it).flowEntries]
-        }
-
-        // can't be imported safely org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_FLOW_PRIORITY
-        def FLOW_PRIORITY = 24576
-        def DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1
-
-        [srcSwitch.dpId, dstSwitch.dpId].each { sw ->
-            [flowVlanPortInfo.forwardPath.cookie.value, flowVlanPortInfo.reversePath.cookie.value].each { cookie ->
-                assert rules[sw].find { it.cookie == cookie }.priority == FLOW_PRIORITY
-            }
-        }
-        // DEFAULT_FLOW_PRIORITY sets on an ingress rule only
-        rules[srcSwitch.dpId].find { it.cookie == flowFullPortInfo.reversePath.cookie.value }.priority == FLOW_PRIORITY
-        rules[newDstSwitch.dpId].find {
-            it.cookie == flowFullPortInfo.forwardPath.cookie.value
-        }.priority == FLOW_PRIORITY
-
-        rules[srcSwitch.dpId].find {
-            it.cookie == flowFullPortInfo.forwardPath.cookie.value
-        }.priority == DEFAULT_FLOW_PRIORITY
-        rules[newDstSwitch.dpId].find {
-            it.cookie == flowFullPortInfo.reversePath.cookie.value
-        }.priority == DEFAULT_FLOW_PRIORITY
-
-        and: "System allows traffic on the vlan flow"
+        then: "System allows traffic on the vlan flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowHelperV2.toV1(vlanFlow), bandwidth, 5)
+        def examVlanFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                flowHelperV2.toV1(vlanFlow), bandwidth, 5
+        )
         withPool {
-            [exam.forward, exam.reverse].eachParallel { direction ->
+            [examVlanFlow.forward, examVlanFlow.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
                 assert traffExam.waitExam(direction).hasTraffic()
@@ -92,17 +93,34 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "System allows traffic on the default flow"
-        def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowHelperV2.toV1(defaultFlow), 1000, 3)
+        def examDefaultFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                flowHelperV2.toV1(defaultFlow), 1000, 5
+        )
         withPool {
-            [exam2.forward, exam2.reverse].eachParallel { direction ->
+            [examDefaultFlow.forward, examDefaultFlow.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
 
-        cleanup: "Delete the flows"
-        [vlanFlow, defaultFlow].each { flow -> flow && flowHelperV2.deleteFlow(flow.flowId) }
+        and: "System allows traffic on the QinQ flow"
+        def examQinqFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                flowHelperV2.toV1(qinqFlow), 1000, 5
+        )
+        withPool {
+            [examQinqFlow.forward, examQinqFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        cleanup:
+        [vlanFlow, defaultFlow, qinqFlow].each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
+        initSwProps.each { sw, swProps ->
+            switchHelper.updateSwitchProperties(sw, swProps)
+        }
     }
 
     @Tidy
