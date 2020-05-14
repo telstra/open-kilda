@@ -50,7 +50,7 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, Sta
                             stateMachine.getErrorReason()));
         }
         log.info("Flow {} reroute success", stateMachine.getFlowId());
-        carrier.sendRerouteResultStatus(stateMachine.getFlowId(), stateMachine.getRerouteError(),
+        carrier.sendRerouteResultStatus(stateMachine.getFlowId(), true, stateMachine.getRerouteError(),
                 stateMachine.getCommandContext().getCorrelationId());
     }
 }

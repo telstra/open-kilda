@@ -29,8 +29,9 @@ public interface FlowRerouteHubCarrier extends FlowGenericCarrier {
      * Sends reroute result status to reroute topology.
      *
      * @param flowId flow id.
+     * @param success whether reroute succeed or not.
      * @param rerouteError first error in reroute process if any.
      * @param correlationId correlation id.
      */
-    void sendRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId);
+    void sendRerouteResultStatus(String flowId, boolean success, RerouteError rerouteError, String correlationId);
 }

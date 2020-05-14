@@ -43,7 +43,7 @@ public class OnFinishedWithErrorAction extends
         stateMachine.saveActionToHistory("Failed to reroute the flow", stateMachine.getErrorReason());
         log.info("Flow {} reroute result failed with error {}", stateMachine.getFlowId(),
                 stateMachine.getRerouteError());
-        carrier.sendRerouteResultStatus(stateMachine.getFlowId(), stateMachine.getRerouteError(),
+        carrier.sendRerouteResultStatus(stateMachine.getFlowId(), false, stateMachine.getRerouteError(),
                 stateMachine.getCommandContext().getCorrelationId());
     }
 }

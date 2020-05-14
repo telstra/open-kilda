@@ -83,7 +83,7 @@ public class FlowRerouteService {
 
         final String flowId = reroute.getFlowId();
         if (isRerouteAlreadyInProgress(flowId)) {
-            carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
+            carrier.sendRerouteResultStatus(flowId, false, new RerouteInProgressError(),
                     reroute.getCommandContext().getCorrelationId());
             return;
         }

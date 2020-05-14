@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.messaging.info.reroute.error.AllocationResourcesError;
 import org.openkilda.model.Flow;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
@@ -95,6 +96,12 @@ public class AllocatePrimaryResourcesAction extends
         stateMachine.setNewPrimaryResources(null);
         stateMachine.setNewPrimaryForwardPath(null);
         stateMachine.setNewPrimaryReversePath(null);
+    }
+
+    @Override
+    protected void recordFailureReason(FlowRerouteFsm stateMachine, String reason) {
+        super.recordFailureReason(stateMachine, reason);
+        stateMachine.setRerouteError(new AllocationResourcesError(reason));
     }
 
     @Override

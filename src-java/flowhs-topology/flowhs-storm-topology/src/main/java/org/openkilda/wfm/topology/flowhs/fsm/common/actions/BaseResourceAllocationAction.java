@@ -105,6 +105,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             return Optional.empty();
         } catch (UnroutableFlowException  ex) {
             String errorMessage = format("Not enough bandwidth or no path found. %s", ex.getMessage());
+            recordFailureReason(stateMachine, errorMessage);
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
@@ -112,6 +113,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     getGenericErrorMessage(), errorMessage));
         } catch (RecoverableException ex) {
             String errorMessage = format("Failed to find a path. %s", ex.getMessage());
+            recordFailureReason(stateMachine, errorMessage);
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireError(errorMessage);
 
@@ -119,6 +121,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     getGenericErrorMessage(), errorMessage));
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate flow resources. %s", ex.getMessage());
+            recordFailureReason(stateMachine, errorMessage);
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
 
@@ -142,6 +145,15 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
      * Called in a case of allocation failure.
      */
     protected abstract void onFailure(T stateMachine);
+
+
+    /**
+     * Called in a case of allocation failure.
+     */
+    protected void recordFailureReason(T stateMachine, String reason) {
+        // NOTE(tdurakov): Not making this method abstract to have less impact on other inherited classes
+    }
+
 
     /**
      * Perform resource allocation in transactions, returns the allocated resources.

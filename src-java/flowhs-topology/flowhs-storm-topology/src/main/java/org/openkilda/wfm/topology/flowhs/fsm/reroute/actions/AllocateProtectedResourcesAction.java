@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.util.Arrays.asList;
 
+import org.openkilda.messaging.info.reroute.error.AllocationResourcesError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -129,6 +130,12 @@ public class AllocateProtectedResourcesAction extends
         stateMachine.setNewProtectedResources(null);
         stateMachine.setNewProtectedForwardPath(null);
         stateMachine.setNewProtectedReversePath(null);
+    }
+
+    @Override
+    protected void recordFailureReason(FlowRerouteFsm stateMachine, String reason) {
+        super.recordFailureReason(stateMachine, reason);
+        stateMachine.setRerouteError(new AllocationResourcesError(reason));
     }
 
     @Override

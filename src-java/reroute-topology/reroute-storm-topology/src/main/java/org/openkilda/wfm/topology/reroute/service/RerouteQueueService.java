@@ -21,6 +21,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.AllocationResourcesError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
@@ -138,7 +139,7 @@ public class RerouteQueueService {
     public void flushThrottling() {
         Map<String, FlowThrottlingData> requestsToSend = new HashMap<>();
         reroutes.forEach((flowId, rerouteQueue) -> rerouteQueue.flushThrottling()
-                    .ifPresent(flowThrottlingData -> requestsToSend.put(flowId, flowThrottlingData)));
+                .ifPresent(flowThrottlingData -> requestsToSend.put(flowId, flowThrottlingData)));
         log.info("Send reroute requests for flows {}", requestsToSend.keySet());
         requestsToSend.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue(new FlowPriorityComparator()))
@@ -169,7 +170,11 @@ public class RerouteQueueService {
     }
 
     private boolean isRetryRequired(String flowId, RerouteError rerouteError) {
-        if (rerouteError instanceof RerouteInProgressError) {
+        if (rerouteError == null) {
+            return false;
+        } else if (rerouteError instanceof RerouteInProgressError) {
+            return true;
+        } else if (rerouteError instanceof AllocationResourcesError) {
             return true;
         } else if (rerouteError instanceof SpeakerRequestError) {
             Flow flow = flowRepository.findById(flowId).orElse(null);

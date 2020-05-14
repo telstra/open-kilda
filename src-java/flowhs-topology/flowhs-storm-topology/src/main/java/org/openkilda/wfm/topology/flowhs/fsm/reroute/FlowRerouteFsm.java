@@ -156,6 +156,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         carrier.sendNorthboundResponse(message);
     }
 
+    /**
+     * Set reroute error object to be propagated in response.
+     */
     public void setRerouteError(RerouteError rerouteError) {
         if (this.rerouteError == null) {
             this.rerouteError = rerouteError;

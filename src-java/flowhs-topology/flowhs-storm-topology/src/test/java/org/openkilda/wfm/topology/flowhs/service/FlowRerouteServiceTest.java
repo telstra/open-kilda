@@ -226,7 +226,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
-        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()),
+        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), eq(false),
                 argThat(hasProperty("message", equalTo("Failed to install rules"))),
                 any(String.class));
     }
@@ -253,7 +253,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
-        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()),
+        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), eq(false),
                 argThat(hasProperty("message", equalTo("Failed to install rules"))),
                 any(String.class));
     }
@@ -289,7 +289,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
-        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()),
+        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), eq(false),
                 argThat(hasProperty("message", equalTo("Failed to validate rules"))),
                 any(String.class));
     }
@@ -318,7 +318,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyNoPathReplace(origin, result);
-        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()),
+        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), eq(false),
                 argThat(hasProperty("message", equalTo("Failed to validate rules"))),
                 any(String.class));
     }
@@ -473,7 +473,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .flowId(origin.getFlowId())
                 .success(true)
                 .build();
-        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), isNull(), any(String.class));
+        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), eq(true), isNull(), any(String.class));
     }
 
     @Test
@@ -510,7 +510,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         Assert.assertNotNull(forwardPath);
         Assert.assertEquals(1, forwardPath.getSegments().size());  // second request is dropped
 
-        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()),
+        verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), eq(false),
                 argThat(hasProperty("message", equalTo("Reroute is in progress"))),
                 any(String.class));
     }

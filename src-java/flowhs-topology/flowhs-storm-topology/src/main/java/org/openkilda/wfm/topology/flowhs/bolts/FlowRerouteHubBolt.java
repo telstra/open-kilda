@@ -137,10 +137,11 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId) {
+    public void sendRerouteResultStatus(String flowId, boolean success,
+                                        RerouteError rerouteError, String correlationId) {
         RerouteResultInfoData rerouteResult = RerouteResultInfoData.builder()
                 .flowId(flowId)
-                .success(rerouteError == null)
+                .success(success)
                 .rerouteError(rerouteError)
                 .build();
         Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
