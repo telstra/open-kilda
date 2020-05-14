@@ -106,21 +106,45 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    def "Unable to #action a non-existent flow"() {
+    def "Unable to #data.description a non-existent flow"() {
         when: "Trying to #action a non-existent flow"
-        northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
+        data.operation.call()
 
         then: "An error is received (404 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == message
+        def t = thrown(HttpClientErrorException)
+        t.rawStatusCode == 404
+        verifyAll(t.responseBodyAsString.to(MessageError)) {
+            errorMessage == data.message
+            errorDescription == data.errorDescr
+        }
 
         where:
-        action        | message
-        "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "validate"    | "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        data << [
+                [
+                        description: "get",
+                        operation: { getNorthbound().getFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found",
+                        errorDescr: "Flow not found"
+                ],
+                [
+                        description: "reroute",
+                        operation: { getNorthbound().rerouteFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Could not reroute flow",
+                        errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
+                ],
+                [
+                        description: "validate",
+                        operation: { getNorthbound().validateFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found",
+                        errorDescr: "Receiving rules operation in FlowValidationFsm"
+                ],
+                [
+                        description: "synchronize",
+                        operation: { getNorthbound().synchronizeFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Could not reroute flow",
+                        errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
+                ]
+        ]
     }
 
     def "Able to detect discrepancies for a flow with protected path"() {

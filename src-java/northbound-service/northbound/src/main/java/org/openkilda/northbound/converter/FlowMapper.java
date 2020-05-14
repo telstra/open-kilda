@@ -37,6 +37,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathComputationStrategy;
@@ -154,10 +155,13 @@ public abstract class FlowMapper {
 
     @Mapping(target = "flowId", source = "id")
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    @Mapping(target = "detectConnectedDevices", ignore = true)
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "type", ignore = true)
-    @Mapping(target = "detectConnectedDevices", ignore = true)
-    public abstract FlowRequest toFlowRequest(FlowCreatePayload request);
+    @Mapping(target = "bulkUpdateFlowIds", ignore = true)
+    @Mapping(target = "doNotRevert", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
+    public abstract FlowRequest toFlowRequest(FlowPayload payload);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
     @Mapping(target = "trackLldpConnectedDevices", source = "detectConnectedDevices.lldp")
@@ -170,6 +174,10 @@ public abstract class FlowMapper {
     @Mapping(target = "trackArpConnectedDevices", source = "detectConnectedDevices.arp")
     public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointPayload input);
 
+    public FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
+        return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+    }
+
     /**
      * Map FlowCreatePayload.
      *
@@ -177,7 +185,10 @@ public abstract class FlowMapper {
      * @return {@link FlowRequest} instance.
      */
     public FlowRequest toFlowCreateRequest(FlowCreatePayload source) {
-        FlowRequest target = toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+        FlowRequest target = toFlowRequest(source).toBuilder()
+                .diverseFlowId(source.getDiverseFlowId())
+                .type(Type.CREATE)
+                .build();
         if (source.getSource().getDetectConnectedDevices() != null) {
             DetectConnectedDevicesPayload srcDevs = source.getSource().getDetectConnectedDevices();
             target.getDetectConnectedDevices().setSrcArp(srcDevs.isArp());
@@ -191,8 +202,28 @@ public abstract class FlowMapper {
         return target;
     }
 
-    public FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
-        return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+    /**
+     * Map FlowUpdatePayload.
+     *
+     * @param source {@link FlowUpdatePayload} instance.
+     * @return {@link FlowRequest} instance.
+     */
+    public FlowRequest toFlowUpdateRequest(FlowUpdatePayload source) {
+        FlowRequest target =  toFlowRequest(source).toBuilder()
+                .diverseFlowId(source.getDiverseFlowId())
+                .type(Type.UPDATE)
+                .build();
+        if (source.getSource().getDetectConnectedDevices() != null) {
+            DetectConnectedDevicesPayload srcDevs = source.getSource().getDetectConnectedDevices();
+            target.getDetectConnectedDevices().setSrcArp(srcDevs.isArp());
+            target.getDetectConnectedDevices().setSrcLldp(srcDevs.isLldp());
+        }
+        if (source.getDestination().getDetectConnectedDevices() != null) {
+            DetectConnectedDevicesPayload dstDevs = source.getDestination().getDetectConnectedDevices();
+            target.getDetectConnectedDevices().setDstArp(dstDevs.isArp());
+            target.getDetectConnectedDevices().setDstLldp(dstDevs.isLldp());
+        }
+        return target;
     }
 
     public abstract PingOutput toPingOutput(FlowPingResponse response);

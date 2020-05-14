@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
@@ -74,15 +75,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    //pure v1
     @Shared
-    def getPortViolationError = { String action, int port, SwitchId swId ->
-        "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
-    }
-
-    //v1 mapped to h&s
-    @Shared
-    def getPortViolationErrorDescription = { int port, SwitchId swId, String endpoint ->
+    def getPortViolationError = { String endpoint, int port, SwitchId swId ->
         "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
     }
 
@@ -417,7 +411,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.CONFLICT
         def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorMessage == data.getErrorMessage(flow, conflictingFlow)
         errorDetails.errorDescription == data.getErrorDescription(flow, conflictingFlow)
 
         cleanup: "Delete the dominant flow"
@@ -430,7 +424,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 makeFlowsConflicting: { FlowCreatePayload dominantFlow, FlowCreatePayload flowToConflict ->
                     flowToConflict.id = dominantFlow.id
                 },
-                getErrorDescription            : { FlowCreatePayload dominantFlow, FlowCreatePayload flowToConflict ->
+                getErrorMessage            : { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    "Could not create flow"
+                },
+                getErrorDescription            : { FlowPayload dominantFlow, FlowPayload flowToConflict ->
                     "Flow $dominantFlow.id already exists"
                 }
         ]
@@ -460,6 +457,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.CONFLICT
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == data.getErrorMessage(flow1, conflictingFlow, "update")
+        errorDetails.errorDescription == data.getErrorDescription(flow1, conflictingFlow, "update")
 
         cleanup:
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -468,7 +466,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         data << getConflictingData()
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2829")
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
         List<List<PathNode>> possibleFlowPaths = []
@@ -508,7 +505,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Unroll
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
-        def isolatedSwitch = topology.activeSwitches[1]
+        def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
+        def flow = data.getFlow(isolatedSwitch)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portDown(isolatedSwitch.dpId, port)
         }
@@ -521,14 +519,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         when: "Try building a flow using the isolated switch"
-        def flow = data.getFlow(isolatedSwitch)
         northbound.addFlow(flow)
 
         then: "Error is returned, stating that there is no path found for such flow"
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.NOT_FOUND
-        error.responseBodyAsString.to(MessageError).errorDescription ==
-                "Not enough bandwidth or no path found. Failed to find path with " +
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth"
 
@@ -547,16 +545,59 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelper().randomFlow(theSwitch, getTopology().activeSwitches.find { it != theSwitch })
+                            getFlowHelper().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
+                                    .collectMany { [it, it.reversed] }.find {
+                                it.src == theSwitch
+                            })
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelper().randomFlow(getTopology().activeSwitches.find { it != theSwitch }, theSwitch)
+                            getFlowHelper().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
+                                    .collectMany { [it, it.reversed] }.find {
+                                it.dst == theSwitch
+                            })
                         }
                 ]
         ]
+    }
+
+    def "Removing flow while it is still in progress of being created should not cause rule discrepancies"() {
+        given: "A potential flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def paths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
+
+        when: "Init creation of a new flow"
+        northbound.addFlow(flow)
+
+        and: "Immediately remove the flow"
+        northbound.deleteFlow(flow.id)
+
+        then: "System returns error as being unable to remove in progress flow"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.BAD_REQUEST
+
+        and: "Flow is not removed"
+        northbound.getAllFlows()*.id.contains(flow.id)
+
+        and: "Flow eventually gets into UP state"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+        }
+
+        and: "All related switches have no discrepancies in rules"
+        switches.each {
+            def validation = northbound.validateSwitch(it.dpId)
+            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            assert validation.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+        }
+
+        cleanup: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     @Tidy
@@ -574,7 +615,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorDescription == data.message(isl)
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == data.errorMessage(isl)
+        errorDetails.errorDescription == data.errorDescription(isl)
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -584,15 +627,21 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         switchType: "source",
                         port      : "srcPort",
-                        message   : { Isl violatedIsl ->
-                            getPortViolationErrorDescription(violatedIsl.srcPort, violatedIsl.srcSwitch.dpId, "source")
+                        errorMessage : { Isl violatedIsl ->
+                            "Could not create flow"
+                        },
+                        errorDescription   : { Isl violatedIsl ->
+                            getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
                         }
                 ],
                 [
                         switchType: "destination",
                         port      : "dstPort",
-                        message   : { Isl violatedIsl ->
-                            getPortViolationErrorDescription(violatedIsl.dstPort, violatedIsl.dstSwitch.dpId, "destination")
+                        errorMessage : { Isl violatedIsl ->
+                            "Could not create flow"
+                        },
+                        errorDescription   : { Isl violatedIsl ->
+                            getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
         ]
@@ -615,7 +664,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then:
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+        def error = exc.responseBodyAsString.to(MessageError)
+        error.errorMessage == "Could not update flow"
+        error.errorDescription == data.message(isl)
 
         cleanup:
         flowHelper.deleteFlow(flow.id)
@@ -626,14 +677,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         switchType: "source",
                         port      : "srcPort",
                         message   : { Isl violatedIsl ->
-                            getPortViolationError("update", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                            getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
                         }
                 ],
                 [
                         switchType: "destination",
                         port      : "dstPort",
                         message   : { Isl violatedIsl ->
-                            getPortViolationError("update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                            getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
         ]
@@ -655,8 +706,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorDescription ==
-                getPortViolationErrorDescription(isl.srcPort, isl.srcSwitch.dpId, "source")
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -683,8 +735,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorDescription ==
-                getPortViolationErrorDescription(isl.srcPort, isl.srcSwitch.dpId, "source")
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore status of the ISL and delete new created ISL"
         islUtils.replug(newIsl, true, isl, false)
@@ -1048,7 +1101,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         },
                         getErrorMessage            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
+                            "Could not $operation flow"
                         },
                         getErrorDescription        : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
@@ -1063,7 +1116,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         },
                         getErrorMessage            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
+                            "Could not $operation flow"
                         },
                         getErrorDescription        : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
@@ -1079,7 +1132,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         },
                         getErrorMessage            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
+                            "Could not $operation flow"
                         },
                         getErrorDescription        : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
@@ -1095,7 +1148,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         },
                         getErrorMessage            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
+                            "Could not $operation flow"
                         },
                         getErrorDescription        : { FlowPayload dominantFlow, FlowPayload flowToConflict,
                                                        String operation = "create" ->

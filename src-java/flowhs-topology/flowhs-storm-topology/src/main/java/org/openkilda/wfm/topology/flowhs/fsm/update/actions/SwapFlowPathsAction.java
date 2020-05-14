@@ -33,7 +33,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 

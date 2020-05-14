@@ -189,13 +189,12 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 409
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Requested flow '$defaultFlow2.id' conflicts with existing flow \
-'$defaultFlow1.id'. Details: requested flow '$defaultFlow2.id' source: switchId=\"$defaultFlow2.source.switchDpId\" \
-port=$defaultFlow2.source.portId, existing flow '$defaultFlow1.id' \
-source: switchId=\"$defaultFlow1.source.switchDpId\" port=$defaultFlow1.source.portId"
-        }
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Requested flow '$defaultFlow2.id' conflicts with existing flow \
+'$defaultFlow1.id'. Details: requested flow '$defaultFlow2.id' source: switchId=\"$defaultFlow2.source.datapath\" \
+port=$defaultFlow2.source.portNumber, existing flow '$defaultFlow1.id' \
+source: switchId=\"$defaultFlow1.source.datapath\" port=$defaultFlow1.source.portNumber"
 
         cleanup:
         flowHelper.deleteFlow(defaultFlow1.id)
