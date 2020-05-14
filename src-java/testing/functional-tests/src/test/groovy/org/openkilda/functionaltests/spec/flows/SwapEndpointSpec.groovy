@@ -35,6 +35,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 import spock.lang.Unroll
