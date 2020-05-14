@@ -123,6 +123,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
 
         try {
             return flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                    // NOTE(tdurakov): filter out paths here that are orphaned for the flow
+                    .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .distinct()
                     .map(FlowMapper.INSTANCE::map)
