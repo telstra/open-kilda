@@ -130,16 +130,7 @@ class FlowHelper {
     FlowPayload addFlow(FlowPayload flow) {
         log.debug("Adding flow '${flow.id}'")
         def response = northbound.addFlow(flow)
-
-        def flowEntry = null
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-
-            flowEntry = db.getFlow(flow.id)
-            assert flowEntry
-        }
-        checkRulesOnSwitches(flowEntry, RULES_INSTALLATION_TIME, true)
-
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
     }
 
@@ -148,20 +139,10 @@ class FlowHelper {
      * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
      */
     FlowPayload deleteFlow(String flowId) {
-        deleteFlow(flowId, false)
-    }
-
-    FlowPayload deleteFlow(String flowId, boolean verifyMeters) {
-        def flowEntry = db.getFlow(flowId)
-
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
-
-        checkRulesOnSwitches(flowEntry, RULES_DELETION_TIME, false)
-
-        if(verifyMeters && !flowEntry.ignoreBandwidth) {
-            checkMetersOnSwitches(flowEntry, (RULES_DELETION_TIME / 2).toInteger(), false)
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.getFlowStatus(flowId) }
         return response
     }
 
@@ -170,18 +151,9 @@ class FlowHelper {
      * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
      */
     FlowPayload updateFlow(String flowId, FlowPayload flow) {
-        def flowEntryBeforeUpdate = db.getFlow(flowId)
-
-        log.debug("Updating flow '${flow.id}'")
+        log.debug("Updating flow '${flowId}'")
         def response = northbound.updateFlow(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
-
-        def flowEntryAfterUpdate = db.getFlow(flowId)
-
-        // TODO(ylobankov): Delete check for rules installation once we add a new test to verify this functionality.
-        checkRulesOnSwitches(flowEntryAfterUpdate, RULES_INSTALLATION_TIME, true)
-        checkRulesOnSwitches(flowEntryBeforeUpdate, RULES_DELETION_TIME, false)
-
+        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
         return response
     }
 

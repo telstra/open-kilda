@@ -296,7 +296,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         when: "Remove the flow"
-        northbound.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
 
         and: "Try to get connected devices for removed flow"
         northbound.getFlowConnectedDevices(flow.id)
@@ -633,7 +633,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and device"
-        flow && northbound.deleteFlow(flow.id)
+        flow && flowHelper.deleteFlow(flow.id)
         device && device.close()
         database.removeConnectedDevices(sw.dpId)
 
@@ -691,7 +691,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and registered devices, revert switch props"
-        northbound.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         database.removeConnectedDevices(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps)
     }

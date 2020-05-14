@@ -13,7 +13,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
@@ -44,6 +43,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
         when: "Synchronize the flow"
         def syncTime = new Date()
         def rerouteResponse = northbound.synchronizeFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         then: "The flow is not rerouted"
         int seqId = 0
@@ -53,7 +53,6 @@ class FlowSyncSpec extends HealthCheckSpecification {
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Missing flow rules are installed (existing ones are reinstalled) on all switches"
         involvedSwitches.each { sw ->
@@ -96,6 +95,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
         when: "Synchronize the flow"
         def syncTime = new Date()
         def rerouteResponse = northbound.synchronizeFlow(flow.id)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         then: "The flow is rerouted"
         def newFlowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
@@ -106,7 +106,6 @@ class FlowSyncSpec extends HealthCheckSpecification {
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
         newFlowPath != flowPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Flow rules are installed/reinstalled on switches remained from the original flow path"
         def involvedSwitchesAfterSync = pathHelper.getInvolvedSwitches(flow.id)
