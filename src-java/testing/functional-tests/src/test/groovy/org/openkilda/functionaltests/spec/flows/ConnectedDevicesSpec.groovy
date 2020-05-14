@@ -111,7 +111,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         withPool {
             [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
                 endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), endpoint.vlanId).withCloseable {
+                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
                         it.sendLldp(lldpData)
                         it.sendArp(arpData)
                     }
@@ -224,7 +224,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         withPool {
             [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
                 endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), endpoint.vlanId).withCloseable {
+                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
                         it.sendLldp(lldpData)
                         it.sendArp(arpData)
                     }
@@ -280,7 +280,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Device connects to src endpoint and send lldp and arp packets"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), flow.source.vlanId).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -343,7 +343,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         withPool {
             [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
                 endpoint, lldpData, arpData ->
-                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), endpoint.vlanId).withCloseable {
+                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath), [endpoint.vlanId]).withCloseable {
                         it.sendLldp(lldpData)
                         it.sendArp(arpData)
                     }
@@ -390,7 +390,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.datapath),
-                flow.source.vlanId)
+                [flow.source.vlanId])
 
         when: "Device sends lldp packet"
         def lldpData = LldpData.buildRandom()
@@ -435,7 +435,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.datapath),
-                flow.source.vlanId)
+                [flow.source.vlanId])
 
         when: "Device sends ARP packet"
         def arpData = ArpData.buildRandom()
@@ -480,7 +480,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.datapath),
-                flow.destination.vlanId)
+                [flow.destination.vlanId])
 
         when: "Two completely different lldp packets are sent"
         def lldpData1 = LldpData.buildRandom()
@@ -533,7 +533,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.datapath),
-                flow.destination.vlanId)
+                [flow.destination.vlanId])
 
         when: "Two completely different ARP packets are sent"
         def arpData1 = ArpData.buildRandom()
@@ -590,7 +590,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def arpData = ArpData.buildRandom()
         def deviceVlan = 666
         def tg = topology.getTraffGen(sw.dpId)
-        def device = new ConnectedDevice(traffExamProvider.get(), tg, deviceVlan)
+        def device = new ConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
         device.sendLldp(lldpData)
         device.sendArp(arpData)
 
@@ -665,7 +665,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Devices send lldp and arp packets into a flow port"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), flow.source.vlanId).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -713,7 +713,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def vlan = 123
-        new ConnectedDevice(traffExamProvider.get(), tg, vlan).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -765,7 +765,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Devices send lldp and arp packets into a flow port with flow vlan"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), tg, flow.source.vlanId).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -801,7 +801,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData2 = LldpData.buildRandom()
         def arpData2 = ArpData.buildRandom()
         def vlan = flow.source.vlanId - 1
-        new ConnectedDevice(traffExamProvider.get(), tg, vlan).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData2)
             it.sendArp(arpData2)
         }
@@ -879,7 +879,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
                 endpoint, lldpData, arpData ->
                     new ConnectedDevice(tgService, topology.getTraffGen(endpoint.datapath),
-                            endpoint.vlanId ?: nonDefaultVlan).withCloseable {
+                            [endpoint.vlanId ?: nonDefaultVlan]).withCloseable {
                         it.sendLldp(lldpData)
                         it.sendArp(arpData)
                     }
@@ -1023,6 +1023,241 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         cleanup: "Restore switch props"
         flow && flowHelper.deleteFlow(flow.id)
         SwitchHelper.updateSwitchProperties(sw, initProps)
+    }
+
+    @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
+    def "System detects devices for a qinq(iVlan=#vlanId oVlan=#innerVlanId) flow with lldp and arp enabled on the src switch"() {
+        assumeTrue("Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199",
+                encapsulationType != FlowEncapsulationType.VXLAN)
+
+        given: "Two switches connected to traffgen and they support enabled multiTable mode"
+        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        assumeTrue("Unable to find two active traffgens", (allTraffGenSwitches.size() > 1))
+        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every { sw ->
+                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+            }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A QinQ flow with enabled connected devices"
+        def tgService = traffExamProvider.get()
+        def flow = flowHelperV2.randomFlow(swP)
+        flow.source.vlanId = vlanId
+        flow.source.innerVlanId = innerVlanId
+        flow.encapsulationType = encapsulationType
+        flow.source.detectConnectedDevices.arp = true
+        flow.source.detectConnectedDevices.lldp = true
+
+        and: "Switches with turned 'on' multiTable property"
+        def initialSrcProps = enableMultiTableIfNeeded(true, swP.src.dpId)
+        def initialDstProps = enableMultiTableIfNeeded(false, swP.dst.dpId)
+
+        when: "Create a flow with connected devices"
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow and src/dst switches are valid"
+        def createdFlow = database.getFlow(flow.flowId)
+        validateFlowAndSwitches(createdFlow)
+
+        and: "LLDP meters must be installed"
+        validateLldpMeters(createdFlow, true)
+        validateLldpMeters(createdFlow, false)
+
+        when: "Devices send lldp and arp packets on each flow endpoint"
+        def srcLldpData = LldpData.buildRandom()
+        def dstLldpData = LldpData.buildRandom()
+        def srcArpData = ArpData.buildRandom()
+        def dstArpData = ArpData.buildRandom()
+        withPool {
+            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
+                endpoint, lldpData, arpData ->
+                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
+                            [endpoint.vlanId, endpoint.innerVlanId]).withCloseable {
+                        it.sendLldp(lldpData)
+                        it.sendArp(arpData)
+                    }
+            }
+        }
+
+        then: "Getting connecting devices shows corresponding devices on src endpoint"
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
+                it.source.lldp.size() == 1
+                it.source.arp.size() == 1
+                it.destination.lldp.empty
+                it.destination.arp.empty
+                verifyEquals(it.source.lldp.first(), srcLldpData)
+                verifyEquals(it.source.arp.first(), srcArpData)
+            }
+        }
+
+        and: "Devices are registered on the src switch only"
+        verifyAll(northboundV2.getConnectedDevices(flow.source.switchId).ports) {
+            it.size() == 1
+            it[0].portNumber == flow.source.portNumber
+            it[0].lldp.size() == 1
+            it[0].lldp.first().flowId == flow.flowId
+            it[0].lldp.first().vlan == (flow.source.vlanId ? flow.source.vlanId : innerVlanId) //due to issue 3475
+            verifyEquals(it[0].lldp.first(), srcLldpData)
+            it[0].arp.size() == 1
+            it[0].arp.first().flowId == flow.flowId
+            it[0].arp.first().vlan == (flow.source.vlanId ? flow.source.vlanId : innerVlanId) //due to issue 3475
+            verifyEquals(it[0].arp.first(), srcArpData)
+        }
+        northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+
+        and: "Delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
+
+        and: "Delete action removed all rules and meters"
+        Wrappers.wait(WAIT_OFFSET) {
+            validateSwitchHasNoFlowRulesAndMeters(swP.src.dpId)
+        }
+
+        cleanup: "Restore initial switch properties"
+        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
+        initialSrcProps && restoreSwitchProperties(swP.src.dpId, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
+        srcLldpData && database.removeConnectedDevices(swP.src.dpId)
+
+        where:
+        vlanId | innerVlanId | encapsulationType
+        0      | 200         | FlowEncapsulationType.TRANSIT_VLAN
+        100    | 200         | FlowEncapsulationType.TRANSIT_VLAN
+        0      | 200         | FlowEncapsulationType.VXLAN
+        100    | 200         | FlowEncapsulationType.VXLAN
+    }
+
+    @Unroll
+    def "System doesn't detect devices only if vlan match with outerVlan of qinq flow"() {
+        given: "Two switches connected to traffgen and they support enabled multiTable mode"
+        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        assumeTrue("Unable to find two active traffgens", (allTraffGenSwitches.size() > 1))
+        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every { sw ->
+                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+            }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A QinQ flow with enabled connected devices"
+        def tgService = traffExamProvider.get()
+        def flow = flowHelperV2.randomFlow(swP)
+        def outerVlan = 100
+        flow.source.vlanId = outerVlan
+        flow.source.innerVlanId = 200
+        flow.source.detectConnectedDevices.arp = true
+        flow.source.detectConnectedDevices.lldp = true
+
+        and: "Switches with turned 'on' multiTable property"
+        def initialSrcProps = enableMultiTableIfNeeded(true, swP.src.dpId)
+        def initialDstProps = enableMultiTableIfNeeded(false, swP.dst.dpId)
+
+        flowHelperV2.addFlow(flow)
+
+        when: "Devices send lldp and arp packets on src flow endpoint and match outerVlan only"
+        def srcLldpData = LldpData.buildRandom()
+        def dstLldpData = LldpData.buildRandom()
+        def srcArpData = ArpData.buildRandom()
+        def dstArpData = ArpData.buildRandom()
+        withPool {
+            [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].eachParallel {
+                endpoint, lldpData, arpData ->
+                    new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                        it.sendLldp(lldpData)
+                        it.sendArp(arpData)
+                    }
+            }
+        }
+
+        then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
+        Wrappers.timedLoop(3) {
+            //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
+                it.source.lldp.empty
+                it.source.arp.empty
+                it.destination.lldp.empty
+                it.destination.arp.empty
+            }
+        }
+
+        and: "Devices are not registered on the src/dst switches"
+        northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
+        northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+
+        and: "Delete the flow"
+
+
+        cleanup: "Restore initial switch properties"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialSrcProps && restoreSwitchProperties(swP.src.dpId, initialSrcProps)
+        initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
+    }
+
+    @Unroll
+    @Tags([SMOKE_SWITCHES])
+    def "Able to detect devices on a qinq single-switch different-port flow"() {
+        given: "A flow between different ports on the same switch"
+        def sw = topology.activeTraffGens*.switchConnected.first() ?:
+                assumeTrue("No suiting switches found", false)
+        def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
+
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.source.detectConnectedDevices.lldp = true
+        flow.source.detectConnectedDevices.arp = true
+        flow.source.vlanId = vlanId
+        flow.source.innerVlanId = innerVlanId
+        flow.encapsulationType = encapsulationType
+        flowHelperV2.addFlow(flow)
+
+        when: "Device connects to src endpoint and send lldp and arp packets"
+        def lldpData = LldpData.buildRandom()
+        def arpData = ArpData.buildRandom()
+        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId),
+                [flow.source.vlanId, flow.source.innerVlanId]).withCloseable {
+            it.sendLldp(lldpData)
+            it.sendArp(arpData)
+        }
+
+        then: "LLDP and ARP connected devices are recognized and saved"
+        Wrappers.wait(WAIT_OFFSET) { //need some time for devices to appear
+            verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
+                it.source.lldp.size() == 1
+                it.source.arp.size() == 1
+                it.destination.lldp.empty
+                it.destination.arp.empty
+                verifyEquals(it.source.lldp[0], lldpData)
+                verifyEquals(it.source.arp[0], arpData)
+            }
+        }
+
+        and: "Devices are registered on the switch"
+        verifyAll(northboundV2.getConnectedDevices(flow.source.switchId).ports) {
+            it.size() == 1
+            it[0].portNumber == flow.source.portNumber
+            it[0].lldp.size() == 1
+            it[0].lldp.first().flowId == flow.flowId
+            it[0].lldp.first().vlan == (flow.source.vlanId ? flow.source.vlanId : innerVlanId) //due to issue 3475
+            verifyEquals(it[0].lldp.first(), lldpData)
+            it[0].arp.size() == 1
+            it[0].arp.first().flowId == flow.flowId
+            it[0].arp.first().vlan == (flow.source.vlanId ? flow.source.vlanId : innerVlanId) //due to issue 3475
+            verifyEquals(it[0].arp.first(), arpData)
+        }
+
+        cleanup: "Restore initial switch properties"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
+        sw && database.removeConnectedDevices(sw.dpId)
+
+        where:
+        vlanId | innerVlanId | encapsulationType
+        0      | 200         | FlowEncapsulationType.TRANSIT_VLAN
+        100    | 200         | FlowEncapsulationType.TRANSIT_VLAN
+        0      | 200         | FlowEncapsulationType.VXLAN
+        100    | 200         | FlowEncapsulationType.VXLAN
     }
 
     /**

@@ -21,17 +21,26 @@ import org.openkilda.testing.service.traffexam.TraffExamService;
 import org.openkilda.testing.service.traffexam.model.Address;
 import org.openkilda.testing.service.traffexam.model.ArpData;
 import org.openkilda.testing.service.traffexam.model.LldpData;
+import org.openkilda.testing.service.traffexam.model.Vlan;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ConnectedDevice implements AutoCloseable {
 
     private Address address;
     private TraffExamService examService;
 
-    public ConnectedDevice(TraffExamService examService, TraffGen tg, int vlanId) throws OperationalException,
+    public ConnectedDevice(TraffExamService examService, TraffGen tg, List<Integer> vlanId) throws OperationalException,
             Inet4ValueException {
+        List<Vlan> vlanIds = new ArrayList<Vlan>();
+        for (int i = 0; i < vlanId.size(); i++) {
+            Vlan vlan = new Vlan(vlanId.get(i));
+            vlanIds.add(vlan);
+        }
         this.examService = examService;
-        address = examService.allocateFreeAddress(examService.hostByName(tg.getName()), vlanId);
+        address = examService.allocateFreeAddress(examService.hostByName(tg.getName()), vlanIds);
     }
 
     public void sendLldp(LldpData data) {

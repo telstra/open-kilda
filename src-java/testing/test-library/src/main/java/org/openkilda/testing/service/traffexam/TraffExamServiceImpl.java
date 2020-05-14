@@ -63,7 +63,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
@@ -344,15 +343,15 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     }
 
     @Override
-    public Address allocateFreeAddress(Host host, int vlan) throws OperationalException, Inet4ValueException {
+    public Address allocateFreeAddress(Host host, List<Vlan> vlan) throws OperationalException, Inet4ValueException {
         Inet4Network subnet;
         try {
             subnet = addressPool.allocate();
         } catch (Inet4ValueException e) {
             throw new OperationalException("Unable to allocate subnet for exam. There is no more addresses available.");
         }
-        return assignAddress(host, new Address(subnet.address(1), subnet.getPrefix(),
-                Collections.singletonList(new Vlan(vlan))));
+        return assignAddress(host, new Address(subnet.address(1), subnet.getPrefix(), vlan
+        ));
     }
 
     private Address assignAddress(Host host, Address payload) {
