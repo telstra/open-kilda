@@ -137,6 +137,15 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         defaultFlow.destination.vlanId = 0
         flowHelperV2.addFlow(defaultFlow)
 
+        // Issue #3472
+        //and: "Create a qinq flow"
+        //def qinqFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        //qinqFlow.source.vlanId = 10
+        //qinqFlow.source.innerVlanId = 200
+        //qinqFlow.destination.vlanId = 10
+        //qinqFlow.destination.innerVlanId = 300
+        //flowHelperV2.addFlow(qinqFlow)
+
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.source.vlanId = 10
         flow.destination.vlanId = 10
