@@ -28,6 +28,8 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Unroll
 
+import java.util.concurrent.TimeUnit
+
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
@@ -320,6 +322,7 @@ class LinkSpec extends HealthCheckSpecification {
         given: "An inactive link"
         assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
         }
@@ -329,10 +332,8 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "The link is actually deleted"
         response.size() == 2
-        Wrappers.wait(2) {
-            assert !islUtils.getIslInfo(isl)
-            assert !islUtils.getIslInfo(isl.reversed)
-        }
+        !islUtils.getIslInfo(isl)
+        !islUtils.getIslInfo(isl.reversed)
 
         when: "Removed link becomes active again (port brought UP)"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
@@ -676,6 +677,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         def isl = pathHelper.getInvolvedIsls(flowPath)[0]
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
         }
@@ -717,10 +719,8 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "The link is actually deleted"
         response.size() == 2
-        Wrappers.wait(2) {
-            assert !islUtils.getIslInfo(isl)
-            assert !islUtils.getIslInfo(isl.reversed)
-        }
+        !islUtils.getIslInfo(isl)
+        !islUtils.getIslInfo(isl.reversed)
 
         and: "Flow is not rerouted and UP"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath

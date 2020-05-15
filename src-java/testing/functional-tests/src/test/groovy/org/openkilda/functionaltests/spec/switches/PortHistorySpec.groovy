@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.*
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -58,10 +59,10 @@ class PortHistorySpec extends HealthCheckSpecification {
             Long timestampAfterDown = System.currentTimeMillis()
             with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
                 it.size() == 2
-                checkPortHistory(it.find { it.event == PortHistoryEvent.ANTI_FLAP_ACTIVATED.toString() },
-                        isl.srcSwitch.dpId, isl.srcPort, PortHistoryEvent.ANTI_FLAP_ACTIVATED)
-                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_DOWN.toString() }, isl.srcSwitch.dpId,
-                        isl.srcPort, PortHistoryEvent.PORT_DOWN)
+                checkPortHistory(it.find { it.event == ANTI_FLAP_ACTIVATED.toString() },
+                        isl.srcSwitch.dpId, isl.srcPort, ANTI_FLAP_ACTIVATED)
+                checkPortHistory(it.find { it.event == PORT_DOWN.toString() }, isl.srcSwitch.dpId,
+                        isl.srcPort, PORT_DOWN)
             }
         }
 
@@ -76,11 +77,11 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             timestampAfterUp = System.currentTimeMillis()
             with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterUp)) {
-                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_UP.toString() },
-                        isl.srcSwitch.dpId, isl.srcPort, PortHistoryEvent.PORT_UP)
-                def deactivateEvent = it.find { it.event == PortHistoryEvent.ANTI_FLAP_DEACTIVATED.toString() }
+                checkPortHistory(it.find { it.event == PORT_UP.toString() },
+                        isl.srcSwitch.dpId, isl.srcPort, PORT_UP)
+                def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
                 checkPortHistory(deactivateEvent, isl.srcSwitch.dpId, isl.srcPort,
-                        PortHistoryEvent.ANTI_FLAP_DEACTIVATED)
+                        ANTI_FLAP_DEACTIVATED)
                 // no flapping occurs during cooldown, so antiflap stat doesn't exist in the ANTI_FLAP_DEACTIVATED event
                 !deactivateEvent.downCount
                 !deactivateEvent.upCount
@@ -91,11 +92,11 @@ class PortHistorySpec extends HealthCheckSpecification {
         with(northboundV2.getPortHistory(isl.dstSwitch.dpId, isl.dstPort, timestampBefore, timestampAfterUp)) {
             it.size() == historySizeOnDstSw
             if (historySizeOnDstSw as boolean) {
-                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_UP.toString() },
-                        isl.dstSwitch.dpId, isl.dstPort, PortHistoryEvent.PORT_UP)
-                def deactivateEvent = it.find { it.event == PortHistoryEvent.ANTI_FLAP_DEACTIVATED.toString() }
+                checkPortHistory(it.find { it.event == PORT_UP.toString() },
+                        isl.dstSwitch.dpId, isl.dstPort, PORT_UP)
+                def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
                 checkPortHistory(deactivateEvent, isl.dstSwitch.dpId, isl.dstPort,
-                        PortHistoryEvent.ANTI_FLAP_DEACTIVATED)
+                        ANTI_FLAP_DEACTIVATED)
                 // no flapping occurs during cooldown, so antiflap stat doesn't exist in the ANTI_FLAP_DEACTIVATED event
                 !deactivateEvent.downCount
                 !deactivateEvent.upCount
@@ -240,12 +241,12 @@ class PortHistorySpec extends HealthCheckSpecification {
             new SoftAssertions().with {
                 def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
                         timestampBefore, System.currentTimeMillis())
-                checkSucceeds { assert history.size() == 3 }
-                // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS
-                def antiflapStat = history[-1]
+                checkSucceeds { assert history*.event
+                        .containsAll([PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_PERIODIC_STATS]*.toString()) }
+                def antiflapStat = history.find { it.event == ANTI_FLAP_PERIODIC_STATS.toString() }
                 checkSucceeds {
                     checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
-                            PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS)
+                            ANTI_FLAP_PERIODIC_STATS)
                 }
                 //unstable place below. Doing weak check that at least something is counted =(
                 checkSucceeds { assert antiflapStat.upCount > 0 }
@@ -297,11 +298,11 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
             Long timestampAfterStat = System.currentTimeMillis()
             with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterStat)) {
-                it.findAll { it.event == PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS.toString() }.empty
+                it.findAll { it.event == ANTI_FLAP_PERIODIC_STATS.toString() }.empty
                 it.size() == 3 // PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_DEACTIVATED
                 def antiflapStat = it[-1]
                 checkPortHistory(antiflapStat, isl.srcSwitch.dpId, isl.srcPort,
-                        PortHistoryEvent.ANTI_FLAP_DEACTIVATED)
+                        ANTI_FLAP_DEACTIVATED)
                 antiflapStat.downCount == 1
                 antiflapStat.upCount == 1
             }

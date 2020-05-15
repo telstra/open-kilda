@@ -110,6 +110,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().histories
+                .find { it.action == "The flow status was reverted to UP" }
         }
 
         cleanup: "Restore topology to the original state, remove the flow"

@@ -135,6 +135,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def isls = topology.getRelatedIsls(sw)
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        Wrappers.wait(WAIT_OFFSET) {
+            def allLinks = northbound.getAllLinks()
+            isls.every { !islUtils.getIslInfo(allLinks, it).present }
+        }
         northbound.deleteSwitch(sw.dpId, false)
 
         when: "New switch connects"

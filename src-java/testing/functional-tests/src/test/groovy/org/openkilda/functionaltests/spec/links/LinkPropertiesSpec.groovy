@@ -16,6 +16,8 @@ import org.openkilda.testing.Constants
 import spock.lang.Shared
 import spock.lang.Unroll
 
+import java.util.concurrent.TimeUnit
+
 class LinkPropertiesSpec extends HealthCheckSpecification {
 
     @Shared
@@ -204,6 +206,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
         and: "Bring port down on the source switch"
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
             assert northbound.getLink(isl.reversed).actualState == IslChangeType.FAILED
@@ -211,10 +214,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        Wrappers.wait(2) {
-            assert !islUtils.getIslInfo(isl)
-            assert !islUtils.getIslInfo(isl.reversed)
-        }
+        !islUtils.getIslInfo(isl)
+        !islUtils.getIslInfo(isl.reversed)
 
 
         and: "Set cost and max bandwidth on the deleted link via link props"
