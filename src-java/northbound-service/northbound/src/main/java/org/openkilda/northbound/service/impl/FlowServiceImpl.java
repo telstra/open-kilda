@@ -37,7 +37,7 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
@@ -70,6 +70,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
@@ -285,22 +286,45 @@ public class FlowServiceImpl implements FlowService {
         logger.info("Patch flow request for flow {}", flowId);
         String correlationId = RequestCorrelationId.getId();
 
-        FlowDto flowDto;
+        FlowPatch flowPatch;
         try {
-            flowDto = flowMapper.toFlowDto(flowPatchDto);
+            flowPatch = flowMapper.toFlowPatch(flowPatchDto);
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the flow patch request");
         }
-        flowDto.setFlowId(flowId);
-        CommandMessage request = new CommandMessage(new FlowPatchRequest(flowDto), System.currentTimeMillis(),
+        flowPatch.setFlowId(flowId);
+        CommandMessage request = new CommandMessage(new FlowPatchRequest(flowPatch), System.currentTimeMillis(),
                 correlationId);
 
         return messagingChannel.sendAndGet(nbworkerTopic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
+    }
+
+    @Override
+    public CompletableFuture<FlowResponseV2> patchFlow(String flowId, FlowPatchV2 flowPatchDto) {
+        logger.info("Patch flow request for flow {}", flowId);
+        String correlationId = RequestCorrelationId.getId();
+
+        FlowPatch flowPatch;
+        try {
+            flowPatch = flowMapper.toFlowPatch(flowPatchDto);
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the flow patch request");
+        }
+        flowPatch.setFlowId(flowId);
+        CommandMessage request = new CommandMessage(new FlowPatchRequest(flowPatch), System.currentTimeMillis(),
+                correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(FlowResponse::getPayload)
+                .thenApply(flowMapper::toFlowResponseV2);
     }
 
     /**

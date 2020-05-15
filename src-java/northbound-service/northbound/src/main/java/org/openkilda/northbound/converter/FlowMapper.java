@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
@@ -47,6 +48,7 @@ import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
@@ -54,13 +56,14 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.PathStatus;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
+import com.google.common.collect.Sets;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring",
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class,
-                DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class})
+                DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class, Sets.class})
 public abstract class FlowMapper {
     /**
      * Map {@link FlowDto} into {@link FlowPayload}.
@@ -115,31 +118,44 @@ public abstract class FlowMapper {
     }
 
     @Mapping(target = "flowId", ignore = true)
-    @Mapping(target = "bandwidth", ignore = true)
-    @Mapping(target = "ignoreBandwidth", ignore = true)
-    @Mapping(target = "allocateProtectedPath", ignore = true)
-    @Mapping(target = "cookie", ignore = true)
-    @Mapping(target = "description", ignore = true)
-    @Mapping(target = "createdTime", ignore = true)
-    @Mapping(target = "lastUpdated", ignore = true)
+    @Mapping(target = "maxLatency", source = "maxLatency")
+    @Mapping(target = "priority", source = "priority")
+    @Mapping(target = "periodicPings", source = "periodicPings")
+    @Mapping(target = "targetPathComputationStrategy", source = "targetPathComputationStrategy")
     @Mapping(target = "sourceSwitch", ignore = true)
     @Mapping(target = "destinationSwitch", ignore = true)
     @Mapping(target = "sourcePort", ignore = true)
     @Mapping(target = "destinationPort", ignore = true)
     @Mapping(target = "sourceVlan", ignore = true)
     @Mapping(target = "destinationVlan", ignore = true)
-    @Mapping(target = "sourceInnerVlan", ignore = true)
-    @Mapping(target = "destinationInnerVlan", ignore = true)
-    @Mapping(target = "meterId", ignore = true)
-    @Mapping(target = "transitEncapsulationId", ignore = true)
-    @Mapping(target = "state", ignore = true)
-    @Mapping(target = "flowStatusDetails", ignore = true)
-    @Mapping(target = "pinned", ignore = true)
-    @Mapping(target = "encapsulationType", ignore = true)
-    @Mapping(target = "detectConnectedDevices", ignore = true)
+    @Mapping(target = "bandwidth", ignore = true)
+    @Mapping(target = "allocateProtectedPath", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
     @Mapping(target = "pathComputationStrategy", ignore = true)
-    @Mapping(target = "diverseWith", ignore = true)
-    public abstract FlowDto toFlowDto(FlowPatchDto flowPatchDto);
+    public abstract FlowPatch toFlowPatch(FlowPatchDto flowPatchDto);
+
+    @Mapping(target = "flowId", ignore = true)
+    @Mapping(target = "sourceSwitch", expression = "java(flowPatchDto.getSource() != null ? "
+            + "flowPatchDto.getSource().getSwitchId() : null)")
+    @Mapping(target = "destinationSwitch", expression = "java(flowPatchDto.getDestination() != null ? "
+            + "flowPatchDto.getDestination().getSwitchId() : null)")
+    @Mapping(target = "sourcePort", expression = "java(flowPatchDto.getSource() != null ? "
+            + "flowPatchDto.getSource().getPortNumber() : null)")
+    @Mapping(target = "destinationPort", expression = "java(flowPatchDto.getDestination() != null ? "
+            + "flowPatchDto.getDestination().getPortNumber() : null)")
+    @Mapping(target = "sourceVlan", expression = "java(flowPatchDto.getSource() != null ? "
+            + "flowPatchDto.getSource().getVlanId() : null)")
+    @Mapping(target = "destinationVlan", expression = "java(flowPatchDto.getDestination() != null ? "
+            + "flowPatchDto.getDestination().getVlanId() : null)")
+    @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    @Mapping(target = "allocateProtectedPath", source = "allocateProtectedPath")
+    @Mapping(target = "maxLatency", source = "maxLatency")
+    @Mapping(target = "priority", source = "priority")
+    @Mapping(target = "periodicPings", source = "periodicPings")
+    @Mapping(target = "targetPathComputationStrategy", source = "targetPathComputationStrategy")
+    @Mapping(target = "diverseFlowId", source = "diverseFlowId")
+    @Mapping(target = "pathComputationStrategy", ignore = true)
+    public abstract FlowPatch toFlowPatch(FlowPatchV2 flowPatchDto);
 
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
     @Mapping(target = "detectConnectedDevices", expression = "java(new DetectConnectedDevicesDto("

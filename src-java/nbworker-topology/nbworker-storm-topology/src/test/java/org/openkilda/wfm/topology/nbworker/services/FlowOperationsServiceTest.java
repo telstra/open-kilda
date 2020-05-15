@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -42,6 +43,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
+import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService.UpdateFlowResult;
 
 import org.junit.BeforeClass;
@@ -105,23 +107,23 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         flow.setStatus(FlowStatus.UP);
         flowRepository.createOrUpdate(flow);
 
-        FlowDto receivedFlow = FlowDto.builder()
+        FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(testFlowId)
                 .maxLatency(maxLatency)
                 .priority(priority)
                 .targetPathComputationStrategy(pathComputationStrategy)
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
         assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
 
-        receivedFlow = FlowDto.builder()
+        receivedFlow = FlowPatch.builder()
                 .flowId(testFlowId)
                 .build();
-        updatedFlow = flowOperationsService.updateFlow(null, receivedFlow);
+        updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
@@ -129,10 +131,10 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldPrepareFlowUpdateResultWithChangedStrategyReason() {
-        // given: FlowDto with COST strategy and Flow with MAX_LATENCY strategy
+    public void shouldPrepareFlowUpdateResultWithChangedStrategy() {
+        // given: FlowPatch with COST strategy and Flow with MAX_LATENCY strategy
         String flowId = "test_flow_id";
-        FlowDto flowDto = FlowDto.builder()
+        FlowPatch flowDto = FlowPatch.builder()
                 .flowId(flowId)
                 .maxLatency(100L)
                 .pathComputationStrategy(PathComputationStrategy.COST)
@@ -147,16 +149,15 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         // when: compare this flows
         UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowDto, flow).build();
 
-        // then: needRerouteFlow flag set to true and rerouteReason is "path computation strategy was changed"
-        assertTrue(result.isNeedRerouteFlow());
-        assertTrue(result.getRerouteReason().contains("path computation strategy was changed"));
+        // then: needUpdateFlow flag set to true
+        assertTrue(result.isNeedUpdateFlow());
     }
 
     @Test
-    public void shouldPrepareFlowUpdateResultWithChangedMaxLatencyReasonFirstCase() {
-        // given: FlowDto with max latency and no strategy and Flow with MAX_LATENCY strategy and no max latency
+    public void shouldPrepareFlowUpdateResultWithChangedMaxLatencyFirstCase() {
+        // given: FlowPatch with max latency and no strategy and Flow with MAX_LATENCY strategy and no max latency
         String flowId = "test_flow_id";
-        FlowDto flowDto = FlowDto.builder()
+        FlowPatch flowDto = FlowPatch.builder()
                 .flowId(flowId)
                 .maxLatency(100L)
                 .build();
@@ -170,17 +171,16 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         // when: compare this flows
         UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowDto, flow).build();
 
-        // then: needRerouteFlow flag set to true and rerouteReason is "max latency was changed"
-        assertTrue(result.isNeedRerouteFlow());
-        assertTrue(result.getRerouteReason().contains("max latency was changed"));
+        // then: needRerouteFlow flag set to true
+        assertTrue(result.isNeedUpdateFlow());
     }
 
     @Test
-    public void shouldPrepareFlowUpdateResultWithChangedMaxLatencyReasonSecondCase() {
-        // given: FlowDto with max latency and MAX_LATENCY strategy
+    public void shouldPrepareFlowUpdateResultWithChangedMaxLatencySecondCase() {
+        // given: FlowPatch with max latency and MAX_LATENCY strategy
         //        and Flow with MAX_LATENCY strategy and no max latency
         String flowId = "test_flow_id";
-        FlowDto flowDto = FlowDto.builder()
+        FlowPatch flowDto = FlowPatch.builder()
                 .flowId(flowId)
                 .maxLatency(100L)
                 .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
@@ -195,17 +195,16 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         // when: compare this flows
         UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowDto, flow).build();
 
-        // then: needRerouteFlow flag set to true and rerouteReason is "max latency was changed"
-        assertTrue(result.isNeedRerouteFlow());
-        assertTrue(result.getRerouteReason().contains("max latency was changed"));
+        // then: needRerouteFlow flag set to true
+        assertTrue(result.isNeedUpdateFlow());
     }
 
     @Test
-    public void shouldPrepareFlowUpdateResultShouldNotRerouteFirstCase() {
-        // given: FlowDto with max latency and MAX_LATENCY strategy
+    public void shouldPrepareFlowUpdateResultShouldNotUpdateFirstCase() {
+        // given: FlowPatch with max latency and MAX_LATENCY strategy
         //        and Flow with MAX_LATENCY strategy and same max latency
         String flowId = "test_flow_id";
-        FlowDto flowDto = FlowDto.builder()
+        FlowPatch flowDto = FlowPatch.builder()
                 .flowId(flowId)
                 .maxLatency(100L)
                 .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
@@ -221,17 +220,16 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         // when: compare this flows
         UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowDto, flow).build();
 
-        // then: needRerouteFlow flag set to false and no rerouteReason
-        assertFalse(result.isNeedRerouteFlow());
-        assertNull(result.getRerouteReason());
+        // then: needRerouteFlow flag set to false
+        assertFalse(result.isNeedUpdateFlow());
     }
 
     @Test
-    public void shouldPrepareFlowUpdateResultShouldNotRerouteSecondCase() {
-        // given: FlowDto with no max latency and no strategy
+    public void shouldPrepareFlowUpdateResultShouldNotUpdateSecondCase() {
+        // given: FlowPatch with no max latency and no strategy
         //        and Flow with MAX_LATENCY strategy and max latency
         String flowId = "test_flow_id";
-        FlowDto flowDto = FlowDto.builder()
+        FlowPatch flowDto = FlowPatch.builder()
                 .flowId(flowId)
                 .build();
         Flow flow = Flow.builder()
@@ -244,8 +242,68 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
 
         UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowDto, flow).build();
 
-        assertFalse(result.isNeedRerouteFlow());
-        assertNull(result.getRerouteReason());
+        assertFalse(result.isNeedUpdateFlow());
+    }
+
+    @Test
+    public void shouldPrepareFlowUpdateResultWithNeedUpdateFlag() {
+        String flowId = "test_flow_id";
+        Flow flow = Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(Switch.builder().switchId(new SwitchId(1)).build())
+                .srcPort(2)
+                .srcVlan(3)
+                .destSwitch(Switch.builder().switchId(new SwitchId(2)).build())
+                .destPort(4)
+                .destVlan(5)
+                .bandwidth(1000)
+                .allocateProtectedPath(true)
+                .build();
+
+        // new src switch
+        FlowPatch flowPatch = FlowPatch.builder().sourceSwitch(new SwitchId(3)).build();
+        UpdateFlowResult result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        //new src port
+        flowPatch = FlowPatch.builder().sourcePort(9).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new src vlan
+        flowPatch = FlowPatch.builder().sourceVlan(9).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new dst switch
+        flowPatch = FlowPatch.builder().destinationSwitch(new SwitchId(3)).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        //new src port
+        flowPatch = FlowPatch.builder().destinationPort(9).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new dst vlan
+        flowPatch = FlowPatch.builder().destinationVlan(9).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new maximum bandwidth
+        flowPatch = FlowPatch.builder().bandwidth(9000L).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new flag allocate protected path
+        flowPatch = FlowPatch.builder().allocateProtectedPath(false).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // add diverse flow id
+        flowPatch = FlowPatch.builder().diverseFlowId("diverse_flow_id").build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
     }
 
     @Test
@@ -471,5 +529,22 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .build();
         pathSegmentRepository.createOrUpdate(pathSegment);
         return pathSegment;
+    }
+
+    private class FlowCarrierImpl implements FlowOperationsCarrier {
+        @Override
+        public void emitPeriodicPingUpdate(String flowId, boolean enabled) {
+
+        }
+
+        @Override
+        public void sendUpdateRequest(FlowRequest request) {
+
+        }
+
+        @Override
+        public void sendNorthboundResponse(InfoData data) {
+
+        }
     }
 }

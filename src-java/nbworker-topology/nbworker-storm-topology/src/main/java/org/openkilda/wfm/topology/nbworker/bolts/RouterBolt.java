@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FeatureTogglesBaseRequest;
+import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
@@ -72,6 +73,10 @@ public class RouterBolt extends AbstractBolt {
             emitWithContext(StreamType.SWITCH.toString(), input, new Values(request));
         } else if (request instanceof LinksBaseRequest) {
             emitWithContext(StreamType.ISL.toString(), input, new Values(request));
+        } else if (request instanceof FlowPatchRequest) {
+            //This check should be before checking on FlowsBaseRequest.
+            //Otherwise, we will handle this request incorrectly.
+            emitWithContext(StreamType.FLOW_PATCH.toString(), input, new Values(request));
         } else if (request instanceof FlowsBaseRequest) {
             emitWithContext(StreamType.FLOW.toString(), input, new Values(request));
         } else if (request instanceof FeatureTogglesBaseRequest) {
@@ -102,6 +107,9 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(StreamType.KILDA_CONFIG.toString(), fields);
         declarer.declareStream(StreamType.PATHS.toString(), fields);
         declarer.declareStream(StreamType.HISTORY.toString(), fields);
+
+        declarer.declareStream(StreamType.FLOW_PATCH.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
 
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

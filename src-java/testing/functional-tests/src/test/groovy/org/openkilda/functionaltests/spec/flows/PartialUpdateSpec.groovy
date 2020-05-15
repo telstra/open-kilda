@@ -105,6 +105,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Flow is left intact"
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
+                .ignoring("diverseWith")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
