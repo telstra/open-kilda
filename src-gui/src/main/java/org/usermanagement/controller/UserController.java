@@ -177,7 +177,7 @@ public class UserController {
     @Permissions(values = { IConstants.Permission.UM_USER_RESET })
     public Object resetPassword(@PathVariable("id") final Long userId) {
         userService.resetPassword(userId, false);
-        return new Message("Password has been sent to your EmailId");
+        return new Message("Password has been reset successfully");
     }
 
     /**
