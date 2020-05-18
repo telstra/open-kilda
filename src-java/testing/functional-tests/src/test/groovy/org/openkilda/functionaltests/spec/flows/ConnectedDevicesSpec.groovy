@@ -49,6 +49,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -57,6 +58,7 @@ import java.time.Instant
 import javax.inject.Provider
 
 @Slf4j
+@Ignore("Incompatible with QinQ")
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
 Verify allocated Connected Devices resources and installed rules.""")
