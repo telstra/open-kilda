@@ -176,11 +176,15 @@ public class FlowOperationsService {
 
         if (port != null) {
             flowPathRepository.findBySegmentEndpoint(switchId, port).stream()
+                    // NOTE(tdurakov): filter out paths here that are orphaned for the flow
+                    .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .forEach(flows::add);
             flows.addAll(flowRepository.findByEndpoint(switchId, port));
         } else {
             flowPathRepository.findBySegmentSwitch(switchId).stream()
+                    // NOTE(tdurakov): filter out paths here that are orphaned for the flow
+                    .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .forEach(flows::add);
             flows.addAll(flowRepository.findByEndpointSwitch(switchId));
