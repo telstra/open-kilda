@@ -1130,18 +1130,18 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         def flowInfoPath = northbound.getFlowPath(flow.flowId)
         assert flowInfoPath.protectedPath
 
-        when: "All alternative paths are unavailable (bring ports down on the source switch and on the protected path)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.flowId)) }.unique { it.first() }
-                .each { path ->
-                    def src = path.first()
-                    broughtDownPorts.add(src)
-                    antiflap.portDown(src.switchId, src.portNo)
-                }
+        when: "All alternative paths are unavailable"
+        def mainPath = pathHelper.convert(flowInfoPath)
+        def untouchableIsls = pathHelper.getInvolvedIsls(mainPath).collectMany { [it, it.reversed] }
+        def altPaths = switchPair.paths.findAll { [it, it.reverse()].every { it != mainPath }}
+        def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
+                                                 .collectMany { [it, it.reversed] }.unique()
+                                                 .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
+        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
+            }.size() == islsToBreak.size() * 2
         }
 
         then: "Flow status is DEGRADED"
@@ -1159,7 +1159,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         cleanup: "Restore topology, delete flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

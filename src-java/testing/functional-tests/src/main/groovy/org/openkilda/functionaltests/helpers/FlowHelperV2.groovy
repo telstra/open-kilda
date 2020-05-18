@@ -46,10 +46,14 @@ class FlowHelperV2 {
     def allowedVlans = 101..4095
 
     /**
-     * Creates a FlowCreatePayload instance with random vlan and flow id. Will try to build over traffgen ports or use
-     * random port otherwise.
+     * Creates a FlowRequestV2 instance with random vlan and flow id.
      * Since multi-switch and single-switch flows have a bit different algorithms to create a correct flow, this method
      * will delegate the job to the correct algo based on src and dst switches passed.
+     *
+     * @param srcSwitch source endpoint
+     * @param dstSwitch destination endpoint
+     * @param useTraffgenPorts try using traffgen ports if available
+     * @param existingFlows returned flow is guaranteed not to be in conflict with these flows
      */
     FlowRequestV2 randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
             List<FlowRequestV2> existingFlows = []) {
@@ -86,7 +90,7 @@ class FlowHelperV2 {
     }
 
     /**
-     * Creates a FlowCreatePayload instance with random vlan and flow id suitable for a single-switch flow.
+     * Creates a FlowRequestV2 instance with random vlan and flow id suitable for a single-switch flow.
      * The flow will be on DIFFERENT PORTS. Will try to look for both ports to be traffgen ports.
      * But if such port is not available, will pick a random one. So in order to run a correct traffic
      * examination certain switch should have at least 2 traffgens connected to different ports.
@@ -134,8 +138,7 @@ class FlowHelperV2 {
     }
 
     /**
-     * Adds flow with checking flow status and rules on source and destination switches.
-     * It is supposed if rules are installed on source and destination switches, the flow is completely created.
+     * Adds flow and waits for it to become UP
      */
     FlowResponseV2 addFlow(FlowRequestV2 flow) {
         log.debug("Adding flow '${flow.flowId}'")
@@ -145,16 +148,14 @@ class FlowHelperV2 {
     }
 
     /**
-     * Adds flow with checking flow status and rules on source and destination switches.
-     * It is supposed if rules are installed on source and destination switches, the flow is completely created.
+     * Adds flow and waits for it to become UP
      */
     FlowResponseV2 addFlow(FlowCreatePayload flow) {
         return addFlow(toV2(flow));
     }
 
     /**
-     * Deletes flow with checking rules on source and destination switches.
-     * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
+     * Sends delete request for flow and waits for that flow to disappear from flows list
      */
     FlowResponseV2 deleteFlow(String flowId) {
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
@@ -165,8 +166,7 @@ class FlowHelperV2 {
     }
 
     /**
-     * Updates flow with checking flow status and rules on source and destination switches.
-     * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
+     * Updates flow and waits for it to become UP
      */
     FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
         log.debug("Updating flow '${flowId}'")
@@ -176,8 +176,7 @@ class FlowHelperV2 {
     }
 
     /**
-     * Updates flow with checking flow status and rules on source and destination switches.
-     * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
+     * Updates flow and waits for it to become UP
      */
     FlowResponseV2 updateFlow(String flowId, FlowCreatePayload flow) {
         return updateFlow(flowId, toV2(flow))
@@ -307,21 +306,13 @@ class FlowHelperV2 {
                 new DetectConnectedDevicesV2(false, false))
     }
 
-    /**
-     * Generates a unique name for all auto-tests flows.
-     */
     private String generateFlowId() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
 
     private String generateDescription() {
-        //The health of autotest flows is always questionable
-        def descpription = [faker.shakespeare().asYouLikeItQuote(),
-                            faker.shakespeare().kingRichardIIIQuote(),
-                            faker.shakespeare().romeoAndJulietQuote(),
-                            faker.shakespeare().hamletQuote()]
-        def r = new Random()
-        "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
+        def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
+        sprintf("autotest flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
 }
