@@ -38,12 +38,12 @@ public class SwitchPropertiesDto implements Serializable {
     @JsonProperty("switch_arp")
     private boolean switchArp;
 
-    @JsonProperty("server_42_flow_rtt")
+    @JsonProperty("server42_flow_rtt")
     private boolean server42FlowRtt;
 
-    @JsonProperty("server_42_port")
+    @JsonProperty("server42_port")
     private Integer server42Port;
 
-    @JsonProperty("server_42_mac_address")
+    @JsonProperty("server42_mac_address")
     private MacAddress server42MacAddress;
 }
