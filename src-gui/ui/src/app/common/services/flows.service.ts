@@ -3,13 +3,14 @@ import { HttpClient,HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
 import { Flow } from '../data-models/flow';
+import { CookieManagerService } from './cookie-manager.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FlowsService {
 
-  constructor(private httpClient: HttpClient) {
+  constructor(private httpClient: HttpClient,private cookieManager:CookieManagerService) {
     
   }
 
@@ -43,6 +44,8 @@ export class FlowsService {
 
   deleteFlow(flowId,data,successCb,errorCb): void{
     var requestBody = JSON.stringify(data);
+    let token = this.cookieManager.get('XSRF-TOKEN') as string;
+   
     var xhr = new XMLHttpRequest();
     xhr.withCredentials = false;
     xhr.addEventListener("readystatechange", function () {
@@ -55,6 +58,9 @@ export class FlowsService {
     
     xhr.open("DELETE", `${environment.apiEndPoint}/flows/${flowId}`);
     xhr.setRequestHeader("Content-Type", "application/json");
+    if (token !== null) {
+      xhr.setRequestHeader( "X-XSRF-TOKEN" , token);
+    }
     xhr.send(requestBody);
   }
 

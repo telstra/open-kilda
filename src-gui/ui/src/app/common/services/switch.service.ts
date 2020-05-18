@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { Switch } from '../data-models/switch';
 import { catchError } from 'rxjs/operators';
 import * as _moment from 'moment';
+import { CookieManagerService } from './cookie-manager.service';
 declare var moment: any;
 
 
@@ -12,7 +13,7 @@ declare var moment: any;
   providedIn: "root"
 })
 export class SwitchService {
-  constructor(private httpClient: HttpClient) {}
+  constructor(private httpClient: HttpClient,private cookieManager: CookieManagerService) {}
 
   getSwitchList(query? : any): Observable<any[]> {
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/list`,{params:query});
@@ -87,6 +88,7 @@ getNetworkPath(source_switch,target_switch){
 
   deleteSwitch(switchId,data,successCb,errorCb): void{
     var requestBody = JSON.stringify(data);
+    let token = this.cookieManager.get('XSRF-TOKEN') as string;
     var xhr = new XMLHttpRequest();
     xhr.withCredentials = false;
     xhr.addEventListener("readystatechange", function () {
@@ -99,6 +101,9 @@ getNetworkPath(source_switch,target_switch){
     
     xhr.open("DELETE", `${environment.apiEndPoint}/switch/${switchId}`);
     xhr.setRequestHeader("Content-Type", "application/json");
+    if (token !== null) {
+      xhr.setRequestHeader( "X-XSRF-TOKEN" , token);
+    }
     xhr.send(requestBody);
   }
 

@@ -102,7 +102,7 @@ export class CommonService {
   }
 
   getLogout():Observable<any>{
-    return this.httpClient.get<any>(`${environment.appEndPoint}/logout`);
+    return this.httpClient.post(`${environment.appEndPoint}/logout`,{});
   }
   getAutoreloadValues(){
     return [

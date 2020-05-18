@@ -4,12 +4,13 @@ import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
 import { IslModel } from '../data-models/isl-model';
 import { catchError } from 'rxjs/operators';
+import { CookieManagerService } from './cookie-manager.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class IslListService {
-  constructor(private httpClient: HttpClient) {}
+  constructor(private httpClient: HttpClient,private cookieManager: CookieManagerService) {}
   getIslList(query?:any) : Observable<IslModel[]>{
     return this.httpClient.get<IslModel[]>(`${environment.apiEndPoint}/switch/links`,{params:query});
   }
@@ -39,6 +40,7 @@ export class IslListService {
   
 	deleteIsl(data,successRes,errorRes){
      const url = `${environment.apiEndPoint}/switch/links`; 
+     let token = this.cookieManager.get('XSRF-TOKEN') as string;
     var requestBody = JSON.stringify(data);
     var xhr = new XMLHttpRequest();
     xhr.withCredentials = false;
@@ -52,6 +54,9 @@ export class IslListService {
     
     xhr.open("DELETE", url);
     xhr.setRequestHeader("Content-Type", "application/json");
+    if (token !== null) {
+      xhr.setRequestHeader( "X-XSRF-TOKEN" , token);
+    }
     xhr.send(requestBody);
 	}
 	

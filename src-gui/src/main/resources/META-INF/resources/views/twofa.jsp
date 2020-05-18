@@ -5,8 +5,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>OPEN KILDA </title>
-<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.2.1.min.js"></script>
-<script src="<%=request.getContextPath()%>/lib/javascript/bootstrap.min.js"></script>
+<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.5.1.min.js"></script>
 <link href="<%=request.getContextPath()%>/lib/css/bootstrap.min.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/css/custom.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/images/kilda.png" rel="shortcut icon" type="image/png"></link>
@@ -15,8 +14,9 @@
          <div class=" twofa-wrapper">
          	<div class="row">
          	<div class="col-lg-12">
-         		<form name="twoFaForm"  method="POST" action="authenticate" onSubmit="return validateTwoFaOtp();">
-         			<div class="row">         			
+         		<form name="twoFaForm"  method="POST" action="authenticate" autocomplete="off" onSubmit="return validateTwoFaOtp();">
+					<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/> 
+					<div class="row">         			
 		                <div class="col-md-6 two-fa-link">
 		                	<h2>Setting up Two-Factor Authentication (2FA) <i class="icon-login-info"></i></h2>
 		                    <p>Follow the steps below to set up 2FA on Kilda.</p>
@@ -71,8 +71,7 @@
          	</div>
             </div>
          </div>
-		<script type="text/javascript" src="ui/js/usermanagement/twofa.js"></script>
-		<script>
+	<script>
 		$(document).ready(function(){
 			focusNextInput();
 			var key= $('#secretKey').text();
