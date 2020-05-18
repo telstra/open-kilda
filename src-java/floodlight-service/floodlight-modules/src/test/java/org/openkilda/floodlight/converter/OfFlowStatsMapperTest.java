@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.rule.FlowCopyFieldAction;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
+import org.openkilda.messaging.info.rule.FlowSwapFieldAction;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
@@ -138,9 +139,16 @@ public class OfFlowStatsMapperTest {
                 .srcOxm(String.valueOf(oxmSrcHeader))
                 .dstOxm(String.valueOf(oxmDstHeader))
                 .build();
+        FlowSwapFieldAction flowSwapFieldAction = FlowSwapFieldAction.builder()
+                .bits(String.valueOf(bits))
+                .srcOffset(String.valueOf(srcOffset))
+                .dstOffset(String.valueOf(dstOffset))
+                .srcOxm(String.valueOf(oxmSrcHeader))
+                .dstOxm(String.valueOf(oxmDstHeader))
+                .build();
         FlowApplyActions applyActions = new FlowApplyActions(port.toString(),
                 Lists.newArrayList(flowSetEthSrcAction, flowSetEthDstAction), ethType.toString(), null, null, null,
-                group.toString(), flowCopyFieldAction);
+                group.toString(), flowCopyFieldAction, flowSwapFieldAction);
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
         assertEquals(instructions, entry.getInstructions());
     }
@@ -183,6 +191,14 @@ public class OfFlowStatsMapperTest {
         actions.add(factory.actions().setField(factory.oxms().ethDst(MacAddress.of(MAC_ADDRESS_2))));
         actions.add(factory.actions().group(group));
         actions.add(factory.actions().buildNoviflowCopyField()
+                .setNBits(bits)
+                .setSrcOffset(srcOffset)
+                .setDstOffset(dstOffset)
+                .setOxmSrcHeader(oxmSrcHeader)
+                .setOxmDstHeader(oxmDstHeader)
+                .build());
+
+        actions.add(factory.actions().buildNoviflowSwapField()
                 .setNBits(bits)
                 .setSrcOffset(srcOffset)
                 .setDstOffset(dstOffset)

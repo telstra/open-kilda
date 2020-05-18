@@ -44,6 +44,7 @@ import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_OUTPUT_VXLAN_COOKIE;
+import static org.openkilda.model.cookie.Cookie.SERVER_42_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
@@ -739,6 +740,8 @@ class RecordHandler implements Runnable {
             return switchManager.installArpPostIngressOneSwitchFlow(dpid);
         } else if (cookie == ARP_TRANSIT_COOKIE) {
             return switchManager.installArpTransitFlow(dpid);
+        } else if (cookie == SERVER_42_TURNING_COOKIE) {
+            return switchManager.installServer42TurningFlow(dpid);
         } else if (cookieType == CookieType.MULTI_TABLE_INGRESS_RULES) {
             return switchManager.installIntermediateIngressRule(dpid, portColourCookie.getPortNumber());
         } else if (cookieType == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES) {
@@ -880,6 +883,8 @@ class RecordHandler implements Runnable {
                 validateServer42Fields(request, installAction);
                 installedRules.add(switchManager.installServer42OutputVxlanFlow(
                         dpid, request.getServer42Port(), request.getServer42MacAddress()));
+            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_TURNING) {
+                installedRules.add(switchManager.installServer42TurningFlow(dpid));
             } else {
                 installedRules.addAll(switchManager.installDefaultRules(dpid));
                 if (request.isMultiTable()) {
@@ -937,6 +942,8 @@ class RecordHandler implements Runnable {
                     Integer server42Port = request.getServer42Port();
                     MacAddress server42MacAddress = request.getServer42MacAddress();
                     if (request.isServer42FlowRtt() && server42Port != null && server42MacAddress != null) {
+                        installedRules.add(
+                                processInstallDefaultFlowByCookie(request.getSwitchId(), SERVER_42_TURNING_COOKIE));
                         installedRules.add(
                                 switchManager.installServer42OutputVlanFlow(dpid, server42Port, server42MacAddress));
                         installedRules.add(
@@ -1100,6 +1107,10 @@ class RecordHandler implements Runnable {
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(ARP_TRANSIT_COOKIE).build();
                         break;
+                    case REMOVE_SERVER_42_TURNING:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(SERVER_42_TURNING_COOKIE).build();
+                        break;
                     case REMOVE_SERVER_42_OUTPUT_VLAN:
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(SERVER_42_OUTPUT_VLAN_COOKIE).build();
@@ -1178,6 +1189,7 @@ class RecordHandler implements Runnable {
                     Integer server42Port = request.getServer42Port();
                     MacAddress server42MacAddress = request.getServer42MacAddress();
                     if (request.isServer42FlowRtt() && server42Port != null && server42MacAddress != null) {
+                        switchManager.installServer42TurningFlow(dpid);
                         switchManager.installServer42OutputVlanFlow(dpid, server42Port, server42MacAddress);
                         switchManager.installServer42OutputVxlanFlow(dpid, server42Port, server42MacAddress);
 

@@ -94,6 +94,8 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VLAN_COOKIE).getValue();
     public static final long SERVER_42_OUTPUT_VXLAN_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VXLAN_COOKIE).getValue();
+    public static final long SERVER_42_TURNING_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_TURNING_COOKIE).getValue();
 
     @JsonCreator
     public Cookie(long value) {

@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
+import org.openkilda.messaging.info.rule.FlowSwapFieldAction;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
@@ -41,6 +42,7 @@ import org.projectfloodlight.openflow.protocol.action.OFActionGroup;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowCopyField;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowSwapField;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionPushVlan;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
@@ -225,6 +227,13 @@ public abstract class OfFlowStatsMapper {
                         .findAny()
                         .map(this::toFlowSetCopyFieldAction)
                         .orElse(null))
+                .swapFieldAction(experimenterActions.stream()
+                        .filter(OFActionNoviflowSwapField.class::isInstance)
+                        .map(OFActionNoviflowSwapField.class::cast)
+                        .findAny()
+                        .map(this::toFlowSwapFieldAction)
+                        .orElse(null)
+                )
                 .build();
     }
 
@@ -260,6 +269,21 @@ public abstract class OfFlowStatsMapper {
                 .dstOffset(String.valueOf(setCopyFieldAction.getDstOffset()))
                 .srcOxm(String.valueOf(setCopyFieldAction.getOxmSrcHeader()))
                 .dstOxm(String.valueOf(setCopyFieldAction.getOxmDstHeader()))
+                .build();
+    }
+
+    /**
+     * Convert {@link OFActionNoviflowSwapField} to {@link FlowSwapFieldAction}.
+     * @param action action to be converted.
+     * @return result of transformation to {@link FlowSwapFieldAction}.
+     */
+    public FlowSwapFieldAction toFlowSwapFieldAction(OFActionNoviflowSwapField action) {
+        return FlowSwapFieldAction.builder()
+                .bits(String.valueOf(action.getNBits()))
+                .srcOffset(String.valueOf(action.getSrcOffset()))
+                .dstOffset(String.valueOf(action.getDstOffset()))
+                .srcOxm(String.valueOf(action.getOxmSrcHeader()))
+                .dstOxm(String.valueOf(action.getOxmDstHeader()))
                 .build();
     }
 
