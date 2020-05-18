@@ -13,6 +13,7 @@ dependencies {
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     implementation project(':kilda-reporting')
     implementation project(':network-messaging')
+    implementation project(':nbworker-messaging')
     implementation project(':floodlight-api')
     runtimeOnly project(':kilda-persistence-neo4j')
 
