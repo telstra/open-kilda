@@ -985,6 +985,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         database.resetCosts()
     }
 
+    @Ignore("FIXME qinq compatibility?")
     def "Flow rules are re(installed) according to switch props while syncing switch and rules"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -1179,6 +1180,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
+    @Ignore("FIXME qinq compatibility?")
     def "System detects excess rules after removing multi table flow from a switch with single table mode"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
