@@ -15,11 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import static org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode.SWITCH_UNAVAILABLE;
-
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.State;
@@ -30,6 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Slf4j
 @Getter
 public final class SpeakerCommandFsm
@@ -37,13 +39,18 @@ public final class SpeakerCommandFsm
 
     private final FlowSegmentRequest request;
     private final FlowCreateHubCarrier carrier;
+    private final Set<ErrorCode> giveUpErrors = new HashSet<>();
+    private final int allowedRetriesCount;
     private int remainingRetries;
 
-    private SpeakerCommandFsm(FlowSegmentRequest request, FlowCreateHubCarrier carrier, Integer retriesLimit) {
+    private SpeakerCommandFsm(
+            FlowSegmentRequest request, FlowCreateHubCarrier carrier, Set<ErrorCode> giveUpErrors,
+            Integer retriesLimit) {
         super(new CommandContext(request.getMessageContext().getCorrelationId()));
         this.request = request;
         this.carrier = carrier;
-        this.remainingRetries = retriesLimit;
+        this.giveUpErrors.addAll(giveUpErrors);
+        this.allowedRetriesCount = this.remainingRetries = retriesLimit;
     }
 
     protected void processResponse(State from, State to, Event event, SpeakerFlowSegmentResponse response) {
@@ -52,17 +59,31 @@ public final class SpeakerCommandFsm
             fire(Event.NEXT);
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-            if (errorResponse.getErrorCode() == SWITCH_UNAVAILABLE && remainingRetries-- > 0) {
+            final ErrorCode errorCode = errorResponse.getErrorCode();
+
+            String giveUpReason = null;
+            if (remainingRetries <= 0) {
+                giveUpReason = String.format("all %s retry attempts have been used", allowedRetriesCount);
+            } else if (giveUpErrors.contains(errorCode)) {
+                giveUpReason = String.format(
+                        "Error %s is in \"give up\" list, no more retry attempts allowed", errorCode);
+            }
+
+            if (giveUpReason == null) {
+                remainingRetries--;
                 log.debug("About to retry execution of the command {}", response);
                 fire(Event.RETRY);
             } else {
-                fireError(response.toString());
+                fireError(giveUpReason);
             }
         }
     }
 
     protected void sendCommand(State from, State to, Event event, SpeakerFlowSegmentResponse response) {
         log.debug("Sending a flow command {} to a speaker", request);
+        // FIXME(surabujin): new commandId must be used for each retry attempt, because in case of timeout new and
+        //  ongoing requests can collide on speaker side and there is no way to distinguish responses (stale and actual)
+        //  if both of them have same commandId
         carrier.sendSpeakerRequest(request);
     }
 
@@ -110,7 +131,7 @@ public final class SpeakerCommandFsm
             builder = StateMachineBuilderFactory.create(
                     SpeakerCommandFsm.class, State.class, Event.class, SpeakerFlowSegmentResponse.class,
                     // extra params
-                    FlowSegmentRequest.class, FlowCreateHubCarrier.class, Integer.class
+                    FlowSegmentRequest.class, FlowCreateHubCarrier.class, Set.class, Integer.class
             );
 
             builder.transition()
@@ -138,8 +159,8 @@ public final class SpeakerCommandFsm
             builder.defineFinalState(State.FAILED);
         }
 
-        public SpeakerCommandFsm newInstance(FlowSegmentRequest request) {
-            return builder.newStateMachine(State.INIT, request, carrier, retriesLimit);
+        public SpeakerCommandFsm newInstance(Set<ErrorCode> giveUpErrors, FlowSegmentRequest request) {
+            return builder.newStateMachine(State.INIT, request, carrier, giveUpErrors, retriesLimit);
         }
     }
 }
