@@ -172,7 +172,8 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { MethodArgumentTypeMismatchException.class })
     protected ResponseEntity<Object> methodArgumentTypeMismatchExceptionHandler(
             final MethodArgumentTypeMismatchException ex, final WebRequest request) {
+        String errorMessage = "Invalid method argument type. Required Type: " + ex.getRequiredType();
         return response(HttpStatus.BAD_REQUEST, HttpError.BAD_REQUEST.getCode(),
-                HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
+                HttpError.BAD_REQUEST.getAuxilaryMessage(), errorMessage);
     }
 }
