@@ -21,11 +21,15 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.messaging.info.event.IslChangeType;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -285,6 +289,76 @@ public class NetworkPortServiceTest {
                 .port(port)
                 .discoveryEnabled(false)
                 .build());
+    }
+
+    @Test
+    public void testDiscoveryEventWhenDiscoveryDisabled() {
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+
+        when(portPropertiesRepository.getBySwitchIdAndPort(alphaDatapath, endpoint.getPortNumber()))
+                .thenReturn(Optional.empty());
+        when(switchRepository.findById(alphaDatapath))
+                .thenReturn(Optional.of(getDefaultSwitch()));
+
+        NetworkPortService service = makeService();
+        service.setup(endpoint, null);
+        service.updateOnlineMode(endpoint, true);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+
+        verify(carrier).enableDiscoveryPoll(eq(endpoint));
+        verify(carrier, never()).notifyPortDiscovered(eq(endpoint), any(IslInfoData.class));
+
+        service.updatePortProperties(endpoint, false);
+        verify(carrier).disableDiscoveryPoll(eq(endpoint));
+
+        Endpoint remote = Endpoint.of(new SwitchId(endpoint.getDatapath().getId() + 1), 1);
+        IslInfoData discovery = new IslInfoData(
+                new PathNode(endpoint.getDatapath(), endpoint.getPortNumber(), 0),
+                new PathNode(remote.getDatapath(), remote.getPortNumber(), 0),
+                IslChangeType.DISCOVERED, false);
+        service.discovery(endpoint, discovery);
+        verify(carrier, never()).notifyPortDiscovered(eq(endpoint), any(IslInfoData.class));
+    }
+
+    @Test
+    public void testEnableDiscoveryAfterOfflineOnlineCycle() {
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+
+        when(portPropertiesRepository.getBySwitchIdAndPort(alphaDatapath, endpoint.getPortNumber()))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(PortProperties.builder()
+                        .switchObj(getDefaultSwitch())
+                        .port(endpoint.getPortNumber())
+                        .discoveryEnabled(false)
+                        .build()));
+        when(switchRepository.findById(alphaDatapath))
+                .thenReturn(Optional.of(getDefaultSwitch()));
+
+        NetworkPortService service = makeService();
+        service.setup(endpoint, null);
+        service.updateOnlineMode(endpoint, true);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+        verify(carrier).enableDiscoveryPoll(eq(endpoint));
+
+        service.updatePortProperties(endpoint, false);
+        verify(carrier).disableDiscoveryPoll(eq(endpoint));
+
+        service.updateOnlineMode(endpoint, false);
+        service.updateOnlineMode(endpoint, true);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+        // discovery still disabled
+        verify(carrier, times(1)).enableDiscoveryPoll(eq(endpoint));
+
+        service.updatePortProperties(endpoint, true);
+        verify(carrier, times(2)).enableDiscoveryPoll(eq(endpoint));
+
+        Endpoint remote = Endpoint.of(new SwitchId(endpoint.getDatapath().getId() + 1), 1);
+        IslInfoData discovery = new IslInfoData(
+                new PathNode(endpoint.getDatapath(), endpoint.getPortNumber(), 0),
+                new PathNode(remote.getDatapath(), remote.getPortNumber(), 0),
+                IslChangeType.DISCOVERED, false);
+        service.discovery(endpoint, discovery);
+        verify(carrier).notifyPortDiscovered(eq(endpoint), eq(discovery));
     }
 
     private NetworkPortService makeService() {

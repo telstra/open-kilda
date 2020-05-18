@@ -215,16 +215,14 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 new PortPropertiesDto(discoveryEnabled: false))
 
         then: "One-way ISL status is changed to FAILED"
-        Wrappers.silent { //rare issue https://github.com/telstra/open-kilda/issues/3474
-            Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-                def allLinks = northbound.getAllLinks()
-                def islInfoForward = islUtils.getIslInfo(allLinks, islToManipulate).get()
-                def islInfoReverse = islUtils.getIslInfo(allLinks, islToManipulate.reversed).get()
-                assert islInfoForward.state == IslChangeType.FAILED
-                assert islInfoForward.actualState == IslChangeType.DISCOVERED
-                assert islInfoReverse.state == IslChangeType.FAILED
-                assert islInfoReverse.actualState == IslChangeType.FAILED
-            }
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def allLinks = northbound.getAllLinks()
+            def islInfoForward = islUtils.getIslInfo(allLinks, islToManipulate).get()
+            def islInfoReverse = islUtils.getIslInfo(allLinks, islToManipulate.reversed).get()
+            assert islInfoForward.state == IslChangeType.FAILED
+            assert islInfoForward.actualState == IslChangeType.DISCOVERED
+            assert islInfoReverse.state == IslChangeType.FAILED
+            assert islInfoReverse.actualState == IslChangeType.FAILED
         }
 
         when: "Enable port discovery property on the dst switch"
