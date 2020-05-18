@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,10 +23,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class ServerApplication {
 
-    private final Server server;
+    private final ControlServer controlServer;
+    private final StatsServer statsServer;
 
-    public ServerApplication(Server server) {
-        this.server = server;
+    public ServerApplication(ControlServer controlServer, StatsServer statsServer) {
+        this.controlServer = controlServer;
+        this.statsServer = statsServer;
     }
 
     public static void main(String[] args) {
