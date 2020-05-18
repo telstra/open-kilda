@@ -24,6 +24,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.MoreObjects;
+import lombok.Getter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
 import java.util.Objects;
@@ -41,17 +42,24 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      */
     private static final long serialVersionUID = 1L;
 
-    /**
-     * The port id.
-     */
+    @Getter
     @JsonProperty("vlan-id")
     private Integer vlanId;
+
+    @Getter
+    @JsonProperty("inner-vlan-id")
+    private Integer innerVlanId;
 
     /**
      * Collect info about devices connected to endpoint.
      */
     @JsonProperty("detect-connected-devices")
     private DetectConnectedDevicesPayload detectConnectedDevices = new DetectConnectedDevicesPayload(false, false);
+
+    public FlowEndpointPayload(
+            SwitchId switchId, Integer portId, Integer vlanId, DetectConnectedDevicesPayload detectConnectedDevices) {
+        this(switchId, portId, vlanId, 0, detectConnectedDevices);
+    }
 
     /**
      * Instance constructor.
@@ -64,35 +72,21 @@ public class FlowEndpointPayload extends NetworkEndpoint {
     public FlowEndpointPayload(@JsonProperty("switch-id") SwitchId switchId,
                                @JsonProperty("port-id") Integer portId,
                                @JsonProperty("vlan-id") Integer vlanId,
+                               @JsonProperty("inner-vlan-id") Integer innerVlanId,
                                @JsonProperty("detect-connected-devices")
                                            DetectConnectedDevicesPayload detectConnectedDevices) {
         super(switchId, portId);
         setVlanId(vlanId);
+        setInnerVlanId(innerVlanId);
         setDetectConnectedDevices(detectConnectedDevices);
     }
 
-    /**
-     * Returns vlan id.
-     *
-     * @return vlan id
-     */
-    public Integer getVlanId() {
-        return vlanId;
+    public void setVlanId(Integer vlanId) {
+        this.vlanId = verifyVlanId(vlanId);
     }
 
-    /**
-     * Sets vlan id.
-     *
-     * @param vlanId vlan id
-     */
-    public void setVlanId(Integer vlanId) {
-        if (vlanId == null) {
-            this.vlanId = 0;
-        } else if (Utils.validateVlanRange(vlanId)) {
-            this.vlanId = vlanId;
-        } else {
-            throw new IllegalArgumentException("need to set valid value for vlan id");
-        }
+    public void setInnerVlanId(Integer innerVlanId) {
+        this.innerVlanId = verifyVlanId(innerVlanId);
     }
 
     public DetectConnectedDevicesPayload getDetectConnectedDevices() {
@@ -134,7 +128,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(getSwitchDpId(), getPortId(), vlanId, detectConnectedDevices);
+        return Objects.hash(getSwitchDpId(), getPortId(), vlanId, innerVlanId, detectConnectedDevices);
     }
 
     /**
@@ -146,7 +140,19 @@ public class FlowEndpointPayload extends NetworkEndpoint {
                 .add("switch-id", getSwitchDpId())
                 .add("port-id", getPortId())
                 .add("vlan-id", vlanId)
+                .add("inner-vlan-id", innerVlanId)
                 .add("detect-connected-devices", detectConnectedDevices)
                 .toString();
+    }
+
+    private int verifyVlanId(Integer vlanId) {
+        if (vlanId == null) {
+            return 0;
+        }
+
+        if (!Utils.validateVlanRange(vlanId)) {
+            throw new IllegalArgumentException("need to set valid value for vlan id");
+        }
+        return vlanId;
     }
 }

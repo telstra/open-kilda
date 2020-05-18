@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.flowhs.mapper;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import org.mapstruct.Mapper;
@@ -31,21 +34,12 @@ public abstract class RequestedFlowMapper {
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
      */
-    @Mapping(source = "flowId", target = "flowId")
-    @Mapping(source = "sourceSwitch", target = "srcSwitch")
-    @Mapping(source = "sourcePort", target = "srcPort")
-    @Mapping(source = "sourceVlan", target = "srcVlan")
-    @Mapping(source = "destinationSwitch", target = "destSwitch")
-    @Mapping(source = "destinationPort", target = "destPort")
-    @Mapping(source = "destinationVlan", target = "destVlan")
-    @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
-    @Mapping(target = "pathComputationStrategy",
-            expression = "java(java.util.Optional.ofNullable(request.getPathComputationStrategy())"
-                    + ".map(pcs -> org.openkilda.model.PathComputationStrategy.valueOf(pcs.toUpperCase()))"
-                    + ".orElse(null))")
-    @Mapping(target = "srcWithMultiTable", ignore = true)
-    @Mapping(target = "destWithMultiTable", ignore = true)
-    public abstract RequestedFlow toRequestedFlow(FlowRequest request);
+    public RequestedFlow toRequestedFlow(FlowRequest request) {
+        RequestedFlow flow = generatedMap(request);
+        RequestedFlowIncrementalMapper.INSTANCE.mapSource(flow, request.getSource());
+        RequestedFlowIncrementalMapper.INSTANCE.mapDestination(flow, request.getDestination());
+        return flow;
+    }
 
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
@@ -78,5 +72,39 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeModify", ignore = true)
+    @Mapping(target = "targetPathComputationStrategy", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
+
+    @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
+    @Mapping(target = "srcSwitch", ignore = true)
+    @Mapping(target = "srcPort", ignore = true)
+    @Mapping(target = "srcVlan", ignore = true)
+    @Mapping(target = "srcInnerVlan", ignore = true)
+    @Mapping(target = "destSwitch", ignore = true)
+    @Mapping(target = "destPort", ignore = true)
+    @Mapping(target = "destVlan", ignore = true)
+    @Mapping(target = "destInnerVlan", ignore = true)
+    @Mapping(target = "srcWithMultiTable", ignore = true)
+    @Mapping(target = "destWithMultiTable", ignore = true)
+    protected abstract RequestedFlow generatedMap(FlowRequest request);
+
+    public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);
+
+    public FlowEndpoint mapSource(RequestedFlow flow) {
+        return new FlowEndpoint(flow.getSrcSwitch(), flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan());
+    }
+
+    public FlowEndpoint mapDest(RequestedFlow flow) {
+        return new FlowEndpoint(flow.getDestSwitch(), flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan());
+    }
+
+    /**
+     * Decode string representation of {@code PathComputationStrategy}.
+     */
+    public PathComputationStrategy mapComputationStrategy(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        return PathComputationStrategy.valueOf(raw.toUpperCase());
+    }
 }

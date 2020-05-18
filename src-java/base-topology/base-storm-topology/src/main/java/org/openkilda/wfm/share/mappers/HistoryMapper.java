@@ -75,12 +75,14 @@ public abstract class HistoryMapper {
      * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
      * to the dump data.
      */
-    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(source = "flow.srcSwitch.switchId", target = "sourceSwitch")
+    @Mapping(source = "flow.destSwitch.switchId", target = "destinationSwitch")
     @Mapping(source = "flow.srcPort", target = "sourcePort")
     @Mapping(source = "flow.destPort", target = "destinationPort")
     @Mapping(source = "flow.srcVlan", target = "sourceVlan")
     @Mapping(source = "flow.destVlan", target = "destinationVlan")
+    @Mapping(source = "flow.srcInnerVlan", target = "sourceInnerVlan")
+    @Mapping(source = "flow.destInnerVlan", target = "destinationInnerVlan")
     @Mapping(source = "flow.flowId", target = "flowId")
     @Mapping(source = "flow.bandwidth", target = "bandwidth")
     @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")
@@ -140,6 +142,8 @@ public abstract class HistoryMapper {
     @Mapping(source = "flow.destPort", target = "destinationPort")
     @Mapping(source = "flow.srcVlan", target = "sourceVlan")
     @Mapping(source = "flow.destVlan", target = "destinationVlan")
+    @Mapping(source = "flow.srcInnerVlan", target = "sourceInnerVlan")
+    @Mapping(source = "flow.destInnerVlan", target = "destinationInnerVlan")
     @Mapping(source = "flow.flowId", target = "flowId")
     @Mapping(source = "flow.bandwidth", target = "bandwidth")
     @Mapping(source = "flow.ignoreBandwidth", target = "ignoreBandwidth")

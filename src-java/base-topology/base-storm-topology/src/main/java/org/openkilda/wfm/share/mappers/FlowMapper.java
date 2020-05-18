@@ -52,8 +52,10 @@ public abstract class FlowMapper {
 
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
+    @Mapping(source = "srcInnerVlan", target = "sourceInnerVlan")
     @Mapping(source = "destPort", target = "destinationPort")
     @Mapping(source = "destVlan", target = "destinationVlan")
+    @Mapping(source = "destInnerVlan", target = "destinationInnerVlan")
     @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
     @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
     @Mapping(source = "status", target = "state")

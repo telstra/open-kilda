@@ -30,10 +30,12 @@ public class RequestedFlow {
     private SwitchId srcSwitch;
     private int srcPort;
     private int srcVlan;
+    private int srcInnerVlan;
 
     private SwitchId destSwitch;
     private int destPort;
     private int destVlan;
+    private int destInnerVlan;
 
     private Integer priority;
     private boolean pinned;

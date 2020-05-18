@@ -96,8 +96,8 @@ public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
         actions.add(of.actions().noviflowPopVxlanTunnel());
 
         List<Integer> currentVlanStack = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(ingressEndpoint.getVlanId())) {
-            currentVlanStack.add(ingressEndpoint.getVlanId());
+        if (FlowEndpoint.isVlanIdSet(ingressEndpoint.getOuterVlanId())) {
+            currentVlanStack.add(ingressEndpoint.getOuterVlanId());
         }
         actions.addAll(makeEndpointReEncoding(of, currentVlanStack));
 
@@ -106,8 +106,8 @@ public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
 
     private List<OFAction> makeEndpointReEncoding(OFFactory of, List<Integer> currentVlanStack) {
         List<Integer> desiredVlanStack = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getVlanId())) {
-            desiredVlanStack.add(endpoint.getVlanId());
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            desiredVlanStack.add(endpoint.getOuterVlanId());
         }
         return OfAdapter.INSTANCE.makeVlanReplaceActions(of, currentVlanStack, desiredVlanStack);
     }

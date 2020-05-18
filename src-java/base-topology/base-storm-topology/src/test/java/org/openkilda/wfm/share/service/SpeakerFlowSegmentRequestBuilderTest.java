@@ -191,7 +191,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends Neo4jBasedTest {
 
                 IngressFlowSegmentRequestFactory segment = (IngressFlowSegmentRequestFactory) entry;
                 IngressFlowSegmentRequest request = segment.makeInstallRequest(commandIdGenerator.generate());
-                Assert.assertEquals(goal.getSrcVlan(), request.getEndpoint().getVlanId());
+                Assert.assertEquals(goal.getSrcVlan(), request.getEndpoint().getOuterVlanId());
             }
         }
 

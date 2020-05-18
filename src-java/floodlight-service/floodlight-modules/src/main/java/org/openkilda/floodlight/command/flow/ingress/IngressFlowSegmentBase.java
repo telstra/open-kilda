@@ -208,7 +208,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
 
     protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getVlanId())) {
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             ofMessages.add(flowModFactory.makeOuterVlanOnlyForwardMessage(effectiveMeterId));
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortFlowMatchAndForwardMessage(effectiveMeterId));

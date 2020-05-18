@@ -195,9 +195,9 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Requested flow '$defaultFlow2.flowId' conflicts with existing flow \
-'$defaultFlow1.flowId'. Details: requested flow '$defaultFlow2.flowId' source: switch=$defaultFlow2.source.switchId \
-port=$defaultFlow2.source.portNumber vlan=0, existing flow '$defaultFlow1.flowId' \
-source: switch=$defaultFlow1.source.switchId port=$defaultFlow1.source.portNumber vlan=0"
+'$defaultFlow1.flowId'. Details: requested flow '$defaultFlow2.flowId' source: switchId=\"$defaultFlow2.source.switchId\" \
+port=$defaultFlow2.source.portNumber, existing flow '$defaultFlow1.flowId' \
+source: switchId=\"$defaultFlow1.source.switchId\" port=$defaultFlow1.source.portNumber"
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(defaultFlow1.flowId)
