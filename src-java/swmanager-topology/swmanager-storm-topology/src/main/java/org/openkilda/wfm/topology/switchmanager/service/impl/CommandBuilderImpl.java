@@ -35,6 +35,8 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -134,7 +136,8 @@ public class CommandBuilderImpl implements CommandBuilder {
      */
     private static boolean isDefaultRuleWithSpecialRequirements(long cookie) {
         return cookie == SERVER_42_OUTPUT_VLAN_COOKIE
-                || cookie == SERVER_42_OUTPUT_VXLAN_COOKIE;
+                || cookie == SERVER_42_OUTPUT_VXLAN_COOKIE
+                || new PortColourCookie(cookie).getType() == CookieType.SERVER_42_INPUT;
     }
 
     /**
@@ -164,6 +167,11 @@ public class CommandBuilderImpl implements CommandBuilder {
                 commands.add(command
                         .id("SWMANAGER_SERVER_42_OUTPUT_VXLAN_RULE_INSTALL")
                         .outputPort(properties.getServer42Port())
+                        .build());
+            } else if (new PortColourCookie(cookie).getType() == CookieType.SERVER_42_INPUT) {
+                commands.add(command
+                        .id("SWMANAGER_SERVER_42_INPUT_RULE_INSTALL")
+                        .inputPort(properties.getServer42Port())
                         .build());
             } else {
                 log.warn("Got request for installation of unknown rule {} on switch {}", cookie, switchId);

@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.model;
 
+import org.openkilda.model.MacAddress;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -33,4 +35,8 @@ public class RulesContext implements Serializable {
     private boolean removeCustomerCatchRule;
     private boolean removeCustomerLldpRule;
     private boolean removeCustomerArpRule;
+    private boolean removeServer42InputRule;
+    private boolean installServer42InputRule;
+    private Integer server42Port;
+    private MacAddress server42MacAddress;
 }

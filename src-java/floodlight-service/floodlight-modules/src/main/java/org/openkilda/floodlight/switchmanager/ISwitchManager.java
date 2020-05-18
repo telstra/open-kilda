@@ -210,6 +210,18 @@ public interface ISwitchManager extends IFloodlightService {
     Long installArpInputPreDropFlow(DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Install Server 42 input rule which will send Ping packet into pre ingress table.
+     *
+     * @param dpid datapathId of the switch
+     * @param server42Port server 42 port
+     * @param customerPort rule marks Ping packet by metadata to emulate that packet was received from customer port
+     * @param server42MacAddress server 42 mac adress
+     * @throws SwitchOperationException Switch not found
+     */
+    Long installServer42InputFlow(DatapathId dpid, int server42Port, int customerPort, MacAddress server42MacAddress)
+            throws SwitchOperationException;
+
+    /**
      * Install Server 42 output vlan rule which will send Ping packet back to Server 42.
      *
      * @param dpid datapathId of the switch
@@ -360,6 +372,15 @@ public interface ISwitchManager extends IFloodlightService {
     Long removeArpInputCustomerFlow(DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
+     * Remove Server 42 input rule which writes customer port into metadata for ping packets received from server 42.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    Long removeServer42InputFlow(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
      * Build intermidiate flowmod for ingress rule.
      *
      * @param dpid switch id
@@ -392,10 +413,11 @@ public interface ISwitchManager extends IFloodlightService {
      * @param dpid switch id
      * @param server42Port server 42 port
      * @param server42MacAddress mac address of server 42
+     * @param customerPorts switch ports with enabled server 42 ping
      * @return modification command
      */
     List<OFFlowMod> buildExpectedServer42Flows(
-            DatapathId dpid, int server42Port, MacAddress server42MacAddress)
+            DatapathId dpid, int server42Port, MacAddress server42MacAddress, Set<Integer> customerPorts)
             throws SwitchNotFoundException;
 
     /**
@@ -659,6 +681,7 @@ public interface ISwitchManager extends IFloodlightService {
      * @param flowPorts ports with flow default rule
      * @param flowLldpPorts ports with lldp flow default rule
      * @param flowArpPorts ports with arp flow default rule
+     * @param server42FlowRttPorts ports server 42 input flow default rule
      * @param multiTable multiTableMode
      * @param switchLldp switch Lldp enabled. True means that switch has rules for catching LLDP packets.
      * @param switchArp switch Arp enabled. True means that switch has rules for catching ARP packets.
@@ -668,7 +691,8 @@ public interface ISwitchManager extends IFloodlightService {
      */
     List<Long> deleteDefaultRules(DatapathId dpid, List<Integer> islPorts,
                                   List<Integer> flowPorts, Set<Integer> flowLldpPorts, Set<Integer> flowArpPorts,
-                                  boolean multiTable, boolean switchLldp, boolean switchArp, boolean server42FlowRtt)
+                                  Set<Integer> server42FlowRttPorts, boolean multiTable, boolean switchLldp,
+                                  boolean switchArp, boolean server42FlowRtt)
             throws SwitchOperationException;
 
     /**

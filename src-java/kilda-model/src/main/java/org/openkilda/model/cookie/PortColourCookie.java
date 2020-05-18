@@ -30,7 +30,8 @@ public class PortColourCookie extends CookieBase implements Comparable<PortColou
             CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES,
             CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES,
             CookieType.MULTI_TABLE_INGRESS_RULES,
-            CookieType.ARP_INPUT_CUSTOMER_TYPE
+            CookieType.ARP_INPUT_CUSTOMER_TYPE,
+            CookieType.SERVER_42_INPUT
     );
 
     // update ALL_FIELDS if modify fields list

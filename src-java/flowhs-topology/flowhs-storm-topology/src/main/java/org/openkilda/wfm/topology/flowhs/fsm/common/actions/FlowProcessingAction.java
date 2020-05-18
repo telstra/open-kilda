@@ -22,11 +22,15 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
@@ -49,12 +53,14 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     protected final PersistenceManager persistenceManager;
     protected final FlowRepository flowRepository;
     protected final FlowPathRepository flowPathRepository;
+    protected final SwitchPropertiesRepository switchPropertiesRepository;
 
     public FlowProcessingAction(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
     }
 
     @Override
@@ -98,10 +104,37 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         return new HashSet<>(flowRepository.findFlowsIdsByEndpointWithMultiTableSupport(switchId, port));
     }
 
+    protected Set<String> findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(SwitchId switchId, int port) {
+        return new HashSet<>(
+                flowRepository.findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(switchId, port));
+    }
+
     protected Set<String> getDiverseWithFlowIds(Flow flow) {
         return flow.getGroupId() == null ? Collections.emptySet() :
                 flowRepository.findFlowsIdByGroupId(flow.getGroupId()).stream()
                         .filter(flowId -> !flowId.equals(flow.getFlowId()))
                         .collect(Collectors.toSet());
+    }
+
+    protected SwitchProperties getSwitchProperties(SwitchId ingressSwitchId) {
+        return switchPropertiesRepository.findBySwitchId(ingressSwitchId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Properties for switch %s not found", ingressSwitchId)));
+    }
+
+    protected SpeakerRequestBuildContext buildBaseSpeakerContextForInstall(SwitchId srcSwitchId, SwitchId dstSwitchId) {
+        return SpeakerRequestBuildContext.builder()
+                .forward(buildBasePathContextForInstall(srcSwitchId))
+                .reverse(buildBasePathContextForInstall(dstSwitchId))
+                .build();
+    }
+
+    protected PathContext buildBasePathContextForInstall(SwitchId switchId) {
+        SwitchProperties switchProperties = getSwitchProperties(switchId);
+        return PathContext.builder()
+                .installServer42InputRule(switchProperties.isServer42FlowRtt())
+                .server42Port(switchProperties.getServer42Port())
+                .server42MacAddress(switchProperties.getServer42MacAddress())
+                .build();
     }
 }

@@ -151,6 +151,7 @@ public abstract class CookieBase implements Serializable {
         ARP_INPUT_CUSTOMER_TYPE(0x006),
         INGRESS_SEGMENT(0x007),   // used for ingress flow segment and for one switch flow segments
         SHARED_OF_FLOW(0x008),
+        SERVER_42_INPUT(0x009),
 
         // This do not consume any value from allowed address space - you can define another field with -1 value.
         // (must be last entry)

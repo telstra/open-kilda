@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
@@ -51,8 +52,10 @@ public class RevertNewRulesAction
 
         Collection<FlowSegmentRequestFactory> installCommands = new ArrayList<>();
         // Reinstall old ingress rules that may be overridden by new ingress.
+        SpeakerRequestBuildContext installContext = buildBaseSpeakerContextForInstall(
+                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
         installCommands.addAll(commandBuilder.buildIngressOnly(
-                stateMachine.getCommandContext(), flow, flow.getForwardPath(), flow.getReversePath()));
+                stateMachine.getCommandContext(), flow, flow.getForwardPath(), flow.getReversePath(), installContext));
 
         stateMachine.getIngressCommands().clear();  // need to clean previous requests
         SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
@@ -65,7 +68,7 @@ public class RevertNewRulesAction
 
         removeCommands.addAll(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, flow.getProtectedForwardPath(),
-                flow.getProtectedReversePath()));
+                flow.getProtectedReversePath(), SpeakerRequestBuildContext.EMPTY));
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), removeCommands, stateMachine.getRemoveCommands());

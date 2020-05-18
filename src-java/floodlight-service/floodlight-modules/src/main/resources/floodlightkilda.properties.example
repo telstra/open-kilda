@@ -63,6 +63,7 @@ net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
 #org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = 8
 #org.openkilda.floodlight.KildaCore.command-processor-idle-workers-keep-alive-seconds = 300
 #org.openkilda.floodlight.KildaCore.flow-ping-magic-src-mac-address=00:26:E1:FF:FF:FE
+org.openkilda.floodlight.KildaCore.server42-upd-port-offset=5000
 org.openkilda.floodlight.KafkaChannel.environment-naming-prefix=
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers=kafka.pendev:9092
 #org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1

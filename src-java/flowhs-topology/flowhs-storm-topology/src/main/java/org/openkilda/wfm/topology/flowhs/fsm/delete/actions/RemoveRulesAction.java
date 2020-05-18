@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -158,6 +159,13 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 
+    private boolean isRemoveServer42InputSharedRule(Flow flow, FlowPath path, boolean server42Rtt) {
+        boolean isForward = flow.isForward(path);
+        return server42Rtt && isFlowTheLastUserOfServer42InputSharedRule(
+                flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
+                isForward ? flow.getSrcPort() : flow.getDestPort());
+    }
+
     private boolean isRemoveCustomerPortSharedLldpCatchRule(Flow flow, FlowPath path) {
         boolean isForward = flow.isForward(path);
         return isFlowTheLastUserOfSharedLldpPortRule(flow.getFlowId(), path.getSrcSwitch().getSwitchId(),
@@ -171,11 +179,15 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
     }
 
     private PathContext buildPathContext(Flow flow, FlowPath path) {
+        SwitchProperties properties = getSwitchProperties(path.getSrcSwitch().getSwitchId());
 
         return PathContext.builder()
                 .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
                 .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                 .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
+                .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, properties.isServer42FlowRtt()))
+                .server42Port(properties.getServer42Port())
+                .server42MacAddress(properties.getServer42MacAddress())
                 .build();
     }
 }
