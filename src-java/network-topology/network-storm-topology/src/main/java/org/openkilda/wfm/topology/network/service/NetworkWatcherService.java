@@ -194,8 +194,8 @@ public class NetworkWatcherService {
         if (roundTripPackets.remove(Packet.of(endpoint, packetId))) {
             lastSeenRoundTrip.put(endpoint, clock.instant());
         } else {
-            log.error("Receive invalid/stale/duplicate round trip discovery packet for {} id:{} task:{}",
-                      endpoint, packetId, taskId);
+            log.debug("Receive invalid/stale/duplicate round trip discovery packet for {} id:{} task:{}",
+                    endpoint, packetId, taskId);
         }
     }
 

@@ -127,11 +127,16 @@ public class NetworkIslService {
      */
     public void roundTripStatusNotification(IslReference reference, RoundTripStatus status) {
         log.debug("ISL service receive ROUND TRIP STATUS for {} (on {})", reference, status.getEndpoint());
-        IslFsm islFsm = locateController(reference).fsm;
+        IslController islController = controller.get(reference);
+        if (islController == null) {
+            log.debug("Ignore ROUND TRIP STATUS for for {} - ISL not found", reference);
+            return;
+        }
+
         IslFsmContext context = IslFsmContext.builder(carrier, status.getEndpoint())
                 .roundTripStatus(status)
                 .build();
-        controllerExecutor.fire(islFsm, IslFsmEvent.ROUND_TRIP_STATUS, context);
+        controllerExecutor.fire(islController.fsm, IslFsmEvent.ROUND_TRIP_STATUS, context);
     }
 
     /**
