@@ -39,6 +39,7 @@ import java.util.Optional;
 public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
     private static final Integer SERVER_42_PORT = 10;
+    private static final Integer SERVER_42_VLAN = 15;
     private static final MacAddress SERVER_42_MAC_ADDRESS = new MacAddress("42:42:42:42:42:42");
 
     static SwitchRepository switchRepository;
@@ -89,6 +90,7 @@ public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
                 .switchObj(origSwitch)
                 .server42FlowRtt(true)
                 .server42Port(SERVER_42_PORT)
+                .server42Vlan(SERVER_42_VLAN)
                 .server42MacAddress(SERVER_42_MAC_ADDRESS)
                 .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                 .build();
@@ -98,6 +100,7 @@ public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
         assertTrue(switchPropertiesOptional.isPresent());
         assertTrue(switchPropertiesOptional.get().isServer42FlowRtt());
         assertEquals(SERVER_42_PORT, switchPropertiesOptional.get().getServer42Port());
+        assertEquals(SERVER_42_VLAN, switchPropertiesOptional.get().getServer42Vlan());
         assertEquals(SERVER_42_MAC_ADDRESS, switchPropertiesOptional.get().getServer42MacAddress());
     }
 
@@ -110,6 +113,7 @@ public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(origSwitch)
                 .server42Port(null)
+                .server42Vlan(null)
                 .server42MacAddress(null)
                 .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
 

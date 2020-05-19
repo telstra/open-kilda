@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
@@ -22,8 +23,10 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
@@ -40,6 +43,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 
 public class SwitchOperationsServiceTest extends Neo4jBasedTest {
@@ -52,6 +56,12 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
 
     private static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
     private static final SwitchId TEST_SWITCH_ID_2 = new SwitchId(2);
+    private static final Integer SERVER_42_PORT_1 = 1;
+    private static final Integer SERVER_42_PORT_2 = 2;
+    private static final Integer SERVER_42_VLAN_1 = 3;
+    private static final Integer SERVER_42_VLAN_2 = 4;
+    private static final MacAddress SERVER_42_MAC_ADDRESS_1 = new MacAddress("42:42:42:42:42:42");
+    private static final MacAddress SERVER_42_MAC_ADDRESS_2 = new MacAddress("45:45:45:45:45:45");
 
     @BeforeClass
     public static void setUpOnce() {
@@ -193,6 +203,98 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
         update.setSwitchArp(false);
 
         switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+    }
+
+    @Test
+    public void shouldUpdateServer42SwitchProperties() {
+        Switch sw = Switch.builder()
+                .switchId(TEST_SWITCH_ID)
+                .status(SwitchStatus.ACTIVE)
+                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
+                .build();
+        switchRepository.createOrUpdate(sw);
+        createServer42SwitchProperties(sw, false, SERVER_42_PORT_1, SERVER_42_VLAN_1, SERVER_42_MAC_ADDRESS_1);
+
+        SwitchPropertiesDto update = new SwitchPropertiesDto();
+        update.setSupportedTransitEncapsulation(
+                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+        update.setMultiTable(true);
+        update.setServer42FlowRtt(true);
+        update.setServer42Port(SERVER_42_PORT_2);
+        update.setServer42Vlan(SERVER_42_VLAN_2);
+        update.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        Optional<SwitchProperties> updated = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
+
+        assertTrue(updated.isPresent());
+        assertTrue(updated.get().isServer42FlowRtt());
+        assertEquals(SERVER_42_PORT_2, updated.get().getServer42Port());
+        assertEquals(SERVER_42_VLAN_2, updated.get().getServer42Vlan());
+        assertEquals(SERVER_42_MAC_ADDRESS_2, updated.get().getServer42MacAddress());
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateServer42VlanSwitchProperties() {
+        // user can't enable server42FlowRtt and do not specify server42Vlan
+        SwitchPropertiesDto properties = new SwitchPropertiesDto();
+        properties.setServer42FlowRtt(true);
+        properties.setServer42Port(SERVER_42_PORT_2);
+        properties.setServer42Vlan(null);
+        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+        runInvalidServer42PropsTest(properties);
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateServer42PortSwitchProperties() {
+        // user can't enable server42FlowRtt and do not specify server42Port
+        SwitchPropertiesDto properties = new SwitchPropertiesDto();
+        properties.setServer42FlowRtt(true);
+        properties.setServer42Port(null);
+        properties.setServer42Vlan(SERVER_42_VLAN_2);
+        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+        runInvalidServer42PropsTest(properties);
+    }
+
+    @Test(expected = IllegalSwitchPropertiesException.class)
+    public void shouldValidateServer42MacAddressSwitchProperties() {
+        // user can't enable server42FlowRtt and do not specify server42MacAddress
+        SwitchPropertiesDto properties = new SwitchPropertiesDto();
+        properties.setServer42FlowRtt(true);
+        properties.setServer42Port(SERVER_42_PORT_2);
+        properties.setServer42Vlan(SERVER_42_VLAN_2);
+        properties.setServer42MacAddress(null);
+        runInvalidServer42PropsTest(properties);
+    }
+
+    private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {
+        invalidProperties.setMultiTable(true);
+        invalidProperties.setSupportedTransitEncapsulation(Collections.singleton(
+                org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+
+        Switch sw = Switch.builder()
+                .switchId(TEST_SWITCH_ID)
+                .status(SwitchStatus.ACTIVE)
+                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
+                .build();
+        switchRepository.createOrUpdate(sw);
+        createServer42SwitchProperties(sw, false, SERVER_42_PORT_1, SERVER_42_VLAN_1, SERVER_42_MAC_ADDRESS_1);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, invalidProperties);
+    }
+
+    private void createServer42SwitchProperties(
+            Switch sw, boolean sever42FlowRtt, Integer port, Integer vlan, MacAddress macAddress) {
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(sw)
+                .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
+                .multiTable(true)
+                .server42FlowRtt(sever42FlowRtt)
+                .server42Port(port)
+                .server42Vlan(vlan)
+                .server42MacAddress(macAddress)
+                .build();
+        switchPropertiesRepository.createOrUpdate(switchProperties);
     }
 
     private void createSwitchProperties(Switch sw, Set<FlowEncapsulationType> transitEncapsulation, boolean multiTable,

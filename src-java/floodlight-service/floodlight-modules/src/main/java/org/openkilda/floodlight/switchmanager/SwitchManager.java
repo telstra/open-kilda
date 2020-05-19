@@ -22,6 +22,8 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionPushVlan;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionReplaceVlan;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildInstructionApplyActions;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
@@ -1514,18 +1516,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public Long installServer42OutputVlanFlow(
-            DatapathId dpid, int port, org.openkilda.model.MacAddress macAddress)
+            DatapathId dpid, int port, int vlan, org.openkilda.model.MacAddress macAddress)
             throws SwitchOperationException {
         return installDefaultFlow(dpid, switchFlowFactory.getServer42OutputVlanFlowGenerator(
-                port, macAddress), "--server 42 output vlan rule--");
+                port, vlan, macAddress), "--server 42 output vlan rule--");
     }
 
     @Override
     public Long installServer42OutputVxlanFlow(
-            DatapathId dpid, int port, org.openkilda.model.MacAddress macAddress)
+            DatapathId dpid, int port, int vlan, org.openkilda.model.MacAddress macAddress)
             throws SwitchOperationException {
         return installDefaultFlow(dpid, switchFlowFactory.getServer42OutputVxlanFlowGenerator(
-                port, macAddress), "--server 42 output VXLAN rule--");
+                port, vlan, macAddress), "--server 42 output VXLAN rule--");
     }
 
     @Override
@@ -1730,7 +1732,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @Override
     public List<OFFlowMod> buildExpectedServer42Flows(
-            DatapathId dpid, int server42Port, org.openkilda.model.MacAddress server42MacAddress,
+            DatapathId dpid, int server42Port, int server42Vlan, org.openkilda.model.MacAddress server42MacAddress,
             Set<Integer> customerPorts) throws SwitchNotFoundException {
 
         List<SwitchFlowGenerator> generators = new ArrayList<>();
@@ -1738,8 +1740,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             generators.add(switchFlowFactory.getServer42InputFlowGenerator(server42Port, port, server42MacAddress));
         }
         generators.add(switchFlowFactory.getServer42TurningFlowGenerator());
-        generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(server42Port, server42MacAddress));
-        generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(server42Port, server42MacAddress));
+        generators.add(switchFlowFactory.getServer42OutputVlanFlowGenerator(
+                server42Port, server42Vlan, server42MacAddress));
+        generators.add(switchFlowFactory.getServer42OutputVxlanFlowGenerator(
+                server42Port, server42Vlan, server42MacAddress));
 
         IOFSwitch sw = lookupSwitch(dpid);
         return generators.stream()
@@ -2246,40 +2250,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private OFAction actionSetOutputPort(final OFFactory ofFactory, final OFPort outputPort) {
         OFActions actions = ofFactory.actions();
         return actions.buildOutput().setMaxLen(0xFFFFFFFF).setPort(outputPort).build();
-    }
-
-    /**
-     * Create an OFAction to change the outer most vlan.
-     *
-     * @param factory OF factory for the switch
-     * @param newVlan final VLAN to be set on the packet
-     * @return {@link OFAction}
-     */
-    private OFAction actionReplaceVlan(final OFFactory factory, final int newVlan) {
-        OFOxms oxms = factory.oxms();
-        OFActions actions = factory.actions();
-
-        if (OF_12.compareTo(factory.getVersion()) == 0) {
-            return actions.buildSetField().setField(oxms.buildVlanVid()
-                    .setValue(OFVlanVidMatch.ofRawVid((short) newVlan))
-                    .build()).build();
-        } else {
-            return actions.buildSetField().setField(oxms.buildVlanVid()
-                    .setValue(OFVlanVidMatch.ofVlan(newVlan))
-                    .build()).build();
-        }
-    }
-
-    /**
-     * Create an OFAction to add a VLAN header.
-     *
-     * @param ofFactory OF factory for the switch
-     * @param etherType ethernet type of the new VLAN header
-     * @return {@link OFAction}
-     */
-    private OFAction actionPushVlan(final OFFactory ofFactory, final int etherType) {
-        OFActions actions = ofFactory.actions();
-        return actions.buildPushVlan().setEthertype(EthType.of(etherType)).build();
     }
 
     private OFAction actionPushVxlan(

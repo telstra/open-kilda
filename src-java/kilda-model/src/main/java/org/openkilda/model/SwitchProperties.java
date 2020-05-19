@@ -93,6 +93,9 @@ public class SwitchProperties implements Serializable {
     @Convert(graphPropertyType = String.class)
     private MacAddress server42MacAddress;
 
+    @Property("server42_vlan")
+    private Integer server42Vlan;
+
     @Property(name = "inbound_telescope_port")
     private Integer inboundTelescopePort;
 
@@ -108,8 +111,8 @@ public class SwitchProperties implements Serializable {
     @Builder(toBuilder = true)
     public SwitchProperties(Switch switchObj, Set<FlowEncapsulationType> supportedTransitEncapsulation,
                             boolean multiTable, boolean switchLldp, boolean switchArp, boolean server42FlowRtt,
-                            Integer server42Port, MacAddress server42MacAddress, Integer inboundTelescopePort,
-                            Integer outboundTelescopePort, Integer telescopeIngressVlan,
+                            Integer server42Port, MacAddress server42MacAddress, Integer server42Vlan,
+                            Integer inboundTelescopePort, Integer outboundTelescopePort, Integer telescopeIngressVlan,
                             Integer telescopeEgressVlan) {
         this.switchObj = switchObj;
         this.supportedTransitEncapsulation = supportedTransitEncapsulation;
@@ -119,6 +122,7 @@ public class SwitchProperties implements Serializable {
         this.server42FlowRtt = server42FlowRtt;
         this.server42Port = server42Port;
         this.server42MacAddress = server42MacAddress;
+        this.server42Vlan = server42Vlan;
         this.inboundTelescopePort = inboundTelescopePort;
         this.outboundTelescopePort = outboundTelescopePort;
         this.telescopeIngressVlan = telescopeIngressVlan;
