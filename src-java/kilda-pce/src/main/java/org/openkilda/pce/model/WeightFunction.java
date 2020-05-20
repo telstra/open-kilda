@@ -18,5 +18,5 @@ package org.openkilda.pce.model;
 import java.util.function.Function;
 
 @FunctionalInterface
-public interface WeightFunction extends Function<Edge, Long> {
+public interface WeightFunction extends Function<Edge, PathWeight> {
 }

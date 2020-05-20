@@ -27,6 +27,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.collect.Lists;
@@ -55,7 +56,7 @@ public class BestWeightAndShortestPathFinderTest {
             total += 10_000;
         }
         total += edge.getDiversityGroupUseCounter() * 1000 + edge.getDestSwitch().getDiversityGroupUseCounter() * 100;
-        return total;
+        return new PathWeight(total);
     };
 
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:00:00:22:3d:5a:04:87");
