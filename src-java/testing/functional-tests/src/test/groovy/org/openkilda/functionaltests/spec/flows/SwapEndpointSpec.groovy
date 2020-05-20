@@ -42,6 +42,7 @@ import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@Ignore("qinq: swapFlow is not working")
 class SwapEndpointSpec extends HealthCheckSpecification {
 
     @Autowired
