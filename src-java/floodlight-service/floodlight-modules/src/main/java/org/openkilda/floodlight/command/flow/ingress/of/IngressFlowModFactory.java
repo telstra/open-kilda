@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET;
+
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -149,7 +151,7 @@ public abstract class IngressFlowModFactory {
         Match match = makeServer42IngressFlowMatch(of.buildMatch(), server42UpdPortOffset);
 
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
-                -10)
+                SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET)
                 .setCookie(U64.of(buildServer42IngressCookie().getValue()))
                 .setMatch(match);
         return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);

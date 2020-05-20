@@ -136,8 +136,8 @@ public class CommandBuilderImpl implements CommandBuilder {
                             EncapsulationResources encapsulationResources = getEncapsulationResources(flowPath, flow);
                             commands.add(flowCommandFactory.buildInstallServer42IngressFlow(
                                     flow, flowPath, foundIngressSegment.getSrcPort(),
-                                    switchProperties.getServer42Port(), encapsulationResources,
-                                    foundIngressSegment.isSrcWithMultiTable()));
+                                    switchProperties.getServer42Port(), switchProperties.getServer42MacAddress(),
+                                    encapsulationResources, foundIngressSegment.isSrcWithMultiTable()));
                         }
                     }
                 });

@@ -517,9 +517,9 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found
      */
     long installServer42IngressFlow(
-            DatapathId dpid, DatapathId dstDpid, Long cookie, int server42Port, int outputPort, int customerPort,
-            int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-            FlowEncapsulationType encapsulationType) throws SwitchOperationException;
+            DatapathId dpid, DatapathId dstDpid, Long cookie, MacAddress server42MacAddress, int server42Port,
+            int outputPort, int customerPort, int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType,
+            long meterId, FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
 
     /**
      * Installs flow on egress swtich.

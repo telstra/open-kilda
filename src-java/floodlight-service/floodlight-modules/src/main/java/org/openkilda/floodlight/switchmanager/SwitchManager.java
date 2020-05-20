@@ -27,6 +27,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionRepla
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildInstructionApplyActions;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
+import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator.buildServer42CopyFirstTimestamp;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.openkilda.messaging.command.flow.RuleType.POST_INGRESS;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
@@ -240,6 +241,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int ARP_POST_INGRESS_PRIORITY = FLOW_PRIORITY - 2;
     public static final int ARP_POST_INGRESS_VXLAN_PRIORITY = FLOW_PRIORITY - 1;
     public static final int ARP_POST_INGRESS_ONE_SWITCH_PRIORITY = FLOW_PRIORITY;
+
+    public static final int SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET = -10;
+    public static final int SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY
+            + SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET;
 
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
@@ -494,7 +499,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private List<OFInstruction> createIngressFlowInstructions(
-            OFFactory ofFactory, OFInstructionMeter meter, OFInstructionApplyActions actions, boolean multiTable) {
+            OFFactory ofFactory, OFInstructionMeter meter, OFInstructionApplyActions actions, boolean goToPostIngress) {
         List<OFInstruction> instructions = new ArrayList<>();
 
         if (meter != null) {
@@ -503,7 +508,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         instructions.add(actions);
 
-        if (multiTable) {
+        if (goToPostIngress) {
             instructions.add(ofFactory.instructions().gotoTable(TableId.of(POST_INGRESS_TABLE_ID)));
         }
 
@@ -515,29 +520,32 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public long installServer42IngressFlow(
-            DatapathId dpid, DatapathId dstDpid, Long cookie, int server42Port, int outputPort, int customerPort,
-            int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-            FlowEncapsulationType encapsulationType) throws SwitchOperationException {
+            DatapathId dpid, DatapathId dstDpid, Long cookie, org.openkilda.model.MacAddress server42MacAddress,
+            int server42Port, int outputPort, int customerPort, int inputVlanId, int transitTunnelId,
+            OutputVlanType outputVlanType, long meterId, FlowEncapsulationType encapsulationType, boolean multiTable)
+            throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
         OFInstructionMeter meter = buildMeterInstruction(meterId, sw, actionList);
 
         actionList.addAll(pushTransitEncapsulationForServer42IngressFlow(ofFactory, transitTunnelId, outputVlanType,
-                encapsulationType, dpid, dstDpid));
+                encapsulationType, dpid, dstDpid, multiTable));
 
         actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
-        // build match by server 42 port (input port), input vlan id and customer port (metadata match)
-        Match match = matchServer42IngressFlow(sw, server42Port, customerPort, inputVlanId);
+        // build match by server 42 port (input port), input vlan id, customer port (metadata match) and mac address
+        Match match = matchServer42IngressFlow(
+                sw, server42MacAddress, server42Port, customerPort, inputVlanId, multiTable);
 
-        int flowPriority = getFlowPriority(inputVlanId);
+        int flowPriority = inputVlanId == 0 ? SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY;
+        int tableId = multiTable ? INGRESS_TABLE_ID : INPUT_TABLE_ID;
 
-        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, true);
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, false);
 
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
-                INGRESS_TABLE_ID)
+                tableId)
                 .setInstructions(instructions)
                 .setMatch(match);
 
@@ -2057,18 +2065,29 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
-    private Match matchServer42IngressFlow(IOFSwitch sw, int server42Port, int customerPort, int vlanId) {
+    private Match matchServer42IngressFlow(
+            IOFSwitch sw, org.openkilda.model.MacAddress server42MacAddress, int server42Port, int customerPort,
+            int vlanId, boolean multiTable) {
         OFFactory ofFactory = sw.getOFFactory();
         Match.Builder builder = ofFactory.buildMatch();
         if (vlanId > 0) {
             matchVlan(ofFactory, builder, vlanId);
         }
 
-        RoutingMetadata metadata = RoutingMetadata.builder()
-                .inputPort(customerPort)
-                .build(featureDetectorService.detectSwitch(sw));
+        if (multiTable) {
+            RoutingMetadata metadata = RoutingMetadata.builder()
+                    .inputPort(customerPort)
+                    .build(featureDetectorService.detectSwitch(sw));
+            builder.setMasked(MatchField.METADATA,
+                    OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()));
+        } else {
+            int udpSrcPort = config.getServer42UdpPortOffset() + customerPort;
 
-        builder.setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()));
+            builder.setExact(MatchField.ETH_SRC, MacAddress.of(server42MacAddress.toString()))
+                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                    .setExact(MatchField.UDP_SRC, TransportPort.of(udpSrcPort));
+        }
         builder.setExact(MatchField.IN_PORT, OFPort.of(server42Port));
         return builder.build();
     }
@@ -2205,14 +2224,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Create transit encapsulation OFActions for server 42 ingress Flow.
      */
     private List<OFAction> pushTransitEncapsulationForServer42IngressFlow(
-            OFFactory ofFactory, int transitTunnelId, OutputVlanType outputVlanType,
-            FlowEncapsulationType encapsulationType, DatapathId ethSrc, DatapathId ethDst) {
-        List<OFAction> actionList = new ArrayList<>();
+            OFFactory of, int transitTunnelId, OutputVlanType outputVlanType,
+            FlowEncapsulationType encapsulationType, DatapathId ethSrc, DatapathId ethDst, boolean multiTable) {
+        List<OFAction> actions = new ArrayList<>();
         switch (encapsulationType) {
             case TRANSIT_VLAN:
-                actionList.add(ofFactory.actions().setField(ofFactory.oxms().ethSrc(MacAddress.of(ethSrc))));
-                actionList.add(ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of(ethDst))));
-                pushVlanTransitEncapsulation(ofFactory, transitTunnelId, outputVlanType, actionList);
+                actions.add(of.actions().setField(of.oxms().ethSrc(MacAddress.of(ethSrc))));
+                actions.add(of.actions().setField(of.oxms().ethDst(MacAddress.of(ethDst))));
+
+                if (!multiTable) {
+                    actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(buildServer42CopyFirstTimestamp(of));
+                }
+                pushVlanTransitEncapsulation(of, transitTunnelId, outputVlanType, actions);
                 break;
             case VXLAN:
                 if (OutputVlanType.PUSH.equals(outputVlanType) || OutputVlanType.NONE.equals(outputVlanType)) {
@@ -2220,16 +2245,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     // TRANSIT_VLAN encapsulation always keeps 1 Vlan in packet.
                     // VXLAN encapsulation for NON default port also keeps 1 Vlan in packet.
                     // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
-                    actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
+                    actions.add(actionPushVlan(of, ETH_TYPE));
                 }
-                actionList.add(actionPushVxlan(ofFactory, transitTunnelId, convertDpIdToMac(ethSrc),
+                if (!multiTable) {
+                    actions.add(buildServer42CopyFirstTimestamp(of));
+                }
+                actions.add(actionPushVxlan(of, transitTunnelId, convertDpIdToMac(ethSrc),
                         convertDpIdToMac(ethDst), SERVER_42_FORWARD_UDP_PORT));
                 break;
             default:
                 throw new UnsupportedOperationException(
                         String.format("Unknown encapsulation type: %s", encapsulationType));
         }
-        return actionList;
+        return actions;
     }
 
     private void pushVlanTransitEncapsulation(

@@ -425,6 +425,7 @@ class RecordHandler implements Runnable {
                 dpid,
                 DatapathId.of(command.getEgressSwitchId().toLong()),
                 command.getCookie(),
+                command.getServer42MacAddress(),
                 command.getInputPort(),
                 command.getOutputPort(),
                 command.getCustomerPort(),
@@ -432,7 +433,8 @@ class RecordHandler implements Runnable {
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
                 meterId,
-                command.getTransitEncapsulationType());
+                command.getTransitEncapsulationType(),
+                command.isMultiTable());
     }
 
     /**

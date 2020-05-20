@@ -15,9 +15,9 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
-import static org.openkilda.floodlight.switchmanager.SwitchManager.NOVIFLOW_TIMESTAMP_SIZE_IN_BITS;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
+import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator.buildServer42CopyFirstTimestamp;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
@@ -85,7 +85,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                 if (!getCommand().getMetadata().isMultiTable()) {
                     actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
                     actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
-                    actions.add(makeServer42CopyTimestamp());
+                    actions.add(buildServer42CopyFirstTimestamp(of));
                 }
                 actions.addAll(makeVlanEncapsulationTransformActions());
                 break;
@@ -98,7 +98,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                     actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
                 }
                 if (!getCommand().getMetadata().isMultiTable()) {
-                    actions.add(makeServer42CopyTimestamp());
+                    actions.add(buildServer42CopyFirstTimestamp(of));
                 }
                 actions.add(pushVxlanAction(SERVER_42_FORWARD_UDP_PORT));
                 break;
@@ -107,16 +107,6 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                         getClass(), encapsulation.getType(), command.getSwitchId(), command.getMetadata().getFlowId());
         }
         return actions;
-    }
-
-    private OFAction makeServer42CopyTimestamp() {
-        return of.actions().buildNoviflowCopyField()
-                .setNBits(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)
-                .setSrcOffset(0)
-                .setDstOffset(0)
-                .setOxmSrcHeader(of.oxms().buildNoviflowTxtimestamp().getTypeLen())
-                .setOxmDstHeader(of.oxms().buildNoviflowUpdPayload().getTypeLen())
-                .build();
     }
 
     private List<OFAction> makeVlanEncapsulationTransformActions() {

@@ -21,6 +21,7 @@ import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -58,6 +59,9 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
     @JsonProperty("egress_switch_id")
     protected SwitchId egressSwitchId;
 
+    @JsonProperty("server42_mac_address")
+    protected MacAddress server42MacAddress;
+
     /**
      * Instance constructor.
      *
@@ -91,6 +95,7 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
                                       @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                       @JsonProperty("meter_id") final Long meterId,
                                       @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
+                                      @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
                                       @JsonProperty("multi_table") final boolean multiTable) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
@@ -99,6 +104,7 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
         setOutputVlanType(outputVlanType);
         setMeterId(meterId);
         setEgressSwitchId(egressSwitchId);
+        setServer42MacAddress(server42MacAddress);
     }
 
     /**
