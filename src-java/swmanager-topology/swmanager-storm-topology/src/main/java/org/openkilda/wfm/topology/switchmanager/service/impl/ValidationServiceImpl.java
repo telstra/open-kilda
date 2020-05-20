@@ -243,7 +243,7 @@ public class ValidationServiceImpl implements ValidationService {
             FlowEndpoint endpoint = ingress.getEndpoint();
             if (ingress.isMultiTableSegment()
                     && switchId.equals(endpoint.getSwitchId())
-                    && FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())
+                    && FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())
                     && ingress.isPrimaryEgressPath(path.getPathId())) {
                 result.add(FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
                         .portNumber(endpoint.getPortNumber())
