@@ -100,11 +100,11 @@ class SwitchSyncSpec extends BaseSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches[1..-2].each {
-                assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
+                assert validationResultsMap[it.dpId].rules.missing.size() == cookiesMap[it.dpId].size() + it.defaultCookies.size()
                 assert validationResultsMap[it.dpId].meters.missing.meterId.sort() == it.defaultMeters.sort()
             }
             [switchPair.src, switchPair.dst].each {
-                assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
+                assert validationResultsMap[it.dpId].rules.missing.size() == cookiesMap[it.dpId].size() + it.defaultCookies.size()
                 assert validationResultsMap[it.dpId].meters.missing.size() == 1 + it.defaultMeters.size()
             }
         }

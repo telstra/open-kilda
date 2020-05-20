@@ -6,7 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -125,7 +125,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         when: "Create a flow"
         def isMultitableEnabled = northbound.getSwitchProperties(sw.dpId).multiTable ?
-                INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
         def amountOfRules = northbound.getSwitchRules(sw.dpId).flowEntries.size() + isMultitableEnabled
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
         def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
@@ -302,7 +302,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
         def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
         properMeters.meterId.size() == 2
-        swValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+        def amountOfRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        swValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules
 
         when: "Update meterId for created flow directly via db"
         MeterId newMeterId = new MeterId(100)
@@ -379,9 +380,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
 
         then: "System detects missing rules, then installs them"
-        syncResponse.rules.missing.size() == 2
+        def amountOfRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        syncResponse.rules.missing.size() == amountOfRules
         syncResponse.rules.missing.containsAll(createdCookies)
-        syncResponse.rules.installed.size() == 2
+        syncResponse.rules.installed.size() == amountOfRules
         syncResponse.rules.installed.containsAll(createdCookies)
 
         when: "Delete the flow"
@@ -506,17 +508,18 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Switch validation shows missing rules"
-        northbound.validateSwitch(sw.dpId).rules.missing.size() == 2
+        def amountOfRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        northbound.validateSwitch(sw.dpId).rules.missing.size() == amountOfRules
 
         when: "Synchronize switch"
         with(northbound.synchronizeSwitch(sw.dpId, false)) {
-            it.rules.installed.size() == 2
+            it.rules.installed.size() == amountOfRules
         }
 
         then: "Switch validation shows no discrepancies"
         with(northbound.validateSwitch(sw.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules
             def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
             properMeters.size() == 2
         }
