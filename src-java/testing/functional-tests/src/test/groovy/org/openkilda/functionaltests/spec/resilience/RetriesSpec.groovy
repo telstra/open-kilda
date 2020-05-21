@@ -25,11 +25,11 @@ import groovy.util.logging.Slf4j
 import spock.lang.Unroll
 
 @Slf4j
-class RollbacksSpec extends HealthCheckSpecification {
+class RetriesSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(VIRTUAL)
-    def "System retries the reroute if it fails to install rules on one the current target path's switches"() {
+    def "System retries the reroute (global retry) if it fails to install rules on one the current target path's switches"() {
         given: "Switch pair with at least 3 available paths, one path should have a transit switch that we will break \
 and at least 1 path must remain safe"
         List<PathNode> mainPath, failoverPath, safePath
@@ -79,7 +79,7 @@ and at least 1 path must remain safe"
             assert northbound.getLink(islToBreak).state == IslChangeType.FAILED
         }
 
-        then: "System fails to install rules on desired path and tries to retry path installation"
+        then: "System fails to install rules on desired path and tries to retry reroute and find new path"
         wait(rerouteDelay + WAIT_OFFSET, 0.1) {
             assert northbound.getFlowHistory(flow.flowId).find {
                 it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
@@ -89,7 +89,7 @@ and at least 1 path must remain safe"
         when: "Switch is officially marked as offline"
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
 
-        then: "System finds another working path and successfully reroutes the flow (one of the auto-retries succeed)"
+        then: "System finds another working path and successfully reroutes the flow (one of the retries succeeds)"
         wait(PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }

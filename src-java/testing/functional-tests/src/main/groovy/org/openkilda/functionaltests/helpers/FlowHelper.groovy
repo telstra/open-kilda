@@ -4,8 +4,6 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -11,11 +12,11 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
@@ -35,11 +36,9 @@ class FlowHelperV2 {
     @Autowired
     TopologyDefinition topology
     @Autowired
-    NorthboundService northbound
-    @Autowired
     NorthboundServiceV2 northboundV2
     @Autowired
-    Database db
+    NorthboundService northbound
 
     def random = new Random()
     def faker = new Faker()
@@ -180,6 +179,16 @@ class FlowHelperV2 {
      */
     FlowResponseV2 updateFlow(String flowId, FlowCreatePayload flow) {
         return updateFlow(flowId, toV2(flow))
+    }
+
+    FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 flow) {
+        log.debug("Updating flow '${flowId}'(partial update)")
+        def response = northboundV2.partialUpdate(flowId, flow)
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
+            assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flowId).last().histories.last().action == UPDATE_SUCCESS
+        }
+        return response
     }
 
     /**
