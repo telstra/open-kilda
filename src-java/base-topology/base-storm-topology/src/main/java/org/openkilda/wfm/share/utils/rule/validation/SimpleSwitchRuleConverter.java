@@ -87,8 +87,6 @@ public class SimpleSwitchRuleConverter {
             // in multi-table mode actual ingress rule will match port+inner_vlan+metadata(outer_vlan)
             if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
                 rule.setInVlan(endpoint.getInnerVlanId());
-            } else {
-                rule.setInVlan(endpoint.getOuterVlanId());
             }
         } else {
             rule.setInVlan(endpoint.getOuterVlanId());
@@ -97,7 +95,7 @@ public class SimpleSwitchRuleConverter {
         if (flow.isOneSwitchFlow()) {
             FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
             rule.setOutPort(outPort);
-            rule.setOutVlan(calcVlanSetSequence(ingress, egressEndpoint));
+            rule.setOutVlan(calcVlanSetSequence(ingress, egressEndpoint.getVlanStack()));
         } else {
             PathSegment ingressSegment = flowPath.getSegments().stream()
                     .filter(segment -> segment.getSrcSwitch().getSwitchId()
@@ -109,7 +107,8 @@ public class SimpleSwitchRuleConverter {
 
             rule.setOutPort(ingressSegment.getSrcPort());
             if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-                rule.setOutVlan(Collections.singletonList(encapsulationId.getEncapsulationId()));
+                rule.setOutVlan(calcVlanSetSequence(
+                        ingress, Collections.singletonList(encapsulationId.getEncapsulationId())));
             } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
                 rule.setTunnelId(encapsulationId.getEncapsulationId());
             }
@@ -265,7 +264,7 @@ public class SimpleSwitchRuleConverter {
         return rule;
     }
 
-    private static List<Integer> calcVlanSetSequence(FlowSideAdapter ingress, FlowEndpoint egress) {
+    private static List<Integer> calcVlanSetSequence(FlowSideAdapter ingress, List<Integer> desiredVlanStack) {
         List<Integer> current;
         if (ingress.isMultiTableSegment()) {
             // outer vlan is removed by first shared rule
@@ -273,7 +272,7 @@ public class SimpleSwitchRuleConverter {
         } else {
             current = ingress.getEndpoint().getVlanStack();
         }
-        return calcVlanSetSequence(current, egress.getVlanStack());
+        return calcVlanSetSequence(current, desiredVlanStack);
     }
 
     /**
