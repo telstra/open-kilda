@@ -203,6 +203,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
             }.empty
         }
 
+        //TODO(andriidovhan) reduce amount of test when this feature is stable
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
         0         | 0              | 0         | 0

@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
@@ -77,8 +78,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     //pure v1
     @Shared
-    def getPortViolationError = { String action, int port, SwitchId swId ->
-        "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
+    def getPortViolationError = { String endpoint, int port, SwitchId swId ->
+        "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -952,16 +953,21 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Shared
     def errorDescription = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
             String conflictingEndpoint ->
-        "Requested flow '$conflictingFlow.id' " +
+        def message = "Requested flow '$conflictingFlow.id' " +
                 "conflicts with existing flow '$flow.id'. " +
                 "Details: requested flow '$conflictingFlow.id' $conflictingEndpoint: " +
                 "switchId=\"${conflictingFlow."$conflictingEndpoint".datapath}\" " +
-                "port=${conflictingFlow."$conflictingEndpoint".portNumber}" +
-                "${conflictingFlow."$conflictingEndpoint".vlanId ? " vlanId=" + conflictingFlow."$conflictingEndpoint".vlanId : ""}, " +
-                "existing flow '$flow.id' $endpoint: " +
+                "port=${conflictingFlow."$conflictingEndpoint".portNumber}"
+        if (0 < conflictingFlow."$conflictingEndpoint".vlanId) {
+            message += " vlanId=${conflictingFlow."$conflictingEndpoint".vlanId}";
+        }
+        message += ", existing flow '$flow.id' $endpoint: " +
                 "switchId=\"${flow."$endpoint".datapath}\" " +
-                "port=${flow."$endpoint".portNumber}" +
-                "${flow."$endpoint".vlanId ? " vlanId=" + flow."$endpoint".vlanId : ""}"
+                "port=${flow."$endpoint".portNumber}"
+        if (0 < flow."$endpoint".vlanId) {
+            message += " vlanId=${flow."$endpoint".vlanId}"
+        }
+        return message
     }
 
     //this is for pure v1

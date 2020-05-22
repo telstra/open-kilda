@@ -58,7 +58,6 @@ import java.time.Instant
 import javax.inject.Provider
 
 @Slf4j
-@Ignore("Incompatible with QinQ")
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
 Verify allocated Connected Devices resources and installed rules.""")
