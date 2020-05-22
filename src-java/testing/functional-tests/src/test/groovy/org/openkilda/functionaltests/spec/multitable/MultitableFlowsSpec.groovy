@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -25,9 +26,9 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
@@ -500,7 +501,8 @@ mode with existing flows and hold flows of different table-mode types"() {
                 involvedSwitches = pathHelper.getInvolvedSwitches(path)
                 //3 switches total. the first switch and the last one are connected to traffgen
                 involvedSwitches.size() == 3 && involvedSwitches[0].dpId in allTraffgenSwitchIds &&
-                        involvedSwitches[-1].dpId in allTraffgenSwitchIds }
+                        involvedSwitches[-1].dpId in allTraffgenSwitchIds
+            }
             if (desiredPath) {
                 allPaths.findAll { it.intersect(desiredPath) == [] }.size() > 0
             }
@@ -725,12 +727,18 @@ mode with existing flows and hold flows of different table-mode types"() {
         when: "Update switch properties(multi_table: false) on the src switch"
         northbound.updateSwitchProperties(involvedSwitches[0].dpId,
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[0].dpId], false))
+        sleep(3000) // TODO(andriidovhan) delete sleep when 3034 is fixed
 
         and: "Swap main and protected path"
         def currentProtectedPath = PathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath)
         northbound.swapFlowPath(flow.flowId)
-        def newFlowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
-        assert newFlowPath == currentProtectedPath
+        def newFlowPath
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == UPDATE_SUCCESS
+            newFlowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+            assert newFlowPath == currentProtectedPath
+        }
 
         then: "Flow rules are still in the same table mode"
         with(database.getFlow(flow.flowId)) { flowInfo ->
@@ -760,6 +768,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                     northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
             newFlowPath2 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
             assert newFlowPath2 == desiredPath
+            assert northbound.getFlowHistory(flow.flowId).last().histories.last().action == UPDATE_SUCCESS
         }
 
         then: "Flow rules are still in the same table mode as previously"
@@ -819,7 +828,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         and: "Update the flow: enable protected path"
         northboundV2.updateFlow(flow.flowId, flowHelperV2.toRequest(northboundV2.getFlow(flow.flowId)
-                .tap { it.allocateProtectedPath = true }))
+                                                                                .tap { it.allocateProtectedPath = true }))
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         then: "Human readable error is returned"
@@ -1346,20 +1355,20 @@ mode with existing flows and hold flows of different table-mode types"() {
         and: "Reroute main path to another path, but leave protected path the same"
         def targetPath = switchPair.paths.find {
             it.intersect(desiredPath) == [] && it != PathHelper.convert(flowPathInfo.protectedPath) &&
-               pathHelper.getInvolvedSwitches(it).size() > 2
-         }
+                    pathHelper.getInvolvedSwitches(it).size() > 2
+        }
         //main and protected paths should have the same cost so that only one reroute
         def pathsWithCosts = [PathHelper.convert(flowPathInfo), PathHelper.convert(flowPathInfo.protectedPath)]
-            .collectEntries {
-                [(it): pathHelper.getInvolvedIsls(it).sum { northbound.getLink(it).cost }]
-            }
+                .collectEntries {
+                    [(it): pathHelper.getInvolvedIsls(it).sum { northbound.getLink(it).cost }]
+                }
         def diff = Math.abs(pathsWithCosts.entrySet()[0].value - pathsWithCosts.entrySet()[1].value)
         pathsWithCosts.min { it.value }.with {
             def isl = pathHelper.getInvolvedIsls(it.key)[0]
             northbound.updateLinkProps([islUtils.toLinkProps(isl, [cost: (northbound.getLink(isl).cost + diff).toString()])])
         }
         switchPair.paths.findAll { it != targetPath }
-                .each { pathHelper.makePathMorePreferable(targetPath, it) }
+                  .each { pathHelper.makePathMorePreferable(targetPath, it) }
         assert northboundV2.rerouteFlow(flow.flowId).rerouted
 
         then: "Reroute is done successfully"
