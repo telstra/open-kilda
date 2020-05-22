@@ -41,14 +41,12 @@ import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -73,7 +71,6 @@ import java.util.stream.Collectors;
 
 public class FlowOperationsBolt extends PersistenceOperationsBolt implements FlowOperationsCarrier {
     private transient FlowOperationsService flowOperationsService;
-    private transient FeatureTogglesRepository featureTogglesRepository;
 
     public FlowOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -85,7 +82,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
     @Override
     public void init() {
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
-        this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -277,8 +273,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.REROUTE.toString(),
-                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.FLOWHS.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.PING.toString(),
@@ -294,15 +288,11 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
 
     @Override
     public void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
-        boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
-                .map(FeatureToggles::getFlowsRerouteViaFlowHs)
-                .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
-        String streamId = flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString();
-
         for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
                 paths, affectedIslEndpoints, reason)) {
             CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
-            getOutput().emit(streamId, getCurrentTuple(), new Values(request, forkedContext.getCorrelationId()));
+            getOutput().emit(StreamType.FLOWHS.toString(), getCurrentTuple(),
+                    new Values(request, forkedContext.getCorrelationId()));
         }
     }
 }

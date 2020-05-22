@@ -46,10 +46,6 @@ public interface RerouteTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoRerouteTopic();
     }
 
-    default String getKafkaFlowTopic() {
-        return getKafkaTopics().getFlowTopic();
-    }
-
     default String getKafkaFlowHsTopic() {
         return getKafkaTopics().getFlowHsTopic();
     }

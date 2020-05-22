@@ -46,7 +46,6 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
     private static final String SPOUT_ID_REROUTE = "reroute-spout";
 
-    private static final String BOLT_ID_KAFKA_FLOW = "kafka-flow-bolt";
     private static final String BOLT_ID_KAFKA_FLOWHS = "kafka-flowhs-bolt";
     private static final String BOLT_ID_KAFKA_NB = "kafka-northbound-bolt";
 
@@ -81,13 +80,10 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
         rerouteQueueBolt(topologyBuilder, parallelism, persistenceManager);
         timeWindowBolt(topologyBuilder);
 
-        KafkaBolt<String, Message> kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
-        topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOW, kafkaFlowBolt, parallelism)
-                .shuffleGrouping(RerouteBolt.BOLT_ID, STREAM_SWAP_ID);
-
         KafkaBolt<String, Message> kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOWHS, kafkaFlowHsBolt, parallelism)
-                .shuffleGrouping(FlowRerouteQueueBolt.BOLT_ID, FlowRerouteQueueBolt.STREAM_FLOWHS_ID);
+                .shuffleGrouping(FlowRerouteQueueBolt.BOLT_ID, FlowRerouteQueueBolt.STREAM_FLOWHS_ID)
+                .shuffleGrouping(RerouteBolt.BOLT_ID, STREAM_SWAP_ID);
 
         KafkaBolt<String, Message> kafkaNorthboundBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_NB, kafkaNorthboundBolt, parallelism)
