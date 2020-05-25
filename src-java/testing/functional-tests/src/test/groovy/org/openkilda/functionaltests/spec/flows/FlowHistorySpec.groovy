@@ -1,14 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_ACTION
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.messaging.payload.history.FlowEventPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -19,10 +19,7 @@ import spock.lang.Shared
 History record is created in case the create/update action is completed successfully.""")
 @Tags([LOW_PRIORITY])
 class FlowHistorySpec extends HealthCheckSpecification {
-    String createAction = "Flow creating"
-    String createHistoryActionV1 = "Created the flow"
-    String updateAction = "Flow updating"
-    String updateHistoryAction = "Updated the flow"
+    String updateHistoryActionV1 = "Updated the flow"
 
     @Shared
     Long timestampBefore
@@ -121,14 +118,14 @@ class FlowHistorySpec extends HealthCheckSpecification {
     }
 
     void checkHistoryCreateV1Action(FlowEventPayload flowHistory, String flowId) {
-        assert flowHistory.action == createAction
-        assert flowHistory.histories.action[-1] == createHistoryActionV1
+        assert flowHistory.action == CREATE_ACTION
+        assert flowHistory.histories.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 
     void checkHistoryUpdateAction(FlowEventPayload flowHistory, String flowId) {
-        assert flowHistory.action == updateAction
-        assert flowHistory.histories.action[-1] == updateHistoryAction
+        assert flowHistory.action == UPDATE_ACTION
+        assert flowHistory.histories.action[-1] == updateHistoryActionV1
         checkHistoryCommonStuff(flowHistory, flowId)
     }
 

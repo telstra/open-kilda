@@ -37,8 +37,10 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.FORBIDDEN
-        e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Feature toggles not enabled for CREATE_FLOW operation."
+        with(e.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not create flow"
+            errorDescription == "Flow create feature is disabled"
+        }
 
         and: "Update of previously existing flow is still possible"
         flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })

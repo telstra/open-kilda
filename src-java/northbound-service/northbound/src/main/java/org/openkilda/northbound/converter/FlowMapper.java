@@ -28,6 +28,7 @@ import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -73,7 +74,7 @@ public abstract class FlowMapper {
     /**
      * Map FlowReadResponse.
      *
-     * @param r  {@link FlowReadResponse} instance.
+     * @param r {@link FlowReadResponse} instance.
      * @return {@link FlowResponsePayload} instance.
      */
     public FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
@@ -149,10 +150,44 @@ public abstract class FlowMapper {
     @Mapping(target = "type", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
+    @Mapping(target = "flowId", source = "id")
+    @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "type", ignore = true)
+    @Mapping(target = "detectConnectedDevices", ignore = true)
+    public abstract FlowRequest toFlowRequest(FlowCreatePayload request);
+
     @Mapping(target = "outerVlanId", source = "vlanId")
     @Mapping(target = "trackLldpConnectedDevices", source = "detectConnectedDevices.lldp")
     @Mapping(target = "trackArpConnectedDevices", source = "detectConnectedDevices.arp")
     public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointV2 input);
+
+    @Mapping(target = "switchId", source = "datapath")
+    @Mapping(target = "outerVlanId", source = "vlanId")
+    @Mapping(target = "trackLldpConnectedDevices", source = "detectConnectedDevices.lldp")
+    @Mapping(target = "trackArpConnectedDevices", source = "detectConnectedDevices.arp")
+    public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointPayload input);
+
+    /**
+     * Map FlowCreatePayload.
+     *
+     * @param source {@link FlowCreatePayload} instance.
+     * @return {@link FlowRequest} instance.
+     */
+    public FlowRequest toFlowCreateRequest(FlowCreatePayload source) {
+        FlowRequest target = toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+        if (source.getSource().getDetectConnectedDevices() != null) {
+            DetectConnectedDevicesPayload srcDevs = source.getSource().getDetectConnectedDevices();
+            target.getDetectConnectedDevices().setSrcArp(srcDevs.isArp());
+            target.getDetectConnectedDevices().setSrcLldp(srcDevs.isLldp());
+        }
+        if (source.getDestination().getDetectConnectedDevices() != null) {
+            DetectConnectedDevicesPayload dstDevs = source.getDestination().getDetectConnectedDevices();
+            target.getDetectConnectedDevices().setDstArp(dstDevs.isArp());
+            target.getDetectConnectedDevices().setDstLldp(dstDevs.isLldp());
+        }
+        return target;
+    }
 
     public FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
         return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
