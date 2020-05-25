@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class FlowRttMetricGenBolt extends MetricGenBolt {
 
@@ -38,7 +39,6 @@ public class FlowRttMetricGenBolt extends MetricGenBolt {
     protected void handleInput(Tuple input) throws Exception {
         InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
         FlowRttStatsData data = (FlowRttStatsData) message.getData();
-        long timestamp = getCommandContext().getCreateTime();
         Map<String, String> tags = ImmutableMap.of(
                 "direction", data.getDirection(),
                 "flowid", data.getFlowId()
@@ -46,6 +46,8 @@ public class FlowRttMetricGenBolt extends MetricGenBolt {
 
         long t0 = noviflowTimestamp(data.getT0());
         long t1 = noviflowTimestamp(data.getT1());
+
+        long timestamp = TimeUnit.NANOSECONDS.toMillis(t1);
 
         emitMetric("flow.rtt", timestamp, t1 - t0, tags);
     }
