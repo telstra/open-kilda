@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -27,6 +28,7 @@ import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,9 +48,9 @@ abstract class EmitVerifyRulesAction
         for (FlowSegmentRequestFactory factory : requestFactories) {
             FlowSegmentRequest request = factory.makeVerifyRequest(commandIdGenerator.generate());
 
-            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, request);
+            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder,
+                    Collections.singleton(ErrorCode.MISSING_OF_FLOWS), request);
             commandObserver.start();
-            // TODO ensure no conflicts
             pendingCommands.put(request.getCommandId(), commandObserver);
         }
     }

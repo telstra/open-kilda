@@ -21,12 +21,16 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.EgressFlowSegmentVerifyRequest;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest;
+import org.openkilda.floodlight.api.request.IngressFlowSegmentVerifyRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathPair;
@@ -40,6 +44,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FlowCreateServiceTest extends AbstractFlowTest {
@@ -64,9 +74,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     public void shouldCreateOneSwitchFlow() throws Exception {
         FlowRequest request = makeRequest()
                 .flowId("one_switch_flow")
-                .destinationSwitch(SWITCH_SOURCE)
-                .destinationPort(2)
-                .destinationVlan(2)
+                .destination(new FlowEndpoint(SWITCH_SOURCE, 2, 2))
                 .build();
         preparePathComputation(request.getFlowId(), makeOneSwitchPathPair());
         testHappyPath(request, "successful_flow_create");
@@ -215,59 +223,50 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     }
 
     @Test
-    public void shouldCreateFlowWithRetryNonIngressRuleIfSwitchIsUnavailable() throws Exception {
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(make3SwitchesPathPair());
-
-
-        String key = "retries_non_ingress_installation";
-        FlowRequest flowRequest = makeRequest()
-                .flowId("failed_flow_id")
-                .build();
-
-        int retriesLimit = 10;
-        FlowCreateService service = makeService(retriesLimit);
-
-        service.handleRequest(key, new CommandContext(), flowRequest);
-
-        Flow inProgress = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.IN_PROGRESS);
-        verifyFlowPathStatus(inProgress.getForwardPath(), FlowPathStatus.IN_PROGRESS, "forward");
-        verifyFlowPathStatus(inProgress.getReversePath(), FlowPathStatus.IN_PROGRESS, "reverse");
-
-        verifyNorthboundSuccessResponse(carrier);
-
-        int remainingRetries = retriesLimit;
-        FlowSegmentRequest request;
-        while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
-                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
-            } else {
-                if (request instanceof EgressFlowSegmentInstallRequest && remainingRetries > 0) {
-                    handleErrorResponse(service, key, request, ErrorCode.SWITCH_UNAVAILABLE);
-                    remainingRetries--;
-                } else {
-                    handleResponse(service, key, request);
-                }
-            }
-        }
-
-        assertEquals(0, remainingRetries);
-        Flow result = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.UP);
-        verifyFlowPathStatus(result.getForwardPath(), FlowPathStatus.ACTIVE, "forward");
-        verifyFlowPathStatus(result.getReversePath(), FlowPathStatus.ACTIVE, "reverse");
+    public void shouldRetryNotIngressRequestOnSwitchUnavailable() throws Exception {
+        testSpeakerCommandRetry(EgressFlowSegmentInstallRequest.class, ErrorCode.SWITCH_UNAVAILABLE, true);
     }
 
     @Test
-    public void shouldCreateFlowWithRetryIngressRuleIfSwitchIsUnavailable() throws Exception {
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(make3SwitchesPathPair());
+    public void shouldRetryNotIngressRequestOnTimeout() throws Exception {
+        testSpeakerCommandRetry(EgressFlowSegmentInstallRequest.class, ErrorCode.OPERATION_TIMED_OUT, true);
+    }
 
+    @Test
+    public void shouldRetryIngressRequestOnSwitchUnavailable() throws Exception {
+        testSpeakerCommandRetry(IngressFlowSegmentInstallRequest.class, ErrorCode.SWITCH_UNAVAILABLE, true);
+    }
+
+    @Test
+    public void shouldRetryIngressRequestOnTimeout() throws Exception {
+        testSpeakerCommandRetry(EgressFlowSegmentInstallRequest.class, ErrorCode.OPERATION_TIMED_OUT, true);
+    }
+
+    @Test
+    public void shouldRetryNotIngressValidationRequestOnSwitchUnavailable() throws Exception {
+        testSpeakerCommandRetry(EgressFlowSegmentVerifyRequest.class, ErrorCode.SWITCH_UNAVAILABLE, true);
+    }
+
+    @Test
+    public void shouldRetryIngressValidationRequestOnSwitchUnavailable() throws Exception {
+        testSpeakerCommandRetry(IngressFlowSegmentVerifyRequest.class, ErrorCode.SWITCH_UNAVAILABLE, true);
+    }
+
+    @Test
+    public void shouldNotRetryValidationOnPermanentError() throws Exception {
+        testSpeakerCommandRetry(EgressFlowSegmentVerifyRequest.class, ErrorCode.MISSING_OF_FLOWS, false);
+    }
+
+    private void testSpeakerCommandRetry(Class<?> failRequest, ErrorCode error, boolean mustRetry) throws Exception {
         String key = "retries_non_ingress_installation";
         FlowRequest flowRequest = makeRequest()
-                .flowId("failed_flow_id")
+                .flowId("dummy_flow_id")
                 .build();
 
         int retriesLimit = 10;
         FlowCreateService service = makeService(retriesLimit);
 
+        preparePathComputation(flowRequest.getFlowId(), make2SwitchesPathPair());
         service.handleRequest(key, new CommandContext(), flowRequest);
 
         Flow inProgress = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.IN_PROGRESS);
@@ -276,25 +275,88 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         verifyNorthboundSuccessResponse(carrier);
 
-        int remainingRetries = retriesLimit;
+        Set<UUID> producedErrors = new HashSet<>();
+        Map<UUID, Integer> remainingRetries = new HashMap<>();
+        Map<UUID, Integer> seenCounter = new HashMap<>();
+
         FlowSegmentRequest request;
         while ((request = requests.poll()) != null) {
-            if (request.isVerifyRequest()) {
+            UUID commandId = request.getCommandId();
+            seenCounter.put(commandId, seenCounter.getOrDefault(commandId, 0) + 1);
+            Integer remaining = remainingRetries.getOrDefault(commandId, retriesLimit);
+            if (failRequest.isInstance(request) && remaining > 0) {
+                producedErrors.add(commandId);
+                remainingRetries.put(commandId, remaining - 1);
+
+                handleErrorResponse(service, key, request, error);
+            } else if (request.isVerifyRequest()) {
                 service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
             } else {
-                if (remainingRetries > 0) {
-                    handleErrorResponse(service, key, request, ErrorCode.SWITCH_UNAVAILABLE);
-                    remainingRetries--;
-                } else {
-                    handleResponse(service, key, request);
-                }
+                handleResponse(service, key, request);
             }
         }
 
-        assertEquals(0, remainingRetries);
-        Flow result = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.UP);
-        verifyFlowPathStatus(result.getForwardPath(), FlowPathStatus.ACTIVE, "forward");
-        verifyFlowPathStatus(result.getReversePath(), FlowPathStatus.ACTIVE, "reverse");
+        Assert.assertFalse(producedErrors.isEmpty());
+        for (Map.Entry<UUID, Integer> entry : seenCounter.entrySet()) {
+            if (! producedErrors.contains(entry.getKey())) {
+                continue;
+            }
+
+            Integer counter = entry.getValue();
+            if (mustRetry) {
+                Assert.assertEquals(retriesLimit + 1, (int) counter);
+            } else {
+                Assert.assertEquals(1, (int) counter);
+            }
+        }
+
+        if (mustRetry) {
+            Flow result = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.UP);
+            verifyFlowPathStatus(result.getForwardPath(), FlowPathStatus.ACTIVE, "forward");
+            verifyFlowPathStatus(result.getReversePath(), FlowPathStatus.ACTIVE, "reverse");
+        } else {
+            verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.DOWN);
+        }
+    }
+
+    @Test
+    public void shouldNotRetryForever() throws Exception {
+        String key = "retries_non_ingress_installation";
+        FlowRequest flowRequest = makeRequest()
+                .flowId("dummy_flow_id")
+                .build();
+
+        int retriesLimit = 10;
+        FlowCreateService service = makeService(retriesLimit);
+
+        preparePathComputation(flowRequest.getFlowId(), make2SwitchesPathPair());
+        service.handleRequest(key, new CommandContext(), flowRequest);
+
+        Flow inProgress = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.IN_PROGRESS);
+        verifyFlowPathStatus(inProgress.getForwardPath(), FlowPathStatus.IN_PROGRESS, "forward");
+        verifyFlowPathStatus(inProgress.getReversePath(), FlowPathStatus.IN_PROGRESS, "reverse");
+
+        verifyNorthboundSuccessResponse(carrier);
+
+        FlowSegmentRequest request;
+
+        Map<UUID, Integer> remainingRetries = new HashMap<>();
+        while ((request = requests.poll()) != null) {
+            UUID commandId = request.getCommandId();
+            Integer remaining = remainingRetries.getOrDefault(commandId, retriesLimit + 1);
+            Assert.assertTrue(0 < remaining);
+            if (request instanceof EgressFlowSegmentInstallRequest) {
+                remainingRetries.put(commandId, remaining - 1);
+
+                handleErrorResponse(service, key, request, ErrorCode.SWITCH_UNAVAILABLE);
+            } else if (request.isVerifyRequest()) {
+                service.handleAsyncResponse(key, buildResponseOnVerifyRequest(request));
+            } else {
+                handleResponse(service, key, request);
+            }
+        }
+
+        verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.DOWN);
     }
 
     private void handleResponse(FlowCreateService service, String key, FlowSegmentRequest request) {

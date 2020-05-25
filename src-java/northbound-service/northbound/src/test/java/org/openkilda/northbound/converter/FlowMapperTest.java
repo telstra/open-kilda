@@ -66,12 +66,12 @@ public class FlowMapperTest {
         FlowRequest flowRequest = flowMapper.toFlowRequest(flowRequestV2);
 
         assertEquals(FLOW_ID, flowRequest.getFlowId());
-        assertEquals(SRC_SWITCH_ID, flowRequest.getSourceSwitch());
-        assertEquals(SRC_PORT, flowRequest.getSourcePort());
-        assertEquals(SRC_VLAN, flowRequest.getSourceVlan());
-        assertEquals(DST_SWITCH_ID, flowRequest.getDestinationSwitch());
-        assertEquals(DST_PORT, flowRequest.getDestinationPort());
-        assertEquals(DST_VLAN, flowRequest.getDestinationVlan());
+        assertEquals(SRC_SWITCH_ID, flowRequest.getSource().getSwitchId());
+        assertEquals(SRC_PORT, (int) flowRequest.getSource().getPortNumber());
+        assertEquals(SRC_VLAN, flowRequest.getSource().getOuterVlanId());
+        assertEquals(DST_SWITCH_ID, flowRequest.getDestination().getSwitchId());
+        assertEquals(DST_PORT, (int) flowRequest.getDestination().getPortNumber());
+        assertEquals(DST_VLAN, flowRequest.getDestination().getOuterVlanId());
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, flowRequest.getEncapsulationType());
         assertEquals(DESCRIPTION, flowRequest.getDescription());
         assertEquals(BANDWIDTH, flowRequest.getBandwidth());

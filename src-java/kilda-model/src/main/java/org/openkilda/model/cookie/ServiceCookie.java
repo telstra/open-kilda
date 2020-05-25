@@ -135,6 +135,7 @@ public class ServiceCookie extends CookieBase implements Comparable<ServiceCooki
         ARP_POST_INGRESS_ONE_SWITCH_COOKIE(0x18),
         SERVER_42_OUTPUT_VLAN_COOKIE(0x19),
         SERVER_42_OUTPUT_VXLAN_COOKIE(0x1A),
+        SERVER_42_TURNING_COOKIE(0x1B),
 
         // This do not consume any value from allowed address space - you can define another field with -1 value
         // (must be last entry)

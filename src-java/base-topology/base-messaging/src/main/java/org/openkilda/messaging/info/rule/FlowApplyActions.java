@@ -45,6 +45,8 @@ public class FlowApplyActions implements Serializable {
     private String group;
     @JsonProperty("set_copy_field")
     private FlowCopyFieldAction copyFieldAction;
+    @JsonProperty("swap_field")
+    private FlowSwapFieldAction swapFieldAction;
 
     @JsonCreator
     public FlowApplyActions(
@@ -52,7 +54,8 @@ public class FlowApplyActions implements Serializable {
             @JsonProperty("set_field_actions") List<FlowSetFieldAction> setFieldActions,
             @JsonProperty("push_vlan") String pushVlan, @JsonProperty("POP_VLAN") String popVlan,
             @JsonProperty("meter") String meter, @JsonProperty("push_vxlan") String pushVxlan,
-            @JsonProperty("group") String group, @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction) {
+            @JsonProperty("group") String group, @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction,
+            @JsonProperty("swap_field") FlowSwapFieldAction swapFieldAction) {
         this.flowOutput = flowOutput;
         this.setFieldActions = setFieldActions;
         this.pushVlan = pushVlan;
@@ -61,6 +64,7 @@ public class FlowApplyActions implements Serializable {
         this.pushVxlan = pushVxlan;
         this.group = group;
         this.copyFieldAction = copyFieldAction;
+        this.swapFieldAction = swapFieldAction;
     }
 
 }

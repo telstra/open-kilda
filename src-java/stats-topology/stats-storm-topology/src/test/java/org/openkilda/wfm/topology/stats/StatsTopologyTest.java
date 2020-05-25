@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
+import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterConfigReply;
@@ -95,22 +96,17 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
     private static final String METRIC_PREFIX = "kilda.";
     private static final int ENCAPSULATION_ID = 123;
-
-    private final SwitchId switchId = new SwitchId(1L);
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
-    private final long cookie = 0x4000000000000001L;
-    private final String flowId = "f253423454343";
-
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
     private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
-
     private static PersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
-
     private static TestKafkaConsumer otsdbConsumer;
     private static FlowRepository flowRepository;
     private static SwitchRepository switchRepository;
+    private final SwitchId switchId = new SwitchId(1L);
+    private final long cookie = 0x4000000000000001L;
+    private final String flowId = "f253423454343";
 
     @BeforeClass
     public static void setupOnce() throws Exception {
@@ -495,6 +491,34 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    public void flowRttTest() throws IOException {
+        FlowRttStatsData flowRttStatsData = FlowRttStatsData.builder()
+                .flowId(flowId)
+                .direction("forward")
+                .t0(1L)
+                .t1(2L)
+                .build();
+
+        InfoMessage infoMessage = new InfoMessage(flowRttStatsData, timestamp, UUID.randomUUID().toString(),
+                Destination.WFM_STATS, null);
+
+        sendMessage(infoMessage, statsTopologyConfig.getServer42StatsFlowRttTopic());
+
+        List<Datapoint> datapoints = pollDatapoints(1);
+
+        assertEquals(1, datapoints.size());
+
+        Datapoint datapoint = datapoints.get(0);
+
+        assertEquals(METRIC_PREFIX + "flow.rtt", datapoint.getMetric());
+        assertEquals(1, datapoint.getValue());
+        assertEquals("forward", datapoint.getTags().get("direction"));
+        assertEquals(flowId, datapoint.getTags().get("flowid"));
+        assertEquals(timestamp, datapoint.getTime().longValue());
+    }
+
+
+    @Test
     public void tableStatsTest() throws IOException {
         TableStatsEntry entry = TableStatsEntry.builder()
                 .tableId(1)
@@ -529,6 +553,7 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
+
 
     private Flow createFlow(SwitchId switchId, String flowId) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();

@@ -20,6 +20,9 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.getCurrentArguments;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.floodlight.KildaCore;
+import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.meter.MeterInstallCommand;
 import org.openkilda.floodlight.command.meter.MeterInstallDryRunCommand;
 import org.openkilda.floodlight.command.meter.MeterInstallReport;
@@ -64,6 +67,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +111,9 @@ public abstract class AbstractSpeakerCommandTest extends EasyMockSupport {
     protected FeatureDetectorService featureDetectorService;
 
     @Mock
+    protected KildaCore kildaCore;
+
+    @Mock
     protected SpeakerCommandProcessor commandProcessor;
 
     @Mock
@@ -133,6 +140,13 @@ public abstract class AbstractSpeakerCommandTest extends EasyMockSupport {
         prepareSwitch(sw, dpId);
         prepareSwitch(swNext, dpIdNext);
 
+        Properties configProps = new Properties();
+        PropertiesBasedConfigurationProvider provider = new PropertiesBasedConfigurationProvider(configProps);
+        KildaCoreConfig config = provider.getConfiguration(KildaCoreConfig.class);
+
+        expect(kildaCore.getConfig()).andReturn(config).anyTimes();
+
+        moduleContext.addService(KildaCore.class, kildaCore);
         moduleContext.addService(FeatureDetectorService.class, featureDetectorService);
 
         prepareSessionService();

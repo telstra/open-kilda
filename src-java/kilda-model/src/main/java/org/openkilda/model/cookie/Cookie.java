@@ -94,6 +94,8 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VLAN_COOKIE).getValue();
     public static final long SERVER_42_OUTPUT_VXLAN_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.SERVER_42_OUTPUT_VXLAN_COOKIE).getValue();
+    public static final long SERVER_42_TURNING_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.SERVER_42_TURNING_COOKIE).getValue();
 
     @JsonCreator
     public Cookie(long value) {
@@ -171,6 +173,10 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     public static long encodeArpInputCustomer(int port) {
         // FIXME(surabujin): replace with direct cookie call
         return new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, port).getValue();
+    }
+
+    public static long encodeServer42InputInput(int port) {
+        return new PortColourCookie(CookieType.SERVER_42_INPUT, port).getValue();
     }
 
     /**

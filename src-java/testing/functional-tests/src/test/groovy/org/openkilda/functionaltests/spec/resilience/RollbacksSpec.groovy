@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.resilience
 
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -8,7 +10,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
@@ -17,6 +18,7 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
 import spock.lang.Unroll
@@ -72,12 +74,12 @@ and at least 1 path must remain safe"
 
         when: "Main path of the flow breaks initiating a reroute"
         def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getLink(islToBreak).state == IslChangeType.FAILED
         }
 
         then: "System fails to install rules on desired path and tries to retry path installation"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET, 0.1) {
+        wait(rerouteDelay + WAIT_OFFSET, 0.1) {
             assert northbound.getFlowHistory(flow.flowId).find {
                 it.action == "Flow rerouting" && it.taskId =~ (/.+ : retry #1/)
             }
@@ -87,7 +89,7 @@ and at least 1 path must remain safe"
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
 
         then: "System finds another working path and successfully reroutes the flow (one of the auto-retries succeed)"
-        Wrappers.wait(PATH_INSTALLATION_TIME) {
+        wait(PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -112,7 +114,7 @@ and at least 1 path must remain safe"
         if(portDown) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
@@ -145,7 +147,7 @@ and at least 1 path must remain safe"
         }
         broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
         broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
             }.size() == otherIsls.size() * 2
@@ -179,14 +181,14 @@ and at least 1 path must remain safe"
         data.action(flow)
 
         then: "System retried to #data.description"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northbound.getFlowHistory(flow.flowId).findAll {
                 it.action == data.historyAction
             }.last().histories*.details.findAll{ it =~ /.+ Retrying/}.size() == data.retriesAmount
         }
 
         then: "Flow is DOWN"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
         }
 
@@ -198,7 +200,7 @@ and at least 1 path must remain safe"
 
         and: "All involved switches pass switch validation(except dst switch)"
         def involvedSwitchIds = pathHelper.getInvolvedSwitches(protectedPath)[0..-2]*.dpId
-        Wrappers.wait(WAIT_OFFSET / 2) {
+        wait(WAIT_OFFSET / 2) {
             involvedSwitchIds.each { swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
                     validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
@@ -213,7 +215,7 @@ and at least 1 path must remain safe"
         isSwitchActivated = true
 
         then: "Flow is UP"
-        Wrappers.wait(discoveryInterval + rerouteDelay + WAIT_OFFSET) {
+        wait(discoveryInterval + rerouteDelay + WAIT_OFFSET) {
             northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
@@ -232,7 +234,7 @@ and at least 1 path must remain safe"
             northbound.synchronizeSwitch(swToManipulate.dpId, true)
         }
         broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
         database.resetCosts()
@@ -257,5 +259,33 @@ and at least 1 path must remain safe"
                             getNorthbound().swapFlowPath(f.flowId) }
                 ]
         ]
+    }
+
+    @Tidy
+    def "Flow is successfully deleted from the system even if some rule delete commands fail (no rollback for delete)"() {
+        given: "A flow"
+        def swPair = topologyHelper.switchPairs.first()
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Send delete request for the flow"
+        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(1000))
+        northboundV2.deleteFlow(flow.flowId)
+
+        and: "One of the related switches does not respond"
+        def blockData = switchHelper.knockoutSwitch(swPair.src, mgmtFlManager)
+
+        then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
+        wait(WAIT_OFFSET) {
+            def history = northbound.getFlowHistory(flow.flowId).last().histories
+            //egress and ingress rule on a broken switch, 3 retries each = total 6
+            assert history.count { it.details ==~ /Failed to remove the rule.*Retrying \(attempt \d+\)/ } == 6
+            assert history.last().action == DELETE_SUCCESS
+        }
+        !northboundV2.getFlowStatus(flow.flowId)
+
+        cleanup:
+        lockKeeper.cleanupTrafficShaperRules(swPair.src.region)
+        switchHelper.reviveSwitch(swPair.src, blockData, true)
     }
 }

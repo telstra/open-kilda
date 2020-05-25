@@ -30,6 +30,7 @@ import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.MultiTableFeature;
 import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
 import org.openkilda.floodlight.feature.NoviFlowPushPopVxlanFeature;
+import org.openkilda.floodlight.feature.NoviFlowSwapEthSrcEthDstFeature;
 import org.openkilda.floodlight.feature.PktpsFlagFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -83,6 +84,7 @@ public class FeatureDetectorService implements IService {
                 new MultiTableFeature(),
                 new InaccurateSetVlanVidAction(),
                 new NoviFlowPushPopVxlanFeature(),
-                new HalfSizeMetadataFeature());
+                new HalfSizeMetadataFeature(),
+                new NoviFlowSwapEthSrcEthDstFeature());
     }
 }

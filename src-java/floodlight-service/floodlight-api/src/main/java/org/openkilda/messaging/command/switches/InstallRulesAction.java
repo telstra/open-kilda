@@ -91,6 +91,9 @@ public enum InstallRulesAction {
     // Install Transit table ARP rule
     INSTALL_ARP_TRANSIT,
 
+    // Install Turning Server 42 rule
+    INSTALL_SERVER_42_TURNING,
+
     // Install Output vlan Server 42 rule
     INSTALL_SERVER_42_OUTPUT_VLAN,
 

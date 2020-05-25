@@ -83,13 +83,13 @@ public class SwitchProperties implements Serializable {
     @Property(name = "switch_arp")
     private boolean switchArp;
 
-    @Property("server_42_flow_rtt")
+    @Property("server42_flow_rtt")
     private boolean server42FlowRtt;
 
-    @Property("server_42_port")
+    @Property("server42_port")
     private Integer server42Port;
 
-    @Property("server_42_mac_address")
+    @Property("server42_mac_address")
     @Convert(graphPropertyType = String.class)
     private MacAddress server42MacAddress;
 

@@ -16,7 +16,9 @@
 package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
+import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
@@ -43,6 +45,7 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public abstract class IngressFlowModFactory {
@@ -76,7 +79,7 @@ public abstract class IngressFlowModFactory {
         FlowEndpoint endpoint = command.getEndpoint();
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
                 .setCookie(U64.of(command.getCookie().getValue()))
-                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getVlanId())
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
                                   .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                                   .build());
         return makeForwardMessage(of, builder, effectiveMeterId);
@@ -166,6 +169,28 @@ public abstract class IngressFlowModFactory {
                         of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
                         writeMetadata))
                 .build();
+    }
+
+    /**
+     * Route RTT packet received from Server 42 to Pre Ingress table. Shared across all flows for this physical port
+     * (if OF flow-mod ADD message use same match and priority fields with existing OF flow,
+     * existing OF flow will be replaced/not added).
+     * If rule could not be installed on this switch Optional.empty() will be returned.
+     */
+    public Optional<OFFlowMod> makeServer42InputFlowMessage(int server42UpdPortOffset) {
+        RulesContext context = command.getRulesContext();
+
+        Optional<OFFlowMod> flowMod = Server42InputFlowGenerator.generateFlowMod(of, switchFeatures,
+                server42UpdPortOffset, command.getEndpoint().getPortNumber(), context.getServer42Port(),
+                context.getServer42MacAddress());
+
+        return flowMod.map(ofFlowMod -> flowModBuilderFactory.makeBuilder(of, ofFlowMod.getTableId())
+                .setPriority(ofFlowMod.getPriority())
+                .setCookie(ofFlowMod.getCookie())
+                .setCookieMask(ofFlowMod.getCookieMask())
+                .setMatch(ofFlowMod.getMatch())
+                .setInstructions(ofFlowMod.getInstructions())
+                .build());
     }
 
     private OFFlowMod makeForwardMessage(OFFactory of, OFFlowMod.Builder builder, MeterId effectiveMeterId) {

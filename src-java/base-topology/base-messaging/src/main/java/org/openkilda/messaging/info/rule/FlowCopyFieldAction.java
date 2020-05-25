@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,31 +18,18 @@ package org.openkilda.messaging.info.rule;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
-@Builder
-public class FlowCopyFieldAction {
+@EqualsAndHashCode(callSuper = true)
+public class FlowCopyFieldAction extends FlowFieldActionBase {
 
-    @JsonProperty("bits")
-    private String bits;
-    @JsonProperty("src_offset")
-    private String srcOffset;
-    @JsonProperty("dst_offset")
-    private String dstOffset;
-    @JsonProperty("src_oxm")
-    private String srcOxm;
-    @JsonProperty("dst_oxm")
-    private String dstOxm;
-
+    @Builder
     @JsonCreator
     public FlowCopyFieldAction(@JsonProperty("bits") String bits, @JsonProperty("src_offset") String srcOffset,
                                @JsonProperty("dst_offset") String dstOffset, @JsonProperty("src_oxm")  String srcOxm,
                                @JsonProperty("dst_oxm") String dstOxm) {
-        this.bits = bits;
-        this.srcOffset = srcOffset;
-        this.dstOffset = dstOffset;
-        this.srcOxm = srcOxm;
-        this.dstOxm = dstOxm;
+        super(bits, srcOffset, dstOffset, srcOxm, dstOxm);
     }
 }

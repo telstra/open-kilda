@@ -128,28 +128,28 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         where:
         data << [
-                new PropertiesData(desc: "enable server_42_flow_rtt property without enabling multiTable property",
+                new PropertiesData(desc: "enable server42_flow_rtt property without enabling multiTable property",
                         multiTable: false, server42FlowRtt: true, server42Port: null, server42MacAddress: null,
-                        error: "Illegal switch properties combination for switch %s. 'server_42_flow_rtt' " +
+                        error: "Illegal switch properties combination for switch %s. 'server42_flow_rtt' " +
                                        "property can be set to 'true' only if 'multiTable' property is 'true'."),
 
-                new PropertiesData(desc: "enable server_42_flow_rtt property without server_42_port property",
+                new PropertiesData(desc: "enable server42_flow_rtt property without server42_port property",
                         multiTable: true, server42FlowRtt: true, server42Port: null, server42MacAddress: "42:42:42:42:42:42",
                         error: "Illegal switch properties combination for switch %s. To enable property " +
-                                "'server_42_flow_rtt' you need to specify valid property 'server_42_port'"),
+                                "'server42_flow_rtt' you need to specify valid property 'server42_port'"),
 
-                new PropertiesData(desc: "enable server_42_flow_rtt property without server_42_mac_address property",
+                new PropertiesData(desc: "enable server42_flow_rtt property without server42_mac_address property",
                         multiTable: true, server42FlowRtt: true, server42Port: 42, server42MacAddress: null,
                         error: "Illegal switch properties combination for switch %s. To enable property " +
-                                "'server_42_flow_rtt' you need to specify valid property 'server_42_mac_address'"),
+                                "'server42_flow_rtt' you need to specify valid property 'server42_mac_address'"),
 
-                new PropertiesData(desc: "set invalid server_42_port property",
+                new PropertiesData(desc: "set invalid server42_port property",
                         multiTable: true, server42FlowRtt: true, server42Port: -1, server42MacAddress: null,
-                        error: "Property 'server_42_port' for switch %s has invalid value '-1'. Port must be positive"),
+                        error: "Property 'server42_port' for switch %s has invalid value '-1'. Port must be positive"),
 
-                new PropertiesData(desc: "set invalid server_42_mac_address property",
+                new PropertiesData(desc: "set invalid server42_mac_address property",
                         multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
-                        error: "Property 'server_42_mac_address' for switch %s has invalid value 'INVALID'."),
+                        error: "Property 'server42_mac_address' for switch %s has invalid value 'INVALID'."),
         ]
     }
 

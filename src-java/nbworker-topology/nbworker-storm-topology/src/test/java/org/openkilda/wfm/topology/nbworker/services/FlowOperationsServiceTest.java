@@ -66,6 +66,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
 
     private static FlowOperationsService flowOperationsService;
     private static FlowRepository flowRepository;
@@ -248,6 +249,18 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void getFlowsForEndpointNotReturnFlowsForOrphanedPaths() throws SwitchNotFoundException {
+        Switch switchA = createSwitch(SWITCH_ID_1);
+        Switch switchB = createSwitch(SWITCH_ID_2);
+        Switch switchC = createSwitch(SWITCH_ID_3);
+        Switch switchD = createSwitch(SWITCH_ID_4);
+        Flow flow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        createOrphanFlowPaths(flow, switchA, 1, switchC, 2, FORWARD_PATH_3, REVERSE_PATH_3, switchD);
+        assertEquals(0, flowOperationsService.getFlowsForEndpoint(SWITCH_ID_2, null).size());
+
+    }
+
+    @Test
     public void getFlowsForEndpointOneSwitchFlowNoPortTest() throws SwitchNotFoundException {
         Switch switchA = createSwitch(SWITCH_ID_1);
         createFlow(FLOW_ID_1, switchA, 1, switchA, 2, FORWARD_PATH_1, REVERSE_PATH_1, null);
@@ -350,6 +363,48 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         sw.setStatus(SwitchStatus.ACTIVE);
         switchRepository.createOrUpdate(sw);
         return sw;
+    }
+
+    private void createOrphanFlowPaths(Flow flow, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
+                                       PathId forwardPartId, PathId reversePathId, Switch transitSwitch) {
+        FlowPath forwardPath = FlowPath.builder()
+                .flow(flow)
+                .pathId(forwardPartId)
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, UNMASKED_COOKIE))
+                .build();
+
+        FlowPath reversePath = FlowPath.builder()
+                .flow(flow)
+                .pathId(reversePathId)
+                .srcSwitch(dstSwitch)
+                .destSwitch(srcSwitch)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, UNMASKED_COOKIE))
+                .build();
+
+        if (!srcSwitch.getSwitchId().equals(dstSwitch.getSwitchId())) {
+            if (transitSwitch == null) {
+                // direct paths between src and dst switches
+                forwardPath.setSegments(newArrayList(createPathSegment(srcSwitch, srcPort, dstSwitch, dstPort)));
+                reversePath.setSegments(newArrayList(createPathSegment(dstSwitch, dstPort, srcSwitch, srcPort)));
+            } else {
+                // src switch ==> transit switch ==> dst switch
+                forwardPath.setSegments(newArrayList(
+                        createPathSegment(srcSwitch, srcPort, transitSwitch, srcPort),
+                        createPathSegment(transitSwitch, dstPort, dstSwitch, dstPort)));
+                reversePath.setSegments(newArrayList(
+                        createPathSegment(dstSwitch, dstPort, transitSwitch, dstPort),
+                        createPathSegment(transitSwitch, srcPort, srcSwitch, srcPort)));
+
+            }
+        }
+
+        flow.setForwardPath(forwardPath);
+        flow.setReversePath(reversePath);
+        flowPathRepository.createOrUpdate(forwardPath);
+        flowPathRepository.createOrUpdate(reversePath);
+
     }
 
     private Flow createFlow(String flowId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,

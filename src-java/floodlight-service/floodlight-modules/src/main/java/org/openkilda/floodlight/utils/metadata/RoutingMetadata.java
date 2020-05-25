@@ -30,20 +30,21 @@ public class RoutingMetadata extends MetadataBase {
     private static final BitField LLDP_MARKER_FLAG     = new BitField(0x0000_0000_0000_0001L);
     private static final BitField ONE_SWITCH_FLOW_FLAG = new BitField(0x0000_0000_0000_0002L);
     private static final BitField ARP_MARKER_FLAG      = new BitField(0x0000_0000_0000_0004L);
+    private static final BitField INPUT_PORT_FIELD     = new BitField(0x0000_0000_0007_0000L);
 
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             MetadataBase.ALL_FIELDS,
             LLDP_MARKER_FLAG, ONE_SWITCH_FLOW_FLAG, ARP_MARKER_FLAG);
 
     @Builder
-    protected RoutingMetadata(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag) {
+    protected RoutingMetadata(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
         super(
                 MetadataType.ROUTING,
-                makeValue(lldpFlag, arpFlag, oneSwitchFlowFlag),
-                makeMask(lldpFlag, arpFlag, oneSwitchFlowFlag));
+                makeValue(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort),
+                makeMask(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort));
     }
 
-    private static U64 makeValue(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag) {
+    private static U64 makeValue(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
         U64 result = U64.ZERO;
         if (lldpFlag != null) {
             result = setField(result, lldpFlag ? 1 : 0, LLDP_MARKER_FLAG);
@@ -54,10 +55,13 @@ public class RoutingMetadata extends MetadataBase {
         if (oneSwitchFlowFlag != null) {
             result = setField(result, oneSwitchFlowFlag ? 1 : 0, ONE_SWITCH_FLOW_FLAG);
         }
+        if (inputPort != null) {
+            result = setField(result, inputPort, INPUT_PORT_FIELD);
+        }
         return result;
     }
 
-    private static U64 makeMask(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag) {
+    private static U64 makeMask(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
         U64 result = U64.ZERO;
         if (lldpFlag != null) {
             result = setField(result, -1, LLDP_MARKER_FLAG);
@@ -67,6 +71,9 @@ public class RoutingMetadata extends MetadataBase {
         }
         if (oneSwitchFlowFlag != null) {
             result = setField(result, -1, ONE_SWITCH_FLOW_FLAG);
+        }
+        if (inputPort != null) {
+            result = setField(result, -1, INPUT_PORT_FIELD);
         }
         return result;
     }
@@ -84,11 +91,11 @@ public class RoutingMetadata extends MetadataBase {
         }
 
         private RoutingMetadata buildTruncatedTo32Bits() {
-            return new RoutingMetadata32(lldpFlag, arpFlag, oneSwitchFlowFlag);
+            return new RoutingMetadata32(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort);
         }
 
         private RoutingMetadata buildGeneric() {
-            return new RoutingMetadata(lldpFlag, arpFlag, oneSwitchFlowFlag);
+            return new RoutingMetadata(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort);
         }
     }
 }

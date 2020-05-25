@@ -392,6 +392,23 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport() {
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2, true));
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID_2, switchA, PORT_2, VLAN_2, switchB, PORT_2, 0, true));
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID_3, switchA, PORT_1, VLAN_3, switchB, PORT_2, 0, false));
+        flowRepository.createOrUpdate(
+                buildTestFlow(TEST_FLOW_ID_4, switchA, PORT_1, VLAN_1, switchA, PORT_3, VLAN_1, true));
+
+        Collection<String> flowIds = flowRepository.findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
+                switchA.getSwitchId(), PORT_1);
+        assertEquals(1, flowIds.size());
+        assertEquals(TEST_FLOW_ID, flowIds.iterator().next());
+    }
+
+    @Test
     public void shouldFindFlowBySwitchEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);

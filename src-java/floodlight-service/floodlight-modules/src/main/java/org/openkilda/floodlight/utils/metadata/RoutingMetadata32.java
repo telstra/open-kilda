@@ -19,7 +19,7 @@ public class RoutingMetadata32 extends RoutingMetadata {
     /**
      * Must raise error for fields not available in 32 bits schema.
      */
-    protected RoutingMetadata32(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag) {
-        super(lldpFlag, arpFlag, oneSwitchFlowFlag);
+    protected RoutingMetadata32(Boolean lldpFlag, Boolean arpFlag, Boolean oneSwitchFlowFlag, Integer inputPort) {
+        super(lldpFlag, arpFlag, oneSwitchFlowFlag, inputPort);
     }
 }

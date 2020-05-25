@@ -341,7 +341,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
             if (updatedSwitchProperties.isServer42FlowRtt()) {
                 throw new IllegalSwitchPropertiesException(
-                        format(propertyErrorMessage, switchId, "server_42_flow_rtt"));
+                        format(propertyErrorMessage, switchId, "server42_flow_rtt"));
             }
 
             List<String> flowsWitchEnabledLldp = flowRepository.findByEndpointSwitchWithEnabledLldp(switchId).stream()
@@ -375,12 +375,12 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
         if (updatedSwitchProperties.isServer42FlowRtt()) {
             String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
-                    + "'server_42_flow_rtt' you need to specify valid property '%s'";
+                    + "'server42_flow_rtt' you need to specify valid property '%s'";
             if (updatedSwitchProperties.getServer42Port() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server_42_port"));
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
             }
             if (updatedSwitchProperties.getServer42MacAddress() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server_42_mac_address"));
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
             }
         }
     }

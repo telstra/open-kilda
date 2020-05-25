@@ -36,6 +36,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -53,26 +54,21 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring",
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class, DetectConnectedDevicesPayload.class,
                 DetectConnectedDevicesV2.class, DetectConnectedDevicesDto.class})
-public interface FlowMapper {
-    @Mapping(target = "id", source = "flowId")
-    @Mapping(target = "source",
-            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
-                    + "new DetectConnectedDevicesPayload(f.getDetectConnectedDevices().isSrcLldp(), "
-                    + "f.getDetectConnectedDevices().isSrcArp())))")
-    @Mapping(target = "destination",
-            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan(), new DetectConnectedDevicesPayload("
-                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
-    @Mapping(target = "maximumBandwidth", source = "bandwidth")
-    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
-    @Mapping(target = "status", source = "state")
-    @Mapping(target = "created", source = "createdTime")
-    @Mapping(target = "pinned", source = "pinned")
-    FlowPayload toFlowOutput(FlowDto f);
+public abstract class FlowMapper {
+    /**
+     * Map {@link FlowDto} into {@link FlowPayload}.
+     */
+    public FlowPayload toFlowOutput(FlowDto f) {
+        FlowPayload result = new FlowPayload();
+        generatedMap(result, f);
+        mapFlowResponseEndpoints(result, f);
+        return result;
+    }
 
     /**
      * Map FlowReadResponse.
@@ -80,43 +76,41 @@ public interface FlowMapper {
      * @param r  {@link FlowReadResponse} instance.
      * @return {@link FlowResponsePayload} instance.
      */
-    default FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
+    public FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
         FlowResponsePayload response = toFlowResponseOutput(r.getPayload());
         response.setDiverseWith(r.getDiverseWith());
         return response;
     }
 
-    @Mapping(target = "id", source = "flowId")
-    @Mapping(target = "source",
-            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
-                    + "new DetectConnectedDevicesPayload(f.getDetectConnectedDevices().isSrcLldp(), "
-                    + "f.getDetectConnectedDevices().isSrcArp())))")
-    @Mapping(target = "destination",
-            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan(), new DetectConnectedDevicesPayload("
-                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
-    @Mapping(target = "maximumBandwidth", source = "bandwidth")
-    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
-    @Mapping(target = "status", source = "state")
-    @Mapping(target = "created", source = "createdTime")
-    @Mapping(target = "pinned", source = "pinned")
-    @Mapping(target = "diverseWith", source = "diverseWith")
-    FlowResponsePayload toFlowResponseOutput(FlowDto f);
+    /**
+     * Map {@link FlowDto} into {@link FlowResponsePayload}.
+     */
+    public FlowResponsePayload toFlowResponseOutput(FlowDto f) {
+        FlowResponsePayload result = new FlowResponsePayload();
+        generatedMap(result, f);
+        generatedFlowResponsePayloadMap(result, f);
+        mapFlowResponseEndpoints(result, f);
+        return result;
+    }
 
-    @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
-                    + "new DetectConnectedDevicesV2("
-                    + "f.getDetectConnectedDevices().isSrcLldp(), f.getDetectConnectedDevices().isSrcArp())))")
-    @Mapping(target = "destination",
-            expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan(), new DetectConnectedDevicesV2("
-                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
-    @Mapping(target = "maximumBandwidth", source = "bandwidth")
-    @Mapping(target = "status", source = "state")
-    @Mapping(target = "created", source = "createdTime")
-    @Mapping(target = "statusDetails", source = "flowStatusDetails")
-    @Mapping(target = "diverseWith", source = "diverseWith")
-    FlowResponseV2 toFlowResponseV2(FlowDto f);
+    /**
+     * Map {@link FlowDto} into {@link FlowResponseV2}.
+     */
+    public FlowResponseV2 toFlowResponseV2(FlowDto flowDto) {
+        DetectConnectedDevicesDto connectedDevices = flowDto.getDetectConnectedDevices();
+
+        FlowEndpointV2 source = generatedFlowSourceEndpointMap(flowDto);
+        source.setDetectConnectedDevices(generatedFlowSourceEndpointConnectedDevicesMap(connectedDevices));
+
+        FlowEndpointV2 destination = generatedFlowDestinationEndpointMap(flowDto);
+        destination.setDetectConnectedDevices(generatedFlowDestinationEndpointConnectedDevicesMap(connectedDevices));
+
+        FlowResponseV2 result = generatedMap(flowDto, source, destination);
+        result.setSource(source);
+        result.setDestination(destination);
+
+        return result;
+    }
 
     @Mapping(target = "flowId", ignore = true)
     @Mapping(target = "bandwidth", ignore = true)
@@ -132,6 +126,8 @@ public interface FlowMapper {
     @Mapping(target = "destinationPort", ignore = true)
     @Mapping(target = "sourceVlan", ignore = true)
     @Mapping(target = "destinationVlan", ignore = true)
+    @Mapping(target = "sourceInnerVlan", ignore = true)
+    @Mapping(target = "destinationInnerVlan", ignore = true)
     @Mapping(target = "meterId", ignore = true)
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "state", ignore = true)
@@ -141,14 +137,8 @@ public interface FlowMapper {
     @Mapping(target = "detectConnectedDevices", ignore = true)
     @Mapping(target = "pathComputationStrategy", ignore = true)
     @Mapping(target = "diverseWith", ignore = true)
-    FlowDto toFlowDto(FlowPatchDto flowPatchDto);
+    public abstract FlowDto toFlowDto(FlowPatchDto flowPatchDto);
 
-    @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(request.getDestination().getSwitchId())")
-    @Mapping(target = "sourcePort", expression = "java(request.getSource().getPortNumber())")
-    @Mapping(target = "destinationPort", expression = "java(request.getDestination().getPortNumber())")
-    @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
-    @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
     @Mapping(target = "detectConnectedDevices", expression = "java(new DetectConnectedDevicesDto("
             + "request.getSource().getDetectConnectedDevices().isLldp(), "
@@ -157,46 +147,55 @@ public interface FlowMapper {
             + "request.getDestination().getDetectConnectedDevices().isArp()))")
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "type", ignore = true)
-    FlowRequest toFlowRequest(FlowRequestV2 request);
+    public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
-    default FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
+    @Mapping(target = "outerVlanId", source = "vlanId")
+    public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointV2 input);
+
+    public FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
         return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
     }
 
-    PingOutput toPingOutput(FlowPingResponse response);
+    public abstract PingOutput toPingOutput(FlowPingResponse response);
 
     @Mapping(source = "flowId", target = "id")
     @Mapping(source = "path", target = "path")
     @Mapping(source = "rerouted", target = "rerouted")
-    FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
-
+    public abstract FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
 
     @Mapping(source = "path", target = "path")
-    FlowRerouteResponseV2 toRerouteResponseV2(String flowId, PathInfoData path, boolean rerouted);
+    public abstract FlowRerouteResponseV2 toRerouteResponseV2(String flowId, PathInfoData path, boolean rerouted);
 
     @Mapping(source = "path", target = "nodes")
-    FlowPathV2 toFlowPathV2(PathInfoData path);
+    public abstract FlowPathV2 toFlowPathV2(PathInfoData path);
 
     @Mapping(target = "segmentLatency", ignore = true)
-    FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
+    public abstract FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(source = "flowId", target = "id")
     @Mapping(source = "state", target = "status")
-    FlowIdStatusPayload toFlowIdStatusPayload(FlowDto flow);
+    public abstract FlowIdStatusPayload toFlowIdStatusPayload(FlowDto flow);
 
     @Mapping(target = "latency", source = "meters.networkLatency")
-    UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
+    public abstract UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
 
-    @Mapping(target = "flowId", source = "flowId")
-    @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), "
-                    + "new DetectConnectedDevicesV2("
-                    + "f.getDetectConnectedDevices().isSrcLldp(), f.getDetectConnectedDevices().isSrcArp())))")
-    @Mapping(target = "destination",
-            expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan(), new DetectConnectedDevicesV2( "
-                    + "f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp())))")
-    SwapFlowPayload toSwapOutput(FlowDto f);
+    /**
+     * Map {@link FlowDto} into {@link SwapFlowPayload}.
+     */
+    public SwapFlowPayload toSwapOutput(FlowDto flowDto) {
+        DetectConnectedDevicesDto connectedDevices = flowDto.getDetectConnectedDevices();
+
+        FlowEndpointV2 source = generatedFlowSourceEndpointMap(flowDto);
+        source.setDetectConnectedDevices(generatedFlowSourceEndpointConnectedDevicesMap(connectedDevices));
+        FlowEndpointV2 destination = generatedFlowDestinationEndpointMap(flowDto);
+        destination.setDetectConnectedDevices(generatedFlowDestinationEndpointConnectedDevicesMap(connectedDevices));
+
+        SwapFlowPayload result = generatedSwapFlowPayloadMap(flowDto);
+        result.setSource(source);
+        result.setDestination(destination);
+
+        return result;
+    }
 
     @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")
     @Mapping(target = "destinationSwitch", expression = "java(request.getDestination().getSwitchId())")
@@ -204,14 +203,84 @@ public interface FlowMapper {
     @Mapping(target = "destinationPort", expression = "java(request.getDestination().getPortNumber())")
     @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
     @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
-    SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
+    public abstract SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
 
-    FlowValidationDto toFlowValidationDto(FlowValidationResponse response);
+    public abstract FlowValidationDto toFlowValidationDto(FlowValidationResponse response);
+
+    @Mapping(target = "maximumBandwidth", source = "f.bandwidth")
+    @Mapping(target = "status", source = "f.state")
+    @Mapping(target = "created", source = "f.createdTime")
+    @Mapping(target = "statusDetails", source = "f.flowStatusDetails")
+    @Mapping(target = "diverseWith", source = "f.diverseWith")
+    @Mapping(target = "source", source = "source")
+    @Mapping(target = "destination", source = "destination")
+    protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
+
+    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "maximumBandwidth", source = "bandwidth")
+    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
+    @Mapping(target = "status", source = "state")
+    @Mapping(target = "created", source = "createdTime")
+    @Mapping(target = "pinned", source = "pinned")
+    @Mapping(target = "source", ignore = true)
+    @Mapping(target = "destination", ignore = true)
+    protected abstract void generatedMap(@MappingTarget FlowPayload target, FlowDto f);
+
+    @Mapping(target = "diverseWith", source = "diverseWith")
+    protected abstract void generatedFlowResponsePayloadMap(@MappingTarget FlowResponsePayload target, FlowDto f);
+
+    @Mapping(target = "flowId", source = "flowId")
+    @Mapping(target = "source", ignore = true)
+    @Mapping(target = "destination", ignore = true)
+    protected abstract SwapFlowPayload generatedSwapFlowPayloadMap(FlowDto f);
+
+    @Mapping(target = "switchId", source = "sourceSwitch")
+    @Mapping(target = "portNumber", source = "sourcePort")
+    @Mapping(target = "vlanId", source = "sourceVlan")
+    @Mapping(target = "innerVlanId", source = "sourceInnerVlan")
+    @Mapping(target = "detectConnectedDevices", ignore = true)
+    protected abstract FlowEndpointV2 generatedFlowSourceEndpointMap(FlowDto flow);
+
+    @Mapping(target = "switchId", source = "destinationSwitch")
+    @Mapping(target = "portNumber", source = "destinationPort")
+    @Mapping(target = "vlanId", source = "destinationVlan")
+    @Mapping(target = "innerVlanId", source = "destinationInnerVlan")
+    @Mapping(target = "detectConnectedDevices", ignore = true)
+    protected abstract FlowEndpointV2 generatedFlowDestinationEndpointMap(FlowDto flow);
+
+    @Mapping(target = "lldp", source = "srcLldp")
+    @Mapping(target = "arp", source = "srcArp")
+    protected abstract DetectConnectedDevicesV2 generatedFlowSourceEndpointConnectedDevicesMap(
+            DetectConnectedDevicesDto connectedDevices);
+
+    @Mapping(target = "lldp", source = "dstLldp")
+    @Mapping(target = "arp", source = "dstArp")
+    protected abstract DetectConnectedDevicesV2 generatedFlowDestinationEndpointConnectedDevicesMap(
+            DetectConnectedDevicesDto connectedDevices);
+
+    protected void mapFlowResponseEndpoints(FlowPayload target, FlowDto source) {
+        target.setSource(flowDtoSourceFlowResponsePayload(source));
+        target.setDestination(flowDtoDestinationFlowResponsePayload(source));
+    }
+
+    protected FlowEndpointPayload flowDtoSourceFlowResponsePayload(FlowDto f) {
+        return new FlowEndpointPayload(
+                f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan(), f.getSourceInnerVlan(),
+                new DetectConnectedDevicesPayload(f.getDetectConnectedDevices().isSrcLldp(),
+                        f.getDetectConnectedDevices().isSrcArp()));
+    }
+
+    protected FlowEndpointPayload flowDtoDestinationFlowResponsePayload(FlowDto f) {
+        return new FlowEndpointPayload(
+                f.getDestinationSwitch(), f.getDestinationPort(), f.getDestinationVlan(), f.getDestinationInnerVlan(),
+                new DetectConnectedDevicesPayload(
+                        f.getDetectConnectedDevices().isDstLldp(), f.getDetectConnectedDevices().isDstArp()));
+    }
 
     /**
      * Convert {@link FlowState} to {@link String}.
      */
-    default String encodeFlowState(FlowState state) {
+    public String encodeFlowState(FlowState state) {
         if (state == null) {
             return null;
         }
@@ -221,12 +290,12 @@ public interface FlowMapper {
 
     @Mapping(target = "mainPath", source = "mainFlowPathStatus")
     @Mapping(target = "protectedPath", source = "protectedFlowPathStatus")
-    PathStatus map(FlowStatusDetails flowStatusDetails);
+    public abstract PathStatus map(FlowStatusDetails flowStatusDetails);
+
     /**
      * Convert {@link FlowPathStatus} to {@link String}.
      */
-    
-    default String map(FlowPathStatus flowPathStatus) {
+    public String map(FlowPathStatus flowPathStatus) {
         if (flowPathStatus == null) {
             return null;
         }
@@ -246,7 +315,7 @@ public interface FlowMapper {
     /**
      * Convert {@link FlowEncapsulationType} to {@link String}.
      */
-    default String map(FlowEncapsulationType encapsulationType) {
+    public String map(FlowEncapsulationType encapsulationType) {
         if (encapsulationType == null) {
             return null;
         }
@@ -257,7 +326,7 @@ public interface FlowMapper {
     /**
      * Convert {@link String} to {@link FlowEncapsulationType}.
      */
-    default FlowEncapsulationType map(String encapsulationType) {
+    public FlowEncapsulationType map(String encapsulationType) {
         if (encapsulationType == null) {
             return null;
         }
@@ -268,7 +337,7 @@ public interface FlowMapper {
     /**
      * Convert {@link PathComputationStrategy} to {@link String}.
      */
-    default String map(PathComputationStrategy pathComputationStrategy) {
+    public String map(PathComputationStrategy pathComputationStrategy) {
         if (pathComputationStrategy == null) {
             return null;
         }
@@ -279,7 +348,7 @@ public interface FlowMapper {
     /**
      * Convert {@link String} to {@link PathComputationStrategy}.
      */
-    default PathComputationStrategy mapPathComputationStrategy(String pathComputationStrategy) {
+    public PathComputationStrategy mapPathComputationStrategy(String pathComputationStrategy) {
         if (pathComputationStrategy == null) {
             return null;
         }
@@ -290,7 +359,7 @@ public interface FlowMapper {
     /**
      * Translate Java's error code(enum) into human readable string.
      */
-    default String getPingError(Ping.Errors error) {
+    public String getPingError(Ping.Errors error) {
         if (error == null) {
             return null;
         }

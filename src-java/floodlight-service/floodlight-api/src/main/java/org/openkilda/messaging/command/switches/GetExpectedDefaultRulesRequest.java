@@ -44,13 +44,13 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("switch_arp")
     private boolean switchArp;
 
-    @JsonProperty("server_42_flow_rtt")
+    @JsonProperty("server42_flow_rtt")
     private boolean server42FlowRtt;
 
-    @JsonProperty("server_42_port")
+    @JsonProperty("server42_port")
     private Integer server42Port;
 
-    @JsonProperty("server_42_mac_address")
+    @JsonProperty("server42_mac_address")
     private MacAddress server42MacAddress;
 
     @JsonProperty("isl_ports")
@@ -65,17 +65,22 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("flow_arp_ports")
     private Set<Integer> flowArpPorts;
 
+    @JsonProperty("server42_flow_rtt_ports")
+    private Set<Integer> server42FlowRttPorts;
+
     public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId,
                                           @JsonProperty("multi_table") boolean multiTable,
                                           @JsonProperty("switch_lldp") boolean switchLldp,
                                           @JsonProperty("switch_arp") boolean switchArp,
-                                          @JsonProperty("server_42_flow_rtt") boolean server42FlowRtt,
-                                          @JsonProperty("server_42_port") Integer server42Port,
-                                          @JsonProperty("server_42_mac_address") MacAddress server42MacAddress,
+                                          @JsonProperty("server42_flow_rtt") boolean server42FlowRtt,
+                                          @JsonProperty("server42_port") Integer server42Port,
+                                          @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
                                           @JsonProperty("isl_ports") List<Integer> islPorts,
                                           @JsonProperty("flow_ports") List<Integer> flowPorts,
                                           @JsonProperty("flow_lldp_ports") Set<Integer> flowLldpPorts,
-                                          @JsonProperty("flow_arp_ports") Set<Integer> flowArpPorts) {
+                                          @JsonProperty("flow_arp_ports") Set<Integer> flowArpPorts,
+                                          @JsonProperty("server42_flow_rtt_ports")
+                                                  Set<Integer> server42FlowRttPorts) {
         this.switchId = switchId;
         this.multiTable = multiTable;
         this.switchLldp = switchLldp;
@@ -87,5 +92,6 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
         this.flowPorts = flowPorts;
         this.flowLldpPorts = flowLldpPorts;
         this.flowArpPorts = flowArpPorts;
+        this.server42FlowRttPorts = server42FlowRttPorts;
     }
 }

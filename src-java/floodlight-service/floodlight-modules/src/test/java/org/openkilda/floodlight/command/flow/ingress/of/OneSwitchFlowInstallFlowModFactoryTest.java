@@ -45,7 +45,7 @@ import java.util.UUID;
 abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFactoryTest {
     protected static final FlowEndpoint egressEndpointSingleVlan = new FlowEndpoint(
             new SwitchId(datapathIdAlpha.getLong()),
-            endpointSingleVlan.getPortNumber() + 10, endpointSingleVlan.getVlanId() + 10);
+            endpointSingleVlan.getPortNumber() + 10, endpointSingleVlan.getOuterVlanId() + 10);
     protected static final FlowEndpoint egressEndpointZeroVlan = new FlowEndpoint(
             new SwitchId(datapathIdAlpha.getLong()),
             endpointSingleVlan.getPortNumber() + 10, 0);
@@ -56,7 +56,7 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
     public void makeOuterVlanOnlyForwardMessageSamePort() {
         FlowEndpoint egress = new FlowEndpoint(
                 endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(),
-                endpointSingleVlan.getVlanId() + 1);
+                endpointSingleVlan.getOuterVlanId() + 1);
         OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egress, meterConfig);
         processMakeOuterVlanOnlyForwardMessage(command);
     }
@@ -102,7 +102,7 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
     public void makeDefaultPortFlowMatchAndForwardMessageSamePort() {
         FlowEndpoint egress = new FlowEndpoint(
                 endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(),
-                endpointSingleVlan.getVlanId() + 1);
+                endpointSingleVlan.getOuterVlanId() + 1);
         OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egress, meterConfig);
         processMakeDefaultPortFlowMatchAndForwardMessage(command);
     }
@@ -142,7 +142,7 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
     public void processMakeOuterVlanOnlyForwardMessage(OneSwitchFlowInstallCommand command) {
         OFFlowAdd expected = makeForwardingMessage(
                 command, 0,
-                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getVlanId())
+                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
                         .build(),
                 getTargetTableId());
@@ -173,13 +173,15 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
         }
         FlowEndpoint ingress = command.getEndpoint();
         FlowEndpoint egress = command.getEgressEndpoint();
-        if (FlowEndpoint.isVlanIdSet(ingress.getVlanId()) && FlowEndpoint.isVlanIdSet(egress.getVlanId())) {
-            applyActions.add(OfAdapter.INSTANCE.setVlanIdAction(of, egress.getVlanId()));
-        } else if (FlowEndpoint.isVlanIdSet(ingress.getVlanId()) && ! FlowEndpoint.isVlanIdSet(egress.getVlanId())) {
+        if (FlowEndpoint.isVlanIdSet(ingress.getOuterVlanId()) && FlowEndpoint.isVlanIdSet(egress.getOuterVlanId())) {
+            applyActions.add(OfAdapter.INSTANCE.setVlanIdAction(of, egress.getOuterVlanId()));
+        } else if (FlowEndpoint.isVlanIdSet(
+                ingress.getOuterVlanId()) && ! FlowEndpoint.isVlanIdSet(egress.getOuterVlanId())) {
             applyActions.add(of.actions().popVlan());
-        } else if (!FlowEndpoint.isVlanIdSet(ingress.getVlanId()) && FlowEndpoint.isVlanIdSet(egress.getVlanId())) {
+        } else if (!FlowEndpoint.isVlanIdSet(
+                ingress.getOuterVlanId()) && FlowEndpoint.isVlanIdSet(egress.getOuterVlanId())) {
             applyActions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
-            applyActions.add(OfAdapter.INSTANCE.setVlanIdAction(of, egress.getVlanId()));
+            applyActions.add(OfAdapter.INSTANCE.setVlanIdAction(of, egress.getOuterVlanId()));
         }
         OFPort outPort = ingress.getPortNumber().equals(egress.getPortNumber())
                 ? OFPort.IN_PORT

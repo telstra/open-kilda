@@ -20,6 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
@@ -50,7 +51,8 @@ public class RemoveOldRulesAction
         FlowPath oldPrimaryForward = flow.getProtectedForwardPath();
         FlowPath oldPrimaryReverse = flow.getProtectedReversePath();
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildIngressOnly(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse));
+                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse,
+                SpeakerRequestBuildContext.EMPTY));
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());

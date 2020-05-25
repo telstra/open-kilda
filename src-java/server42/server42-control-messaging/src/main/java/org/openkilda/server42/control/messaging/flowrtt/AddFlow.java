@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 
 package org.openkilda.server42.control.messaging.flowrtt;
+
+import org.openkilda.server42.messaging.FlowDirection;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -31,4 +33,6 @@ public class AddFlow extends Message {
     String flowId;
     EncapsulationType encapsulationType;
     Long tunnelId;
+    FlowDirection direction;
+    Integer port;
 }

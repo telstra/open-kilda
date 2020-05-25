@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.share.model;
 
+import org.openkilda.model.MacAddress;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,5 +41,9 @@ public class SpeakerRequestBuildContext {
         private boolean removeCustomerPortRule;
         private boolean removeCustomerPortLldpRule;
         private boolean removeCustomerPortArpRule;
+        private boolean removeServer42InputRule;
+        private boolean installServer42InputRule;
+        private Integer server42Port;
+        private MacAddress server42MacAddress;
     }
 }

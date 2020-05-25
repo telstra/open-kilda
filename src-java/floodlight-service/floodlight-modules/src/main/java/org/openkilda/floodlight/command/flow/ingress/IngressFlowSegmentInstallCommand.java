@@ -36,6 +36,7 @@ import lombok.Getter;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -95,6 +96,17 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
 
             if (getEndpoint().isTrackArpConnectedDevices()) {
                 ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
+            }
+
+            if (rulesContext.isInstallServer42InputRule()) {
+                Optional<OFFlowMod> server42InputRule = getFlowModFactory().makeServer42InputFlowMessage(
+                        getKildaCoreConfig().getServer42UdpPortOffset());
+                if (server42InputRule.isPresent()) {
+                    ofMessages.add(server42InputRule.get());
+                } else {
+                    log.info("Skip installation of server 42 input rule for flow witch cookie {} on switch {}",
+                            getCookie(), getSwitchId());
+                }
             }
         }
         return ofMessages;

@@ -51,6 +51,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -217,7 +218,9 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
         // ingress
         requestFactories = stateMachine.getIngressCommands();
-        requestFactories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow));
+        SpeakerRequestBuildContext buildContext = buildBaseSpeakerContextForInstall(
+                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+        requestFactories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow, buildContext));
 
         // non ingress
         requestFactories = stateMachine.getNonIngressCommands();

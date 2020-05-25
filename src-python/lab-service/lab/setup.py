@@ -15,7 +15,7 @@ path = functools.partial(os.path.join, root)
 
 run_deps = open(path('requirements.txt')).readlines()
 test_deps = open(path('test-requirements.txt')).readlines()
-setup_deps = []
+setup_deps = ['wheel']
 
 if {'pytest', 'test', 'ptr'}.intersection(sys.argv):
     setup_deps.append('pytest-runner')

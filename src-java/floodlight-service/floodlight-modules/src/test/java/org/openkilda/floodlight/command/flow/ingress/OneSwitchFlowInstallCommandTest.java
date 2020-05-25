@@ -34,11 +34,11 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
     private static final FlowEndpoint endpointEgressZeroVlan = new FlowEndpoint(
             endpointIngressZeroVlan.getSwitchId(),
             IngressCommandInstallTest.endpointEgressZeroVlan.getPortNumber(),
-            IngressCommandInstallTest.endpointEgressZeroVlan.getVlanId());
+            IngressCommandInstallTest.endpointEgressZeroVlan.getOuterVlanId());
     private static final FlowEndpoint endpointEgressOneVlan = new FlowEndpoint(
             endpointIngressOneVlan.getSwitchId(),
             IngressCommandInstallTest.endpointEgressOneVlan.getPortNumber(),
-            IngressCommandInstallTest.endpointEgressOneVlan.getVlanId());
+            IngressCommandInstallTest.endpointEgressOneVlan.getOuterVlanId());
 
     @Test
     public void zeroVlanSingleTable() throws Exception {

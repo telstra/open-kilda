@@ -1,8 +1,17 @@
+plugins {
+    id 'org.springframework.boot' version '2.2.1.RELEASE'
+}
+
+configurations {
+    compile.exclude module: 'spring-boot-starter-logging'
+}
+
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
     implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.1.RELEASE'))
 
     implementation project(':server42-control-messaging')
+    implementation project(':server42-stats-messaging')
 
     implementation 'com.google.protobuf:protobuf-java:3.8.0'
     implementation 'org.zeromq:jeromq:0.4.3'
@@ -17,3 +26,10 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 }
+
+bootJar {
+    mainClassName = 'org.openkilda.server42.control.serverstub.ServerApplication'
+    archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}
+
+bootJar.dependsOn generateVersionTxt

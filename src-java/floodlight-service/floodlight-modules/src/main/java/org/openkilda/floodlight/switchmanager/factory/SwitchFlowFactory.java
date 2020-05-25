@@ -41,8 +41,10 @@ import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIng
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressOneSwitchFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpPostIngressVxlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.lldp.LldpTransitFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVlanFlowGenerator;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42OutputVxlanFlowGenerator;
+import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42TurningFlowGenerator;
 import org.openkilda.model.MacAddress;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -253,6 +255,29 @@ public class SwitchFlowFactory implements IService {
     public SwitchFlowGenerator getArpTransitFlowGenerator() {
         return ArpTransitFlowGenerator.builder()
                 .config(config)
+                .featureDetectorService(featureDetectorService)
+                .build();
+    }
+
+    /**
+     * Get Server 42 input flow generator.
+     */
+    public SwitchFlowGenerator getServer42InputFlowGenerator(int server42Port, int customerPort,
+                                                             MacAddress server42MacAddress) {
+        return Server42InputFlowGenerator.builder()
+                .featureDetectorService(featureDetectorService)
+                .kildaCore(kildaCore)
+                .server42Port(server42Port)
+                .customerPort(customerPort)
+                .server42macAddress(server42MacAddress)
+                .build();
+    }
+
+    /**
+     * Get Server 42 turning flow generator.
+     */
+    public SwitchFlowGenerator getServer42TurningFlowGenerator() {
+        return Server42TurningFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .build();
     }
