@@ -575,5 +575,6 @@ public class Flow implements Serializable {
     public boolean isActualPathId(PathId pathId) {
         return pathId != null && (pathId.equals(this.getForwardPathId()) || pathId.equals(this.getReversePathId())
                 || pathId.equals(this.getProtectedForwardPathId()) || pathId.equals(this.getProtectedReversePathId()));
+
     }
 }

@@ -23,45 +23,36 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Builder;
 import org.apache.commons.lang3.ArrayUtils;
 
-public class FlowSegmentCookie extends Cookie {
+public class ExclusionCookie extends FlowSegmentCookie {
     // update ALL_FIELDS if modify fields list
     //                                     used by generic cookie -> 0x9FF0_0000_0000_0000L
-    static final BitField FLOW_EFFECTIVE_ID_FIELD     = new BitField(0x0000_0000_000F_FFFFL);
+    static final BitField EXCLUSION_ID_FIELD = new BitField(0x0000_0000_000F_FFFFL);
     static final BitField FLOW_REVERSE_DIRECTION_FLAG = new BitField(0x2000_0000_0000_0000L);
     static final BitField FLOW_FORWARD_DIRECTION_FLAG = new BitField(0x4000_0000_0000_0000L);
 
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
-            CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD);
+            CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, EXCLUSION_ID_FIELD);
 
-    private static final CookieType VALID_TYPE = CookieType.SERVICE_OR_FLOW_SEGMENT;
+    private static final CookieType VALID_TYPE = CookieType.EXCLUSION_FLOW;
 
     @JsonCreator
-    public FlowSegmentCookie(long value) {
+    public ExclusionCookie(long value) {
         super(value);
     }
 
-    public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        this(VALID_TYPE, direction, flowEffectiveId);
-    }
-
-    FlowSegmentCookie(CookieType type, long value) {
-        super(value, type);
-    }
-
     @Builder
-    private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
-        super(makeValue(type, direction, flowEffectiveId), type);
+    public ExclusionCookie(FlowPathDirection direction, long exclusionId) {
+        super(CookieType.EXCLUSION_FLOW, makeValue(direction, exclusionId));
     }
 
     @Override
     public void validate() throws InvalidCookieException {
-        super.validate();
 
         validateServiceFlag(false);
 
         CookieType type = getType();
-        if (type != VALID_TYPE) {
+        if (!VALID_TYPE.equals(type)) {
             throw new InvalidCookieException(formatIllegalTypeError(type, VALID_TYPE), this);
         }
 
@@ -77,11 +68,10 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     @Override
-    public FlowSegmentCookieBuilder toBuilder() {
-        return new FlowSegmentCookieBuilder()
-                .type(getType())
+    public ExclusionCookieBuilder toBuilder() {
+        return new ExclusionCookieBuilder()
                 .direction(getDirection())
-                .flowEffectiveId(getFlowEffectiveId());
+                .exclusionId(getExclusionId());
     }
 
     /**
@@ -110,57 +100,27 @@ public class FlowSegmentCookie extends Cookie {
         }
     }
 
-    public long getFlowEffectiveId() {
-        return getField(FLOW_EFFECTIVE_ID_FIELD);
+    public long getExclusionId() {
+        return getField(EXCLUSION_ID_FIELD);
     }
 
-    public static FlowSegmentCookieBuilder builder() {
-        return new FlowSegmentCookieBuilder()
-                .type(VALID_TYPE);
-    }
-
-    private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
-        if (type != VALID_TYPE) {
-            throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPE));
-        }
-
+    private static long makeValue(FlowPathDirection direction, long exclusionId) {
         long value = 0;
         if (direction != null) {
-            value = makeValueDirection(direction);
+            value = FlowSegmentCookie.makeValueDirection(direction);
         }
-        return setField(value, FLOW_EFFECTIVE_ID_FIELD, flowEffectiveId);
-    }
-
-    /**
-     * Set direction bits to the value passed as directions argument.
-     */
-    protected static long makeValueDirection(FlowPathDirection direction) {
-        int forward = 0;
-        int reverse = 0;
-        switch (direction) {
-            case FORWARD:
-                forward = 1;
-                break;
-            case REVERSE:
-                reverse = 1;
-                break;
-            case UNDEFINED:
-                // nothing to do
-                break;
-            default:
-                throw new IllegalArgumentException(String.format(
-                        "Unable to map %s.%s into cookie direction bits",
-                        FlowPathDirection.class.getSimpleName(), direction));
-        }
-
-        long value = setField(0, FLOW_FORWARD_DIRECTION_FLAG, forward);
-        return setField(value, FLOW_REVERSE_DIRECTION_FLAG, reverse);
+        return setField(value, EXCLUSION_ID_FIELD, exclusionId);
     }
 
     /**
      * Need to declare builder inheritance, to be able to override {@code toBuilder()} method.
      */
-    public static class FlowSegmentCookieBuilder extends CookieBuilder {
+    public static class ExclusionCookieBuilder extends FlowSegmentCookieBuilder {
         // lombok is responsible for injecting here all required methods fields
+
+        public ExclusionCookieBuilder type(CookieType type) {
+            super.type(type);
+            return this;
+        }
     }
 }

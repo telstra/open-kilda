@@ -152,7 +152,8 @@ public abstract class CookieBase implements Serializable {
         INGRESS_SEGMENT(0x007),   // used for ingress flow segment and for one switch flow segments
         SHARED_OF_FLOW(0x008),
         SERVER_42_INPUT(0x009),
-
+        APPLICATION_MIRROR_FLOW(0x00A),
+        EXCLUSION_FLOW(0x0B),
         // This do not consume any value from allowed address space - you can define another field with -1 value.
         // (must be last entry)
         INVALID(-1);
