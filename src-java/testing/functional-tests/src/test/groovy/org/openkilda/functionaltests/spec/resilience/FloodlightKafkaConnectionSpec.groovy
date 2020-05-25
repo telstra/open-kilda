@@ -1,15 +1,16 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import static groovyx.gpars.dataflow.Dataflow.task
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 
 import java.util.concurrent.TimeUnit
 
@@ -23,61 +24,87 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
-    @Ignore("Since now we have 2 regions, the ISL between regions will inevitably fail(L49). Need to refactor the test")
     def "System survives temporary connection outage between Floodlight and Kafka"() {
-        when: "Controller loses connection to Kafka"
-        sleep(3000) //Not respecting this 'sleep' may lead to subsequent tests instability
-        def flOut = false
-        regions.each { lockKeeper.knockoutFloodlight(it) }
-        flOut = true
+        setup: "Pick a region to break, find which isls are between regions"
+        assumeTrue("This test requires at least 2 floodlight regions", mgmtFlManager.regions.size() > 1)
+        def regionToBreak = mgmtFlManager.regions.first()
+        def islsBetweenRegions = topology.islsForActiveSwitches.findAll {
+            [it.srcSwitch, it.dstSwitch].any { it.region == regionToBreak } && it.srcSwitch.region != it.dstSwitch.region
+        }
 
-        then: "Right before controller alive timeout switches are still active and links are discovered"
+        when: "Region 1 controller loses connection to Kafka"
+        lockKeeper.knockoutFloodlight(regionToBreak)
+        def flOut = true
+
+        then: "Non-rtl links between failed region and alive regions fail due to discovery timeout"
+        def nonRtlTransitIsls = islsBetweenRegions.findAll { isl ->
+            [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        }
+        def asyncWait = task {
+            wait(WAIT_OFFSET + discoveryTimeout) {
+                nonRtlTransitIsls.each { assert northbound.getLink(it).state == IslChangeType.FAILED }
+            }
+        }
+
+        and: "Right before controller alive timeout: switches are still active"
+        and: "links inside regions are discovered"
+        and: "rtl links between regions are discovered"
         double interval = floodlightAliveTimeout * 0.4
-        Wrappers.timedLoop(floodlightAliveTimeout - interval) {
+        def linksToRemainAlive = topology.islsForActiveSwitches.findAll { !nonRtlTransitIsls.contains(it) }
+        timedLoop(floodlightAliveTimeout - interval) {
             assert northbound.activeSwitches.size() == topology.activeSwitches.size()
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+            def isls = northbound.getAllLinks()
+            linksToRemainAlive.each { assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.DISCOVERED }
             sleep(500)
         }
 
-        and: "After controller alive timeout switches become inactive but links are still discovered"
-        Wrappers.wait(interval + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
-        northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        and: "After controller alive timeout switches in broken region become inactive but links are still discovered"
+        wait(interval + WAIT_OFFSET) {
+            assert northbound.activeSwitches.size() == topology.activeSwitches.findAll { it.region != regionToBreak }.size()
+        }
+        linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
 
         when: "System remains in this state for discovery timeout for ISLs"
         TimeUnit.SECONDS.sleep(discoveryTimeout + 1)
+        asyncWait.get()
 
-        then: "All links are still discovered"
-        northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        then: "All links except for non-rtl transit ones are still discovered"
+        linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
 
         when: "Controller restores connection to Kafka"
-        regions.each { lockKeeper.reviveFloodlight(it) }
+        lockKeeper.reviveFloodlight(regionToBreak)
         flOut = false
 
         then: "All links are discovered and switches become active"
-        northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        Wrappers.wait(PERIODIC_SYNC_TIME) {
+        wait(PERIODIC_SYNC_TIME) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
             assert northbound.activeSwitches.size() == topology.activeSwitches.size()
         }
 
-        and: "System is able to successfully create a valid flow"
-        def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        northbound.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET * 3) { //it takes longer than usual in these conditions. why?
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { assert it.asExpected }
+        and: "System is able to successfully create a valid flow between regions"
+        def swPair = topologyHelper.switchPairs.find { pair ->
+            [pair.src, pair.dst].any { it.region == regionToBreak }  && pair.src.region != pair.dst.region
         }
-
-        and: "Cleanup: remove the flow"
-        flowHelperV2.deleteFlow(flow.id)
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup:
-        flOut && regions.each { lockKeeper.reviveFloodlight(it) }
+        asyncWait?.join()
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if(flOut) {
+            lockKeeper.reviveFloodlight(regionToBreak)
+            wait(PERIODIC_SYNC_TIME) {
+                assert northbound.activeSwitches.size() == topology.activeSwitches.size()
+                assert northbound.getAllLinks().size() == topology.islsForActiveSwitches.size() * 2
+            }
+        }
     }
 
     def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controller loses connection to kafka"
         regions.each { lockKeeper.knockoutFloodlight(it) }
-        Wrappers.wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
+        wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
 
         and: "Switch port for certain ISL goes down"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
@@ -88,7 +115,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         regions.each { lockKeeper.reviveFloodlight(it) }
 
         then: "System detects that certain port has been brought down and fails the related link"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             def isls = northbound.getAllLinks()
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.FAILED
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.FAILED
@@ -96,7 +123,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "Cleanup: restore the broken link"
         lockKeeper.portsUp([isl.aswitch.inPort])
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
+        wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def isls = northbound.getAllLinks()
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.DISCOVERED
