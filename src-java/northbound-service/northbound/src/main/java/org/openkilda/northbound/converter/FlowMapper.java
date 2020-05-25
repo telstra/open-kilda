@@ -150,6 +150,8 @@ public abstract class FlowMapper {
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
+    @Mapping(target = "trackLldpConnectedDevices", source = "detectConnectedDevices.lldp")
+    @Mapping(target = "trackArpConnectedDevices", source = "detectConnectedDevices.arp")
     public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointV2 input);
 
     public FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
@@ -227,6 +229,12 @@ public abstract class FlowMapper {
     protected abstract void generatedMap(@MappingTarget FlowPayload target, FlowDto f);
 
     @Mapping(target = "diverseWith", source = "diverseWith")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "maximumBandwidth", ignore = true)
+    @Mapping(target = "source", ignore = true)
+    @Mapping(target = "destination", ignore = true)
+    @Mapping(target = "created", ignore = true)
+    @Mapping(target = "status", ignore = true)
     protected abstract void generatedFlowResponsePayloadMap(@MappingTarget FlowResponsePayload target, FlowDto f);
 
     @Mapping(target = "flowId", source = "flowId")
