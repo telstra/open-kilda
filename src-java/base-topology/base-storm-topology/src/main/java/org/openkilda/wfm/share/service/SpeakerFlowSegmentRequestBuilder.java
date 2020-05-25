@@ -59,6 +59,17 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     @Override
+    public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path) {
+        return buildAll(context, flow, path, (FlowPath) null);
+    }
+
+    @Override
+    public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
+                                                    SpeakerRequestBuildContext speakerRequestBuildContext) {
+        return makeRequests(context, flow, path, null, true, true, true, speakerRequestBuildContext);
+    }
+
+    @Override
     public List<FlowSegmentRequestFactory> buildAll(
             CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
         return buildAll(context, flow, forwardPath, reversePath, SpeakerRequestBuildContext.EMPTY);
@@ -77,6 +88,11 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     @Override
+    public List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow, FlowPath path) {
+        return buildAllExceptIngress(context, flow, path, null);
+    }
+
+    @Override
     public List<FlowSegmentRequestFactory> buildAllExceptIngress(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
         return makeRequests(context, flow, path, oppositePath, false, true, true,
@@ -88,6 +104,11 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             CommandContext context, @NonNull Flow flow, SpeakerRequestBuildContext speakerRequestBuildContext) {
         return buildIngressOnly(context, flow, flow.getForwardPath(), flow.getReversePath(),
                 speakerRequestBuildContext);
+    }
+
+    @Override
+    public List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow, FlowPath path) {
+        return buildIngressOnly(context, flow, path, null);
     }
 
     @Override

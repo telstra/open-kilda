@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import static java.util.Arrays.asList;
-
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -38,6 +36,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends
@@ -73,18 +75,24 @@ public class AllocateProtectedResourcesAction extends
 
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow,
-                asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
+                Stream.of(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
+                        .filter(Objects::nonNull).collect(Collectors.toList()));
 
-        boolean overlappingProtectedPathFound =
-                flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
-                        || flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
+        boolean overlappingProtectedPathFound = primaryForwardPath != null
+                && flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
+                || primaryReversePath != null
+                && flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
             // Update the status here as no reroute is going to be performed for the protected.
             FlowPath protectedForwardPath = flow.getProtectedForwardPath();
-            flowPathRepository.updateStatus(protectedForwardPath.getPathId(), FlowPathStatus.INACTIVE);
+            if (protectedForwardPath != null) {
+                flowPathRepository.updateStatus(protectedForwardPath.getPathId(), FlowPathStatus.INACTIVE);
+            }
 
             FlowPath protectedReversePath = flow.getProtectedReversePath();
-            flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
+            if (protectedReversePath != null) {
+                flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
+            }
 
             FlowStatus flowStatus = flow.computeFlowStatus();
             if (flowStatus != flow.getStatus()) {

@@ -117,7 +117,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2954, https://github.com/telstra/open-kilda/issues/3028")
     def "System can handle situation when switch reconnects while flow is being created"() {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

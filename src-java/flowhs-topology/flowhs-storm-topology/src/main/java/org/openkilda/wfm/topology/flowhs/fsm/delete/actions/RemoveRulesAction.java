@@ -38,12 +38,12 @@ import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
@@ -61,9 +61,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
 
-        Set<PathId> protectedPaths = Arrays.stream(
-                new PathId[]{
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()})
+        Set<PathId> protectedPaths = Stream.of(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<PathId> processed = new HashSet<>();
@@ -75,7 +73,6 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 if (oppositePath != null) {
                     processed.add(oppositePath.getPathId());
                 }
-
 
                 if (oppositePath != null) {
                     stateMachine.getFlowResources().add(buildResources(flow, path, oppositePath));
@@ -115,7 +112,13 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
         stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
 
-        stateMachine.saveActionToHistory("Remove commands for rules have been sent");
+        if (commands.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to remove rules");
+
+            stateMachine.fire(Event.RULES_REMOVED);
+        } else {
+            stateMachine.saveActionToHistory("Remove commands for rules have been sent");
+        }
     }
 
     private FlowResources buildResources(Flow flow, FlowPath path, FlowPath oppositePath) {

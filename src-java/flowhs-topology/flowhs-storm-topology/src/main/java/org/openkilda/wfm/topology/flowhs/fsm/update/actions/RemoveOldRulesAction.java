@@ -49,29 +49,67 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         FlowEncapsulationType oldEncapsulationType = stateMachine.getOriginalFlow().getFlowEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(oldEncapsulationType);
 
-        Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
-        FlowPath oldPrimaryForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
-        oldPrimaryForward.setFlow(flow);
-        FlowPath oldPrimaryReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-        oldPrimaryReverse.setFlow(flow);
-        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAll(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse,
-                getSpeakerRequestBuildContext(stateMachine)));
+        Collection<FlowSegmentRequestFactory> factories = new ArrayList<>();
 
-        if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
+        Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
+
+        if (stateMachine.getOldPrimaryForwardPath() != null) {
+            FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+            oldForward.setFlow(flow);
+
+            if (stateMachine.getOldPrimaryReversePath() != null) {
+                FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
+                oldReverse.setFlow(flow);
+                factories.addAll(commandBuilder.buildAll(
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse,
+                        getSpeakerRequestBuildContext(stateMachine)));
+            } else {
+                factories.addAll(commandBuilder.buildAll(
+                        stateMachine.getCommandContext(), flow, oldForward,
+                        getSpeakerRequestBuildContext(stateMachine)));
+
+            }
+        } else if (stateMachine.getOldPrimaryReversePath() != null) {
+            FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
+            oldReverse.setFlow(flow);
+            factories.addAll(commandBuilder.buildAll(
+                    stateMachine.getCommandContext(), flow, oldReverse,
+                    getSpeakerRequestBuildContext(stateMachine)));
+        }
+
+        if (stateMachine.getOldProtectedForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
+            oldForward.setFlow(flow);
+
+            if (stateMachine.getOldProtectedReversePath() != null) {
+                FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
+                oldReverse.setFlow(flow);
+                factories.addAll(commandBuilder.buildAllExceptIngress(
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            } else {
+                factories.addAll(commandBuilder.buildAllExceptIngress(
+                        stateMachine.getCommandContext(), flow, oldForward));
+            }
+        } else if (stateMachine.getOldProtectedReversePath() != null) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
-            commands.addAll(commandBuilder.buildAllExceptIngress(
-                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+            oldReverse.setFlow(flow);
+            factories.addAll(commandBuilder.buildAllExceptIngress(
+                    stateMachine.getCommandContext(), flow, oldReverse));
         }
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
-                stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
+                stateMachine.getCarrier(), factories, stateMachine.getRemoveCommands());
         stateMachine.getRemoveCommands().forEach(
                 (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
         stateMachine.getRetriedCommands().clear();
 
-        stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+        if (factories.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to remove old rules");
+
+            stateMachine.fire(Event.RULES_REMOVED);
+        } else {
+            stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+        }
     }
 
     private SpeakerRequestBuildContext getSpeakerRequestBuildContext(FlowUpdateFsm stateMachine) {
