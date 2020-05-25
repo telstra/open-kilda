@@ -1,0 +1,5 @@
+add_subdirectory(boost)
+add_subdirectory(dpdk)
+add_subdirectory(pcapplusplus)
+add_subdirectory(zeromq)
+add_subdirectory(protobuf)
