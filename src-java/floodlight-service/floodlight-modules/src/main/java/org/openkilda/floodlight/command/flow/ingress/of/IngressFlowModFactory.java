@@ -28,7 +28,6 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,7 +36,6 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -112,8 +110,7 @@ public abstract class IngressFlowModFactory {
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                                   .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))))
+                .setInstructions(makeCustomerPortSharedCatchInstructions())
                 .build();
     }
 
@@ -124,12 +121,6 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeLldpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build(switchFeatures);
-        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
-                .setMetadata(metadata.getValue())
-                .setMetadataMask(metadata.getMask())
-                .build();
-
         return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
                 .setPriority(SwitchManager.LLDP_INPUT_CUSTOMER_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeLldpInputCustomer(endpoint.getPortNumber())))
@@ -138,9 +129,8 @@ public abstract class IngressFlowModFactory {
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                         .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
-                        writeMetadata))
+                .setInstructions(makeConnectedDevicesMatchInstructions(
+                        RoutingMetadata.builder().lldpFlag(true).build(switchFeatures)))
                 .build();
     }
 
@@ -151,12 +141,6 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeArpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build(switchFeatures);
-        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
-                .setMetadata(metadata.getValue())
-                .setMetadataMask(metadata.getMask())
-                .build();
-
         return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
                 .setPriority(SwitchManager.ARP_INPUT_CUSTOMER_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeArpInputCustomer(endpoint.getPortNumber())))
@@ -165,9 +149,8 @@ public abstract class IngressFlowModFactory {
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .setExact(MatchField.ETH_TYPE, EthType.ARP)
                         .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
-                        writeMetadata))
+                .setInstructions(makeConnectedDevicesMatchInstructions(
+                        RoutingMetadata.builder().arpFlag(true).build(switchFeatures)))
                 .build();
     }
 
@@ -202,4 +185,8 @@ public abstract class IngressFlowModFactory {
     }
 
     protected abstract List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId);
+
+    protected abstract List<OFInstruction> makeCustomerPortSharedCatchInstructions();
+
+    protected abstract List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata);
 }

@@ -65,6 +65,10 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
         if (encapsulation.getType() == FlowEncapsulationType.VXLAN) {
             required.add(SwitchFeature.NOVIFLOW_COPY_FIELD);
         }
+        if (metadata.isMultiTable()) {
+            required.add(SwitchFeature.MULTI_TABLE);
+        }
+
         return required;
     }
 

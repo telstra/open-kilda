@@ -21,7 +21,9 @@ import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.error.SwitchErrorResponseException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.model.SwitchFeature;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import org.junit.Assert;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
@@ -34,9 +36,16 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 abstract class IngressCommandInstallTest extends IngressCommandTest {
+    @Override
+    protected void switchFeaturesSetup(IOFSwitch target, Set<SwitchFeature> features) {
+        features.add(SwitchFeature.MULTI_TABLE);
+        super.switchFeaturesSetup(target, features);
+    }
+
     @Test
     public void noMeterRequested() throws Exception {
         IngressFlowSegmentBase command = makeCommand(endpointIngressOneVlan, null, makeMetadata());

@@ -25,12 +25,14 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchFeature;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -77,6 +79,16 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
             }
         }
         return ofMessages;
+    }
+
+    @Override
+    protected Set<SwitchFeature> getRequiredFeatures() {
+        Set<SwitchFeature> required = super.getRequiredFeatures();
+        if (metadata.isMultiTable()) {
+            required.add(SwitchFeature.MULTI_TABLE);
+        }
+
+        return required;
     }
 
     @Override
