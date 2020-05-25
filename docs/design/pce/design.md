@@ -67,17 +67,25 @@ To calculate a path with a weight less than max weight and as close to it as pos
 ### Weight function
 
 Weight function is defined by path computation strategy.
-For now two strategies are available:
+For now four strategies are available:
 * Cost
 
 Manually assigned value for each link. If link is under maintenance and/or link is unstable then it's cost is increased by preconfigured value.
 
 `Link weight = cost + underMaintenance * underMaintenanceCostRise + unstable * unstableCostRise` where underMaintenance and unstable are 0 when false and 1 when true.
 
+* Cost and available bandwidth
+
+The same as Cost strategy but if two paths has the same cost then the one with minimal sum of available bandwidths will be chosen.
+
 * Latency
 
 Automatically calculated value for each link. Separate maintenance/unstable penalties is used when calculating link weight based on latency in a similar way as for cost.
 
 `Link weight = latency + underMaintenance * underMaintenanceLatencyRise + unstable * unstableLatencyRise` where underMaintenance and unstable are 0 when false and 1 when true. Exact value for `underMaintenanceLatencyRise` and `unstableLatencyRise` should be estimated with respect to average and maximal latency in the network. To avoid using unstable links in best path it's possible to choose 1 to 10 seconds latency penalties.
+
+* Max latency
+
+The same as Latency strategy but modified algorithm is used to find a path with latency as close as possible but less then max_latency param.
 
 For more info see [PCE with weights computation strategies](../solutions/pce-weights-strategies/pce-weights-strategies.md).

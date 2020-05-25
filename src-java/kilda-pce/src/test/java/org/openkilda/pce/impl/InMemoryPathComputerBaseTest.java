@@ -543,7 +543,7 @@ public class InMemoryPathComputerBaseTest {
         createIsl(nodeB, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, pathCcost, 1000, 7, 100L);
     }
 
-    private Switch createSwitch(String name) {
+    Switch createSwitch(String name) {
         Switch sw = Switch.builder().switchId(new SwitchId(name)).status(SwitchStatus.ACTIVE)
                 .build();
 
@@ -559,7 +559,7 @@ public class InMemoryPathComputerBaseTest {
         createIsl(srcSwitch, dstSwitch, status, actual, cost, bw, port, 5L);
     }
 
-    private void createIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
+    void createIsl(Switch srcSwitch, Switch dstSwitch, IslStatus status, IslStatus actual,
                            int cost, long bw, int port, long latency) {
         Isl isl = new Isl();
         isl.setSrcSwitch(srcSwitch);
