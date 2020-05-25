@@ -20,7 +20,6 @@ public enum StreamType {
     ISL,
     FLOW,
     FLOWHS,
-    REROUTE,
     FEATURE_TOGGLES,
     KILDA_CONFIG,
     NOTIFICATION,
