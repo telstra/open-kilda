@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -22,6 +23,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -112,7 +114,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         def currentLastUpdate = flowInfo.lastUpdated
-        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
+        flowHelper.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
 
         then: "Protected path is enabled"
         def flowPathInfoAfterUpdating = northbound.getFlowPath(flow.id)
@@ -163,8 +165,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Couldn't setup protected path for one-switch flow"
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -185,8 +188,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Couldn't setup protected path for one-switch flow"
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
 
         cleanup:
         flowHelper.deleteFlow(flow.id)
@@ -199,6 +203,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue("No suiting switches found", false)
+        def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
         when: "Create flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -230,7 +235,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -238,12 +243,14 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.id)
 
             assert pathHelper.convert(flowPathInfoAfterRerouting) == currentProtectedPath
-            assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentPath
-            assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentProtectedPath
+            if (4 <= uniquePathCount) {
+                assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentPath
+                assert pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) != currentProtectedPath
+            }
         }
 
         when: "Restore port status"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portUp = antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -251,8 +258,14 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Path of the flow is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.id)) == currentProtectedPath
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelper.deleteFlow(flow.id)
+        if (portDown && !portUp) {
+            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+            }
+        }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
@@ -295,6 +308,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         rerouteResponse.rerouted
+        Wrappers.wait(WAIT_OFFSET) {
+            northbound.getFlowStatus(flow.id).status == FlowState.UP
+        }
 
         and: "Path is not changed to protected path"
         def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.id)
@@ -325,6 +341,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue("No suiting switches found", false)
 
+        def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
+
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = bandwidth
@@ -346,7 +364,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -357,12 +375,14 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
             def newCurrentProtectedPath = pathHelper.convert(newPathInfo.protectedPath)
             assert newCurrentPath == currentProtectedPath
-            assert newCurrentProtectedPath != currentPath
-            assert newCurrentProtectedPath != currentProtectedPath
+            if (4 <= uniquePathCount) {
+                assert newCurrentProtectedPath != currentPath
+                assert newCurrentProtectedPath != currentProtectedPath
+            }
         }
 
         when: "Restore port status"
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        def portUp = antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -370,8 +390,14 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Path of the flow is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.id)) == currentProtectedPath
 
-        and: "Cleanup: revert system to original state"
+        cleanup: "Revert system to original state"
         flowHelper.deleteFlow(flow.id)
+        if (portDown && !portUp) {
+            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
+            }
+        }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
@@ -429,13 +455,15 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. " +
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Couldn't find non overlapping protected path"
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
         isls.each { database.resetIslBandwidth(it) }
+        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     @Tidy
@@ -463,8 +491,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Not enough bandwidth found or path not found. " +
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Couldn't find non overlapping protected path"
 
         cleanup:
@@ -534,7 +563,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the protected path (bring port down) to init the recalculate procedure"
         def islToBreakProtectedPath = protectedIsls[0]
-        antiflap.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        def portDown = antiflap.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
 
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.FAILED
@@ -577,7 +606,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         originInfoBrokenIsl.availableBandwidth == currentInfoBrokenIsl.availableBandwidth
 
         when: "Restore port status"
-        antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        def portUp = antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
         }
@@ -587,6 +616,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
+        if (portDown && !portUp) {
+            antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+                assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
+            }
+        }
         database.resetCosts()
     }
 
@@ -621,8 +656,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found." +
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found." +
                 " Couldn't find non overlapping protected path"
 
         cleanup:
@@ -675,8 +711,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Not enough bandwidth found or path not found." +
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found." +
                 " Couldn't find non overlapping protected path"
 
         cleanup:
@@ -716,7 +753,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         assert createdCookies.size() == 2
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
-        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
+        flowHelper.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
 
         then: "Protected path is enabled"
         def flowPathInfo = northbound.getFlowPath(flow.id)
@@ -964,7 +1001,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc1 = thrown(HttpClientErrorException)
         exc1.rawStatusCode == 400
-        exc1.responseBodyAsString.to(MessageError).errorDescription ==
+        def errorDetails = exc1.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not swap paths for flow"
+        errorDetails.errorDescription ==
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"
@@ -1074,22 +1113,26 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flowInfoPath = northbound.getFlowPath(flow.id)
         assert flowInfoPath.protectedPath
 
-        when: "All alternative paths are unavailable (bring ports down on the source switch and on the protected path)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }.unique { it.first() }
-                .each { path ->
-                    def src = path.first()
-                    broughtDownPorts.add(src)
-                    antiflap.portDown(src.switchId, src.portNo)
-                }
+        when: "All alternative paths are unavailable"
+        def mainPath = pathHelper.convert(flowInfoPath)
+        def untouchableIsls = pathHelper.getInvolvedIsls(mainPath).collectMany { [it, it.reversed] }
+        def altPaths = switchPair.paths.findAll { [it, it.reverse()].every { it != mainPath }}
+        def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
+                                                 .collectMany { [it, it.reversed] }.unique()
+                                                 .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
+        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
+            }.size() == islsToBreak.size() * 2
         }
 
         then: "Flow status is DEGRADED"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
+            assert northbound.getFlowHistory(flow.id).last().histories.find { it.action == REROUTE_FAIL }
+        }
+
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = false })
@@ -1099,7 +1142,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Cleanup: Restore topology, delete flow and reset costs"
         flowHelper.deleteFlow(flow.id)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -1125,8 +1168,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Flow flags are not valid, unable to update pinned protected flow"
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)

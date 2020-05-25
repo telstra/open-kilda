@@ -180,12 +180,12 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Init intentional reroute"
         def rerouteResponse = northbound.rerouteFlow(flow.flowId)
         rerouteResponse.rerouted
+        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
         def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
         newCurrentPath != currentPath
         newCurrentPath != currentProtectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam, true))

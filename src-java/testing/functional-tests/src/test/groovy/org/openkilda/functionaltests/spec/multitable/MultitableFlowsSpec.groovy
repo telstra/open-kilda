@@ -543,6 +543,9 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         when: "Reroute(intentional) the flow via APIv1"
         with(northbound.rerouteFlow(flow.flowId)) { !it.rerouted }
+        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
 
         then: "Flow rules are still in single table on the transit switch mode because the flow wasn't rerouted"
         verifyAll(northbound.getSwitchRules(involvedSwitches[1].dpId).flowEntries) { rules ->

@@ -28,6 +28,7 @@ import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -36,6 +37,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathComputationStrategy;
@@ -151,11 +153,37 @@ public abstract class FlowMapper {
     @Mapping(target = "doNotRevert", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
+    @Mapping(target = "flowId", source = "id")
+    @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    @Mapping(target = "detectConnectedDevices", expression = "java(new DetectConnectedDevicesDto("
+            + "payload.getSource().getDetectConnectedDevices().isLldp(), "
+            + "payload.getSource().getDetectConnectedDevices().isArp(), "
+            + "payload.getDestination().getDetectConnectedDevices().isLldp(), "
+            + "payload.getDestination().getDetectConnectedDevices().isArp()))")
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "type", ignore = true)
+    @Mapping(target = "bulkUpdateFlowIds", ignore = true)
+    @Mapping(target = "doNotRevert", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
+    public abstract FlowRequest toFlowRequest(FlowPayload payload);
+
     @Mapping(target = "outerVlanId", source = "vlanId")
     public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointV2 input);
 
+    @Mapping(target = "switchId", source = "datapath")
+    @Mapping(target = "outerVlanId", source = "vlanId")
+    public abstract FlowEndpoint mapFlowEndpoint(FlowEndpointPayload input);
+
     public FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
         return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+    }
+
+    public FlowRequest toFlowCreateRequest(FlowCreatePayload payload) {
+        return toFlowRequest(payload).toBuilder().diverseFlowId(payload.getDiverseFlowId()).type(Type.CREATE).build();
+    }
+
+    public FlowRequest toFlowUpdateRequest(FlowUpdatePayload payload) {
+        return toFlowRequest(payload).toBuilder().diverseFlowId(payload.getDiverseFlowId()).type(Type.UPDATE).build();
     }
 
     public abstract PingOutput toPingOutput(FlowPingResponse response);

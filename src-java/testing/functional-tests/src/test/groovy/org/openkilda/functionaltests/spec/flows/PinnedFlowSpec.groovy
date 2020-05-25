@@ -155,8 +155,9 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Flow flags are not valid, unable to create pinned protected flow"
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not create flow"
+        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.id)
@@ -177,8 +178,9 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Flow flags are not valid, unable to update pinned protected flow"
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
 
         cleanup:
         flowHelper.deleteFlow(flow.id)
