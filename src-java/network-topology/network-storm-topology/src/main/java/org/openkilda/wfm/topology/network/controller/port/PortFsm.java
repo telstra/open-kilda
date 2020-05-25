@@ -77,7 +77,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         context.getOutput().enableDiscoveryPoll(endpoint);
     }
 
-    public void disableDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void upDisabledEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
         output.notifyPortDiscoveryFailed(endpoint);
@@ -140,7 +140,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
             builder.transition()
                     .from(PortFsmState.OPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
             builder.defineSequentialStatesOn(PortFsmState.OPERATIONAL,
-                    PortFsmState.UNKNOWN, PortFsmState.UP, PortFsmState.DOWN);
+                    PortFsmState.UNKNOWN, PortFsmState.UP, PortFsmState.UP_DISABLED, PortFsmState.DOWN);
 
             // UNOPERATIONAL
             builder.transition()
@@ -161,6 +161,8 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
             // UP
             builder.transition()
                     .from(PortFsmState.UP).to(PortFsmState.DOWN).on(PortFsmEvent.PORT_DOWN);
+            builder.transition()
+                    .from(PortFsmState.UP).to(PortFsmState.UP_DISABLED).on(PortFsmEvent.DISABLE_DISCOVERY);
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.DISCOVERY)
                     .callMethod("proxyDiscovery");
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.FAIL)
@@ -169,10 +171,16 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
                     .callMethod(proxyRoundTripStatusMethod);
             builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.ENABLE_DISCOVERY)
                     .callMethod("enableDiscovery");
-            builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.DISABLE_DISCOVERY)
-                    .callMethod("disableDiscovery");
             builder.onEntry(PortFsmState.UP)
                     .callMethod("upEnter");
+
+            // UP_DISABLED
+            builder.transition()
+                    .from(PortFsmState.UP_DISABLED).to(PortFsmState.DOWN).on(PortFsmEvent.PORT_DOWN);
+            builder.transition()
+                    .from(PortFsmState.UP_DISABLED).to(PortFsmState.UP).on(PortFsmEvent.ENABLE_DISCOVERY);
+            builder.onEntry(PortFsmState.UP_DISABLED)
+                    .callMethod("upDisabledEnter");
 
             // DOWN
             builder.transition()
@@ -225,7 +233,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         INIT,
 
         OPERATIONAL,
-        UNKNOWN, UP, DOWN,
+        UNKNOWN, UP, UP_DISABLED, DOWN,
 
         FINISH, UNOPERATIONAL
     }
