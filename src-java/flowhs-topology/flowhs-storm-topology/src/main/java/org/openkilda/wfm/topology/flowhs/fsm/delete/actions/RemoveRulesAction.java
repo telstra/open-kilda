@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -84,6 +84,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .forward(buildPathContext(flow, path))
                                 .reverse(buildPathContext(flow, oppositePath))
+                                .deleteOperation(true)
                                 .build();
                         commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
                                 path, oppositePath, speakerRequestBuildContext));
@@ -100,6 +101,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .forward(buildPathContext(flow, path))
                                 .reverse(PathContext.builder().build())
+                                .deleteOperation(true)
                                 .build();
                         commands.addAll(commandBuilder.buildAll(
                                 stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
