@@ -114,7 +114,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
     @Override
     public List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow, FlowPath path) {
-        return buildIngressOnly(context, flow, path, null);
+        return buildIngressOnly(context, flow, path, null, SpeakerRequestBuildContext.EMPTY);
     }
 
     @Override

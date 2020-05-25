@@ -33,5 +33,9 @@ public interface SwitchPropertiesMapper {
     SwitchPropertiesDto map(SwitchProperties switchProperties);
 
     @Mapping(target = "switchObj", ignore = true)
+    @Mapping(target = "inboundTelescopePort", ignore = true)
+    @Mapping(target = "outboundTelescopePort", ignore = true)
+    @Mapping(target = "telescopeIngressVlan", ignore = true)
+    @Mapping(target = "telescopeEgressVlan", ignore = true)
     SwitchProperties map(SwitchPropertiesDto switchProperties);
 }
