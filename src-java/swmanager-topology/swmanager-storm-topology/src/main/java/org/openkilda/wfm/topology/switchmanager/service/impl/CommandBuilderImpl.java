@@ -36,7 +36,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
-import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -120,7 +119,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                         }
                     }
 
-                    long server42Cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
+                    long server42Cookie = flowPath.getCookie().toBuilder()
                             .type(CookieType.SERVER_42_INGRESS)
                             .build()
                             .getValue();
@@ -137,7 +136,8 @@ public class CommandBuilderImpl implements CommandBuilder {
                             EncapsulationResources encapsulationResources = getEncapsulationResources(flowPath, flow);
                             commands.add(flowCommandFactory.buildInstallServer42IngressFlow(
                                     flow, flowPath, foundIngressSegment.getSrcPort(),
-                                    switchProperties.getServer42Port(), encapsulationResources));
+                                    switchProperties.getServer42Port(), switchProperties.getServer42MacAddress(),
+                                    encapsulationResources, foundIngressSegment.isSrcWithMultiTable()));
                         }
                     }
                 });

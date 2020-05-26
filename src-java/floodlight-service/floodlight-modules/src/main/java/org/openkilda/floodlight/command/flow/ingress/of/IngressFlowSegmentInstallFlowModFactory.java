@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
+import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator.buildServer42CopyFirstTimestamp;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
@@ -34,6 +35,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,6 +81,12 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
 
                 actions.add(of.actions().setField(of.oxms().ethSrc(ethSrc)));
                 actions.add(of.actions().setField(of.oxms().ethDst(ethDst)));
+
+                if (!getCommand().getMetadata().isMultiTable()) {
+                    actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
+                    actions.add(buildServer42CopyFirstTimestamp(of));
+                }
                 actions.addAll(makeVlanEncapsulationTransformActions());
                 break;
             case VXLAN:
@@ -88,6 +96,9 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                     // VXLAN encapsulation for NON default port also keeps 1 Vlan in packet.
                     // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
                     actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
+                }
+                if (!getCommand().getMetadata().isMultiTable()) {
+                    actions.add(buildServer42CopyFirstTimestamp(of));
                 }
                 actions.add(pushVxlanAction(SERVER_42_FORWARD_UDP_PORT));
                 break;

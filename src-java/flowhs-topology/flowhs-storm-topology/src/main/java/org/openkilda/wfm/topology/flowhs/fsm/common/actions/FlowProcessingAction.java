@@ -150,7 +150,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(NOVIFLOW_COPY_FIELD)
                 && isServer42FlowRttFeatureToggle();
         return PathContext.builder()
-                .installServer42InputRule(serverFlowRtt)
+                .installServer42InputRule(serverFlowRtt && switchProperties.isMultiTable())
                 .installServer42IngressRule(serverFlowRtt)
                 .server42Port(switchProperties.getServer42Port())
                 .server42MacAddress(switchProperties.getServer42MacAddress())

@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET;
+
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -38,11 +40,16 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
@@ -100,38 +107,53 @@ public abstract class IngressFlowModFactory {
         return makeForwardMessage(of, builder, effectiveMeterId);
     }
 
-
     /**
      * Make server 42 ingress rule to match RTT packets by port+vlan and route it into ISL/egress end.
      */
-    public OFFlowMod makeOuterVlanOnlyServer42IngressFlowMessage(MeterId effectiveMeterId) {
-        FlowEndpoint endpoint = command.getEndpoint();
-        RoutingMetadata metadata = buildServer42IngressMetadata();
+    public OFFlowMod makeOuterVlanOnlyServer42IngressFlowMessage(MeterId effectiveMeterId, int server42UpdPortOffset) {
+        Match match = makeServer42IngressFlowMatch(
+                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId()),
+                server42UpdPortOffset);
 
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
                 .setCookie(U64.of(buildServer42IngressCookie().getValue()))
-                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
-                        .setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()))
-                        .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()),
-                                OFMetadata.of(metadata.getMask()))
-                        .build());
+                .setMatch(match);
         return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
     }
+
+    private Match makeServer42IngressFlowMatch(Builder builder, int server42UpdPortOffset) {
+        builder.setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()));
+
+        if (getCommand().getMetadata().isMultiTable()) {
+            RoutingMetadata metadata = buildServer42IngressMetadata();
+
+            builder.setMasked(MatchField.METADATA,
+                    OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                    .build();
+        } else {
+            MacAddress macAddress = MacAddress.of(getCommand().getRulesContext().getServer42MacAddress().toString());
+            int udpSrcPort = server42UpdPortOffset + command.getEndpoint().getPortNumber();
+
+            builder.setExact(MatchField.ETH_SRC, macAddress)
+                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                    .setExact(MatchField.UDP_SRC, TransportPort.of(udpSrcPort));
+        }
+
+        return builder.build();
+    }
+
 
     /**
      * Make server 42 ingress rule to match all RTT packets traffic and route it into ISL/egress end.
      */
-    public OFFlowMod makeDefaultPortServer42IngressFlowMessage(MeterId effectiveMeterId) {
-        RoutingMetadata metadata = buildServer42IngressMetadata();
+    public OFFlowMod makeDefaultPortServer42IngressFlowMessage(MeterId effectiveMeterId, int server42UpdPortOffset) {
+        Match match = makeServer42IngressFlowMatch(of.buildMatch(), server42UpdPortOffset);
 
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
-                -1)
+                SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET)
                 .setCookie(U64.of(buildServer42IngressCookie().getValue()))
-                .setMatch(of.buildMatch()
-                        .setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()))
-                        .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()),
-                                OFMetadata.of(metadata.getMask()))
-                        .build());
+                .setMatch(match);
         return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
     }
 

@@ -90,7 +90,7 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
         List<OFAction> actions = ImmutableList.of(
                 actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)),
                 actionSetUdpDstAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)),
-                buildCopyTimestamp(ofFactory));
+                buildServer42CopyFirstTimestamp(ofFactory));
 
         List<OFInstruction> instructions = ImmutableList.of(
                 buildInstructionApplyActions(ofFactory, actions),
@@ -133,7 +133,10 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
                 .build();
     }
 
-    private static OFAction buildCopyTimestamp(OFFactory factory) {
+    /**
+     * Generates copy filed action which puts timestamp into UDP packet.
+     */
+    public static OFAction buildServer42CopyFirstTimestamp(OFFactory factory) {
         OFOxms oxms = factory.oxms();
         return factory.actions().buildNoviflowCopyField()
                 .setNBits(NOVIFLOW_TIMESTAMP_SIZE_IN_BITS)

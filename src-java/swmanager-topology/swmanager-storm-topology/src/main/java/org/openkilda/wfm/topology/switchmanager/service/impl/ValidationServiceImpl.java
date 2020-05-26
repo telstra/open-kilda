@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.util.stream.Collectors.toList;
-import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -115,10 +114,7 @@ public class ValidationServiceImpl implements ValidationService {
             return paths.stream()
                     .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
                     .filter(path -> !path.isOneSwitchFlow())
-                    .filter(path -> makeIngressAdapter(path.getFlow(), path).isMultiTableSegment())
                     .map(FlowPath::getCookie)
-                    .map(Cookie::getValue)
-                    .map(FlowSegmentCookie::new)
                     .map(FlowSegmentCookie::toBuilder)
                     .map(builder -> builder.type(CookieType.SERVER_42_INGRESS))
                     .map(FlowSegmentCookieBuilder::build)

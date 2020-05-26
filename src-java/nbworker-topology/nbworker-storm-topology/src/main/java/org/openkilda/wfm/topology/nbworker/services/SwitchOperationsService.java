@@ -342,11 +342,6 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                 throw new IllegalSwitchPropertiesException(format(propertyErrorMessage, switchId, "switchArp"));
             }
 
-            if (updatedSwitchProperties.isServer42FlowRtt()) {
-                throw new IllegalSwitchPropertiesException(
-                        format(propertyErrorMessage, switchId, "server42_flow_rtt"));
-            }
-
             List<String> flowsWitchEnabledLldp = flowRepository.findByEndpointSwitchWithEnabledLldp(switchId).stream()
                     .map(Flow::getFlowId)
                     .collect(Collectors.toList());
