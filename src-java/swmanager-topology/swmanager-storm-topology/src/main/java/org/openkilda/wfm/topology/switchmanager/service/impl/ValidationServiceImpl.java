@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
@@ -34,6 +35,7 @@ import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -64,6 +66,7 @@ public class ValidationServiceImpl implements ValidationService {
     private FlowPathRepository flowPathRepository;
     private SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final FeatureTogglesRepository featureTogglesRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
@@ -71,6 +74,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
     }
@@ -106,7 +110,8 @@ public class ValidationServiceImpl implements ValidationService {
         SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                 .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
-        if (switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+        if (switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
             return paths.stream()
                     .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
                     .filter(path -> !path.isOneSwitchFlow())

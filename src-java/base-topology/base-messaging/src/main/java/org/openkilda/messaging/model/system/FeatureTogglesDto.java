@@ -62,6 +62,9 @@ public class FeatureTogglesDto implements Serializable {
     @JsonProperty("collect_grpc_stats")
     private Boolean collectGrpcStats;
 
+    @JsonProperty("server42_flow_rtt")
+    private Boolean server42FlowRtt;
+
     @JsonCreator
     public FeatureTogglesDto(@JsonProperty("flows_reroute_on_isl_discovery") Boolean flowsRerouteOnIslDiscoveryEnabled,
                              @JsonProperty("create_flow") Boolean createFlowEnabled,
@@ -74,7 +77,8 @@ public class FeatureTogglesDto implements Serializable {
                              @JsonProperty("flows_reroute_via_flowhs") Boolean flowsRerouteViaFlowHs,
                              @JsonProperty("flows_reroute_using_default_encap_type")
                                          Boolean flowsRerouteUsingDefaultEncapType,
-                             @JsonProperty("collect_grpc_stats") Boolean collectGrpcStats) {
+                             @JsonProperty("collect_grpc_stats") Boolean collectGrpcStats,
+                             @JsonProperty("server42_flow_rtt") Boolean server42FlowRtt) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
@@ -86,5 +90,6 @@ public class FeatureTogglesDto implements Serializable {
         this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
         this.flowsRerouteUsingDefaultEncapType = flowsRerouteUsingDefaultEncapType;
         this.collectGrpcStats = collectGrpcStats;
+        this.server42FlowRtt = server42FlowRtt;
     }
 }

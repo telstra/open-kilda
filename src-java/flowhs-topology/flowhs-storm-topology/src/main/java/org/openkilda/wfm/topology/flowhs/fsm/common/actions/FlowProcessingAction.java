@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -27,6 +28,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -58,6 +60,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     protected final FlowPathRepository flowPathRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
     protected final SwitchRepository switchRepository;
+    protected final FeatureTogglesRepository featureTogglesRepository;
 
     public FlowProcessingAction(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -66,6 +69,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -143,12 +147,17 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     protected PathContext buildBasePathContextForInstall(SwitchId switchId) {
         SwitchProperties switchProperties = getSwitchProperties(switchId);
         Switch sw = getSwitch(switchId);
-        boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(NOVIFLOW_COPY_FIELD);
+        boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(NOVIFLOW_COPY_FIELD)
+                && isServer42FlowRttFeatureToggle();
         return PathContext.builder()
                 .installServer42InputRule(serverFlowRtt)
                 .installServer42IngressRule(serverFlowRtt)
                 .server42Port(switchProperties.getServer42Port())
                 .server42MacAddress(switchProperties.getServer42MacAddress())
                 .build();
+    }
+
+    protected boolean isServer42FlowRttFeatureToggle() {
+        return featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false);
     }
 }

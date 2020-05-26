@@ -43,9 +43,11 @@ import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -114,10 +116,13 @@ public class SwitchValidateServiceImplTest {
         IslRepository islRepository = Mockito.mock(IslRepository.class);
         when(islRepository.findBySrcSwitch(any(SwitchId.class))).thenAnswer((invocation) ->
                 Collections.emptyList());
+        FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
+        when(featureTogglesRepository.find()).thenReturn(Optional.of(FeatureToggles.DEFAULTS));
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         service = new SwitchValidateServiceImpl(carrier, persistenceManager);
