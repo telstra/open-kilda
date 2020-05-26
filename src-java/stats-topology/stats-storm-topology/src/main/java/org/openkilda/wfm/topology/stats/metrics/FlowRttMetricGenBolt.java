@@ -47,6 +47,7 @@ public class FlowRttMetricGenBolt extends MetricGenBolt {
         long t0 = noviflowTimestamp(data.getT0());
         long t1 = noviflowTimestamp(data.getT1());
 
+        // We decided to use t1 time as a timestamp for Datapoint.
         long timestamp = TimeUnit.NANOSECONDS.toMillis(t1);
 
         emitMetric("flow.rtt", timestamp, t1 - t0, tags);
