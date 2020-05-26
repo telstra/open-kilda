@@ -1,10 +1,14 @@
 package org.openkilda.functionaltests.spec.network
 
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.Constants.DEFAULT_COST
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
@@ -89,7 +93,7 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         when: "Create flow using Latency strategy"
         def flow = flowHelperV2.randomFlow(swPair)
-                               .tap { it.pathComputationStrategy = PathComputationStrategy.LATENCY.toString() }
+                .tap { it.pathComputationStrategy = PathComputationStrategy.LATENCY.toString() }
         flowHelperV2.addFlow(flow)
 
         then: "Flow is built on the least-latency path"
@@ -189,5 +193,71 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "System takes available bandwidth into account during creating a flow with COST_AND_AVAILABLE_BANDWIDTH strategy"() {
+        given: "Two active neighboring switches with two diverse paths at least(short and long paths)"
+        def allPaths
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            allPaths = it.paths
+            allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
+                    allPaths.find { it.size() > 2 }
+        }
+
+        List<PathNode> shortPath = allPaths.min { it.size() }
+        //find path with more than two switches
+        List<PathNode> longPath = allPaths.findAll { it != shortPath && it.size() != 2 }.min { it.size() }
+
+        and: "All alternative paths unavailable (bring ports down)"
+        def broughtDownIsls = []
+        def otherIsls = []
+        def involvedIslsOfShortPath = pathHelper.getInvolvedIsls(shortPath)
+        def involvedIslsOfLongPath = pathHelper.getInvolvedIsls(longPath)
+        def involvedIsls = (involvedIslsOfShortPath + involvedIslsOfLongPath).unique()
+        allPaths.findAll { it != shortPath && it != longPath }.each {
+            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
+                otherIsls.add(it)
+            }
+        }
+        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == otherIsls.size() * 2
+        }
+
+        and: "Costs of short and long paths are the same"
+        def totalCostOfLongPath = involvedIslsOfLongPath.sum { northbound.getLink(it).cost ?: DEFAULT_COST }
+        Integer newIslCost = (totalCostOfLongPath / involvedIslsOfShortPath.size()).toInteger()
+
+        involvedIslsOfShortPath.each { isl ->
+            northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newIslCost.toString()])])
+        }
+
+        and: "Sum of available bandwidth on longPath is less than on shortPath"
+        def totalAvailBandwitchOfShortPath = involvedIslsOfShortPath.sum { northbound.getLink(it).availableBandwidth }
+        Integer newIslAvailableBandwidth = ((totalAvailBandwitchOfShortPath - 2) / involvedIslsOfLongPath.size()).toInteger()
+        involvedIslsOfLongPath.each { isl ->
+            database.updateIslAvailableBandwidth(isl, newIslAvailableBandwidth)
+        }
+
+        when: "Create a flow with COST_AND_AVAILABLE_BANDWIDTH strategy"
+        def flow = flowHelperV2.randomFlow(swPair)
+        flow.pathComputationStrategy = PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is created on longPath because of flow strategy"
+        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == longPath
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
+        wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        database.resetCosts()
     }
 }
