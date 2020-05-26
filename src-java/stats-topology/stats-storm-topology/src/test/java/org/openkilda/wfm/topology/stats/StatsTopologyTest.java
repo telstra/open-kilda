@@ -85,6 +85,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -495,9 +496,13 @@ public class StatsTopologyTest extends AbstractStormTest {
         FlowRttStatsData flowRttStatsData = FlowRttStatsData.builder()
                 .flowId(flowId)
                 .direction("forward")
-                .t0(1L)
-                .t1(2L)
+                .t0(123456789_987654321L)
+                .t1(123456789_987654321L + 1)
                 .build();
+
+        long seconds = (123456789_987654321L >> 32);
+        long nanoseconds = (123456789_987654321L & 0xFFFFFFFFL);
+        long timestamp = TimeUnit.NANOSECONDS.toMillis(TimeUnit.SECONDS.toNanos(seconds) + nanoseconds);
 
         InfoMessage infoMessage = new InfoMessage(flowRttStatsData, timestamp, UUID.randomUUID().toString(),
                 Destination.WFM_STATS, null);
