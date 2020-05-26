@@ -515,7 +515,8 @@ public class Flow implements Serializable {
      * Return protected flow prioritized paths status.
      */
     public FlowPathStatus getProtectedFlowPrioritizedPathsStatus() {
-        return getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
+        FlowPathStatus pathStatus = getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
+        return this.allocateProtectedPath && pathStatus == null ? FlowPathStatus.INACTIVE : pathStatus;
     }
 
     private FlowPathStatus getFlowPrioritizedPathStatus(FlowPath... flowPaths) {

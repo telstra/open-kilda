@@ -39,16 +39,23 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowUpdateFsm, Stat
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         if (stateMachine.getNewFlowStatus() == FlowStatus.UP) {
-            RequestedFlow requestedFlow = stateMachine.getTargetFlow();
-            stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
-                    requestedFlow.isPeriodicPings());
+            sendPeriodicPingNotification(stateMachine);
             dashboardLogger.onSuccessfulFlowUpdate(stateMachine.getFlowId());
             stateMachine.saveActionToHistory("Flow was updated successfully");
-
+        } else if (stateMachine.getNewFlowStatus() == FlowStatus.DEGRADED) {
+            sendPeriodicPingNotification(stateMachine);
+            dashboardLogger.onFailedFlowUpdate(stateMachine.getFlowId(), "Protected path not found");
+            stateMachine.saveActionToHistory("Main flow path updated successfully but no protected path found");
         } else {
             stateMachine.saveActionToHistory("Flow update completed",
                     format("Flow update completed with status %s and error %s", stateMachine.getNewFlowStatus(),
                             stateMachine.getErrorReason()));
         }
+    }
+
+    private void sendPeriodicPingNotification(FlowUpdateFsm stateMachine) {
+        RequestedFlow requestedFlow = stateMachine.getTargetFlow();
+        stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
+                requestedFlow.isPeriodicPings());
     }
 }

@@ -33,7 +33,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -62,7 +61,6 @@ public class AllocateProtectedResourcesAction extends
     protected void allocate(FlowUpdateFsm stateMachine)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         String flowId = stateMachine.getFlowId();
-        RequestedFlow targetFlow = stateMachine.getTargetFlow();
         Flow flow = getFlow(flowId);
 
         PathId newPrimaryForwardPathId = stateMachine.getNewPrimaryForwardPath();
@@ -82,9 +80,7 @@ public class AllocateProtectedResourcesAction extends
                 || primaryReversePath != null
                 && flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
-            String message = "Couldn't find non overlapping protected path";
-            stateMachine.saveActionToHistory(message);
-            throw new UnroutableFlowException(message);
+            stateMachine.saveActionToHistory("Couldn't find non overlapping protected path");
         } else {
             log.debug("Allocating resources for a new protected path of flow {}", flowId);
             FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
