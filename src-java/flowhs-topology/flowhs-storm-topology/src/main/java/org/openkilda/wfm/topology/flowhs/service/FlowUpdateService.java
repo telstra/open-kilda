@@ -48,26 +48,16 @@ public class FlowUpdateService {
             = new FsmExecutor<>(Event.NEXT);
 
     private final FlowUpdateHubCarrier carrier;
-    private final PersistenceManager persistenceManager;
     private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
-    private final PathComputer pathComputer;
-    private final FlowResourcesManager flowResourcesManager;
-    private final int transactionRetriesLimit;
-    private final int speakerCommandRetriesLimit;
 
     public FlowUpdateService(FlowUpdateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                              int transactionRetriesLimit, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                              int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.persistenceManager = persistenceManager;
         flowEventRepository = persistenceManager.getRepositoryFactory().createFlowEventRepository();
         kildaConfigurationRepository = persistenceManager.getRepositoryFactory().createKildaConfigurationRepository();
-        this.pathComputer = pathComputer;
-        this.flowResourcesManager = flowResourcesManager;
-        this.transactionRetriesLimit = transactionRetriesLimit;
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
         fsmFactory = new FlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 transactionRetriesLimit, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 speakerCommandRetriesLimit);
@@ -102,6 +92,8 @@ public class FlowUpdateService {
         }
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .targetFlow(requestedFlow)
+                .bulkUpdateFlowIds(request.getBulkUpdateFlowIds())
+                .doNotRevert(request.isDoNotRevert())
                 .build();
         fsmExecutor.fire(fsm, Event.NEXT, context);
 

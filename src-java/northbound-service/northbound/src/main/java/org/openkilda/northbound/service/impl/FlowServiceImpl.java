@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -27,18 +27,14 @@ import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
-import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.model.FlowDto;
@@ -62,7 +58,6 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
-import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
@@ -106,12 +101,6 @@ public class FlowServiceImpl implements FlowService {
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(FlowServiceImpl.class);
-
-    /**
-     * The kafka topic for the flow topology.
-     */
-    @Value("#{kafkaTopicsConfig.getFlowTopic()}")
-    private String topic;
 
     /**
      * The kafka topic for the new flow topology.
@@ -165,23 +154,24 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowResponsePayload> createFlow(final FlowCreatePayload input) {
+    public CompletableFuture<FlowResponsePayload> createFlow(FlowCreatePayload request) {
+        logger.info("Create flow: {}", request);
+
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Create flow: {}", input);
 
         FlowRequest flowRequest;
         try {
-            flowRequest =  flowMapper.toFlowCreateRequest(input);
+            flowRequest = flowMapper.toFlowCreateRequest(request);
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the create flow request");
         }
 
-        CommandMessage request = new CommandMessage(
-                flowRequest, System.currentTimeMillis(), correlationId, Destination.WFM);
+        CommandMessage command = new CommandMessage(flowRequest,
+                System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(flowHsTopic, request)
+        return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
@@ -243,22 +233,24 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload input) {
-        final String correlationId = RequestCorrelationId.getId();
-        logger.info("Update flow request for flow {}", input.getId());
+    public CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload request) {
+        logger.info("Update flow request for flow {}", request.getId());
 
-        FlowUpdateRequest payload;
+        final String correlationId = RequestCorrelationId.getId();
+        FlowRequest updateRequest;
+
         try {
-            payload = new FlowUpdateRequest(new FlowDto(input), input.getDiverseFlowId());
+            updateRequest = flowMapper.toFlowUpdateRequest(request);
         } catch (IllegalArgumentException e) {
             logger.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the update flow request");
         }
-        CommandMessage request = new CommandMessage(
-                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
+        CommandMessage command = new CommandMessage(updateRequest,
+                System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
@@ -385,7 +377,7 @@ public class FlowServiceImpl implements FlowService {
     private CompletableFuture<FlowResponsePayload> sendDeleteFlow(String flowId, String correlationId) {
         CommandMessage request = buildDeleteFlowCommand(flowId, correlationId);
 
-        return messagingChannel.sendAndGet(topic, request)
+        return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowResponseOutput);
@@ -498,9 +490,9 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<BatchResults> unpushFlows(List<FlowInfoData> externalFlows, Boolean propagate,
                                                        Boolean verify) {
-        FlowOperation op = (propagate) ? FlowOperation.UNPUSH_PROPAGATE : FlowOperation.UNPUSH;
-        // TODO: ADD the VERIFY implementation
-        return flowPushUnpush(externalFlows, op);
+        String correlationId = RequestCorrelationId.getId();
+        throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_PERMITTED,
+                "Operation not permitted", "Unpush flow operation is deprecated");
     }
 
     /**
@@ -509,9 +501,9 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<BatchResults> pushFlows(List<FlowInfoData> externalFlows,
                                                      Boolean propagate, Boolean verify) {
-        FlowOperation op = (propagate) ? FlowOperation.PUSH_PROPAGATE : FlowOperation.PUSH;
-        // TODO: ADD the VERIFY implementation
-        return flowPushUnpush(externalFlows, op);
+        String correlationId = RequestCorrelationId.getId();
+        throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_PERMITTED,
+                "Operation not permitted", "Push flow operation is deprecated");
     }
 
     /**
@@ -525,56 +517,6 @@ public class FlowServiceImpl implements FlowService {
 
         return messagingChannel.sendAndGet(nbworkerTopic, request)
                 .thenApply(FlowResponse.class::cast);
-    }
-
-    /**
-     * There are only minor differences between push and unpush .. this utility function helps
-     */
-    private CompletableFuture<BatchResults> flowPushUnpush(List<FlowInfoData> externalFlows, FlowOperation op) {
-        final String correlationId = RequestCorrelationId.getId();
-        String collect = externalFlows.stream().map(FlowInfoData::getFlowId).collect(Collectors.joining());
-        logger.debug("Flow {}: id: {}", op, collect);
-        logger.debug("Size of list: {}", externalFlows.size());
-        // First, send them all, then wait for all the responses.
-        // Send the command to both Flow Topology and to TE
-        List<CompletableFuture<?>> flowRequests = new ArrayList<>();    // used for error reporting, if needed
-        for (int i = 0; i < externalFlows.size(); i++) {
-            FlowInfoData data = externalFlows.get(i);
-            data.setOperation(op);  // <-- this is what determines PUSH / UNPUSH
-            String flowCorrelation = correlationId + "-FLOW-" + i;
-            InfoMessage flowRequest =
-                    new InfoMessage(data, System.currentTimeMillis(), flowCorrelation, Destination.WFM, null);
-            flowRequests.add(messagingChannel.sendAndGet(topic, flowRequest));
-        }
-
-        FlowState expectedState;
-        switch (op) {
-            case PUSH:
-                expectedState = FlowState.UP;
-                break;
-            case PUSH_PROPAGATE:
-                expectedState = FlowState.IN_PROGRESS;
-                break;
-            default:
-                expectedState = FlowState.DOWN;
-        }
-
-        CompletableFuture<List<String>> flowFailures = collectResponses(flowRequests, FlowStatusResponse.class)
-                .thenApply(flows ->
-                        flows.stream()
-                                .map(FlowStatusResponse::getPayload)
-                                .filter(payload -> payload.getStatus() != expectedState)
-                                .map(payload -> "FAILURE (FlowTopo): Flow " + payload.getId()
-                                        + " NOT in " + expectedState
-                                        + " state: state = " + payload.getStatus())
-                                .collect(Collectors.toList()));
-
-        return flowFailures.thenApply(failures -> {
-            BatchResults batchResults = new BatchResults(failures.size(),
-                    externalFlows.size() - failures.size(), failures);
-            logger.debug("Returned: {}", batchResults);
-            return batchResults;
-        });
     }
 
     /**
@@ -675,7 +617,7 @@ public class FlowServiceImpl implements FlowService {
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, command)
+        return messagingChannel.sendAndGet(rerouteTopic, command)
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
@@ -712,7 +654,7 @@ public class FlowServiceImpl implements FlowService {
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
-        return messagingChannel.sendAndGet(topic, request)
+        return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(SwapFlowResponse.class::cast)
                 .thenApply(response -> new SwapFlowEndpointPayload(
                         flowMapper.toSwapOutput(response.getFirstFlow().getPayload()),

@@ -93,15 +93,17 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
 
     protected boolean removeForwardCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
         boolean srcPortChanged = oldFlow.getSrcPort() != newFlow.getSrcPort();
+        boolean srcSwitchChanged = !oldFlow.getSrcSwitch().equals(newFlow.getSrcSwitch());
 
-        return srcPortChanged
+        return (srcPortChanged || srcSwitchChanged)
                 && findFlowsIdsByEndpointWithMultiTable(oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
     }
 
     protected boolean removeReverseCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
         boolean dstPortChanged = oldFlow.getDestPort() != newFlow.getDestPort();
+        boolean dstSwitchChanged = !oldFlow.getDestSwitch().equals(newFlow.getDestSwitch());
 
-        return dstPortChanged
+        return (dstPortChanged || dstSwitchChanged)
                 && findFlowsIdsByEndpointWithMultiTable(oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
     }
 

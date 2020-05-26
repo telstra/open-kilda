@@ -46,6 +46,7 @@ class ContentionSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2983")
     def "Parallel flow crud requests properly allocate/deallocate bandwidth resources"() {
         when: "Create multiple flows on the same ISLs concurrently"
         def flowsAmount = 15

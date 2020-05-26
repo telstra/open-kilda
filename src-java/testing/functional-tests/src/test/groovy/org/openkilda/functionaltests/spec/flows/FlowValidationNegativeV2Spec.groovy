@@ -139,7 +139,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
                 [
                         description: "synchronize",
                         operation: { getNorthbound().synchronizeFlow(NON_EXISTENT_FLOW_ID) },
-                        message: "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found",
+                        message: "Could not reroute flow",
                         errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
                 ]
         ]

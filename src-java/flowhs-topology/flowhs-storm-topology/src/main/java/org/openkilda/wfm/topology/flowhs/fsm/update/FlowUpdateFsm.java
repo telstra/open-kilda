@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -67,6 +67,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @Slf4j
@@ -82,6 +84,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private PathComputationStrategy oldTargetPathComputationStrategy;
 
     private FlowStatus newFlowStatus;
+
+    private Set<String> bulkUpdateFlowIds;
+    private boolean doNotRevert;
 
     public FlowUpdateFsm(CommandContext commandContext, FlowUpdateHubCarrier carrier, String flowId) {
         super(commandContext, flowId);
@@ -99,13 +104,17 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     }
 
     private void fireError(Event errorEvent, String errorReason) {
+        setErrorReason(errorReason);
+        fire(errorEvent);
+    }
+
+    @Override
+    public void setErrorReason(String errorReason) {
         if (this.errorReason != null) {
             log.error("Subsequent error fired: " + errorReason);
         } else {
             this.errorReason = errorReason;
         }
-
-        fire(errorEvent);
     }
 
     @Override
@@ -114,7 +123,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     }
 
     @Override
-    public void sendResponse(Message message) {
+    public void sendNorthboundResponse(Message message) {
         carrier.sendNorthboundResponse(message);
     }
 
@@ -128,6 +137,10 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     @Override
     protected String getCrudActionName() {
         return "update";
+    }
+
+    public void sendHubSwapEndpointsResponse(Message message) {
+        carrier.sendHubSwapEndpointsResponse(message);
     }
 
     public static class Factory {
@@ -252,9 +265,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
             builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_INGRESS_RULES)

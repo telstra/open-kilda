@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -44,7 +44,8 @@ public class FlowEventData {
         UPDATE("Flow updating"),
         REROUTE("Flow rerouting"),
         DELETE("Flow deleting"),
-        PATH_SWAP("Flow paths swap");
+        PATH_SWAP("Flow paths swap"),
+        SWAP_ENDPOINTS("Flows swap endpoints");
 
         private String description;
     }

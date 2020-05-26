@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -32,7 +33,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
 
 @Slf4j
 public class AllocatePrimaryResourcesAction extends
@@ -79,7 +83,8 @@ public class AllocatePrimaryResourcesAction extends
             log.debug("Resources have been allocated: {}", flowResources);
             stateMachine.setNewPrimaryResources(flowResources);
 
-            FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
+            List<FlowPath> pathsToReuse = Lists.newArrayList(flow.getForwardPath(), flow.getReversePath());
+            FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources);
             log.debug("New primary path has been created: {}", newPaths);
             stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
             stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());

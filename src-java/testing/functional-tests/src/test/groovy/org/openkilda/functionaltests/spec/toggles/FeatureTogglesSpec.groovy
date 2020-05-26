@@ -66,8 +66,9 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.FORBIDDEN
-        e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Feature toggles not enabled for UPDATE_FLOW operation."
+        def errorDetails = e.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not update flow"
+        errorDetails.errorDescription == "Flow update feature is disabled"
 
         and: "Creating new flow is still possible"
         def newFlow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -94,8 +95,9 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.FORBIDDEN
-        e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Can not delete flow: Feature toggles not enabled for DELETE_FLOW operation."
+        def errorDetails = e.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Could not delete flow"
+        errorDetails.errorDescription == "Flow delete feature is disabled"
 
         and: "Creating new flow is still possible"
         def newFlow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])

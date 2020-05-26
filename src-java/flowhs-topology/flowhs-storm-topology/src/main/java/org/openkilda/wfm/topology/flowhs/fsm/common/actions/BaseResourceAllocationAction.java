@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -108,22 +109,28 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
-            return Optional.of(buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
-                    getGenericErrorMessage(), errorMessage));
+            Message message = buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
+                    getGenericErrorMessage(), errorMessage);
+            stateMachine.setOperationResultMessage(message);
+            return Optional.of(message);
         } catch (RecoverableException ex) {
             String errorMessage = format("Failed to find a path. %s", ex.getMessage());
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireError(errorMessage);
 
-            return Optional.of(buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage));
+            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
+                    getGenericErrorMessage(), errorMessage);
+            stateMachine.setOperationResultMessage(message);
+            return Optional.of(message);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
 
-            return Optional.of(buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage));
+            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
+                    getGenericErrorMessage(), errorMessage);
+            stateMachine.setOperationResultMessage(message);
+            return Optional.of(message);
         }
     }
 
@@ -192,7 +199,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 || !flowPathBuilder.isSamePath(pathPair.getReverse(), flowPathPair.getReverse());
     }
 
-    protected FlowPathPair createFlowPathPair(Flow flow, FlowPathPair pathsToReuseBandwidth,
+    protected FlowPathPair createFlowPathPair(Flow flow, List<FlowPath> pathsToReuseBandwidth,
                                               PathPair pathPair, FlowResources flowResources) {
         final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(flowResources.getUnmaskedCookie());
@@ -215,26 +222,30 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             flowPathRepository.createOrUpdate(newForwardPath);
             flowPathRepository.createOrUpdate(newReversePath);
 
-            updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth.getForward());
-            updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth.getReverse());
+            updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth);
+            updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth);
         });
 
         return newFlowPaths;
     }
 
-    private void updateIslsForFlowPath(FlowPath flowPath, FlowPath pathToReuseBandwidth)
+    private void updateIslsForFlowPath(FlowPath flowPath, List<FlowPath> pathsToReuseBandwidth)
             throws ResourceAllocationException {
         for (PathSegment pathSegment : flowPath.getSegments()) {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
 
             long allowedOverprovisionedBandwidth = 0;
-            if (pathToReuseBandwidth != null) {
-                for (PathSegment reuseSegment : pathToReuseBandwidth.getSegments()) {
-                    if (pathSegment.getSrcSwitch().equals(reuseSegment.getSrcSwitch())
-                            && pathSegment.getSrcPort() == reuseSegment.getSrcPort()
-                            && pathSegment.getDestSwitch().equals(reuseSegment.getDestSwitch())
-                            && pathSegment.getDestPort() == reuseSegment.getDestPort()) {
-                        allowedOverprovisionedBandwidth = pathToReuseBandwidth.getBandwidth();
+            if (pathsToReuseBandwidth != null) {
+                for (FlowPath pathToReuseBandwidth : pathsToReuseBandwidth) {
+                    if (pathToReuseBandwidth != null) {
+                        for (PathSegment reuseSegment : pathToReuseBandwidth.getSegments()) {
+                            if (pathSegment.getSrcSwitch().equals(reuseSegment.getSrcSwitch())
+                                    && pathSegment.getSrcPort() == reuseSegment.getSrcPort()
+                                    && pathSegment.getDestSwitch().equals(reuseSegment.getDestSwitch())
+                                    && pathSegment.getDestPort() == reuseSegment.getDestPort()) {
+                                allowedOverprovisionedBandwidth += pathToReuseBandwidth.getBandwidth();
+                            }
+                        }
                     }
                 }
             }

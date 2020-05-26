@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,9 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
@@ -29,10 +26,8 @@ import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
@@ -85,10 +80,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowDeleteFsm, State, 
 
         stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.DELETE);
 
-        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
-        CommandContext commandContext = stateMachine.getCommandContext();
-        return Optional.of(new InfoMessage(flowData, commandContext.getCreateTime(),
-                commandContext.getCorrelationId()));
+        return Optional.of(buildResponseMessage(flow, stateMachine.getCommandContext()));
     }
 
     @Override

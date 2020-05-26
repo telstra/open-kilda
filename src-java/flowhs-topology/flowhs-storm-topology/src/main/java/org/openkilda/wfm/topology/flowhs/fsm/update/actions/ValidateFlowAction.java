@@ -81,9 +81,11 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         }
 
         stateMachine.setTargetFlow(targetFlow);
+        stateMachine.setBulkUpdateFlowIds(context.getBulkUpdateFlowIds());
+        stateMachine.setDoNotRevert(context.isDoNotRevert());
 
         try {
-            flowValidator.validate(targetFlow);
+            flowValidator.validate(targetFlow, stateMachine.getBulkUpdateFlowIds());
         } catch (InvalidFlowException e) {
             throw new FlowProcessingException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
@@ -106,7 +108,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
             }
 
             Flow foundFlow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
-            if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
+            if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
