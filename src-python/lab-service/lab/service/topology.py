@@ -12,7 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-from service.cmd import vsctl, ofctl, run_cmd
+
+from service.cmd import vsctl, ofctl, run_cmd, daemon_start
 from urllib.parse import urlparse
 import socket
 import logging
@@ -170,6 +171,8 @@ class Link:
 
 
 class Traffgen:
+    proc = None
+
     def __init__(self, tgen_def):
         self.name = tgen_def['name']
         self.iface = tgen_def['iface_name']
@@ -179,13 +182,14 @@ class Traffgen:
 
         # listen rest on all interfaces
         self.endpoint = '%s:%s' % ('0.0.0.0', str(ctrl_url.port))
-        self.proc = None
 
     def make_link(self):
         return Link.create(self.sw, self.sw_port, self.name, self.iface, is_isl=False)
 
     def run(self):
-        self.proc = run_cmd('kilda-traffexam {} {}'.format(pname(self.name, self.iface), self.endpoint), sync=False)
+        self.proc = daemon_start(
+            ['kilda-traffexam', pname(self.name, str(self.iface)), self.endpoint],
+            self.name)
 
     def destroy(self):
         if self.proc:

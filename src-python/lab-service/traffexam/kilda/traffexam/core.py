@@ -65,7 +65,6 @@ def main(iface, bind, **args):
 
                 context.set_service_adapter(service.Adapter(context))
                 context.set_action_adapter(action.Adapter(context))
-                SigCHLD(context.children)
 
                 rest.init(bind, context)
         finally:
@@ -102,13 +101,3 @@ def setup_environment(context):
             system.NSNetworksCleanUp,
             system.NSGatewaySetUp,
             system.TargetIfaceSetUp)
-
-
-class SigCHLD(common.AbstractSignal):
-    def __init__(self, children):
-        super().__init__(signal.SIGCHLD)
-        self.children = children
-
-    def handle(self):
-        for child in self.children:
-            child.poll()

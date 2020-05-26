@@ -275,7 +275,6 @@ class EndpointService(Abstract):
         proc = subprocess.Popen(cmd, stdout=report, stderr=err)
 
         subject.set_proc(proc)
-        self.context.children.add(proc)
 
     def make_report_file_name(self, subject):
         return self.context.path('{}.json'.format(subject.idnr))

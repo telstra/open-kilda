@@ -18,9 +18,11 @@ from service.topology import Topology
 
 
 def test_smoke(mocker):
+    mocker.patch('service.topology.daemon_start')
     mocker.patch('service.topology.run_cmd')
     mocker.patch('service.topology.vsctl')
     mocker.patch('service.topology.ofctl')
+    mocker.patch('service.service.setup_app_home')
 
     with open("./service/test/res/topology.json", "r") as f:
         topo = Topology.create(json.loads(f.read()))

@@ -13,39 +13,38 @@
 #   limitations under the License.
 #
 
+import pathlib
 import subprocess
 import logging
 
 logger = logging.getLogger()
 
 
-def vsctl(commands, **kwargs):
+def vsctl(commands):
     cmd = 'ovs-vsctl '
     cmd += " -- ".join(commands)
-    return run_cmd(cmd, **kwargs)
+    return run_cmd(cmd)
 
 
-def ofctl(commands, **kwargs):
-    return [run_cmd('ovs-ofctl ' + cmd, **kwargs) for cmd in commands]
+def ofctl(commands):
+    return [run_cmd('ovs-ofctl ' + cmd) for cmd in commands]
 
 
-def run_cmd(cmd, sync=True):
+def run_cmd(cmd):
     """
     Runs specified command in terminal.
     :param cmd: the command to run
-    :param sync: block and wait for command termination
-    :return:
-    Stdout+stderr, when sync=True.
-    Subprocess.Popen instance, when sync=False.
+    :return: stdout+stderr
     """
     logger.debug(cmd)
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    if sync:
-        output, error = p.communicate()
-        resp = output.decode('utf-8') + error.decode('utf-8')
-        if p.returncode == 0:
-            return resp
-        else:
-            raise OSError("Command '%s' failed:  %s" % (cmd, resp))
-    else:
-        return p
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+    output = p.communicate()[0].decode('utf-8')
+    if p.returncode != 0:
+        raise OSError("Command '%s' failed:  %s" % (cmd, output))
+    return output
+
+
+def daemon_start(cmd, name):
+    log_destination = pathlib.Path("log") / '{}.log'.format(name)
+    with log_destination.open("at") as output:
+        return subprocess.Popen(cmd, stdout=output, stderr=subprocess.STDOUT)
