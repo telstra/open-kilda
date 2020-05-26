@@ -53,9 +53,6 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
     @JsonProperty("output_vlan_type")
     protected OutputVlanType outputVlanType;
 
-    @JsonProperty("meter_id")
-    protected Long meterId;
-
     @JsonProperty("egress_switch_id")
     protected SwitchId egressSwitchId;
 
@@ -75,7 +72,6 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
      * @param transitEncapsulationId  transit encapsulation id value
      * @param transitEncapsulationType  transit encapsulation type value
      * @param outputVlanType output vlan type action
-     * @param meterId        flow meter id
      * @param egressSwitchId id of the ingress switch
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
@@ -93,7 +89,6 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
                                       @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
                                           transitEncapsulationType,
                                       @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
-                                      @JsonProperty("meter_id") final Long meterId,
                                       @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
                                       @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
                                       @JsonProperty("multi_table") final boolean multiTable) {
@@ -102,7 +97,6 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
         setCustomerPort(customerPort);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
-        setMeterId(meterId);
         setEgressSwitchId(egressSwitchId);
         setServer42MacAddress(server42MacAddress);
     }
@@ -137,17 +131,5 @@ public class InstallServer42IngressFlow extends InstallTransitFlow {
         } else {
             throw new IllegalArgumentException(format("Invalid input_vlan_id = %s", inputVlanId));
         }
-    }
-
-    /**
-     * Sets meter id for the flow.
-     *
-     * @param meterId id for the flow
-     */
-    public void setMeterId(final Long meterId) {
-        if (meterId != null && meterId <= 0L) {
-            throw new IllegalArgumentException(format("Invalid Meter id value '%d'. It must be positive", meterId));
-        }
-        this.meterId = meterId;
     }
 }

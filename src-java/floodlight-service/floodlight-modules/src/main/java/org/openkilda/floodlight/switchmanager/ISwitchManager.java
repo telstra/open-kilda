@@ -521,7 +521,7 @@ public interface ISwitchManager extends IFloodlightService {
     long installServer42IngressFlow(
             DatapathId dpid, DatapathId dstDpid, Long cookie, MacAddress server42MacAddress, int server42Port,
             int outputPort, int customerPort, int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType,
-            long meterId, FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
+            FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
 
     /**
      * Installs flow on egress swtich.

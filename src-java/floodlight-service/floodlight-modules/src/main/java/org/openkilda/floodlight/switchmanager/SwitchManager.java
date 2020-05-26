@@ -524,12 +524,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installServer42IngressFlow(
             DatapathId dpid, DatapathId dstDpid, Long cookie, org.openkilda.model.MacAddress server42MacAddress,
             int server42Port, int outputPort, int customerPort, int inputVlanId, int transitTunnelId,
-            OutputVlanType outputVlanType, long meterId, FlowEncapsulationType encapsulationType, boolean multiTable)
+            OutputVlanType outputVlanType, FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
-        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, actionList);
 
         actionList.addAll(pushTransitEncapsulationForServer42IngressFlow(ofFactory, transitTunnelId, outputVlanType,
                 encapsulationType, dpid, dstDpid, multiTable));
@@ -544,7 +543,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         int flowPriority = inputVlanId == 0 ? SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY;
         int tableId = multiTable ? INGRESS_TABLE_ID : INPUT_TABLE_ID;
 
-        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, meter, actions, false);
+        List<OFInstruction> instructions = createIngressFlowInstructions(ofFactory, null, actions, false);
 
         OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
                 tableId)
