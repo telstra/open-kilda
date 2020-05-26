@@ -4,6 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.PATH_SWAP_ACTION
+import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -287,5 +288,108 @@ and at least 1 path must remain safe"
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.region)
         switchHelper.reviveSwitch(swPair.src, blockData, true)
+    }
+
+    @Tidy
+    def "System retries the intentional rerouteV1 if it fails to install rules on a switch"() {
+        given: "Two active neighboring switches with two diverse paths at least(main and backup paths)"
+        def allPaths
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            allPaths = it.paths
+            allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
+                    allPaths.find { it.size() > 2 }
+        }
+
+        List<PathNode> mainPath = allPaths.min { it.size() }
+        //find path with more than two switches
+        List<PathNode> backupPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
+
+        and: "All alternative paths unavailable (bring ports down)"
+        def broughtDownIsls = []
+        def otherIsls = []
+        def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(backupPath)).unique()
+        allPaths.findAll { it != mainPath && it != backupPath }.each {
+            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
+                otherIsls.add(it)
+            }
+        }
+        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == otherIsls.size() * 2
+        }
+
+        and: "A flow on the main path"
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+
+        when: "Make backupPath more preferable than mainPath"
+        pathHelper.makePathMorePreferable(backupPath, mainPath)
+
+        and: "Disconnect the dst switch"
+        def swToManipulate = swPair.dst
+        def blockData = switchHelper.knockoutSwitch(swToManipulate, mgmtFlManager)
+        def isSwitchActivated = false
+
+        and: "Mark the dst switch as ACTIVE in db"
+        database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.ACTIVE)
+
+        and: "Init intentional flow reroute(APIv1)"
+        northbound.rerouteFlow(flow.flowId)
+
+        then: "System retries to install/delete rules on the dst switch"
+        wait(WAIT_OFFSET) {
+            assert northbound.getFlowHistory(flow.flowId).findAll {
+                it.action == REROUTE_ACTION
+            }.last().histories*.details.findAll{ it =~ /.+ Retrying/}.size() == 9
+            //install: 3 attempts, revert: delete 3 attempts + install 3 attempts
+        }
+
+        then: "Flow is not rerouted"
+        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+
+        and: "All involved switches pass switch validation(except dst switch)"
+        def involvedSwitchIds = pathHelper.getInvolvedSwitches(backupPath)[0..-2]*.dpId
+        wait(WAIT_OFFSET / 2) {
+            involvedSwitchIds.each { swId ->
+                with(northbound.validateSwitch(swId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
+
+        when: "Connect dst switch back to the controller"
+        database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE) //set real status
+        switchHelper.reviveSwitch(swPair.dst, blockData)
+        isSwitchActivated = true
+
+        then: "Flow is UP"
+        wait(discoveryInterval + rerouteDelay + WAIT_OFFSET) {
+            northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
+
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        with(northbound.pingFlow(flow.flowId, new PingInput())) {
+            it.forward.pingSuccess
+            it.reverse.pingSuccess
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        if (!isSwitchActivated && blockData) {
+            database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
+            switchHelper.reviveSwitch(swToManipulate, blockData)
+            northbound.synchronizeSwitch(swToManipulate.dpId, true)
+        }
+        broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
+        wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+        }
+        database.resetCosts()
     }
 }
