@@ -36,7 +36,9 @@ public class RulesContext implements Serializable {
     private boolean removeCustomerLldpRule;
     private boolean removeCustomerArpRule;
     private boolean removeServer42InputRule;
+    private boolean removeServer42IngressRule;
     private boolean installServer42InputRule;
+    private boolean installServer42IngressRule;
     private Integer server42Port;
     private MacAddress server42MacAddress;
 }

@@ -61,6 +61,11 @@ abstract class OneSwitchFlowInstallFlowModFactory extends IngressInstallFlowModF
     }
 
     @Override
+    protected List<OFAction> makeServer42IngressFlowTransformActions() {
+        return Lists.newArrayList();
+    }
+
+    @Override
     protected OFAction makeOutputAction() {
         FlowEndpoint endpoint = command.getEndpoint();
         FlowEndpoint egressEndpoint = command.getEgressEndpoint();

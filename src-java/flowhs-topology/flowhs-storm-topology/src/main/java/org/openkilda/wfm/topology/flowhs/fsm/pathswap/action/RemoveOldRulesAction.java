@@ -50,9 +50,12 @@ public class RemoveOldRulesAction
 
         FlowPath oldPrimaryForward = flow.getProtectedForwardPath();
         FlowPath oldPrimaryReverse = flow.getProtectedReversePath();
+
+        SpeakerRequestBuildContext speakerContext = buildSpeakerContextForRemovalIngressOnly(
+                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
+
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildIngressOnly(
-                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse,
-                SpeakerRequestBuildContext.EMPTY));
+                stateMachine.getCommandContext(), flow, oldPrimaryForward, oldPrimaryReverse, speakerContext));
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());

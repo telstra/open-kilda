@@ -38,10 +38,12 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
@@ -89,7 +91,7 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateRulesEmpty() {
+    public void validateRulesEmpty() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingRules().isEmpty());
@@ -98,7 +100,7 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateRulesSimpleSegmentCookies() {
+    public void validateRulesSimpleSegmentCookies() throws SwitchNotFoundException {
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig);
         List<FlowEntry> flowEntries =
@@ -110,7 +112,7 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateRulesSegmentAndIngressCookies() {
+    public void validateRulesSegmentAndIngressCookies() throws SwitchNotFoundException {
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build(),
                         topologyConfig);
@@ -123,7 +125,7 @@ public class ValidationServiceImplTest {
     }
 
     @Test
-    public void validateDefaultRules() {
+    public void validateDefaultRules() throws SwitchNotFoundException {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
@@ -302,10 +304,12 @@ public class ValidationServiceImplTest {
     private static class PersistenceManagerBuilder {
         private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private SwitchRepository switchRepository = mock(SwitchRepository.class);
+        private SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
 
         private long[] segmentsCookies = new long[0];
         private long[] ingressCookies = new long[0];
         private DetectConnectedDevices detectConnectedDevices = new DetectConnectedDevices();
+        private SwitchProperties switchProperties = new SwitchProperties();
 
         private PersistenceManagerBuilder withSegmentsCookies(long... cookies) {
             segmentsCookies = cookies;
@@ -406,6 +410,11 @@ public class ValidationServiceImplTest {
             when(switchRepository.findById(SWITCH_ID_B)).thenReturn(Optional.of(switchB));
             when(switchRepository.findById(SWITCH_ID_E)).thenReturn(Optional.of(switchE));
             when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+
+            when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_A)).thenReturn(Optional.of(switchProperties));
+            when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_B)).thenReturn(Optional.of(switchProperties));
+            when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_E)).thenReturn(Optional.of(switchProperties));
+            when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);

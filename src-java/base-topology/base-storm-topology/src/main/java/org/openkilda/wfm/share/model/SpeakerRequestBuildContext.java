@@ -44,7 +44,9 @@ public class SpeakerRequestBuildContext {
         private boolean removeCustomerPortLldpRule;
         private boolean removeCustomerPortArpRule;
         private boolean removeServer42InputRule;
+        private boolean removeServer42IngressRule;
         private boolean installServer42InputRule;
+        private boolean installServer42IngressRule;
         private Integer server42Port;
         private MacAddress server42MacAddress;
     }

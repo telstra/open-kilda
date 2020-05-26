@@ -22,14 +22,14 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,12 +39,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowCommandBuilderFactory commandBuilderFactory;
+public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     public RemoveOldRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
-        super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        super(persistenceManager, resourcesManager);
     }
 
     @Override
@@ -56,25 +54,33 @@ public class RemoveOldRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
 
         Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
 
+        SpeakerRequestBuildContext speakerContext = SpeakerRequestBuildContext.EMPTY;
+
         if (stateMachine.getOldPrimaryForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             oldForward.setFlow(flow);
+            speakerContext.setForward(buildPathContextForRemovalIngressOnly(oldForward.getSrcSwitch().getSwitchId()));
 
             if (stateMachine.getOldPrimaryReversePath() != null) {
                 FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
                 oldReverse.setFlow(flow);
+                speakerContext.setReverse(
+                        buildPathContextForRemovalIngressOnly(oldReverse.getSrcSwitch().getSwitchId()));
+
                 factories.addAll(commandBuilder.buildAll(
-                        stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+                        stateMachine.getCommandContext(), flow, oldForward, oldReverse, speakerContext));
             } else {
                 factories.addAll(commandBuilder.buildAll(
-                        stateMachine.getCommandContext(), flow, oldForward));
+                        stateMachine.getCommandContext(), flow, oldForward, speakerContext));
 
             }
         } else if (stateMachine.getOldPrimaryReversePath() != null) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
             oldReverse.setFlow(flow);
+            speakerContext.setForward(buildPathContextForRemovalIngressOnly(oldReverse.getSrcSwitch().getSwitchId()));
+
             factories.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, oldReverse));
+                    stateMachine.getCommandContext(), flow, oldReverse, speakerContext));
         }
 
         if (stateMachine.getOldProtectedForwardPath() != null) {

@@ -50,4 +50,9 @@ public abstract class IngressRemoveFlowModFactory extends IngressFlowModFactory 
     protected List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata) {
         return Collections.emptyList();
     }
+
+    @Override
+    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+        return Collections.emptyList();
+    }
 }

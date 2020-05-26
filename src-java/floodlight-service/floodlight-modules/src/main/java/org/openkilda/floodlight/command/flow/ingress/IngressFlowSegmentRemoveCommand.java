@@ -85,6 +85,9 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
                 getFlowModFactory().makeServer42InputFlowMessage(getKildaCoreConfig().getServer42UdpPortOffset())
                         .ifPresent(ofMessages::add);
             }
+            if (rulesContext.isRemoveServer42IngressRule()) {
+                ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
+            }
         }
         return ofMessages;
     }

@@ -192,7 +192,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationWithoutMetersSuccess() {
+    public void validationWithoutMetersSuccess() throws SwitchNotFoundException {
         verify(carrier, times(1)).getTopologyConfig();
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
@@ -217,7 +217,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationSuccessWithUnsupportedMeters() {
+    public void validationSuccessWithUnsupportedMeters() throws SwitchNotFoundException {
         handleRequestAndInitDataReceive();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleExpectedDefaultFlowEntriesResponse(KEY,

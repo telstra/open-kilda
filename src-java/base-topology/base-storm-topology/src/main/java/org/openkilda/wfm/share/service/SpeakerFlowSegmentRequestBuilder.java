@@ -65,20 +65,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     @Override
-    public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path) {
-        return buildAll(context, flow, path, (FlowPath) null);
-    }
-
-    @Override
     public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
                                                     SpeakerRequestBuildContext speakerRequestBuildContext) {
         return makeRequests(context, flow, path, null, true, true, true, speakerRequestBuildContext);
-    }
-
-    @Override
-    public List<FlowSegmentRequestFactory> buildAll(
-            CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
-        return buildAll(context, flow, forwardPath, reversePath, SpeakerRequestBuildContext.EMPTY);
     }
 
     @Override
@@ -110,11 +99,6 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             CommandContext context, @NonNull Flow flow, SpeakerRequestBuildContext speakerRequestBuildContext) {
         return buildIngressOnly(context, flow, flow.getForwardPath(), flow.getReversePath(),
                 speakerRequestBuildContext);
-    }
-
-    @Override
-    public List<FlowSegmentRequestFactory> buildIngressOnly(CommandContext context, Flow flow, FlowPath path) {
-        return buildIngressOnly(context, flow, path, null, SpeakerRequestBuildContext.EMPTY);
     }
 
     @Override
@@ -182,7 +166,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 pathContext.isRemoveCustomerPortLldpRule(),
                 pathContext.isRemoveCustomerPortArpRule(),
                 pathContext.isRemoveServer42InputRule(),
+                pathContext.isRemoveServer42IngressRule(),
                 pathContext.isInstallServer42InputRule(),
+                pathContext.isInstallServer42IngressRule(),
                 pathContext.getServer42Port(),
                 pathContext.getServer42MacAddress());
     }

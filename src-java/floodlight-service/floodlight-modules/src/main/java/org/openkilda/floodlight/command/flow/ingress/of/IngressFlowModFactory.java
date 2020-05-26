@@ -26,6 +26,8 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -38,6 +40,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
@@ -95,6 +98,41 @@ public abstract class IngressFlowModFactory {
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
                         .build());
         return makeForwardMessage(of, builder, effectiveMeterId);
+    }
+
+
+    /**
+     * Make server 42 ingress rule to match RTT packets by port+vlan and route it into ISL/egress end.
+     */
+    public OFFlowMod makeOuterVlanOnlyServer42IngressFlowMessage(MeterId effectiveMeterId) {
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = buildServer42IngressMetadata();
+
+        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
+                .setCookie(U64.of(buildServer42IngressCookie().getValue()))
+                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()))
+                        .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()),
+                                OFMetadata.of(metadata.getMask()))
+                        .build());
+        return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
+    }
+
+    /**
+     * Make server 42 ingress rule to match all RTT packets traffic and route it into ISL/egress end.
+     */
+    public OFFlowMod makeDefaultPortServer42IngressFlowMessage(MeterId effectiveMeterId) {
+        RoutingMetadata metadata = buildServer42IngressMetadata();
+
+        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
+                -1)
+                .setCookie(U64.of(buildServer42IngressCookie().getValue()))
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()))
+                        .setMasked(MatchField.METADATA, OFMetadata.of(metadata.getValue()),
+                                OFMetadata.of(metadata.getMask()))
+                        .build());
+        return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
     }
 
     /**
@@ -184,9 +222,33 @@ public abstract class IngressFlowModFactory {
         return builder.build();
     }
 
+    private OFFlowMod makeServer42IngressFlowMessage(
+            OFFactory of, OFFlowMod.Builder builder, MeterId effectiveMeterId) {
+        builder.setInstructions(makeServer42IngressFlowMessageInstructions(of, effectiveMeterId));
+        if (switchFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
+        return builder.build();
+    }
+
+    private FlowSegmentCookie buildServer42IngressCookie() {
+        return new FlowSegmentCookie(command.getCookie().getValue()).toBuilder()
+                .type(CookieType.SERVER_42_INGRESS)
+                .build();
+    }
+
+    private RoutingMetadata buildServer42IngressMetadata() {
+        return RoutingMetadata.builder()
+                .inputPort(command.getEndpoint().getPortNumber())
+                .build(switchFeatures);
+    }
+
     protected abstract List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId);
 
     protected abstract List<OFInstruction> makeCustomerPortSharedCatchInstructions();
 
     protected abstract List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata);
+
+    protected abstract List<OFInstruction> makeServer42IngressFlowMessageInstructions(
+            OFFactory of, MeterId effectiveMeterId);
 }

@@ -15,6 +15,10 @@
 
 package org.openkilda.model.cookie;
 
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 public class FlowSegmentCookieTest extends GenericCookieTest {
@@ -36,5 +40,16 @@ public class FlowSegmentCookieTest extends GenericCookieTest {
     @Test
     public void ensureNoFieldsIntersection() {
         testFieldsIntersection(FlowSegmentCookie.ALL_FIELDS);
+    }
+
+    @Test
+    public void changingOfFlowSegmentCookieTypeTest() {
+        FlowSegmentCookie flowCookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 10);
+        Assert.assertEquals(CookieType.SERVICE_OR_FLOW_SEGMENT, flowCookie.getType());
+
+        FlowSegmentCookie server42Cookie = flowCookie.toBuilder()
+                .type(CookieType.SERVER_42_INGRESS)
+                .build();
+        Assert.assertEquals(CookieType.SERVER_42_INGRESS, server42Cookie.getType());
     }
 }

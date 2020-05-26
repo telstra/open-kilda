@@ -65,10 +65,12 @@ public class RevertNewRulesAction
 
         // Remove possible installed segments
         Collection<FlowSegmentRequestFactory> removeCommands = new ArrayList<>();
+        SpeakerRequestBuildContext removeContext = buildSpeakerContextForRemovalIngressOnly(
+                flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId());
 
         removeCommands.addAll(commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow, flow.getProtectedForwardPath(),
-                flow.getProtectedReversePath(), SpeakerRequestBuildContext.EMPTY));
+                flow.getProtectedReversePath(), removeContext));
 
         SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
                 stateMachine.getCarrier(), removeCommands, stateMachine.getRemoveCommands());

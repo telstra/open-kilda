@@ -22,6 +22,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -53,6 +54,8 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
 
         Flow flow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
 
+        SpeakerRequestBuildContext speakerContext = getSpeakerRequestBuildContext(stateMachine);
+
         if (stateMachine.getOldPrimaryForwardPath() != null) {
             FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             oldForward.setFlow(flow);
@@ -62,19 +65,21 @@ public class RemoveOldRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
                 oldReverse.setFlow(flow);
                 factories.addAll(commandBuilder.buildAll(
                         stateMachine.getCommandContext(), flow, oldForward, oldReverse,
-                        getSpeakerRequestBuildContext(stateMachine)));
+                        speakerContext));
             } else {
                 factories.addAll(commandBuilder.buildAll(
-                        stateMachine.getCommandContext(), flow, oldForward,
-                        getSpeakerRequestBuildContext(stateMachine)));
+                        stateMachine.getCommandContext(), flow, oldForward, speakerContext));
 
             }
         } else if (stateMachine.getOldPrimaryReversePath() != null) {
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
             oldReverse.setFlow(flow);
+            // swap contexts
+            speakerContext.setForward(speakerContext.getReverse());
+            speakerContext.setReverse(PathContext.builder().build());
+
             factories.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, oldReverse,
-                    getSpeakerRequestBuildContext(stateMachine)));
+                    stateMachine.getCommandContext(), flow, oldReverse, speakerContext));
         }
 
         if (stateMachine.getOldProtectedForwardPath() != null) {

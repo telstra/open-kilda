@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.utils.metadata;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.bitops.BitField;
 
@@ -30,7 +32,9 @@ public class RoutingMetadata extends MetadataBase {
     private static final BitField LLDP_MARKER_FLAG     = new BitField(0x0000_0000_0000_0001L);
     private static final BitField ONE_SWITCH_FLOW_FLAG = new BitField(0x0000_0000_0000_0002L);
     private static final BitField ARP_MARKER_FLAG      = new BitField(0x0000_0000_0000_0004L);
-    private static final BitField INPUT_PORT_FIELD     = new BitField(0x0000_0000_0007_0000L);
+    private static final BitField INPUT_PORT_FIELD     = new BitField(0x0000_0000_007F_0000L);
+
+    static final long MAX_INPUT_PORT = INPUT_PORT_FIELD.getMask() >> INPUT_PORT_FIELD.getOffset();
 
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             MetadataBase.ALL_FIELDS,
@@ -56,6 +60,10 @@ public class RoutingMetadata extends MetadataBase {
             result = setField(result, oneSwitchFlowFlag ? 1 : 0, ONE_SWITCH_FLOW_FLAG);
         }
         if (inputPort != null) {
+            if (inputPort < 0 || inputPort > MAX_INPUT_PORT) {
+                throw new IllegalArgumentException(
+                        format("Invalid inputPort %s. Valid range [0, %d]", inputPort, MAX_INPUT_PORT));
+            }
             result = setField(result, inputPort, INPUT_PORT_FIELD);
         }
         return result;
