@@ -302,6 +302,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
             switchProperties.setServer42FlowRtt(update.isServer42FlowRtt());
             switchProperties.setServer42Port(update.getServer42Port());
+            switchProperties.setServer42Vlan(update.getServer42Vlan());
             switchProperties.setServer42MacAddress(update.getServer42MacAddress());
 
             switchPropertiesRepository.createOrUpdate(switchProperties);
@@ -324,7 +325,9 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                 || (updated.isServer42FlowRtt() && !Objects.equals(
                         current.getServer42Port(), updated.getServer42Port()))
                 || (updated.isServer42FlowRtt() && !Objects.equals(
-                        current.getServer42MacAddress(), updated.getServer42MacAddress()));
+                        current.getServer42MacAddress(), updated.getServer42MacAddress()))
+                || (updated.isServer42FlowRtt() && !Objects.equals(
+                        current.getServer42Vlan(), updated.getServer42Vlan()));
     }
 
     private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
@@ -381,6 +384,9 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             }
             if (updatedSwitchProperties.getServer42MacAddress() == null) {
                 throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
+            }
+            if (updatedSwitchProperties.getServer42Vlan() == null) {
+                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
             }
         }
     }

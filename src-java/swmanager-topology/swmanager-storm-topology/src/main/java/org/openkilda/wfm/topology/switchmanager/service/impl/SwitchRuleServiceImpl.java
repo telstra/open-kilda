@@ -77,6 +77,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             data.setSwitchArp(switchProperties.get().isSwitchArp());
             data.setServer42FlowRtt(switchProperties.get().isServer42FlowRtt());
             data.setServer42Port(switchProperties.get().getServer42Port());
+            data.setServer42Vlan(switchProperties.get().getServer42Vlan());
             data.setServer42MacAddress(switchProperties.get().getServer42MacAddress());
             Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
             List<Integer> flowPorts = new ArrayList<>();
@@ -115,6 +116,7 @@ public class SwitchRuleServiceImpl implements SwitchRuleService {
             data.setSwitchArp(switchProperties.get().isSwitchArp());
             data.setServer42FlowRtt(switchProperties.get().isServer42FlowRtt());
             data.setServer42Port(switchProperties.get().getServer42Port());
+            data.setServer42Vlan(switchProperties.get().getServer42Vlan());
             data.setServer42MacAddress(switchProperties.get().getServer42MacAddress());
             Collection<FlowPath> flowPaths = flowPathRepository.findBySrcSwitch(switchId);
             List<Integer> flowPorts = new ArrayList<>();

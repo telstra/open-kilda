@@ -186,6 +186,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                     .multiTable(properties.isMultiTable())
                     .inputPort(0)
                     .outputPort(0)
+                    .server42Vlan(properties.getServer42Vlan())
                     .server42MacAddress(properties.getServer42MacAddress());
 
             if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE) {

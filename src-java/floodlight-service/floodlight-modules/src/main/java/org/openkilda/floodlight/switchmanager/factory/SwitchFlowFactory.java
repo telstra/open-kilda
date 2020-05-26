@@ -285,10 +285,12 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 output vlan flow generator.
      */
-    public SwitchFlowGenerator getServer42OutputVlanFlowGenerator(int server42Port, MacAddress server42MacAddress) {
+    public SwitchFlowGenerator getServer42OutputVlanFlowGenerator(
+            int server42Port, int server42Vlan, MacAddress server42MacAddress) {
         return Server42OutputVlanFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .server42Port(server42Port)
+                .server42Vlan(server42Vlan)
                 .server42MacAddress(server42MacAddress)
                 .build();
     }
@@ -296,10 +298,12 @@ public class SwitchFlowFactory implements IService {
     /**
      * Get Server 42 output VXLAN flow generator.
      */
-    public SwitchFlowGenerator getServer42OutputVxlanFlowGenerator(int server42Port, MacAddress server42MacAddress) {
+    public SwitchFlowGenerator getServer42OutputVxlanFlowGenerator(
+            int server42Port, int server42Vlan, MacAddress server42MacAddress) {
         return Server42OutputVxlanFlowGenerator.builder()
                 .featureDetectorService(featureDetectorService)
                 .server42Port(server42Port)
+                .server42Vlan(server42Vlan)
                 .server42MacAddress(server42MacAddress)
                 .build();
     }

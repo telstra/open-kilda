@@ -64,6 +64,9 @@ public class SwitchRulesDeleteRequest extends CommandData {
     @JsonProperty("server42_port")
     private Integer server42Port;
 
+    @JsonProperty("server42_vlan")
+    private Integer server42Vlan;
+
     @JsonProperty("server42_mac_address")
     private MacAddress server42MacAddress;
 

@@ -248,7 +248,7 @@ public class SwitchValidateFsm
         boolean server42FlowRtt = switchProperties.isServer42FlowRtt();
 
         carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp,
-                switchArp, server42FlowRtt, switchProperties.getServer42Port(),
+                switchArp, server42FlowRtt, switchProperties.getServer42Port(), switchProperties.getServer42Vlan(),
                 switchProperties.getServer42MacAddress(), islPorts, flowPorts, flowLldpPorts, flowArpPorts,
                 server42FlowRttPorts));
 

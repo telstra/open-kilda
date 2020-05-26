@@ -41,6 +41,9 @@ public class InstallServer42Flow extends BaseInstallFlow {
     @JsonProperty("server42_mac_address")
     protected MacAddress server42MacAddress;
 
+    @JsonProperty("server42_vlan")
+    protected int server42Vlan;
+
     @Builder
     @JsonCreator
     public InstallServer42Flow(@JsonProperty(TRANSACTION_ID) UUID transactionId,
@@ -50,8 +53,10 @@ public class InstallServer42Flow extends BaseInstallFlow {
                                @JsonProperty("input_port") Integer inputPort,
                                @JsonProperty("output_port") Integer outputPort,
                                @JsonProperty("multi_table") boolean multiTable,
-                               @JsonProperty("server42_mac_address") MacAddress server42MacAddress) {
+                               @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
+                               @JsonProperty("server42_vlan") int server42Vlan) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         this.server42MacAddress = server42MacAddress;
+        this.server42Vlan = server42Vlan;
     }
 }
