@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Singular;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -31,8 +32,11 @@ public class FlowApplyActions implements Serializable {
 
     @JsonProperty("output")
     private String flowOutput;
+
+    @Singular
     @JsonProperty("set_field_actions")
     private List<FlowSetFieldAction> setFieldActions;
+
     @JsonProperty("push_vlan")
     private String pushVlan;
     @JsonProperty("POP_VLAN")
@@ -67,4 +71,16 @@ public class FlowApplyActions implements Serializable {
         this.swapFieldAction = swapFieldAction;
     }
 
+    public static class FlowApplyActionsBuilder {
+        /**
+         * Setter for {@code pushVlan}. Set value only on first call.
+         */
+        public FlowApplyActionsBuilder firstPushVlan(String value) {
+            // FIXME(surabujin): should we transform pushVlan into list?
+            if (pushVlan == null) {
+                pushVlan = value;
+            }
+            return this;
+        }
+    }
 }
