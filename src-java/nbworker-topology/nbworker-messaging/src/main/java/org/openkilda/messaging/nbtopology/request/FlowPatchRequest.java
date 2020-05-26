@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPatch;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -29,10 +29,10 @@ import lombok.Value;
 public class FlowPatchRequest extends FlowsBaseRequest {
 
     @JsonProperty("flow")
-    protected FlowDto flow;
+    protected FlowPatch flow;
 
     @JsonCreator
-    public FlowPatchRequest(@JsonProperty("flow") FlowDto flow) {
+    public FlowPatchRequest(@JsonProperty("flow") FlowPatch flow) {
         this.flow = flow;
     }
 }

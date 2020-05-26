@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -32,5 +32,6 @@ public enum StreamType {
     HISTORY,
     FLOW_VALIDATION_WORKER,
     METER_MODIFY_WORKER,
-    PING
+    PING,
+    FLOW_PATCH
 }

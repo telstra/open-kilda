@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
+import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
@@ -28,8 +29,11 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 
 import org.junit.Test;
@@ -54,6 +58,7 @@ public class FlowMapperTest {
     private static final String DESCRIPTION = "Description";
     private static final String ENCAPSULATION_TYPE = "transit_vlan";
     private static final String PATH_COMPUTATION_STRATEGY = "path_computation_strategy";
+    private static final String TARGET_PATH_COMPUTATION_STRATEGY = "cost";
     private static final DetectConnectedDevicesV2 SRC_DETECT_CONNECTED_DEVICES = new DetectConnectedDevicesV2(
             true, false);
     private static final DetectConnectedDevicesV2 DST_DETECT_CONNECTED_DEVICES = new DetectConnectedDevicesV2(
@@ -189,5 +194,40 @@ public class FlowMapperTest {
                 actual.getDetectConnectedDevices().isDstLldp());
         assertEquals(expected.getDestination().getDetectConnectedDevices().isArp(),
                 actual.getDetectConnectedDevices().isDstArp());
+    }
+
+    @Test
+    public void testFlowPatchDtoToFlowDto() {
+        FlowPatchDto flowPatchDto = new FlowPatchDto(LATENCY, PRIORITY, PERIODIC_PINGS,
+                TARGET_PATH_COMPUTATION_STRATEGY);
+        FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
+        assertEquals(flowPatchDto.getMaxLatency(), flowPatch.getMaxLatency());
+        assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
+        assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
+        assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
+                flowPatch.getTargetPathComputationStrategy().name().toLowerCase());
+    }
+
+    @Test
+    public void testFlowPatchV2ToFlowDto() {
+        FlowPatchV2 flowPatchDto = new FlowPatchV2(new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN),
+                new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN), LATENCY, PRIORITY, PERIODIC_PINGS,
+                TARGET_PATH_COMPUTATION_STRATEGY, DIVERSE_FLOW_ID, (long) BANDWIDTH, ALLOCATE_PROTECTED_PATH);
+        FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
+
+        assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSourceSwitch());
+        assertEquals(flowPatchDto.getSource().getPortNumber(), flowPatch.getSourcePort());
+        assertEquals(flowPatchDto.getSource().getVlanId(), flowPatch.getSourceVlan());
+        assertEquals(flowPatchDto.getDestination().getSwitchId(), flowPatch.getDestinationSwitch());
+        assertEquals(flowPatchDto.getDestination().getPortNumber(), flowPatch.getDestinationPort());
+        assertEquals(flowPatchDto.getDestination().getVlanId(), flowPatch.getDestinationVlan());
+        assertEquals(flowPatchDto.getMaxLatency(), flowPatch.getMaxLatency());
+        assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
+        assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
+        assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
+                flowPatch.getTargetPathComputationStrategy().name().toLowerCase());
+        assertEquals(flowPatchDto.getDiverseFlowId(), flowPatch.getDiverseFlowId());
+        assertEquals(flowPatchDto.getMaximumBandwidth(), flowPatch.getBandwidth());
+        assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
     }
 }

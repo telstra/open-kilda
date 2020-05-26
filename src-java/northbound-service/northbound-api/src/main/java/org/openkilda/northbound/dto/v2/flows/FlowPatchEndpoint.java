@@ -13,26 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.bolts;
+package org.openkilda.northbound.dto.v2.flows;
 
-import org.openkilda.messaging.command.flow.FlowRequest;
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 
-public interface FlowOperationsCarrier {
-    /**
-     * Sends update for periodic ping.
-     * @param flowId flow id
-     * @param enabled flag
-     */
-    void emitPeriodicPingUpdate(String flowId, boolean enabled);
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-    /**
-     * Sends Flow HS Update command.
-     */
-    void sendUpdateRequest(FlowRequest request);
-
-    /**
-     * Sends Northbound response.
-     */
-    void sendNorthboundResponse(InfoData data);
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class FlowPatchEndpoint {
+    private SwitchId switchId;
+    private Integer portNumber;
+    private Integer vlanId;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,16 +15,18 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import static java.lang.String.format;
 import static org.apache.commons.collections4.ListUtils.union;
 
+import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
@@ -41,12 +43,13 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
+import org.openkilda.wfm.share.mappers.RequestedFlowMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -296,36 +299,33 @@ public class FlowOperationsService {
     }
 
     /**
-     * Update flow.
-     *
-     * @param flow flow.
-     * @return updated flow.
+     * Partial update flow.
      */
-    public Flow updateFlow(FlowOperationsCarrier carrier, FlowDto flow) throws FlowNotFoundException {
+    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch) throws FlowNotFoundException {
         UpdateFlowResult updateFlowResult = transactionManager.doInTransaction(() -> {
-            Optional<Flow> foundFlow = flowRepository.findById(flow.getFlowId());
+            Optional<Flow> foundFlow = flowRepository.findById(flowPatch.getFlowId());
             if (!foundFlow.isPresent()) {
                 return Optional.<UpdateFlowResult>empty();
             }
             Flow currentFlow = foundFlow.get();
 
-            final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flow, currentFlow);
+            final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flowPatch, currentFlow);
 
-            if (flow.getMaxLatency() != null) {
-                currentFlow.setMaxLatency(flow.getMaxLatency());
+            if (flowPatch.getMaxLatency() != null) {
+                currentFlow.setMaxLatency(flowPatch.getMaxLatency());
             }
-            if (flow.getPriority() != null) {
-                currentFlow.setPriority(flow.getPriority());
+            if (flowPatch.getPriority() != null) {
+                currentFlow.setPriority(flowPatch.getPriority());
             }
-            if (flow.getPeriodicPings() != null) {
+            if (flowPatch.getPeriodicPings() != null) {
                 boolean oldPeriodicPings = currentFlow.isPeriodicPings();
-                currentFlow.setPeriodicPings(flow.getPeriodicPings());
+                currentFlow.setPeriodicPings(flowPatch.getPeriodicPings());
                 if (oldPeriodicPings != currentFlow.isPeriodicPings()) {
-                    carrier.emitPeriodicPingUpdate(flow.getFlowId(), flow.getPeriodicPings());
+                    carrier.emitPeriodicPingUpdate(flowPatch.getFlowId(), flowPatch.getPeriodicPings());
                 }
             }
-            if (flow.getTargetPathComputationStrategy() != null) {
-                currentFlow.setTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
+            if (flowPatch.getTargetPathComputationStrategy() != null) {
+                currentFlow.setTargetPathComputationStrategy(flowPatch.getTargetPathComputationStrategy());
             }
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);
@@ -334,42 +334,94 @@ public class FlowOperationsService {
 
             return Optional.of(result.updatedFlow(currentFlow).build());
 
-        }).orElseThrow(() -> new FlowNotFoundException(flow.getFlowId()));
+        }).orElseThrow(() -> new FlowNotFoundException(flowPatch.getFlowId()));
 
-        if (updateFlowResult.isNeedRerouteFlow()) {
-            Flow updatedFlow = updateFlowResult.getUpdatedFlow();
-            Set<IslEndpoint> affectedIslEndpoints =
-                    Sets.newHashSet(new IslEndpoint(flow.getSourceSwitch(), flow.getSourcePort()),
-                            new IslEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()));
-            carrier.sendRerouteRequest(updatedFlow.getPaths(), affectedIslEndpoints,
-                    updateFlowResult.getRerouteReason());
+        Flow updatedFlow = updateFlowResult.getUpdatedFlow();
+        if (updateFlowResult.isNeedUpdateFlow()) {
+            FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(updatedFlow);
+            carrier.sendUpdateRequest(addChangedFields(flowRequest, flowPatch, updateFlowResult.getDiverseFlowId()));
+        } else {
+            carrier.sendNorthboundResponse(new FlowResponse(FlowMapper.INSTANCE.map(updatedFlow)));
         }
 
         return updateFlowResult.getUpdatedFlow();
     }
 
     @VisibleForTesting
-    UpdateFlowResult.UpdateFlowResultBuilder prepareFlowUpdateResult(FlowDto flowDto, Flow flow) {
-        boolean changedStrategy = flowDto.getPathComputationStrategy() != null
-                && !flowDto.getPathComputationStrategy().equals(flow.getPathComputationStrategy());
-        boolean changedMaxLatency = flowDto.getMaxLatency() != null
-                && !flowDto.getMaxLatency().equals(flow.getMaxLatency());
-        boolean strategyIsMaxLatency = PathComputationStrategy.MAX_LATENCY.equals(flowDto.getPathComputationStrategy())
-                || flowDto.getPathComputationStrategy() == null
+    UpdateFlowResult.UpdateFlowResultBuilder prepareFlowUpdateResult(FlowPatch flowPatch, Flow flow) {
+        boolean updateRequired = flowPatch.getPathComputationStrategy() != null
+                && !flowPatch.getPathComputationStrategy().equals(flow.getPathComputationStrategy());
+        boolean changedMaxLatency = flowPatch.getMaxLatency() != null
+                && !flowPatch.getMaxLatency().equals(flow.getMaxLatency());
+        boolean strategyIsMaxLatency =
+                PathComputationStrategy.MAX_LATENCY.equals(flowPatch.getPathComputationStrategy())
+                || flowPatch.getPathComputationStrategy() == null
                 && PathComputationStrategy.MAX_LATENCY.equals(flow.getPathComputationStrategy());
+        updateRequired |= changedMaxLatency && strategyIsMaxLatency;
 
-        String reason = null;
-        if (changedStrategy) {
-            reason = format("initiated via Northbound, path computation strategy was changed from %s to %s",
-                    flow.getPathComputationStrategy(), flowDto.getPathComputationStrategy());
-        } else if (changedMaxLatency && strategyIsMaxLatency) {
-            reason = format("initiated via Northbound, max latency was changed from %d to %d",
-                    flow.getMaxLatency(), flowDto.getMaxLatency());
+        // source endpoint
+        updateRequired |= flowPatch.getSourceSwitch() != null
+                && !flow.getSrcSwitch().getSwitchId().equals(flowPatch.getSourceSwitch());
+        updateRequired |= flowPatch.getSourcePort() != null
+                && flow.getSrcPort() != flowPatch.getSourcePort();
+        updateRequired |= flowPatch.getSourceVlan() != null
+                && flow.getSrcVlan() != flowPatch.getSourceVlan();
+
+        // destination endpoint
+        updateRequired |= flowPatch.getDestinationSwitch() != null
+                && !flow.getDestSwitch().getSwitchId().equals(flowPatch.getDestinationSwitch());
+        updateRequired |= flowPatch.getDestinationPort() != null
+                && flow.getDestPort() != flowPatch.getDestinationPort();
+        updateRequired |= flowPatch.getDestinationVlan() != null
+                && flow.getDestVlan() != flowPatch.getDestinationVlan();
+
+        updateRequired |= flowPatch.getBandwidth() != null && flow.getBandwidth() != flowPatch.getBandwidth();
+        updateRequired |= flowPatch.getAllocateProtectedPath() != null
+                && !flowPatch.getAllocateProtectedPath().equals(flow.isAllocateProtectedPath());
+
+        String diverseFlowId = null;
+        boolean changedDiverseFlowId = false;
+        if ("".equals(flowPatch.getDiverseFlowId())) {
+            changedDiverseFlowId = true;
+        } else if (flowPatch.getDiverseFlowId() == null) {
+            diverseFlowId = flowRepository.getOrCreateFlowGroupId(flow.getFlowId())
+                    .map(groupId -> flowRepository.findFlowsIdByGroupId(groupId))
+                    .orElse(Collections.emptyList()).stream()
+                    .filter(flowId -> !flow.getFlowId().equals(flowId))
+                    .findAny().orElse(null);
+        } else if (flowPatch.getDiverseFlowId() != null) {
+            changedDiverseFlowId = flowRepository.getOrCreateFlowGroupId(flowPatch.getDiverseFlowId())
+                    .map(groupId -> !flowRepository.findFlowsIdByGroupId(groupId).contains(flow.getFlowId()))
+                    .orElse(true);
+            diverseFlowId = flowPatch.getDiverseFlowId();
         }
+        updateRequired |= changedDiverseFlowId;
 
         return UpdateFlowResult.builder()
-                .needRerouteFlow(changedStrategy || changedMaxLatency && strategyIsMaxLatency)
-                .rerouteReason(reason);
+                .needUpdateFlow(updateRequired)
+                .diverseFlowId(diverseFlowId);
+    }
+
+    private FlowRequest addChangedFields(FlowRequest flowRequest, FlowPatch flowPatch, String diverseFlowId) {
+        SwitchId srcSwitchId = Optional.ofNullable(flowPatch.getSourceSwitch())
+                .orElse(flowRequest.getSource().getSwitchId());
+        int srcPort = Optional.ofNullable(flowPatch.getSourcePort()).orElse(flowRequest.getSource().getPortNumber());
+        int srcVlan = Optional.ofNullable(flowPatch.getSourceVlan()).orElse(flowRequest.getSource().getOuterVlanId());
+        flowRequest.setSource(new FlowEndpoint(srcSwitchId, srcPort, srcVlan));
+
+        SwitchId dstSwitchId = Optional.ofNullable(flowPatch.getDestinationSwitch())
+                .orElse(flowRequest.getDestination().getSwitchId());
+        int dstPort = Optional.ofNullable(flowPatch.getDestinationPort())
+                .orElse(flowRequest.getDestination().getPortNumber());
+        int dstVlan = Optional.ofNullable(flowPatch.getDestinationVlan())
+                .orElse(flowRequest.getDestination().getOuterVlanId());
+        flowRequest.setDestination(new FlowEndpoint(dstSwitchId, dstPort, dstVlan));
+
+        Optional.ofNullable(flowPatch.getBandwidth()).ifPresent(flowRequest::setBandwidth);
+        Optional.ofNullable(flowPatch.getAllocateProtectedPath()).ifPresent(flowRequest::setAllocateProtectedPath);
+        Optional.ofNullable(diverseFlowId).ifPresent(flowRequest::setDiverseFlowId);
+
+        return flowRequest;
     }
 
     /**
@@ -411,7 +463,7 @@ public class FlowOperationsService {
     @Builder
     static class UpdateFlowResult {
         private Flow updatedFlow;
-        private boolean needRerouteFlow;
-        private String rerouteReason;
+        private boolean needUpdateFlow;
+        private String diverseFlowId;
     }
 }
