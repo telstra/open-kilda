@@ -59,21 +59,6 @@ class Registry(object):
         return value
 
 
-class ProcMonitor(collections.Iterable):
-    def __init__(self):
-        self.proc_set = weakref.WeakSet()
-
-    def __iter__(self):
-        return iter(self.proc_set)
-
-    def add(self, proc):
-        self.proc_set.add(proc)
-
-    def check_status(self):
-        for proc in self.proc_set:
-            proc.poll()
-
-
 class AbstractSignal(object):
     def __init__(self, signum):
         self.signum = signum
