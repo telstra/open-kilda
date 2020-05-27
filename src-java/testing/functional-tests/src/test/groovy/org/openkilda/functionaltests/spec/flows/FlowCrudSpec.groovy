@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
