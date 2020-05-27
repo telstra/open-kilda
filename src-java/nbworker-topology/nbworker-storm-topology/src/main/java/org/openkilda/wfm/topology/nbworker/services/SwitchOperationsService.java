@@ -314,6 +314,13 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         if (result.isSwitchSyncRequired()) {
             carrier.requestSwitchSync(switchId);
         }
+
+        if (switchPropertiesDto.isServer42FlowRtt()) {
+            carrier.enableServer42FlowRttOnSwitch(switchId);
+        } else {
+            carrier.disableServer42FlowRttOnSwitch(switchId);
+        }
+
         return result.switchPropertiesDto;
     }
 

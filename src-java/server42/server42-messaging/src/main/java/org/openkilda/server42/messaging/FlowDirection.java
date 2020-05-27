@@ -15,6 +15,7 @@
 
 package org.openkilda.server42.messaging;
 
+//TODO(nmarchenko): remove that and use org.openkilda.messaging.model.FlowDirection instead
 public enum FlowDirection {
     FORWARD,
     REVERSE;
