@@ -176,9 +176,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         String id = STATS_KILDA_SPEAKER_SPOUT.name();
         KafkaTopicsConfig topics = topologyConfig.getKafkaTopics();
         KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfig(
-                    ImmutableList.of(
-                            topics.getSpeakerFlowHsTopic(),
-                            topics.getSpeakerFlowTopic()),
+                    ImmutableList.of(topics.getSpeakerFlowHsTopic()),
                     id, StringDeserializer.class)
                 .setRecordTranslator(new JsonKafkaTranslator())
                 .build();

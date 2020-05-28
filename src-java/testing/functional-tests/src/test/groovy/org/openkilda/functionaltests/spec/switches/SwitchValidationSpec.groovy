@@ -16,9 +16,10 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.BaseInstallFlow
 import org.openkilda.messaging.command.flow.InstallEgressFlow
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -58,8 +59,8 @@ Description of fields:
 """)
 @Tags(SMOKE)
 class SwitchValidationSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
-    String flowTopic
+    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
@@ -588,16 +589,16 @@ misconfigured"
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
                                                                   .meterEntries*.meterId).first()
-        producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
                         OutputVlanType.REPLACE, false, new FlowEndpoint(switchPair.src.dpId, 1))).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
-            producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
+            producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.flowId, 1L, transitSw, 1, 2, 1,
                             FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
         }
-        producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, switchPair.src.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
@@ -952,8 +953,9 @@ misconfigured"
         }*.cookie
     }
 
-    private static Message buildMessage(final CommandData data) {
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
+    private static Message buildMessage(final BaseInstallFlow commandData) {
+        InstallFlowForSwitchManagerRequest request = new InstallFlowForSwitchManagerRequest(commandData)
+        return new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 
     private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {

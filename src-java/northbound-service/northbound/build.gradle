@@ -12,7 +12,7 @@ dependencies {
     }
 
     implementation project(':northbound-api')
-    implementation project(':flow-messaging')
+    implementation project(':flowhs-messaging')
     implementation project(':nbworker-messaging')
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')

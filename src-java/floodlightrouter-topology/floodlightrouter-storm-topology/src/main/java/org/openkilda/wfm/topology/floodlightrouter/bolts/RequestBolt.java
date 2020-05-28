@@ -39,20 +39,12 @@ import java.util.Set;
 @Slf4j
 public class RequestBolt extends AbstractBolt {
     protected final String outputMessageStream;
-    protected final String outputAbstractMessageStream;
     protected final Set<String> regions;
 
     protected transient SwitchTracker switchTracker;
 
     public RequestBolt(String outputMessageStream, Set<String> regions) {
         this.outputMessageStream = outputMessageStream;
-        this.outputAbstractMessageStream = null;
-        this.regions = regions;
-    }
-
-    public RequestBolt(String outputMessageStream, String outputAbstractMessageStream, Set<String> regions) {
-        this.outputMessageStream = outputMessageStream;
-        this.outputAbstractMessageStream = outputAbstractMessageStream;
         this.regions = regions;
     }
 
@@ -100,9 +92,6 @@ public class RequestBolt extends AbstractBolt {
         String targetStream = Stream.formatWithRegion(outputMessageStream, region);
         String key = pullRequestKey(input);
         Object value = pullRequest(input);
-        if (value instanceof AbstractMessage) {
-            targetStream = Stream.formatWithRegion(outputAbstractMessageStream, region);
-        }
         getOutput().emit(targetStream, input, makeSpeakerTuple(key, value));
     }
 
@@ -132,12 +121,9 @@ public class RequestBolt extends AbstractBolt {
                                    FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         if (regions == null || regions.isEmpty()) {
             outputFieldsDeclarer.declareStream(outputMessageStream, fields);
-            outputFieldsDeclarer.declareStream(outputAbstractMessageStream, fields);
         } else {
             for (String region : regions) {
                 outputFieldsDeclarer.declareStream(Stream.formatWithRegion(outputMessageStream, region), fields);
-                outputFieldsDeclarer.declareStream(
-                        Stream.formatWithRegion(outputAbstractMessageStream, region), fields);
             }
         }
 

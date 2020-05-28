@@ -12,17 +12,19 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.BaseInstallFlow
 import org.openkilda.messaging.command.flow.InstallEgressFlow
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.OutputVlanType
+import org.openkilda.model.cookie.Cookie
 
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -31,8 +33,8 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
 class SwitchActivationSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
-    String flowTopic
+    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
@@ -92,16 +94,16 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                                                                   .meterEntries*.meterId).first()
-        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, null)).toJson()))
+                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17))).toJson()))
 
-        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
 
-        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
@@ -159,7 +161,8 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }
     }
 
-    private static Message buildMessage(final CommandData data) {
+    private static Message buildMessage(final BaseInstallFlow commandData) {
+        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
         return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }

@@ -42,11 +42,8 @@ public class FeatureToggles {
             false, // create_flow
             false, // update_flow
             false, // delete_flow
-            false, // push_flow
-            false, // unpush_flow
             true, // use_bfd_for_isl_integrity_check
             true, // floodlight_router_periodic_sync
-            false, // flows_reroute_via_flowhs
             false, // flows_reroute_using_default_encap_type
             false, // collect_grpc_stats
             false // server42_flow_rtt
@@ -71,20 +68,11 @@ public class FeatureToggles {
     @Property(name = "delete_flow")
     private Boolean deleteFlowEnabled;
 
-    @Property(name = "push_flow")
-    private Boolean pushFlowEnabled;
-
-    @Property(name = "unpush_flow")
-    private Boolean unpushFlowEnabled;
-
     @Property(name = "use_bfd_for_isl_integrity_check")
     private Boolean useBfdForIslIntegrityCheck;
 
     @Property(name = "floodlight_router_periodic_sync")
     private Boolean floodlightRoutePeriodicSync;
-
-    @Property(name = "flows_reroute_via_flowhs")
-    private Boolean flowsRerouteViaFlowHs;
 
     @Property(name = "flows_reroute_using_default_encap_type")
     private Boolean flowsRerouteUsingDefaultEncapType;
@@ -100,19 +88,14 @@ public class FeatureToggles {
      */
     @Builder(toBuilder = true)
     FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled, Boolean updateFlowEnabled,
-                   Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled,
-                   Boolean useBfdForIslIntegrityCheck, Boolean floodlightRoutePeriodicSync,
-                   Boolean flowsRerouteViaFlowHs, Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
-                   Boolean server42FlowRtt) {
+                   Boolean deleteFlowEnabled, Boolean useBfdForIslIntegrityCheck, Boolean floodlightRoutePeriodicSync,
+                   Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats, Boolean server42FlowRtt) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
-        this.pushFlowEnabled = pushFlowEnabled;
-        this.unpushFlowEnabled = unpushFlowEnabled;
         this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
         this.floodlightRoutePeriodicSync = floodlightRoutePeriodicSync;
-        this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
         this.flowsRerouteUsingDefaultEncapType = flowsRerouteUsingDefaultEncapType;
         this.collectGrpcStats = collectGrpcStats;
         this.server42FlowRtt = server42FlowRtt;

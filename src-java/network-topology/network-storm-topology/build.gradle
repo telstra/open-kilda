@@ -16,7 +16,7 @@ dependencies {
     implementation project(':kilda-reporting')
     implementation project(':nbworker-messaging')
     implementation project(':reroute-messaging')
-    implementation project(':flow-messaging')
+    implementation project(':flowhs-messaging')
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')
     runtimeOnly project(':kilda-persistence-neo4j')

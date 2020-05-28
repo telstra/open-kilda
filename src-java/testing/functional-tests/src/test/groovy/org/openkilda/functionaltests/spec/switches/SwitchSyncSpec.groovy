@@ -13,8 +13,9 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.BaseInstallFlow
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -37,8 +38,8 @@ import spock.lang.Unroll
 "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
 class SwitchSyncSpec extends BaseSpecification {
 
-    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
-    String flowTopic
+    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    String speakerTopic
 
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -175,18 +176,18 @@ class SwitchSyncSpec extends BaseSpecification {
                 - northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId
                 - northbound.getAllMeters(dstSwitch.dpId).meterEntries*.meterId)[0]
 
-        producer.send(new ProducerRecord(flowTopic, srcSwitch.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, srcSwitch.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
                         false, false)).toJson()))
         involvedSwitches[1..-2].each { transitSw ->
-            producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
+            producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, transitSw.dpId, 1, 2, 1,
                             FlowEncapsulationType.TRANSIT_VLAN, false))
                     .toJson()))
         }
-        producer.send(new ProducerRecord(flowTopic, dstSwitch.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, dstSwitch.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, srcSwitch.dpId, false,
@@ -335,7 +336,8 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    private static Message buildMessage(final CommandData data) {
+    private static Message buildMessage(final BaseInstallFlow commandData) {
+        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
         return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }

@@ -17,7 +17,6 @@ package org.openkilda.northbound.controller.v1;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
-import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -204,55 +203,33 @@ public class FlowController extends BaseController {
         return flowService.pathFlow(flowId);
     }
 
-
     /**
      * Push flows to kilda ... this can be used to get flows into kilda without kilda creating them
      * itself. Kilda won't expect to create them .. it may (and should) validate them at some stage.
      *
-     * @param externalFlows a list of flows to push to kilda for it to absorb without expectation of creating the flow
-     *        rules
-     * @return list of flow
+     * @deprecated Push flow operation is deprecated.
      */
+    @Deprecated
     @ApiOperation(value = "Push flows without expectation of modifying switches. It can push to switch and validate.",
             response = BatchResults.class)
     @PutMapping(path = "/push")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<BatchResults> pushFlows(
-            @RequestBody List<FlowInfoData> externalFlows,
-            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
-                    required = false)
-            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
-            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
-                    required = false)
-            @RequestParam("verify") Optional<Boolean> verify) {
-
-        Boolean defaultPropagate = false;
-        Boolean defaultVerify = false;
-        return flowService.pushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
+    public CompletableFuture<BatchResults> pushFlows() {
+        return flowService.pushFlows();
     }
-
 
     /**
      * Unpush flows to kilda ... essentially the opposite of push.
      *
-     * @param externalFlows a list of flows to unpush without propagation to Floodlight
-     * @return list of flow
+     * @deprecated Unpush flow operation is deprecated.
      */
+    @Deprecated
     @ApiOperation(value = "Unpush flows without expectation of modifying switches. It can push to switch and validate.",
             response = BatchResults.class)
     @PutMapping(path = "/unpush")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<BatchResults> unpushFlows(
-            @RequestBody List<FlowInfoData> externalFlows,
-            @ApiParam(value = "default: false. If true, this will propagate rules to the switches.",
-                    required = false)
-            @RequestParam(value = "propagate", required = false) Optional<Boolean> propagate,
-            @ApiParam(value = "default: false. If true, will wait until poll timeout for validation.",
-                    required = false)
-            @RequestParam(value = "verify", required = false) Optional<Boolean> verify) {
-        Boolean defaultPropagate = false;
-        Boolean defaultVerify = false;
-        return flowService.unpushFlows(externalFlows, propagate.orElse(defaultPropagate), verify.orElse(defaultVerify));
+    public CompletableFuture<BatchResults> unpushFlows() {
+        return flowService.unpushFlows();
     }
 
 

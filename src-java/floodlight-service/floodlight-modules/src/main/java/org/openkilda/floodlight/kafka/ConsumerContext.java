@@ -58,10 +58,6 @@ public class ConsumerContext {
         return commandProcessor;
     }
 
-    public String getKafkaFlowTopic() {
-        return kafkaChannel.getFlowTopic();
-    }
-
     public String getKafkaTopoDiscoTopic() {
         return kafkaChannel.getTopoDiscoTopic();
     }

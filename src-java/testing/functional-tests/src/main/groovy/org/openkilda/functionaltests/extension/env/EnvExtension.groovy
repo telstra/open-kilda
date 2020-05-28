@@ -49,9 +49,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
     @Value('${spring.profiles.active}')
     String profile
-    
-    @Value('${use.hs}')
-    boolean useHs
 
     @Value('${use.multitable}')
     boolean useMultitable
@@ -88,7 +85,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .deleteFlowEnabled(true)
                 .flowsRerouteOnIslDiscoveryEnabled(true)
                 .useBfdForIslIntegrityCheck(true)
-                .flowsRerouteViaFlowHs(useHs)
                 .floodlightRoutePeriodicSync(true)
                 .collectGrpcStats(true)
                 .build()

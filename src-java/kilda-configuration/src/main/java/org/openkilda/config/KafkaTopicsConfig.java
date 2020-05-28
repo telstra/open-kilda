@@ -34,16 +34,6 @@ public interface KafkaTopicsConfig {
     @Default("kilda.ctrl")
     String getCtrlTopic();
 
-    @Key("flow")
-    @FallbackKey("kafka.flow.topic")
-    @Default("kilda.flow.storm")
-    String getFlowTopic();
-
-    @Key("flow.region")
-    @FallbackKey("kafka.flow.topic.region")
-    @Default("kilda.flow")
-    String getFlowRegionTopic();
-
     @Key("northbound.flow.priv")
     @Default("kilda.northbound.flowhs.priv")
     String getFlowHsTopic();
@@ -113,11 +103,6 @@ public interface KafkaTopicsConfig {
     @FallbackKey("kafka.speaker.disco.region")
     @Default("kilda.speaker.disco")
     String getSpeakerDiscoRegionTopic();
-
-    @Key("speaker.flow")
-    @FallbackKey("kafka.speaker.flow")
-    @Default("kilda.speaker.flow.storm")
-    String getSpeakerFlowTopic();
 
     @Key("speaker.flowhs")
     @Default("kilda.speaker.flowhs.storm")
