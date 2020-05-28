@@ -23,6 +23,7 @@ import org.openkilda.testing.service.traffexam.model.ExamResources;
 import org.openkilda.testing.service.traffexam.model.Host;
 import org.openkilda.testing.service.traffexam.model.LldpData;
 import org.openkilda.testing.service.traffexam.model.UdpData;
+import org.openkilda.testing.service.traffexam.model.Vlan;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
 import java.util.List;
@@ -51,7 +52,7 @@ public interface TraffExamService {
 
     void stopAll();
 
-    Address allocateFreeAddress(Host host, int vlan) throws OperationalException, Inet4ValueException;
+    Address allocateFreeAddress(Host host, List<Vlan> vlan) throws OperationalException, Inet4ValueException;
 
     void releaseAddress(Address subject);
 

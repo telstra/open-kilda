@@ -42,6 +42,7 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
@@ -332,7 +333,8 @@ class SwitchHelper {
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
         sections.each { String section ->
             if (section == "proper") {
-                assert switchValidateInfo.rules.proper.findAll { !isDefaultRule(it) }.empty
+                assert switchValidateInfo.rules.proper.findAll { !isDefaultRule(it) &&
+                        new Cookie(it).getType() != CookieType.SHARED_OF_FLOW }.empty
             } else {
                 assert switchValidateInfo.rules."$section".findAll { cookie ->
                     isIngressRulePassThrough(cookie) || !isDefaultRule(cookie)
