@@ -34,7 +34,6 @@ class Context(object):
         self.iface = iface
         self.rest_bind = rest_bind
 
-        self.children = common.ProcMonitor()
         self.shared_registry = common.Registry()
         self._acquired_resources = []
 

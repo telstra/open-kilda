@@ -13,15 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.model;
+package org.openkilda.persistence.converters;
 
-import lombok.Getter;
+import org.openkilda.model.GroupId;
 
-public class TickClock {
-    @Getter
-    private long currentTimeMs = 0;
+import org.neo4j.ogm.typeconversion.AttributeConverter;
 
-    public void tick(long timeMs) {
-        currentTimeMs = timeMs;
+/**
+ * Converter to convert {@link GroupId} to {@link Long} and back.
+ */
+public class GroupIdConverter implements AttributeConverter<GroupId, Long> {
+
+    @Override
+    public Long toGraphProperty(GroupId value) {
+        if (value == null) {
+            return null;
+        }
+        return value.getValue();
+    }
+
+    @Override
+    public GroupId toEntityAttribute(Long value) {
+        if (value == null) {
+            return null;
+        }
+        return new GroupId(value);
     }
 }

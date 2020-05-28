@@ -94,12 +94,11 @@ public class CommandBuilderImpl implements CommandBuilder {
                     }
                 });
 
+        SwitchProperties switchProperties = getSwitchProperties(switchId);
         flowPathRepository.findByEndpointSwitch(switchId)
                 .forEach(flowPath -> {
                     if (switchRules.contains(flowPath.getCookie().getValue())) {
-                        Flow flow = flowRepository.findById(flowPath.getFlow().getFlowId())
-                                .orElseThrow(() ->
-                                        new IllegalStateException(format("Abandon FlowPath found: %s", flowPath)));
+                        Flow flow = getFlow(flowPath);
                         if (flowPath.isOneSwitchFlow()) {
                             log.info("One-switch flow {} is to be (re)installed on switch {}",
                                     flowPath.getCookie(), switchId);
@@ -111,24 +110,56 @@ public class CommandBuilderImpl implements CommandBuilder {
                                 log.warn("Output port was not found for ingress flow rule");
                             } else {
                                 PathSegment foundIngressSegment = flowPath.getSegments().get(0);
-                                EncapsulationResources encapsulationResources =
-                                        flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                                                flow.getOppositePathId(flowPath.getPathId())
-                                                        .orElseThrow(() -> new IllegalStateException(
-                                                                format("Flow %s does not have reverse path for %s",
-                                                                        flow.getFlowId(), flowPath.getPathId()))),
-                                                flow.getEncapsulationType())
-                                                .orElseThrow(() -> new IllegalStateException(
-                                        format("Encapsulation resources are not found for path %s", flowPath)));
+                                EncapsulationResources encapsulationResources = getEncapsulationResources(
+                                        flowPath, flow);
                                 commands.add(flowCommandFactory.buildInstallIngressFlow(flow, flowPath,
                                         foundIngressSegment.getSrcPort(), encapsulationResources,
                                         foundIngressSegment.isSrcWithMultiTable()));
                             }
                         }
                     }
+
+                    long server42Cookie = flowPath.getCookie().toBuilder()
+                            .type(CookieType.SERVER_42_INGRESS)
+                            .build()
+                            .getValue();
+                    if (switchRules.contains(server42Cookie) && !flowPath.isOneSwitchFlow()
+                            && flowPath.getSrcSwitch().getSwitchId().equals(switchId)) {
+                        log.info("Ingress server 42 flow {} is to be (re)installed on switch {}",
+                                server42Cookie, switchId);
+
+                        if (flowPath.getSegments().isEmpty()) {
+                            log.warn("Output port was not found for server 42 ingress flow rule {}", server42Cookie);
+                        } else {
+                            Flow flow = getFlow(flowPath);
+                            PathSegment foundIngressSegment = flowPath.getSegments().get(0);
+                            EncapsulationResources encapsulationResources = getEncapsulationResources(flowPath, flow);
+                            commands.add(flowCommandFactory.buildInstallServer42IngressFlow(
+                                    flow, flowPath, foundIngressSegment.getSrcPort(),
+                                    switchProperties.getServer42Port(), switchProperties.getServer42MacAddress(),
+                                    encapsulationResources, foundIngressSegment.isSrcWithMultiTable()));
+                        }
+                    }
                 });
 
         return commands;
+    }
+
+    private Flow getFlow(FlowPath flowPath) {
+        return flowRepository.findById(flowPath.getFlow().getFlowId())
+                                    .orElseThrow(() ->
+                                            new IllegalStateException(format("Abandon FlowPath found: %s", flowPath)));
+    }
+
+    private EncapsulationResources getEncapsulationResources(FlowPath flowPath, Flow flow) {
+        return flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
+                flow.getOppositePathId(flowPath.getPathId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                format("Flow %s does not have reverse path for %s",
+                                        flow.getFlowId(), flowPath.getPathId()))),
+                flow.getEncapsulationType())
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Encapsulation resources are not found for path %s", flowPath)));
     }
 
     /**
@@ -144,8 +175,7 @@ public class CommandBuilderImpl implements CommandBuilder {
      * Some default rules require additional properties to be installed. This method creates commands for such rules.
      */
     private List<BaseInstallFlow> buildInstallSpecialDefaultRuleCommands(SwitchId switchId, List<Long> switchRules) {
-        SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId).orElseThrow(
-                () -> new IllegalStateException(format("Switch properties not found for switch %s", switchId)));
+        SwitchProperties properties = getSwitchProperties(switchId);
 
         List<BaseInstallFlow> commands = new ArrayList<>();
         for (Long cookie : switchRules) {
@@ -156,6 +186,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                     .multiTable(properties.isMultiTable())
                     .inputPort(0)
                     .outputPort(0)
+                    .server42Vlan(properties.getServer42Vlan())
                     .server42MacAddress(properties.getServer42MacAddress());
 
             if (cookie == SERVER_42_OUTPUT_VLAN_COOKIE) {
@@ -178,6 +209,11 @@ public class CommandBuilderImpl implements CommandBuilder {
             }
         }
         return commands;
+    }
+
+    private SwitchProperties getSwitchProperties(SwitchId switchId) {
+        return switchPropertiesRepository.findBySwitchId(switchId).orElseThrow(
+                () -> new IllegalStateException(format("Switch properties not found for switch %s", switchId)));
     }
 
     private List<BaseInstallFlow> buildInstallDefaultRuleCommands(SwitchId switchId, List<Long> switchRules) {
@@ -269,14 +305,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         }
         Flow flow = foundFlow.get();
 
-        EncapsulationResources encapsulationResources =
-                flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                        flow.getOppositePathId(flowPath.getPathId())
-                                .orElseThrow(() -> new IllegalStateException(
-                                        format("Flow %s does not have reverse path for %s",
-                                                flow.getFlowId(), flowPath.getPathId()))), flow.getEncapsulationType())
-                        .orElseThrow(() -> new IllegalStateException(
-                                        format("Encapsulation resources are not found for path %s", flowPath)));
+        EncapsulationResources encapsulationResources = getEncapsulationResources(flowPath, flow);
 
         if (segment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
             return Collections.singletonList(

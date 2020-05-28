@@ -26,6 +26,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -70,7 +71,7 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
     @Override
     protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
         List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
-        if (rulesContext != null) {
+        if (getSwitchFeatures().contains(SwitchFeature.MULTI_TABLE) && rulesContext != null) {
             if (rulesContext.isRemoveCustomerCatchRule()) {
                 ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
             }
@@ -83,6 +84,9 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
             if (rulesContext.isRemoveServer42InputRule()) {
                 getFlowModFactory().makeServer42InputFlowMessage(getKildaCoreConfig().getServer42UdpPortOffset())
                         .ifPresent(ofMessages::add);
+            }
+            if (rulesContext.isRemoveServer42IngressRule()) {
+                ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
             }
         }
         return ofMessages;

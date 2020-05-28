@@ -30,14 +30,21 @@ public class HandleNotRemovedPathsAction extends
         HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            stateMachine.saveErrorToHistory(format("Failed to remove paths %s / %s",
-                    stateMachine.getOldPrimaryForwardPath(), stateMachine.getOldPrimaryReversePath()));
+        if (stateMachine.getOldPrimaryForwardPath() != null) {
+            stateMachine.saveErrorToHistory(format("Failed to remove the path %s",
+                    stateMachine.getOldPrimaryForwardPath()));
         }
-        if (stateMachine.getOldProtectedForwardPath() != null
-                && stateMachine.getOldProtectedReversePath() != null) {
-            stateMachine.saveErrorToHistory(format("Failed to remove paths %s / %s",
-                    stateMachine.getOldProtectedForwardPath(), stateMachine.getOldProtectedReversePath()));
+        if (stateMachine.getOldPrimaryReversePath() != null) {
+            stateMachine.saveErrorToHistory(format("Failed to remove the path %s",
+                    stateMachine.getOldPrimaryReversePath()));
+        }
+        if (stateMachine.getOldProtectedForwardPath() != null) {
+            stateMachine.saveErrorToHistory(format("Failed to remove the path %s",
+                    stateMachine.getOldProtectedForwardPath()));
+        }
+        if (stateMachine.getOldProtectedReversePath() != null) {
+            stateMachine.saveErrorToHistory(format("Failed to remove the path %s",
+                    stateMachine.getOldProtectedReversePath()));
         }
     }
 }

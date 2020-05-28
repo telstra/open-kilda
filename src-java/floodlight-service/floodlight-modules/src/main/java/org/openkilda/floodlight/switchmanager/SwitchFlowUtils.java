@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.switchmanager;
 
 import static java.util.Collections.singletonList;
+import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -32,9 +33,11 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyAct
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -218,6 +221,40 @@ public final class SwitchFlowUtils {
         }
 
         return meterModBuilder.build();
+    }
+
+    /**
+     * Create an OFAction to add a VLAN header.
+     *
+     * @param ofFactory OF factory for the switch
+     * @param etherType ethernet type of the new VLAN header
+     * @return {@link OFAction}
+     */
+    public static OFAction actionPushVlan(final OFFactory ofFactory, final int etherType) {
+        OFActions actions = ofFactory.actions();
+        return actions.buildPushVlan().setEthertype(EthType.of(etherType)).build();
+    }
+
+    /**
+     * Create an OFAction to change the outer most vlan.
+     *
+     * @param factory OF factory for the switch
+     * @param newVlan final VLAN to be set on the packet
+     * @return {@link OFAction}
+     */
+    public static OFAction actionReplaceVlan(final OFFactory factory, final int newVlan) {
+        OFOxms oxms = factory.oxms();
+        OFActions actions = factory.actions();
+
+        if (OF_12.compareTo(factory.getVersion()) == 0) {
+            return actions.buildSetField().setField(oxms.buildVlanVid()
+                    .setValue(OFVlanVidMatch.ofRawVid((short) newVlan))
+                    .build()).build();
+        } else {
+            return actions.buildSetField().setField(oxms.buildVlanVid()
+                    .setValue(OFVlanVidMatch.ofVlan(newVlan))
+                    .build()).build();
+        }
     }
 
     /**

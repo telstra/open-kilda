@@ -23,13 +23,12 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowRuleRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
@@ -41,12 +40,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
-public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-    private final FlowCommandBuilderFactory commandBuilderFactory;
+public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
-        super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        super(persistenceManager, resourcesManager);
     }
 
     @Override
@@ -83,8 +80,12 @@ public class RevertNewRulesAction extends FlowProcessingAction<FlowRerouteFsm, S
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
+
+            SpeakerRequestBuildContext speakerContext = buildSpeakerContextForRemovalIngressOnly(
+                    newForward.getSrcSwitch().getSwitchId(), newReverse.getSrcSwitch().getSwitchId());
+
             removeCommands.addAll(commandBuilder.buildAll(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
+                    stateMachine.getCommandContext(), flow, newForward, newReverse, speakerContext));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());

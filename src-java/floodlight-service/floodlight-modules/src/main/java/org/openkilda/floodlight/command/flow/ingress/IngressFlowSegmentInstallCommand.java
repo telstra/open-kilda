@@ -65,6 +65,10 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
         if (encapsulation.getType() == FlowEncapsulationType.VXLAN) {
             required.add(SwitchFeature.NOVIFLOW_COPY_FIELD);
         }
+        if (metadata.isMultiTable()) {
+            required.add(SwitchFeature.MULTI_TABLE);
+        }
+
         return required;
     }
 
@@ -108,6 +112,10 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
                             getCookie(), getSwitchId());
                 }
             }
+        }
+
+        if (rulesContext.isInstallServer42IngressRule()) {
+            ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
         }
         return ofMessages;
     }

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowMeterModifyHubBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.FlowPatchBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowValidationHubBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.HistoryOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.KildaConfigurationBolt;
@@ -77,7 +78,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String DISCOVERY_ENCODER_BOLT_NAME = "discovery-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
-    private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
     private static final String FLOW_HS_KAFKA_BOLT_NAME = "flowhs-kafka-bolt";
     private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
     private static final String PING_KAFKA_BOLT_NAME = "ping-kafka-bolt";
@@ -87,6 +87,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SWITCH_MANAGER_KAFKA_BOLT = "switch-manger-bolt";
     private static final String VALIDATION_WORKER_BOLT = "validation." + SpeakerWorkerBolt.ID;
     private static final String METER_MODIFY_WORKER_BOLT = "meter.modify." + SpeakerWorkerBolt.ID;
+    private static final String FLOW_PATCH_BOLT_NAME = "flow-patch-bolt";
 
     private static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
 
@@ -180,6 +181,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(FLOWS_BOLT_NAME, flowsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW.toString());
 
+        FlowPatchBolt flowPatchBolt = new FlowPatchBolt(persistenceManager);
+        tb.setBolt(FLOW_PATCH_BOLT_NAME, flowPatchBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW_PATCH.toString());
+
         FeatureTogglesBolt featureTogglesBolt = new FeatureTogglesBolt(persistenceManager);
         tb.setBolt(FEATURE_TOGGLES_BOLT_NAME, featureTogglesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FEATURE_TOGGLES.toString());
@@ -206,18 +211,16 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(PATHS_BOLT_NAME)
                 .shuffleGrouping(HISTORY_BOLT_NAME)
                 .shuffleGrouping(FlowValidationHubBolt.ID)
-                .shuffleGrouping(FlowMeterModifyHubBolt.ID);
+                .shuffleGrouping(FlowMeterModifyHubBolt.ID)
+                .shuffleGrouping(FLOW_PATCH_BOLT_NAME);
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
@@ -226,7 +229,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FlowValidationHubBolt.ID, StreamType.ERROR.toString())
-                .shuffleGrouping(FlowMeterModifyHubBolt.ID, StreamType.ERROR.toString());
+                .shuffleGrouping(FlowMeterModifyHubBolt.ID, StreamType.ERROR.toString())
+                .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.ERROR.toString());
 
         DiscoveryEncoderBolt discoveryEncoder = new DiscoveryEncoderBolt();
         tb.setBolt(DISCOVERY_ENCODER_BOLT_NAME, discoveryEncoder, parallelism)
@@ -239,13 +243,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SPLITTER_BOLT_NAME)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.ERROR.toString());
 
-        KafkaBolt kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
-        tb.setBolt(FLOW_KAFKA_BOLT_NAME, kafkaFlowBolt, parallelism)
-                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
-
         KafkaBolt kafkaFlowHsBolt = buildKafkaBolt(topologyConfig.getKafkaFlowHsTopic());
         tb.setBolt(FLOW_HS_KAFKA_BOLT_NAME, kafkaFlowHsBolt, parallelism)
-                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.FLOWHS.toString());
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.FLOWHS.toString())
+                .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.FLOWHS.toString());
 
         KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic());
         tb.setBolt(DISCO_KAFKA_BOLT_NAME, kafkaDiscoBolt, parallelism)
@@ -253,7 +254,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         KafkaBolt kafkaPingBolt = buildKafkaBolt(topologyConfig.getKafkaPingTopic());
         tb.setBolt(PING_KAFKA_BOLT_NAME, kafkaPingBolt, parallelism)
-                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.PING.toString());
+                .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.PING.toString());
 
         tb.setBolt(SPEAKER_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()))
                 .shuffleGrouping(VALIDATION_WORKER_BOLT, StreamType.TO_SPEAKER.toString())

@@ -50,6 +50,9 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("server42_port")
     private Integer server42Port;
 
+    @JsonProperty("server42_vlan")
+    private Integer server42Vlan;
+
     @JsonProperty("server42_mac_address")
     private MacAddress server42MacAddress;
 
@@ -74,6 +77,7 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
                                           @JsonProperty("switch_arp") boolean switchArp,
                                           @JsonProperty("server42_flow_rtt") boolean server42FlowRtt,
                                           @JsonProperty("server42_port") Integer server42Port,
+                                          @JsonProperty("server42_vlan") Integer server42Vlan,
                                           @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
                                           @JsonProperty("isl_ports") List<Integer> islPorts,
                                           @JsonProperty("flow_ports") List<Integer> flowPorts,
@@ -87,6 +91,7 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
         this.switchArp = switchArp;
         this.server42FlowRtt = server42FlowRtt;
         this.server42Port = server42Port;
+        this.server42Vlan = server42Vlan;
         this.server42MacAddress = server42MacAddress;
         this.islPorts = islPorts;
         this.flowPorts = flowPorts;

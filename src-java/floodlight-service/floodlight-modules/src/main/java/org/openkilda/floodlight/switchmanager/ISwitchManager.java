@@ -234,10 +234,11 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid datapathId of the switch
      * @param port server 42 port
+     * @param vlan server 42 vlan. If vlan > 0 rule must push this vlan
      * @param macAddress server 42 mac address
      * @throws SwitchOperationException Switch not found
      */
-    Long installServer42OutputVlanFlow(DatapathId dpid, int port, MacAddress macAddress)
+    Long installServer42OutputVlanFlow(DatapathId dpid, int port, int vlan, MacAddress macAddress)
             throws SwitchOperationException;
 
     /**
@@ -245,10 +246,11 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid datapathId of the switch
      * @param port server 42 port
+     * @param vlan server 42 vlan. If vlan > 0 rule must push this vlan
      * @param macAddress server 42 mac address
      * @throws SwitchOperationException Switch not found
      */
-    Long installServer42OutputVxlanFlow(DatapathId dpid, int port, MacAddress macAddress)
+    Long installServer42OutputVxlanFlow(DatapathId dpid, int port, int vlan, MacAddress macAddress)
             throws SwitchOperationException;
 
     /**
@@ -420,12 +422,14 @@ public interface ISwitchManager extends IFloodlightService {
      *
      * @param dpid switch id
      * @param server42Port server 42 port
+     * @param server42Vlan vlan of packer received from server 42
      * @param server42MacAddress mac address of server 42
      * @param customerPorts switch ports with enabled server 42 ping
      * @return modification command
      */
     List<OFFlowMod> buildExpectedServer42Flows(
-            DatapathId dpid, int server42Port, MacAddress server42MacAddress, Set<Integer> customerPorts)
+            DatapathId dpid, int server42Port, int server42Vlan, MacAddress server42MacAddress,
+            Set<Integer> customerPorts)
             throws SwitchNotFoundException;
 
     /**
@@ -497,6 +501,25 @@ public interface ISwitchManager extends IFloodlightService {
                             int transitTunnelId, OutputVlanType outputVlanType, long meterId,
                             FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException;
+
+    /**
+     * Installs server 42 Ingress flow witch matches Server 42 RTT packets.
+     *
+     * @param dpid datapathId of the switch
+     * @param dstDpid datapathId of the egress switch
+     * @param server42Port port from which RTT packet will be received
+     * @param outputPort port to forward the packet out
+     * @param customerPort port from switch receives real customer traffic (used in match be metadata)
+     * @param inputVlanId input vlan to match on, 0 means not to match on vlan
+     * @param transitTunnelId vlan to add before outputing on outputPort
+     * @param encapsulationType flow encapsulation type
+     * @return transaction id
+     * @throws SwitchOperationException Switch not found
+     */
+    long installServer42IngressFlow(
+            DatapathId dpid, DatapathId dstDpid, Long cookie, MacAddress server42MacAddress, int server42Port,
+            int outputPort, int customerPort, int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType,
+            long meterId, FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
 
     /**
      * Installs flow on egress swtich.

@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
@@ -37,6 +38,21 @@ public abstract class IngressRemoveFlowModFactory extends IngressFlowModFactory 
 
     @Override
     protected List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<OFInstruction> makeCustomerPortSharedCatchInstructions() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
         return Collections.emptyList();
     }
 }

@@ -20,8 +20,11 @@ import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.bitops.BitField;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.google.common.collect.ImmutableSet;
 import lombok.Builder;
 import org.apache.commons.lang3.ArrayUtils;
+
+import java.util.Set;
 
 public class FlowSegmentCookie extends Cookie {
     // update ALL_FIELDS if modify fields list
@@ -34,7 +37,9 @@ public class FlowSegmentCookie extends Cookie {
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD);
 
-    private static final CookieType VALID_TYPE = CookieType.SERVICE_OR_FLOW_SEGMENT;
+    private static final Set<CookieType> VALID_TYPES = ImmutableSet.of(
+                    CookieType.SERVICE_OR_FLOW_SEGMENT,
+                    CookieType.SERVER_42_INGRESS);
 
     @JsonCreator
     public FlowSegmentCookie(long value) {
@@ -42,7 +47,11 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        this(VALID_TYPE, direction, flowEffectiveId);
+        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId);
+    }
+
+    FlowSegmentCookie(CookieType type, long value) {
+        super(value, type);
     }
 
     @Builder
@@ -57,8 +66,8 @@ public class FlowSegmentCookie extends Cookie {
         validateServiceFlag(false);
 
         CookieType type = getType();
-        if (type != VALID_TYPE) {
-            throw new InvalidCookieException(formatIllegalTypeError(type, VALID_TYPE), this);
+        if (!VALID_TYPES.contains(type)) {
+            throw new InvalidCookieException(formatIllegalTypeError(type, VALID_TYPES), this);
         }
 
         int directionBitsSetCount = 0;
@@ -112,12 +121,12 @@ public class FlowSegmentCookie extends Cookie {
 
     public static FlowSegmentCookieBuilder builder() {
         return new FlowSegmentCookieBuilder()
-                .type(VALID_TYPE);
+                .type(CookieType.SERVICE_OR_FLOW_SEGMENT);
     }
 
     private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId) {
-        if (type != VALID_TYPE) {
-            throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPE));
+        if (!VALID_TYPES.contains(type)) {
+            throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPES));
         }
 
         long value = 0;
@@ -130,7 +139,7 @@ public class FlowSegmentCookie extends Cookie {
     /**
      * Set direction bits to the value passed as directions argument.
      */
-    private static long makeValueDirection(FlowPathDirection direction) {
+    protected static long makeValueDirection(FlowPathDirection direction) {
         int forward = 0;
         int reverse = 0;
         switch (direction) {

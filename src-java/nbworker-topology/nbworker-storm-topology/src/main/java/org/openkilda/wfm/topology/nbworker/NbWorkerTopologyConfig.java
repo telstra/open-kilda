@@ -35,10 +35,6 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getNorthboundTopic();
     }
 
-    default String getKafkaFlowTopic() {
-        return getKafkaTopics().getFlowTopic();
-    }
-
     default String getKafkaFlowHsTopic() {
         return getKafkaTopics().getFlowHsTopic();
     }

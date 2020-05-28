@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET;
+
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -26,9 +28,10 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,11 +40,16 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
@@ -100,6 +108,56 @@ public abstract class IngressFlowModFactory {
     }
 
     /**
+     * Make server 42 ingress rule to match RTT packets by port+vlan and route it into ISL/egress end.
+     */
+    public OFFlowMod makeOuterVlanOnlyServer42IngressFlowMessage(MeterId effectiveMeterId, int server42UpdPortOffset) {
+        Match match = makeServer42IngressFlowMatch(
+                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId()),
+                server42UpdPortOffset);
+
+        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
+                .setCookie(U64.of(buildServer42IngressCookie().getValue()))
+                .setMatch(match);
+        return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
+    }
+
+    private Match makeServer42IngressFlowMatch(Builder builder, int server42UpdPortOffset) {
+        builder.setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()));
+
+        if (getCommand().getMetadata().isMultiTable()) {
+            RoutingMetadata metadata = buildServer42IngressMetadata();
+
+            builder.setMasked(MatchField.METADATA,
+                    OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                    .build();
+        } else {
+            MacAddress macAddress = MacAddress.of(getCommand().getRulesContext().getServer42MacAddress().toString());
+            int udpSrcPort = server42UpdPortOffset + command.getEndpoint().getPortNumber();
+
+            builder.setExact(MatchField.ETH_SRC, macAddress)
+                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                    .setExact(MatchField.UDP_SRC, TransportPort.of(udpSrcPort));
+        }
+
+        return builder.build();
+    }
+
+
+    /**
+     * Make server 42 ingress rule to match all RTT packets traffic and route it into ISL/egress end.
+     */
+    public OFFlowMod makeDefaultPortServer42IngressFlowMessage(MeterId effectiveMeterId, int server42UpdPortOffset) {
+        Match match = makeServer42IngressFlowMatch(of.buildMatch(), server42UpdPortOffset);
+
+        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
+                SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET)
+                .setCookie(U64.of(buildServer42IngressCookie().getValue()))
+                .setMatch(match);
+        return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
+    }
+
+    /**
      * Route all traffic for specific physical port into pre-ingress table. Shared across all flows for this physical
      * port (if OF flow-mod ADD message use same match and priority fields with existing OF flow, existing OF flow will
      * be replaced/not added).
@@ -112,8 +170,7 @@ public abstract class IngressFlowModFactory {
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                                   .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))))
+                .setInstructions(makeCustomerPortSharedCatchInstructions())
                 .build();
     }
 
@@ -124,12 +181,6 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeLldpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build(switchFeatures);
-        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
-                .setMetadata(metadata.getValue())
-                .setMetadataMask(metadata.getMask())
-                .build();
-
         return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
                 .setPriority(SwitchManager.LLDP_INPUT_CUSTOMER_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeLldpInputCustomer(endpoint.getPortNumber())))
@@ -138,9 +189,8 @@ public abstract class IngressFlowModFactory {
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .setExact(MatchField.ETH_TYPE, EthType.LLDP)
                         .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
-                        writeMetadata))
+                .setInstructions(makeConnectedDevicesMatchInstructions(
+                        RoutingMetadata.builder().lldpFlag(true).build(switchFeatures)))
                 .build();
     }
 
@@ -151,12 +201,6 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeArpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        RoutingMetadata metadata = RoutingMetadata.builder().arpFlag(true).build(switchFeatures);
-        OFInstructionWriteMetadata writeMetadata = of.instructions().buildWriteMetadata()
-                .setMetadata(metadata.getValue())
-                .setMetadataMask(metadata.getMask())
-                .build();
-
         return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
                 .setPriority(SwitchManager.ARP_INPUT_CUSTOMER_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeArpInputCustomer(endpoint.getPortNumber())))
@@ -165,9 +209,8 @@ public abstract class IngressFlowModFactory {
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .setExact(MatchField.ETH_TYPE, EthType.ARP)
                         .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
-                        writeMetadata))
+                .setInstructions(makeConnectedDevicesMatchInstructions(
+                        RoutingMetadata.builder().arpFlag(true).build(switchFeatures)))
                 .build();
     }
 
@@ -201,5 +244,33 @@ public abstract class IngressFlowModFactory {
         return builder.build();
     }
 
+    private OFFlowMod makeServer42IngressFlowMessage(
+            OFFactory of, OFFlowMod.Builder builder, MeterId effectiveMeterId) {
+        builder.setInstructions(makeServer42IngressFlowMessageInstructions(of, effectiveMeterId));
+        if (switchFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
+        return builder.build();
+    }
+
+    private FlowSegmentCookie buildServer42IngressCookie() {
+        return new FlowSegmentCookie(command.getCookie().getValue()).toBuilder()
+                .type(CookieType.SERVER_42_INGRESS)
+                .build();
+    }
+
+    private RoutingMetadata buildServer42IngressMetadata() {
+        return RoutingMetadata.builder()
+                .inputPort(command.getEndpoint().getPortNumber())
+                .build(switchFeatures);
+    }
+
     protected abstract List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId);
+
+    protected abstract List<OFInstruction> makeCustomerPortSharedCatchInstructions();
+
+    protected abstract List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata);
+
+    protected abstract List<OFInstruction> makeServer42IngressFlowMessageInstructions(
+            OFFactory of, MeterId effectiveMeterId);
 }

@@ -21,24 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Builder;
 
 /**
- * Represents information about a cookie.
- * Uses 64 bit to encode information about the flow:
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |            Payload Reserved           |                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |           Reserved Prefix           |C|     Rule Type   | | | |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * <p>
- * Rule types:
- * 0 - Customer flow rule
- * 1 - LLDP rule
- * 2 - Multi-table ISL rule for vlan encapsulation for egress table
- * 3 - Multi-table ISL rule for vxlan encapsulation for egress table
- * 4 - Multi-table ISL rule for vxlan encapsulation for transit table
- * 5 - Multi-table customer flow rule for ingress table pass-through
- * </p>
+ * Old cookie representation for kilda.
  */
 public class Cookie extends CookieBase implements Comparable<Cookie> {
     // FIXME(surabujin): get rid from this constants (it will allow to merge CookieBase into Cookie)

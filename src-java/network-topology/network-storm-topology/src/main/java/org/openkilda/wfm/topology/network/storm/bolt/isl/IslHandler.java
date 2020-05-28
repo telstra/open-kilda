@@ -45,6 +45,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslInstallCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslRemoveCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesWorkerCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -78,8 +79,8 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     private final NetworkOptions options;
 
     private transient NetworkIslService service;
+    // FIXME(surabujin) the keys produced by this factory are not used
     private transient TaskIdBasedKeyFactory keyFactory;
-
 
     public IslHandler(PersistenceManager persistenceManager, NetworkOptions options) {
         this.persistenceManager = persistenceManager;
@@ -153,25 +154,18 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     @Override
     public void islDefaultRulesInstall(Endpoint source, Endpoint destination) {
-        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeIslRulessInstallTuple(source, destination));
+        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(
+                new SpeakerRulesIslInstallCommand(keyFactory.next(), source, destination)));
     }
 
     @Override
     public void islDefaultRulesDelete(Endpoint source, Endpoint destination) {
-        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeIslRulesDeleteTuple(source, destination));
+        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(
+                new SpeakerRulesIslRemoveCommand(keyFactory.next(), source, destination)));
     }
 
-    // FIXME(surabujin) - storm handler design violation
-    private Values makeIslRulessInstallTuple(Endpoint source, Endpoint destination) {
-        String key = keyFactory.next();  // FIXME - is it used anywhere?
-        return new Values(key, new SpeakerRulesIslInstallCommand(key, source, destination),
-                getCommandContext());
-    }
-
-    // FIXME(surabujin) - storm handler design violation
-    private Values makeIslRulesDeleteTuple(Endpoint source, Endpoint destination) {
-        String key = keyFactory.next();
-        return new Values(key, new SpeakerRulesIslRemoveCommand(key, source, destination), getCommandContext());
+    private Values makeSpeakerRulesTuple(SpeakerRulesWorkerCommand command) {
+        return new Values(command.getKey(), command, getCommandContext());
     }
 
     private Values makeBfdPortTuple(BfdPortCommand command) {

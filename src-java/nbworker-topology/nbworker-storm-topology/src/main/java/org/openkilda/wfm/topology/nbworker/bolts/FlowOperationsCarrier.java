@@ -15,11 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import org.openkilda.model.FlowPath;
-import org.openkilda.model.IslEndpoint;
-
-import java.util.Collection;
-import java.util.Set;
+import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.info.InfoData;
 
 public interface FlowOperationsCarrier {
     /**
@@ -30,7 +27,12 @@ public interface FlowOperationsCarrier {
     void emitPeriodicPingUpdate(String flowId, boolean enabled);
 
     /**
-     * Sends reroute request.
+     * Sends Flow HS Update command.
      */
-    void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason);
+    void sendUpdateRequest(FlowRequest request);
+
+    /**
+     * Sends Northbound response.
+     */
+    void sendNorthboundResponse(InfoData data);
 }

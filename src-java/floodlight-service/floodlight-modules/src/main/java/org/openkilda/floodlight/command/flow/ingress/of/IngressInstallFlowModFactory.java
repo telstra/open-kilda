@@ -19,9 +19,11 @@ import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -60,7 +62,41 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         return instructions;
     }
 
+    @Override
+    protected List<OFInstruction> makeCustomerPortSharedCatchInstructions() {
+        return ImmutableList.of(
+                of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)));
+    }
+
+    @Override
+    protected List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata) {
+        return ImmutableList.of(
+                of.instructions().gotoTable(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID)),
+                of.instructions().buildWriteMetadata()
+                        .setMetadata(metadata.getValue())
+                        .setMetadataMask(metadata.getMask())
+                        .build());
+    }
+
+    @Override
+    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+        List<OFAction> applyActions = new ArrayList<>();
+        List<OFInstruction> instructions = new ArrayList<>();
+
+        if (effectiveMeterId != null) {
+            OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
+        }
+
+        applyActions.addAll(makeServer42IngressFlowTransformActions());
+        applyActions.add(makeOutputAction());
+
+        instructions.add(of.instructions().applyActions(applyActions));
+        return instructions;
+    }
+
     protected abstract List<OFAction> makeTransformActions();
+
+    protected abstract List<OFAction> makeServer42IngressFlowTransformActions();
 
     protected abstract List<OFInstruction> makeMetadataInstructions();
 

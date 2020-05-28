@@ -96,4 +96,14 @@ public interface SwitchManagerConfig {
     @Key("tracking-enabled")
     @Default("true")
     boolean isTrackingEnabled();
+
+    /**
+     * This offset is used for encoding flow in_port number into udp_src port of Server 42 RTT packets.
+     * Example: Flow with in_port 10. Server 42 Input rule will match RTT packets by
+     * udp_src port number 5010 (offset + flow in_port).
+     * We need an offset to do not intersect with some popular ports (like 22 port for ssh)
+     */
+    @Key("server42-upd-port-offset")
+    @Default("5000")
+    int getServer42UdpPortOffset();
 }

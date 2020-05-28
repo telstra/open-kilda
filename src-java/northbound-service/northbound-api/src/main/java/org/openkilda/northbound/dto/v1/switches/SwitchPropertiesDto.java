@@ -44,4 +44,7 @@ public class SwitchPropertiesDto {
 
     @JsonProperty("server42_mac_address")
     private String server42MacAddress;
+
+    @JsonProperty("server42_vlan")
+    private Integer server42Vlan;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HIS
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
@@ -125,6 +126,12 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
+    public void sendHubSwapEndpointsResponse(Message message) {
+        emitWithContext(Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB.name(), getCurrentTuple(),
+                new Values(KeyProvider.getParentKey(currentKey), message));
+    }
+
+    @Override
     public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
         emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), new Values(currentKey, historyHolder));
     }
@@ -140,6 +147,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
 
         declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
     }

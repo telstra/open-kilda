@@ -19,7 +19,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
@@ -40,12 +39,10 @@ import java.util.stream.Collectors;
 public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C> extends
         FlowProcessingAction<T, S, E, C> {
     protected final FlowCommandBuilderFactory commandBuilderFactory;
-    protected final SwitchPropertiesRepository switchPropertiesRepository;
 
     public BaseFlowRuleRemovalAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
-        switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
     }
 
     protected boolean isRemoveCustomerPortSharedCatchRule(String flowId, SwitchId ingressSwitchId, int ingressPort) {
@@ -96,15 +93,17 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
 
     protected boolean removeForwardCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
         boolean srcPortChanged = oldFlow.getSrcPort() != newFlow.getSrcPort();
+        boolean srcSwitchChanged = !oldFlow.getSrcSwitch().equals(newFlow.getSrcSwitch());
 
-        return srcPortChanged
+        return (srcPortChanged || srcSwitchChanged)
                 && findFlowsIdsByEndpointWithMultiTable(oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
     }
 
     protected boolean removeReverseCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
         boolean dstPortChanged = oldFlow.getDestPort() != newFlow.getDestPort();
+        boolean dstSwitchChanged = !oldFlow.getDestSwitch().equals(newFlow.getDestSwitch());
 
-        return dstPortChanged
+        return (dstPortChanged || dstSwitchChanged)
                 && findFlowsIdsByEndpointWithMultiTable(oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
     }
 
@@ -157,13 +156,15 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
     protected SpeakerRequestBuildContext buildSpeakerContextForRemovalIngressAndShared(
             RequestedFlow oldFlow, RequestedFlow newFlow) {
         SwitchProperties srcSwitchProperties = getSwitchProperties(oldFlow.getSrcSwitch());
+        boolean server42FlowRttToggle = isServer42FlowRttFeatureToggle();
 
         PathContext forwardPathContext = PathContext.builder()
                 .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
                 .removeCustomerPortLldpRule(removeForwardSharedLldpRule(oldFlow, newFlow))
                 .removeCustomerPortArpRule(removeForwardSharedArpRule(oldFlow, newFlow))
                 .removeServer42InputRule(removeForwardSharedServer42InputRule(
-                        oldFlow, newFlow, srcSwitchProperties.isServer42FlowRtt()))
+                        oldFlow, newFlow, srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle))
+                .removeServer42IngressRule(srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle)
                 .server42Port(srcSwitchProperties.getServer42Port())
                 .server42MacAddress(srcSwitchProperties.getServer42MacAddress())
                 .build();
@@ -175,7 +176,8 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
                 .removeCustomerPortLldpRule(removeReverseSharedLldpRule(oldFlow, newFlow))
                 .removeCustomerPortArpRule(removeReverseSharedArpRule(oldFlow, newFlow))
                 .removeServer42InputRule(removeReverseSharedServer42InputRule(
-                        oldFlow, newFlow, dstSwitchProperties.isServer42FlowRtt()))
+                        oldFlow, newFlow, dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle))
+                .removeServer42IngressRule(dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle)
                 .server42Port(dstSwitchProperties.getServer42Port())
                 .server42MacAddress(dstSwitchProperties.getServer42MacAddress())
                 .build();
@@ -183,6 +185,23 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
         return SpeakerRequestBuildContext.builder()
                 .forward(forwardPathContext)
                 .reverse(reversePathContext)
+                .build();
+    }
+
+    protected SpeakerRequestBuildContext buildSpeakerContextForRemovalIngressOnly(
+            SwitchId srcSwitchId, SwitchId dstSwitchId) {
+        return SpeakerRequestBuildContext.builder()
+                .forward(buildPathContextForRemovalIngressOnly(srcSwitchId))
+                .reverse(buildPathContextForRemovalIngressOnly(dstSwitchId))
+                .build();
+    }
+
+    protected PathContext buildPathContextForRemovalIngressOnly(SwitchId switchId) {
+        SwitchProperties switchProperties = getSwitchProperties(switchId);
+        return PathContext.builder()
+                .removeServer42IngressRule(switchProperties.isServer42FlowRtt() && isServer42FlowRttFeatureToggle())
+                .server42Port(switchProperties.getServer42Port())
+                .server42MacAddress(switchProperties.getServer42MacAddress())
                 .build();
     }
 }

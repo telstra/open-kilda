@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,9 +19,7 @@ import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
-import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
-import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -30,7 +28,6 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
-import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.FlowReadRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
@@ -41,14 +38,12 @@ import org.openkilda.messaging.nbtopology.response.ConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.nbtopology.response.TypedConnectedDevicesDto;
-import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -71,9 +66,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class FlowOperationsBolt extends PersistenceOperationsBolt implements FlowOperationsCarrier {
+public class FlowOperationsBolt extends PersistenceOperationsBolt {
     private transient FlowOperationsService flowOperationsService;
-    private transient FeatureTogglesRepository featureTogglesRepository;
 
     public FlowOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -85,7 +79,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
     @Override
     public void init() {
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
-        this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -100,8 +93,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
             result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request);
         } else if (request instanceof GetFlowPathRequest) {
             result = processGetFlowPathRequest((GetFlowPathRequest) request);
-        } else if (request instanceof FlowPatchRequest) {
-            result = processFlowPatchRequest((FlowPatchRequest) request);
         } else if (request instanceof FlowConnectedDeviceRequest) {
             result = processFlowConnectedDeviceRequest((FlowConnectedDeviceRequest) request);
         } else if (request instanceof FlowReadRequest) {
@@ -194,18 +185,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
         }
     }
 
-    private List<FlowResponse> processFlowPatchRequest(FlowPatchRequest request) {
-        FlowDto flowDto = request.getFlow();
-
-        try {
-            Flow flow = flowOperationsService.updateFlow(this, flowDto);
-            return Collections.singletonList(new FlowResponse(FlowMapper.INSTANCE.map(flow)));
-
-        } catch (FlowNotFoundException e) {
-            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Flow was not found.");
-        }
-    }
-
     private List<FlowConnectedDevicesResponse> processFlowConnectedDeviceRequest(FlowConnectedDeviceRequest request) {
 
         Collection<SwitchConnectedDevice> devices;
@@ -277,32 +256,16 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt implements Flo
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.REROUTE.toString(),
-                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.FLOWHS.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
-        declarer.declareStream(StreamType.PING.toString(),
-                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 
-    @Override
-    public void emitPeriodicPingUpdate(String flowId, boolean enabled) {
-        CommandMessage command = new CommandMessage(new PeriodicPingCommand(flowId, enabled),
-                System.currentTimeMillis(), getCorrelationId());
-        getOutput().emit(StreamType.PING.toString(), getCurrentTuple(), new Values(command, getCommandContext()));
-    }
-
-    @Override
-    public void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
-        boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
-                .map(FeatureToggles::getFlowsRerouteViaFlowHs)
-                .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
-        String streamId = flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString();
-
+    private void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
         for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
                 paths, affectedIslEndpoints, reason)) {
             CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
-            getOutput().emit(streamId, getCurrentTuple(), new Values(request, forkedContext.getCorrelationId()));
+            getOutput().emit(StreamType.FLOWHS.toString(), getCurrentTuple(),
+                    new Values(request, forkedContext.getCorrelationId()));
         }
     }
 }

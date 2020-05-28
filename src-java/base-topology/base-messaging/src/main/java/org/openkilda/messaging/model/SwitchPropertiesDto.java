@@ -46,4 +46,7 @@ public class SwitchPropertiesDto implements Serializable {
 
     @JsonProperty("server42_mac_address")
     private MacAddress server42MacAddress;
+
+    @JsonProperty("server42_vlan")
+    private Integer server42Vlan;
 }

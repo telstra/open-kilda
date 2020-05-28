@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  */
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
-
-import static java.util.Arrays.asList;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -37,7 +35,13 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends
@@ -73,18 +77,24 @@ public class AllocateProtectedResourcesAction extends
 
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow,
-                asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
+                Stream.of(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
+                        .filter(Objects::nonNull).collect(Collectors.toList()));
 
-        boolean overlappingProtectedPathFound =
-                flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
-                        || flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
+        boolean overlappingProtectedPathFound = primaryForwardPath != null
+                && flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)
+                || primaryReversePath != null
+                && flowPathBuilder.arePathsOverlapped(potentialPath.getReverse(), primaryReversePath);
         if (overlappingProtectedPathFound) {
             // Update the status here as no reroute is going to be performed for the protected.
             FlowPath protectedForwardPath = flow.getProtectedForwardPath();
-            flowPathRepository.updateStatus(protectedForwardPath.getPathId(), FlowPathStatus.INACTIVE);
+            if (protectedForwardPath != null) {
+                flowPathRepository.updateStatus(protectedForwardPath.getPathId(), FlowPathStatus.INACTIVE);
+            }
 
             FlowPath protectedReversePath = flow.getProtectedReversePath();
-            flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
+            if (protectedReversePath != null) {
+                flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
+            }
 
             FlowStatus flowStatus = flow.computeFlowStatus();
             if (flowStatus != flow.getStatus()) {
@@ -112,7 +122,9 @@ public class AllocateProtectedResourcesAction extends
                 log.debug("Resources have been allocated: {}", flowResources);
                 stateMachine.setNewProtectedResources(flowResources);
 
-                FlowPathPair newPaths = createFlowPathPair(flow, oldPaths, potentialPath, flowResources);
+                List<FlowPath> pathsToReuse
+                        = Lists.newArrayList(flow.getProtectedForwardPath(), flow.getProtectedReversePath());
+                FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources);
                 log.debug("New protected path has been created: {}", newPaths);
                 stateMachine.setNewProtectedForwardPath(newPaths.getForward().getPathId());
                 stateMachine.setNewProtectedReversePath(newPaths.getReverse().getPathId());

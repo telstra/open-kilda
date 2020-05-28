@@ -46,6 +46,7 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
@@ -73,6 +74,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -91,6 +93,7 @@ public class SwitchValidateFsm
     private SwitchId switchId;
     private boolean switchExists;
     private SwitchProperties switchProperties;
+    private FeatureToggles featureToggles;
     private List<Integer> islPorts;
     private List<Integer> flowPorts;
     private Set<Integer> flowLldpPorts;
@@ -122,9 +125,11 @@ public class SwitchValidateFsm
         this.switchExists = switchRepository.exists(switchId);
         SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchProperties = switchPropertiesRepository.findBySwitchId(switchId).orElse(null);
+        this.featureToggles = repositoryFactory.createFeatureTogglesRepository().find().orElse(null);
         boolean switchLldp = switchProperties != null && switchProperties.isSwitchLldp();
         boolean switchArp = switchProperties != null && switchProperties.isSwitchArp();
-        boolean server42FlowRtt = switchProperties != null && switchProperties.isServer42FlowRtt();
+        boolean server42FlowRtt = switchProperties != null && switchProperties.isServer42FlowRtt()
+                && Optional.ofNullable(featureToggles).map(FeatureToggles::getServer42FlowRtt).orElse(false);
 
         FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
@@ -245,10 +250,11 @@ public class SwitchValidateFsm
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
         boolean switchLldp = switchProperties.isSwitchLldp();
         boolean switchArp = switchProperties.isSwitchArp();
-        boolean server42FlowRtt = switchProperties.isServer42FlowRtt();
+        boolean server42FlowRtt = switchProperties.isServer42FlowRtt()
+                && Optional.ofNullable(featureToggles).map(FeatureToggles::getServer42FlowRtt).orElse(false);
 
         carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId, multiTable, switchLldp,
-                switchArp, server42FlowRtt, switchProperties.getServer42Port(),
+                switchArp, server42FlowRtt, switchProperties.getServer42Port(), switchProperties.getServer42Vlan(),
                 switchProperties.getServer42MacAddress(), islPorts, flowPorts, flowLldpPorts, flowArpPorts,
                 server42FlowRttPorts));
 

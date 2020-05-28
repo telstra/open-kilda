@@ -26,7 +26,7 @@ import java.util.List;
 
 public interface ValidationService {
     ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                      List<FlowEntry> expectedDefaultRules);
+                                      List<FlowEntry> expectedDefaultRules) throws SwitchNotFoundException;
 
     ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
                                         List<MeterEntry> expectedDefaultMeters) throws SwitchNotFoundException;

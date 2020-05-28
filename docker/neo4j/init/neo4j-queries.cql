@@ -11,6 +11,11 @@ CREATE CONSTRAINT ON (`flow_history`:`flow_history`) ASSERT `flow_history`.`enti
 CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`unique_index` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`entityId` IS UNIQUE;
 CREATE INDEX ON :`flow_meter`(`path_id`);
+CREATE CONSTRAINT ON (`mirror_group`:`mirror_group`) ASSERT `mirror_group`.`unique_index` IS UNIQUE;
+CREATE CONSTRAINT ON (`mirror_group`:`mirror_group`) ASSERT `mirror_group`.`entityId` IS UNIQUE;
+CREATE INDEX ON :`mirror_group`(`path_id`);
+CREATE INDEX ON :`mirror_group` (`switch_id`);
+CREATE INDEX ON :`mirror_group` (`flow_id`);
 CREATE CONSTRAINT ON (`flow_path`:`flow_path`) ASSERT `flow_path`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_path`:`flow_path`) ASSERT `flow_path`.`path_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`history_log`:`history_log`) ASSERT `history_log`.`entityId` IS UNIQUE;
@@ -48,3 +53,6 @@ CREATE INDEX ON :`flow_event` (`flow_id`);
 CREATE INDEX ON :`flow_history` (`task_id`);
 CREATE INDEX ON :`flow_dump` (`flow_id`);
 CREATE INDEX ON :`flow_dump` (`task_id`);
+CREATE CONSTRAINT ON (`application_rule`:`application_rule`) ASSERT `application_rule`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`exclusion_id`:`exclusion_id`) ASSERT `exclusion_id`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`exclusion_id`:`exclusion_id`) ASSERT `exclusion_id`.`unique_index` IS UNIQUE;

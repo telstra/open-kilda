@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ public class SpeakerRequestBuildContext {
     private PathContext forward;
     private PathContext reverse;
 
+    private boolean deleteOperation;
+
     @Data
     @Builder
     public static class PathContext {
@@ -42,7 +44,9 @@ public class SpeakerRequestBuildContext {
         private boolean removeCustomerPortLldpRule;
         private boolean removeCustomerPortArpRule;
         private boolean removeServer42InputRule;
+        private boolean removeServer42IngressRule;
         private boolean installServer42InputRule;
+        private boolean installServer42IngressRule;
         private Integer server42Port;
         private MacAddress server42MacAddress;
     }

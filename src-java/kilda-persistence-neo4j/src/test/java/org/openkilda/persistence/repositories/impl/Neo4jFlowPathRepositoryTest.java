@@ -50,6 +50,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
@@ -415,8 +416,9 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         Flow flowC = buildTestProtectedFlow(TEST_FLOW_ID_3, switchB, PORT_1, VLAN_1, switchB, PORT_3, VLAN_1);
         flowRepository.createOrUpdate(flowC);
 
-        Collection<PathId> pathIds =
-                flowPathRepository.findPathIdsByFlowIds(Sets.newHashSet(TEST_FLOW_ID_1, TEST_FLOW_ID_2));
+        Collection<FlowPath> flowPaths =
+                flowPathRepository.findByFlowIds(Sets.newHashSet(TEST_FLOW_ID_1, TEST_FLOW_ID_2));
+        Collection<PathId> pathIds = flowPaths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
         assertEquals(6, pathIds.size());
         assertTrue(pathIds.contains(flowA.getForwardPathId()));
         assertTrue(pathIds.contains(flowA.getReversePathId()));

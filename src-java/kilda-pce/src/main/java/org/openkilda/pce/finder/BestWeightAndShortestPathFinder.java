@@ -24,6 +24,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
+import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.collect.Lists;
@@ -227,7 +228,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         if (path.isEmpty()) {
             return Long.MAX_VALUE;
         }
-        return path.stream().mapToLong(weightFunction::apply).sum();
+        return path.stream().map(weightFunction).mapToLong(PathWeight::toLong).sum();
     }
 
     private void removeEdge(Edge edge) {
@@ -255,13 +256,13 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      * @return A pair of ordered lists that represents the path from start to end, or an empty list
      */
     private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction) {
-        long bestWeight = Long.MAX_VALUE; // Need to be long because it stores sum of ints.
+        PathWeight bestWeight = new PathWeight(Long.MAX_VALUE);
         SearchNode bestPath = null;
 
         Deque<SearchNode> toVisit = new LinkedList<>(); // working list
         Map<Node, SearchNode> visited = new HashMap<>();
 
-        toVisit.add(new SearchNode(weightFunction, start, allowedDepth, 0, emptyList()));
+        toVisit.add(new SearchNode(weightFunction, start, allowedDepth, new PathWeight(), emptyList()));
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
@@ -269,7 +270,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
                 // We found the destination
-                if (current.parentWeight < bestWeight) {
+                if (current.parentWeight.compareTo(bestWeight) < 0) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
                     bestWeight = current.parentWeight;
@@ -281,12 +282,12 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
             // Otherwise, if we've been here before, see if this path is better
             SearchNode prior = visited.get(current.dstSw);
-            if (prior != null && current.parentWeight >= prior.parentWeight) {
+            if (prior != null && current.parentWeight.compareTo(prior.parentWeight) >= 0) {
                 continue;
             }
 
             // Stop processing entirely if we've gone too far, or over bestWeight
-            if (current.allowedDepth <= 0 || current.parentWeight > bestWeight) {
+            if (current.allowedDepth <= 0 || current.parentWeight.compareTo(bestWeight) > 0) {
                 continue;
             }
 
@@ -311,7 +312,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         SearchNode desiredReversePath = getDesiredPath(end, start, weightFunction, maxWeight);
 
         if (desiredReversePath != null
-                && (desiredPath == null || desiredReversePath.parentWeight > desiredPath.parentWeight)) {
+                && (desiredPath == null || desiredReversePath.parentWeight.compareTo(desiredPath.parentWeight) > 0)) {
             foundPath = getReversePath(start, end, desiredReversePath.getParentPath());
         }
 
@@ -330,7 +331,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         Deque<SearchNode> toVisit = new LinkedList<>();
         Map<Node, SearchNode> visited = new HashMap<>();
 
-        toVisit.add(new SearchNode(weightFunction, start, allowedDepth, 0, emptyList()));
+        toVisit.add(new SearchNode(weightFunction, start, allowedDepth, new PathWeight(), emptyList()));
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
@@ -341,12 +342,12 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             }
 
             // Shift the current weight relative to maxWeight
-            long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight);
+            long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight.toLong());
 
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
                 // We found the destination
-                if (shiftedCurrentWeight < desiredWeight && current.parentWeight < maxWeight) {
+                if (shiftedCurrentWeight < desiredWeight && current.parentWeight.toLong() < maxWeight) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
                     desiredWeight = shiftedCurrentWeight;
@@ -357,13 +358,13 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             }
 
             // Stop processing entirely if we've gone too far, or over maxWeight
-            if (current.allowedDepth <= 0 || current.parentWeight >= maxWeight) {
+            if (current.allowedDepth <= 0 || current.parentWeight.toLong() >= maxWeight) {
                 continue;
             }
 
             // Otherwise, if we've been here before, see if this path is better
             SearchNode prior = visited.get(current.dstSw);
-            if (prior != null && shiftedCurrentWeight >= Math.abs(maxWeight - prior.parentWeight)) {
+            if (prior != null && shiftedCurrentWeight >= Math.abs(maxWeight - prior.parentWeight.toLong())) {
                 continue;
             }
 
@@ -470,7 +471,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         final WeightFunction weightFunction;
         final Node dstSw;
         final int allowedDepth;
-        final long parentWeight; // Need to be long because it stores sum of ints.
+        final PathWeight parentWeight;
         final List<Edge> parentPath;
         // NB: We could consider tracking the child path as well .. to facilitate
         //     re-calc if we find a better parentPath.
@@ -479,7 +480,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             List<Edge> newParentPath = new ArrayList<>(this.parentPath);
             newParentPath.add(nextEdge);
 
-            long weight = parentWeight + weightFunction.apply(nextEdge);
+            PathWeight weight = parentWeight.add(weightFunction.apply(nextEdge));
 
             return new SearchNode(
                     weightFunction,

@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
+import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RuleType;
@@ -30,10 +31,13 @@ import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
 import com.fasterxml.uuid.Generators;
@@ -307,6 +311,35 @@ public class FlowCommandFactory {
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
                 flow.getBandwidth(), meterId, egressSwitchId, multiTable, enableLldp, enableArp);
+    }
+
+    /**
+     * Generate install server 42 ingress flow command.
+     *
+     * @param flow the flow.
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param outputPort the number of output port.
+     * @param resources the encapsulation resources.
+     * @return install server 42 ingress flow command
+     */
+    public InstallServer42IngressFlow buildInstallServer42IngressFlow(
+            Flow flow, FlowPath flowPath, int outputPort, int server42Port, MacAddress server42MacAddress,
+            EncapsulationResources resources, boolean multiTable) {
+        boolean isForward = flow.isForward(flowPath);
+        SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
+        SwitchId egressSwitchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
+        int customerPort = isForward ? flow.getSrcPort() : flow.getDestPort();
+        int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
+        Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
+        long cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
+                .type(CookieType.SERVER_42_INGRESS)
+                .build()
+                .getValue();
+
+        return new InstallServer42IngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
+                cookie, switchId, server42Port, outputPort, customerPort, inVlan, resources.getTransitEncapsulationId(),
+                resources.getEncapsulationType(), getOutputVlanType(flow, flowPath), meterId, egressSwitchId,
+                server42MacAddress, multiTable);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo, boolean multiTable,

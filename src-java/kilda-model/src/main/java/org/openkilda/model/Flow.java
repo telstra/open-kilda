@@ -515,7 +515,8 @@ public class Flow implements Serializable {
      * Return protected flow prioritized paths status.
      */
     public FlowPathStatus getProtectedFlowPrioritizedPathsStatus() {
-        return getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
+        FlowPathStatus pathStatus = getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
+        return this.allocateProtectedPath && pathStatus == null ? FlowPathStatus.INACTIVE : pathStatus;
     }
 
     private FlowPathStatus getFlowPrioritizedPathStatus(FlowPath... flowPaths) {
@@ -575,5 +576,6 @@ public class Flow implements Serializable {
     public boolean isActualPathId(PathId pathId) {
         return pathId != null && (pathId.equals(this.getForwardPathId()) || pathId.equals(this.getReversePathId())
                 || pathId.equals(this.getProtectedForwardPathId()) || pathId.equals(this.getProtectedReversePathId()));
+
     }
 }

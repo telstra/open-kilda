@@ -476,6 +476,13 @@ public class SwitchServiceImpl implements SwitchService {
                     switchId, switchPropertiesDto.getServer42Port()), "Invalid server 42 Port");
         }
 
+        if (switchPropertiesDto.getServer42Vlan() != null
+                && (switchPropertiesDto.getServer42Vlan() < 0 || switchPropertiesDto.getServer42Vlan() > 4095)) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, format(
+                    "Property 'server42_vlan' for switch %s has invalid value '%d'. Vlan must be in range [0, 4095]",
+                    switchId, switchPropertiesDto.getServer42Vlan()), "Invalid server 42 Vlan");
+        }
+
         if (switchPropertiesDto.getServer42MacAddress() != null
                 && !MacAddress.isValid(switchPropertiesDto.getServer42MacAddress())) {
             throw new MessageException(ErrorType.REQUEST_INVALID, format(

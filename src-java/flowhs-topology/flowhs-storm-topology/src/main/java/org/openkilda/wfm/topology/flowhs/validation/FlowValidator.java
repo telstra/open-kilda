@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -33,15 +33,18 @@ import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Checks whether flow can be created and has no conflicts with already created ones.
@@ -68,25 +71,42 @@ public class FlowValidator {
      * @throws InvalidFlowException is thrown if a violation is found.
      */
     public void validate(RequestedFlow flow) throws InvalidFlowException, UnavailableFlowEndpointException {
+        validate(flow, new HashSet<>());
+    }
+
+    /**
+     * Validates the specified flow.
+     *
+     * @param flow a flow to be validated.
+     * @param bulkUpdateFlowIds flows to be ignored when check endpoints.
+     * @throws InvalidFlowException is thrown if a violation is found.
+     */
+    public void validate(RequestedFlow flow, Set<String> bulkUpdateFlowIds)
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        baseFlowValidate(flow, bulkUpdateFlowIds);
+
         checkFlags(flow);
         checkBandwidth(flow);
-
-        final FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(flow);
-        final FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(flow);
-
-        checkOneSwitchFlowConflict(source, destination);
-        checkSwitchesExistsAndActive(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
         }
+    }
+
+    private void baseFlowValidate(RequestedFlow flow, Set<String> bulkUpdateFlowIds)
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        final FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(flow);
+        final FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(flow);
+
+        checkOneSwitchFlowConflict(source, destination);
+        checkSwitchesExistsAndActive(flow);
 
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
                 EndpointDescriptor.makeDestination(destination)}) {
             checkFlowForIslConflicts(descriptor);
-            checkFlowForFlowConflicts(flow.getFlowId(), descriptor);
+            checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
         }
     }
 
@@ -101,6 +121,17 @@ public class FlowValidator {
             throw new InvalidFlowException("Couldn't setup protected path for one-switch flow",
                     ErrorType.PARAMETERS_INVALID);
         }
+    }
+
+    /**
+     * Validates the specified flow when swap endpoint operation.
+     */
+    public void validateForSwapEndpoints(RequestedFlow firstFlow, RequestedFlow secondFlow)
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        baseFlowValidate(firstFlow, Sets.newHashSet(secondFlow.getFlowId()));
+        baseFlowValidate(secondFlow, Sets.newHashSet(firstFlow.getFlowId()));
+
+        checkForEqualsEndpoints(firstFlow, secondFlow);
     }
 
     @VisibleForTesting
@@ -129,11 +160,12 @@ public class FlowValidator {
      *
      * @throws InvalidFlowException is thrown in a case when flow endpoints conflict with existing flows.
      */
-    private void checkFlowForFlowConflicts(String flowId, EndpointDescriptor descriptor) throws InvalidFlowException {
+    private void checkFlowForFlowConflicts(String flowId, EndpointDescriptor descriptor, Set<String> bulkUpdateFlowIds)
+            throws InvalidFlowException {
         final FlowEndpoint endpoint = descriptor.getEndpoint();
 
         for (Flow entry : flowRepository.findByEndpoint(endpoint.getSwitchId(), endpoint.getPortNumber())) {
-            if (flowId.equals(entry.getFlowId())) {
+            if (flowId.equals(entry.getFlowId()) || bulkUpdateFlowIds.contains(entry.getFlowId())) {
                 continue;
             }
 
@@ -266,6 +298,42 @@ public class FlowValidator {
                         switchId));
             }
         }
+    }
+
+    /**
+     * Check for equals endpoints.
+     *
+     * @param firstFlow a first flow.
+     * @param secondFlow a second flow.
+     */
+    @VisibleForTesting
+    void checkForEqualsEndpoints(RequestedFlow firstFlow, RequestedFlow secondFlow) throws InvalidFlowException {
+        String message = "New requested endpoint for '%s' conflicts with existing endpoint for '%s'";
+
+        Set<FlowEndpoint> firstFlowEndpoints = validateFlowEqualsEndpoints(firstFlow, message);
+        Set<FlowEndpoint> secondFlowEndpoints = validateFlowEqualsEndpoints(secondFlow, message);
+
+        for (FlowEndpoint endpoint : secondFlowEndpoints) {
+            if (firstFlowEndpoints.contains(endpoint)) {
+                message = String.format(message, secondFlow.getFlowId(), firstFlow.getFlowId());
+                throw new InvalidFlowException(message, ErrorType.DATA_INVALID);
+            }
+        }
+    }
+
+    private Set<FlowEndpoint> validateFlowEqualsEndpoints(RequestedFlow flow, String errorMessage)
+            throws InvalidFlowException {
+
+        Set<FlowEndpoint> flowEndpoints = new HashSet<>();
+        flowEndpoints.add(RequestedFlowMapper.INSTANCE.mapSource(flow));
+        flowEndpoints.add(RequestedFlowMapper.INSTANCE.mapDest(flow));
+
+        if (flowEndpoints.size() != 2) {
+            errorMessage = String.format(errorMessage, flow.getFlowId(), flow.getFlowId());
+            throw new InvalidFlowException(errorMessage, ErrorType.DATA_INVALID);
+        }
+
+        return flowEndpoints;
     }
 
     @Getter

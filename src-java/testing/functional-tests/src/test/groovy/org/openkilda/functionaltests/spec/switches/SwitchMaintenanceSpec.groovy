@@ -194,9 +194,11 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         then: "An error is received (404 code)"
         exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. Failed to find path with " +
-                "requested bandwidth=$flow.maximumBandwidth: Switch $sw.dpId doesn't have links with enough bandwidth"
+        with(exc.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not create flow"
+            errorDescription == "Not enough bandwidth or no path found. Failed to find path with requested " +
+                    "bandwidth=$flow.maximumBandwidth: Switch $sw.dpId doesn't have links with enough bandwidth"
+        }
 
         and: "Connect the switch back to the controller and unset maintenance mode"
         lockKeeper.reviveSwitch(sw, blockData)

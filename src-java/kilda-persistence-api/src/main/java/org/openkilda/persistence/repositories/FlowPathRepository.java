@@ -39,9 +39,9 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
 
-    Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId);
+    Collection<FlowPath> findByFlowIds(Set<String> flowIds);
 
-    Collection<PathId> findPathIdsByFlowIds(Set<String> flowIds);
+    Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId);
 
     /**
      * Finds paths that starts with passed {@param switchId} switch.

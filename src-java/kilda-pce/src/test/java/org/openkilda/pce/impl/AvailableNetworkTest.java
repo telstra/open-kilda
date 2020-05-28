@@ -31,6 +31,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
+import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
 import org.hamcrest.Matchers;
@@ -52,7 +53,7 @@ public class AvailableNetworkTest {
         total += edge.getDiversityGroupUseCounter() * 1000
                 + edge.getDiversityGroupPerPopUseCounter() * 1000
                 + edge.getDestSwitch().getDiversityGroupUseCounter() * 100;
-        return total;
+        return new PathWeight(total);
     };
 
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:6c:00:b8");
@@ -159,16 +160,16 @@ public class AvailableNetworkTest {
         assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
         assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
 
-        Long expectedWeight = cost + 200L;
+        long expectedWeight = cost + 200L;
         assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()));
+                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()).toLong());
         assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next()));
+                weightFunction.apply(network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next()).toLong());
 
         assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()));
+                weightFunction.apply(network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next()).toLong());
         assertEquals(expectedWeight,
-                weightFunction.apply(network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next()));
+                weightFunction.apply(network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next()).toLong());
     }
 
     private static final SwitchId SWITCH_1 = new SwitchId("00:00:00:00:00:00:00:01");
@@ -200,7 +201,7 @@ public class AvailableNetworkTest {
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, POP_4, POP_3, 1)));
         long expectedWeight = cost + 1000L;
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge);
+            long currentWeight = weightFunction.apply(edge).toLong();
             if (edge.getSrcSwitch().getPop().equals(POP_4)
                     || edge.getDestSwitch().getPop().equals(POP_4)) {
                 assertEquals(expectedWeight, currentWeight);
@@ -228,7 +229,7 @@ public class AvailableNetworkTest {
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge);
+            long currentWeight = weightFunction.apply(edge).toLong();
             assertEquals(cost, currentWeight);
         }
     }
@@ -251,7 +252,7 @@ public class AvailableNetworkTest {
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge);
+            long currentWeight = weightFunction.apply(edge).toLong();
             assertEquals(cost, currentWeight);
         }
     }
@@ -274,7 +275,7 @@ public class AvailableNetworkTest {
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, 1)));
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge);
+            long currentWeight = weightFunction.apply(edge).toLong();
             assertEquals(cost, currentWeight);
         }
     }

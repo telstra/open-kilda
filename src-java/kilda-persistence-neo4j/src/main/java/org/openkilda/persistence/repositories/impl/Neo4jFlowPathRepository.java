@@ -151,7 +151,7 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<PathId> findPathIdsByFlowIds(Set<String> flowIds) {
+    public Collection<FlowPath> findByFlowIds(Set<String> flowIds) {
         Map<String, Object> parameters = ImmutableMap.of("flow_ids", flowIds);
 
         Set<PathId> pathIds = new HashSet<>();
@@ -162,7 +162,13 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
                 + "RETURN path_id", parameters, "path_id")
                 .forEach(pathId -> pathIds.add(pathIdConverter.toEntityAttribute(pathId)));
 
-        return pathIds;
+        if (pathIds.isEmpty()) {
+            return emptyList();
+        }
+
+        Filter pathIdsFilter = new Filter(PATH_ID_PROPERTY_NAME, new InOperatorWithNoConverterComparison(pathIds));
+
+        return loadAll(pathIdsFilter);
     }
 
     @Override

@@ -21,15 +21,25 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
@@ -54,19 +64,23 @@ import java.util.stream.Collectors;
 public class ValidationServiceImpl implements ValidationService {
     private FlowPathRepository flowPathRepository;
     private SwitchRepository switchRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final FeatureTogglesRepository featureTogglesRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
     }
 
     @Override
     public ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                             List<FlowEntry> expectedDefaultRules) {
+                                             List<FlowEntry> expectedDefaultRules) throws SwitchNotFoundException {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitch(switchId).stream()
@@ -83,8 +97,31 @@ public class ValidationServiceImpl implements ValidationService {
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
+        expectedCookies.addAll(getExpectedServer42IngressCookies(switchId, paths));
         return makeRulesResponse(
                 expectedCookies, presentRules, expectedDefaultRules, switchId);
+    }
+
+    private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths)
+            throws SwitchNotFoundException {
+        Switch sw = switchRepository.findById(switchId)
+                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
+
+        if (switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
+            return paths.stream()
+                    .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
+                    .filter(path -> !path.isOneSwitchFlow())
+                    .map(FlowPath::getCookie)
+                    .map(FlowSegmentCookie::toBuilder)
+                    .map(builder -> builder.type(CookieType.SERVER_42_INGRESS))
+                    .map(FlowSegmentCookieBuilder::build)
+                    .map(CookieBase::getValue)
+                    .collect(Collectors.toSet());
+        }
+        return new HashSet<>();
     }
 
     private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,

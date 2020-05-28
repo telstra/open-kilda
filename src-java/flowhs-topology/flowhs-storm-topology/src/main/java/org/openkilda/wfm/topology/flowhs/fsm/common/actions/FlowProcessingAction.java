@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,19 +16,30 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -54,6 +65,8 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
     protected final FlowRepository flowRepository;
     protected final FlowPathRepository flowPathRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
+    protected final SwitchRepository switchRepository;
+    protected final FeatureTogglesRepository featureTogglesRepository;
 
     public FlowProcessingAction(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -61,6 +74,8 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -122,6 +137,12 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
                         format("Properties for switch %s not found", ingressSwitchId)));
     }
 
+    protected Switch getSwitch(SwitchId switchId) {
+        return switchRepository.findById(switchId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Switch %s not found", switchId)));
+    }
+
     protected SpeakerRequestBuildContext buildBaseSpeakerContextForInstall(SwitchId srcSwitchId, SwitchId dstSwitchId) {
         return SpeakerRequestBuildContext.builder()
                 .forward(buildBasePathContextForInstall(srcSwitchId))
@@ -131,10 +152,24 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected PathContext buildBasePathContextForInstall(SwitchId switchId) {
         SwitchProperties switchProperties = getSwitchProperties(switchId);
+        Switch sw = getSwitch(switchId);
+        boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(NOVIFLOW_COPY_FIELD)
+                && isServer42FlowRttFeatureToggle();
         return PathContext.builder()
-                .installServer42InputRule(switchProperties.isServer42FlowRtt())
+                .installServer42InputRule(serverFlowRtt && switchProperties.isMultiTable())
+                .installServer42IngressRule(serverFlowRtt)
                 .server42Port(switchProperties.getServer42Port())
                 .server42MacAddress(switchProperties.getServer42MacAddress())
                 .build();
+    }
+
+    protected boolean isServer42FlowRttFeatureToggle() {
+        return featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false);
+    }
+
+    protected Message buildResponseMessage(Flow flow, CommandContext commandContext) {
+        InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow)));
+        return new InfoMessage(flowData, commandContext.getCreateTime(),
+                commandContext.getCorrelationId());
     }
 }

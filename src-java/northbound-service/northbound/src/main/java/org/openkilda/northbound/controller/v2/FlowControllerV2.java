@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
@@ -28,10 +29,12 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
 
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -135,6 +138,24 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(@RequestBody SwapFlowEndpointPayload payload) {
         return flowService.swapFlowEndpoint(payload);
+    }
+
+    /**
+     * Updates existing flow params.
+     *
+     * @param flowPatchDto  flow parameters for update
+     * @param flowId        flow id
+     * @return flow
+     */
+    @ApiOperation(value = "Updates flow", response = FlowResponseV2.class)
+    @PatchMapping(value = "/{flow_id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowResponseV2> patchFlow(@PathVariable(name = "flow_id") String flowId,
+                                                       @ApiParam(value = "To remove flow from a diverse group, "
+                                                               + "need to pass the parameter \"diverse_flow_id\" "
+                                                               + "equal to the empty string.")
+                                                       @RequestBody FlowPatchV2 flowPatchDto) {
+        return flowService.patchFlow(flowId, flowPatchDto);
     }
 
     private void verifyRequest(FlowRequestV2 request) {

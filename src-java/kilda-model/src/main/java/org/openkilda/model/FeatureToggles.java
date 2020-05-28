@@ -48,7 +48,8 @@ public class FeatureToggles {
             true, // floodlight_router_periodic_sync
             false, // flows_reroute_via_flowhs
             false, // flows_reroute_using_default_encap_type
-            false // collect_grpc_stats
+            false, // collect_grpc_stats
+            false // server42_flow_rtt
     );
 
     // Hidden as needed for OGM only.
@@ -91,6 +92,9 @@ public class FeatureToggles {
     @Property(name = "collect_grpc_stats")
     private Boolean collectGrpcStats;
 
+    @Property(name = "server42_flow_rtt")
+    private Boolean server42FlowRtt;
+
     /**
      * Constructor prevents initialization of entityId field.
      */
@@ -98,7 +102,8 @@ public class FeatureToggles {
     FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled, Boolean updateFlowEnabled,
                    Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled,
                    Boolean useBfdForIslIntegrityCheck, Boolean floodlightRoutePeriodicSync,
-                   Boolean flowsRerouteViaFlowHs, Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats) {
+                   Boolean flowsRerouteViaFlowHs, Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
+                   Boolean server42FlowRtt) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
@@ -110,5 +115,6 @@ public class FeatureToggles {
         this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
         this.flowsRerouteUsingDefaultEncapType = flowsRerouteUsingDefaultEncapType;
         this.collectGrpcStats = collectGrpcStats;
+        this.server42FlowRtt = server42FlowRtt;
     }
 }

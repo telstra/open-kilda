@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.switchmanager.factory.generator.server42;
 
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionPushVlan;
+import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionReplaceVlan;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetDstMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetOutputPort;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.actionSetSrcMac;
@@ -51,19 +53,23 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
 
     private FeatureDetectorService featureDetectorService;
     private int server42Port;
+    private int server42Vlan;
     private MacAddress server42MacAddress;
 
     @Builder
     public Server42OutputVxlanFlowGenerator(
-            FeatureDetectorService featureDetectorService, int server42Port, MacAddress server42MacAddress) {
+            FeatureDetectorService featureDetectorService, int server42Port, int server42Vlan,
+            MacAddress server42MacAddress) {
         this.featureDetectorService = featureDetectorService;
         this.server42Port = server42Port;
+        this.server42Vlan = server42Vlan;
         this.server42MacAddress = server42MacAddress;
     }
 
@@ -75,19 +81,22 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
         }
 
         OFFactory ofFactory = sw.getOFFactory();
-        Match match = buildMatch(sw.getId(), ofFactory);
 
-        List<OFAction> actions = ImmutableList.of(
-                buildPopVxlanAction(ofFactory),
-                actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())),
-                actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
-                        server42MacAddress.getAddress())),
-                buildCopyTimestamp(ofFactory),
-                actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
+        List<OFAction> actions = new ArrayList<>();
+        actions.add(buildPopVxlanAction(ofFactory));
+        if (server42Vlan > 0) {
+            actions.add(actionPushVlan(ofFactory, EthType.VLAN_FRAME.getValue()));
+            actions.add(actionReplaceVlan(ofFactory, server42Vlan));
+        }
+        actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
+        actions.add(actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
+                        server42MacAddress.getAddress())));
+        actions.add(buildCopyTimestamp(ofFactory));
+        actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(
                 ofFactory, SERVER_42_OUTPUT_VXLAN_COOKIE, SERVER_42_OUTPUT_VXLAN_PRIORITY, INPUT_TABLE_ID)
-                .setMatch(match)
+                .setMatch(buildMatch(sw.getId(), ofFactory))
                 .setInstructions(ImmutableList.of(buildInstructionApplyActions(ofFactory, actions)))
                 .build();
         return SwitchFlowTuple.builder()

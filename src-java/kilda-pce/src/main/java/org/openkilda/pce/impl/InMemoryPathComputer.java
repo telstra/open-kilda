@@ -33,6 +33,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +107,7 @@ public class InMemoryPathComputer implements PathComputer {
         switch (strategy) {
             case COST:
             case LATENCY:
+            case COST_AND_AVAILABLE_BANDWIDTH:
                 return pathFinder.findPathInNetwork(network, flow.getSrcSwitch().getSwitchId(),
                         flow.getDestSwitch().getSwitchId(), weightFunction);
             case MAX_LATENCY:
@@ -151,12 +153,14 @@ public class InMemoryPathComputer implements PathComputer {
             case LATENCY:
             case MAX_LATENCY:
                 return this::weightByLatency;
+            case COST_AND_AVAILABLE_BANDWIDTH:
+                return this::weightByCostAndAvailableBandwidth;
             default:
                 throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
         }
     }
 
-    private Long weightByCost(Edge edge) {
+    private PathWeight weightByCost(Edge edge) {
         long total = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
         if (edge.isUnderMaintenance()) {
             total += config.getUnderMaintenanceCostRaise();
@@ -167,10 +171,10 @@ public class InMemoryPathComputer implements PathComputer {
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
                 + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
                 + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
-        return total;
+        return new PathWeight(total);
     }
 
-    private Long weightByLatency(Edge edge) {
+    private PathWeight weightByLatency(Edge edge) {
         long total = edge.getLatency() <= 0 ? config.getDefaultIslLatency() : edge.getLatency();
         if (edge.isUnderMaintenance()) {
             total += config.getUnderMaintenanceLatencyRaise();
@@ -181,7 +185,21 @@ public class InMemoryPathComputer implements PathComputer {
         total += edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency()
                 + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
                 + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
-        return total;
+        return new PathWeight(total);
+    }
+
+    private PathWeight weightByCostAndAvailableBandwidth(Edge edge) {
+        long total = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
+        if (edge.isUnderMaintenance()) {
+            total += config.getUnderMaintenanceCostRaise();
+        }
+        if (edge.isUnstable()) {
+            total += config.getUnstableCostRaise();
+        }
+        total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
+                + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
+                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+        return new PathWeight(total, edge.getAvailableBandwidth());
     }
 
     private PathPair convertToPathPair(SwitchId srcSwitchId, SwitchId dstSwitchId,

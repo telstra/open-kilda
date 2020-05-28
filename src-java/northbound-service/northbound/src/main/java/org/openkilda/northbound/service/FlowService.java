@@ -30,6 +30,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
@@ -99,6 +100,15 @@ public interface FlowService {
      * @return updated flow
      */
     CompletableFuture<FlowResponsePayload> patchFlow(final String flowId, final FlowPatchDto flowPatchDto);
+
+    /**
+     * Patch flow.
+     *
+     * @param flowId       flow id
+     * @param flowPatchDto flow parameters for update
+     * @return updated flow
+     */
+    CompletableFuture<FlowResponseV2> patchFlow(String flowId, FlowPatchV2 flowPatchDto);
 
     /**
      * Gets flow by id.

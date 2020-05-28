@@ -14,6 +14,7 @@
 #
 
 import os
+import pathlib
 import traceback
 import logging
 
@@ -27,9 +28,12 @@ logger = logging.getLogger()
 
 LAB_ID = os.environ.get("LAB_ID", 1)
 API_HOST = os.environ.get("API_HOST", 'lab-api:8288')
+APP_ROOT = "/opt/lab-service"
 
 
 def main():
+    setup_app_home(APP_ROOT)
+
     base_url = "http://{}/api/{}/".format(API_HOST, LAB_ID)
     definition_url = base_url + 'definition'
     activate_url = base_url + 'activate'
@@ -56,3 +60,12 @@ def main():
         lockkeeper_proc.terminate()
         lockkeeper_proc.join()
     loop_forever(teardown)
+
+
+def setup_app_home(root):
+    root = pathlib.Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    os.chdir(root)
+
+    for p in ["log"]:
+        pathlib.Path(p).mkdir(parents=True, exist_ok=True)

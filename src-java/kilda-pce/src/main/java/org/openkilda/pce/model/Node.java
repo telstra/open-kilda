@@ -15,7 +15,7 @@
 
 package org.openkilda.pce.model;
 
-import static java.util.Comparator.comparingLong;
+import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.minBy;
 import static java.util.stream.Collectors.toSet;
@@ -105,7 +105,7 @@ public class Node {
             return edges;
         }
 
-        Comparator<Edge> comparator = comparingLong(weightFunction::apply);
+        Comparator<Edge> comparator = comparing(weightFunction);
         comparator = comparator.thenComparing(resolvePortCollisionsFn);
         return edges.stream()
                 .collect(groupingBy(groupingFunction, minBy(comparator)))

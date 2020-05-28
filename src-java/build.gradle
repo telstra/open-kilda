@@ -139,6 +139,10 @@ subprojects {
         from("${project.file('build.gradle')}") { into "${project.name}" }
     }
 
+    compileJava {
+        options.compilerArgs << '-Amapstruct.unmappedTargetPolicy=ERROR'
+    }
+
     checkstyle {
         toolVersion '8.18'
         configDirectory = rootProject.file('checkstyle')

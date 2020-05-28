@@ -66,116 +66,144 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     }
 
     @Test
-    public void metersCommon() {
-        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_13, 2),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, METERS, RESET_COUNTS_FLAG, PKTPS_FLAG,
-                               MATCH_UDP_PORT, MULTI_TABLE));
-    }
-
-    @Test
-    public void metersOf12() {
-        discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_12, 1),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, PKTPS_FLAG, MATCH_UDP_PORT));
-    }
-
-    @Test
-    public void metersNicira() {
-        discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", "Hard123", OFVersion.OF_13, 1),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
-    }
-
-    @Test
-    public void bfdCommon() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13, 1),
-                       ImmutableSet.of(
-                               GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, NOVIFLOW_COPY_FIELD,
-                               PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION, NOVIFLOW_PUSH_POP_VXLAN,
-                               HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
-    }
-
-    @Test
-    public void bfdDevFirmware() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.2.0_dev", "NS21100", OFVersion.OF_13, 1),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
-                                       NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, NOVIFLOW_PUSH_POP_VXLAN,
-                                       MAX_BURST_COEFFICIENT_LIMITATION, HALF_SIZE_METADATA,
-                                       NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
-    }
-
-    @Test
     public void bfdReview() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_14, 1),
-                       ImmutableSet.of(
-                               GROUP_PACKET_OUT_CONTROLLER, BFD, BFD_REVIEW, METERS, RESET_COUNTS_FLAG,
-                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
-                               NOVIFLOW_PUSH_POP_VXLAN, HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("NoviFlow Inc")
+                        .setHardwareDescription("NS21100")
+                        .setSoftwareDescription("NW500.2.10")
+                        .setDatapathDescription(
+                                "Pure OpenFlow switch from NoviFlow, Hostname: sw0, of1: 127.0.1.1, cli: 127.0.2.1")
+                        .build(),
+                OFVersion.OF_14, 7);
+        discoveryContain(sw, BFD_REVIEW);
     }
 
     @Test
-    public void copyFieldOnESwitches() {
-        discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13, 2),
+    public void testOvs() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("Nicira, Inc.")
+                        .setHardwareDescription("Open vSwitch")
+                        .setSoftwareDescription("2.12.0")
+                        .build(),
+                OFVersion.OF_13, 255);
+        discoveryCheck(sw, ImmutableSet.of(
+                GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, MULTI_TABLE, PKTPS_FLAG, RESET_COUNTS_FLAG));
+    }
+
+    @Test
+    public void testSonusSwitch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("Sonus Networks Inc, 4 Technology Park Dr, Westford, MA 01886, USA")
+                        .setHardwareDescription("VX3048")
+                        .setSoftwareDescription("8.1.0.14")
+                        .setDatapathDescription("OpenFlow 1.2 Switch Datapath")
+                        .build(),
+                OFVersion.OF_12, 1);
+        discoveryCheck(sw, ImmutableSet.of(MATCH_UDP_PORT, PKTPS_FLAG));
+    }
+
+    @Test
+    public void testCentecSwitch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("2004-2015 Centec Networks Inc")
+                        .setHardwareDescription("48S")
+                        .setSoftwareDescription("2.8.16.15")
+                        .setDatapathDescription("ASIC based data plane  ")
+                        .build(),
+                OFVersion.OF_13, 2);
+        discoveryCheck(sw, ImmutableSet.of(
+                METERS, INACCURATE_SET_VLAN_VID_ACTION, LIMITED_BURST_SIZE, MULTI_TABLE));
+    }
+
+    @Test
+    public void testNs21100Switch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("NoviFlow Inc")
+                        .setHardwareDescription("NS21100")
+                        .setSoftwareDescription("NW500.2.10")
+                        .setDatapathDescription(
+                                "Pure OpenFlow switch from NoviFlow, Hostname: sw0, of1: 127.0.1.1, cli: 127.0.2.1")
+                        .build(),
+                OFVersion.OF_13, 7);
+        discoveryCheck(sw, ImmutableSet.of(
+                BFD, GROUP_PACKET_OUT_CONTROLLER, HALF_SIZE_METADATA, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
+                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
+                PKTPS_FLAG, RESET_COUNTS_FLAG));
+    }
+
+    @Test
+    public void testNs2128Switch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("NoviFlow Inc")
+                        .setHardwareDescription("NS2128")
+                        .setSoftwareDescription("NW500.2.10")
+                        .setDatapathDescription(
+                                "Pure OpenFlow switch from NoviFlow, Hostname: sw0, of1: 127.0.1.1, cli: 127.0.2.1")
+                        .build(),
+                OFVersion.OF_13, 7);
+        discoveryCheck(sw, ImmutableSet.of(
+                BFD, GROUP_PACKET_OUT_CONTROLLER, HALF_SIZE_METADATA, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
+                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
+                PKTPS_FLAG, RESET_COUNTS_FLAG));
+    }
+
+    @Test
+    public void testNs2150Switch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("NoviFlow Inc")
+                        .setHardwareDescription("NS2150")
+                        .setSoftwareDescription("NW500.2.7")
+                        .setDatapathDescription(
+                                "Pure OpenFlow switch from NoviFlow, Hostname: sw0, of1: 127.0.1.1, cli: 127.0.2.1")
+                        .build(),
+                OFVersion.OF_13, 7);
+        discoveryCheck(sw, ImmutableSet.of(
+                BFD, GROUP_PACKET_OUT_CONTROLLER, HALF_SIZE_METADATA, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION,
+                METERS, MULTI_TABLE, NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_SWAP_ETH_SRC_ETH_DST,
+                PKTPS_FLAG, RESET_COUNTS_FLAG));
+    }
+
+    @Test
+    public void testWb5164eV4xxSwitch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("E")
+                        .setHardwareDescription("WB5164")
+                        .setSoftwareDescription("NW400.4.0")
+                        .build(),
+                OFVersion.OF_13, 7);
+        discoveryCheck(sw,
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
                         MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, INACCURATE_METER,
                         HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
     }
 
     @Test
-    public void copyFieldOnNoviflowVirtualSwitches() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "SM5000-SM", OFVersion.OF_13, 2),
+    public void testWb5164eV5xxSwitch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("NoviFlow Inc")
+                        .setHardwareDescription("WB5164-E")
+                        .setSoftwareDescription("NW500.2.10")
+                        .setDatapathDescription(
+                                "Pure OpenFlow switch from NoviFlow, Hostname: sw0, of1: 127.0.1.1, cli: 127.0.2.1")
+                        .build(),
+                OFVersion.OF_13, 7);
+        discoveryCheck(sw, ImmutableSet.of(
+                GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, INACCURATE_METER, MATCH_UDP_PORT,
+                MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
+    }
+
+    @Test
+    public void testNoviflowVirtualSwitch() {
+        IOFSwitch sw = makeSwitchMock(SwitchDescription.builder()
+                        .setManufacturerDescription("NoviFlow Inc")
+                        .setHardwareDescription("SM5000-SM")
+                        .setSoftwareDescription("NW500.0.1")
+                        .build(),
+                OFVersion.OF_13, 2);
+        discoveryCheck(sw,
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
                         MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, HALF_SIZE_METADATA,
                         NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
-    }
-
-    @Test
-    public void roundTripCentec() {
-        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 2),
-                       ImmutableSet.of(LIMITED_BURST_SIZE, INACCURATE_SET_VLAN_VID_ACTION, MULTI_TABLE, METERS));
-    }
-
-    @Test
-    public void roundTripActon() {
-        discoveryCheck(makeSwitchMock("Sonus Networks Inc, 4 Technology Park Dr, Westford, MA 01886, USA",
-                "8.1.0.14", "VX3048", OFVersion.OF_12, 2),
-                ImmutableSet.of(PKTPS_FLAG, MATCH_UDP_PORT, MULTI_TABLE));
-    }
-
-    @Test
-    public void eswitch500Software() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "WB5164-E", OFVersion.OF_13, 2),
-                ImmutableSet.of(
-                        GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, INACCURATE_METER, MATCH_UDP_PORT,
-                        MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
-    }
-
-    @Test
-    public void pktpsFlagCommon() {
-        discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13, 1),
-                ImmutableSet.of(
-                        GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, NOVIFLOW_COPY_FIELD,
-                        PKTPS_FLAG, MATCH_UDP_PORT, MAX_BURST_COEFFICIENT_LIMITATION, NOVIFLOW_PUSH_POP_VXLAN,
-                        HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
-    }
-
-    @Test
-    public void pktpsFlagCentec() {
-        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", "48T", OFVersion.OF_13, 3),
-                ImmutableSet.of(LIMITED_BURST_SIZE, INACCURATE_SET_VLAN_VID_ACTION, MULTI_TABLE, METERS));
-    }
-
-    @Test
-    public void pktpsFlagESwitch() {
-        discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13, 2),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT,
-                        MAX_BURST_COEFFICIENT_LIMITATION, MULTI_TABLE, NOVIFLOW_PUSH_POP_VXLAN, INACCURATE_METER,
-                        HALF_SIZE_METADATA, NOVIFLOW_SWAP_ETH_SRC_ETH_DST));
-    }
-
-    @Test
-    public void centecSwitch() {
-        discoveryCheck(makeSwitchMock("2004-2014 Centec Networks Inc", "2.8.16.15", "48T", OFVersion.OF_13, 2),
-                ImmutableSet.of(
-                        METERS, INACCURATE_SET_VLAN_VID_ACTION, LIMITED_BURST_SIZE, MULTI_TABLE));
     }
 
     private void discoveryCheck(IOFSwitch sw, Set<SwitchFeature> expectedFeatures) {
@@ -185,13 +213,16 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         Assert.assertEquals(expectedFeatures, actualFeatures);
     }
 
-    private IOFSwitch makeSwitchMock(String manufacturer, String softwareDescription, String hardwareDescription,
-                                     OFVersion version, int numTables) {
-        SwitchDescription description = createMock(SwitchDescription.class);
-        expect(description.getManufacturerDescription()).andReturn(manufacturer).anyTimes();
-        expect(description.getSoftwareDescription()).andReturn(softwareDescription).anyTimes();
-        expect(description.getHardwareDescription()).andReturn(hardwareDescription).anyTimes();
+    private void discoveryContain(IOFSwitch sw, SwitchFeature... expectedFeatules) {
+        replayAll();
 
+        Set<SwitchFeature> actualFeatures = featuresDetector.detectSwitch(sw);
+        for (SwitchFeature expected : expectedFeatules) {
+            Assert.assertTrue(actualFeatures.contains(expected));
+        }
+    }
+
+    private IOFSwitch makeSwitchMock(SwitchDescription description, OFVersion version, int numTables) {
         OFFactory ofFactory = createMock(OFFactory.class);
         expect(ofFactory.getVersion()).andReturn(version).anyTimes();
 

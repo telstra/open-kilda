@@ -87,7 +87,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
     }
 
     @Override
-    public void sendResponse(Message message) {
+    public void sendNorthboundResponse(Message message) {
         carrier.sendNorthboundResponse(message);
     }
 

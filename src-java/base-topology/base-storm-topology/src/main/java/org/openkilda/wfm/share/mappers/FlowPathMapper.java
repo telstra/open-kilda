@@ -41,19 +41,20 @@ public abstract class FlowPathMapper {
      */
     public PathInfoData map(FlowPath path) {
         PathInfoData result = new PathInfoData();
-        result.setLatency(path.getLatency());
+        if (path != null) {
+            result.setLatency(path.getLatency());
 
-        int seqId = 0;
-        List<PathNode> nodes = new ArrayList<>();
-        for (PathSegment pathSegment : path.getSegments()) {
-            nodes.add(new PathNode(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
-                    seqId++, pathSegment.getLatency()));
-            nodes.add(new PathNode(pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
-                    seqId++));
+            int seqId = 0;
+            List<PathNode> nodes = new ArrayList<>();
+            for (PathSegment pathSegment : path.getSegments()) {
+                nodes.add(new PathNode(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
+                        seqId++, pathSegment.getLatency()));
+                nodes.add(new PathNode(pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
+                        seqId++));
+            }
+
+            result.setPath(nodes);
         }
-
-        result.setPath(nodes);
-
         return result;
     }
 

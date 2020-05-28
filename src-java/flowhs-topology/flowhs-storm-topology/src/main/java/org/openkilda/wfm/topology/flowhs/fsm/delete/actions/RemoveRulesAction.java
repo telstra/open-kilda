@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -38,12 +38,12 @@ import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
@@ -61,9 +61,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
 
-        Set<PathId> protectedPaths = Arrays.stream(
-                new PathId[]{
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()})
+        Set<PathId> protectedPaths = Stream.of(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<PathId> processed = new HashSet<>();
@@ -76,7 +74,6 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                     processed.add(oppositePath.getPathId());
                 }
 
-
                 if (oppositePath != null) {
                     stateMachine.getFlowResources().add(buildResources(flow, path, oppositePath));
 
@@ -87,6 +84,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .forward(buildPathContext(flow, path))
                                 .reverse(buildPathContext(flow, oppositePath))
+                                .deleteOperation(true)
                                 .build();
                         commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow,
                                 path, oppositePath, speakerRequestBuildContext));
@@ -103,6 +101,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                         SpeakerRequestBuildContext speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
                                 .forward(buildPathContext(flow, path))
                                 .reverse(PathContext.builder().build())
+                                .deleteOperation(true)
                                 .build();
                         commands.addAll(commandBuilder.buildAll(
                                 stateMachine.getCommandContext(), flow, path, null, speakerRequestBuildContext));
@@ -115,7 +114,13 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
         stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
 
-        stateMachine.saveActionToHistory("Remove commands for rules have been sent");
+        if (commands.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to remove rules");
+
+            stateMachine.fire(Event.RULES_REMOVED);
+        } else {
+            stateMachine.saveActionToHistory("Remove commands for rules have been sent");
+        }
     }
 
     private FlowResources buildResources(Flow flow, FlowPath path, FlowPath oppositePath) {
@@ -180,12 +185,14 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
 
     private PathContext buildPathContext(Flow flow, FlowPath path) {
         SwitchProperties properties = getSwitchProperties(path.getSrcSwitch().getSwitchId());
+        boolean server42FlowRtt = isServer42FlowRttFeatureToggle() && properties.isServer42FlowRtt();
 
         return PathContext.builder()
                 .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
                 .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                 .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
-                .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, properties.isServer42FlowRtt()))
+                .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, server42FlowRtt))
+                .removeServer42IngressRule(server42FlowRtt)
                 .server42Port(properties.getServer42Port())
                 .server42MacAddress(properties.getServer42MacAddress())
                 .build();

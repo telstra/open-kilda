@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -51,6 +51,12 @@ import java.util.List;
 import java.util.UUID;
 
 public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
+    // In the case of a path deletion operation, it is possible that there is no encapsulation resource for that path
+    // in the database. In this case, we use this stub so as not to interrupt the delete operation. After that, excess
+    // rules will remain on the switches, which the operator will have to synchronize.
+    private static final FlowTransitEncapsulation DELETE_ENCAPSULATION_STUB =
+            new FlowTransitEncapsulation(2, FlowEncapsulationType.TRANSIT_VLAN);
+
     private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
     private final FlowResourcesManager resourcesManager;
 
@@ -59,9 +65,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     @Override
-    public List<FlowSegmentRequestFactory> buildAll(
-            CommandContext context, Flow flow, FlowPath forwardPath, FlowPath reversePath) {
-        return buildAll(context, flow, forwardPath, reversePath, SpeakerRequestBuildContext.EMPTY);
+    public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
+                                                    SpeakerRequestBuildContext speakerRequestBuildContext) {
+        return makeRequests(context, flow, path, null, true, true, true, speakerRequestBuildContext);
     }
 
     @Override
@@ -74,6 +80,11 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     @Override
     public List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, @NonNull Flow flow) {
         return buildAllExceptIngress(context, flow, flow.getForwardPath(), flow.getReversePath());
+    }
+
+    @Override
+    public List<FlowSegmentRequestFactory> buildAllExceptIngress(CommandContext context, Flow flow, FlowPath path) {
+        return buildAllExceptIngress(context, flow, path, null);
     }
 
     @Override
@@ -114,19 +125,34 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             throw new IllegalArgumentException("At least one flow path must be not null");
         }
 
+        boolean isDeleteOperation = speakerRequestBuildContext.isDeleteOperation();
         FlowTransitEncapsulation encapsulation = null;
         if (!flow.isOneSwitchFlow()) {
-            encapsulation = getEncapsulation(
-                    flow.getEncapsulationType(), path.getPathId(),
-                    oppositePath != null ? oppositePath.getPathId() : null);
+            try {
+                encapsulation = getEncapsulation(
+                        flow.getEncapsulationType(), path.getPathId(),
+                        oppositePath != null ? oppositePath.getPathId() : null);
+            } catch (IllegalStateException e) {
+                if (!isDeleteOperation) {
+                    throw e;
+                }
+                encapsulation = DELETE_ENCAPSULATION_STUB;
+            }
         }
 
         List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(flow, path, context, encapsulation,
                 doIngress, doTransit, doEgress, createRulesContext(speakerRequestBuildContext.getForward())));
         if (oppositePath != null) {
             if (!flow.isOneSwitchFlow()) {
-                encapsulation = getEncapsulation(
-                        flow.getEncapsulationType(), oppositePath.getPathId(), path.getPathId());
+                try {
+                    encapsulation = getEncapsulation(
+                            flow.getEncapsulationType(), oppositePath.getPathId(), path.getPathId());
+                } catch (IllegalStateException e) {
+                    if (!isDeleteOperation) {
+                        throw e;
+                    }
+                    encapsulation = DELETE_ENCAPSULATION_STUB;
+                }
             }
             requests.addAll(makePathRequests(flow, oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
                     createRulesContext(speakerRequestBuildContext.getReverse())));
@@ -140,7 +166,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 pathContext.isRemoveCustomerPortLldpRule(),
                 pathContext.isRemoveCustomerPortArpRule(),
                 pathContext.isRemoveServer42InputRule(),
+                pathContext.isRemoveServer42IngressRule(),
                 pathContext.isInstallServer42InputRule(),
+                pathContext.isInstallServer42IngressRule(),
                 pathContext.getServer42Port(),
                 pathContext.getServer42MacAddress());
     }
