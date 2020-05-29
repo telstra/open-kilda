@@ -67,3 +67,7 @@ task runTest(type: Test) {
     include '**/functionaltests/**'
     systemProperty 'tags', System.getProperty('tags')
 }
+
+tasks.withType(Test) {
+    outputs.upToDateWhen { false } //never cache results of functional tests
+}
