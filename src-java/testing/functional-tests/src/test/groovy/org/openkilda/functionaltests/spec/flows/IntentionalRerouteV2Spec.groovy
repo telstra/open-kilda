@@ -171,7 +171,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         when: "Start traffic examination"
         def traffExam = traffExamProvider.get()
         def bw = 100000 // 100 Mbps
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowHelperV2.toV1(flow), bw)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowHelperV2.toV1(flow), bw, 20)
         [exam.forward, exam.reverse].each { direction ->
             def resources = traffExam.startExam(direction, true)
             direction.setResources(resources)
