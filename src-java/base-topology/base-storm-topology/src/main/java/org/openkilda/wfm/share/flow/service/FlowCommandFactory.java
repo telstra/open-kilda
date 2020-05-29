@@ -17,6 +17,7 @@ package org.openkilda.wfm.share.flow.service;
 
 import static java.lang.String.format;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
@@ -30,6 +31,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterId;
@@ -208,17 +210,15 @@ public class FlowCommandFactory {
                                                     EncapsulationResources encapsulationResources,
                                                     boolean multiTable) {
         Flow flow = flowPath.getFlow();
-
-        boolean isForward = flow.isForward(flowPath);
-        SwitchId switchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
-        int outPort = isForward ? flow.getDestPort() : flow.getSrcPort();
-        int outVlan = isForward ? flow.getDestVlan() : flow.getSrcVlan();
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
 
         return new InstallEgressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                flowPath.getCookie().getValue(), switchId, inputPortNo, outPort,
-                encapsulationResources.getTransitEncapsulationId(),
-                encapsulationResources.getEncapsulationType(), outVlan, getOutputVlanType(flow, flowPath),
-                multiTable);
+                flowPath.getCookie().getValue(), egressEndpoint.getSwitchId(), inputPortNo,
+                egressEndpoint.getPortNumber(),
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
+                egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(), getOutputVlanType(flow, flowPath),
+                multiTable, ingressEndpoint);
     }
 
     private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
@@ -296,21 +296,21 @@ public class FlowCommandFactory {
     public InstallIngressFlow buildInstallIngressFlow(Flow flow, FlowPath flowPath, int outputPortNo,
                                                       EncapsulationResources encapsulationResources,
                                                       boolean multiTable) {
-        boolean isForward = flow.isForward(flowPath);
-        SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
-        SwitchId egressSwitchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
-        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
-        int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
         boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
         boolean enableArp = needToInstallOrRemoveArpFlow(flowPath);
 
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
 
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
         return new InstallIngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                flowPath.getCookie().getValue(), switchId, inPort,
-                outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
-                encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, egressSwitchId, multiTable, enableLldp, enableArp);
+                flowPath.getCookie().getValue(),
+                ingressEndpoint.getSwitchId(), ingressEndpoint.getPortNumber(),
+                outputPortNo, ingressEndpoint.getOuterVlanId(), ingressEndpoint.getInnerVlanId(),
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
+                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId,
+                egressEndpoint.getSwitchId(), multiTable, enableLldp, enableArp);
     }
 
     /**
@@ -394,20 +394,20 @@ public class FlowCommandFactory {
      * @return install one switch flow command
      */
     public InstallOneSwitchFlow makeOneSwitchRule(Flow flow, FlowPath flowPath) {
-        boolean isForward = flow.isForward(flowPath);
-        SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
-        int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
-        int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
-        int outPort = isForward ? flow.getDestPort() : flow.getSrcPort();
-        int outVlan = isForward ? flow.getDestVlan() : flow.getSrcVlan();
         boolean enableLldp = needToInstallOrRemoveLldpFlow(flowPath);
         boolean enableArp = needToInstallOrRemoveArpFlow(flowPath);
         boolean multiTable = flow.isSrcWithMultiTable();
 
+        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
-                flow.getFlowId(), flowPath.getCookie().getValue(), switchId, inPort,
-                outPort, inVlan, outVlan,
+                flow.getFlowId(), flowPath.getCookie().getValue(),
+                ingressEndpoint.getSwitchId(), ingressEndpoint.getPortNumber(),
+                egressEndpoint.getPortNumber(),
+                ingressEndpoint.getOuterVlanId(), ingressEndpoint.getInnerVlanId(),
+                egressEndpoint.getOuterVlanId(), egressEndpoint.getInnerVlanId(),
                 getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp, enableArp);
     }
 

@@ -36,6 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
+import spock.lang.Ignore
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -1138,6 +1139,59 @@ switches"() {
         }] * 2
         flow1 << [getFirstFlow(switchPair, switchPair)] * 2
         flow2 << [getSecondFlow(switchPair, switchPair, flow1)] * 2
+        [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
+                [flow2.source, flow1.destination, flow1.source, flow2.destination],
+                [flow1.source, flow2.destination, flow2.source, flow1.destination]
+        ]
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/3478")
+    @Tidy
+    @Unroll // not tested
+    def "Able to swap endpoints (#description) for two qinq flows with the same source and destination switches"() {
+        given: "Two flows with the same source and destination switches"
+        flow1.source.innerVlanId = 300
+        flow1.destination.innerVlanId = 400
+        flow2.source.innerVlanId = 500
+        flow2.destination.innerVlanId = 600
+        flowHelper.addFlow(flow1)
+        flowHelper.addFlow(flow2)
+
+        when: "Try to swap endpoints for flows"
+        def response = northbound.swapFlowEndpoint(
+                new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
+                        flowHelper.toFlowEndpointV2(flow1Dst)),
+                new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow2Src),
+                        flowHelper.toFlowEndpointV2(flow2Dst)))
+
+        then: "Endpoints are successfully swapped"
+        verifyEndpoints(response, flow1Src, flow1Dst, flow2Src, flow2Dst)
+        verifyEndpoints(flow1.id, flow2.id, flow1Src, flow1Dst, flow2Src, flow2Dst)
+
+        and: "Flows validation doesn't show any discrepancies"
+        validateFlows(flow1, flow2)
+
+        and: "Switch validation doesn't show any missing/excess rules and meters"
+        validateSwitches(switchPair)
+
+        cleanup: "Delete flows"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+
+        where:
+        description << ["src1 <-> src2", "dst1 <-> dst2"]
+        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find {
+            [it.src, it.dst].every { sw ->
+                getNorthbound().getSwitchProperties(sw.dpId).multiTable && sw.noviflow && !sw.wb5164
+            }
+        }] * 2
+        flow1 << [getFirstFlow(switchPair, switchPair).tap {
+            source.innerVlanId = 300
+            destination.innerVlanId = 400
+        }] * 2
+        flow2 << [getSecondFlow(switchPair, switchPair, flow1).tap {
+            source.innerVlanId = 400
+            destination.innerVlanId = 500
+        }] * 2
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [flow2.source, flow1.destination, flow1.source, flow2.destination],
                 [flow1.source, flow2.destination, flow2.source, flow1.destination]

@@ -53,6 +53,13 @@ import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.SpeakerCommandReport;
+import org.openkilda.floodlight.command.flow.FlowSegmentFlowResponseFactory;
+import org.openkilda.floodlight.command.flow.FlowSegmentResponseFactory;
+import org.openkilda.floodlight.command.flow.FlowSegmentSyncResponseFactory;
+import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -66,6 +73,8 @@ import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdSessionDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.SetupBfdSessionDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.StatsRequestDispatcher;
+import org.openkilda.floodlight.model.FlowSegmentMetadata;
+import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -82,6 +91,7 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
+import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
@@ -90,6 +100,7 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallServer42Flow;
 import org.openkilda.messaging.command.flow.InstallServer42IngressFlow;
+import org.openkilda.messaging.command.flow.InstallSharedFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
@@ -142,12 +153,18 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
 import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MacAddress;
+import org.openkilda.model.MeterConfig;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.model.cookie.PortColourCookie;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -172,10 +189,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 class RecordHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(RecordHandler.class);
+
+    private static final UUID EMPTY_COMMAND_ID = new UUID(0, 0);
 
     private final ConsumerContext context;
     private final List<CommandDispatcher<?>> dispatchers;
@@ -357,19 +377,14 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow installation
      */
-    private void doProcessIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
+    private void doProcessIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination) {
         InstallIngressFlow command = (InstallIngressFlow) message.getData();
         logger.info("Installing ingress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
 
-        try {
-            installIngressFlow(command);
-            message.setDestination(replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.CREATION_FAILURE, e);
-        }
+        MessageContext messageContext = new MessageContext(message);
+        FlowSegmentFlowResponseFactory responseFactory = new FlowSegmentFlowResponseFactory(
+                replyToTopic, message, replyDestination, command);
+        handleSpeakerCommand(makeFlowSegmentWrappedCommand(command, messageContext, responseFactory));
     }
 
     /**
@@ -576,7 +591,18 @@ class RecordHandler implements Runnable {
                 directOutputVlanType,
                 meterId,
                 command.isMultiTable());
+    }
 
+    private void installSharedFlow(InstallSharedFlow command) throws SwitchOperationException, FlowCommandException {
+        FlowSharedSegmentCookie cookie = new FlowSharedSegmentCookie(command.getCookie());
+        SharedSegmentType segmentType = cookie.getSegmentType();
+        if (segmentType == SharedSegmentType.QINQ_OUTER_VLAN) {
+            context.getSwitchManager().installOuterVlanMatchSharedFlow(command.getSwitchId(), command.getId(), cookie);
+        } else {
+            throw new FlowCommandException(
+                    command.getId(), command.getCookie(), command.getTransactionId(), ErrorType.REQUEST_INVALID,
+                    format("Unsupported shared segment type %s (cookie: %s)", segmentType, cookie));
+        }
     }
 
     /**
@@ -1440,6 +1466,15 @@ class RecordHandler implements Runnable {
         InstallFlowForSwitchManagerRequest request = (InstallFlowForSwitchManagerRequest) message.getData();
 
         String replyToTopic = context.getKafkaSwitchManagerTopic();
+        FlowSegmentResponseFactory responseFactory = new FlowSegmentSyncResponseFactory(
+                message.getCorrelationId(), replyToTopic);
+        MessageContext messageContext = new MessageContext(message);
+        Optional<FlowSegmentWrapperCommand> syncCommand = makeSyncCommand(
+                request.getFlowCommand(), messageContext, responseFactory);
+        if (syncCommand.isPresent()) {
+            handleSpeakerCommand(syncCommand.get());
+            return;
+        }
 
         try {
             installFlow(request.getFlowCommand());
@@ -1467,7 +1502,7 @@ class RecordHandler implements Runnable {
         getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), response);
     }
 
-    private void installFlow(BaseInstallFlow command) throws FlowCommandException,
+    private void installFlow(BaseFlow command) throws FlowCommandException,
             SwitchOperationException {
         logger.debug("Processing flow install command {}", command);
         if (command instanceof InstallServer42Flow) {
@@ -1476,14 +1511,10 @@ class RecordHandler implements Runnable {
             processInstallDefaultFlowByCookie(command.getSwitchId(), command.getCookie());
         } else if (command instanceof InstallServer42IngressFlow) {
             installServer42IngressFlow((InstallServer42IngressFlow) command);
-        } else if (command instanceof InstallIngressFlow) {
-            installIngressFlow((InstallIngressFlow) command);
-        } else if (command instanceof InstallEgressFlow) {
-            installEgressFlow((InstallEgressFlow) command);
         } else if (command instanceof InstallTransitFlow) {
             installTransitFlow((InstallTransitFlow) command);
-        } else if (command instanceof InstallOneSwitchFlow) {
-            installOneSwitchFlow((InstallOneSwitchFlow) command);
+        } else if (command instanceof InstallSharedFlow) {
+            installSharedFlow((InstallSharedFlow) command);
         } else {
             throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
                     ErrorType.REQUEST_INVALID, "Unsupported command for install.");
@@ -1818,6 +1849,79 @@ class RecordHandler implements Runnable {
         }
     }
 
+    private Optional<FlowSegmentWrapperCommand> makeSyncCommand(
+            BaseFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        FlowSegmentWrapperCommand command;
+        if (request instanceof InstallIngressFlow) {
+            command = makeFlowSegmentWrappedCommand((InstallIngressFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallOneSwitchFlow) {
+            command = makeFlowSegmentWrappedCommand((InstallOneSwitchFlow) request, messageContext, responseFactory);
+        } else if (request instanceof InstallEgressFlow) {
+            command = makeFlowSegmentWrappedCommand((InstallEgressFlow) request, messageContext, responseFactory);
+        } else {
+            command = null;
+        }
+        return Optional.ofNullable(command);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallIngressFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.isEnableLldp(), request.isEnableArp());
+        MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
+        IngressFlowSegmentInstallCommand command = new IngressFlowSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig,
+                request.getEgressSwitchId(), request.getOutputPort(), makeTransitEncapsulation(request),
+                new RulesContext());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallOneSwitchFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getInputPort(), request.getInputVlanId(), request.getInputInnerVlanId(),
+                request.isEnableLldp(), request.isEnableArp());
+        FlowEndpoint egressEndpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getOutputPort(), request.getOutputVlanId(),
+                request.getOutputInnerVlanId());
+        MeterConfig meterConfig = makeMeterConfig(request.getMeterId(), request.getBandwidth());
+        OneSwitchFlowInstallCommand command = new OneSwitchFlowInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, meterConfig, egressEndpoint,
+                new RulesContext());
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private FlowSegmentWrapperCommand makeFlowSegmentWrappedCommand(
+            InstallEgressFlow request, MessageContext messageContext, FlowSegmentResponseFactory responseFactory) {
+        FlowEndpoint endpoint = new FlowEndpoint(
+                request.getSwitchId(), request.getOutputPort(), request.getOutputVlanId(),
+                request.getOutputInnerVlanId());
+        EgressFlowSegmentInstallCommand command = new EgressFlowSegmentInstallCommand(
+                messageContext, EMPTY_COMMAND_ID, makeSegmentMetadata(request), endpoint, request.getIngressEndpoint(),
+                request.getInputPort(), makeTransitEncapsulation(request));
+
+        return new FlowSegmentWrapperCommand(command, responseFactory);
+    }
+
+    private MeterConfig makeMeterConfig(Long rawId, long bandwidth) {
+        if (rawId == null) {
+            return null;
+        }
+        return new MeterConfig(new MeterId(rawId), bandwidth);
+    }
+
+    private FlowSegmentMetadata makeSegmentMetadata(BaseInstallFlow request) {
+        Cookie cookie = new Cookie(request.getCookie());
+        return new FlowSegmentMetadata(request.getId(), cookie, request.isMultiTable());
+    }
+
+    private FlowTransitEncapsulation makeTransitEncapsulation(InstallTransitFlow request) {
+        return new FlowTransitEncapsulation(request.getTransitEncapsulationId(), request.getTransitEncapsulationType());
+    }
+
     private boolean handleSpeakerCommand() {
         SpeakerCommand<SpeakerCommandReport> speakerCommand = null;
         try {
@@ -1832,12 +1936,16 @@ class RecordHandler implements Runnable {
             return false;
         }
 
-        final MessageContext messageContext = speakerCommand.getMessageContext();
+        handleSpeakerCommand(speakerCommand);
+        return true;
+    }
+
+    private void handleSpeakerCommand(SpeakerCommand<? extends SpeakerCommandReport> command) {
+        final MessageContext messageContext = command.getMessageContext();
         try (CorrelationContextClosable closable =
                      CorrelationContext.create(messageContext.getCorrelationId())) {
-            context.getCommandProcessor().process(speakerCommand, record.key());
+            context.getCommandProcessor().process(command, record.key());
         }
-        return true;
     }
 
     @Override

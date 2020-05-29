@@ -69,24 +69,22 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
     }
 
     @Override
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
+        if (rulesContext != null && rulesContext.isRemoveServer42IngressRule()) {
+            ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
+        }
+        ofMessages.addAll(makeSharedFlowModRemoveMessages());
+        return ofMessages;
+    }
+
+    @Override
+    protected List<OFFlowMod> makeSharedFlowModRemoveMessages() {
+        List<OFFlowMod> ofMessages = super.makeSharedFlowModRemoveMessages();
         if (getSwitchFeatures().contains(SwitchFeature.MULTI_TABLE) && rulesContext != null) {
-            if (rulesContext.isRemoveCustomerCatchRule()) {
-                ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
-            }
-            if (rulesContext.isRemoveCustomerLldpRule()) {
-                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
-            }
-            if (rulesContext.isRemoveCustomerArpRule()) {
-                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
-            }
             if (rulesContext.isRemoveServer42InputRule()) {
                 getFlowModFactory().makeServer42InputFlowMessage(getKildaCoreConfig().getServer42UdpPortOffset())
                         .ifPresent(ofMessages::add);
-            }
-            if (rulesContext.isRemoveServer42IngressRule()) {
-                ofMessages.addAll(makeIngressServer42IngressFlowModMessages(effectiveMeterId));
             }
         }
         return ofMessages;

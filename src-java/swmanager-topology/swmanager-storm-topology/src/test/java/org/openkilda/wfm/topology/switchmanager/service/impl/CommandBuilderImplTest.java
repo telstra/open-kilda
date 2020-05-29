@@ -27,7 +27,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -93,7 +93,7 @@ public class CommandBuilderImplTest {
 
     @Test
     public void testCommandBuilder() {
-        List<BaseInstallFlow> response = commandBuilder
+        List<BaseFlow> response = commandBuilder
                 .buildCommandsToSyncMissingRules(SWITCH_ID_B,
                         Stream.of(1L, 2L, 3L, 4L)
                                 .map(effectiveId -> new FlowSegmentCookie(FlowPathDirection.FORWARD, effectiveId))

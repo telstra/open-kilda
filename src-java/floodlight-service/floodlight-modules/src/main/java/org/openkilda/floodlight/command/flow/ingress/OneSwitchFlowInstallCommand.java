@@ -65,19 +65,9 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
     }
 
     @Override
-    protected List<OFFlowMod> makeIngressModMessages(MeterId effectiveMeterId) {
-        List<OFFlowMod> ofMessages = super.makeIngressModMessages(effectiveMeterId);
-        if (metadata.isMultiTable()) {
-            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
-
-            if (getEndpoint().isTrackLldpConnectedDevices()) {
-                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
-            }
-
-            if (getEndpoint().isTrackArpConnectedDevices()) {
-                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
-            }
-        }
+    protected List<OFFlowMod> makeFlowModMessages(MeterId effectiveMeterId) {
+        List<OFFlowMod> ofMessages = super.makeFlowModMessages(effectiveMeterId);
+        ofMessages.addAll(makeSharedFlowModInstallMessages());
         return ofMessages;
     }
 

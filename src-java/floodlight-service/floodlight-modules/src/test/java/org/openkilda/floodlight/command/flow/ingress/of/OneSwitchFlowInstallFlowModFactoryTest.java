@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.utils.OfAdapter;
+import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
@@ -32,158 +33,190 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTabl
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFactoryTest {
-    protected static final FlowEndpoint egressEndpointSingleVlan = new FlowEndpoint(
-            new SwitchId(datapathIdAlpha.getLong()),
-            endpointSingleVlan.getPortNumber() + 10, endpointSingleVlan.getOuterVlanId() + 10);
-    protected static final FlowEndpoint egressEndpointZeroVlan = new FlowEndpoint(
+    private static final FlowEndpoint egressEndpointZeroVlan = new FlowEndpoint(
             new SwitchId(datapathIdAlpha.getLong()),
             endpointSingleVlan.getPortNumber() + 10, 0);
+    private static final FlowEndpoint egressEndpointSingleVlan = new FlowEndpoint(
+            new SwitchId(datapathIdAlpha.getLong()),
+            endpointSingleVlan.getPortNumber() + 10, endpointSingleVlan.getOuterVlanId() + 10);
+    private static final FlowEndpoint egressEndpointDoubleVlan = new FlowEndpoint(
+            new SwitchId(datapathIdAlpha.getLong()),
+            endpointDoubleVlan.getPortNumber() + 10,
+            endpointDoubleVlan.getOuterVlanId() + 10, endpointDoubleVlan.getInnerVlanId() + 10);
 
-    // --- makeOuterVlanOnlyForwardMessage
-
-    @Test
-    public void makeOuterVlanOnlyForwardMessageSamePort() {
-        FlowEndpoint egress = new FlowEndpoint(
-                endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(),
-                endpointSingleVlan.getOuterVlanId() + 1);
-        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egress, meterConfig);
-        processMakeOuterVlanOnlyForwardMessage(command);
-    }
+    // --- makeDefaultPortForwardMessage
 
     @Test
-    public void makeOuterVlanOnlyForwardMessageMeterless() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointSingleVlan, egressEndpointSingleVlan, null);
-        processMakeOuterVlanOnlyForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterVlanOnlyForwardMessageMeteredOneToOne() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointSingleVlan, egressEndpointSingleVlan, meterConfig);
-        processMakeOuterVlanOnlyForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterVlanOnlyForwardMessageMeteredOneToZero() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointSingleVlan, egressEndpointZeroVlan, meterConfig);
-        processMakeOuterVlanOnlyForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterVlanOnlyForwardMessageMeteredZeroToOne() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointZeroVlan, egressEndpointSingleVlan, meterConfig);
-        processMakeOuterVlanOnlyForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterVlanOnlyForwardMessageMeteredZeroToZero() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointZeroVlan, egressEndpointZeroVlan, meterConfig);
-        processMakeOuterVlanOnlyForwardMessage(command);
-    }
-
-    // --- makeDefaultPortFlowMatchAndForward
-
-    @Test
-    public void makeDefaultPortFlowMatchAndForwardMessageSamePort() {
-        FlowEndpoint egress = new FlowEndpoint(
-                endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(),
-                endpointSingleVlan.getOuterVlanId() + 1);
-        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egress, meterConfig);
-        processMakeDefaultPortFlowMatchAndForwardMessage(command);
-    }
-
-    @Test
-    public void makeDefaultPortFlowMatchAndForwardMessageMeterless() {
-        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egressEndpointSingleVlan, null);
-        processMakeDefaultPortFlowMatchAndForwardMessage(command);
-    }
-
-    @Test
-    public void makeDefaultPortFlowMatchAndForwardMessageMeteredOneToOne() {
-        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egressEndpointSingleVlan, meterConfig);
-        processMakeDefaultPortFlowMatchAndForwardMessage(command);
-    }
-
-    @Test
-    public void makeDefaultPortFlowMatchAndForwardMessageMeteredOneToZero() {
-        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egressEndpointZeroVlan, meterConfig);
-        processMakeDefaultPortFlowMatchAndForwardMessage(command);
-    }
-
-    @Test
-    public void makeDefaultPortFlowMatchAndForwardMessageMeteredZeroToOne() {
+    public void makeDefaultPortForwardMessageMessageMeteredZeroToSingle() {
         OneSwitchFlowInstallCommand command = makeCommand(endpointZeroVlan, egressEndpointSingleVlan, meterConfig);
-        processMakeDefaultPortFlowMatchAndForwardMessage(command);
+        testMakeDefaultPortForwardMessageMessage(command);
     }
 
     @Test
-    public void makeDefaultPortFlowMatchAndForwardMessageMeteredZeroToZero() {
-        OneSwitchFlowInstallCommand command = makeCommand(endpointZeroVlan, egressEndpointZeroVlan, meterConfig);
-        processMakeDefaultPortFlowMatchAndForwardMessage(command);
+    public void makeDefaultPortForwardMessageMessageMeteredZeroToDouble() {
+        OneSwitchFlowInstallCommand command = makeCommand(endpointZeroVlan, egressEndpointDoubleVlan, meterConfig);
+        testMakeDefaultPortForwardMessageMessage(command);
     }
 
-    // --- service methods
-
-    public void processMakeOuterVlanOnlyForwardMessage(OneSwitchFlowInstallCommand command) {
-        OFFlowAdd expected = makeForwardingMessage(
-                command, 0,
-                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId())
-                        .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
-                        .build(),
-                getTargetTableId());
-        IngressFlowModFactory factory = makeFactory(command);
-        verifyOfMessageEquals(
-                expected, factory.makeOuterVlanOnlyForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
-    }
-
-    public void processMakeDefaultPortFlowMatchAndForwardMessage(OneSwitchFlowInstallCommand command) {
+    private void testMakeDefaultPortForwardMessageMessage(OneSwitchFlowInstallCommand command) {
         OFFlowAdd expected = makeForwardingMessage(
                 command, -1,
                 of.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
-                        .build(),
-                getTargetTableId());
+                        .build(), getTargetIngressTableId(), Collections.emptyList());
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
-                expected, factory.makeDefaultPortFlowMatchAndForwardMessage(getEffectiveMeterId(
+                expected, factory.makeDefaultPortForwardMessage(getEffectiveMeterId(
                         command.getMeterConfig())));
     }
 
+    // --- makeOuterOnlyVlanForwardMessage
+
+    @Test
+    public void makeOuterOnlyVlanForwardMessageSamePort() {
+        FlowEndpoint egress = new FlowEndpoint(
+                endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(),
+                endpointSingleVlan.getOuterVlanId() + 1);
+        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egress, meterConfig);
+        testMakeOuterOnlyVlanForwardMessage(command);
+    }
+
+    @Test
+    public void makeOuterOnlyVlanForwardMessageMeterless() {
+        OneSwitchFlowInstallCommand command = makeCommand(
+                endpointSingleVlan, egressEndpointSingleVlan, null);
+        testMakeOuterOnlyVlanForwardMessage(command);
+    }
+
+    @Test
+    public void makeOuterOnlyVlanForwardMessageMeteredOneToOne() {
+        OneSwitchFlowInstallCommand command = makeCommand(
+                endpointSingleVlan, egressEndpointSingleVlan, meterConfig);
+        testMakeOuterOnlyVlanForwardMessage(command);
+    }
+
+    @Test
+    public void makeOuterOnlyVlanForwardMessageMeteredOneToZero() {
+        OneSwitchFlowInstallCommand command = makeCommand(
+                endpointSingleVlan, egressEndpointZeroVlan, meterConfig);
+        testMakeOuterOnlyVlanForwardMessage(command);
+    }
+
+    @Test
+    public void makeOuterOnlyVlanForwardMessageMeteredZeroToOne() {
+        OneSwitchFlowInstallCommand command = makeCommand(
+                endpointZeroVlan, egressEndpointSingleVlan, meterConfig);
+        testMakeOuterOnlyVlanForwardMessage(command);
+    }
+
+    @Test
+    public void makeOuterOnlyVlanForwardMessageMeteredZeroToZero() {
+        OneSwitchFlowInstallCommand command = makeCommand(
+                endpointZeroVlan, egressEndpointZeroVlan, meterConfig);
+        testMakeOuterOnlyVlanForwardMessage(command);
+    }
+
+    private void testMakeOuterOnlyVlanForwardMessage(OneSwitchFlowInstallCommand command) {
+        OFFlowAdd expected = makeForwardingMessage(
+                command, 0,
+                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
+                        .build(), getTargetIngressTableId(), command.getEndpoint().getVlanStack());
+        IngressFlowModFactory factory = makeFactory(command);
+        verifyOfMessageEquals(
+                expected, factory.makeOuterOnlyVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+    }
+
+    // --- makeSingleVlanForwardMessage
+    @Test
+    public void makeSingleVlanForwardMessageMeterless() {
+        testMakeSingleVlanForwardMessage(null);
+    }
+
+    @Test
+    public void makeSingleVlanForwardMessageMetered() {
+        testMakeSingleVlanForwardMessage(meterConfig);
+    }
+
+    private void testMakeSingleVlanForwardMessage(MeterConfig meter) {
+        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egressEndpointSingleVlan, meter);
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(Collections.emptySet());
+        OFFlowAdd expected = makeForwardingMessage(
+                command, 0,
+                of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setMasked(
+                                MatchField.METADATA,
+                                OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                        .build(), getTargetIngressTableId(), FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()));
+        IngressFlowModFactory factory = makeFactory(command);
+        verifyOfMessageEquals(
+                expected, factory.makeSingleVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+    }
+
+    // --- makeDoubleVlanForwardMessage
+
+    @Test
+    public void makeDoubleVlanForwardMessageMeterlessVlanEncoded() {
+        testMakeDoubleVlanForwardMessageVlanEncoded(null);
+    }
+
+    @Test
+    public void makeDoubleVlanForwardMessageMeteredVlanEncoded() {
+        testMakeDoubleVlanForwardMessageVlanEncoded(meterConfig);
+    }
+
+    private void testMakeDoubleVlanForwardMessageVlanEncoded(MeterConfig meter) {
+        OneSwitchFlowInstallCommand command = makeCommand(endpointDoubleVlan, egressEndpointDoubleVlan, meter);
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(Collections.emptySet());
+        OFFlowAdd expected = makeForwardingMessage(
+                command, 10,
+                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getInnerVlanId())
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setMasked(
+                                MatchField.METADATA,
+                                OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                        .build(), getTargetIngressTableId(), FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()));
+        IngressFlowModFactory factory = makeFactory(command);
+        verifyOfMessageEquals(
+                expected, factory.makeDoubleVlanForwardMessage(getEffectiveMeterId(command.getMeterConfig())));
+    }
+
+    // --- service methods
+
     private OFFlowAdd makeForwardingMessage(
-            OneSwitchFlowInstallCommand command, int priorityOffset, Match match, TableId tableId) {
+            OneSwitchFlowInstallCommand command, int priorityOffset,
+            Match match, TableId tableId, List<Integer> vlanStack) {
         List<OFAction> applyActions = new ArrayList<>();
         List<OFInstruction> instructions = new ArrayList<>();
         if (command.getMeterConfig() != null) {
             OfAdapter.INSTANCE.makeMeterCall(of, command.getMeterConfig().getId(), applyActions, instructions);
         }
+
+        applyActions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(
+                of, vlanStack, command.getEgressEndpoint().getVlanStack()));
+
         FlowEndpoint ingress = command.getEndpoint();
         FlowEndpoint egress = command.getEgressEndpoint();
-        if (FlowEndpoint.isVlanIdSet(ingress.getOuterVlanId()) && FlowEndpoint.isVlanIdSet(egress.getOuterVlanId())) {
-            applyActions.add(OfAdapter.INSTANCE.setVlanIdAction(of, egress.getOuterVlanId()));
-        } else if (FlowEndpoint.isVlanIdSet(
-                ingress.getOuterVlanId()) && ! FlowEndpoint.isVlanIdSet(egress.getOuterVlanId())) {
-            applyActions.add(of.actions().popVlan());
-        } else if (!FlowEndpoint.isVlanIdSet(
-                ingress.getOuterVlanId()) && FlowEndpoint.isVlanIdSet(egress.getOuterVlanId())) {
-            applyActions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
-            applyActions.add(OfAdapter.INSTANCE.setVlanIdAction(of, egress.getOuterVlanId()));
-        }
-        OFPort outPort = ingress.getPortNumber().equals(egress.getPortNumber())
+        OFPort outPort = ingress.getPortNumber() == egress.getPortNumber()
                 ? OFPort.IN_PORT
                 : OFPort.of(egress.getPortNumber());
         applyActions.add(of.actions().buildOutput().setPort(outPort).build());
@@ -220,8 +253,6 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
     }
 
     abstract FlowSegmentMetadata makeMetadata();
-
-    abstract TableId getTargetTableId();
 
     abstract Optional<OFInstructionGotoTable> getGoToTableInstruction();
 

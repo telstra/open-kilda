@@ -34,7 +34,7 @@ public class UniFlowPingResponseTest {
         NetworkEndpoint endpointAlpha = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
         NetworkEndpoint endpointBeta = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10);
         UniFlowPingResponse origin = new UniFlowPingResponse(
-                new Ping((short) 0x200, endpointBeta, endpointAlpha),
+                new Ping((short) 0x200, 0, endpointBeta, endpointAlpha),
                 new PingMeters(3L, 2L, 1L),
                 null);
         InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), getClass().getSimpleName());

@@ -35,6 +35,8 @@ public class RulesContext implements Serializable {
     private boolean removeCustomerCatchRule;
     private boolean removeCustomerLldpRule;
     private boolean removeCustomerArpRule;
+    private boolean removeOuterVlanMatchSharedRule;
+
     private boolean removeServer42InputRule;
     private boolean removeServer42IngressRule;
     private boolean installServer42InputRule;

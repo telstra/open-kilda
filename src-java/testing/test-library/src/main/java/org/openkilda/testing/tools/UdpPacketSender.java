@@ -20,14 +20,17 @@ import org.openkilda.testing.service.traffexam.OperationalException;
 import org.openkilda.testing.service.traffexam.TraffExamService;
 import org.openkilda.testing.service.traffexam.model.Address;
 import org.openkilda.testing.service.traffexam.model.UdpData;
+import org.openkilda.testing.service.traffexam.model.Vlan;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
+
+import java.util.List;
 
 public class UdpPacketSender implements AutoCloseable {
 
     private Address address;
     private TraffExamService examService;
 
-    public UdpPacketSender(TraffExamService examService, TraffGen tg, int vlanId) throws OperationalException,
+    public UdpPacketSender(TraffExamService examService, TraffGen tg, List<Vlan> vlanId) throws OperationalException,
             Inet4ValueException {
         this.examService = examService;
         address = examService.allocateFreeAddress(examService.hostByName(tg.getName()), vlanId);

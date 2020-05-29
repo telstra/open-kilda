@@ -30,6 +30,8 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -38,20 +40,22 @@ import lombok.Getter;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowMod.Builder;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -83,34 +87,89 @@ public abstract class IngressFlowModFactory {
     /**
      * Make rule to match traffic by port+vlan and route it into ISL/egress end.
      */
-    public OFFlowMod makeOuterVlanOnlyForwardMessage(MeterId effectiveMeterId) {
+    public OFFlowMod makeOuterOnlyVlanForwardMessage(MeterId effectiveMeterId) {
         FlowEndpoint endpoint = command.getEndpoint();
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
-                .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
-                                  .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
-                                  .build());
-        return makeForwardMessage(of, builder, effectiveMeterId);
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .build());
+        return makeForwardMessage(builder, effectiveMeterId, FlowEndpoint.makeVlanStack(endpoint.getOuterVlanId()));
+    }
+
+    /**
+     * Make rule to forward traffic matched by outer VLAN tag and forward in in ISL (or out port in case one-switch
+     * flow).
+     */
+    public OFFlowMod makeSingleVlanForwardMessage(MeterId effectiveMeterId) {
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(switchFeatures);
+        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setMasked(MatchField.METADATA,
+                                OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                        .build());
+        return makeForwardMessage(builder, effectiveMeterId, FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()));
+    }
+
+    /**
+     * Make rule to match inner VLAN tag and forward in in ISL (or out port in case one-switch flow).
+     */
+    public OFFlowMod makeDoubleVlanForwardMessage(MeterId effectiveMeterId) {
+        FlowEndpoint endpoint = command.getEndpoint();
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(endpoint.getOuterVlanId())
+                .build(switchFeatures);
+        OFFlowMod.Builder builder = flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID), 10)
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(endpoint.getInnerVlanId()))
+                        .setMasked(MatchField.METADATA,
+                                OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                        .build());
+        return makeForwardMessage(builder, effectiveMeterId, FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()));
     }
 
     /**
      * Make rule to match whole port traffic and route it into ISL/egress end.
      */
-    public OFFlowMod makeDefaultPortFlowMatchAndForwardMessage(MeterId effectiveMeterId) {
-        // FIXME we need some space between match rules (so it should be -10 instead of -1)
-        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
-                                                                      -1)
-                .setCookie(U64.of(command.getCookie().getValue()))
+    public OFFlowMod makeDefaultPortForwardMessage(MeterId effectiveMeterId) {
+        // FIXME we need some space between match rules (so priorityOffset should be -10 instead of -1)
+        OFFlowMod.Builder builder = flowModBuilderFactory
+                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID), -1)
                 .setMatch(of.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
                         .build());
-        return makeForwardMessage(of, builder, effectiveMeterId);
+        return makeForwardMessage(builder, effectiveMeterId, Collections.emptyList());
+    }
+
+    /**
+     * Make rule to match traffic by port and vlan, write vlan into metadata and pass packet into "next" table. This
+     * rule is shared across all flow with equal port and vlan(outer).
+     */
+    public OFFlowMod makeOuterVlanMatchSharedMessage() {
+        FlowEndpoint endpoint = command.getEndpoint();
+        FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
+                .portNumber(endpoint.getPortNumber())
+                .vlanId(endpoint.getOuterVlanId())
+                .build();
+        return flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))
+                .setCookie(U64.of(cookie.getValue()))
+                .setMatch(of.buildMatch()
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(endpoint.getOuterVlanId()))
+                        .build())
+                .setInstructions(makeOuterVlanMatchInstructions())
+                .build();
     }
 
     /**
      * Make server 42 ingress rule to match RTT packets by port+vlan and route it into ISL/egress end.
      */
-    public OFFlowMod makeOuterVlanOnlyServer42IngressFlowMessage(MeterId effectiveMeterId, int server42UpdPortOffset) {
+    public OFFlowMod makeOuterOnlyVlanServer42IngressFlowMessage(MeterId effectiveMeterId, int server42UpdPortOffset) {
         Match match = makeServer42IngressFlowMatch(
                 OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId()),
                 server42UpdPortOffset);
@@ -118,10 +177,11 @@ public abstract class IngressFlowModFactory {
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
                 .setCookie(U64.of(buildServer42IngressCookie().getValue()))
                 .setMatch(match);
-        return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
+        return makeServer42IngressFlowMessage(
+                builder, effectiveMeterId, FlowEndpoint.makeVlanStack(command.getEndpoint().getOuterVlanId()));
     }
 
-    private Match makeServer42IngressFlowMatch(Builder builder, int server42UpdPortOffset) {
+    private Match makeServer42IngressFlowMatch(Match.Builder builder, int server42UpdPortOffset) {
         builder.setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()));
 
         if (getCommand().getMetadata().isMultiTable()) {
@@ -143,7 +203,6 @@ public abstract class IngressFlowModFactory {
         return builder.build();
     }
 
-
     /**
      * Make server 42 ingress rule to match all RTT packets traffic and route it into ISL/egress end.
      */
@@ -154,7 +213,7 @@ public abstract class IngressFlowModFactory {
                 SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET)
                 .setCookie(U64.of(buildServer42IngressCookie().getValue()))
                 .setMatch(match);
-        return makeServer42IngressFlowMessage(of, builder, effectiveMeterId);
+        return makeServer42IngressFlowMessage(builder, effectiveMeterId, Collections.emptyList());
     }
 
     /**
@@ -236,17 +295,9 @@ public abstract class IngressFlowModFactory {
                 .build());
     }
 
-    private OFFlowMod makeForwardMessage(OFFactory of, OFFlowMod.Builder builder, MeterId effectiveMeterId) {
-        builder.setInstructions(makeForwardMessageInstructions(of, effectiveMeterId));
-        if (switchFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
-        }
-        return builder.build();
-    }
-
     private OFFlowMod makeServer42IngressFlowMessage(
-            OFFactory of, OFFlowMod.Builder builder, MeterId effectiveMeterId) {
-        builder.setInstructions(makeServer42IngressFlowMessageInstructions(of, effectiveMeterId));
+            Builder builder, MeterId effectiveMeterId, List<Integer> vlanStack) {
+        builder.setInstructions(makeServer42IngressFlowMessageInstructions(effectiveMeterId, vlanStack));
         if (switchFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
@@ -265,12 +316,24 @@ public abstract class IngressFlowModFactory {
                 .build(switchFeatures);
     }
 
-    protected abstract List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId);
-
     protected abstract List<OFInstruction> makeCustomerPortSharedCatchInstructions();
 
     protected abstract List<OFInstruction> makeConnectedDevicesMatchInstructions(RoutingMetadata metadata);
 
     protected abstract List<OFInstruction> makeServer42IngressFlowMessageInstructions(
-            OFFactory of, MeterId effectiveMeterId);
+            MeterId effectiveMeterId, List<Integer> vlanStack);
+
+    private OFFlowMod makeForwardMessage(OFFlowMod.Builder builder, MeterId effectiveMeterId, List<Integer> vlanStack) {
+        builder.setCookie(U64.of(command.getCookie().getValue()))
+                .setInstructions(makeForwardMessageInstructions(effectiveMeterId, vlanStack));
+        if (switchFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
+        }
+        return builder.build();
+    }
+
+    protected abstract List<OFInstruction> makeForwardMessageInstructions(
+            MeterId effectiveMeterId, List<Integer> vlanStack);
+
+    protected abstract List<OFInstruction> makeOuterVlanMatchInstructions();
 }

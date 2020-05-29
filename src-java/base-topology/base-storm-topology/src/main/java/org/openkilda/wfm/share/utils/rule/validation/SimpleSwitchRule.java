@@ -19,9 +19,14 @@ import org.openkilda.model.SwitchId;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Builder.Default;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -35,7 +40,8 @@ public class SimpleSwitchRule {
     private int outPort;
     private int inVlan;
     private int tunnelId;
-    private int outVlan;
+    @Default
+    private List<Integer> outVlan = Collections.emptyList();
     private Long meterId;
     private long pktCount;
     private long byteCount;
@@ -46,10 +52,16 @@ public class SimpleSwitchRule {
 
     @Override
     public String toString() {
+        String outVlanString = outVlan.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(":"));
+        if (! outVlanString.isEmpty()) {
+            outVlanString = "-" + outVlanString;
+        }
         return "{sw:" + switchId
                 + ", ck:" + cookie
                 + ", in:" + inPort + "-" + inVlan
-                + ", out:" + outPort + "-" + outVlan
+                + ", out:" + outPort + outVlanString
                 + '}';
     }
 }

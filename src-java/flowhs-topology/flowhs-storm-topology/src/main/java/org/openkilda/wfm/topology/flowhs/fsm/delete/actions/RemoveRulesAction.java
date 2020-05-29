@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -183,6 +184,12 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 isForward ? flow.getSrcPort() : flow.getDestPort());
     }
 
+    private boolean isRemoveOuterVlanMatchShareRule(Flow flow, FlowPath path) {
+        FlowSideAdapter ingress = FlowSideAdapter.makeIngressAdapter(flow, path);
+        return findOuterVlanMatchSharedRuleUsage(ingress.getEndpoint()).stream()
+                .allMatch(entry -> flow.getFlowId().equals(entry.getFlowId()));
+    }
+
     private PathContext buildPathContext(Flow flow, FlowPath path) {
         SwitchProperties properties = getSwitchProperties(path.getSrcSwitch().getSwitchId());
         boolean server42FlowRtt = isServer42FlowRttFeatureToggle() && properties.isServer42FlowRtt();
@@ -191,6 +198,7 @@ public class RemoveRulesAction extends BaseFlowRuleRemovalAction<FlowDeleteFsm, 
                 .removeCustomerPortRule(isRemoveCustomerPortSharedCatchRule(flow, path))
                 .removeCustomerPortLldpRule(isRemoveCustomerPortSharedLldpCatchRule(flow, path))
                 .removeCustomerPortArpRule(isRemoveCustomerPortSharedArpCatchRule(flow, path))
+                .removeOuterVlanMatchSharedRule(isRemoveOuterVlanMatchShareRule(flow, path))
                 .removeServer42InputRule(isRemoveServer42InputSharedRule(flow, path, server42FlowRtt))
                 .removeServer42IngressRule(server42FlowRtt)
                 .server42Port(properties.getServer42Port())

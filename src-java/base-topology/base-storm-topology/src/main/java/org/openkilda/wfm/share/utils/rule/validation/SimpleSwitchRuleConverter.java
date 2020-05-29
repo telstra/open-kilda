@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.share.utils.rule.validation;
 
+import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -23,6 +24,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.PathSegment;
@@ -33,6 +35,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -66,14 +69,11 @@ public class SimpleSwitchRuleConverter {
         boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
-        int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
-        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
 
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
                 .cookie(flowPath.getCookie().getValue())
                 .inPort(inPort)
-                .inVlan(inVlan)
                 .meterId(flowPath.getMeterId() != null ? flowPath.getMeterId().getValue() : null)
                 .meterRate(flow.getBandwidth())
                 .meterBurstSize(Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
@@ -81,10 +81,23 @@ public class SimpleSwitchRuleConverter {
                 .meterFlags(Meter.getMeterKbpsFlags())
                 .build();
 
-        if (flow.isOneSwitchFlow()) {
-            rule.setOutPort(outPort);
-            rule.setOutVlan(outVlan);
+        FlowSideAdapter ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath);
+        FlowEndpoint endpoint = ingress.getEndpoint();
+        if (ingress.isMultiTableSegment()) {
+            // in multi-table mode actual ingress rule will match port+inner_vlan+metadata(outer_vlan)
+            if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
+                rule.setInVlan(endpoint.getInnerVlanId());
+            } else {
+                rule.setInVlan(endpoint.getOuterVlanId());
+            }
+        } else {
+            rule.setInVlan(endpoint.getOuterVlanId());
+        }
 
+        if (flow.isOneSwitchFlow()) {
+            FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+            rule.setOutPort(outPort);
+            rule.setOutVlan(calcVlanSetSequence(ingress, egressEndpoint));
         } else {
             PathSegment ingressSegment = flowPath.getSegments().stream()
                     .filter(segment -> segment.getSrcSwitch().getSwitchId()
@@ -96,7 +109,7 @@ public class SimpleSwitchRuleConverter {
 
             rule.setOutPort(ingressSegment.getSrcPort());
             if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-                rule.setOutVlan(encapsulationId.getEncapsulationId());
+                rule.setOutVlan(Collections.singletonList(encapsulationId.getEncapsulationId()));
             } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
                 rule.setTunnelId(encapsulationId.getEncapsulationId());
             }
@@ -155,21 +168,22 @@ public class SimpleSwitchRuleConverter {
     private SimpleSwitchRule buildEgressSimpleSwitchRule(Flow flow, FlowPath flowPath,
                                                          PathSegment egressSegment,
                                                          EncapsulationId encapsulationId) {
-        boolean forward = flow.isForward(flowPath);
-        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
-        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
-
+        FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
                 .switchId(flowPath.getDestSwitch().getSwitchId())
-                .outPort(outPort)
-                .outVlan(outVlan)
+                .outPort(endpoint.getPortNumber())
                 .inPort(egressSegment.getDestPort())
                 .cookie(flowPath.getCookie().getValue())
                 .build();
+
         if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
             rule.setInVlan(encapsulationId.getEncapsulationId());
+            rule.setOutVlan(calcVlanSetSequence(
+                    Collections.singletonList(encapsulationId.getEncapsulationId()),
+                    endpoint.getVlanStack()));
         } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
             rule.setTunnelId(encapsulationId.getEncapsulationId());
+            rule.setOutVlan(calcVlanSetSequence(Collections.emptyList(), endpoint.getVlanStack()));
         }
 
         return rule;
@@ -211,15 +225,14 @@ public class SimpleSwitchRuleConverter {
         if (flowEntry.getInstructions() != null) {
             if (flowEntry.getInstructions().getApplyActions() != null) {
                 FlowApplyActions applyActions = flowEntry.getInstructions().getApplyActions();
-                rule.setOutVlan(Optional.ofNullable(applyActions.getSetFieldActions())
-                        .orElse(new ArrayList<>())
-                        .stream()
+                List<FlowSetFieldAction> setFields = Optional.ofNullable(applyActions.getSetFieldActions())
+                        .orElse(new ArrayList<>());
+                rule.setOutVlan(setFields.stream()
                         .filter(Objects::nonNull)
                         .filter(action -> VLAN_VID.equals(action.getFieldName()))
                         .map(FlowSetFieldAction::getFieldValue)
                         .map(NumberUtils::toInt)
-                        .findFirst()
-                        .orElse(NumberUtils.INTEGER_ZERO));
+                        .collect(Collectors.toList()));
                 String outPort = applyActions.getFlowOutput();
                 if (IN_PORT.equals(outPort) && flowEntry.getMatch() != null) {
                     outPort = flowEntry.getMatch().getInPort();
@@ -250,5 +263,46 @@ public class SimpleSwitchRuleConverter {
         }
 
         return rule;
+    }
+
+    private static List<Integer> calcVlanSetSequence(FlowSideAdapter ingress, FlowEndpoint egress) {
+        List<Integer> current;
+        if (ingress.isMultiTableSegment()) {
+            // outer vlan is removed by first shared rule
+            current = FlowEndpoint.makeVlanStack(ingress.getEndpoint().getInnerVlanId());
+        } else {
+            current = ingress.getEndpoint().getVlanStack();
+        }
+        return calcVlanSetSequence(current, egress.getVlanStack());
+    }
+
+    /**
+     * Steal logic from {@link org.openkilda.floodlight.utils.OfAdapter#makeVlanReplaceActions}.
+     */
+    private static List<Integer> calcVlanSetSequence(
+            List<Integer> currentVlanStack, List<Integer> desiredVlanStack) {
+        Iterator<Integer> currentIter = currentVlanStack.iterator();
+        Iterator<Integer> desiredIter = desiredVlanStack.iterator();
+
+        final List<Integer> actions = new ArrayList<>();
+        while (currentIter.hasNext() && desiredIter.hasNext()) {
+            Integer current = currentIter.next();
+            Integer desired = desiredIter.next();
+            if (current == null || desired == null) {
+                throw new IllegalArgumentException(
+                        "Null elements are not allowed inside currentVlanStack and desiredVlanStack arguments");
+            }
+
+            if (!current.equals(desired)) {
+                // rewrite existing VLAN stack "head"
+                actions.add(desired);
+                break;
+            }
+        }
+
+        while (desiredIter.hasNext()) {
+            actions.add(desiredIter.next());
+        }
+        return actions;
     }
 }

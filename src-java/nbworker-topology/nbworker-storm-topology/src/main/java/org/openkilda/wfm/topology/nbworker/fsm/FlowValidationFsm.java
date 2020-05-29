@@ -136,11 +136,13 @@ public class FlowValidationFsm
         } catch (FlowNotFoundException e) {
             log.error("Key: {}; Flow {} not found when sending commands to SpeakerWorkerBolt", key, flowId, e);
             sendException(e.getMessage(), "Receiving rules operation in FlowValidationFsm", ErrorType.NOT_FOUND);
+            return;
         } catch (IllegalFlowStateException e) {
             log.error("Key: {}; Could not validate flow: Flow {} is in DOWN state", key, flowId, e);
             sendException("Could not validate flow",
                     format("Could not validate flow: Flow %s is in DOWN state", flowId),
                     ErrorType.UNPROCESSABLE_REQUEST);
+            return;
         }
 
         List<SwitchId> switchIds = service.getSwitchIdListByFlowId(flowId);
@@ -152,6 +154,7 @@ public class FlowValidationFsm
 
         log.debug("Key: {}; Send commands to get meters on the switches", key);
         awaitingMeters = switchIds.size();
+        // FIXME(surabujin): - should we request meters only for termination switches?..
         switchIds.forEach(switchId ->
                 carrier.sendCommandToSpeakerWorker(key, new DumpMetersForNbworkerRequest(switchId)));
     }

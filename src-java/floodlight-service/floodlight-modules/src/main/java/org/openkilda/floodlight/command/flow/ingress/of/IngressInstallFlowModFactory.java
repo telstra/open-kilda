@@ -25,7 +25,6 @@ import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
-import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -42,7 +41,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         super(flowModBuilderFactory, command, sw, features);
     }
 
-    protected List<OFInstruction> makeForwardMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+    protected List<OFInstruction> makeForwardMessageInstructions(MeterId effectiveMeterId, List<Integer> vlanStack) {
         List<OFAction> applyActions = new ArrayList<>();
         List<OFInstruction> instructions = new ArrayList<>();
 
@@ -50,7 +49,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
             OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
         }
 
-        applyActions.addAll(makeTransformActions());
+        applyActions.addAll(makeTransformActions(vlanStack));
         applyActions.add(makeOutputAction());
 
         instructions.add(of.instructions().applyActions(applyActions));
@@ -79,7 +78,8 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
     }
 
     @Override
-    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(OFFactory of, MeterId effectiveMeterId) {
+    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(
+            MeterId effectiveMeterId, List<Integer> vlanStack) {
         List<OFAction> applyActions = new ArrayList<>();
         List<OFInstruction> instructions = new ArrayList<>();
 
@@ -87,16 +87,27 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
             OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
         }
 
-        applyActions.addAll(makeServer42IngressFlowTransformActions());
+        applyActions.addAll(makeServer42IngressFlowTransformActions(vlanStack));
         applyActions.add(makeOutputAction());
 
         instructions.add(of.instructions().applyActions(applyActions));
         return instructions;
     }
 
-    protected abstract List<OFAction> makeTransformActions();
+    protected abstract List<OFAction> makeServer42IngressFlowTransformActions(List<Integer> vlanStack);
 
-    protected abstract List<OFAction> makeServer42IngressFlowTransformActions();
+    @Override
+    protected List<OFInstruction> makeOuterVlanMatchInstructions() {
+        RoutingMetadata metadata = RoutingMetadata.builder()
+                .outerVlanId(command.getEndpoint().getOuterVlanId())
+                .build(switchFeatures);
+        return ImmutableList.of(
+                of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
+                of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()),
+                of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID)));
+    }
+
+    protected abstract List<OFAction> makeTransformActions(List<Integer> vlanStack);
 
     protected abstract List<OFInstruction> makeMetadataInstructions();
 

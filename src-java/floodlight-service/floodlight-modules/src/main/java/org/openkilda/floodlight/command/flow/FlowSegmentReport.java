@@ -26,6 +26,7 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.FlowErrorResponseBuilder;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -45,13 +46,11 @@ public class FlowSegmentReport extends SpeakerCommandRemoteReport {
         this.command = command;
     }
 
-    @Override
-    protected String getReplyTopic(KafkaChannel kafkaChannel) {
-        return kafkaChannel.getSpeakerFlowHsTopic();
+    public void reply(KafkaChannel kafkaChannel, IKafkaProducerService kafkaProducerService, String requestKey) {
+        kafkaProducerService.sendMessageAndTrack(kafkaChannel.getSpeakerFlowHsTopic(), requestKey, assembleResponse());
     }
 
-    @Override
-    protected SpeakerResponse assembleResponse() {
+    private SpeakerResponse assembleResponse() {
         FlowErrorResponseBuilder errorResponse = makeErrorTemplate();
         try {
             raiseError();
@@ -76,8 +75,7 @@ public class FlowSegmentReport extends SpeakerCommandRemoteReport {
         return response;
     }
 
-    @Override
-    protected SpeakerResponse makeSuccessReply() {
+    private SpeakerResponse makeSuccessReply() {
         return SpeakerFlowSegmentResponse.builder()
                 .commandId(command.getCommandId())
                 .metadata(command.getMetadata())

@@ -29,7 +29,6 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -44,24 +43,12 @@ abstract class OneSwitchFlowInstallFlowModFactory extends IngressInstallFlowModF
     }
 
     @Override
-    protected List<OFAction> makeTransformActions() {
-        List<Integer> currentVlanStack = new ArrayList<>();
-        FlowEndpoint endpoint = command.getEndpoint();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            currentVlanStack.add(endpoint.getOuterVlanId());
-        }
-
-        List<Integer> desiredVlanStack = new ArrayList<>();
-        FlowEndpoint egressEndpoint = command.getEgressEndpoint();
-        if (FlowEndpoint.isVlanIdSet(egressEndpoint.getOuterVlanId())) {
-            desiredVlanStack.add(egressEndpoint.getOuterVlanId());
-        }
-
-        return OfAdapter.INSTANCE.makeVlanReplaceActions(of, currentVlanStack, desiredVlanStack);
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, command.getEgressEndpoint().getVlanStack());
     }
 
     @Override
-    protected List<OFAction> makeServer42IngressFlowTransformActions() {
+    protected List<OFAction> makeServer42IngressFlowTransformActions(List<Integer> vlanStack) {
         return Lists.newArrayList();
     }
 

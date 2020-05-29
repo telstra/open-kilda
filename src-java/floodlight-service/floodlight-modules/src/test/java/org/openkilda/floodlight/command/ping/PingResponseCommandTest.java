@@ -38,6 +38,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
 import org.easymock.Mock;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,7 +55,7 @@ import org.projectfloodlight.openflow.types.U64;
 import java.util.List;
 
 public class PingResponseCommandTest extends PingCommandTest {
-    private final DatapathId dpId = DatapathId.of(0xfffe000000000001L);
+    private final DatapathId dpId = DatapathId.of(0x0000fffe00000001L);
 
     @Mock
     private PingService pingService;
@@ -119,28 +120,30 @@ public class PingResponseCommandTest extends PingCommandTest {
 
         replayAll();
 
-        final DatapathId dpIdBeta = DatapathId.of(0xfffe0000000002L);
-        final Ping ping = new Ping((short) 0x100,
-                new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 8),
-                new NetworkEndpoint(new SwitchId(dpId.getLong()), 9));
+        final DatapathId dpIdBeta = DatapathId.of(0x0000fffe000002L);
+        final Ping ping = new Ping((short) 0x100, 0,
+                                   new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 8),
+                                   new NetworkEndpoint(new SwitchId(dpId.getLong()), 9));
         final PingData payload = PingData.of(ping);
 
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
         realPingService.setup(moduleContext);
 
         byte[] signedPayload = realPingService.getSignature().sign(payload);
-        Ethernet wrappedPayload = realPingService.wrapData(ping, signedPayload);
+        byte[] wireData = realPingService.wrapData(ping, signedPayload).serialize();
 
         OFFactory ofFactory = new OFFactoryVer13();
         OFPacketIn message = ofFactory.buildPacketIn()
                 .setReason(OFPacketInReason.ACTION).setXid(1L)
                 .setCookie(PingService.OF_CATCH_RULE_COOKIE)
-                .setData(wrappedPayload.serialize())
+                .setData(wireData)
                 .build();
 
         FloodlightContext metadata = new FloodlightContext();
+        IPacket decodedEthernet = new Ethernet().deserialize(wireData, 0, wireData.length);
+        Assert.assertTrue(decodedEthernet instanceof Ethernet);
         IFloodlightProviderService.bcStore.put(
-                metadata, IFloodlightProviderService.CONTEXT_PI_PAYLOAD, wrappedPayload);
+                metadata, IFloodlightProviderService.CONTEXT_PI_PAYLOAD, (Ethernet) decodedEthernet);
         OfInput input = new OfInput(iofSwitch, message, metadata);
         final PingResponseCommand command = makeCommand(input);
 

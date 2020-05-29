@@ -28,6 +28,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Getter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -64,11 +65,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @JsonProperty("meter_id")
     protected Long meterId;
 
-    /**
-     * Flow bandwidth value.
-     */
     @JsonProperty("bandwidth")
-    private Long bandwidth;
+    @Getter
+    private long bandwidth;
 
     /**
      * Output action on the vlan tag.
@@ -80,13 +79,23 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * Optional input vlan id value.
      */
     @JsonProperty("input_vlan_id")
-    private Integer inputVlanId;
+    @Getter
+    private int inputVlanId;
+
+    @JsonProperty("input_inner_vlan_id")
+    @Getter
+    protected int inputInnerVlanId;
 
     /**
      * Optional output vlan id value.
      */
     @JsonProperty("output_vlan_id")
-    private Integer outputVlanId;
+    @Getter
+    private int outputVlanId;
+
+    @JsonProperty("output_inner_vlan_id")
+    @Getter
+    protected int outputInnerVlanId;
 
     /**
      * LLDP flag. Packets will be send to LLDP rule if True.
@@ -110,7 +119,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param inputPort input port of the flow
      * @param outputPort output port of the flow
      * @param inputVlanId input vlan id value
+     * @param inputInnerVlanId input inner vlan id
      * @param outputVlanId output vlan id value
+     * @param outputInnerVlanId output inner vlan id
      * @param outputVlanType output vlan tag action
      * @param bandwidth flow bandwidth
      * @param meterId source meter id
@@ -126,7 +137,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("input_port") final Integer inputPort,
                                 @JsonProperty("output_port") final Integer outputPort,
                                 @JsonProperty("input_vlan_id") final Integer inputVlanId,
+                                @JsonProperty("input_inner_vlan_id") Integer inputInnerVlanId,
                                 @JsonProperty("output_vlan_id") final Integer outputVlanId,
+                                @JsonProperty("output_inner_vlan_id") Integer outputInnerVlanId,
                                 @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                 @JsonProperty("bandwidth") final Long bandwidth,
                                 @JsonProperty("meter_id") final Long meterId,
@@ -135,21 +148,14 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("enable_arp") final boolean enableArp) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
+        setInputInnerVlanId(inputInnerVlanId);
         setOutputVlanId(outputVlanId);
+        setOutputInnerVlanId(outputInnerVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
         setMeterId(meterId);
         setEnableLldp(enableLldp);
         setEnableArp(enableArp);
-    }
-
-    /**
-     * Returns flow bandwidth value.
-     *
-     * @return flow bandwidth value
-     */
-    public Long getBandwidth() {
-        return bandwidth;
     }
 
     /**
@@ -190,52 +196,20 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
         }
     }
 
-    /**
-     * Returns input vlan id value.
-     *
-     * @return input vlan id value
-     */
-    public Integer getInputVlanId() {
-        return inputVlanId;
+    public void setInputVlanId(final Integer value) {
+        inputVlanId = adaptVlanId(value);
     }
 
-    /**
-     * Sets input vlan id value.
-     *
-     * @param inputVlanId input vlan id value
-     */
-    public void setInputVlanId(final Integer inputVlanId) {
-        if (inputVlanId == null) {
-            this.inputVlanId = 0;
-        } else if (Utils.validateVlanRange(inputVlanId)) {
-            this.inputVlanId = inputVlanId;
-        } else {
-            throw new IllegalArgumentException("need to set valid value for input_vlan_id");
-        }
+    public void setInputInnerVlanId(Integer value) {
+        inputInnerVlanId = adaptVlanId(value);
     }
 
-    /**
-     * Returns output vlan id value.
-     *
-     * @return output vlan id value
-     */
-    public Integer getOutputVlanId() {
-        return outputVlanId;
+    public void setOutputVlanId(final Integer value) {
+        outputVlanId = adaptVlanId(value);
     }
 
-    /**
-     * Sets output vlan id value.
-     *
-     * @param outputVlanId output vlan id value
-     */
-    public void setOutputVlanId(final Integer outputVlanId) {
-        if (outputVlanId == null) {
-            this.outputVlanId = 0;
-        } else if (Utils.validateVlanRange(outputVlanId)) {
-            this.outputVlanId = outputVlanId;
-        } else {
-            throw new IllegalArgumentException("need to set valid value for output_vlan_id");
-        }
+    public void setOutputInnerVlanId(Integer value) {
+        outputInnerVlanId = adaptVlanId(value);
     }
 
     /**
@@ -300,7 +274,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 .add("input_port", inputPort)
                 .add("output_port", outputPort)
                 .add("input_vlan_id", inputVlanId)
+                .add("input_inner_vlan_id", inputInnerVlanId)
                 .add("output_vlan_id", outputVlanId)
+                .add("output_inner_vlan_id", outputInnerVlanId)
                 .add("output_vlan_type", outputVlanType)
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
@@ -330,7 +306,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 && Objects.equals(getInputPort(), that.getInputPort())
                 && Objects.equals(getOutputPort(), that.getOutputPort())
                 && Objects.equals(getInputVlanId(), that.getInputVlanId())
+                && Objects.equals(getInputInnerVlanId(), that.getInputInnerVlanId())
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
+                && Objects.equals(getOutputInnerVlanId(), that.getOutputInnerVlanId())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
                 && Objects.equals(getMeterId(), that.getMeterId())
@@ -345,6 +323,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, multiTable, enableLldp, enableArp);
+                inputVlanId, inputInnerVlanId, outputVlanId, outputInnerVlanId, outputVlanType, bandwidth, meterId,
+                multiTable, enableLldp, enableArp);
     }
 }

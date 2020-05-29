@@ -70,7 +70,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
 
     @Test
     public void writeError() throws Exception {
-        final DatapathId dpIdWriteError = DatapathId.of(0xfffe000000000005L);
+        final DatapathId dpIdWriteError = DatapathId.of(0x0000fffe00000005L);
         IOFSwitch switchWriteError = createMock(IOFSwitch.class);
         expect(switchService.getActiveSwitch(dpIdWriteError)).andReturn(switchWriteError).anyTimes();
         expect(switchWriteError.getId()).andReturn(dpIdWriteError).anyTimes();

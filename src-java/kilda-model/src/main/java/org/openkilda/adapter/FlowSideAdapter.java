@@ -19,8 +19,10 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.PathId;
 
 import lombok.Getter;
+import lombok.NonNull;
 
 public abstract class FlowSideAdapter {
     @Getter
@@ -55,4 +57,6 @@ public abstract class FlowSideAdapter {
     public abstract FlowEndpoint getEndpoint();
 
     public abstract boolean isMultiTableSegment();
+
+    public abstract boolean isPrimaryEgressPath(@NonNull PathId pathId);
 }

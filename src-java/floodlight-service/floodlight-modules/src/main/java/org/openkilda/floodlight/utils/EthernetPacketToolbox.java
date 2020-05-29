@@ -19,10 +19,22 @@ import org.openkilda.floodlight.shared.packet.VlanTag;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
+import org.projectfloodlight.openflow.types.EthType;
 
 import java.util.List;
 
 public final class EthernetPacketToolbox {
+    /**
+     * Wrap packet payload with VLAN header. Useful for creating nested VLAN headers.
+     */
+    public static IPacket injectVlan(IPacket payload, int vlanId, EthType type) {
+        VlanTag vlan = new VlanTag();
+        vlan.setVlanId((short) vlanId);
+        vlan.setEtherType(type);
+        vlan.setPayload(payload);
+        return vlan;
+    }
+
     /**
      * Read through intermediate vlan headers up to actual packet payload. Return both payload and vlan stack.
      */

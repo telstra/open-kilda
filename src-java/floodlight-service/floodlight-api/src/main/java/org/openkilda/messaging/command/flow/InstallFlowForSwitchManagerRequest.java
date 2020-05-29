@@ -31,10 +31,10 @@ import lombok.Value;
 public class InstallFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("flow_command")
-    private BaseInstallFlow flowCommand;
+    private BaseFlow flowCommand;
 
     @JsonCreator
-    public InstallFlowForSwitchManagerRequest(@JsonProperty("flow_command") BaseInstallFlow flowCommand) {
+    public InstallFlowForSwitchManagerRequest(@JsonProperty("flow_command") BaseFlow flowCommand) {
         this.flowCommand = flowCommand;
     }
 
