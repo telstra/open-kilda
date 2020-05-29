@@ -6,8 +6,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -30,9 +30,9 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -56,7 +56,9 @@ import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
-@Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
+@Narrative(""""Verify CRUD operations and health of basic vlan flows on different types of switches.
+More specific cases like partialUpdate/protected/diverse etc. are covered in separate specifications
+""")
 class FlowCrudV2Spec extends HealthCheckSpecification {
 
     @Autowired
@@ -646,49 +648,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
-    def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
-        given: "An isl"
-        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue("Unable to find required isl", isl as boolean)
-
-        and: "A flow"
-        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
-        flowHelperV2.addFlow(flow)
-
-        when: "Try to edit port to isl port"
-        northboundV2.updateFlow(flow.flowId, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
-
-        then:
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        def error = exc.responseBodyAsString.to(MessageError)
-        error.errorMessage == "Could not update flow"
-        error.errorDescription == data.message(isl)
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
-        where:
-        data << [
-                [
-                        switchType: "source",
-                        port      : "srcPort",
-                        message   : { Isl violatedIsl ->
-                            getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
-                        }
-                ],
-                [
-                        switchType: "destination",
-                        port      : "dstPort",
-                        message   : { Isl violatedIsl ->
-                            getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
-                        }
-                ]
-        ]
-    }
-
-    @Tidy
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -818,6 +777,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "System allows to set/update description/priority/max-latency for a flow"(){
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -943,6 +903,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Able to update a flow endpoint"() {
         given: "Three active switches"
         def allSwitches = topology.activeSwitches

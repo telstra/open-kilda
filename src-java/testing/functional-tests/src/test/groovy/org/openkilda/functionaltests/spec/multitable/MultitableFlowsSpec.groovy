@@ -630,6 +630,7 @@ mode with existing flows and hold flows of different table-mode types"() {
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[0].dpId], true))
         northbound.updateSwitchProperties(involvedSwitches[2].dpId,
                 changeSwitchPropsMultiTableValue(initSwProps[involvedSwitches[2].dpId], false))
+        sleep(2000) // TODO(andriidovhan) delete sleep when 3034 is fixed
 
         and: "Init auto reroute(Fail a flow ISL (bring switch port down))"
         def flowIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))

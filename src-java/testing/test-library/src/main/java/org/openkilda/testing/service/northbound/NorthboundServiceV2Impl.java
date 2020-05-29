@@ -18,6 +18,7 @@ package org.openkilda.testing.service.northbound;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
@@ -72,7 +73,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public FlowIdStatusPayload getFlowStatus(String flowId) {
         try {
             return restTemplate.exchange("/api/v2/flows/status/{flow_id}", HttpMethod.GET, new HttpEntity(
-                            buildHeadersWithCorrelationId()), FlowIdStatusPayload.class, flowId).getBody();
+                    buildHeadersWithCorrelationId()), FlowIdStatusPayload.class, flowId).getBody();
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
                 throw ex;
@@ -104,6 +105,13 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public FlowRerouteResponseV2 rerouteFlow(String flowId) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}/reroute", HttpMethod.POST,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), FlowRerouteResponseV2.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 patch) {
+        return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.PATCH,
+                new HttpEntity<>(patch, buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId)
+                .getBody();
     }
 
     @Override

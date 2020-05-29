@@ -128,6 +128,10 @@ class PathHelper {
         getInvolvedIsls(convert(path))
     }
 
+    List<Isl> getInvolvedIsls(String flowId) {
+        getInvolvedIsls(convert(northbound.getFlowPath(flowId)))
+    }
+
     /**
      * Converts FlowPathPayload path representation to a List<PathNode> representation
      */
