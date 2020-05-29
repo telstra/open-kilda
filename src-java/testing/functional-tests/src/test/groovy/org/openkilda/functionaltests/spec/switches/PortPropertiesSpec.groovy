@@ -21,6 +21,8 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 
+import java.util.concurrent.TimeUnit
+
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery/disable-port-discovery")
 @Narrative("""Some switch ports should not be used in network discovery process.
 By default all ports on all switches are available for discovery.
@@ -131,16 +133,15 @@ class PortPropertiesSpec extends HealthCheckSpecification {
 
         // Bring port down on the src switch
         antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(islToManipulate).actualState == IslChangeType.FAILED
         }
 
         // delete link
         northbound.deleteLink(islUtils.toLinkParameters(islToManipulate))
-        Wrappers.wait(2) {
-            assert !islUtils.getIslInfo(islToManipulate)
-            assert !islUtils.getIslInfo(islToManipulate.reversed)
-        }
+        !islUtils.getIslInfo(islToManipulate)
+        !islUtils.getIslInfo(islToManipulate.reversed)
 
         when: "Disable port discovery property on the src and dst switches"
         northboundV2.updatePortProperties(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort,

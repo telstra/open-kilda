@@ -17,6 +17,8 @@ import org.openkilda.model.SwitchFeature
 import spock.lang.Narrative
 import spock.lang.See
 
+import java.util.concurrent.TimeUnit
+
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 @Narrative("""BFD stands for Bidirectional Forwarding Detection. For now tested only on Noviflow switches. 
 Main purpose is to detect ISL failure on switch level, which should be times faster than a regular 
@@ -161,6 +163,7 @@ class BfdSpec extends HealthCheckSpecification {
                 it.aswitch?.inPort && it.aswitch?.outPort }
         assumeTrue("Require at least one a-switch BFD ISL between Noviflow switches", isl as boolean)
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
@@ -168,10 +171,8 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        Wrappers.wait(2) {
-            assert !islUtils.getIslInfo(isl)
-            assert !islUtils.getIslInfo(isl.reversed)
-        }
+        !islUtils.getIslInfo(isl)
+        !islUtils.getIslInfo(isl.reversed)
 
         and: "Discover the removed link again"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)

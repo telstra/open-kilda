@@ -135,6 +135,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         // deactivate all active ISLs on switch
         swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
