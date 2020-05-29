@@ -80,7 +80,7 @@ unit: update-props
 
 .PHONY: sonar
 sonar: update-props
-	cd src-java && ./gradlew test jacocoTestReport sonarqube --stacktrace
+	cd src-java && ./gradlew check jacocoTestReport sonarqube --stacktrace
 
 .PHONY: clean-test
 clean-test:
