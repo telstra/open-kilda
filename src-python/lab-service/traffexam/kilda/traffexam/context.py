@@ -16,6 +16,7 @@
 import logging.config
 import os
 import pathlib
+import errno
 
 from kilda.traffexam import const
 from kilda.traffexam import common
