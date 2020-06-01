@@ -73,10 +73,6 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
 
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
-        if (!featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
-            return SwitchFlowTuple.EMPTY;
-        }
-
         OFFactory ofFactory = sw.getOFFactory();
 
         List<OFAction> actions = new ArrayList<>();
@@ -87,7 +83,10 @@ public class Server42OutputVlanFlowGenerator implements SwitchFlowGenerator {
         actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
         actions.add(actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
                 server42MacAddress.getAddress())));
-        actions.add(buildCopyTimestamp(ofFactory));
+        if (featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD)) {
+            actions.add(buildCopyTimestamp(ofFactory));
+        }
+
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(

@@ -37,6 +37,7 @@ import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import lombok.Builder;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -80,17 +81,15 @@ public class Server42InputFlowGenerator implements SwitchFlowGenerator {
     public static Optional<OFFlowMod> generateFlowMod(
             OFFactory ofFactory, Set<SwitchFeature> features, int udpOffset, int customerPort, int server42Port,
             MacAddress server42macAddress) {
-        if (!features.contains(NOVIFLOW_COPY_FIELD)) {
-            return Optional.empty();
-        }
-
         Match match = buildMatch(ofFactory, server42Port, customerPort + udpOffset, server42macAddress);
 
 
-        List<OFAction> actions = ImmutableList.of(
+        List<OFAction> actions = Lists.newArrayList(
                 actionSetUdpSrcAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)),
-                actionSetUdpDstAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)),
-                buildServer42CopyFirstTimestamp(ofFactory));
+                actionSetUdpDstAction(ofFactory, TransportPort.of(SERVER_42_FORWARD_UDP_PORT)));
+        if (features.contains(NOVIFLOW_COPY_FIELD)) {
+            actions.add(buildServer42CopyFirstTimestamp(ofFactory));
+        }
 
         List<OFInstruction> instructions = ImmutableList.of(
                 buildInstructionApplyActions(ofFactory, actions),

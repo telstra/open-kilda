@@ -28,7 +28,6 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
@@ -92,14 +91,11 @@ public class ValidationServiceImpl implements ValidationService {
         return makeRulesResponse(expectedCookies, presentRules, expectedDefaultRules, switchId);
     }
 
-    private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths)
-            throws SwitchNotFoundException {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+    private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths) {
         SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                 .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
-        if (switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        if (switchProperties.isServer42FlowRtt()
                 && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
             return paths.stream()
                     .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))

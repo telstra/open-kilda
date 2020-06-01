@@ -527,12 +527,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             OutputVlanType outputVlanType, long meterId, FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         OFFactory ofFactory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
         OFInstructionMeter meter = buildMeterInstruction(meterId, sw, actionList);
 
         actionList.addAll(pushTransitEncapsulationForServer42IngressFlow(ofFactory, transitTunnelId, outputVlanType,
-                encapsulationType, dpid, dstDpid, multiTable));
+                encapsulationType, dpid, dstDpid, features, multiTable));
 
         actionList.add(actionSetOutputPort(ofFactory, OFPort.of(outputPort)));
 
@@ -551,7 +552,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setInstructions(instructions)
                 .setMatch(match);
 
-        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+        if (features.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
         return pushFlow(sw, "--InstallServer42IngressFlow--", builder.build());
@@ -2250,8 +2251,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * Create transit encapsulation OFActions for server 42 ingress Flow.
      */
     private List<OFAction> pushTransitEncapsulationForServer42IngressFlow(
-            OFFactory of, int transitTunnelId, OutputVlanType outputVlanType,
-            FlowEncapsulationType encapsulationType, DatapathId ethSrc, DatapathId ethDst, boolean multiTable) {
+            OFFactory of, int transitTunnelId, OutputVlanType outputVlanType, FlowEncapsulationType encapsulationType,
+            DatapathId ethSrc, DatapathId ethDst, Set<SwitchFeature> features, boolean multiTable) {
         List<OFAction> actions = new ArrayList<>();
         switch (encapsulationType) {
             case TRANSIT_VLAN:
@@ -2261,7 +2262,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 if (!multiTable) {
                     actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
                     actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
-                    actions.add(buildServer42CopyFirstTimestamp(of));
+                    if (features.contains(NOVIFLOW_COPY_FIELD)) {
+                        actions.add(buildServer42CopyFirstTimestamp(of));
+                    }
                 }
                 pushVlanTransitEncapsulation(of, transitTunnelId, outputVlanType, actions);
                 break;
@@ -2273,7 +2276,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
                     actions.add(actionPushVlan(of, ETH_TYPE));
                 }
-                if (!multiTable) {
+                if (!multiTable && features.contains(NOVIFLOW_COPY_FIELD)) {
                     actions.add(buildServer42CopyFirstTimestamp(of));
                 }
                 actions.add(actionPushVxlan(of, transitTunnelId, convertDpIdToMac(ethSrc),
