@@ -15,10 +15,13 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import org.openkilda.adapter.FlowDestAdapter;
+import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.model.FlowDirection;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.GroupId;
@@ -61,20 +64,22 @@ public class PingProducer extends Abstract {
 
     private Ping buildPing(PingContext pingContext, FlowDirection direction) {
         Flow flow = pingContext.getFlow();
+        FlowEndpoint ingress;
+        FlowEndpoint egress;
         if (FlowDirection.FORWARD == direction) {
-            FlowPath flowPath = flow.getForwardPath();
-            return new Ping((short) flow.getSrcVlan(),
-                    flowPath.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
-                    flowPath.getDestSwitch().getSwitchId(), flow.getDestPort());
+            ingress = new FlowSourceAdapter(flow).getEndpoint();
+            egress = new FlowDestAdapter(flow).getEndpoint();
         } else if (FlowDirection.REVERSE == direction) {
-            FlowPath flowPath = flow.getReversePath();
-            return new Ping((short) flow.getDestVlan(),
-                    flowPath.getSrcSwitch().getSwitchId(), flow.getDestPort(),
-                    flowPath.getDestSwitch().getSwitchId(), flow.getSrcPort());
+            ingress = new FlowDestAdapter(flow).getEndpoint();
+            egress = new FlowSourceAdapter(flow).getEndpoint();
         } else {
             throw new IllegalArgumentException(String.format(
                     "Unexpected %s value: %s", FlowDirection.class.getCanonicalName(), direction));
         }
+
+        return new Ping(ingress.getOuterVlanId(), ingress.getInnerVlanId(),
+                        new NetworkEndpoint(ingress.getSwitchId(), ingress.getPortNumber()),
+                        new NetworkEndpoint(egress.getSwitchId(), egress.getPortNumber()));
     }
 
     @Override

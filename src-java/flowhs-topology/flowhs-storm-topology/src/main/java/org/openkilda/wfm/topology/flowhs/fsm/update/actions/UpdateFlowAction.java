@@ -103,6 +103,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         flow.setSrcSwitch(srcSwitch);
         flow.setSrcPort(targetFlow.getSrcPort());
         flow.setSrcVlan(targetFlow.getSrcVlan());
+        flow.setSrcInnerVlan(targetFlow.getSrcInnerVlan());
         flow.getDetectConnectedDevices().setSrcLldp(targetFlow.getDetectConnectedDevices().isSrcLldp());
         flow.getDetectConnectedDevices().setSrcArp(targetFlow.getDetectConnectedDevices().isSrcArp());
         Switch destSwitch = switchRepository.findById(targetFlow.getDestSwitch())
@@ -111,6 +112,7 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         flow.setDestSwitch(destSwitch);
         flow.setDestPort(targetFlow.getDestPort());
         flow.setDestVlan(targetFlow.getDestVlan());
+        flow.setDestInnerVlan(targetFlow.getDestInnerVlan());
         flow.getDetectConnectedDevices().setDstLldp(targetFlow.getDetectConnectedDevices().isDstLldp());
         flow.getDetectConnectedDevices().setDstArp(targetFlow.getDetectConnectedDevices().isDstArp());
 

@@ -34,7 +34,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.METERS_COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.RULES_COMMANDS_SEND;
 
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -87,7 +87,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<Long> removeFlowRules;
     private List<Long> removeDefaultRules = new ArrayList<>();
 
-    private List<BaseInstallFlow> missingRules = emptyList();
+    private List<BaseFlow> missingRules = emptyList();
     private List<RemoveFlow> excessRules = emptyList();
     private List<Long> excessMeters = emptyList();
 
@@ -232,7 +232,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Request to install switch rules has been sent (switch={}, key={})", switchId, key);
             missingRulesPendingResponsesCount = missingRules.size();
 
-            for (BaseInstallFlow command : missingRules) {
+            for (BaseFlow command : missingRules) {
                 carrier.sendCommandToSpeaker(key, new InstallFlowForSwitchManagerRequest(command));
             }
         }

@@ -105,6 +105,7 @@ public class FlowValidator {
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
                 EndpointDescriptor.makeDestination(destination)}) {
+            checkForMultiTableRequirement(descriptor);
             checkFlowForIslConflicts(descriptor);
             checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
         }
@@ -173,9 +174,9 @@ public class FlowValidator {
             FlowEndpoint destination = new FlowDestAdapter(entry).getEndpoint();
 
             EndpointDescriptor conflict = null;
-            if (endpoint.isSwitchPortVlanEquals(source)) {
+            if (endpoint.isConflict(source)) {
                 conflict = EndpointDescriptor.makeSource(source);
-            } else if (endpoint.isSwitchPortVlanEquals(destination)) {
+            } else if (endpoint.isConflict(destination)) {
                 conflict = EndpointDescriptor.makeDestination(destination);
             }
 
@@ -236,7 +237,7 @@ public class FlowValidator {
      */
     @VisibleForTesting
     private void checkOneSwitchFlowConflict(FlowEndpoint source, FlowEndpoint destination) throws InvalidFlowException {
-        if (source.isSwitchPortVlanEquals(destination)) {
+        if (source.isConflict(destination)) {
             throw new InvalidFlowException(
                     "It is not allowed to create one-switch flow for the same ports and vlans", ErrorType.DATA_INVALID);
         }
@@ -265,6 +266,7 @@ public class FlowValidator {
      *
      * @param requestedFlow a flow to be validated.
      */
+    // TODO: switch to per endpoint based strategy (same as other enpoint related checks)
     @VisibleForTesting
     void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
         SwitchId sourceId = requestedFlow.getSrcSwitch();
@@ -334,6 +336,24 @@ public class FlowValidator {
         }
 
         return flowEndpoints;
+    }
+
+    private void checkForMultiTableRequirement(EndpointDescriptor descriptor) throws InvalidFlowException {
+        FlowEndpoint endpoint = descriptor.getEndpoint();
+        if (endpoint.getVlanStack().size() < 2) {
+            return;
+        }
+
+        SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(
+                endpoint.getSwitchId())
+                .orElseGet(() -> SwitchProperties.builder().build());
+        if (! switchProperties.isMultiTable()) {
+            final String errorMessage = format(
+                    "Flow's %s endpoint is double VLAN tagged, switch %s is not capable to support such endpoint "
+                            + "encapsulation.",
+                    descriptor.getName(), endpoint.getSwitchId());
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
     }
 
     @Getter

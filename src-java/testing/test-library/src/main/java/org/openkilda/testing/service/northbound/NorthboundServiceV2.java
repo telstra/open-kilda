@@ -17,6 +17,7 @@ package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
@@ -45,6 +46,8 @@ public interface NorthboundServiceV2 {
     FlowResponseV2 deleteFlow(String flowId);
 
     FlowRerouteResponseV2 rerouteFlow(String flowId);
+
+    FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 patch);
 
     //switches
 

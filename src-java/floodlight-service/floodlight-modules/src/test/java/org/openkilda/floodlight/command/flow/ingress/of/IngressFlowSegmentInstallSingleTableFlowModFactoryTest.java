@@ -18,21 +18,18 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.types.TableId;
-
-import java.util.Optional;
 
 public class IngressFlowSegmentInstallSingleTableFlowModFactoryTest
         extends IngressFlowSegmentInstallFlowModFactoryTest {
     @Override
-    TableId getTargetTableId() {
+    TableId getTargetIngressTableId() {
         return TableId.ZERO;
     }
 
     @Override
-    Optional<OFInstructionGotoTable> getGoToTableInstruction() {
-        return Optional.empty();
+    TableId getTargetPreIngressTableId() {
+        return TableId.ZERO;
     }
 
     @Override

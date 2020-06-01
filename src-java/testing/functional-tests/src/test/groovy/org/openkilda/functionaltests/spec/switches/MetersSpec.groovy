@@ -81,7 +81,7 @@ class MetersSpec extends HealthCheckSpecification {
 
         then: "No excessive meters are installed on the switch"
         Wrappers.wait(WAIT_OFFSET) {
-            defaultMeters.meterEntries == northbound.getAllMeters(sw.dpId).meterEntries
+            assert defaultMeters.meterEntries.sort() == northbound.getAllMeters(sw.dpId).meterEntries.sort()
         }
 
         cleanup:

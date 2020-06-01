@@ -29,6 +29,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Getter;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -66,13 +67,19 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * Flow bandwidth value.
      */
     @JsonProperty("bandwidth")
-    protected Long bandwidth;
+    @Getter
+    protected long bandwidth;
 
     /**
      * Input vlan id value.
      */
     @JsonProperty("input_vlan_id")
-    protected Integer inputVlanId;
+    @Getter
+    protected int inputVlanId;
+
+    @JsonProperty("input_inner_vlan_id")
+    @Getter
+    protected int inputInnerVlanId;
 
     /**
      * Output action on the vlan tag.
@@ -114,6 +121,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param inputPort      input port of the flow
      * @param outputPort     output port of the flow
      * @param inputVlanId    input vlan id value
+     * @param inputInnerVlanId input inner vlan id value
      * @param transitEncapsulationId  transit encapsulation id value
      * @param transitEncapsulationType  transit encapsulation type value
      * @param outputVlanType output vlan type action
@@ -132,6 +140,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("input_port") final Integer inputPort,
                               @JsonProperty("output_port") final Integer outputPort,
                               @JsonProperty("input_vlan_id") final Integer inputVlanId,
+                              @JsonProperty("input_inner_vlan_id") Integer inputInnerVlanId,
                               @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
                               @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
                                           transitEncapsulationType,
@@ -145,6 +154,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
                 transitEncapsulationType, multiTable);
         setInputVlanId(inputVlanId);
+        setInputInnerVlanId(inputInnerVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
         setMeterId(meterId);
@@ -178,15 +188,6 @@ public class InstallIngressFlow extends InstallTransitFlow {
     }
 
     /**
-     * Returns flow bandwidth value.
-     *
-     * @return flow bandwidth value
-     */
-    public Long getBandwidth() {
-        return bandwidth;
-    }
-
-    /**
      * Sets flow bandwidth value.
      *
      * @param bandwidth bandwidth value
@@ -200,28 +201,12 @@ public class InstallIngressFlow extends InstallTransitFlow {
         this.bandwidth = bandwidth;
     }
 
-    /**
-     * Returns input vlan id value.
-     *
-     * @return input vlan id value
-     */
-    public Integer getInputVlanId() {
-        return inputVlanId;
+    public void setInputVlanId(final Integer value) {
+        inputVlanId = adaptVlanId(value);
     }
 
-    /**
-     * Sets input vlan id value.
-     *
-     * @param inputVlanId input vlan id value
-     */
-    public void setInputVlanId(final Integer inputVlanId) {
-        if (inputVlanId == null) {
-            this.inputVlanId = 0;
-        } else if (Utils.validateVlanRange(inputVlanId)) {
-            this.inputVlanId = inputVlanId;
-        } else {
-            throw new IllegalArgumentException("need to set valid value for input_vlan_id");
-        }
+    public void setInputInnerVlanId(Integer value) {
+        inputInnerVlanId = adaptVlanId(value);
     }
 
     /**
@@ -304,6 +289,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 .add("input_port", inputPort)
                 .add("output_port", outputPort)
                 .add("input_vlan_id", inputVlanId)
+                .add("input_inner_vlan_id", inputInnerVlanId)
                 .add("transit_encapsulation_id", transitEncapsulationId)
                 .add("transit_encapsulation_type", transitEncapsulationType)
                 .add("output_vlan_type", outputVlanType)
@@ -336,6 +322,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getInputPort(), that.getInputPort())
                 && Objects.equals(getOutputPort(), that.getOutputPort())
                 && Objects.equals(getInputVlanId(), that.getInputVlanId())
+                && Objects.equals(getInputInnerVlanId(), that.getInputInnerVlanId())
                 && Objects.equals(getTransitEncapsulationId(), that.getTransitEncapsulationId())
                 && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
@@ -353,7 +340,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId,
-                multiTable, enableLldp, enableArp, egressSwitchId);
+                inputVlanId, inputInnerVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType,
+                bandwidth, meterId, multiTable, enableLldp, enableArp, egressSwitchId);
     }
 }

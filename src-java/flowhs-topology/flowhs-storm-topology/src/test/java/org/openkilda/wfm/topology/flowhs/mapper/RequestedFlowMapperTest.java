@@ -44,7 +44,7 @@ public class RequestedFlowMapperTest {
     public static final int SRC_VLAN = 3;
     public static final int DST_VLAN = 4;
     public static final int SRC_INNER_VLAN = 5;
-    public static final int DST_INNER_VLAN = 5;
+    public static final int DST_INNER_VLAN = 6;
     public static final Integer PRIORITY = 5;
     public static final String DIVERSE_FLOW_ID = "flow_2";
     public static final String DESCRIPTION = "description";
@@ -108,9 +108,11 @@ public class RequestedFlowMapperTest {
         assertEquals(SRC_SWITCH_ID, requestedFlow.getSrcSwitch());
         assertEquals(SRC_PORT, requestedFlow.getSrcPort());
         assertEquals(SRC_VLAN, requestedFlow.getSrcVlan());
+        assertEquals(SRC_INNER_VLAN, requestedFlow.getSrcInnerVlan());
         assertEquals(DST_SWITCH_ID, requestedFlow.getDestSwitch());
         assertEquals(DST_PORT, requestedFlow.getDestPort());
         assertEquals(DST_VLAN, requestedFlow.getDestVlan());
+        assertEquals(DST_INNER_VLAN, requestedFlow.getDestInnerVlan());
         assertEquals(PRIORITY, requestedFlow.getPriority());
         assertEquals(DIVERSE_FLOW_ID, requestedFlow.getDiverseFlowId());
         assertEquals(DESCRIPTION, requestedFlow.getDescription());

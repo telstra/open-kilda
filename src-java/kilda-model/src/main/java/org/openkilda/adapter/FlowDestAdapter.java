@@ -18,6 +18,9 @@ package org.openkilda.adapter;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathId;
+
+import lombok.NonNull;
 
 public class FlowDestAdapter extends FlowSideAdapter {
     public FlowDestAdapter(Flow flow) {
@@ -36,5 +39,10 @@ public class FlowDestAdapter extends FlowSideAdapter {
     @Override
     public boolean isMultiTableSegment() {
         return flow.isDestWithMultiTable();
+    }
+
+    @Override
+    public boolean isPrimaryEgressPath(@NonNull PathId pathId) {
+        return pathId.equals(flow.getReversePathId());
     }
 }

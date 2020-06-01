@@ -37,7 +37,12 @@ public class OneSwitchFlowInstallSingleTableFlowModFactoryTest extends OneSwitch
     }
 
     @Override
-    TableId getTargetTableId() {
+    TableId getTargetPreIngressTableId() {
+        return TableId.ZERO;
+    }
+
+    @Override
+    TableId getTargetIngressTableId() {
         return TableId.ZERO;
     }
 

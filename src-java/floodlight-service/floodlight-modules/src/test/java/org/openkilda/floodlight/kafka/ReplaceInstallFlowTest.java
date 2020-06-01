@@ -17,6 +17,7 @@ package org.openkilda.floodlight.kafka;
 
 import static java.util.Collections.emptyMap;
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.anyString;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
@@ -27,6 +28,10 @@ import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.of
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.floodlight.command.SpeakerCommand;
+import org.openkilda.floodlight.command.SpeakerCommandProcessor;
+import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
@@ -42,7 +47,6 @@ import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
-import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 
@@ -63,6 +67,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
@@ -199,56 +204,34 @@ public class ReplaceInstallFlowTest {
     }
 
     @Test
-    public void installIngressNoneFlow() throws IOException, InterruptedException {
-        String value = Resources.toString(getClass().getResource("/install_ingress_none_flow.json"), Charsets.UTF_8);
-        InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand =
-                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
-        OFFlowAdd flowCommand = scheme.ingressNoneFlowMod(DatapathId.of(data.getSwitchId().toLong()),
-                data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), data.getMeterId(), 123L, data.getTransitEncapsulationType(),
-                DatapathId.of(data.getEgressSwitchId().toLong()));
-        runTest(value, flowCommand, meterCommand, null, null);
-    }
+    public void testInstallIngressFlowSegment() throws IOException {
+        String value = Resources.toString(getClass().getResource(
+                "/install_ingress_replace_flow.json"), Charsets.UTF_8);
+        Capture<SpeakerCommand<?>> speakerCommandCapture = EasyMock.newCapture();
+        SpeakerCommandProcessor commandProcessor = EasyMock.createMock(SpeakerCommandProcessor.class);
+        commandProcessor.process(capture(speakerCommandCapture), anyString());
 
-    @Test
-    public void installIngressReplaceFlow() throws IOException, InterruptedException {
-        String value = Resources.toString(getClass().getResource("/install_ingress_replace_flow.json"), Charsets.UTF_8);
-        InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand =
-                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
-        OFFlowAdd flowCommand = scheme.ingressReplaceFlowMod(DatapathId.of(data.getSwitchId().toLong()),
-                data.getInputPort(), data.getOutputPort(),
-                data.getInputVlanId(), data.getTransitEncapsulationId(), data.getMeterId(), 123L,
-                data.getTransitEncapsulationType(),
-                DatapathId.of(data.getEgressSwitchId().toLong()));
-        runTest(value, flowCommand, meterCommand, null, null);
-    }
+        ConsumerContext consumerContext = EasyMock.createMock(ConsumerContext.class);
+        EasyMock.expect(consumerContext.getCommandProcessor()).andStubReturn(commandProcessor);
+        EasyMock.expect(consumerContext.getModuleContext()).andStubReturn(context);
 
-    @Test
-    public void installIngressPushFlow() throws IOException, InterruptedException {
-        String value = Resources.toString(getClass().getResource("/install_ingress_push_flow.json"), Charsets.UTF_8);
-        InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand =
-                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
-        OFFlowAdd flowCommand = scheme.ingressPushFlowMod(DatapathId.of(data.getSwitchId().toLong()),
-                data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), data.getMeterId(), 123L, data.getTransitEncapsulationType(),
-                DatapathId.of(data.getEgressSwitchId().toLong()));
-        runTest(value, flowCommand, meterCommand, null, null);
-    }
+        KafkaChannel kafkaChannel = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
+        EasyMock.expect(consumerContext.getKafkaFlowTopic()).andStubReturn(kafkaChannel.getFlowTopic());
+        EasyMock.expect(consumerContext.getKafkaNorthboundTopic()).andStubReturn(kafkaChannel.getNorthboundTopic());
 
-    @Test
-    public void installIngressPopFlow() throws IOException, InterruptedException {
-        String value = Resources.toString(getClass().getResource("/install_ingress_pop_flow.json"), Charsets.UTF_8);
-        InstallIngressFlow data = (InstallIngressFlow) prepareData(value);
-        OFMeterMod meterCommand =
-                scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
-        OFFlowAdd flowCommand = scheme.ingressPopFlowMod(DatapathId.of(data.getSwitchId().toLong()),
-                data.getInputPort(), data.getOutputPort(),
-                data.getInputVlanId(), data.getTransitEncapsulationId(), data.getMeterId(), 123L,
-                data.getTransitEncapsulationType(), DatapathId.of(data.getEgressSwitchId().toLong()));
-        runTest(value, flowCommand, meterCommand, null, null);
+        EasyMock.replay(commandProcessor, consumerContext);
+
+        RecordHandler subject = new RecordHandler(
+                consumerContext, ImmutableList.of(), new ConsumerRecord<>("", 0, 0, "", value));
+        subject.run();
+
+        Assert.assertTrue(speakerCommandCapture.hasCaptured());
+        SpeakerCommand<?> speakerCommand = speakerCommandCapture.getValue();
+
+        Assert.assertTrue(speakerCommand instanceof FlowSegmentWrapperCommand);
+        FlowSegmentWrapperCommand wrapperCommand = (FlowSegmentWrapperCommand) speakerCommand;
+
+        Assert.assertTrue(wrapperCommand.getTarget() instanceof IngressFlowSegmentCommand);
     }
 
     @Test

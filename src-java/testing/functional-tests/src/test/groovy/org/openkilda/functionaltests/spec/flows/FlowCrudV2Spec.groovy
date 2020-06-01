@@ -6,8 +6,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -30,9 +30,9 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -56,7 +56,9 @@ import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
-@Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
+@Narrative(""""Verify CRUD operations and health of basic vlan flows on different types of switches.
+More specific cases like partialUpdate/protected/diverse etc. are covered in separate specifications
+""")
 class FlowCrudV2Spec extends HealthCheckSpecification {
 
     @Autowired
@@ -646,49 +648,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Unroll
-    def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
-        given: "An isl"
-        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue("Unable to find required isl", isl as boolean)
-
-        and: "A flow"
-        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
-        flowHelperV2.addFlow(flow)
-
-        when: "Try to edit port to isl port"
-        northboundV2.updateFlow(flow.flowId, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
-
-        then:
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        def error = exc.responseBodyAsString.to(MessageError)
-        error.errorMessage == "Could not update flow"
-        error.errorDescription == data.message(isl)
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
-        where:
-        data << [
-                [
-                        switchType: "source",
-                        port      : "srcPort",
-                        message   : { Isl violatedIsl ->
-                            getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
-                        }
-                ],
-                [
-                        switchType: "destination",
-                        port      : "dstPort",
-                        message   : { Isl violatedIsl ->
-                            getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
-                        }
-                ]
-        ]
-    }
-
-    @Tidy
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -818,6 +777,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "System allows to set/update description/priority/max-latency for a flow"(){
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -863,88 +823,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    @Tidy
-    def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
-        given: "At least 3 traffGen switches"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 2) as boolean)
-
-        when: "Create a vlan flow"
-        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
-        def bandwidth = 100
-        def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        vlanFlow.maximumBandwidth = bandwidth
-        vlanFlow.allocateProtectedPath = true
-        flowHelperV2.addFlow(vlanFlow)
-
-        and: "Create a default flow with the same srcSwitch and different dstSwitch"
-        Switch newDstSwitch = allTraffGenSwitches.find { it != dstSwitch && it != srcSwitch }
-        def defaultFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
-        defaultFlow.maximumBandwidth = bandwidth
-        defaultFlow.source.vlanId = 0
-        defaultFlow.destination.vlanId = 0
-        defaultFlow.allocateProtectedPath = true
-        flowHelperV2.addFlow(defaultFlow)
-
-        then: "The default flow has less priority than the vlan flow"
-        def flowVlanPortInfo = database.getFlow(vlanFlow.flowId)
-        def flowFullPortInfo = database.getFlow(defaultFlow.flowId)
-
-        def rules = [srcSwitch.dpId, dstSwitch.dpId, newDstSwitch.dpId].collectEntries {
-            [(it): northbound.getSwitchRules(it).flowEntries]
-        }
-
-        // can't be imported safely org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_FLOW_PRIORITY
-        def FLOW_PRIORITY = 24576
-        def DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1
-
-        [srcSwitch.dpId, dstSwitch.dpId].each { sw ->
-            [flowVlanPortInfo.forwardPath.cookie.value, flowVlanPortInfo.reversePath.cookie.value].each { cookie ->
-                assert rules[sw].find { it.cookie == cookie }.priority == FLOW_PRIORITY
-            }
-        }
-        // DEFAULT_FLOW_PRIORITY sets on an ingress rule only
-        rules[srcSwitch.dpId].find { it.cookie == flowFullPortInfo.reversePath.cookie.value }.priority == FLOW_PRIORITY
-        rules[newDstSwitch.dpId].find {
-            it.cookie == flowFullPortInfo.forwardPath.cookie.value
-        }.priority == FLOW_PRIORITY
-
-        rules[srcSwitch.dpId].find {
-            it.cookie == flowFullPortInfo.forwardPath.cookie.value
-        }.priority == DEFAULT_FLOW_PRIORITY
-        rules[newDstSwitch.dpId].find {
-            it.cookie == flowFullPortInfo.reversePath.cookie.value
-        }.priority == DEFAULT_FLOW_PRIORITY
-
-        and: "System allows traffic on the vlan flow"
-        def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                toFlowPayload(vlanFlow), bandwidth, 5
-        )
-        withPool {
-            [exam.forward, exam.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
-
-        and: "System allows traffic on the default flow"
-        def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                toFlowPayload(defaultFlow), 1000, 5
-        )
-        withPool {
-            [exam2.forward, exam2.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
-
-        cleanup: "Delete the flows"
-        [vlanFlow, defaultFlow].each { flow -> flow && flowHelperV2.deleteFlow(flow.flowId) }
     }
 
     @Tidy
@@ -1025,6 +903,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "Able to update a flow endpoint"() {
         given: "Three active switches"
         def allSwitches = topology.activeSwitches

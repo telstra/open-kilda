@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.60.0 (01/06/2020)
+
+### Features:
+-  [#3438](https://github.com/telstra/open-kilda/pull/3438) Introducing flow with 2 levels of VLAN tagging on endpoints [**floodlight**][**storm-topologies**]
+
+
+### Improvements:
+-  [#3494](https://github.com/telstra/open-kilda/pull/3494) Add tests for partial update v2 api [**tests**]
+-  [#3499](https://github.com/telstra/open-kilda/pull/3499) Add proper history wait in tests after path swap [**tests**]
+-  [#3505](https://github.com/telstra/open-kilda/pull/3505) Run checkstyle task in Travis builds 
+-  [#3506](https://github.com/telstra/open-kilda/pull/3506) add test to cover #3498 (Issue: [#3498](https://github.com/telstra/open-kilda/issues/3498)) [**tests**]
+-  [#3510](https://github.com/telstra/open-kilda/pull/3510) fix tests according to 1.59.0 v [**tests**]
+-  [#3484](https://github.com/telstra/open-kilda/pull/3484) Various test stability fixes [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.59.0...v1.60.0).
+
+### Affected Components:
+flow-hs, swmanager, fl
+
+---
+
 ## v1.59.0 (26/05/2020)
 
 ### Features:

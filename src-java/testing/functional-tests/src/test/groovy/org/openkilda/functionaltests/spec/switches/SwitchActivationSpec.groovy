@@ -94,15 +94,15 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1,
-                        OutputVlanType.REPLACE, false)).toJson()))
+                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
+                        OutputVlanType.REPLACE, false, null)).toJson()))
 
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
                         FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
 
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 1,
+                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, 300, excessMeterId,
                         sw.dpId, false, false, false)).toJson()))
@@ -135,6 +135,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def isls = topology.getRelatedIsls(sw)
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        Wrappers.wait(WAIT_OFFSET) {
+            def allLinks = northbound.getAllLinks()
+            isls.every { !islUtils.getIslInfo(allLinks, it).present }
+        }
         northbound.deleteSwitch(sw.dpId, false)
 
         when: "New switch connects"

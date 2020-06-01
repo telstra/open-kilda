@@ -36,31 +36,31 @@ public class IngressFlowSegmentRemoveCommandTest extends IngressCommandRemoveTes
     @Test
     public void zeroVlanSingleTable() throws Exception {
         processZeroVlanSingleTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
     public void oneVlanSingleTable() throws Exception {
         processOneVlanSingleTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
     public void zeroVlanMultiTable() throws Exception {
         processZeroVlanMultiTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
     }
 
     @Test
     public void oneVlanMultiTable() throws Exception {
         processOneVlanMultiTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
     }
 
     @Override
     protected IngressFlowSegmentRemoveCommand makeCommand(
             FlowEndpoint endpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata) {
-        return makeCommand(endpoint, endpointEgressOneVlan, meterConfig, metadata);
+        return makeCommand(endpoint, endpointEgressSingleVlan, meterConfig, metadata);
     }
 
     protected IngressFlowSegmentRemoveCommand makeCommand(

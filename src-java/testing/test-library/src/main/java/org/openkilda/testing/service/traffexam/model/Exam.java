@@ -22,6 +22,8 @@ import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
+import java.util.List;
+
 @Value
 @Builder
 public class Exam {
@@ -30,8 +32,8 @@ public class Exam {
 
     private Host source;
     private Host dest;
-    private Vlan sourceVlan;
-    private Vlan destVlan;
+    private List<Vlan> sourceVlans;
+    private List<Vlan> destVlans;
     private Bandwidth bandwidthLimit;
     private int burstPkt;
     private TimeLimit timeLimitSeconds;

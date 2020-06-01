@@ -53,15 +53,15 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
     }
 
     @Override
-    protected List<OFAction> makeTransformActions() {
+    protected List<OFAction> makeTransformActions(List<Integer> vlanStack) {
         List<OFAction> actions = new ArrayList<>();
         FlowTransitEncapsulation encapsulation = command.getEncapsulation();
         switch (encapsulation.getType()) {
             case TRANSIT_VLAN:
-                actions.addAll(makeVlanEncapsulationTransformActions());
+                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack));
                 break;
             case VXLAN:
-                actions.addAll(makeVxLanEncapsulationTransformActions());
+                actions.addAll(makeVxLanEncapsulationTransformActions(vlanStack));
                 break;
             default:
                 throw new NotImplementedEncapsulationException(
@@ -71,7 +71,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
     }
 
     @Override
-    protected List<OFAction> makeServer42IngressFlowTransformActions() {
+    protected List<OFAction> makeServer42IngressFlowTransformActions(List<Integer> vlanStack) {
         List<OFAction> actions = new ArrayList<>();
         FlowTransitEncapsulation encapsulation = command.getEncapsulation();
         switch (encapsulation.getType()) {
@@ -87,10 +87,10 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                     actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
                     actions.add(buildServer42CopyFirstTimestamp(of));
                 }
-                actions.addAll(makeVlanEncapsulationTransformActions());
+                actions.addAll(makeVlanEncapsulationTransformActions(vlanStack));
                 break;
             case VXLAN:
-                if (!FlowEndpoint.isVlanIdSet(command.getEndpoint().getOuterVlanId())) {
+                if (vlanStack.isEmpty()) {
                     // Server 42 requires constant number of Vlans in packet.
                     // TRANSIT_VLAN encapsulation always keeps 1 Vlan in packet.
                     // VXLAN encapsulation for NON default port also keeps 1 Vlan in packet.
@@ -109,17 +109,16 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
         return actions;
     }
 
-    private List<OFAction> makeVlanEncapsulationTransformActions() {
-        List<OFAction> actions = new ArrayList<>();
-        if (! FlowEndpoint.isVlanIdSet(command.getEndpoint().getOuterVlanId())) {
-            actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
-        }
-        actions.add(OfAdapter.INSTANCE.setVlanIdAction(of, command.getEncapsulation().getId()));
-        return actions;
+    private List<OFAction> makeVlanEncapsulationTransformActions(List<Integer> vlanStack) {
+        return OfAdapter.INSTANCE.makeVlanReplaceActions(
+                of, vlanStack, FlowEndpoint.makeVlanStack(command.getEncapsulation().getId()));
     }
 
-    private List<OFAction> makeVxLanEncapsulationTransformActions() {
-        List<OFAction> actions = new ArrayList<>();
+    private List<OFAction> makeVxLanEncapsulationTransformActions(List<Integer> vlanStack) {
+        // Remove any remaining vlan's, because egress switch will reject vlan manipulation on flow that have no
+        // vlan header matches
+        List<OFAction> actions = new ArrayList<>(
+                OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, Collections.emptyList()));
 
         MacAddress l2src = MacAddress.of(sw.getId());
         actions.add(pushVxlanAction(STUB_VXLAN_UDP_SRC));

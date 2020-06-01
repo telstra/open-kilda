@@ -36,9 +36,9 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
             IngressCommandInstallTest.endpointEgressZeroVlan.getPortNumber(),
             IngressCommandInstallTest.endpointEgressZeroVlan.getOuterVlanId());
     private static final FlowEndpoint endpointEgressOneVlan = new FlowEndpoint(
-            endpointIngressOneVlan.getSwitchId(),
-            IngressCommandInstallTest.endpointEgressOneVlan.getPortNumber(),
-            IngressCommandInstallTest.endpointEgressOneVlan.getOuterVlanId());
+            endpointIngressSingleVlan.getSwitchId(),
+            IngressCommandInstallTest.endpointEgressSingleVlan.getPortNumber(),
+            IngressCommandInstallTest.endpointEgressSingleVlan.getOuterVlanId());
 
     @Test
     public void zeroVlanSingleTable() throws Exception {
@@ -49,7 +49,7 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
     @Test
     public void oneVlanSingleTable() throws Exception {
         processOneVlanSingleTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(false)));
+                endpointIngressSingleVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(false)));
     }
 
     @Test
@@ -61,7 +61,7 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
     @Test
     public void oneVlanMultiTable() throws Exception {
         processOneVlanMultiTable(makeCommand(
-                endpointIngressOneVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(true)));
+                endpointIngressSingleVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(true)));
     }
 
     @Override

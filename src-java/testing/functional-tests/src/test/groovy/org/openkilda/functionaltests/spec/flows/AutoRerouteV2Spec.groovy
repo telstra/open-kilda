@@ -57,7 +57,7 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
-        then: "The flow was rerouted after reroute timeout"
+        then: "The flow was rerouted after reroute delay"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
@@ -110,6 +110,8 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         then: "The flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northbound.getFlowHistory(flow.flowId).last().histories
+                .find { it.action == "The flow status was reverted to UP" }
         }
 
         cleanup: "Restore topology to the original state, remove the flow"
