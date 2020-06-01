@@ -18,19 +18,19 @@ package org.openkilda.wfm.kafka;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.error.ErrorAbstractMessage;
 import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.common.errors.SerializationException;
-import org.apache.storm.kafka.spout.SerializableDeserializer;
+import org.apache.kafka.common.serialization.Deserializer;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Map;
 
 @Slf4j
-public class AbstractMessageDeserializer implements SerializableDeserializer<AbstractMessage> {
+public class AbstractMessageDeserializer implements Deserializer<AbstractMessage> {
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
@@ -42,9 +42,9 @@ public class AbstractMessageDeserializer implements SerializableDeserializer<Abs
         try {
             return SerializationUtils.MAPPER.readValue(data, AbstractMessage.class);
         } catch (IOException e) {
-            log.error(format("Failed to deserialize message: %s from topic %s",
-                    StringUtils.toEncodedString(data, Charset.defaultCharset()), topic), e);
-            throw new SerializationException(e);
+            String message = StringUtils.toEncodedString(data, Charset.defaultCharset());
+            log.error(format("Failed to deserialize message: %s from topic %s", message, topic), e);
+            return new ErrorAbstractMessage("Failed to deserialize message", message);
         }
     }
 

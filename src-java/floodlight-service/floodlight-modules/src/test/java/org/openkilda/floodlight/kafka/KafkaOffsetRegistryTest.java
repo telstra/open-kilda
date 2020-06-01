@@ -27,6 +27,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class KafkaOffsetRegistryTest {
@@ -50,11 +51,11 @@ public class KafkaOffsetRegistryTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void shouldCommitOnAddIfIntervalPassed() throws InterruptedException {
         // given
-        @SuppressWarnings("unchecked")
         KafkaConsumer<String, String> consumer = mock(KafkaConsumer.class);
-        consumer.commitSync(anyObject());
+        consumer.commitSync(anyObject(Map.class));
         EasyMock.expectLastCall();
         EasyMock.replay(consumer);
         Consumer.KafkaOffsetRegistry registry = new KafkaOffsetRegistry(consumer, 1L);
@@ -70,11 +71,11 @@ public class KafkaOffsetRegistryTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void shouldCommitOffsetsIfRequested() {
         // given
-        @SuppressWarnings("unchecked")
         KafkaConsumer<String, String> consumer = mock(KafkaConsumer.class);
-        consumer.commitSync(anyObject());
+        consumer.commitSync(anyObject(Map.class));
         EasyMock.expectLastCall();
         EasyMock.replay(consumer);
         Consumer.KafkaOffsetRegistry registry = new KafkaOffsetRegistry(consumer, 10000L);

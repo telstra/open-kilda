@@ -97,7 +97,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
                 .build();
 
-        KafkaSpout kafkaSpout = new KafkaSpout<>(config);
+        KafkaSpout<String, InfoData> kafkaSpout = new KafkaSpout<>(config);
         topology.setSpout(OTSDB_SPOUT_ID, kafkaSpout, openTsdbConfig.getNumSpouts());
     }
 
