@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -30,12 +30,21 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class GrpcResponseObserver<V> implements StreamObserver<V> {
 
-    protected CompletableFuture<List<V>> future = new CompletableFuture<>();
-    protected List<V> responses = Collections.synchronizedList(new ArrayList<>());
+    private final String switchAddress;
+    private final GrpcOperation operation;
+    protected CompletableFuture<List<V>> future;
+    protected List<V> responses;
+
+    public GrpcResponseObserver(String switchAddress, GrpcOperation operation) {
+        this.switchAddress = switchAddress;
+        this.operation = operation;
+        this.future = new CompletableFuture<>();
+        this.responses = Collections.synchronizedList(new ArrayList<>());
+    }
 
     @Override
     public void onNext(V reply) {
-        log.debug("Retrieved message: {} ", reply);
+        log.debug("Retrieved message: {} from switch {}", reply, switchAddress);
 
         if (validateResponse(reply)) {
             responses.add(reply);
@@ -48,7 +57,8 @@ public class GrpcResponseObserver<V> implements StreamObserver<V> {
 
             if (replyStatus != 0) {
                 ErrorCode errorCode = ErrorCode.getByCode(replyStatus);
-                log.warn("Response code of gRPC request is {}: {}", replyStatus, errorCode.getMessage());
+                log.warn("GRPC operation {} on switch {} failed. Response code of gRPC request is {}: {}",
+                        operation, switchAddress, replyStatus, errorCode.getMessage());
 
                 future.completeExceptionally(new GrpcRequestFailureException(replyStatus,
                         errorCode.getMessage()));
@@ -60,13 +70,15 @@ public class GrpcResponseObserver<V> implements StreamObserver<V> {
 
     @Override
     public void onError(Throwable throwable) {
-        log.warn("Error occurred during sending request", throwable);
+        log.warn(String.format("Error occurred during sending of GRPC request %s on switch %s",
+                operation, switchAddress), throwable);
         future.completeExceptionally(throwable);
     }
 
     @Override
     public void onCompleted() {
-        log.debug("The request is completed. Received {} responses", responses.size());
+        log.debug("GRPC request {} is completed. Received {} responses from switch {}",
+                operation, responses.size(), switchAddress);
         if (!future.isDone()) {
             future.complete(responses);
         }

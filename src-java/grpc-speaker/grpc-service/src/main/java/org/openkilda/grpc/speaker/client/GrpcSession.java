@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,21 @@
  */
 
 package org.openkilda.grpc.speaker.client;
+
+import static org.openkilda.grpc.speaker.client.GrpcOperation.DELETE_CONFIG_REMOTE_LOG_SERVER;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.DELETE_LOGICAL_PORT;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.DUMP_LOGICAL_PORTS;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.GET_PACKET_IN_OUT_STATS;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.LOGIN;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SET_CONFIG_LICENSE;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SET_CONFIG_REMOTE_LOG_SERVER;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SET_LOGICAL_PORT;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SET_LOG_MESSAGES_STATUS;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SET_LOG_OF_ERRORS_STATUS;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SET_PORT_CONFIG;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SHOW_CONFIG_LOGICAL_PORT;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SHOW_CONFIG_REMOTE_LOG_SERVER;
+import static org.openkilda.grpc.speaker.client.GrpcOperation.SHOW_SWITCH_STATUS;
 
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 import org.openkilda.grpc.speaker.model.ErrorCode;
@@ -109,7 +124,7 @@ public class GrpcSession {
 
         log.debug("Performs auth user request to switch {} with user {}", address, user);
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, LOGIN);
 
         stub.setLoginDetails(authUser, observer);
         return observer.future;
@@ -121,7 +136,7 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<StatusSwitch>> showSwitchStatus() {
-        GrpcResponseObserver<StatusSwitch> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<StatusSwitch> observer = new GrpcResponseObserver<>(address, SHOW_SWITCH_STATUS);
 
         log.info("Getting switch status for switch {}", address);
 
@@ -146,7 +161,7 @@ public class GrpcSession {
 
         log.info("About to create logical port: {}", request);
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOGICAL_PORT);
 
         stub.setConfigLogicalPort(request, observer);
         return observer.future;
@@ -166,7 +181,7 @@ public class GrpcSession {
 
         log.info("Reading logical port {} from the switch: {}", port, address);
 
-        GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>(address, SHOW_CONFIG_LOGICAL_PORT);
         stub.showConfigLogicalPort(request, observer);
 
         return observer.future
@@ -183,7 +198,7 @@ public class GrpcSession {
 
         log.info("Getting all logical ports for switch: {}", address);
 
-        GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>(address, DUMP_LOGICAL_PORTS);
         stub.showConfigLogicalPort(request, observer);
 
         return observer.future;
@@ -204,7 +219,7 @@ public class GrpcSession {
 
         log.info("Deleting logical port for switch {}", address);
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, DELETE_LOGICAL_PORT);
         stub.delConfigLogicalPort(logicalPort, observer);
 
         return observer.future
@@ -212,19 +227,19 @@ public class GrpcSession {
     }
 
     /**
-     * Enables log messages on switch.
+     * Set log messages status on switch.
      *
      * @param logMessagesDto a log messages configuration.
      * @return {@link CompletableFuture} with operation result.
      */
-    public CompletableFuture<Optional<CliReply>> enableLogMessages(LogMessagesDto logMessagesDto) {
+    public CompletableFuture<Optional<CliReply>> setLogMessagesStatus(LogMessagesDto logMessagesDto) {
         LogMessages logMessages = LogMessages.newBuilder()
                 .setStatus(OnOff.forNumber(logMessagesDto.getState().getNumber()))
                 .build();
 
         log.info("Change enabling status of log messages for switch {}", address);
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOG_MESSAGES_STATUS);
         stub.setLogMessages(logMessages, observer);
 
         return observer.future
@@ -232,19 +247,19 @@ public class GrpcSession {
     }
 
     /**
-     * Enables a log oferrors on a switch.
+     * Set log oferrors status on a switch.
      *
      * @param logOferrorsDto log oferrors data.
      * @return {@link CompletableFuture} with operation result.
      */
-    public CompletableFuture<Optional<CliReply>> enableLogOferrors(LogOferrorsDto logOferrorsDto) {
+    public CompletableFuture<Optional<CliReply>> setLogOferrorsStatus(LogOferrorsDto logOferrorsDto) {
         LogOferrors logOferrors = LogOferrors.newBuilder()
                 .setStatus(OnOff.forNumber(logOferrorsDto.getState().getNumber()))
                 .build();
 
         log.info("Change enabling status of log OF errors for switch {}", address);
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_LOG_OF_ERRORS_STATUS);
         stub.setLogOferrors(logOferrors, observer);
 
         return observer.future
@@ -261,7 +276,8 @@ public class GrpcSession {
 
         log.info("Get remote log server for switch {}", address);
 
-        GrpcResponseObserver<RemoteLogServer> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<RemoteLogServer> observer = new GrpcResponseObserver<>(
+                address, SHOW_CONFIG_REMOTE_LOG_SERVER);
         stub.showConfigRemoteLogServer(showRemoteLogServer, observer);
         return observer.future
                 .thenApply(responses -> responses.stream().findFirst());
@@ -282,7 +298,7 @@ public class GrpcSession {
                 .setPort(remoteServer.getPort())
                 .build();
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_CONFIG_REMOTE_LOG_SERVER);
         log.info("Set remote log server for switch {}", address);
         stub.setConfigRemoteLogServer(logServer, observer);
 
@@ -298,7 +314,7 @@ public class GrpcSession {
     public CompletableFuture<Optional<CliReply>> deleteConfigRemoteLogServer() {
         RemoteLogServer logServer = RemoteLogServer.newBuilder().build();
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, DELETE_CONFIG_REMOTE_LOG_SERVER);
         log.info("Delete remote log server for switch {}", address);
         stub.delConfigRemoteLogServer(logServer, observer);
 
@@ -353,7 +369,7 @@ public class GrpcSession {
             builder.setTrunk(OnOff.forNumber(config.getTrunk().getNumber()));
         }
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_PORT_CONFIG);
         log.info("Set port {} configuration for switch {}", portNumber, address);
 
         stub.setConfigPort(builder.build(), observer);
@@ -377,7 +393,7 @@ public class GrpcSession {
             licenseBuilder.setLicensedata(licenseDto.getLicenseData());
         }
 
-        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_CONFIG_LICENSE);
         log.info("Set license for switch {}", address);
 
         stub.setConfigLicense(licenseBuilder.build(), observer);
@@ -392,7 +408,7 @@ public class GrpcSession {
      * @return {@link CompletableFuture} with operation result.
      */
     public CompletableFuture<Optional<PacketInOutStats>> getPacketInOutStats() {
-        GrpcResponseObserver<PacketInOutStats> observer = new GrpcResponseObserver<>();
+        GrpcResponseObserver<PacketInOutStats> observer = new GrpcResponseObserver<>(address, GET_PACKET_IN_OUT_STATS);
         log.info("Getting packet in out stats for switch {}", address);
         stub.showStatsPacketInOut(ShowPacketInOutStats.newBuilder().build(), observer);
         return observer.future.thenApply(responses -> responses.stream().findFirst());
