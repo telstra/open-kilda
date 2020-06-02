@@ -23,10 +23,8 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
-import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -152,11 +150,9 @@ public class TestMessageMock implements MessagingChannel {
      */
     private CompletableFuture<InfoData> formatResponse(final String correlationId, final CommandData data) {
         CompletableFuture<InfoData> result = new CompletableFuture<>();
-        if (data instanceof FlowCreateRequest || data instanceof FlowRequest) {
+        if (data instanceof FlowRequest) {
             result.complete(flowResponse);
         } else if (data instanceof FlowDeleteRequest) {
-            result.complete(flowResponse);
-        } else if (data instanceof FlowUpdateRequest) {
             result.complete(flowResponse);
         } else if (data instanceof FlowReadRequest) {
             result = getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);

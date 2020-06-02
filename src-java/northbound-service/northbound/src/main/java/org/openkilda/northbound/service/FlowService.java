@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -167,22 +166,18 @@ public interface FlowService {
     /**
      * Use this to push flows that may not be in the database / caches but they should be.
      *
-     * @param externalFlows the list of flows to push.
-     * @param propagate     if true, the path/rules will be propagated to the switch
-     * @param verify        if true, we'll wait up to poll seconds to confirm if rules have been applied
+     * @deprecated Push flow operation is deprecated.
      */
-    CompletableFuture<BatchResults> pushFlows(final List<FlowInfoData> externalFlows, Boolean propagate,
-                                              Boolean verify);
+    @Deprecated
+    CompletableFuture<BatchResults> pushFlows();
 
     /**
      * Use this to unpush flows .. ie undo a push
      *
-     * @param externalFlows the list of flows to unpush.
-     * @param propagate     if true, the path/rules will be propagated to the switch
-     * @param verify        if true, we'll wait up to poll seconds to confirm if rules have been applied
+     * @deprecated Unpush flow operation is deprecated.
      */
-    CompletableFuture<BatchResults> unpushFlows(final List<FlowInfoData> externalFlows, Boolean propagate,
-                                                Boolean verify);
+    @Deprecated
+    CompletableFuture<BatchResults> unpushFlows();
 
     /**
      * Performs rerouting of specific flow.

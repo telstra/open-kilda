@@ -41,20 +41,11 @@ public class FeatureTogglesDto implements Serializable {
     @JsonProperty("delete_flow")
     private Boolean deleteFlowEnabled;
 
-    @JsonProperty("push_flow")
-    private Boolean pushFlowEnabled;
-
-    @JsonProperty("unpush_flow")
-    private Boolean unpushFlowEnabled;
-
     @JsonProperty("use_bfd_for_isl_integrity_check")
     private Boolean useBfdForIslIntegrityCheck;
 
     @JsonProperty("floodlight_router_periodic_sync")
     private Boolean floodlightRoutePeriodicSync;
-
-    @JsonProperty("flows_reroute_via_flowhs")
-    private Boolean flowsRerouteViaFlowHs;
 
     @JsonProperty("flows_reroute_using_default_encap_type")
     private Boolean flowsRerouteUsingDefaultEncapType;
@@ -70,11 +61,8 @@ public class FeatureTogglesDto implements Serializable {
                              @JsonProperty("create_flow") Boolean createFlowEnabled,
                              @JsonProperty("update_flow") Boolean updateFlowEnabled,
                              @JsonProperty("delete_flow") Boolean deleteFlowEnabled,
-                             @JsonProperty("push_flow") Boolean pushFlowEnabled,
-                             @JsonProperty("unpush_flow") Boolean unpushFlowEnabled,
                              @JsonProperty("use_bfd_for_isl_integrity_check") Boolean useBfdForIslIntegrityCheck,
                              @JsonProperty("floodlight_router_periodic_sync") Boolean floodlightRoutePeriodicSync,
-                             @JsonProperty("flows_reroute_via_flowhs") Boolean flowsRerouteViaFlowHs,
                              @JsonProperty("flows_reroute_using_default_encap_type")
                                          Boolean flowsRerouteUsingDefaultEncapType,
                              @JsonProperty("collect_grpc_stats") Boolean collectGrpcStats,
@@ -83,11 +71,8 @@ public class FeatureTogglesDto implements Serializable {
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
-        this.pushFlowEnabled = pushFlowEnabled;
-        this.unpushFlowEnabled = unpushFlowEnabled;
         this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
         this.floodlightRoutePeriodicSync = floodlightRoutePeriodicSync;
-        this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
         this.flowsRerouteUsingDefaultEncapType = flowsRerouteUsingDefaultEncapType;
         this.collectGrpcStats = collectGrpcStats;
         this.server42FlowRtt = server42FlowRtt;

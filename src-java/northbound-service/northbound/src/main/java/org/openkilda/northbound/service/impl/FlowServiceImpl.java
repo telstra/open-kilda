@@ -31,7 +31,6 @@ import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
-import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
@@ -512,8 +511,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<BatchResults> unpushFlows(List<FlowInfoData> externalFlows, Boolean propagate,
-                                                       Boolean verify) {
+    public CompletableFuture<BatchResults> unpushFlows() {
         String correlationId = RequestCorrelationId.getId();
         throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_PERMITTED,
                 "Operation not permitted", "Unpush flow operation is deprecated");
@@ -523,8 +521,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<BatchResults> pushFlows(List<FlowInfoData> externalFlows,
-                                                     Boolean propagate, Boolean verify) {
+    public CompletableFuture<BatchResults> pushFlows() {
         String correlationId = RequestCorrelationId.getId();
         throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_PERMITTED,
                 "Operation not permitted", "Push flow operation is deprecated");

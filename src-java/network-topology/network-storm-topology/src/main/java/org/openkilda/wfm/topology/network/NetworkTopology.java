@@ -137,7 +137,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void inputSpeakerRules(TopologyBuilder topology, int scaleFactor) {
         KafkaSpout<String, Message> spout = buildKafkaSpout(
-                topologyConfig.getFlowTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
+                topologyConfig.getSwitchManagerTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
         topology.setSpout(ComponentId.INPUT_SPEAKER_RULES.toString(), spout, scaleFactor);
     }
 
@@ -321,7 +321,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         topology.setBolt(SpeakerRulesEncoder.BOLT_ID, encoderRules, scaleFactor)
                 .shuffleGrouping(SpeakerRulesWorker.BOLT_ID);
 
-        KafkaBolt outputRules = buildKafkaBolt(topologyConfig.getSpeakerFlowTopic());
+        KafkaBolt outputRules = buildKafkaBolt(topologyConfig.getSpeakerTopic());
         topology.setBolt(ComponentId.SPEAKER_RULES_OUTPUT.toString(), outputRules, scaleFactor)
                 .shuffleGrouping(SpeakerRulesEncoder.BOLT_ID);
 

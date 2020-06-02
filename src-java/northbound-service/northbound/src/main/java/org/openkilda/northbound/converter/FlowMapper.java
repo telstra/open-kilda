@@ -20,7 +20,6 @@ import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
-import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
@@ -73,18 +72,6 @@ public abstract class FlowMapper {
         generatedMap(result, f);
         mapFlowResponseEndpoints(result, f);
         return result;
-    }
-
-    /**
-     * Map FlowReadResponse.
-     *
-     * @param r {@link FlowReadResponse} instance.
-     * @return {@link FlowResponsePayload} instance.
-     */
-    public FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
-        FlowResponsePayload response = toFlowResponseOutput(r.getPayload());
-        response.setDiverseWith(r.getDiverseWith());
-        return response;
     }
 
     /**
