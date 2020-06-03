@@ -35,12 +35,14 @@ import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData.FlowThrottlingDataBuilder;
 import org.openkilda.wfm.topology.reroute.model.RerouteQueue;
 
 import com.google.common.collect.Sets;
@@ -94,7 +96,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldSendExtendTimeWindowEventForRerouteRequestInThrottling() {
-        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();
         rerouteQueueService.processAutomaticRequest(FLOW_ID, actual);
 
         assertEquals(1, rerouteQueueService.getReroutes().size());
@@ -119,7 +121,7 @@ public class RerouteQueueServiceTest {
                 .build();
         rerouteQueueService.getReroutes().put(FLOW_ID, RerouteQueue.builder().throttling(first).build());
 
-        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();
         rerouteQueueService.processAutomaticRequest(FLOW_ID, actual);
 
         assertEquals(1, rerouteQueueService.getReroutes().size());
@@ -134,13 +136,13 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldSendManualRerouteRequestWithoutThrottling() {
-        FlowThrottlingData throttling = getFlowThrottlingData(flow, "another one");
+        FlowThrottlingData throttling = getFlowThrottlingData(flow, "another one").build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .throttling(throttling)
                 .build();
         rerouteQueueService.getReroutes().put(FLOW_ID, rerouteQueue);
 
-        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();
         rerouteQueueService.processManualRequest(FLOW_ID, actual);
 
         assertEquals(1, rerouteQueueService.getReroutes().size());
@@ -156,7 +158,7 @@ public class RerouteQueueServiceTest {
         String notExistentFlowId = "notExistentFlowId";
         when(flowRepository.findById(notExistentFlowId)).thenReturn(Optional.empty());
 
-        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();
         rerouteQueueService.processManualRequest(notExistentFlowId, actual);
 
         assertEquals(0, rerouteQueueService.getReroutes().size());
@@ -165,13 +167,13 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldSendCorrectErrorMessageForManualRerouteRequestWhenAnotherRerouteIsInProgress() {
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, "another one");
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, "another one").build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
                 .build();
         rerouteQueueService.getReroutes().put(FLOW_ID, rerouteQueue);
 
-        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();
         rerouteQueueService.processManualRequest(FLOW_ID, actual);
 
         verify(carrier).emitFlowRerouteError(argThat(rerouteIsInProgressErrorData(FLOW_ID)));
@@ -180,8 +182,8 @@ public class RerouteQueueServiceTest {
     @Test
     public void shouldMovePendingToInProcessWhenReceivedSuccessfulResult() {
         String pendingCorrelationId = "pending";
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID);
-        FlowThrottlingData pending = getFlowThrottlingData(flow, pendingCorrelationId);
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
+        FlowThrottlingData pending = getFlowThrottlingData(flow, pendingCorrelationId).build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
                 .pending(pending)
@@ -202,7 +204,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldInjectRetryToThrottlingWhenReceivedFailedRerouteResult() {
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
                 .build();
@@ -217,7 +219,7 @@ public class RerouteQueueServiceTest {
 
         assertNull(rerouteQueue.getInProgress());
         assertNull(rerouteQueue.getPending());
-        FlowThrottlingData expected = getFlowThrottlingData(flow, CORRELATION_ID + " : retry #1");
+        FlowThrottlingData expected = getFlowThrottlingData(flow, CORRELATION_ID + " : retry #1").build();
         expected.setRetryCounter(1);
         assertEquals(expected, rerouteQueue.getThrottling());
         verify(carrier).sendExtendTimeWindowEvent();
@@ -225,7 +227,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldNotInjectRetryWhenReceivedFailedRuleInstallResponseOnTerminatingSwitch() {
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
                 .build();
@@ -246,7 +248,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldMergeAndSendRetryWithPendingRequestWhenReceivedFailedRuleInstallResponseOnTransitSwitch() {
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
         FlowThrottlingData pending = FlowThrottlingData.builder()
                 .correlationId("pending")
                 .priority(7)
@@ -271,7 +273,7 @@ public class RerouteQueueServiceTest {
         rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
 
         String retryCorrelationId = CORRELATION_ID + " : retry #1";
-        FlowThrottlingData expected = getFlowThrottlingData(flow, retryCorrelationId);
+        FlowThrottlingData expected = getFlowThrottlingData(flow, retryCorrelationId).build();
         expected.setPriority(pending.getPriority());
         expected.setReason(pending.getReason());
         assertEquals(expected, rerouteQueue.getInProgress());
@@ -283,7 +285,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldSendThrottledRequestOnFlushWindowEvent() {
-        FlowThrottlingData throttling = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData throttling = getFlowThrottlingData(flow, CORRELATION_ID).build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .throttling(throttling)
                 .build();
@@ -296,6 +298,39 @@ public class RerouteQueueServiceTest {
         assertNull(rerouteQueue.getThrottling());
         FlowRerouteRequest expectedRequest = getFlowRerouteRequest(FLOW_ID, throttling);
         verify(carrier).sendRerouteRequest(any(String.class), eq(expectedRequest));
+    }
+
+    @Test
+    public void shouldPrioritizeLowBandwidthFlowWithCostAndAvailableBandwidthPathComputationStrategy() {
+        FlowThrottlingData first = getFlowThrottlingData(flow, CORRELATION_ID)
+                .priority(100)
+                .build();
+        FlowThrottlingData second = getFlowThrottlingData(flow, CORRELATION_ID)
+                .pathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH)
+                .bandwidth(100)
+                .build();
+        FlowThrottlingData third = getFlowThrottlingData(flow, CORRELATION_ID)
+                .pathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH)
+                .bandwidth(1000)
+                .build();
+        RerouteQueue firstQueue = RerouteQueue.builder()
+                .throttling(first)
+                .build();
+        RerouteQueue secondQueue = RerouteQueue.builder()
+                .throttling(second)
+                .build();
+        RerouteQueue thirdQueue = RerouteQueue.builder()
+                .throttling(third)
+                .build();
+        rerouteQueueService.getReroutes().put("third flow", thirdQueue);
+        rerouteQueueService.getReroutes().put("second flow", secondQueue);
+        rerouteQueueService.getReroutes().put("first flow", firstQueue);
+
+        rerouteQueueService.flushThrottling();
+
+        verify(carrier).sendRerouteRequest(any(String.class), eq(getFlowRerouteRequest("first flow", first)));
+        verify(carrier).sendRerouteRequest(any(String.class), eq(getFlowRerouteRequest("second flow", second)));
+        verify(carrier).sendRerouteRequest(any(String.class), eq(getFlowRerouteRequest("third flow", third)));
     }
 
     @Test
@@ -353,7 +388,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldInjectRetryToThrottlingWhenReceivedTimeout() {
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
                 .build();
@@ -363,7 +398,7 @@ public class RerouteQueueServiceTest {
 
         assertNull(rerouteQueue.getInProgress());
         assertNull(rerouteQueue.getPending());
-        FlowThrottlingData expected = getFlowThrottlingData(flow, CORRELATION_ID + " : retry #1");
+        FlowThrottlingData expected = getFlowThrottlingData(flow, CORRELATION_ID + " : retry #1").build();
         expected.setRetryCounter(1);
         assertEquals(expected, rerouteQueue.getThrottling());
         verify(carrier).sendExtendTimeWindowEvent();
@@ -371,7 +406,7 @@ public class RerouteQueueServiceTest {
 
     @Test
     public void shouldNotInjectRetryWhenRetryCountIsExceeded() {
-        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID);
+        FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
         inProgress.setRetryCounter(4);
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
@@ -385,7 +420,7 @@ public class RerouteQueueServiceTest {
         assertNull(rerouteQueue.getThrottling());
     }
 
-    private FlowThrottlingData getFlowThrottlingData(Flow flow, String correlationId) {
+    private FlowThrottlingDataBuilder getFlowThrottlingData(Flow flow, String correlationId) {
         return FlowThrottlingData.builder()
                 .correlationId(correlationId)
                 .priority(flow.getPriority())
@@ -393,8 +428,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .force(true)
                 .effectivelyDown(true)
-                .reason("reason")
-                .build();
+                .reason("reason");
     }
 
     private FlowRerouteRequest getFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {
