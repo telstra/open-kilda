@@ -20,13 +20,19 @@ import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -55,13 +61,17 @@ public class FlowFetcher extends Abstract {
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
     private final PersistenceManager persistenceManager;
+    private final FlowResourcesConfig flowResourcesConfig;
+    private transient FlowResourcesManager flowResourcesManager;
     private transient FlowRepository flowRepository;
-    private Set<Flow> flowsSet;
+    private Set<FlowWithTransitEncapsulation> flowsSet;
     private long periodicPingCacheExpiryInterval;
     private long lastPeriodicPingCacheRefresh;
 
-    public FlowFetcher(PersistenceManager persistenceManager, long periodicPingCacheExpiryInterval) {
+    public FlowFetcher(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig,
+                       long periodicPingCacheExpiryInterval) {
         this.persistenceManager = persistenceManager;
+        this.flowResourcesConfig = flowResourcesConfig;
         this.periodicPingCacheExpiryInterval = TimeUnit.SECONDS.toMillis(periodicPingCacheExpiryInterval);
     }
 
@@ -86,20 +96,28 @@ public class FlowFetcher extends Abstract {
     private void updatePeriodicPingHeap(Tuple input) throws PipelineException {
         PeriodicPingCommand periodicPingCommand = pullPeriodicPingRequest(input);
         if (periodicPingCommand.isEnable()) {
-            flowRepository.findById(periodicPingCommand.getFlowId()).ifPresent(value -> flowsSet.add(value));
+            persistenceManager.getTransactionManager().doInTransaction(() ->
+                    flowRepository.findById(periodicPingCommand.getFlowId())
+                            .flatMap(this::getFlowWithTransitEncapsulation)
+                            .ifPresent(flowsSet::add));
         } else {
-            flowsSet.removeIf(flow -> flow.getFlowId().equals(periodicPingCommand.getFlowId()));
+            flowsSet.removeIf(flowWithTransitEncapsulation ->
+                    flowWithTransitEncapsulation.getFlow().getFlowId().equals(periodicPingCommand.getFlowId()));
         }
     }
 
     private void refreshHeap(Tuple input, boolean emitCacheExpiry) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final Set<Flow> flows = new HashSet<>(flowRepository.findWithPeriodicPingsEnabled());
+        Set<FlowWithTransitEncapsulation> flowsWithTransitEncapsulation = new HashSet<>();
+        persistenceManager.getTransactionManager().doInTransaction(() ->
+                flowRepository.findWithPeriodicPingsEnabled()
+                        .forEach(flow -> getFlowWithTransitEncapsulation(flow)
+                                .ifPresent(flowsWithTransitEncapsulation::add)));
         if (emitCacheExpiry) {
             final CommandContext commandContext = pullContext(input);
-            emitCacheExpire(input, commandContext, flows);
+            emitCacheExpire(input, commandContext, flowsWithTransitEncapsulation);
         }
-        flowsSet = flows;
+        flowsSet = flowsWithTransitEncapsulation;
         lastPeriodicPingCacheRefresh = System.currentTimeMillis();
     }
 
@@ -110,8 +128,12 @@ public class FlowFetcher extends Abstract {
             refreshHeap(input, true);
         }
         final CommandContext commandContext = pullContext(input);
-        for (Flow flow : flowsSet) {
-            PingContext pingContext = new PingContext(Kinds.PERIODIC, flow);
+        for (FlowWithTransitEncapsulation flow : flowsSet) {
+            PingContext pingContext = PingContext.builder()
+                    .kind(Kinds.PERIODIC)
+                    .flow(flow.getFlow())
+                    .transitEncapsulation(flow.getTransitEncapsulation())
+                    .build();
             emit(input, pingContext, commandContext);
         }
 
@@ -126,15 +148,44 @@ public class FlowFetcher extends Abstract {
         if (optionalFlow.isPresent()) {
             Flow flow = optionalFlow.get();
 
-            PingContext pingContext = new PingContext(Kinds.ON_DEMAND, flow).toBuilder()
-                    .timeout(request.getTimeout())
-                    .build();
-            emit(input, pingContext, pullContext(input));
-
+            if (!flow.isOneSwitchFlow()) {
+                Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(flow);
+                if (transitEncapsulation.isPresent()) {
+                    PingContext pingContext = PingContext.builder()
+                            .kind(Kinds.ON_DEMAND)
+                            .flow(flow)
+                            .transitEncapsulation(transitEncapsulation.get())
+                            .timeout(request.getTimeout())
+                            .build();
+                    emit(input, pingContext, pullContext(input));
+                } else {
+                    emitOnDemandResponse(input, request, String.format(
+                            "Encapsulation resource not found for flow %s", request.getFlowId()));
+                }
+            } else {
+                emitOnDemandResponse(input, request, String.format(
+                        "Flow %s should not be one switch flow", request.getFlowId()));
+            }
         } else {
             emitOnDemandResponse(input, request, String.format(
                     "Flow %s does not exist", request.getFlowId()));
         }
+    }
+
+    private Optional<FlowWithTransitEncapsulation> getFlowWithTransitEncapsulation(Flow flow) {
+        if (!flow.isOneSwitchFlow()) {
+            return getTransitEncapsulation(flow)
+                    .map(transitEncapsulation -> new FlowWithTransitEncapsulation(flow, transitEncapsulation));
+        }
+        return Optional.empty();
+    }
+
+    private Optional<FlowTransitEncapsulation> getTransitEncapsulation(Flow flow) {
+        return flowResourcesManager.getEncapsulationResources(flow.getForwardPathId(),
+                flow.getReversePathId(), flow.getEncapsulationType())
+                .map(resources ->
+                        new FlowTransitEncapsulation(resources.getTransitEncapsulationId(),
+                                resources.getEncapsulationType()));
     }
 
     private void emit(Tuple input, PingContext pingContext, CommandContext commandContext) {
@@ -149,13 +200,12 @@ public class FlowFetcher extends Abstract {
         getOutput().emit(STREAM_ON_DEMAND_RESPONSE_ID, input, output);
     }
 
-    private void emitCacheExpire(Tuple input, CommandContext commandContext, Set<Flow> flows) {
+    private void emitCacheExpire(Tuple input, CommandContext commandContext, Set<FlowWithTransitEncapsulation> flows) {
         OutputCollector collector = getOutput();
         flowsSet.removeAll(flows);
-        for (Flow flow : flowsSet) {
-            Values output = new Values(flow, commandContext);
+        for (FlowWithTransitEncapsulation flow : flowsSet) {
+            Values output = new Values(flow.getFlow(), commandContext);
             collector.emit(STREAM_EXPIRE_CACHE_ID, input, output);
-
         }
     }
 
@@ -177,10 +227,19 @@ public class FlowFetcher extends Abstract {
     @Override
     public void init() {
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         try {
             refreshHeap(null, false);
         } catch (PipelineException e) {
             log.error("Failed to init periodic ping cache");
         }
+    }
+
+    @Value
+    @AllArgsConstructor
+    @EqualsAndHashCode(exclude = {"transitEncapsulation"})
+    private static class FlowWithTransitEncapsulation {
+        Flow flow;
+        FlowTransitEncapsulation transitEncapsulation;
     }
 }

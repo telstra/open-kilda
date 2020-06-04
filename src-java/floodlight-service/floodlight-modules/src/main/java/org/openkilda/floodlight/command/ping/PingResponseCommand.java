@@ -25,7 +25,6 @@ import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
-import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -45,7 +44,7 @@ public class PingResponseCommand extends PingCommand {
     }
 
     @Override
-    public Command call() throws Exception {
+    public Command call() {
         log.debug("{} - {}", getClass().getCanonicalName(), input);
 
         byte[] payload = unwrap();
@@ -106,8 +105,7 @@ public class PingResponseCommand extends PingCommand {
 
     private void logCatch(PingData data, PingMeters meters) {
         String sourceEndpoint = Ping.formatEndpoint(
-                new SwitchId(data.getSource().getLong()), data.getIngressPortNumber(),
-                FlowEndpoint.makeVlanStack(data.getIngressVlanId(), data.getIngressInnerVlanId()));
+                new SwitchId(data.getSource().getLong()), data.getIngressPortNumber());
         String pingId = String.format("ping{%s}", data.getPingId().toString());
         logPing.info(
                 "Catch ping {} ===( {}, latency: {}ms )===> {}",

@@ -19,7 +19,6 @@ import org.openkilda.floodlight.error.CorruptedNetworkDataException;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
-import org.openkilda.model.FlowEndpoint;
 
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -40,10 +39,6 @@ public class PingData implements ISignPayload {
     @Getter
     private final int ingressPortNumber;
     @Getter
-    private final int ingressVlanId;
-    @Getter
-    private final int ingressInnerVlanId;
-    @Getter
     private final DatapathId source;
     @Getter
     private final DatapathId dest;
@@ -58,12 +53,10 @@ public class PingData implements ISignPayload {
         try {
             DatapathId ingress = DatapathId.of(token.getClaim(makeIngressDatapathRef()).asLong());
             int ingressPortNumber = token.getClaim(makeIngressPortRef()).asInt();
-            int ingressVlan = decodeVlanId(token, makeIngressVlanIdRef());
-            int ingressInnerVlan = decodeVlanId(token, makeIngressInnerVlanIdRef());
             DatapathId egress = DatapathId.of(token.getClaim(makeEgressDatapathRef()).asLong());
             UUID packetId = UUID.fromString(token.getClaim(makePingIdRef()).asString());
 
-            data = new PingData(ingressPortNumber, ingressVlan, ingressInnerVlan, ingress, egress, packetId);
+            data = new PingData(ingressPortNumber, ingress, egress, packetId);
             data.setSenderLatency(token.getClaim(makeIngressLatencyRef()).asLong());
             data.setSendTime(token.getClaim(makeTimestampRef()).asLong());
         } catch (NullPointerException e) {
@@ -81,17 +74,11 @@ public class PingData implements ISignPayload {
         NetworkEndpoint ingress = ping.getSource();
         DatapathId source = DatapathId.of(ingress.getDatapath().toLong());
         DatapathId dest = DatapathId.of(ping.getDest().getDatapath().toLong());
-        return new PingData(
-                ingress.getPortNumber(), ping.getIngressVlanId(), ping.getIngressInnerVlanId(), source, dest,
-                ping.getPingId());
+        return new PingData(ingress.getPortNumber(), source, dest, ping.getPingId());
     }
 
-    public PingData(
-            int ingressPortNumber, int ingressVlanId, int ingressInnerVlanId, DatapathId source, DatapathId dest,
-            UUID pingId) {
+    public PingData(int ingressPortNumber, DatapathId source, DatapathId dest, UUID pingId) {
         this.ingressPortNumber = ingressPortNumber;
-        this.ingressVlanId = ingressVlanId;
-        this.ingressInnerVlanId = ingressInnerVlanId;
         this.source = source;
         this.dest = dest;
         this.pingId = pingId;
@@ -103,12 +90,6 @@ public class PingData implements ISignPayload {
     public JWTCreator.Builder toSign(JWTCreator.Builder token) {
         token.withClaim(makeIngressDatapathRef(), source.getLong());
         token.withClaim(makeIngressPortRef(), ingressPortNumber);
-        if (FlowEndpoint.isVlanIdSet(ingressVlanId)) {
-            token.withClaim(makeIngressVlanIdRef(), ingressVlanId);
-        }
-        if (FlowEndpoint.isVlanIdSet(ingressInnerVlanId)) {
-            token.withClaim(makeIngressInnerVlanIdRef(), ingressInnerVlanId);
-        }
         token.withClaim(makeEgressDatapathRef(), dest.getLong());
         token.withClaim(makePingIdRef(), pingId.toString());
 
@@ -157,28 +138,12 @@ public class PingData implements ISignPayload {
                 .toHashCode();
     }
 
-    private static int decodeVlanId(DecodedJWT token, String key) {
-        Integer vlanId = token.getClaim(key).asInt();
-        if (vlanId != null) {
-            return vlanId;
-        }
-        return 0;
-    }
-
     private static String makeIngressDatapathRef() {
         return makeJwtKey("ingress");
     }
 
     private static String makeIngressPortRef() {
         return makeJwtKey("ingressPortNumber");
-    }
-
-    private static String makeIngressVlanIdRef() {
-        return makeJwtKey("ingressVlanId");
-    }
-
-    private static String makeIngressInnerVlanIdRef() {
-        return makeJwtKey("ingressInnerVlanId");
     }
 
     private static String makeEgressDatapathRef() {

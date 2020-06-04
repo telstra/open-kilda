@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.model;
 
-import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -23,9 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Value
 public class Ping implements Serializable {
@@ -34,61 +32,57 @@ public class Ping implements Serializable {
         WRITE_FAILURE,
         NOT_CAPABLE,
         SOURCE_NOT_AVAILABLE,
-        DEST_NOT_AVAILABLE
+        DEST_NOT_AVAILABLE,
+        INCORRECT_REQUEST
     }
 
     @JsonProperty(value = "ping_id", required = true)
-    private UUID pingId;
-
-    @JsonProperty("ingress_vlan")
-    private int ingressVlanId;
-
-    @JsonProperty("ingress_inner_vlan")
-    private int ingressInnerVlanId;
+    UUID pingId;
 
     @JsonProperty(value = "source", required = true)
-    private NetworkEndpoint source;
+    NetworkEndpoint source;
 
     @JsonProperty(value = "dest", required = true)
-    private NetworkEndpoint dest;
+    NetworkEndpoint dest;
+
+    @JsonProperty(value = "transit_encapsulation", required = true)
+    FlowTransitEncapsulation transitEncapsulation;
+
+    @JsonProperty(value = "isl_port", required = true)
+    int islPort;
 
     @JsonCreator
     public Ping(
             @JsonProperty("ping_id") UUID pingId,
-            @JsonProperty("ingress_vlan") int ingressVlanId,
-            @JsonProperty("ingress_inner_vlan") int ingressInnerVlanId,
             @JsonProperty("source") NetworkEndpoint source,
-            @JsonProperty("dest") NetworkEndpoint dest) {
+            @JsonProperty("dest") NetworkEndpoint dest,
+            @JsonProperty("transit_encapsulation") FlowTransitEncapsulation transitEncapsulation,
+            @JsonProperty("isl_port") int islPort) {
 
         this.pingId = pingId;
 
-        this.ingressVlanId = ingressVlanId;
-        this.ingressInnerVlanId = ingressInnerVlanId;
-
         this.source = source;
         this.dest = dest;
+
+        this.transitEncapsulation = transitEncapsulation;
+        this.islPort = islPort;
     }
 
-    public Ping(int ingressVlanId, int ingressInnerVlanId, NetworkEndpoint source, NetworkEndpoint dest) {
-        this(UUID.randomUUID(), ingressVlanId, ingressInnerVlanId, source, dest);
+    public Ping(NetworkEndpoint source, NetworkEndpoint dest,
+                FlowTransitEncapsulation transitEncapsulation, int islPort) {
+        this(UUID.randomUUID(), source, dest, transitEncapsulation, islPort);
     }
 
     @Override
     public String toString() {
-        String sourceEndpoint = formatEndpoint(
-                source.getDatapath(), source.getPortNumber(),
-                FlowEndpoint.makeVlanStack(ingressVlanId, ingressInnerVlanId));
+        String sourceEndpoint = formatEndpoint(source.getDatapath(), source.getPortNumber());
         return String.format("%s ===( ping{%s} )===> %s", sourceEndpoint, pingId, dest.getDatapath());
     }
 
     /**
      * Make string representation of ping endpoint(ingress). Used mostly for logging.
      */
-    public static String formatEndpoint(SwitchId swId, int portNumber, List<Integer> vlanStack) {
-        String endpoint = String.format("%s-%d", swId, portNumber);
-        if (!vlanStack.isEmpty()) {
-            endpoint += ":" + vlanStack.stream().map(String::valueOf).collect(Collectors.joining(":"));
-        }
-        return endpoint;
+    public static String formatEndpoint(SwitchId swId, int portNumber) {
+        return String.format("%s-%d", swId, portNumber);
     }
 }

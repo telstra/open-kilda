@@ -63,9 +63,6 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
 
-        and: "Flow writes stats"
-        statsHelper.verifyFlowWritesStats(flow.flowId)
-
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)

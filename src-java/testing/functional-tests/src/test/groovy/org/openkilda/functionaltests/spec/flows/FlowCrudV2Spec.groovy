@@ -113,9 +113,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             log.warn(e.message)
         }
 
-        and: "Flow writes stats"
-        statsHelper.verifyFlowWritesStats(flow.flowId, isFlowPingable(flow))
-
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 

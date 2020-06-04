@@ -16,6 +16,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -210,12 +211,8 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .build()
     }
 
-    /**
-     * Single-switch ping does not actually verify the routing. It is an always-success.
-     * Should consider disabling the ability to ping such flows at all.
-     */
     @Tidy
-    def "Able to ping a single-switch flow"() {
+    def "Unable to ping a single-switch flow"() {
         given: "A single-switch flow"
         def sw = topology.activeSwitches.find { !it.centec && it.ofVersion != "OF_12" }
         assert sw
@@ -225,14 +222,8 @@ class FlowPingSpec extends HealthCheckSpecification {
         when: "Ping the flow"
         def response = northbound.pingFlow(flow.flowId, new PingInput())
 
-        then: "The flow is pingable"
-        response.forward.pingSuccess
-        response.reverse.pingSuccess
-
-        and: "No errors are present"
-        !response.error
-        !response.forward.error
-        !response.reverse.error
+        then: "Error received"
+        response.error == "Flow " + flow.flowId + " should not be one switch flow"
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -299,28 +290,30 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tidy
     def "Able to turn on periodic pings on a flow"() {
         when: "Create a flow with periodic pings turned on"
-        def flow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair).tap {
+        def endpointSwitches = topologyHelper.notNeighboringSwitchPair
+        def flow = flowHelperV2.randomFlow(endpointSwitches).tap {
             it.periodicPings = true
         }
         flowHelperV2.addFlow(flow)
 
-        then: "Packet counter on flow rules grows due to pings happening"
-        def initialCounts = northbound.validateFlow(flow.flowId)
+        then: "Packet counter on catch ping rules grows due to pings happening"
+        def srcSwitchPacketCount = getPacketCountOfVlanPingRule(endpointSwitches.src.dpId)
+        def dstSwitchPacketCount = getPacketCountOfVlanPingRule(endpointSwitches.dst.dpId)
+
         Wrappers.wait(pingInterval + WAIT_OFFSET / 2) {
-            with(northbound.validateFlow(flow.flowId)) {
-                //forward
-                [it[0].pktCounts[0..-2], initialCounts[0].pktCounts[0..-2]].transpose().every { now, initial ->
-                    now > initial
-                }
-                //reverse
-                [it[1].pktCounts[0..-2], initialCounts[1].pktCounts[0..-2]].transpose().every { now, initial ->
-                    now > initial
-                }
-            }
+            def srcPacketCountNow = getPacketCountOfVlanPingRule(endpointSwitches.src.dpId)
+            def dstPacketCountNow = getPacketCountOfVlanPingRule(endpointSwitches.dst.dpId)
+
+            srcPacketCountNow > srcSwitchPacketCount && dstPacketCountNow > dstSwitchPacketCount
         }
 
         cleanup: "Remove flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    def getPacketCountOfVlanPingRule(SwitchId switchId) {
+        return northbound.getSwitchRules(switchId).flowEntries
+                .findAll{it.cookie == Cookie.VERIFICATION_UNICAST_RULE_COOKIE}[0].packetCount
     }
 
     /**

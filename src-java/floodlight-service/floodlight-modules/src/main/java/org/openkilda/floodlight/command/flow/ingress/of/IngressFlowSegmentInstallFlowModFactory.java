@@ -120,23 +120,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
         List<OFAction> actions = new ArrayList<>(
                 OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, Collections.emptyList()));
 
-        MacAddress l2src = MacAddress.of(sw.getId());
         actions.add(pushVxlanAction(STUB_VXLAN_UDP_SRC));
-
-        // copy original L2 source address
-        actions.add(of.actions().buildNoviflowCopyField()
-                .setNBits(l2src.getLength() * 8)
-                // 14 ethernet header (without vlan)
-                // 20 IPV4 header
-                //  8 UDP header
-                //  8 VXLAN header
-                //  6 offset into original ethernet header
-                // 14 + 20 + 8 + 8 + 6 => 56 bytes total offset
-                .setSrcOffset(56 * 8)
-                .setDstOffset(l2src.getLength() * 8)
-                .setOxmSrcHeader(of.oxms().buildNoviflowPacketOffset().getTypeLen())
-                .setOxmDstHeader(of.oxms().buildNoviflowPacketOffset().getTypeLen())
-                .build());
 
         return actions;
     }
