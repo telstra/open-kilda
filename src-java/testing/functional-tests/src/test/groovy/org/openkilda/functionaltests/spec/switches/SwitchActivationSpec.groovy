@@ -53,7 +53,8 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
-        assert createdCookies.size() == 2
+        def amountOfFlowRules = northbound.getSwitchProperties(switchPair.src.dpId).multiTable ? 3 : 2
+        assert createdCookies.size() == amountOfFlowRules
 
         def nonDefaultMeterIds = originalMeterIds.findAll({it > MAX_SYSTEM_RULE_METER_ID})
         northbound.deleteMeter(switchPair.src.dpId, nonDefaultMeterIds[0])
