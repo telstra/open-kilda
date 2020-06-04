@@ -5,7 +5,6 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static spock.util.matcher.HamcrestSupport.expect
@@ -38,13 +37,12 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
-    @Tags([VIRTUAL, SMOKE, SMOKE_SWITCHES])
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
         def sw = topology.activeSwitches.first()
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
-
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
         when: "Connect the switch to the controller"

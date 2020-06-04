@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.resilience
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.PATH_SWAP_ACTION
@@ -30,8 +29,7 @@ import spock.lang.Unroll
 class RetriesSpec extends HealthCheckSpecification {
 
     @Tidy
-    @Tags(VIRTUAL)
-    def "System retries the reroute (global retry) if it fails to install rules on one the current target path's switches"() {
+    def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
         given: "Switch pair with at least 3 available paths, one path should have a transit switch that we will break \
 and at least 1 path must remain safe"
         List<PathNode> mainPath, failoverPath, safePath

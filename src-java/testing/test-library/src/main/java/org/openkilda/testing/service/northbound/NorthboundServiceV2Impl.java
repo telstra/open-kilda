@@ -160,7 +160,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
 
     @Override
     public PortPropertiesResponse updatePortProperties(SwitchId switchId, Integer port, PortPropertiesDto payload) {
-        log.debug("Update port property. Switch: {}, port: {}, disableDiscovery: {}.", switchId, port,
+        log.debug("Update port property. Switch: {}, port: {}, enableDiscovery: {}.", switchId, port,
                 payload.isDiscoveryEnabled());
         return restTemplate.exchange("/api/v2/switches/{switch_id}/ports/{port}/properties", HttpMethod.PUT,
                 new HttpEntity<>(payload, buildHeadersWithCorrelationId()), PortPropertiesResponse.class,

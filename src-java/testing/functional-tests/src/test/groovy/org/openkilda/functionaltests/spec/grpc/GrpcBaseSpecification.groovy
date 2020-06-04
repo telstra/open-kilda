@@ -1,8 +1,8 @@
 package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags

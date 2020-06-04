@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeFalse
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.model.PortProperties.DISCOVERY_ENABLED_DEFAULT
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -129,7 +128,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 "Port not found: 'Port FSM not found (${sw.dpId}_${nonExistentPort}).'"
     }
 
-    @Tags(VIRTUAL)
     def "System doesn't discover link when port discovery property is disabled"() {
         given: "A deleted link"
         def sw = topology.activeSwitches.first()
@@ -166,9 +164,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == (relatedIsls - islToManipulate).size() * 2
         }
 
         lockKeeper.reviveSwitch(sw, blockData)
