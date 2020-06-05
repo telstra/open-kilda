@@ -46,9 +46,9 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
+import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
+import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
@@ -92,7 +92,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                             List<FlowEntry> expectedDefaultRules) throws SwitchNotFoundException {
+                                             List<FlowEntry> expectedDefaultRules) {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<Long> expectedCookies = getExpectedFlowRules(switchId);
@@ -101,7 +101,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths) {
         SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
-                .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
+                .orElseThrow(() -> new InconsistentDataException(switchId, "switch properties not found"));
 
         if (switchProperties.isServer42FlowRtt()
                 && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
@@ -244,7 +244,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                               List<MeterEntry> expectedDefaultMeters) throws SwitchNotFoundException {
+                                               List<MeterEntry> expectedDefaultMeters) {
         log.debug("Validating meters on switch {}", switchId);
 
         Switch sw = switchRepository.findById(switchId)
@@ -266,7 +266,7 @@ public class ValidationServiceImpl implements ValidationService {
         return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
     }
 
-    private Set<Long> getExpectedFlowRules(SwitchId switchId) throws SwitchNotFoundException {
+    private Set<Long> getExpectedFlowRules(SwitchId switchId) {
         Set<Long> result = new HashSet<>();
 
         // collect transit segments

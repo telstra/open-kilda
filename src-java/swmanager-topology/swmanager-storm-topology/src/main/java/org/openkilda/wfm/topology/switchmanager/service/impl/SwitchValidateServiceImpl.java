@@ -24,164 +24,134 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.switchmanager.error.OperationTimeoutException;
+import org.openkilda.wfm.topology.switchmanager.error.SpeakerFailureException;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
+import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateContext;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 public class SwitchValidateServiceImpl implements SwitchValidateService {
 
-    private Map<String, SwitchValidateFsm> fsms = new HashMap<>();
+    private final Map<String, SwitchValidateFsm> fsms = new HashMap<>();
 
-    @VisibleForTesting
-    ValidationService validationService;
-    private SwitchManagerCarrier carrier;
-    private StateMachineBuilder<SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, Object> builder;
-    private RepositoryFactory repositoryFactory;
+    private final ValidationService validationService;
+    private final SwitchManagerCarrier carrier;
+    private final StateMachineBuilder<
+            SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> builder;
+    private final FsmExecutor<
+            SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> fsmExecutor;
 
-    public SwitchValidateServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
+    private final RepositoryFactory repositoryFactory;
+
+    public SwitchValidateServiceImpl(
+            SwitchManagerCarrier carrier, PersistenceManager persistenceManager, ValidationService validationService) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
-        this.validationService = new ValidationServiceImpl(persistenceManager, carrier.getTopologyConfig());
+        this.fsmExecutor = new FsmExecutor<>(SwitchValidateEvent.NEXT);
+        this.validationService = validationService;
         this.repositoryFactory = persistenceManager.getRepositoryFactory();
     }
 
     @Override
     public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
         SwitchValidateFsm fsm =
-                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, validationService,
+                builder.newStateMachine(
+                        SwitchValidateState.START, carrier, key, request, validationService,
                         repositoryFactory);
+        fsms.put(key, fsm);
 
-        process(fsm);
+        fsm.start();
+        handle(fsm, SwitchValidateEvent.NEXT, SwitchValidateContext.builder().build());
     }
 
     @Override
     public void handleFlowEntriesResponse(String key, SwitchFlowEntries data) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchValidateEvent.RULES_RECEIVED, data.getFlowEntries());
-        process(fsm);
+        handle(key, SwitchValidateEvent.RULES_RECEIVED,
+                SwitchValidateContext.builder().flowEntries(data.getFlowEntries()).build());
     }
 
     @Override
     public void handleGroupEntriesResponse(String key, SwitchGroupEntries data) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-        fsm.fire(SwitchValidateEvent.GROUPS_RECEIVED, data.getGroupEntries());
-        process(fsm);
+        handle(key, SwitchValidateEvent.GROUPS_RECEIVED,
+                SwitchValidateContext.builder().groupEntries(data.getGroupEntries()).build());
     }
 
     @Override
     public void handleExpectedDefaultFlowEntriesResponse(String key, SwitchExpectedDefaultFlowEntries data) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED, data.getFlowEntries());
-        process(fsm);
+        handle(key, SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED,
+                SwitchValidateContext.builder().flowEntries(data.getFlowEntries()).build());
     }
 
     @Override
     public void handleExpectedDefaultMeterEntriesResponse(String key, SwitchExpectedDefaultMeterEntries data) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED, data.getMeterEntries());
-        process(fsm);
+        handle(key, SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED,
+                SwitchValidateContext.builder().meterEntries(data.getMeterEntries()).build());
     }
 
     @Override
     public void handleMeterEntriesResponse(String key, SwitchMeterEntries data) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchValidateEvent.METERS_RECEIVED, data.getMeterEntries());
-        process(fsm);
+        handle(key, SwitchValidateEvent.METERS_RECEIVED,
+                SwitchValidateContext.builder().meterEntries(data.getMeterEntries()).build());
     }
 
     @Override
     public void handleMetersUnsupportedResponse(String key) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            logFsmNotFound(key);
-            return;
-        }
-
-        fsm.fire(SwitchValidateEvent.METERS_UNSUPPORTED);
-        process(fsm);
-    }
-
-    @Override
-    public void handleTaskTimeout(String key) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            return;
-        }
-
-        fsm.fire(SwitchValidateEvent.TIMEOUT);
-        process(fsm);
+        handle(key, SwitchValidateEvent.METERS_UNSUPPORTED, SwitchValidateContext.builder().build());
     }
 
     @Override
     public void handleTaskError(String key, ErrorMessage message) {
-        SwitchValidateFsm fsm = fsms.get(key);
-        if (fsm == null) {
+        SwitchValidateContext context = SwitchValidateContext.builder()
+                .error(new SpeakerFailureException(message.getData()))
+                .build();
+        handle(key, SwitchValidateEvent.ERROR, context);
+    }
+
+    @Override
+    public void handleTaskTimeout(String key) {
+        Optional<SwitchValidateFsm> potential = lookupFsm(key);
+        if (potential.isPresent()) {
+            SwitchValidateFsm fsm = potential.get();
+            OperationTimeoutException error = new OperationTimeoutException(fsm.getSwitchId());
+            handle(fsm, SwitchValidateEvent.ERROR, SwitchValidateContext.builder().error(error).build());
+        }
+    }
+
+    private void handle(String key, SwitchValidateEvent event, SwitchValidateContext context) {
+        Optional<SwitchValidateFsm> fsm = lookupFsm(key);
+        if (! fsm.isPresent()) {
+            log.warn("Switch validate FSM with key {} not found", key);
             return;
         }
-
-        fsm.fire(SwitchValidateEvent.ERROR, message);
-        process(fsm);
+        handle(fsm.get(), event, context);
     }
 
-    private void logFsmNotFound(String key) {
-        log.warn("Switch validate FSM with key {} not found", key);
+    private void handle(SwitchValidateFsm fsm, SwitchValidateEvent event, SwitchValidateContext context) {
+        fsmExecutor.fire(fsm, event, context);
+        removeIfCompleted(fsm);
     }
 
-    void process(SwitchValidateFsm fsm) {
-        final List<SwitchValidateState> stopStates = Arrays.asList(
-                SwitchValidateState.RECEIVE_DATA,
-                SwitchValidateState.FINISHED,
-                SwitchValidateState.FINISHED_WITH_ERROR
-        );
+    private Optional<SwitchValidateFsm> lookupFsm(String key) {
+        return Optional.ofNullable(fsms.get(key));
+    }
 
-        while (!stopStates.contains(fsm.getCurrentState())) {
-            fsms.put(fsm.getKey(), fsm);
-            fsm.fire(SwitchValidateEvent.NEXT);
-        }
-
-        final List<SwitchValidateState> exitStates = Arrays.asList(
-                SwitchValidateState.FINISHED,
-                SwitchValidateState.FINISHED_WITH_ERROR
-        );
-
-        if (exitStates.contains(fsm.getCurrentState())) {
+    void removeIfCompleted(SwitchValidateFsm fsm) {
+        if (fsm.isTerminated()) {
+            log.info("Switch {} validation FSM have reached termination state (key={})",
+                    fsm.getSwitchId(), fsm.getKey());
             fsms.remove(fsm.getKey());
         }
     }

@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
-import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -55,8 +54,6 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -72,12 +69,12 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.Optional;
-import java.util.Properties;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SwitchValidateServiceImplTest {
 
     private static SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    private static SwitchId SWITCH_ID_MISSING = new SwitchId(0x0000000000000002L);
     private static String KEY = "KEY";
 
     @Mock
@@ -96,17 +93,13 @@ public class SwitchValidateServiceImplTest {
     private MeterEntry meterEntry;
 
     @Before
-    public void setUp() throws SwitchNotFoundException {
-        PropertiesBasedConfigurationProvider configurationProvider =
-                new PropertiesBasedConfigurationProvider(new Properties());
-        SwitchManagerTopologyConfig topologyConfig =
-                configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
-        when(carrier.getTopologyConfig()).thenReturn(topologyConfig);
+    public void setUp() {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
         FlowRepository flowRepository = Mockito.mock(FlowRepository.class);
         SwitchRepository switchRepository = Mockito.mock(SwitchRepository.class);
-        when(switchRepository.exists(any())).thenReturn(true);
+        when(switchRepository.exists(eq(SWITCH_ID))).thenReturn(true);
+        when(switchRepository.exists(eq(SWITCH_ID_MISSING))).thenReturn(false);
         SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
         when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
                 Optional.of(SwitchProperties.builder()
@@ -126,8 +119,7 @@ public class SwitchValidateServiceImplTest {
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        service = new SwitchValidateServiceImpl(carrier, persistenceManager);
-        service.validationService = validationService;
+        service = new SwitchValidateServiceImpl(carrier, persistenceManager, validationService);
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
@@ -162,7 +154,8 @@ public class SwitchValidateServiceImplTest {
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleTaskTimeout(KEY);
 
-        verify(carrier).response(eq(KEY), any(ErrorMessage.class));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+        verify(carrier).errorResponse(eq(KEY), eq(ErrorType.OPERATION_TIMED_OUT), any(String.class));
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
@@ -176,14 +169,14 @@ public class SwitchValidateServiceImplTest {
         service.handleTaskError(KEY, errorMessage);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        verify(carrier).response(eq(KEY), any(ErrorMessage.class));
+        verify(carrier).errorResponse(eq(KEY), eq(errorMessage.getData().getErrorType()), any(String.class));
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
 
     @Test
-    public void validationSuccess() throws SwitchNotFoundException {
+    public void validationSuccess() {
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
 
@@ -198,8 +191,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationWithoutMetersSuccess() throws SwitchNotFoundException {
-        verify(carrier, times(1)).getTopologyConfig();
+    public void validationWithoutMetersSuccess() {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
@@ -224,7 +216,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationSuccessWithUnsupportedMeters() throws SwitchNotFoundException {
+    public void validationSuccessWithUnsupportedMeters() {
         handleRequestAndInitDataReceive();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
@@ -249,7 +241,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void exceptionWhileValidation() throws SwitchNotFoundException {
+    public void exceptionWhileValidation() {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
@@ -258,9 +250,9 @@ public class SwitchValidateServiceImplTest {
         handleDataReceiveAndValidate();
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        ArgumentCaptor<ErrorMessage> errorCaptor = ArgumentCaptor.forClass(ErrorMessage.class);
-        verify(carrier).response(eq(KEY), errorCaptor.capture());
-        assertEquals(errorMessage, errorCaptor.getValue().getData().getErrorMessage());
+        ArgumentCaptor<String> errorCaptor = ArgumentCaptor.forClass(String.class);
+        verify(carrier).errorResponse(eq(KEY), eq(ErrorType.INTERNAL_ERROR), errorCaptor.capture());
+        assertEquals(errorMessage, errorCaptor.getValue());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -268,7 +260,6 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void doNothingWhenFsmNotFound() {
-        verify(carrier, times(1)).getTopologyConfig();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
 
         verifyZeroInteractions(carrier);
@@ -276,7 +267,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationPerformSync() throws SwitchNotFoundException {
+    public void validationPerformSync() {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).processMeters(true).build();
 
         handleRequestAndInitDataReceive();
@@ -287,16 +278,28 @@ public class SwitchValidateServiceImplTest {
         verifyNoMoreInteractions(validationService);
     }
 
+    @Test
+    public void errorResponseOnSwitchNotFound() {
+        request = SwitchValidateRequest
+                .builder().switchId(SWITCH_ID_MISSING).performSync(true).processMeters(true).build();
+        service.handleSwitchValidateRequest(KEY, request);
+
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+        verify(carrier).errorResponse(
+                eq(KEY), eq(ErrorType.NOT_FOUND), eq(String.format("Switch '%s' not found", request.getSwitchId())));
+
+        verifyNoMoreInteractions(carrier);
+        verifyNoMoreInteractions(validationService);
+    }
 
     private void handleRequestAndInitDataReceive() {
-        verify(carrier, times(1)).getTopologyConfig();
         service.handleSwitchValidateRequest(KEY, request);
 
         verify(carrier, times(5)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
     }
 
-    private void handleDataReceiveAndValidate() throws SwitchNotFoundException {
+    private void handleDataReceiveAndValidate() {
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleExpectedDefaultFlowEntriesResponse(KEY,
                 new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
