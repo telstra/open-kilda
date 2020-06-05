@@ -6,13 +6,23 @@ import { LoaderService } from '../services/loader.service';
 import { CookieManagerService } from '../services/cookie-manager.service';
 import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
+import { local } from 'd3';
 
 @Injectable()
 export class AppAuthInterceptor implements HttpInterceptor {
     constructor(private appLoader:LoaderService, private cookieManager:CookieManagerService,private _router: Router) {}
 
     intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-        return next.handle(request).pipe(catchError(err => {
+        let requestToForward = request;
+        var url_to_call = request.url;
+        var url_arr = url_to_call.split('/');
+        if(typeof(url_arr[2])!='undefined' && url_arr[2] == location.host){
+            let token = this.cookieManager.get('XSRF-TOKEN') as string;
+            if (token !== null) {
+                requestToForward = request.clone({ setHeaders: { "X-XSRF-TOKEN": token } });
+            }
+        } 
+        return next.handle(requestToForward).pipe(catchError(err => {
             if (err.status === 401) {
                 let msg = this.cookieManager.get('isLoggedOutInProgress') ? "": "Your session has been expired" ;
                 this.appLoader.show(msg);

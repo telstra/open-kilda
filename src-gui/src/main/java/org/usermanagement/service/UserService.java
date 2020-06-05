@@ -364,11 +364,15 @@ public class UserService implements UserDetailsService {
         activityLogger.log(ActivityType.CHANGE_PASSWORD, userEntity.getUsername());
         LOGGER.info("User(userId: " + userId + ") password changed successfully.");
 
-        Map<String, Object> context = new HashMap<>();
-        context.put("name", userEntity.getName());
-        mailService.send(userEntity.getEmail(), mailUtils.getSubjectChangePassword(),
-                TemplateService.Template.CHANGE_PASSWORD, context);
-        LOGGER.info("Changed password mail sent successfully for user(userId: " + userId + ").");
+        try {
+            Map<String, Object> context = new HashMap<>();
+            context.put("name", userEntity.getName());
+            mailService.send(userEntity.getEmail(), mailUtils.getSubjectChangePassword(),
+                    TemplateService.Template.CHANGE_PASSWORD, context);
+            LOGGER.info("Changed password mail sent successfully for user(userId: " + userId + ").");
+        } catch (Exception e) {
+            LOGGER.warn("Change password email failed for username: " + userEntity.getUsername());
+        }
 
         return UserConversionUtil.toUserInfo(userEntity);
     }
@@ -405,13 +409,17 @@ public class UserService implements UserDetailsService {
         }
 
         LOGGER.info("Password reset successfully for user(userId: " + userId + ").");
-        if (!adminFlag) {
-            Map<String, Object> context = new HashMap<>();
-            context.put("name", userEntity.getName());
-            context.put("password", randomPassword);
-            mailService.send(userEntity.getEmail(), mailUtils.getSubjectResetPassword(),
-                    TemplateService.Template.RESET_ACCOUNT_PASSWORD, context);
-            LOGGER.info("Reset password mail sent successfully for user(userId: " + userId + ").");
+        try {
+            if (!adminFlag) {
+                Map<String, Object> context = new HashMap<>();
+                context.put("name", userEntity.getName());
+                context.put("password", randomPassword);
+                mailService.send(userEntity.getEmail(), mailUtils.getSubjectResetPassword(),
+                        TemplateService.Template.RESET_ACCOUNT_PASSWORD, context);
+                LOGGER.info("Reset password mail sent successfully for user(userId: " + userId + ").");
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Reset password mail failed for username: " + userEntity.getUsername());
         }
         userinfo.setPassword(randomPassword);
         return userinfo;
@@ -436,13 +444,16 @@ public class UserService implements UserDetailsService {
 
         activityLogger.log(ActivityType.RESET_2FA, userEntity.getUsername());
         LOGGER.info("2FA reset successfully for user(user_id: " + userId + ").");
-        if (!userEntity.getIs2FaConfigured()) {
-            Map<String, Object> context = new HashMap<>();
-            context.put("name", userEntity.getName());
-
-            mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(), TemplateService.Template.RESET_2FA,
-                    context);
-            LOGGER.info("Reset 2FA mail sent successfully for user(user_id: " + userId + ").");
+        try {
+            if (!userEntity.getIs2FaConfigured()) {
+                Map<String, Object> context = new HashMap<>();
+                context.put("name", userEntity.getName());
+                mailService.send(userEntity.getEmail(), mailUtils.getSubjectReset2fa(), 
+                        TemplateService.Template.RESET_2FA, context);
+                LOGGER.info("Reset 2FA mail sent successfully for user(user_id: " + userId + ").");
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Reset 2FA mail failed for user: " + userId);
         }
     }
 

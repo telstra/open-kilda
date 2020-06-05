@@ -414,8 +414,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       if(!positions){
         this.zoomReset();
       }
-     })
-   
+     })   
   };
 
   private insertNodes(nodes) {
@@ -1861,7 +1860,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.forceSimulation.stop();
       this.zoomFit();
     },500);
-    
 
   };
   
@@ -1873,9 +1871,9 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     var width = bounds.width,
       height = bounds.height;
     var midX = (bounds.x + width) / 2,
-      midY = (bounds.y + height) / 2;
+      midY = (bounds.y + height) / 2;     
     if (width == 0 || height == 0) return;
-
+  
     if(this.nodes.length >=50){
       let newtranformation = d3.zoomIdentity
       .scale(this.min_zoom)
@@ -1888,8 +1886,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       let newtranformation = d3.zoomIdentity
       .scale(this.min_zoom)
      .translate(
-      (fullWidth/2 - this.min_zoom*midX),
-      (fullHeight/2 - this.min_zoom*midY)
+      ((fullWidth/2 - this.min_zoom*midX)/this.min_zoom) - bounds.x,
+      ((fullHeight/2 - this.min_zoom*midY)/this.min_zoom)
       ); 
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }

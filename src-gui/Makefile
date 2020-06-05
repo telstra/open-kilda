@@ -16,9 +16,9 @@ target/${APP}.jar: .deps/node .deps/resources
 	mkdir -p src/main/resources/lib/css/
 	mkdir -p src/main/resources/lib/javascript/
 	wget -O src/main/resources/lib/css/roboto.css https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i
-	wget -O src/main/resources/lib/css/bootstrap.min.css https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css
-	wget -O src/main/resources/lib/javascript/bootstrap.min.js https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js
-	wget -O src/main/resources/lib/javascript/jquery-3.2.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
+	wget -O src/main/resources/lib/css/bootstrap.min.css https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css
+	wget -O src/main/resources/lib/javascript/bootstrap.min.js https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js
+	wget -O src/main/resources/lib/javascript/jquery-3.5.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js
 	touch $@
 
 .deps:
