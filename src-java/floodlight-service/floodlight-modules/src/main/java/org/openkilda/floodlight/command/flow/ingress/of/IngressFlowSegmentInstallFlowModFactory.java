@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FORWARD_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42InputFlowGenerator.buildServer42CopyFirstTimestamp;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
 import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
@@ -85,7 +86,9 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                 if (!getCommand().getMetadata().isMultiTable()) {
                     actions.add(of.actions().setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
                     actions.add(of.actions().setField(of.oxms().udpDst(TransportPort.of(SERVER_42_FORWARD_UDP_PORT))));
-                    actions.add(buildServer42CopyFirstTimestamp(of));
+                    if (switchFeatures.contains(NOVIFLOW_COPY_FIELD)) {
+                        actions.add(buildServer42CopyFirstTimestamp(of));
+                    }
                 }
                 actions.addAll(makeVlanEncapsulationTransformActions(vlanStack));
                 break;
@@ -97,7 +100,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                     // VXLAN encapsulation for default port has no Vlans in packet so we will add one fake Vlan
                     actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
                 }
-                if (!getCommand().getMetadata().isMultiTable()) {
+                if (!getCommand().getMetadata().isMultiTable() && switchFeatures.contains(NOVIFLOW_COPY_FIELD)) {
                     actions.add(buildServer42CopyFirstTimestamp(of));
                 }
                 actions.add(pushVxlanAction(SERVER_42_FORWARD_UDP_PORT));

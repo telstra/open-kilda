@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.adapter.FlowDestAdapter;
 import org.openkilda.adapter.FlowSideAdapter;
@@ -31,7 +30,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.FetchStrategy;
@@ -166,12 +164,6 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
                         format("Properties for switch %s not found", ingressSwitchId)));
     }
 
-    protected Switch getSwitch(SwitchId switchId) {
-        return switchRepository.findById(switchId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Switch %s not found", switchId)));
-    }
-
     protected SpeakerRequestBuildContext buildBaseSpeakerContextForInstall(SwitchId srcSwitchId, SwitchId dstSwitchId) {
         return SpeakerRequestBuildContext.builder()
                 .forward(buildBasePathContextForInstall(srcSwitchId))
@@ -181,9 +173,7 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected PathContext buildBasePathContextForInstall(SwitchId switchId) {
         SwitchProperties switchProperties = getSwitchProperties(switchId);
-        Switch sw = getSwitch(switchId);
-        boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(NOVIFLOW_COPY_FIELD)
-                && isServer42FlowRttFeatureToggle();
+        boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && isServer42FlowRttFeatureToggle();
         return PathContext.builder()
                 .installServer42InputRule(serverFlowRtt && switchProperties.isMultiTable())
                 .installServer42IngressRule(serverFlowRtt)
