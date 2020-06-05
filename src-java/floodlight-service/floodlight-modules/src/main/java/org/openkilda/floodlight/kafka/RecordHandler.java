@@ -333,7 +333,6 @@ class RecordHandler implements Runnable {
     private void installServer42IngressFlow(final InstallServer42IngressFlow command) throws SwitchOperationException {
         logger.debug("Installing server 42 ingress flow: {}", command);
 
-        long meterId = Optional.ofNullable(command.getMeterId()).orElse(0L);
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
 
         context.getSwitchManager().installServer42IngressFlow(
@@ -347,7 +346,6 @@ class RecordHandler implements Runnable {
                 command.getInputVlanId(),
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
-                meterId,
                 command.getTransitEncapsulationType(),
                 command.isMultiTable());
     }

@@ -330,7 +330,6 @@ public class FlowCommandFactory {
         SwitchId egressSwitchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
         int customerPort = isForward ? flow.getSrcPort() : flow.getDestPort();
         int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
-        Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
         long cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
                 .type(CookieType.SERVER_42_INGRESS)
                 .build()
@@ -338,8 +337,8 @@ public class FlowCommandFactory {
 
         return new InstallServer42IngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 cookie, switchId, server42Port, outputPort, customerPort, inVlan, resources.getTransitEncapsulationId(),
-                resources.getEncapsulationType(), getOutputVlanType(flow, flowPath), meterId, egressSwitchId,
-                server42MacAddress, multiTable);
+                resources.getEncapsulationType(), getOutputVlanType(flow, flowPath), egressSwitchId, server42MacAddress,
+                multiTable);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo, boolean multiTable,
