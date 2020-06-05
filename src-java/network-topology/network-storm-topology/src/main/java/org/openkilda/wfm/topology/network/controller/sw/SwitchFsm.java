@@ -41,6 +41,7 @@ import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmEvent
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
@@ -158,7 +159,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         for (AbstractPort port : portByNumber.values()) {
-            updateOnlineStatus(port, context, false);
+            updateOnlineStatus(port, context, OnlineStatus.of(false, context.getIsRegionOffline()));
         }
     }
 
@@ -172,7 +173,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         log.info("Receive port-add notification for {}", port);
 
         portAdd(port, context);
-        updateOnlineStatus(port, context, true);
+        updateOnlineStatus(port, context, OnlineStatus.ONLINE);
 
         Boolean isPortEnabled = context.getPortEnabled();
         if (isPortEnabled == null) {
@@ -323,7 +324,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             }
 
             if (isForced || isNewOrRecreated) {
-                updateOnlineStatus(storedPort, context, true);
+                updateOnlineStatus(storedPort, context, OnlineStatus.ONLINE);
                 updatePortLinkMode(storedPort, actualPort.getLinkStatus(), context);
             } else if (storedPort.getLinkStatus() != actualPort.getLinkStatus()) {
                 updatePortLinkMode(storedPort, actualPort.getLinkStatus(), context);
@@ -366,8 +367,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         port.updatePortLinkMode(context.getOutput());
     }
 
-    private void updateOnlineStatus(AbstractPort port, SwitchFsmContext context, boolean mode) {
-        port.updateOnlineStatus(context.getOutput(), mode);
+    private void updateOnlineStatus(AbstractPort port, SwitchFsmContext context, OnlineStatus onlineStatus) {
+        port.updateOnlineStatus(context.getOutput(), onlineStatus);
     }
 
     private void persistSwitchData() {
@@ -539,6 +540,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         private Integer portNumber;
         private Boolean portEnabled;
+
+        private Boolean isRegionOffline;
 
         public static SwitchFsmContextBuilder builder(ISwitchCarrier output) {
             return (new SwitchFsmContextBuilder()).output(output);
