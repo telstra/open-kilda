@@ -1258,6 +1258,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 && OFPort.IN_PORT.equals(((OFActionOutput) actions.get(1)).getPort());
     }
 
+    @Override
+    public List<OFGroupDescStatsEntry> dumpGroups(DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        return dumpGroups(sw);
+    }
+
     private List<OFGroupDescStatsEntry> dumpGroups(IOFSwitch sw) {
         OFFactory ofFactory = sw.getOFFactory();
         OFGroupDescStatsRequest groupRequest = ofFactory.buildGroupDescStatsRequest().build();

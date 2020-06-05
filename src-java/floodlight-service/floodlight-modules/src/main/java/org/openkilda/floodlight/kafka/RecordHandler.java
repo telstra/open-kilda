@@ -108,6 +108,7 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -137,9 +138,11 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
@@ -171,6 +174,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -267,6 +271,8 @@ class RecordHandler implements Runnable {
             doInstallIslDefaultRule(message);
         } else if (data instanceof RemoveIslDefaultRulesCommand) {
             doRemoveIslDefaultRule(message);
+        } else if (data instanceof DumpGroupsRequest) {
+            doDumpGroupsRequest(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
         }
@@ -1163,6 +1169,38 @@ class RecordHandler implements Runnable {
                             switchId))
                     .withCorrelationId(message.getCorrelationId())
                     .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+    }
+
+    private void doDumpGroupsRequest(final CommandMessage message) {
+        final IKafkaProducerService producerService = getKafkaProducer();
+        SwitchId switchId = ((DumpGroupsRequest) message.getData()).getSwitchId();
+        String correlationId = message.getCorrelationId();
+        try {
+            logger.debug("Loading installed groups for switch {}", switchId);
+
+            List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
+                                                                         .dumpGroups(DatapathId.of(switchId.toLong()));
+
+            List<GroupEntry> groups = ofGroupDescStatsEntries.stream()
+                    .map(OfFlowStatsMapper.INSTANCE::toFlowGroupEntry)
+                    .collect(Collectors.toList());
+
+            SwitchGroupEntries response = SwitchGroupEntries.builder()
+                    .switchId(switchId)
+                    .groupEntries(groups)
+                    .build();
+
+            InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
+            producerService.sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
+            anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("The switch was not found when requesting a groups dump.")
+                    .withCorrelationId(correlationId)
+                    .withTopic(context.getKafkaSwitchManagerTopic())
                     .sendVia(producerService);
         }
     }

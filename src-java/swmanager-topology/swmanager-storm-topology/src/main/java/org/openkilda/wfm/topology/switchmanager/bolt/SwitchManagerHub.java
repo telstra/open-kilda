@@ -33,6 +33,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.persistence.PersistenceManager;
@@ -131,6 +132,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             } else if (data instanceof SwitchExpectedDefaultMeterEntries) {
                 validateService.handleExpectedDefaultMeterEntriesResponse(key,
                         (SwitchExpectedDefaultMeterEntries) data);
+            } else if (data instanceof SwitchGroupEntries) {
+                validateService.handleGroupEntriesResponse(key, (SwitchGroupEntries) data);
             } else if (data instanceof SwitchMeterData) {
                 handleMetersResponse(key, (SwitchMeterData) data);
             } else if (data instanceof FlowInstallResponse) {

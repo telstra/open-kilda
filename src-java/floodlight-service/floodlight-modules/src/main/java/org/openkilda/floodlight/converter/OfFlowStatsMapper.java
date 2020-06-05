@@ -25,6 +25,8 @@ import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.FlowSwapFieldAction;
+import org.openkilda.messaging.info.rule.GroupBucket;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
@@ -32,10 +34,12 @@ import org.openkilda.model.SwitchId;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
+import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionGroup;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
@@ -167,6 +171,42 @@ public abstract class OfFlowStatsMapper {
         }
 
         return flowInstructions.build();
+    }
+
+    /**
+     * Convert {@link OFGroupDescStatsEntry} to {@link GroupEntry}.
+     *
+     * @param ofGroupDescStatsEntry group description.
+     * @return result of transformation {@link GroupEntry}.
+     */
+    public GroupEntry toFlowGroupEntry(OFGroupDescStatsEntry ofGroupDescStatsEntry) {
+        if (ofGroupDescStatsEntry == null) {
+            return null;
+        }
+        return GroupEntry.builder()
+                .groupType(ofGroupDescStatsEntry.getGroupType().toString())
+                .groupId(ofGroupDescStatsEntry.getGroup().getGroupNumber())
+                .buckets(ofGroupDescStatsEntry.getBuckets().stream()
+                        .map(this::toGroupBucket)
+                        .collect(toList()))
+                .build();
+    }
+
+    /**
+     * Convert {@link OFBucket} to {@link GroupBucket}.
+     *
+     * @param ofBucket group bucket.
+     * @return result of transformation {@link GroupEntry}.
+     */
+    public GroupBucket toGroupBucket(OFBucket ofBucket) {
+        if (ofBucket == null) {
+            return null;
+        }
+        int watchPort = -1;
+        if (ofBucket.getWatchPort() != null) {
+            watchPort = ofBucket.getWatchPort().getPortNumber();
+        }
+        return new GroupBucket(watchPort, toFlowApplyActions(ofBucket.getActions()));
     }
 
     /**

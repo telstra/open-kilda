@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
@@ -75,6 +76,17 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         }
 
         fsm.fire(SwitchValidateEvent.RULES_RECEIVED, data.getFlowEntries());
+        process(fsm);
+    }
+
+    @Override
+    public void handleGroupEntriesResponse(String key, SwitchGroupEntries data) {
+        SwitchValidateFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+        fsm.fire(SwitchValidateEvent.GROUPS_RECEIVED, data.getGroupEntries());
         process(fsm);
     }
 

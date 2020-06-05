@@ -20,6 +20,7 @@ import static java.util.Collections.emptyList;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.GROUPS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_UNSUPPORTED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.NEXT;
@@ -29,9 +30,11 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.INITIALIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.RECEIVE_DATA;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE_GROUPS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE_RULES;
 
+import org.openkilda.messaging.command.switches.DumpGroupsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
@@ -43,6 +46,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
@@ -60,6 +64,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -102,11 +107,13 @@ public class SwitchValidateFsm
     private boolean hasMultiTableFlows;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
+    private List<GroupEntry> groupEntries;
     private List<FlowEntry> expectedDefaultFlowEntries;
     private List<MeterEntry> presentMeters;
     private List<MeterEntry> expectedDefaultMetersEntries;
     private ValidateRulesResult validateRulesResult;
     private ValidateMetersResult validateMetersResult;
+    private ValidateGroupsResult validateGroupsResult;
 
     public SwitchValidateFsm(SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
                              ValidationService validationService, RepositoryFactory repositoryFactory) {
@@ -198,6 +205,7 @@ public class SwitchValidateFsm
 
         builder.internalTransition().within(RECEIVE_DATA).on(RULES_RECEIVED).callMethod("rulesReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_RECEIVED).callMethod("metersReceived");
+        builder.internalTransition().within(RECEIVE_DATA).on(GROUPS_RECEIVED).callMethod("groupsReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(EXPECTED_DEFAULT_RULES_RECEIVED)
                 .callMethod("expectedDefaultRulesReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(EXPECTED_DEFAULT_METERS_RECEIVED)
@@ -219,7 +227,12 @@ public class SwitchValidateFsm
 
         builder.externalTransition().from(VALIDATE_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(VALIDATE_METERS).to(FINISHED).on(NEXT)
+        builder.externalTransition().from(VALIDATE_METERS).to(VALIDATE_GROUPS).on(NEXT)
+                .callMethod("validateGroups");
+
+        builder.externalTransition().from(VALIDATE_GROUPS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+        builder.externalTransition().from(VALIDATE_GROUPS).to(FINISHED).on(NEXT)
                 .callMethod(FINISHED_METHOD_NAME);
 
         return builder;
@@ -245,7 +258,7 @@ public class SwitchValidateFsm
     protected void receiveData(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
         log.info("Sending requests to get switch rules and meters (switch={}, key={})", switchId, key);
-
+        carrier.sendCommandToSpeaker(key, new DumpGroupsRequest(switchId));
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
         boolean multiTable = switchProperties.isMultiTable() || hasMultiTableFlows;
         boolean switchLldp = switchProperties.isSwitchLldp();
@@ -272,6 +285,13 @@ public class SwitchValidateFsm
                                  SwitchValidateEvent event, Object context) {
         log.info("Switch rules received (switch={}, key={})", switchId, key);
         this.flowEntries = (List<FlowEntry>) context;
+        checkAllDataReceived();
+    }
+
+    protected void groupsReceived(SwitchValidateState from, SwitchValidateState to,
+                                  SwitchValidateEvent event, Object context) {
+        log.info("Switch groups received (switch={}, key={})", switchId, key);
+        this.groupEntries = (List<GroupEntry>) context;
         checkAllDataReceived();
     }
 
@@ -307,7 +327,7 @@ public class SwitchValidateFsm
 
     private void checkAllDataReceived() {
         if (flowEntries != null && presentMeters != null && expectedDefaultFlowEntries != null
-                && expectedDefaultMetersEntries != null) {
+                && expectedDefaultMetersEntries != null && groupEntries != null) {
             fire(NEXT);
         }
     }
@@ -341,6 +361,16 @@ public class SwitchValidateFsm
                         expectedDefaultMetersEntries);
             }
 
+        } catch (Exception e) {
+            sendException(e.getMessage());
+        }
+    }
+
+    protected void validateGroups(SwitchValidateState from, SwitchValidateState to,
+                                  SwitchValidateEvent event, Object context) {
+        log.info("Validate groups (switch={}, key={})", switchId, key);
+        try {
+            validateGroupsResult = validationService.validateGroups(switchId, groupEntries);
         } catch (Exception e) {
             sendException(e.getMessage());
         }
@@ -399,6 +429,7 @@ public class SwitchValidateFsm
         RECEIVE_DATA,
         VALIDATE_RULES,
         VALIDATE_METERS,
+        VALIDATE_GROUPS,
         FINISHED_WITH_ERROR,
         FINISHED
     }
@@ -407,6 +438,7 @@ public class SwitchValidateFsm
         NEXT,
         RULES_RECEIVED,
         METERS_RECEIVED,
+        GROUPS_RECEIVED,
         EXPECTED_DEFAULT_RULES_RECEIVED,
         EXPECTED_DEFAULT_METERS_RECEIVED,
         METERS_UNSUPPORTED,
