@@ -35,7 +35,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
    def "Systems allows to pass traffic via default/vlan and qinq flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 2) as boolean)
+        assumeTrue("Unable to find required switches in topology", allTraffGenSwitches.size() > 2)
 
         when: "Create a vlan flow"
         def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
@@ -128,7 +128,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "At least 2 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 1) as boolean)
+        assumeTrue("Unable to find required switches in topology", allTraffGenSwitches.size() > 1)
 
         when: "Create a default flow"
         def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
@@ -169,7 +169,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "At least 2 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 1) as boolean)
+        assumeTrue("Unable to find required switches in topology", allTraffGenSwitches.size() > 1)
 
         and: "A default flow"
         def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches

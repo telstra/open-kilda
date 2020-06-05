@@ -254,8 +254,8 @@ switches"() {
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }] * 3
-        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 3
-        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 3
+        flow1 << [getFirstFlow(switchPairs?.get(0), switchPairs?.get(1))] * 3
+        flow2 << [getSecondFlow(switchPairs?.get(0), switchPairs?.get(1), flow1)] * 3
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [changePropertyValue(flow1.source, "vlanId", flow2.destination.vlanId),
                  changePropertyValue(flow1.destination, "vlanId", flow2.source.vlanId),
@@ -312,8 +312,8 @@ switches"() {
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }] * 4
-        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 4
-        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 4
+        flow1 << [getFirstFlow(switchPairs?.get(0), switchPairs?.get(1))] * 4
+        flow2 << [getSecondFlow(switchPairs?.get(0), switchPairs?.get(1), flow1)] * 4
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [flow2.source, flow1.destination, flow1.source, flow2.destination],
                 [flow1.source, flow2.destination, flow2.source, flow1.destination],
@@ -361,8 +361,8 @@ switches"() {
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }] * 3
-        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 3
-        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 3
+        flow1 << [getFirstFlow(switchPairs?.get(0), switchPairs?.get(1))] * 3
+        flow2 << [getSecondFlow(switchPairs?.get(0), switchPairs?.get(1), flow1)] * 3
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [changePropertyValue(flow1.source, "vlanId", flow2.destination.vlanId),
                  changePropertyValue(flow1.destination, "vlanId", flow2.source.vlanId),
@@ -1038,7 +1038,6 @@ switches"() {
         given: "Two protected flows with different source and destination switches"
         def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
         assumeTrue("Not enough traffgen switches found", tgSwitches.size() > 1)
-
         SwitchPair flow2SwitchPair = null
         SwitchPair flow1SwitchPair = topologyHelper.getAllNeighboringSwitchPairs().find { firstPair ->
             def firstOk = !(firstPair.src in tgSwitches) && firstPair.dst in tgSwitches
@@ -1362,6 +1361,7 @@ switches"() {
      * @return a FlowCreatePayload instance
      */
     def getFirstFlow(SwitchPair firstFlowSwitchPair, SwitchPair secondFlowSwitchPair, noVlans = false) {
+        assumeTrue("Required conditions for switch-pairs for this test are not met", firstFlowSwitchPair && secondFlowSwitchPair)
         def firstFlow = flowHelper.randomFlow(firstFlowSwitchPair)
         firstFlow.source.portNumber = (topology.getAllowedPortsForSwitch(firstFlowSwitchPair.src) -
                 topology.getBusyPortsForSwitch(secondFlowSwitchPair.src) -
@@ -1395,6 +1395,7 @@ switches"() {
      * @return a FlowCreatePayload instance
      */
     def getSecondFlow(firstFlowSwitchPair, secondFlowSwitchPair, firstFlow, noVlans = false) {
+        assumeTrue("Required conditions for switch-pairs for this test are not met", firstFlowSwitchPair && secondFlowSwitchPair)
         def secondFlow = flowHelper.randomFlow(secondFlowSwitchPair)
         secondFlow.source.portNumber = (topology.getAllowedPortsForSwitch(secondFlowSwitchPair.src) -
                 topology.getBusyPortsForSwitch(firstFlowSwitchPair.src) -

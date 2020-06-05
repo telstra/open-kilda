@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -44,6 +45,7 @@ class MflStatSpec extends HealthCheckSpecification {
     @Tags([VIRTUAL, LOW_PRIORITY])
     def "System is able to collect stats from the statistic and management controllers"() {
         given: "A flow"
+        assumeTrue("Require at least 2 switches with connected traffgen", topology.activeTraffGens.size() > 1)
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 100
@@ -139,6 +141,7 @@ class MflStatSpec extends HealthCheckSpecification {
     @Tags(VIRTUAL)
     def "System is able to collect stats from the statistic and management controllers (v2)"() {
         given: "A flow"
+        assumeTrue("Require at least 2 switches with connected traffgen", topology.activeTraffGens.size() > 1)
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = 100
