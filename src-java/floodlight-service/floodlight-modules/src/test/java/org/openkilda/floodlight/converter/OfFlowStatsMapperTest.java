@@ -23,16 +23,21 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.FlowSwapFieldAction;
+import org.openkilda.messaging.info.rule.GroupBucket;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Lists;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -151,6 +156,52 @@ public class OfFlowStatsMapperTest {
                 group.toString(), flowCopyFieldAction, flowSwapFieldAction);
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
         assertEquals(instructions, entry.getInstructions());
+    }
+
+    @Test
+    public void testFlowGroupEntry() {
+        OFGroupDescStatsEntry entry = buildFlowGroupEntry();
+        GroupEntry result = OfFlowStatsMapper.INSTANCE.toFlowGroupEntry(entry);
+        assertEquals(entry.getGroup().getGroupNumber(), result.getGroupId());
+        assertEquals(entry.getGroupType().toString(), result.getGroupType());
+        assertEquals(entry.getBuckets().size(), result.getBuckets().size());
+        GroupBucket firstBucket = result.getBuckets().get(0);
+        assertEquals("12", firstBucket.getApplyActions().getFlowOutput());
+        GroupBucket secondBucket = result.getBuckets().get(1);
+        assertEquals(EthType.VLAN_FRAME.toString(), secondBucket.getApplyActions().getPushVlan());
+        assertEquals("vlan_vid", secondBucket.getApplyActions().getSetFieldActions().get(0).getFieldName());
+        assertEquals("12", secondBucket.getApplyActions().getSetFieldActions().get(0).getFieldValue());
+        assertEquals("1", secondBucket.getApplyActions().getFlowOutput());
+
+    }
+
+    private void compareBuckets(OFBucket origin, GroupBucket result) {
+        assertEquals(origin.getWatchPort().getPortNumber(), result.getWatchPort());
+    }
+
+    private OFGroupDescStatsEntry buildFlowGroupEntry() {
+        return factory.buildGroupDescStatsEntry()
+                .setGroup(OFGroup.of(22))
+                .setGroupType(OFGroupType.ALL)
+                .setBuckets(buildBuckets())
+                .build();
+    }
+
+    private List<OFBucket> buildBuckets() {
+        List<OFBucket> buckets = new ArrayList<>();
+        buckets.add(factory.buildBucket()
+                .setWatchPort(OFPort.of(12))
+                .setActions(Collections.singletonList(factory.actions().output(port, 0)))
+                .build());
+        buckets.add(factory.buildBucket()
+                .setActions(
+                        Lists.newArrayList(
+                                factory.actions().buildPushVlan().setEthertype(EthType.VLAN_FRAME).build(),
+                                factory.actions().setField(factory.oxms().vlanVid(OFVlanVidMatch.ofVlan(12))),
+                                factory.actions().output(OFPort.of(1), 0))
+                ).build());
+
+        return buckets;
     }
 
     private OFFlowStatsEntry buildFlowStatsEntry() {

@@ -77,7 +77,7 @@ public class SpeakerRulesRouter extends AbstractBolt {
             emit(STREAM_WORKER_ID, input, makeWorkerTuple(new SpeakerRulesIslRemovedCommand(
                     input.getStringByField(FIELD_ID_KEY), (RemoveIslDefaultRulesResult) payload)));
         } else {
-            log.error("Do not proxy speaker message - unexpected message payload \"{}\"", payload.getClass());
+            log.debug("Do not proxy speaker message - unexpected message payload \"{}\"", payload.getClass());
         }
     }
 

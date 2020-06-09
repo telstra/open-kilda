@@ -36,9 +36,9 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
 import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
 import org.openkilda.model.MacAddress;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import lombok.Builder;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -55,6 +55,7 @@ import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
 
@@ -75,8 +76,8 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
 
     @Override
     public SwitchFlowTuple generateFlow(IOFSwitch sw) {
-        if (!featureDetectorService.detectSwitch(sw).containsAll(
-                Lists.newArrayList(NOVIFLOW_COPY_FIELD, NOVIFLOW_PUSH_POP_VXLAN))) {
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
             return SwitchFlowTuple.EMPTY;
         }
 
@@ -91,7 +92,9 @@ public class Server42OutputVxlanFlowGenerator implements SwitchFlowGenerator {
         actions.add(actionSetSrcMac(ofFactory, convertDpIdToMac(sw.getId())));
         actions.add(actionSetDstMac(ofFactory, org.projectfloodlight.openflow.types.MacAddress.of(
                         server42MacAddress.getAddress())));
-        actions.add(buildCopyTimestamp(ofFactory));
+        if (features.contains(NOVIFLOW_COPY_FIELD)) {
+            actions.add(buildCopyTimestamp(ofFactory));
+        }
         actions.add(actionSetOutputPort(ofFactory, OFPort.of(server42Port)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(

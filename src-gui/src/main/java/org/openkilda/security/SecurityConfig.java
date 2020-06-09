@@ -27,7 +27,8 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.web.access.AccessDeniedHandler;
-
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.usermanagement.service.UserService;
 
 import java.util.ArrayList;
@@ -59,11 +60,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(final HttpSecurity http) throws Exception {
-
-        http.csrf().disable().authorizeRequests().antMatchers("/login", "/authenticate", "/forgotpassword", "/401")
-                .permitAll().anyRequest().authenticated().and().formLogin().loginPage("/login").permitAll().and()
-                .logout().permitAll().and().exceptionHandling().accessDeniedHandler(accessDeniedHandler).and()
-                .sessionManagement().invalidSessionUrl("/401");
+     
+        http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and().authorizeRequests()
+        .antMatchers("/login", "/authenticate", "/forgotpassword", "/401")
+        .permitAll().anyRequest().authenticated().and().formLogin().loginPage("/login").permitAll()
+        .and().exceptionHandling().accessDeniedHandler(accessDeniedHandler)
+        .and().headers().addHeaderWriter(new StaticHeadersWriter("X-Content-Security-Policy", "default-src 'self'"))
+        .addHeaderWriter(new StaticHeadersWriter("Feature-Policy", "none"))
+        .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "same-origin")).and()
+        .sessionManagement().invalidSessionUrl("/401");
     }
 
     @Override

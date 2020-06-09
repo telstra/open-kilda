@@ -78,14 +78,9 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
     }
 
     @Override
-    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(
-            MeterId effectiveMeterId, List<Integer> vlanStack) {
+    protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(List<Integer> vlanStack) {
         List<OFAction> applyActions = new ArrayList<>();
         List<OFInstruction> instructions = new ArrayList<>();
-
-        if (effectiveMeterId != null) {
-            OfAdapter.INSTANCE.makeMeterCall(of, effectiveMeterId, applyActions, instructions);
-        }
 
         applyActions.addAll(makeServer42IngressFlowTransformActions(vlanStack));
         applyActions.add(makeOutputAction());

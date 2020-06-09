@@ -53,7 +53,6 @@ import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.SpeakerCommandReport;
-import org.openkilda.floodlight.command.flow.FlowSegmentFlowResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentSyncResponseFactory;
 import org.openkilda.floodlight.command.flow.FlowSegmentWrapperCommand;
@@ -83,7 +82,6 @@ import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.AliveResponse;
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -110,6 +108,7 @@ import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -139,9 +138,11 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
@@ -158,7 +159,6 @@ import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
@@ -174,6 +174,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -212,44 +213,14 @@ class RecordHandler implements Runnable {
         this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
     }
 
-    protected void doControllerMsg(CommandMessage message) {
-        // Define the destination topic where the reply will be sent to.
-        final String replyToTopic = context.getKafkaFlowTopic();
-        final Destination replyDestination = getDestinationForTopic(replyToTopic);
-
-        try {
-            handleCommand(message, replyToTopic, replyDestination);
-        } catch (FlowCommandException e) {
-            String errorMessage = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-            logger.error("Failed to handle message {}: {}", message, errorMessage);
-            ErrorData errorData = new FlowCommandErrorData(e.getFlowId(), e.getCookie(), e.getTransactionId(),
-                    e.getErrorType(), errorMessage, e.getMessage());
-            ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(),
-                    message.getCorrelationId(), replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, error);
-        }
-    }
-
-    private void handleCommand(CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        logger.debug("Handling message: '{}'. Reply topic: '{}'. Reply destination: '{}'.",
-                message, replyToTopic, replyDestination);
+    private void handleCommand(CommandMessage message) {
+        logger.debug("Handling message: '{}'.", message);
         CommandData data = message.getData();
 
         if (data instanceof DiscoverIslCommandData) {
             doDiscoverIslCommand(message);
         } else if (data instanceof DiscoverPathCommandData) {
             doDiscoverPathCommand(data);
-        } else if (data instanceof InstallIngressFlow) {
-            doProcessIngressFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallEgressFlow) {
-            doProcessEgressFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallTransitFlow) {
-            doProcessTransitFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof InstallOneSwitchFlow) {
-            doProcessOneSwitchFlow(message, replyToTopic, replyDestination);
-        } else if (data instanceof RemoveFlow) {
-            doDeleteFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof RemoveFlowForSwitchManagerRequest) {
             doDeleteFlowForSwitchManager(message);
         } else if (data instanceof ReinstallDefaultFlowForSwitchManagerRequest) {
@@ -300,17 +271,10 @@ class RecordHandler implements Runnable {
             doInstallIslDefaultRule(message);
         } else if (data instanceof RemoveIslDefaultRulesCommand) {
             doRemoveIslDefaultRule(message);
+        } else if (data instanceof DumpGroupsRequest) {
+            doDumpGroupsRequest(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
-        }
-    }
-
-    private Destination getDestinationForTopic(String replyToTopic) {
-        //TODO: depending on the future system design, either get rid of destination or complete the switch-case.
-        if (context.getKafkaNorthboundTopic().equals(replyToTopic)) {
-            return Destination.NORTHBOUND;
-        } else {
-            return Destination.WFM_TRANSACTION;
         }
     }
 
@@ -334,8 +298,8 @@ class RecordHandler implements Runnable {
             result.setSuccess(false);
         }
 
-        getKafkaProducer().sendMessageAndTrack(context.getKafkaFlowTopic(), record.key(), new InfoMessage(result,
-                System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), record.key(),
+                new InfoMessage(result, System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
     }
 
     private void doRemoveIslDefaultRule(CommandMessage message) {
@@ -350,8 +314,8 @@ class RecordHandler implements Runnable {
             result.setSuccess(false);
         }
 
-        getKafkaProducer().sendMessageAndTrack(context.getKafkaFlowTopic(), record.key(), new InfoMessage(result,
-                System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
+        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), record.key(),
+                new InfoMessage(result, System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
     }
 
     private void doDiscoverIslCommand(CommandMessage message) {
@@ -372,68 +336,9 @@ class RecordHandler implements Runnable {
         logger.warn("NOT IMPLEMENTED: sending discover Path to {}", command);
     }
 
-    /**
-     * Processes install ingress flow message.
-     *
-     * @param message command message for flow installation
-     */
-    private void doProcessIngressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination) {
-        InstallIngressFlow command = (InstallIngressFlow) message.getData();
-        logger.info("Installing ingress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
-
-        MessageContext messageContext = new MessageContext(message);
-        FlowSegmentFlowResponseFactory responseFactory = new FlowSegmentFlowResponseFactory(
-                replyToTopic, message, replyDestination, command);
-        handleSpeakerCommand(makeFlowSegmentWrappedCommand(command, messageContext, responseFactory));
-    }
-
-    /**
-     * Installs ingress flow on the switch.
-     *
-     * @param command command message for flow installation
-     */
-    private void installIngressFlow(final InstallIngressFlow command) throws SwitchOperationException {
-        logger.debug("Creating an ingress flow: {}", command);
-
-        long meterId = 0;
-        if (command.getMeterId() != null && command.getMeterId() > 0) {
-            meterId = command.getMeterId();
-
-            installMeter(DatapathId.of(command.getSwitchId().toLong()), meterId, command.getBandwidth(),
-                    command.getId());
-        } else {
-            logger.debug("Installing unmetered ingress flow. Switch: {}, cookie: {}",
-                    command.getSwitchId(), command.getCookie());
-        }
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
-        if (command.isMultiTable()) {
-            context.getSwitchManager().installIntermediateIngressRule(dpid, command.getInputPort());
-        }
-        if (command.isEnableLldp()) {
-            context.getSwitchManager().installLldpInputCustomerFlow(dpid, command.getInputPort());
-        }
-        if (command.isEnableArp()) {
-            context.getSwitchManager().installArpInputCustomerFlow(dpid, command.getInputPort());
-        }
-        context.getSwitchManager().installIngressFlow(
-                dpid,
-                DatapathId.of(command.getEgressSwitchId().toLong()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getInputVlanId(),
-                command.getTransitEncapsulationId(),
-                command.getOutputVlanType(),
-                meterId,
-                command.getTransitEncapsulationType(),
-                command.isMultiTable());
-    }
-
     private void installServer42IngressFlow(final InstallServer42IngressFlow command) throws SwitchOperationException {
         logger.debug("Installing server 42 ingress flow: {}", command);
 
-        long meterId = Optional.ofNullable(command.getMeterId()).orElse(0L);
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
 
         context.getSwitchManager().installServer42IngressFlow(
@@ -447,70 +352,8 @@ class RecordHandler implements Runnable {
                 command.getInputVlanId(),
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
-                meterId,
                 command.getTransitEncapsulationType(),
                 command.isMultiTable());
-    }
-
-    /**
-     * Processes egress flow install message.
-     *
-     * @param message command message for flow installation
-     */
-    private void doProcessEgressFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        InstallEgressFlow command = (InstallEgressFlow) message.getData();
-        logger.info("Installing egress flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
-
-        try {
-            installEgressFlow(command);
-            message.setDestination(replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.CREATION_FAILURE, e);
-        }
-    }
-
-    /**
-     * Installs egress flow on the switch.
-     *
-     * @param command command message for flow installation
-     */
-    private void installEgressFlow(InstallEgressFlow command) throws SwitchOperationException {
-        logger.debug("Creating an egress flow: {}", command);
-
-        context.getSwitchManager().installEgressFlow(
-                DatapathId.of(command.getSwitchId().toLong()),
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getTransitEncapsulationId(),
-                command.getOutputVlanId(),
-                command.getOutputVlanType(),
-                command.getTransitEncapsulationType(),
-                command.isMultiTable());
-    }
-
-    /**
-     * Processes transit flow installing message.
-     *
-     * @param message command message for flow installation
-     */
-    private void doProcessTransitFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        InstallTransitFlow command = (InstallTransitFlow) message.getData();
-        logger.info("Installing transit flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
-
-        try {
-            installTransitFlow(command);
-            message.setDestination(replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.CREATION_FAILURE, e);
-        }
     }
 
     /**
@@ -532,67 +375,6 @@ class RecordHandler implements Runnable {
                 command.isMultiTable());
     }
 
-    /**
-     * Processes one-switch flow installing message.
-     *
-     * @param message command message for flow installation
-     */
-    private void doProcessOneSwitchFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        InstallOneSwitchFlow command = (InstallOneSwitchFlow) message.getData();
-        logger.info("Installing one switch flow '{}' on switch '{}'", command.getId(), command.getSwitchId());
-
-        try {
-            installOneSwitchFlow(command);
-            message.setDestination(replyDestination);
-            getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.CREATION_FAILURE, e);
-        }
-    }
-
-    /**
-     * Installs flow through one switch.
-     *
-     * @param command command message for flow installation
-     */
-    private void installOneSwitchFlow(InstallOneSwitchFlow command) throws SwitchOperationException {
-        long meterId = 0;
-        if (command.getMeterId() != null && command.getMeterId() > 0) {
-            meterId = command.getMeterId();
-            installMeter(DatapathId.of(command.getSwitchId().toLong()), meterId, command.getBandwidth(),
-                    command.getId());
-        } else {
-            logger.debug("Installing unmetered one switch flow. Switch: {}, cookie: {}",
-                    command.getSwitchId(), command.getCookie());
-
-        }
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
-        if (command.isMultiTable()) {
-            context.getSwitchManager().installIntermediateIngressRule(dpid, command.getInputPort());
-        }
-        if (command.isEnableLldp()) {
-            context.getSwitchManager().installLldpInputCustomerFlow(dpid, command.getInputPort());
-        }
-        if (command.isEnableArp()) {
-            context.getSwitchManager().installArpInputCustomerFlow(dpid, command.getInputPort());
-        }
-
-        OutputVlanType directOutputVlanType = command.getOutputVlanType();
-        context.getSwitchManager().installOneSwitchFlow(
-                dpid,
-                command.getId(),
-                command.getCookie(),
-                command.getInputPort(),
-                command.getOutputPort(),
-                command.getInputVlanId(),
-                command.getOutputVlanId(),
-                directOutputVlanType,
-                meterId,
-                command.isMultiTable());
-    }
-
     private void installSharedFlow(InstallSharedFlow command) throws SwitchOperationException, FlowCommandException {
         FlowSharedSegmentCookie cookie = new FlowSharedSegmentCookie(command.getCookie());
         SharedSegmentType segmentType = cookie.getSegmentType();
@@ -603,27 +385,6 @@ class RecordHandler implements Runnable {
                     command.getId(), command.getCookie(), command.getTransactionId(), ErrorType.REQUEST_INVALID,
                     format("Unsupported shared segment type %s (cookie: %s)", segmentType, cookie));
         }
-    }
-
-    /**
-     * Removes flow.
-     *
-     * @param message command message for flow deletion
-     */
-    private void doDeleteFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
-            throws FlowCommandException {
-        RemoveFlow command = (RemoveFlow) message.getData();
-        DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
-
-        try {
-            processDeleteFlow(command, dpid);
-        } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.DELETION_FAILURE, e);
-        }
-
-        message.setDestination(replyDestination);
-        getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
     }
 
     /**
@@ -1412,6 +1173,38 @@ class RecordHandler implements Runnable {
         }
     }
 
+    private void doDumpGroupsRequest(final CommandMessage message) {
+        final IKafkaProducerService producerService = getKafkaProducer();
+        SwitchId switchId = ((DumpGroupsRequest) message.getData()).getSwitchId();
+        String correlationId = message.getCorrelationId();
+        try {
+            logger.debug("Loading installed groups for switch {}", switchId);
+
+            List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
+                                                                         .dumpGroups(DatapathId.of(switchId.toLong()));
+
+            List<GroupEntry> groups = ofGroupDescStatsEntries.stream()
+                    .map(OfFlowStatsMapper.INSTANCE::toFlowGroupEntry)
+                    .collect(Collectors.toList());
+
+            SwitchGroupEntries response = SwitchGroupEntries.builder()
+                    .switchId(switchId)
+                    .groupEntries(groups)
+                    .build();
+
+            InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
+            producerService.sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
+            anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("The switch was not found when requesting a groups dump.")
+                    .withCorrelationId(correlationId)
+                    .withTopic(context.getKafkaSwitchManagerTopic())
+                    .sendVia(producerService);
+        }
+    }
+
     private void doDumpRulesRequest(final CommandMessage message) {
         processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(),
                 context.getKafkaNorthboundTopic(), message.getCorrelationId(), message.getTimestamp());
@@ -1842,7 +1635,7 @@ class RecordHandler implements Runnable {
             CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId(),
                     record.key());
             if (!dispatch(commandContext, message)) {
-                doControllerMsg(message);
+                handleCommand(message);
             }
         } catch (Exception exception) {
             logger.error("error processing message '{}'", message, exception);

@@ -20,7 +20,6 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
-import org.openkilda.model.MeterId;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -56,7 +55,7 @@ public abstract class OneSwitchFlowCommand extends IngressFlowSegmentBase {
     }
 
     @Override
-    protected List<OFFlowMod> makeIngressServer42IngressFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeIngressServer42IngressFlowModMessages() {
         return new ArrayList<>();
     }
 

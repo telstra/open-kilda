@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.61.0 (05/06/2020)
+
+### Features:
+-  [#3500](https://github.com/telstra/open-kilda/pull/3500) Server42 Part 2 DPDK (Issue: [#3436](https://github.com/telstra/open-kilda/issues/3436))
+-  [#3504](https://github.com/telstra/open-kilda/pull/3504) Server 42 RTT: Remove goto meter from server 42 ingress rule [**storm-topologies**]
+-  [#3516](https://github.com/telstra/open-kilda/pull/3516) Server 42 RTT: enable on WB switches [**floodlight**]
+
+### Bug Fixes:
+-  [#3515](https://github.com/telstra/open-kilda/pull/3515) Remove undefined activeEnter action reference from IslFsm [**storm-topologies**]
+
+### Improvements:
+-  [#3520](https://github.com/telstra/open-kilda/pull/3520) Improve GRPC error messages
+-  [#3527](https://github.com/telstra/open-kilda/pull/3527) fix qinq + vxlan [**tests**]
+-  [#3465](https://github.com/telstra/open-kilda/pull/3465) Bump storm and kafka versions [**storm-topologies**]
+-  [#3083](https://github.com/telstra/open-kilda/pull/3083) Prevent network topology from altering ISL status into offline region [**storm-topologies**]
+-  [#3511](https://github.com/telstra/open-kilda/pull/3511) Delete Flow Topology (Issue: [#3291](https://github.com/telstra/open-kilda/issues/3291)) [**floodlight**][**storm-topologies**]
+-  [#3512](https://github.com/telstra/open-kilda/pull/3512) Reduce logging level for unhandled input in Flow H&S Speaker Worker
+-  [#3485](https://github.com/telstra/open-kilda/pull/3485) kildaGui security vulnerabilitiy fixes (Issue: [#3482](https://github.com/telstra/open-kilda/issues/3482)) [**gui**]
+
+### Other changes:
+-  [#3509](https://github.com/telstra/open-kilda/pull/3509) Increase reliability of OfFlowStatsMapper [**floodlight**]
+-  [#3514](https://github.com/telstra/open-kilda/pull/3514) Adjustments to allow running tests in non-default situations [**tests**]
+-  [#3517](https://github.com/telstra/open-kilda/pull/3517) Add mirror group validation [**floodlight**][**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.60.0...v1.61.0).
+
+### Affected Components:
+grpc, stats, network, router, flow, flow-hs, swmanager, fl, gui
+
 ## v1.60.0 (01/06/2020)
 
 ### Features:

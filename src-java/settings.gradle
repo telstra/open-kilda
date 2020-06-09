@@ -10,8 +10,7 @@ include 'floodlightrouter-storm-topology'
 include 'floodlight-api'
 include 'floodlight-modules'
 include 'flowhs-storm-topology'
-include 'flow-messaging'
-include 'flow-storm-topology'
+include 'flowhs-messaging'
 include 'grpc-api'
 include 'grpc-service'
 include 'isllatency-storm-topology'
@@ -57,8 +56,7 @@ project(':floodlightrouter-storm-topology').projectDir = "$rootDir/floodlightrou
 project(':floodlight-api').projectDir = "$rootDir/floodlight-service/floodlight-api" as File
 project(':floodlight-modules').projectDir = "$rootDir/floodlight-service/floodlight-modules" as File
 project(':flowhs-storm-topology').projectDir = "$rootDir/flowhs-topology/flowhs-storm-topology" as File
-project(':flow-messaging').projectDir = "$rootDir/flow-topology/flow-messaging" as File
-project(':flow-storm-topology').projectDir = "$rootDir/flow-topology/flow-storm-topology" as File
+project(':flowhs-messaging').projectDir = "$rootDir/flowhs-topology/flowhs-messaging" as File
 project(':grpc-api').projectDir = "$rootDir/grpc-speaker/grpc-api" as File
 project(':grpc-service').projectDir = "$rootDir/grpc-speaker/grpc-service" as File
 project(':isllatency-storm-topology').projectDir = "$rootDir/isllatency-topology/isllatency-storm-topology" as File

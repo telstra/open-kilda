@@ -18,12 +18,15 @@ package org.openkilda.floodlight.converter;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.messaging.info.rule.FlowApplyActions;
+import org.openkilda.messaging.info.rule.FlowApplyActions.FlowApplyActionsBuilder;
 import org.openkilda.messaging.info.rule.FlowCopyFieldAction;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.FlowSwapFieldAction;
+import org.openkilda.messaging.info.rule.GroupBucket;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
@@ -31,12 +34,12 @@ import org.openkilda.model.SwitchId;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
-import org.projectfloodlight.openflow.protocol.OFActionType;
+import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
-import org.projectfloodlight.openflow.protocol.OFInstructionType;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionGroup;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
@@ -55,11 +58,8 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Utility class that converts OFlowStats from the switch to kilda known format for further processing.
@@ -156,138 +156,87 @@ public abstract class OfFlowStatsMapper {
      * @return result of transformation {@link FlowInstructions}.
      */
     public FlowInstructions toFlowInstructions(final List<OFInstruction> instructions) {
-        Map<OFInstructionType, OFInstruction> instructionMap = instructions
-                .stream()
-                .collect(Collectors.toMap(OFInstruction::getType, instruction -> instruction));
+        FlowInstructions.FlowInstructionsBuilder flowInstructions = FlowInstructions.builder();
 
-        FlowApplyActions applyActions = Optional.ofNullable(instructionMap.get(OFInstructionType.APPLY_ACTIONS))
-                .map(entry -> toFlowApplyActions(((OFInstructionApplyActions) entry).getActions()))
-                .orElse(null);
-
-        Long meter = Optional.ofNullable(instructionMap.get(OFInstructionType.METER))
-                .map(instruction -> ((OFInstructionMeter) instruction).getMeterId())
-                .orElse(null);
-
-        Short table = Optional.ofNullable(instructionMap.get(OFInstructionType.GOTO_TABLE))
-                .map(instruction -> ((OFInstructionGotoTable) instruction).getTableId().getValue())
-                .orElse(null);
-
-        return FlowInstructions.builder()
-                .applyActions(applyActions)
-                .goToMeter(meter)
-                .goToTable(table)
-                .build();
-    }
-
-    /**
-     * Convert {@link OFInstruction} to {@link FlowApplyActions}.
-     * @return result of transformation {@link FlowApplyActions}.
-     */
-    public FlowApplyActions toFlowApplyActions(List<OFAction> applyActions) {
-        // FIXME(surabujin): avoid map/set usage, avoid multiple traversal over instructions/actions lists.
-        Map<OFActionType, OFAction> actions = applyActions
-                .stream()
-                .filter(ofAction -> !ofAction.getType().equals(OFActionType.EXPERIMENTER))
-                .filter(ofAction -> !ofAction.getType().equals(OFActionType.SET_FIELD))
-                .filter(ofAction -> !ofAction.getType().equals(OFActionType.PUSH_VLAN))
-                .collect(Collectors.toMap(OFAction::getType, action -> action));
-        // NOTE(tdurakov): there are could be more then one action of type experimenter, better to filter them out
-        // and handle independently
-        Set<OFAction> experimenterActions = applyActions
-                .stream()
-                .filter(ofAction -> ofAction.getType().equals(OFActionType.EXPERIMENTER))
-                .collect(Collectors.toSet());
-        List<OFAction> setFieldActions = applyActions
-                .stream()
-                .filter(ofAction -> ofAction.getType().equals(OFActionType.SET_FIELD))
-                .collect(Collectors.toList());
-        String pushVlan = applyActions.stream()
-                .filter(ofAction -> ofAction.getType().equals(OFActionType.PUSH_VLAN))
-                .findFirst()
-                .map(action -> String.valueOf(((OFActionPushVlan) action).getEthertype().toString()))
-                .orElse(null);
-
-        return FlowApplyActions.builder()
-                .meter(Optional.ofNullable(actions.get(OFActionType.METER))
-                        .map(action -> String.valueOf(((OFActionMeter) action).getMeterId()))
-                        .orElse(null))
-                .pushVlan(pushVlan)
-                .flowOutput(Optional.ofNullable(actions.get(OFActionType.OUTPUT))
-                        .map(action -> String.valueOf(((OFActionOutput) action).getPort().toString()))
-                        .orElse(null))
-                .setFieldActions(setFieldActions.stream()
-                        .map(this::toFlowSetFieldAction)
-                        .collect(Collectors.toList()))
-                .pushVxlan(experimenterActions.stream()
-                        .filter(ofAction -> ofAction instanceof OFActionNoviflowPushVxlanTunnel)
-                        .map(action -> String.valueOf(((OFActionNoviflowPushVxlanTunnel) action).getVni()))
-                        .findFirst().orElse(null))
-                .group(Optional.ofNullable(actions.get(OFActionType.GROUP))
-                        .map(action -> String.valueOf(((OFActionGroup) action).getGroup()))
-                        .orElse(null))
-                .copyFieldAction(experimenterActions.stream()
-                        .filter(ofAction -> ofAction instanceof OFActionNoviflowCopyField)
-                        .findAny()
-                        .map(this::toFlowSetCopyFieldAction)
-                        .orElse(null))
-                .swapFieldAction(experimenterActions.stream()
-                        .filter(OFActionNoviflowSwapField.class::isInstance)
-                        .map(OFActionNoviflowSwapField.class::cast)
-                        .findAny()
-                        .map(this::toFlowSwapFieldAction)
-                        .orElse(null)
-                )
-                .build();
-    }
-
-    /**
-     * Convert {@link OFAction} to {@link FlowSetFieldAction}.
-     * @param action action to be converted.
-     * @return result of transformation {@link FlowSetFieldAction}.
-     */
-    public FlowSetFieldAction toFlowSetFieldAction(OFAction action) {
-        OFOxm<?> setFieldAction = ((OFActionSetField) action).getField();
-        String value = setFieldAction.getValue().toString();
-
-        if (MatchField.VLAN_VID.getName().equals(setFieldAction.getMatchField().getName())) {
-            value = String.valueOf(Long.decode(value) & VLAN_MASK);
+        for (OFInstruction entry : instructions) {
+            if (entry instanceof OFInstructionApplyActions) {
+                List<OFAction> actions = ((OFInstructionApplyActions) entry).getActions();
+                flowInstructions.applyActions(toFlowApplyActions(actions));
+            } else if (entry instanceof OFInstructionMeter) {
+                flowInstructions.goToMeter(((OFInstructionMeter) entry).getMeterId());
+            } else if (entry instanceof OFInstructionGotoTable) {
+                flowInstructions.goToTable(((OFInstructionGotoTable) entry).getTableId().getValue());
+            }
+            // add handling for other instructions here
         }
-        return FlowSetFieldAction.builder()
-                .fieldName(setFieldAction.getMatchField().getName())
-                .fieldValue(value)
+
+        return flowInstructions.build();
+    }
+
+    /**
+     * Convert {@link OFGroupDescStatsEntry} to {@link GroupEntry}.
+     *
+     * @param ofGroupDescStatsEntry group description.
+     * @return result of transformation {@link GroupEntry}.
+     */
+    public GroupEntry toFlowGroupEntry(OFGroupDescStatsEntry ofGroupDescStatsEntry) {
+        if (ofGroupDescStatsEntry == null) {
+            return null;
+        }
+        return GroupEntry.builder()
+                .groupType(ofGroupDescStatsEntry.getGroupType().toString())
+                .groupId(ofGroupDescStatsEntry.getGroup().getGroupNumber())
+                .buckets(ofGroupDescStatsEntry.getBuckets().stream()
+                        .map(this::toGroupBucket)
+                        .collect(toList()))
                 .build();
     }
 
     /**
-     * Convert {@link OFAction} to {@link FlowCopyFieldAction}.
-     * @param action action to be converted.
-     * @return result of transformation to {@link FlowCopyFieldAction}.
+     * Convert {@link OFBucket} to {@link GroupBucket}.
+     *
+     * @param ofBucket group bucket.
+     * @return result of transformation {@link GroupEntry}.
      */
-    public FlowCopyFieldAction toFlowSetCopyFieldAction(OFAction action) {
-        OFActionNoviflowCopyField setCopyFieldAction = (OFActionNoviflowCopyField) action;
-
-        return FlowCopyFieldAction.builder()
-                .bits(String.valueOf(setCopyFieldAction.getNBits()))
-                .srcOffset(String.valueOf(setCopyFieldAction.getSrcOffset()))
-                .dstOffset(String.valueOf(setCopyFieldAction.getDstOffset()))
-                .srcOxm(String.valueOf(setCopyFieldAction.getOxmSrcHeader()))
-                .dstOxm(String.valueOf(setCopyFieldAction.getOxmDstHeader()))
-                .build();
+    public GroupBucket toGroupBucket(OFBucket ofBucket) {
+        if (ofBucket == null) {
+            return null;
+        }
+        int watchPort = -1;
+        if (ofBucket.getWatchPort() != null) {
+            watchPort = ofBucket.getWatchPort().getPortNumber();
+        }
+        return new GroupBucket(watchPort, toFlowApplyActions(ofBucket.getActions()));
     }
 
     /**
-     * Convert {@link OFActionNoviflowSwapField} to {@link FlowSwapFieldAction}.
-     * @param action action to be converted.
-     * @return result of transformation to {@link FlowSwapFieldAction}.
+     * Partial convert of {@link OFInstruction} to {@link FlowApplyActions}.
      */
-    public FlowSwapFieldAction toFlowSwapFieldAction(OFActionNoviflowSwapField action) {
-        return FlowSwapFieldAction.builder()
-                .bits(String.valueOf(action.getNBits()))
-                .srcOffset(String.valueOf(action.getSrcOffset()))
-                .dstOffset(String.valueOf(action.getDstOffset()))
-                .srcOxm(String.valueOf(action.getOxmSrcHeader()))
-                .dstOxm(String.valueOf(action.getOxmDstHeader()))
-                .build();
+    public FlowApplyActions toFlowApplyActions(List<OFAction> ofApplyActions) {
+        FlowApplyActions.FlowApplyActionsBuilder flowActions = FlowApplyActions.builder();
+
+        for (OFAction action : ofApplyActions) {
+            if (action instanceof OFActionMeter) {
+                fillFlowAction(flowActions, (OFActionMeter) action);
+            } else if (action instanceof OFActionPushVlan) {
+                fillFlowAction(flowActions, (OFActionPushVlan) action);
+            } else if (action instanceof OFActionOutput) {
+                fillFlowAction(flowActions, (OFActionOutput) action);
+            } else if (action instanceof OFActionSetField) {
+                fillFlowAction(flowActions, (OFActionSetField) action);
+            } else if (action instanceof OFActionNoviflowPushVxlanTunnel) {
+                fillFlowAction(flowActions, (OFActionNoviflowPushVxlanTunnel) action);
+            } else if (action instanceof OFActionGroup) {
+                fillFlowAction(flowActions, (OFActionGroup) action);
+            } else if (action instanceof OFActionNoviflowCopyField) {
+                fillFlowAction(flowActions, (OFActionNoviflowCopyField) action);
+            } else if (action instanceof OFActionNoviflowSwapField) {
+                fillFlowAction(flowActions, (OFActionNoviflowSwapField) action);
+            }
+            // add handling for other actions here
+        }
+
+        return flowActions.build();
     }
 
     /**
@@ -327,6 +276,60 @@ public abstract class OfFlowStatsMapper {
             log.error(String.format("Could not convert OFFlowStatsEntry object %s", entry), e);
             return null;
         }
+    }
+
+    private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionMeter action) {
+        flowActions.meter(String.valueOf(action.getMeterId()));
+    }
+
+    private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionPushVlan action) {
+        flowActions.firstPushVlan(String.valueOf(action.getEthertype().toString()));
+    }
+
+    private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionOutput action) {
+        flowActions.flowOutput(String.valueOf(action.getPort().toString()));
+    }
+
+    private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionSetField action) {
+        OFOxm<?> field = action.getField();
+        String value = field.getValue().toString();
+
+        if (MatchField.VLAN_VID.getName().equals(field.getMatchField().getName())) {
+            value = String.valueOf(Long.decode(value) & VLAN_MASK);
+        }
+
+        flowActions.setFieldAction(new FlowSetFieldAction(field.getMatchField().getName(), value));
+    }
+
+    private void fillFlowAction(
+            FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionNoviflowPushVxlanTunnel action) {
+        flowActions.pushVxlan(String.valueOf(action.getVni()));
+    }
+
+    private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionGroup action) {
+        flowActions.group(String.valueOf(action.getGroup()));
+    }
+
+    private void fillFlowAction(
+            FlowApplyActionsBuilder flowActions, OFActionNoviflowCopyField action) {
+        flowActions.copyFieldAction(FlowCopyFieldAction.builder()
+                .bits(String.valueOf(action.getNBits()))
+                .srcOffset(String.valueOf(action.getSrcOffset()))
+                .dstOffset(String.valueOf(action.getDstOffset()))
+                .srcOxm(String.valueOf(action.getOxmSrcHeader()))
+                .dstOxm(String.valueOf(action.getOxmDstHeader()))
+                .build());
+    }
+
+    private void fillFlowAction(
+            FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionNoviflowSwapField action) {
+        flowActions.swapFieldAction(FlowSwapFieldAction.builder()
+                .bits(String.valueOf(action.getNBits()))
+                .srcOffset(String.valueOf(action.getSrcOffset()))
+                .dstOffset(String.valueOf(action.getDstOffset()))
+                .srcOxm(String.valueOf(action.getOxmSrcHeader()))
+                .dstOxm(String.valueOf(action.getOxmDstHeader()))
+                .build());
     }
 
     private int locateInPort(Match match) {

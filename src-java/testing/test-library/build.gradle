@@ -7,7 +7,7 @@ dependencies {
     implementation(platform('org.springframework:spring-framework-bom:5.0.7.RELEASE'))
 
     api project(':base-messaging')
-    api project(':flow-messaging')
+    api project(':flowhs-messaging')
     api project(':nbworker-messaging')
     api project(':grpc-api')
     api project(':northbound-api')

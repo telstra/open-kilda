@@ -23,8 +23,9 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.BaseInstallFlow
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
@@ -69,8 +70,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
-    String flowTopic
+    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    String speakerTopic
 
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -845,7 +846,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def excessMeterIds = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).take(amountOfExcessMeters)
         excessMeterIds.each { meterId ->
-            producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+            producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                     new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, null, sw.dpId,
                             5, 6, 5, 0, meterId, FlowEncapsulationType.TRANSIT_VLAN,
                             OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false, false)).toJson()))
@@ -1165,7 +1166,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
-    private static Message buildMessage(final CommandData data) {
+    private static Message buildMessage(final BaseInstallFlow commandData) {
+        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
         return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }

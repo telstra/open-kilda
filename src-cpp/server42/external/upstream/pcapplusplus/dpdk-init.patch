@@ -1,0 +1,36 @@
+diff --git a/Pcap++/header/DpdkDeviceList.h b/Pcap++/header/DpdkDeviceList.h
+index 5add04b..e280e95 100644
+--- a/Pcap++/header/DpdkDeviceList.h
++++ b/Pcap++/header/DpdkDeviceList.h
+@@ -126,6 +126,11 @@ namespace pcpp
+ 		 */
+ 		static bool initDpdk(CoreMask coreMask, uint32_t mBufPoolSizePerDevice, uint8_t masterCore = 0);
+ 
++        /**
++         * Only set internal variables, used for advances dpdk eal init
++         */
++		static bool externalInitializationDpdk(CoreMask coreMask, uint32_t mBufPoolSizePerDevice, uint8_t masterCore = 0);
++
+ 		/**
+ 		 * Get a DpdkDevice by port ID
+ 		 * @param[in] portId The port ID
+diff --git a/Pcap++/src/DpdkDeviceList.cpp b/Pcap++/src/DpdkDeviceList.cpp
+index 101f38c..e276c7e 100644
+--- a/Pcap++/src/DpdkDeviceList.cpp
++++ b/Pcap++/src/DpdkDeviceList.cpp
+@@ -143,6 +143,15 @@ bool DpdkDeviceList::initDpdk(CoreMask coreMask, uint32_t mBufPoolSizePerDevice,
+ 	return DpdkDeviceList::getInstance().initDpdkDevices(m_MBufPoolSizePerDevice);
+ }
+ 
++bool DpdkDeviceList::externalInitializationDpdk(CoreMask coreMask, uint32_t mBufPoolSizePerDevice, uint8_t masterCore)
++{
++    m_CoreMask = coreMask;
++	m_IsDpdkInitialized = true;
++    m_MBufPoolSizePerDevice = mBufPoolSizePerDevice;
++	DpdkDeviceList::getInstance().setDpdkLogLevel(LoggerPP::Normal);
++	return DpdkDeviceList::getInstance().initDpdkDevices(m_MBufPoolSizePerDevice);
++}
++
+ bool DpdkDeviceList::initDpdkDevices(uint32_t mBufPoolSizePerDevice)
+ {
+ 	if (!m_IsDpdkInitialized)

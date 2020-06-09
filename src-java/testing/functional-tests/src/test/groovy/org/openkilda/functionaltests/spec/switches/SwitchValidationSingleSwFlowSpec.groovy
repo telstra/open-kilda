@@ -16,12 +16,14 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
 import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.BaseInstallFlow
 import org.openkilda.messaging.command.flow.InstallEgressFlow
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
@@ -48,8 +50,8 @@ Description of fields:
 - proper - meters/rules values are the same on a switch and in db
 """)
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
-    String flowTopic
+    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
@@ -418,13 +420,14 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
-        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0, OutputVlanType.REPLACE, false, null)).toJson()))
-        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0, OutputVlanType.REPLACE, false,
+                        new FlowEndpoint(sw.dpId, 17))).toJson()))
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3,
                         FlowEncapsulationType.TRANSIT_VLAN, false)).toJson()))
-        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 0, 3,
                         FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.REPLACE, fakeBandwidth, excessMeterId,
                         sw.dpId, false, false, false)).toJson()))
@@ -577,7 +580,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
     }
 
-    private static Message buildMessage(final CommandData data) {
+    private static Message buildMessage(final BaseInstallFlow commandData) {
+        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
         return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }

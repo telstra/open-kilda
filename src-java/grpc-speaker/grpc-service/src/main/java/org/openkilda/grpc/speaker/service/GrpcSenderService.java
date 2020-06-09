@@ -158,7 +158,7 @@ public class GrpcSenderService {
                                                                           LogMessagesDto logMessagesDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
         return sender.login(name, password)
-                .thenCompose(e -> sender.enableLogMessages(logMessagesDto))
+                .thenCompose(e -> sender.setLogMessagesStatus(logMessagesDto))
                 .thenApply(optional -> optional
                         .map(value -> new EnableLogMessagesResponse(logMessagesDto.getState()))
                         .orElseThrow(() -> new GrpcException(format("Could not set log messages to status: %s",
@@ -177,7 +177,7 @@ public class GrpcSenderService {
                                                                          LogOferrorsDto logOferrorsDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
         return sender.login(name, password)
-                .thenCompose(e -> sender.enableLogOferrors(logOferrorsDto))
+                .thenCompose(e -> sender.setLogOferrorsStatus(logOferrorsDto))
                 .thenApply(optional -> optional
                         .map(value -> new EnableLogMessagesResponse(logOferrorsDto.getState()))
                         .orElseThrow(() -> new GrpcException(format("Could not set log OF errors to status: %s",

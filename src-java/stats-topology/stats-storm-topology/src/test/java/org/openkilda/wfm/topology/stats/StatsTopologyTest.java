@@ -625,7 +625,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendFlowCommand(BaseFlow flowCommand) throws IOException {
         CommandMessage commandMessage = new CommandMessage(flowCommand, timestamp, UUID.randomUUID().toString());
-        sendMessage(commandMessage, statsTopologyConfig.getKafkaSpeakerFlowTopic());
+        sendMessage(commandMessage, statsTopologyConfig.getKafkaSpeakerFlowHsTopic());
     }
 
     private void sendMessage(Object object, String topic) throws IOException {

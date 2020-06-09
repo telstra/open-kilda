@@ -6,8 +6,7 @@
       </meta>
       <title>OPEN KILDA</title>
       <!-- CSS Style Sheets -->
-<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.2.1.min.js"></script>
-<script src="<%=request.getContextPath()%>/lib/javascript/bootstrap.min.js"></script>
+<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.5.1.min.js"></script>
 <link href="<%=request.getContextPath()%>/lib/css/bootstrap.min.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/css/custom.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/images/kilda.png" rel="shortcut icon" type="image/png"></link>
@@ -17,9 +16,10 @@
 			
 		<div class="login">
 			<div class="col-lg-12">
-				<form name="otpForm" method="POST" action="authenticate" onSubmit="return validateTwoFaOtp()">
+				<form name="otpForm" method="POST" action="authenticate" autocomplete="off" onSubmit="return validateTwoFaOtp()">
 					<h1 class="text-center">Open Kilda</h1>
 					<h2 class="text-center">Two-factor authentication</h2>
+					<input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
 					<input type="hidden" name="username" id="username" value="${username}" style="visibility:hidden;"/>
 					<input type="hidden" name="password" id="password" value="${password}" style="visibility:hidden;"/>
 								
@@ -52,8 +52,8 @@
 			</div>
 		</div>
 	</div>
-      <script type="text/javascript" src="<%=request.getContextPath()%>/ui/js/common.js"></script>
-      		<script>
+      
+<script>
 		$(document).ready(function(){
 			focusNextInput();
 		});

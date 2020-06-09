@@ -21,12 +21,15 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 
 public interface SwitchValidateService {
 
     void handleSwitchValidateRequest(String key, SwitchValidateRequest data);
 
     void handleFlowEntriesResponse(String key, SwitchFlowEntries data);
+
+    void handleGroupEntriesResponse(String key, SwitchGroupEntries data);
 
     void handleExpectedDefaultFlowEntriesResponse(String key, SwitchExpectedDefaultFlowEntries data);
 

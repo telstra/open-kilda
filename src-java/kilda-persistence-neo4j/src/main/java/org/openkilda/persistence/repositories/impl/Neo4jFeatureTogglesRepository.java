@@ -63,22 +63,12 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
                 if (featureToggles.getDeleteFlowEnabled() != null) {
                     updatedFeatureToggles.setDeleteFlowEnabled(featureToggles.getDeleteFlowEnabled());
                 }
-                if (featureToggles.getPushFlowEnabled() != null) {
-                    updatedFeatureToggles.setPushFlowEnabled(featureToggles.getPushFlowEnabled());
-                }
-                if (featureToggles.getUnpushFlowEnabled() != null) {
-                    updatedFeatureToggles.setUnpushFlowEnabled(featureToggles.getUnpushFlowEnabled());
-                }
                 if (featureToggles.getUseBfdForIslIntegrityCheck() != null) {
                     updatedFeatureToggles.setUseBfdForIslIntegrityCheck(featureToggles.getUseBfdForIslIntegrityCheck());
                 }
                 if (featureToggles.getFloodlightRoutePeriodicSync() != null) {
                     updatedFeatureToggles.setFloodlightRoutePeriodicSync(
                             featureToggles.getFloodlightRoutePeriodicSync());
-                }
-                if (featureToggles.getFlowsRerouteViaFlowHs() != null) {
-                    updatedFeatureToggles.setFlowsRerouteViaFlowHs(
-                            featureToggles.getFlowsRerouteViaFlowHs());
                 }
                 if (featureToggles.getFlowsRerouteUsingDefaultEncapType() != null) {
                     updatedFeatureToggles.setFlowsRerouteUsingDefaultEncapType(

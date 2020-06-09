@@ -713,8 +713,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     .from(IslFsmState.ACTIVE).to(IslFsmState.INACTIVE).on(IslFsmEvent._BECOME_DOWN);
             builder.transition()
                     .from(IslFsmState.ACTIVE).to(IslFsmState.MOVED).on(IslFsmEvent._BECOME_MOVED);
-            builder.onEntry(IslFsmState.ACTIVE)
-                    .callMethod("activeEnter");
 
             // SET_UP_RESOURCES
             builder.transition()

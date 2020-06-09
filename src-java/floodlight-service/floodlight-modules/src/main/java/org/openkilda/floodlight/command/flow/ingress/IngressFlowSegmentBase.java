@@ -291,14 +291,14 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         return ofMessages;
     }
 
-    protected List<OFFlowMod> makeIngressServer42IngressFlowModMessages(MeterId effectiveMeterId) {
+    protected List<OFFlowMod> makeIngressServer42IngressFlowModMessages() {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             ofMessages.add(flowModFactory.makeOuterOnlyVlanServer42IngressFlowMessage(
-                    effectiveMeterId, getKildaCoreConfig().getServer42UdpPortOffset()));
+                    getKildaCoreConfig().getServer42UdpPortOffset()));
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortServer42IngressFlowMessage(
-                    effectiveMeterId, getKildaCoreConfig().getServer42UdpPortOffset()));
+                    getKildaCoreConfig().getServer42UdpPortOffset()));
         }
         return ofMessages;
     }

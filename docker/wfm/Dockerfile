@@ -41,11 +41,6 @@ COPY BUILD/floodlightrouter-storm-topology/libs/*               /app/floodlightr
 COPY BUILD/floodlightrouter-storm-topology/build.gradle         /app/floodlightrouter-storm-topology/
 
 
-#flow
-COPY BUILD/flow-storm-topology/libs/*                           /app/flow-storm-topology/libs/
-COPY BUILD/flow-storm-topology/build.gradle                     /app/flow-storm-topology/
-
-
 
 #flowhs
 COPY BUILD/flowhs-storm-topology/libs/*                         /app/flowhs-storm-topology/libs/

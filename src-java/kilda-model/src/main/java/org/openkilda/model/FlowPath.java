@@ -92,6 +92,10 @@ public class FlowPath implements Serializable {
     @Convert(graphPropertyType = Long.class)
     private MeterId meterId;
 
+    @Property(name = "ingress_mirror_group_id")
+    @Convert(graphPropertyType = Long.class)
+    private GroupId ingressMirrorGroupId;
+
     private long latency;
 
     private long bandwidth;

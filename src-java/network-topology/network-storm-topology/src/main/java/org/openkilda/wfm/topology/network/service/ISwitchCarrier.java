@@ -19,13 +19,14 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.OnlineStatus;
 
 public interface ISwitchCarrier {
     void setupPortHandler(Endpoint endpoint, Isl history);
 
     void removePortHandler(Endpoint endpoint);
 
-    void setOnlineMode(Endpoint endpoint, boolean mode);
+    void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus);
 
     void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus);
 

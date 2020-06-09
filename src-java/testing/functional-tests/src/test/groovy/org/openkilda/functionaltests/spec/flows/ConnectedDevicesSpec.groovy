@@ -269,6 +269,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
         def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -578,6 +579,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tidy
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
         given: "A switch with devices feature turned off"
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
         def sw = topology.activeTraffGens[0].switchConnected
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
         def swProps = northbound.getSwitchProperties(sw.dpId)
@@ -645,6 +647,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tidy
     def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
         given: "A switch with devices feature turned on"
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
         def initialProps = northbound.getSwitchProperties(sw.dpId)
@@ -699,6 +702,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
         def initialProps = northbound.getSwitchProperties(sw.dpId)
@@ -737,6 +741,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Unroll
     def "Able to distinguish devices between default and non-default single-switch flows (#descr)"() {
         given: "A switch with devices feature turned on"
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
         def initialProps = northbound.getSwitchProperties(sw.dpId)
@@ -1282,8 +1287,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     private FlowPayload getFlowWithConnectedDevices(
             boolean protectedFlow, boolean oneSwitch, boolean srcEnabled, boolean dstEnabled) {
-        def tgSwPair = getUniqueSwitchPairs()[0]
-        assert tgSwPair, "Unable to find a switchPair with traffgens for the requested flow arguments"
+        def tgSwPair = getUniqueSwitchPairs()?.first()
+        assumeTrue("Unable to find a switchPair with traffgens for the requested flow arguments", tgSwPair as boolean)
         getFlowWithConnectedDevices(protectedFlow, oneSwitch, srcEnabled, dstEnabled, tgSwPair)
     }
 
@@ -1321,6 +1326,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
             it.src in tgSwitches && it.dst in tgSwitches
         }
+        assumeTrue("Unable to find a switchPair with traffgens on both sides", switchPairs.size() > 0)
         def result = []
         while (!unpickedTgSwitches.empty) {
             def pair = switchPairs.sort(false) { switchPair ->

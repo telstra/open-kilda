@@ -112,10 +112,6 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getTopoConnectedDevicesRegionTopic());
     }
 
-    public String getFlowTopic() {
-        return formatTopicWithRegion(topics.getFlowRegionTopic());
-    }
-
     public String getTopoDiscoTopic() {
         return formatTopicWithRegion(topics.getTopoDiscoRegionTopic());
     }

@@ -147,7 +147,9 @@ public class NetworkSwitchService {
     public void switchBecomeUnmanaged(SwitchId datapath) {
         log.debug("Switch service receive unmanaged notification for {}", datapath);
         SwitchFsm fsm = locateControllerCreateIfAbsent(datapath);
-        SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();
+        SwitchFsmContext context = SwitchFsmContext.builder(carrier)
+                .isRegionOffline(true)
+                .build();
         controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, context);
     }
 

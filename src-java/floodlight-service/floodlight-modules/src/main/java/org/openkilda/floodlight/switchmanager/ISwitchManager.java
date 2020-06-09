@@ -31,6 +31,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -521,7 +522,7 @@ public interface ISwitchManager extends IFloodlightService {
     long installServer42IngressFlow(
             DatapathId dpid, DatapathId dstDpid, Long cookie, MacAddress server42MacAddress, int server42Port,
             int outputPort, int customerPort, int inputVlanId, int transitTunnelId, OutputVlanType outputVlanType,
-            long meterId, FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
+            FlowEncapsulationType encapsulationType, boolean multiTable) throws SwitchOperationException;
 
     /**
      * Installs flow on egress swtich.
@@ -616,6 +617,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @return list of isl flows
      */
     List<OFFlowMod> getExpectedIslFlowsForPort(DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Returns list of groups installed on switch.
+     * @param dpid switch id
+     * @return list of groups
+     */
+    List<OFGroupDescStatsEntry> dumpGroups(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Returns list of installed flows.

@@ -5,8 +5,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>OPEN KILDA</title>
-<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.2.1.min.js"></script>
-<script src="<%=request.getContextPath()%>/lib/javascript/bootstrap.min.js"></script>
+<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.5.1.min.js"></script>
 <link href="<%=request.getContextPath()%>/lib/css/bootstrap.min.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/css/custom.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/images/kilda.png" rel="shortcut icon" type="image/png"></link>
@@ -25,11 +24,12 @@ html, body {
         <h1 class="text-center">OPEN KILDA</h1>
         <fieldset>
             <div class="form-group">
-                <input type="name" name="username" id="username" class="form-control input-lg" placeholder="Email" autofocus="true" required="true"></input>
+                <input type="name" autocomplete="false" name="username" id="username" class="form-control input-lg" placeholder="Email" autofocus="true" required="true"></input>
             </div>
             <div class="form-group">
-                <input type="password" name="password" id="password" class="form-control input-lg" placeholder="Password" required="true"></input>
+                <input type="password" autocomplete="off" name="password" id="password" class="form-control input-lg" placeholder="Password" required="true"></input>
             </div>
+            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
             <span class="button-checkbox">
                 <input type="submit" class="btn btn-md btn-primary btn-submit" value="Login"></input>
             </span>

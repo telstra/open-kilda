@@ -54,12 +54,12 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
-    default String getFlowTopic() {
-        return getKafkaTopics().getFlowTopic();
+    default String getSwitchManagerTopic() {
+        return getKafkaTopics().getTopoSwitchManagerTopic();
     }
 
-    default String getSpeakerFlowTopic() {
-        return getKafkaTopics().getSpeakerFlowTopic();
+    default String getSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 
     default String getKafkaSpeakerDiscoTopic() {

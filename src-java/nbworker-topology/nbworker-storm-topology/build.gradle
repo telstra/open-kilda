@@ -9,7 +9,7 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'NB Worker Storm Topology'
 dependencies {
     implementation project(':nbworker-messaging')
-    implementation project(':flow-messaging')
+    implementation project(':flowhs-messaging')
     implementation project(':network-messaging')
     implementation project(':ping-messaging')
     implementation project(':base-storm-topology')

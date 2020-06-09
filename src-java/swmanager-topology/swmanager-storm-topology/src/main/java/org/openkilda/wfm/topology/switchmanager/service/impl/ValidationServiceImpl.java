@@ -20,15 +20,17 @@ import static java.util.stream.Collectors.toList;
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
+import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
@@ -41,6 +43,7 @@ import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -48,6 +51,7 @@ import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -58,6 +62,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +76,7 @@ public class ValidationServiceImpl implements ValidationService {
     private SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final FeatureTogglesRepository featureTogglesRepository;
+    private MirrorGroupRepository mirrorGroupRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
@@ -79,6 +85,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        this.mirrorGroupRepository = persistenceManager.getRepositoryFactory().createMirrorGroupRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
     }
@@ -92,14 +99,11 @@ public class ValidationServiceImpl implements ValidationService {
         return makeRulesResponse(expectedCookies, presentRules, expectedDefaultRules, switchId);
     }
 
-    private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths)
-            throws SwitchNotFoundException {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+    private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths) {
         SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                 .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
 
-        if (switchProperties.isServer42FlowRtt() && sw.getFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        if (switchProperties.isServer42FlowRtt()
                 && featureTogglesRepository.find().map(FeatureToggles::getServer42FlowRtt).orElse(false)) {
             return paths.stream()
                     .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
@@ -112,6 +116,50 @@ public class ValidationServiceImpl implements ValidationService {
                     .collect(Collectors.toSet());
         }
         return new HashSet<>();
+    }
+
+    @Override
+    public ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> presentGroups) {
+        Collection<MirrorGroup> expected = mirrorGroupRepository.findBySwitchId(switchId);
+        Set<Integer> expectedGroups = expected
+                .stream()
+                .map(group -> (int) group.getGroupId().getValue()).collect(Collectors.toSet());
+
+        Set<Integer> presentGroupsIds = presentGroups.stream()
+                .map(GroupEntry::getGroupId)
+                .filter(group -> group >= GroupId.MIN_FLOW_GROUP_ID.getValue()) // NOTE(tdurakov): exclude default group
+                .collect(Collectors.toSet());
+        Set<Integer> missingGroups = new HashSet<>(expectedGroups);
+        missingGroups.removeAll(presentGroupsIds);
+        if (!missingGroups.isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following groups are missed: {}", switchId,
+                    missingGroups.stream().map(x -> Integer.toString(x))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+        Set<Integer> properGroups = new HashSet<>(expectedGroups);
+        properGroups.retainAll(presentGroupsIds);
+
+        Set<Integer> excessGroups = new HashSet<>(presentGroupsIds);
+        excessGroups.removeAll(expectedGroups);
+        if (!excessGroups.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following groups are excessive: {}", switchId,
+                    excessGroups.stream().map(x -> Integer.toString(x))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        Set<Integer> misconfiguredGroups = calculateMisconfiguredGroups(switchId, expected, presentGroups);
+
+        return new ValidateGroupsResult(
+                ImmutableList.copyOf(missingGroups),
+                ImmutableList.copyOf(properGroups),
+                ImmutableList.copyOf(excessGroups),
+                ImmutableList.copyOf(misconfiguredGroups));
+    }
+
+    private Set<Integer> calculateMisconfiguredGroups(SwitchId switchId, Collection<MirrorGroup> expected,
+                                                      List<GroupEntry> presentGroups) {
+        // TODO(tdurakov): implement this part
+        return Collections.emptySet();
     }
 
     private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,

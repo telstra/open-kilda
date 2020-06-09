@@ -545,9 +545,8 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"
-        def sw = topology.activeTraffGens*.switchConnected.find {
-            it.noviflow && !it.wb5164
-        } ?: assumeTrue("Should be at least one active traffgen connected to NoviFlow switch", false)
+        def sw = topology.activeSwitches.find { it.noviflow && !it.wb5164 }
+        assumeTrue("Require at least 1 Noviflow non-WB switch", sw as boolean)
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.encapsulationType = encapsulationCreate
         northboundV2.addFlow(flow)

@@ -70,7 +70,8 @@ class TopologyConfig {
                 throw new RuntimeException("Switch $sw has an unknown region '${sw.getRegion()}'. All regions should" +
                         "be specified in kilda.properties.")
             }
-            sw.setController(managementControllers[regionIndex] + " " + statControllers[regionIndex])
+            sw.setController(managementControllers[regionIndex] +
+                    (statControllers[regionIndex] ? " " + statControllers[regionIndex] : ""))
         }
         return topologyDefinition
     }

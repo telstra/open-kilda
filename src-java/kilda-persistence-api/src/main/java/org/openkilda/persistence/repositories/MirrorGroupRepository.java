@@ -34,6 +34,14 @@ public interface MirrorGroupRepository extends Repository<MirrorGroup> {
     Collection<MirrorGroup> findByPathId(PathId pathId);
 
     /**
+     * Find group by Switch Id.
+     *
+     * @param switchId switch ID
+     * @return a collection of {@link MirrorGroup}
+     */
+    Collection<MirrorGroup> findBySwitchId(SwitchId switchId);
+
+    /**
      * Find a group id which is not assigned to any flow.
      *
      * @param switchId       the switch defines where the group is applied on.

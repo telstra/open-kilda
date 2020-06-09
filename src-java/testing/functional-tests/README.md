@@ -44,6 +44,15 @@ execution of subsequent tests.
 - Run tests `make func-tests`
 > Note that the above command will overwrite any existing kilda.properties and topology.yaml 
 files with default ones
+>
+##### Partial Kilda deployment
+If you have limited resources available, it is possible to not deploy some optional Kilda components, for example
+deploy 1 Floodlight instead of 3 (default). Though this will disable some of the tests. 
+In order to achieve this look into `confd/vars/docker-compose.yaml`. If you deploy only 1 Floodlight make sure to:
+- adjust `kilda.properties` values for `floodlight.controllers` and `floodlight.regions`
+- in `topology.yaml` check that no switches try to connect to 'region: 2'  
+
+Make relative changes for any other properties related to not deployed components.
 
 ### Hardware (remote Kilda, Staging)
 - Ensure that `topology.yaml` and
@@ -54,7 +63,8 @@ Note that other properties should
 correspond to actual Kilda properties that were used for deployment of the target env.
 - Check your `topology.yaml`. It should represent your actual expected hardware topology. You can automatically generate 
 `topology.yaml` based on currently discovered topology, but be aware that this will prevent you from catching
-some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/build/topology.yaml functional-tests/`
+some switch/isl discovery-related issues: `make test-topology PARAMS="--tests GenerateTopologyConfig"` && `cp functional-tests/build/topology.yaml functional-tests/`.
+ This will also not generate information about 'a-switch' and traffgens.
 - Now you can run tests by executing the following command in the terminal:  
 `make func-tests`.
 
