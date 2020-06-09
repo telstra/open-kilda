@@ -56,13 +56,17 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.ConnectedDeviceMapper;
 import org.openkilda.wfm.share.mappers.PortMapper;
+import org.openkilda.wfm.share.metrics.PushToStreamMeterRegistry;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsServiceCarrier;
 
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Timer.Sample;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -82,6 +86,7 @@ import java.util.stream.Collectors;
 
 public class SwitchOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier,
         SwitchOperationsServiceCarrier {
+    private transient PushToStreamMeterRegistry meterRegistry;
     private transient SwitchOperationsService switchOperationsService;
     private transient FlowOperationsService flowOperationsService;
 
@@ -94,9 +99,21 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
      */
     @Override
     public void init() {
+        meterRegistry = new PushToStreamMeterRegistry("kilda.switch_operations");
+        meterRegistry.config().commonTags("bolt_id", this.getComponentId());
+
         this.switchOperationsService =
                 new SwitchOperationsService(repositoryFactory, transactionManager, this);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
+    }
+
+    @Override
+    protected void handleInput(Tuple input) throws Exception {
+        try {
+            super.handleInput(input);
+        } finally {
+            meterRegistry.pushMeters(getOutput(), StreamType.TO_METRICS_BOLT.name());
+        }
     }
 
     @Override
@@ -127,16 +144,24 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     }
 
     private List<GetSwitchResponse> getSwitches() {
-        return switchOperationsService.getAllSwitches();
+        Sample sample = Timer.start();
+        try {
+            return switchOperationsService.getAllSwitches();
+        } finally {
+            sample.stop(meterRegistry.timer("switch_dump.execution"));
+        }
     }
 
     private List<GetSwitchResponse> getSwitch(GetSwitchRequest request) {
         SwitchId switchId = request.getSwitchId();
 
+        Sample sample = Timer.start();
         try {
             return Collections.singletonList(switchOperationsService.getSwitch(switchId));
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
+        } finally {
+            sample.stop(meterRegistry.timer("get_switch.execution"));
         }
     }
 
@@ -288,5 +313,6 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.TO_SWITCH_MANAGER.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.TO_METRICS_BOLT.name(), AbstractTopology.fieldMessage);
     }
 }

@@ -179,6 +179,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -200,6 +201,8 @@ class RecordHandler implements Runnable {
 
     private final CommandProcessorService commandProcessor;
 
+    private final Instant createdAt;
+
     public RecordHandler(ConsumerContext context, List<CommandDispatcher<?>> dispatchers,
                          ConsumerRecord<String, String> record) {
         this.context = context;
@@ -207,6 +210,8 @@ class RecordHandler implements Runnable {
         this.record = record;
 
         this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
+
+        createdAt = Instant.now();
     }
 
     private void handleCommand(CommandMessage message) {
@@ -1692,6 +1697,8 @@ class RecordHandler implements Runnable {
             logger.error("Error while parsing record {}", record.value(), e);
             return false;
         }
+
+        speakerCommand.setCommandArrivedAt(createdAt);
 
         handleSpeakerCommand(speakerCommand);
         return true;
