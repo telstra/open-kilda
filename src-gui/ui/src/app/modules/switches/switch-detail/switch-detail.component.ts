@@ -399,14 +399,16 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     modalRef.componentInstance.emitService.subscribe(
       evacuate => {
         var data = {"under_maintenance":e.target.checked,"evacuate":evacuate};
-
+          this.loaderService.show('Applying Changes..');
           this.switchService.switchMaintenance(data,this.switchId).subscribe((response)=>{
             this.toastr.success('Maintenance mode changed successful','Success');
+            this.loaderService.hide();
             this.underMaintenance = e.target.checked;
             if(evacuate){
               location.reload();
             }
           },error => {
+            this.loaderService.hide();
             this.toastr.error('Error in changing maintenance mode! ','Error');
           });
       },

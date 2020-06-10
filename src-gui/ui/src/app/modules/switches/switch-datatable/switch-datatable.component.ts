@@ -1,5 +1,5 @@
 import { Component, OnInit, Input,ViewChild, Output, EventEmitter, OnChanges, OnDestroy, AfterViewInit, SimpleChanges, Renderer2 } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { Router } from '@angular/router';
@@ -23,7 +23,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
   hasStoreSetting =false;
-
+  flowSubscription:Subscription[]=[];
   switch_id : boolean = false;
   commonname : boolean = false;
   name : boolean = false;
@@ -93,8 +93,9 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   fetchSwitchFlowData(switchlist){
     if(switchlist && switchlist.length){
+      var i = 0;
       for(let switchData of switchlist){
-          this.switchService.getSwitchFlows(switchData.switch_id,false,null).subscribe(data=>{
+          this.flowSubscription[i] = this.switchService.getSwitchFlows(switchData.switch_id,false,null).subscribe(data=>{
           let flowsData:any = data;
           this.flowDataOfSwitch[switchData.switch_id] = {};
           this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
@@ -113,7 +114,8 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
             this.flowDataOfSwitch[switchData.switch_id] = {};
            this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;
            this.flowDataOfSwitch[switchData.switch_id].noofflows = 0;
-          })          
+          }) 
+         i++;          
       }
     }
   }
@@ -136,6 +138,11 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
+    if(this.flowSubscription && this.flowSubscription.length){
+      this.flowSubscription.forEach((subscription) => subscription.unsubscribe());
+      this.flowSubscription = [];
+    }
+    
   }
 
   fulltextSearch(value:any){ 

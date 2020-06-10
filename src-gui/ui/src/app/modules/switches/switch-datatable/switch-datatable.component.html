@@ -59,8 +59,8 @@
     </thead>
 
     <tbody>
-        <tr *ngFor="let row of data; let i = index" (click)="showSwitch(row)" class="flowDataRow"
-        [ngClass]="{'down-state': row.state == 'DEACTIVATED' , 'up-state': row.state == 'ACTIVATED'}" [class.down-status]="row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
+        <tr ngbTooltip="{{row.under_maintenance ? 'Under Maintenence' :''}}" placement="bottom" container="body"  *ngFor="let row of data; let i = index" (click)="showSwitch(row)" class="flowDataRow"
+        [ngClass]="{'down-state': row.state == 'DEACTIVATED' , 'up-state': row.state == 'ACTIVATED', 'maintenance_switch': row.under_maintenance }" [class.down-status]="row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
             <td class="divTableCell" title="{{checkValue(row.switch_id)}}" [contextMenu]="copySwitchId">
               {{checkValue(row.switch_id)}}
               <context-menu #copySwitchId>

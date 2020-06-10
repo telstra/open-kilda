@@ -4,7 +4,7 @@ import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { ToastrService } from 'ngx-toastr';
 import { Router } from '@angular/router';
 import { DataTableDirective } from 'angular-datatables';
-import { Subject } from 'rxjs';
+import { Subject ,Subscription} from 'rxjs';
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
@@ -31,6 +31,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   portListTimerId: any;  
   portFlowData:any = {};
   portListSubscriber = null;
+  portFlowSubscription:Subscription[] = [];
   loadPorts = false;
   hasStoreSetting ;
   constructor(private switchService:SwitchService,
@@ -207,7 +208,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
   fetchPortFlowData(switchId,portnumber){
     if(switchId && portnumber!='-'){
-          this.switchService.getSwitchFlows(switchId,false,portnumber).subscribe(data=>{
+         var subscriptionPortFlows =  this.switchService.getSwitchFlows(switchId,false,portnumber).subscribe(data=>{
           let flowsData:any = data;
           this.portFlowData[portnumber] = {};
           this.portFlowData[portnumber].sumflowbandwidth = 0;
@@ -227,6 +228,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
            this.portFlowData[portnumber].sumflowbandwidth = 0;
            this.portFlowData[portnumber].noofflows =0;
           }) 
+          this.portFlowSubscription.push(subscriptionPortFlows);
     }
   }
 
@@ -245,6 +247,10 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     if(this.portListSubscriber){
       this.portListSubscriber.unsubscribe();
       this.portListSubscriber = null;
+    }
+    if(this.portFlowSubscription && this.portFlowSubscription.length){
+      this.portFlowSubscription.forEach((subscription) => subscription.unsubscribe());
+      this.portFlowSubscription = [];
     }
     this.loadPorts = false;
   }

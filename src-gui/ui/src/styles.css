@@ -1589,6 +1589,10 @@ tbody tr.odd td {
   background: #f1f1f1 !important;
 }
 
+tbody tr.maintenance_isl  td, tbody tr.maintenance_switch  td{
+  background: #cc93b6 !important;
+}
+
 .dataTables_wrapper .dataTables_filter input {
   border: 1px solid #aaa !important;
   height: 30px !important;

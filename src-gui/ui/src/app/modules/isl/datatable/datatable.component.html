@@ -18,7 +18,7 @@
 <table datatable id="isl-list-table" [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover" style="font-size:13px;">
   <thead>
     <tr>
-      <th >
+      <th>
         <span title="Source Switch Name">
         Src Switch
       </span>
@@ -63,7 +63,7 @@
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedBfd')"></i>
         <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedBfd" [hidden]="!expandedBfd"/>
       </th>
-      <th ><span title="Latency">Latency</span>
+      <th><span title="Latency">Latency</span>
         <i class="fa fa-search" (click)="toggleSearch($event,'expandedLatency')"></i>
         <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="expandedLatency" [hidden]="!expandedLatency"/>
       </th>
@@ -74,7 +74,7 @@
     </tr>
   </thead>
   <tbody>
-    <tr *ngFor="let listItem of data; let i = index" [ngClass]="{'down-state': listItem.state == 'FAILED' , 'up-state': listItem.state != 'FAILED'}" class="flowDataRow">
+    <tr ngbTooltip="{{listItem.under_maintenance ? 'Under Maintenence' :''}}" placement="bottom" container="body"  *ngFor="let listItem of data; let i = index" [ngClass]="{'down-state': listItem.state == 'FAILED' , 'up-state': listItem.state != 'FAILED' , 'maintenance_isl': listItem.under_maintenance }" class="flowDataRow">
       <td class="divTableCell" title="{{ checkValue(listItem.source_switch_name) }}" (click)="showIslDetail(listItem)" [contextMenu]="copySrcSwitchName">
         {{checkValue(listItem.source_switch_name)}}
         <context-menu #copySrcSwitchName>
