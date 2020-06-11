@@ -158,26 +158,25 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Update the QinQ flow(outer/inner vlans)"
         def updateResponse = flowHelperV2.updateFlow(qinqFlow.flowId, qinqFlow.tap {
-            //TODO(andriidovhan) remove '+ 1' when 3496 is merged
-            qinqFlow.source.vlanId = vlanFlow.source.vlanId + 1
+            qinqFlow.source.vlanId = vlanFlow.source.vlanId
             qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
-            qinqFlow.destination.vlanId = vlanFlow.destination.vlanId + 1
+            qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
             qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
         })
 
         then: "Update response contains correct info about innerVlanIds"
         with(updateResponse) {
-            it.source.vlanId == vlanFlow.source.vlanId + 1
+            it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
-            it.destination.vlanId == vlanFlow.destination.vlanId + 1
+            it.destination.vlanId == vlanFlow.destination.vlanId
             it.destination.innerVlanId == vlanFlow.source.vlanId
         }
 
         and: "Flow is really updated"
         with(northbound.getFlow(qinqFlow.flowId)) {
-            it.source.vlanId == vlanFlow.source.vlanId + 1
+            it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
-            it.destination.vlanId == vlanFlow.destination.vlanId + 1
+            it.destination.vlanId == vlanFlow.destination.vlanId
             it.destination.innerVlanId == vlanFlow.source.vlanId
         }
 
@@ -356,7 +355,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10             | -1
     }
 
-    @Ignore("updateV1/deleteV1 is not working (wait PR 3496)")
     def "System allow to create/update/delete a QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -414,9 +412,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         !flowIsDeleted && flowHelperV2.deleteFlow(flow.id)
     }
 
-    @Ignore("wait PR 3496")
     @Tidy
-    def "System allows to create QinQ flow and flow without QnQ with the same vlan on the same port"() {
+    def "System allows to create QinQ flow and vlan flow with the same vlan on the same port"() {
         given: "Two switches with enabled multi table mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
         assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 1))

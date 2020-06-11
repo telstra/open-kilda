@@ -10,6 +10,7 @@ import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.SHARED_RULE_TABLE_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -1087,6 +1088,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.validateFlow(flow.flowId).findAll { it.discrepancies.empty && it.asExpected }.size() == 1
 
         when: "Delete the flow rules on the dst switch"
+        def sharedRuleOnDstSwitch = northbound.getSwitchRules(involvedSwitches[2].dpId).flowEntries.find {
+                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
+        }
         northbound.deleteSwitchRules(involvedSwitches[2].dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Flow is not valid in both directions"
@@ -1097,7 +1101,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             validateInfo.rules.excess.empty
             validateInfo.rules.misconfigured.empty
             validateInfo.rules.missing.sort() ==
-                    [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort()
+                    [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value, sharedRuleOnDstSwitch.cookie].sort()
             validateInfo.meters.excess.empty
             validateInfo.meters.missing.empty
             validateInfo.meters.misconfigured.empty
@@ -1143,6 +1147,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         verifyAll(northbound.getSwitchRules(involvedSwitches[2].dpId).flowEntries) { rules ->
             rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
             rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+            rules.find { it.cookie == sharedRuleOnDstSwitch.cookie }.tableId == SHARED_RULE_TABLE_ID
         }
 
         and: "Flow is valid and pingable"
