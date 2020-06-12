@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -315,10 +316,13 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected <V> KafkaSpoutConfig.Builder<String, V> makeKafkaSpoutConfig(
             List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder) {
         KafkaSpoutConfig.Builder<String, V> config = new KafkaSpoutConfig.Builder<>(
-                kafkaConfig.getHosts(), StringDeserializer.class, valueDecoder, new CustomNamedSubscription(topics));
+                kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
 
-        config.setGroupId(makeKafkaGroupName(spoutId))
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
+        config.setProp(ConsumerConfig.GROUP_ID_CONFIG, makeKafkaGroupName(spoutId))
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
+                .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDecoder);
 
         return config;
     }
@@ -326,12 +330,14 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected KafkaSpoutConfig.Builder<String, AbstractMessage> getKafkaSpoutAbstractMessageSupport(List<String> topics,
                                                                                                     String spoutId) {
         KafkaSpoutConfig.Builder<String, AbstractMessage> config = new KafkaSpoutConfig.Builder<>(
-                kafkaConfig.getHosts(), StringDeserializer.class, AbstractMessageDeserializer.class,
-                new CustomNamedSubscription(topics));
+                kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
 
-        config.setGroupId(makeKafkaGroupName(spoutId))
+        config.setProp(ConsumerConfig.GROUP_ID_CONFIG, makeKafkaGroupName(spoutId))
                 .setRecordTranslator(new AbstractMessageTranslator())
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
+                .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, AbstractMessageDeserializer.class);
 
         return config;
     }
