@@ -21,8 +21,8 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 
 import com.google.common.collect.Lists;

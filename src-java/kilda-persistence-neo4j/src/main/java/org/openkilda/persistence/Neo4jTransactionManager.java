@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
 import com.google.common.annotations.VisibleForTesting;

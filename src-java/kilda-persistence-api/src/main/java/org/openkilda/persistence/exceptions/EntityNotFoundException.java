@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
+package org.openkilda.persistence.exceptions;
 
 /**
- * {@code ConfigurationException} indicates that an constraint violation has occurred during a persistence operation.
+ * A generic exception that indicates that an entity not found during a persistence operation.
  */
-public class ConstraintViolationException extends PersistenceException {
-    public ConstraintViolationException(String message) {
+public class EntityNotFoundException extends PersistenceException {
+
+    public EntityNotFoundException(String message) {
         super(message);
     }
 
-    public ConstraintViolationException(String message, Throwable cause) {
+    public EntityNotFoundException(String message, Throwable cause) {
         super(message, cause);
     }
 }

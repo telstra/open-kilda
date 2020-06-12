@@ -20,12 +20,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -45,10 +47,12 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.TransactionCallback;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.EntityNotFoundException;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
@@ -108,6 +112,10 @@ public class RerouteServiceTest {
             arg.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult<?>>any());
+        doAnswer(invocation -> {
+            TransactionCallback<?, ?> arg = invocation.getArgument(0);
+            return arg.doInTransaction();
+        }).when(transactionManager).doInTransaction(Mockito.<TransactionCallback<?, ?>>any());
 
         pinnedFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_C).pinned(true).build();
@@ -375,9 +383,41 @@ public class RerouteServiceTest {
         rerouteService.processSingleSwitchFlowStatusUpdate(
                 new SwitchStateChanged(oneSwitchFlow.getSrcSwitch().getSwitchId(), SwitchStatus.INACTIVE));
 
-
         verify(flowRepository).updateStatus(oneSwitchFlow.getFlowId(), FlowStatus.DOWN);
+    }
 
+    @Test
+    public void shouldSkipRerouteRequestsForFlowWithoutAffectedPathSegment() {
+        PathNode islSide = new PathNode(SWITCH_A.getSwitchId(), 1, 0);
+
+        FlowPathRepository pathRepository = mock(FlowPathRepository.class);
+        when(pathRepository.findBySegmentEndpoint(eq(islSide.getSwitchId()), eq(islSide.getPortNo())))
+                .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
+
+        FlowRepository flowRepository = mock(FlowRepository.class);
+
+        PathSegmentRepository pathSegmentRepository = mock(PathSegmentRepository.class);
+        doThrow(new EntityNotFoundException("Not found"))
+                .when(pathSegmentRepository).updateFailedStatus(any(), any(), anyBoolean());
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createPathSegmentRepository())
+                .thenReturn(pathSegmentRepository);
+        when(repositoryFactory.createFlowPathRepository())
+                .thenReturn(pathRepository);
+        when(repositoryFactory.createFlowRepository())
+                .thenReturn(flowRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        RerouteAffectedFlows request = new RerouteAffectedFlows(islSide, "dummy-reason - unittest");
+        rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
+
+        verifyZeroInteractions(carrier);
     }
 
     @Test

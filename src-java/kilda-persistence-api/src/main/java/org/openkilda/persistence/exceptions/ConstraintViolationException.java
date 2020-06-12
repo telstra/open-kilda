@@ -13,18 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
+package org.openkilda.persistence.exceptions;
 
 /**
- * An exception that indicates a temporary fault during a persistence operation
- * that may be worked around by retrying.
+ * {@code ConfigurationException} indicates that an constraint violation has occurred during a persistence operation.
  */
-public class RecoverablePersistenceException extends PersistenceException {
-    public RecoverablePersistenceException(String message) {
+public class ConstraintViolationException extends PersistenceException {
+    public ConstraintViolationException(String message) {
         super(message);
     }
 
-    public RecoverablePersistenceException(String message, Throwable cause) {
+    public ConstraintViolationException(String message, Throwable cause) {
         super(message, cause);
     }
 }

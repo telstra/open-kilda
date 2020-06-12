@@ -19,8 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.model.BfdSession;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;

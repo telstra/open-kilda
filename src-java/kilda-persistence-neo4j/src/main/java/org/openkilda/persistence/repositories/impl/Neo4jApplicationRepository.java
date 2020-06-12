@@ -20,8 +20,8 @@ import static org.neo4j.ogm.cypher.ComparisonOperator.EQUALS;
 import org.openkilda.model.ApplicationRule;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.ExclusionCookie;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 
 import org.neo4j.ogm.cypher.Filter;
