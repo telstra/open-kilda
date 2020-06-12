@@ -49,7 +49,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -1386,7 +1385,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {
-        assert northbound.getSwitchRules(switchId).flowEntries.count { !Cookie.isDefaultRule(it.cookie) } == 0
+        assert northbound.getSwitchRules(switchId).flowEntries.count { !new Cookie(it.cookie).serviceFlag } == 0
         assert northbound.getAllMeters(switchId).meterEntries.count { !MeterId.isMeterIdOfDefaultRule(it.meterId) } == 0
     }
 

@@ -161,7 +161,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         switchHelper.verifyMeterSectionsAreEmpty(intermediateSwitchValidateInfo)
 
         and: "Rules are stored in the 'proper' section on the transit switch"
-        intermediateSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+        intermediateSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
         switchHelper.verifyRuleSectionsAreEmpty(intermediateSwitchValidateInfo, ["missing", "excess"])
 
         and: "Able to perform switch sync which does nothing"
@@ -333,7 +333,7 @@ misconfigured"
         then: "Meters info/rules are moved into the 'missing' section on the srcSwitch"
         verifyAll(northbound.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing == forwardCookies
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) } == reverseCookies//forward cookie's removed with meter
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag } == reverseCookies//forward cookie's removed with meter
 
             it.meters.missing*.meterId == srcSwitchCreatedMeterIds
             it.meters.missing*.cookie == forwardCookies
@@ -351,7 +351,7 @@ misconfigured"
 
         and: "Meters info/rules are NOT moved into the 'missing' section on the dstSwitch"
         verifyAll(northbound.validateSwitch(dstSwitch.dpId)) {
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             it.rules.proper.containsAll(forwardCookies + reverseCookies)
 
             def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
@@ -412,7 +412,7 @@ misconfigured"
         then: "Ingress rule is moved into the 'missing' section on the srcSwitch"
         verifyAll(northbound.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing == [ingressCookie]
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) } == [egressCookie]
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag } == [egressCookie]
             switchHelper.verifyMeterSectionsAreEmpty(it)
             switchHelper.verifyRuleSectionsAreEmpty(it, ["excess"])
         }
@@ -426,7 +426,7 @@ misconfigured"
         with(northbound.validateSwitch(srcSwitch.dpId)) {
             switchHelper.verifyMeterSectionsAreEmpty(it)
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.sort() == [ingressCookie, egressCookie].sort()
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.sort() == [ingressCookie, egressCookie].sort()
         }
 
         when: "Delete the flow"
@@ -467,7 +467,7 @@ misconfigured"
         verifyAll(northbound.validateSwitch(transitSw.dpId)) {
             it.rules.missing.size() == 2
             it.rules.proper.findAll {
-                !Cookie.isDefaultRule(it)
+                !new Cookie(it).serviceFlag
             }.empty
             it.rules.excess.empty
         }
@@ -479,7 +479,7 @@ misconfigured"
 
         then: "Repeated validation shows no discrepancies"
         verifyAll(northbound.validateSwitch(transitSw.dpId)) {
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
@@ -521,21 +521,21 @@ misconfigured"
         verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
             it.rules.missing == [egressCookie]
             it.rules.proper.findAll {
-                !Cookie.isDefaultRule(it)
+                !new Cookie(it).serviceFlag
             }.size() == 1 //ingress rule is left untouched
             it.rules.excess.empty
         }
 
         and: "Rule info is NOT moved into the 'missing' section on the dstSwitch and transit switches"
         def dstSwitchValidateInfo = northbound.validateSwitch(switchPair.dst.dpId)
-        dstSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+        dstSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
         switchHelper.verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def transitSwitches = involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }
 
         transitSwitches.each { switchId ->
             def transitSwitchValidateInfo = northbound.validateSwitch(switchId)
-            assert transitSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            assert transitSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             switchHelper.verifyRuleSectionsAreEmpty(transitSwitchValidateInfo, ["missing", "excess"])
         }
 
@@ -546,7 +546,7 @@ misconfigured"
 
         then: "Repeated validation shows no discrepancies"
         verifyAll(northbound.validateSwitch(switchPair.dst.dpId)) {
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
@@ -578,7 +578,7 @@ misconfigured"
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
+            !new Cookie(it.cookie).serviceFlag
         }*.cookie
         createdCookies.size() == 2
 
@@ -608,14 +608,14 @@ misconfigured"
         then: "Switch validation shows excess rules and store them in the 'excess' section"
         Wrappers.wait(WAIT_OFFSET) {
             def newCookiesSize = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }.size()
             assert newCookiesSize == createdCookies.size() + 1
 
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def involvedSwitchValidateInfo = northbound.validateSwitch(switchId)
                 assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookies)
-                assert involvedSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+                assert involvedSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
                 switchHelper.verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["missing"])
 
                 assert involvedSwitchValidateInfo.rules.excess.size() == 1
@@ -723,14 +723,14 @@ misconfigured"
 
         then: "System installs missing rules and meters"
         involvedSwitches.each {
-            assert syncResultsMap[it.dpId].rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
+            assert syncResultsMap[it.dpId].rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
             assert syncResultsMap[it.dpId].rules.excess.size() == 0
             assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
         [switchPair.src, switchPair.dst].each {
-            assert syncResultsMap[it.dpId].meters.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
+            assert syncResultsMap[it.dpId].meters.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
             assert syncResultsMap[it.dpId].meters.removed.size() == 0
@@ -806,7 +806,7 @@ misconfigured"
         then: "Rules are stored in the 'proper' section"
         commonNodeIds.each { switchId ->
             def rules = northbound.validateSwitchRules(switchId)
-            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
+            assert rules.properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules(switchId)
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         }
@@ -817,7 +817,7 @@ misconfigured"
                 }
         uniqueNodes.forEach { sw ->
             def rules = northbound.validateSwitchRules(sw.switchId)
-            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            assert rules.properRules.findAll { !new Cookie(it).serviceFlag }.size() == 2
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         }
@@ -825,7 +825,7 @@ misconfigured"
         when: "Delete rule of protected path on the srcSwitch (egress)"
         def protectedPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
         def srcSwitchRules = northbound.getSwitchRules(commonNodeIds[0]).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
+            !new Cookie(it.cookie).serviceFlag
         }
 
         def ruleToDelete = srcSwitchRules.find {
@@ -837,7 +837,7 @@ misconfigured"
 
         then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
         verifyAll(northbound.validateSwitch(commonNodeIds[0])) {
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             it.rules.missing == [ruleToDelete]
             it.rules.excess.empty
         }
@@ -845,13 +845,13 @@ misconfigured"
         and: "Rest switches are not affected by deleting the rule on the srcSwitch"
         commonNodeIds[1..-1].each { switchId ->
             def validation = northbound.validateSwitch(switchId)
-            assert validation.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
+            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules(switchId)
             assert validation.rules.missing.empty
             assert validation.rules.excess.empty
         }
         uniqueNodes.forEach { sw ->
             def validation = northbound.validateSwitch(sw.switchId)
-            assert validation.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             assert validation.rules.missing.empty
             assert validation.rules.excess.empty
         }
@@ -864,7 +864,7 @@ misconfigured"
         then: "Switch validation no longer shows missing rules"
         verifyAll(northbound.validateSwitch(swPair.src.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 3
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 3
         }
 
         and: "Cleanup: delete the flow"
@@ -949,7 +949,7 @@ misconfigured"
 
     List<Long> getCookiesWithMeter(SwitchId switchId) {
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter
+            !new Cookie(it.cookie).serviceFlag && it.instructions.goToMeter
         }*.cookie
     }
 

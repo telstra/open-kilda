@@ -302,7 +302,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
         def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
         properMeters.meterId.size() == 2
-        swValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+        swValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
 
         when: "Update meterId for created flow directly via db"
         MeterId newMeterId = new MeterId(100)
@@ -489,7 +489,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def response = northbound.validateSwitch(sw.dpId)
 
         then: "Response without meter section is returned"
-        response.rules.proper.findAll { !Cookie.isDefaultRule(it) }.empty
+        response.rules.proper.findAll { !new Cookie(it).serviceFlag }.empty
         response.rules.missing.empty
         response.rules.excess.empty
         !response.meters
@@ -516,7 +516,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Switch validation shows no discrepancies"
         with(northbound.validateSwitch(sw.dpId)) {
             switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
-            it.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
             properMeters.size() == 2
         }
@@ -567,7 +567,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
     List<Long> getCookiesWithMeter(SwitchId switchId) {
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter
+            !new Cookie(it.cookie).serviceFlag && it.instructions.goToMeter
         }*.cookie
     }
 

@@ -52,7 +52,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
         def metersMap = involvedSwitches.findAll { it.ofVersion != "OF_12" }.collectEntries { sw ->
@@ -75,7 +75,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
         def metersMapAfterReroute = involvedSwitches.findAll { it.ofVersion != "OF_12" }.collectEntries { sw ->
