@@ -323,11 +323,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "And rules for main path are recreacted"
-        def flowInfoFromDb2 = database.getFlow(flow.flowId)
-        [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
-                [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
-
         Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def flowInfoFromDb2 = database.getFlow(flow.flowId)
+            assert [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
+                    [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+
             verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
                 rules.find {
                     it.cookie == flowInfoFromDb2.forwardPath.cookie.value
