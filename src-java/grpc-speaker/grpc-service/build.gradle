@@ -28,12 +28,12 @@ dependencies {
     }
     implementation('org.apache.kafka:kafka-clients') {
         version {
-            strictly '2.0.0'
+            strictly '0.10.2.1'
         }
     }
     implementation('org.apache.kafka:kafka_2.11') {
         version {
-            strictly '2.0.0'
+            strictly '0.10.2.1'
         }
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'

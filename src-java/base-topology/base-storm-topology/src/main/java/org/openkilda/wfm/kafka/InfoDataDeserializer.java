@@ -15,41 +15,18 @@
 
 package org.openkilda.wfm.kafka;
 
-import static java.lang.String.format;
-
-import org.openkilda.messaging.info.ErrorInfoData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.common.serialization.Deserializer;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Map;
 
 @Slf4j
-public class InfoDataDeserializer implements Deserializer<InfoData> {
+public class InfoDataDeserializer extends Deserializer<InfoData> {
 
     @Override
-    public void configure(Map<String, ?> configs, boolean isKey) {
-        // No-op
-    }
-
-    @Override
-    public InfoData deserialize(String topic, byte[] data) {
-        try {
-            return SerializationUtils.MAPPER.readValue(data, InfoData.class);
-        } catch (IOException e) {
-            String message = StringUtils.toEncodedString(data, Charset.defaultCharset());
-            log.error(format("Failed to deserialize data: %s from topic %s", message, topic), e);
-            return new ErrorInfoData("Failed to deserialize data", message);
-        }
-    }
-
-    @Override
-    public void close() {
-        // No-op
+    protected InfoData jsonDecode(byte[] data) throws IOException {
+        return SerializationUtils.MAPPER.readValue(data, InfoData.class);
     }
 }

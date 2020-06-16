@@ -93,7 +93,7 @@ sourceSets {
 configurations {
     stormFluxArtifacts {
         dependencies {
-            stormFluxArtifacts('org.apache.storm:flux-core:1.2.1') {
+            stormFluxArtifacts('org.apache.storm:flux-core:1.1.0') {
                 exclude(group: 'commons-cli', module: 'commons-cli')
             }
         }
