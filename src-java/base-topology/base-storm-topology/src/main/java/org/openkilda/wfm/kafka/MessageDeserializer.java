@@ -15,45 +15,18 @@
 
 package org.openkilda.wfm.kafka;
 
-import static java.lang.String.format;
-
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.wfm.topology.utils.SerializationUtils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.common.serialization.Deserializer;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
-public class MessageDeserializer implements Deserializer<Message> {
+public class MessageDeserializer extends Deserializer<Message> {
 
     @Override
-    public void configure(Map<String, ?> configs, boolean isKey) {
-        // No-op
-    }
-
-    @Override
-    public Message deserialize(String topic, byte[] data) {
-        try {
-            return SerializationUtils.MAPPER.readValue(data, Message.class);
-        } catch (IOException e) {
-            String message = StringUtils.toEncodedString(data, Charset.defaultCharset());
-            log.error(format("Failed to deserialize data: %s from topic %s", message, topic), e);
-            ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "Failed to deserialize message", message);
-            return new ErrorMessage(errorData, System.currentTimeMillis(), UUID.randomUUID().toString());
-        }
-    }
-
-    @Override
-    public void close() {
-        // No-op
+    protected Message jsonDecode(byte[] data) throws IOException {
+        return SerializationUtils.MAPPER.readValue(data, Message.class);
     }
 }
