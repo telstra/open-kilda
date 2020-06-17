@@ -306,7 +306,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         def flowData = northboundV2.getFlow(flow.flowId)
         def protectedFlowPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
-        northboundV2.updateFlow(flowData.flowId, flowHelperV2.toRequest(flowData.tap { it.allocateProtectedPath = false }))
+        flowHelperV2.updateFlow(flowData.flowId, flowHelperV2.toRequest(flowData.tap { it.allocateProtectedPath = false }))
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath

@@ -67,8 +67,8 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     def "GRPC stats are being logged"(metric, tags) {
         assumeTrue("This test is skipped because 'collectGrpcStats' is disabled",
                 northbound.getFeatureToggles().collectGrpcStats)
-        expect: "At least 1 result in the past 10 minutes"
-        otsdb.query(10.minutes.ago, metricPrefix + metric, tags).dps.size() > 0
+        expect: "At least 1 result in the past 15 minutes"
+        otsdb.query(15.minutes.ago, metricPrefix + metric, tags).dps.size() > 0
 
         where:
         [metric, tags] << (
