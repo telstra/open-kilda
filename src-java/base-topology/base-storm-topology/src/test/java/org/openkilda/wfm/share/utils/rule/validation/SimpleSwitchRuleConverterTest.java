@@ -44,6 +44,7 @@ import org.openkilda.model.Vxlan;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.collect.Lists;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.Instant;
@@ -103,6 +104,26 @@ public class SimpleSwitchRuleConverterTest {
                 BURST_COEFFICIENT);
 
         assertEquals(expectedSwitchRules, switchRules);
+    }
+
+    @Test
+    public void convertFlowWithIngressVlanIdMatchesTransitVlanId() {
+        Flow flow = buildFlow(FlowEncapsulationType.TRANSIT_VLAN);
+        Assert.assertNotEquals(0, flow.getSrcVlan());
+        Assert.assertNotNull(flow.getForwardPath());
+
+        TransitVlan encapsulation = TransitVlan.builder()
+                .flowId(flow.getFlowId())
+                .pathId(flow.getForwardPathId())
+                .vlan(flow.getSrcVlan())
+                .build();
+
+        List<SimpleSwitchRule> pathView = simpleSwitchRuleConverter.convertFlowPathToSimpleSwitchRules(
+                flow, flow.getForwardPath(), encapsulation, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        Assert.assertFalse(pathView.isEmpty());
+
+        SimpleSwitchRule ingress = pathView.get(0);
+        Assert.assertEquals(Collections.emptyList(), ingress.getOutVlan());
     }
 
     @Test
