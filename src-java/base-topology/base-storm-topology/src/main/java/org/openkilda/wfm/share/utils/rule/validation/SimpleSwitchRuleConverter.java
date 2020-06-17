@@ -58,7 +58,9 @@ public class SimpleSwitchRuleConverter {
             rules.add(buildIngressSimpleSwitchRule(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
                     flowMeterBurstCoefficient));
         }
-        rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId));
+        if (! flow.isOneSwitchFlow()) {
+            rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId));
+        }
         return rules;
     }
 
@@ -109,7 +111,14 @@ public class SimpleSwitchRuleConverter {
 
             rule.setOutPort(ingressSegment.getSrcPort());
             if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-                rule.setOutVlan(Collections.singletonList(encapsulationId.getEncapsulationId()));
+                List<Integer> currentVlanStack;
+                if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
+                    currentVlanStack = Collections.singletonList(endpoint.getInnerVlanId());
+                } else {
+                    currentVlanStack = FlowEndpoint.makeVlanStack(endpoint.getOuterVlanId());
+                }
+                rule.setOutVlan(calcVlanSetSequence(
+                        currentVlanStack, Collections.singletonList(encapsulationId.getEncapsulationId())));
             } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
                 rule.setTunnelId(encapsulationId.getEncapsulationId());
             }
@@ -120,10 +129,6 @@ public class SimpleSwitchRuleConverter {
 
     private List<SimpleSwitchRule> buildTransitAndEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
                                                                           EncapsulationId encapsulationId) {
-        if (flow.isOneSwitchFlow()) {
-            return Collections.emptyList();
-        }
-
         List<PathSegment> orderedSegments = flowPath.getSegments().stream()
                 .sorted(Comparator.comparingInt(PathSegment::getSeqId))
                 .collect(Collectors.toList());
@@ -266,14 +271,7 @@ public class SimpleSwitchRuleConverter {
     }
 
     private static List<Integer> calcVlanSetSequence(FlowSideAdapter ingress, FlowEndpoint egress) {
-        List<Integer> current;
-        if (ingress.isMultiTableSegment()) {
-            // outer vlan is removed by first shared rule
-            current = FlowEndpoint.makeVlanStack(ingress.getEndpoint().getInnerVlanId());
-        } else {
-            current = ingress.getEndpoint().getVlanStack();
-        }
-        return calcVlanSetSequence(current, egress.getVlanStack());
+        return calcVlanSetSequence(ingress.getEndpoint().getVlanStack(), egress.getVlanStack());
     }
 
     /**
