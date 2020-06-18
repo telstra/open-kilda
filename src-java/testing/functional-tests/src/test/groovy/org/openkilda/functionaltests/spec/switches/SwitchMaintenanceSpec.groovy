@@ -71,11 +71,16 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(VIRTUAL) //TODO (andriidovhan) select two path with different transit switches, then set the SMOKE tag
+    @Tags(SMOKE)
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            swP.paths.unique(false) { a, b ->
+                def p1 = pathHelper.getInvolvedSwitches(a)[1..-2]*.dpId
+                def p2 = pathHelper.getInvolvedSwitches(b)[1..-2]*.dpId
+                p1.intersect(p2) == [] ? 1 : 0
+            }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
