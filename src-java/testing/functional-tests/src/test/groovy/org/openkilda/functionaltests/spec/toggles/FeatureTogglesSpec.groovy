@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.toggles
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -20,8 +19,7 @@ creation of new flows via Northbound API. This spec verifies that Feature Toggle
 /*Note that the 'flowReroute' toggle is tested under AutoRerouteSpec#"Flow goes to 'Down' status when an intermediate
 switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
-//TODO (andriidovhan) remove VIRTUAL tag when mapping is disabled
-@Tags([SMOKE, LOW_PRIORITY, VIRTUAL])
+@Tags([SMOKE, LOW_PRIORITY])
 class FeatureTogglesSpec extends HealthCheckSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
