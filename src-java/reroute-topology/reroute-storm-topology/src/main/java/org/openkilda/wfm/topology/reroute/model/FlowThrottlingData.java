@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.reroute.model;
 
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 
 import lombok.Builder;
 import lombok.Data;
@@ -34,12 +35,15 @@ public class FlowThrottlingData implements Serializable {
     private boolean force;
     private boolean effectivelyDown;
     private String reason;
+    private PathComputationStrategy pathComputationStrategy;
+    private long bandwidth;
     private int retryCounter;
 
     @Builder
     public FlowThrottlingData(String correlationId, Integer priority, Instant timeCreate,
                               Set<IslEndpoint> affectedIsl, boolean force, boolean effectivelyDown,
-                              String reason, int retryCounter) {
+                              String reason, PathComputationStrategy pathComputationStrategy, long bandwidth,
+                              int retryCounter) {
         this.correlationId = correlationId;
         this.priority = priority;
         this.timeCreate = timeCreate;
@@ -50,6 +54,8 @@ public class FlowThrottlingData implements Serializable {
         this.force = force;
         this.effectivelyDown = effectivelyDown;
         this.reason = reason;
+        this.pathComputationStrategy = pathComputationStrategy;
+        this.bandwidth = bandwidth;
         this.retryCounter = retryCounter;
     }
 
