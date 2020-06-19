@@ -145,7 +145,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
+                    !new Cookie(it.cookie).serviceFlag
                 }
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
@@ -758,7 +758,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         and: "Cookies are created by flow"
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
+            !new Cookie(it.cookie).serviceFlag
         }*.cookie
         assert createdCookies.size() == 2
 
@@ -776,7 +776,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             flowHelper.verifyRulesOnProtectedFlow(flow.flowId)
             def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }*.cookie
             // two for main path + one for protected path
             cookiesAfterEnablingProtectedPath.size() == 3
@@ -837,7 +837,7 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
                 }
-                assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 3
+                assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
             }
         }
@@ -850,12 +850,12 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
                         switchId in currentPath*.switchId) ? 4 : 2
                 if (northbound.getSwitch(switchId).description.contains("OF_12")) {
                     def switchValidateInfo = northbound.validateSwitchRules(switchId)
-                    assert switchValidateInfo.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules
+                    assert switchValidateInfo.properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
                     assert switchValidateInfo.missingRules.size() == 0
                     assert switchValidateInfo.excessRules.size() == 0
                 } else {
                     def switchValidateInfo = northbound.validateSwitch(switchId)
-                    assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules
+                    assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
                     switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
                 }

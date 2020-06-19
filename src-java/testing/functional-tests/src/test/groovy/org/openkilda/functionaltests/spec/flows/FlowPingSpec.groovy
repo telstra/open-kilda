@@ -279,7 +279,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         when: "Break the flow by removing flow rules from the intermediate switch"
         def intermediateSwId = pathHelper.getInvolvedSwitches(flow.flowId)[1].dpId
         def rulesToDelete = northbound.getSwitchRules(intermediateSwId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
+            !new Cookie(it.cookie).serviceFlag
         }*.cookie
         rulesToDelete.each { cookie ->
             northbound.deleteSwitchRules(intermediateSwId, cookie)

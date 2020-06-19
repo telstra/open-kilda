@@ -316,7 +316,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
+                    !new Cookie(it.cookie).serviceFlag
                 }
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }

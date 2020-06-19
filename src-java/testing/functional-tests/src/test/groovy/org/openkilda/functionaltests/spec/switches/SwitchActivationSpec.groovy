@@ -51,7 +51,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def originalMeterIds = northbound.getAllMeters(switchPair.src.dpId).meterEntries*.meterId
         assert originalMeterIds.size() == 1 + switchPair.src.defaultMeters.size()
         def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
+            !new Cookie(it.cookie).serviceFlag
         }*.cookie
         assert createdCookies.size() == 2
 
