@@ -226,11 +226,16 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow rules are created in multi table mode"
         def flowInfoFromDb
+        def sharedRules
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             flowInfoFromDb = database.getFlow(flow.flowId)
+            sharedRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                new Cookie(it.cookie).type == CookieType.SHARED_OF_FLOW
+            }
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
             }
         }
 
@@ -258,6 +263,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
             }
         }
 
@@ -276,6 +282,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
+                //shared rules should be deleted, , issue #3546
+                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
             }
         }
 
@@ -286,6 +294,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
             rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
             rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
+            //shared rules should be deleted, issue #3546
+            rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
         }
 
         and: "Flow is valid"
@@ -301,6 +311,7 @@ mode with existing flows and hold flows of different table-mode types"() {
             verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.find { it.cookie == flowInfoFromDb3.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
                 rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
             }
         }
 
@@ -317,6 +328,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
             rules.find { it.cookie == flowInfoFromDb3.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
             rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+            rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
         }
 
         when: "Reroute(intentional) the flow via APIv2"

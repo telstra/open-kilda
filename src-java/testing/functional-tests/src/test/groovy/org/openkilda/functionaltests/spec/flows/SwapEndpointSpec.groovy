@@ -36,7 +36,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
-import spock.lang.Ignore
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -1144,9 +1143,8 @@ switches"() {
         ]
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3478")
     @Tidy
-    @Unroll // not tested
+    @Unroll
     def "Able to swap endpoints (#description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300
@@ -1180,7 +1178,7 @@ switches"() {
         description << ["src1 <-> src2", "dst1 <-> dst2"]
         switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                getNorthbound().getSwitchProperties(sw.dpId).multiTable && sw.noviflow && !sw.wb5164
+                getNorthbound().getSwitchProperties(sw.dpId).multiTable
             }
         }] * 2
         flow1 << [getFirstFlow(switchPair, switchPair).tap {

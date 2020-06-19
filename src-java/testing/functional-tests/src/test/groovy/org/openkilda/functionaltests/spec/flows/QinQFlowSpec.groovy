@@ -26,7 +26,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Unroll
 
 import javax.inject.Provider
@@ -745,26 +744,25 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Update the QinQ flow(outer/inner vlans)"
         def updateResponse = flowHelperV2.updateFlow(qinqFlow.flowId, qinqFlow.tap {
-            //TODO(andriidovhan) remove '+ 1' when 3496 is merged
-            qinqFlow.source.vlanId = vlanFlow.source.vlanId + 1
+            qinqFlow.source.vlanId = vlanFlow.source.vlanId
             qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
-            qinqFlow.destination.vlanId = vlanFlow.destination.vlanId + 1
+            qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
             qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
         })
 
         then: "Update response contains correct info about innerVlanIds"
         with(updateResponse) {
-            it.source.vlanId == vlanFlow.source.vlanId + 1
+            it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
-            it.destination.vlanId == vlanFlow.destination.vlanId + 1
+            it.destination.vlanId == vlanFlow.destination.vlanId
             it.destination.innerVlanId == vlanFlow.source.vlanId
         }
 
         and: "Flow is really updated"
         with(northbound.getFlow(qinqFlow.flowId)) {
-            it.source.vlanId == vlanFlow.source.vlanId + 1
+            it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
-            it.destination.vlanId == vlanFlow.destination.vlanId + 1
+            it.destination.vlanId == vlanFlow.destination.vlanId
             it.destination.innerVlanId == vlanFlow.source.vlanId
         }
 
