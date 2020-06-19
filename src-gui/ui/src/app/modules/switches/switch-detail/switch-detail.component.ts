@@ -94,11 +94,13 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
          this.router.navigated = false;
         this.router.navigate([this.router.url]);
     }
-    this.commonService.getAllSettings().subscribe((response)=>{
-      this.isStorageDBType = response && response['SWITCH_NAME_STORAGE_TYPE']=="DATABASE_STORAGE";
-    },error=>{
-
-    })
+    if(this.commonService.hasPermission('application-setting')){
+      this.commonService.getAllSettings().subscribe((response)=>{
+        this.isStorageDBType = response && response['SWITCH_NAME_STORAGE_TYPE']=="DATABASE_STORAGE";
+      },error=>{
+  
+      })
+    }
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)).pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
@@ -140,7 +142,6 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
           const modalRef = this.modalService.open(OtpComponent);
           modalRef.componentInstance.emitService.subscribe(
             otp => {
-              
               if (otp) {
                 this.loaderService.show("Deleting Switch");
                 this.switchService.deleteSwitch(
@@ -175,8 +176,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
           const modalRef2 = this.modalService.open(ModalComponent);
           modalRef2.componentInstance.title = "Warning";
           modalRef2.componentInstance.content = 'You are not authorised to delete the switch.';
-        }
-        
+        }        
       }
     });
   }

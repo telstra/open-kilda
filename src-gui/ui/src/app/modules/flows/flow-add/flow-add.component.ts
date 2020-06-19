@@ -11,6 +11,7 @@ import { LoaderService } from "../../../common/services/loader.service";
 import { Location } from "@angular/common";
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { ModalconfirmationComponent } from "../../../common/components/modalconfirmation/modalconfirmation.component";
+import { CommonService } from 'src/app/common/services/common.service';
 
 declare var jQuery: any;
 
@@ -47,7 +48,14 @@ export class FlowAddComponent implements OnInit {
     private alertService: AlertifyService,
     private _location:Location,
     private modalService: NgbModal,
-  ) {}
+    private commonService:CommonService,
+    private toastr:ToastrService
+  ) {
+    if(!this.commonService.hasPermission('fw_flow_create')){
+      this.toastr.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
+  }
 
   ngOnInit() {
     this.flowAddForm = this.formBuilder.group({

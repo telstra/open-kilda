@@ -6,6 +6,7 @@ import { CommonService } from "src/app/common/services/common.service";
 import { LoaderService } from "src/app/common/services/loader.service";
 import {forkJoin } from "rxjs";
 import { ModalconfirmationComponent } from "src/app/common/components/modalconfirmation/modalconfirmation.component";
+import { Router } from '@angular/router';
 
 @Component({
   selector: "app-session",
@@ -26,7 +27,15 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
     private loaderService : LoaderService,
     private toastrService : ToastrService,
     private modalService:NgbModal,
-  ) {}
+    private toastr:ToastrService,
+    private router:Router
+  ) {
+
+    if(!this.commonService.hasPermission('application_setting')){
+      this.toastr.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
+  }
 
   ngOnInit() {
     this.sessionForm = this.formBuilder.group({

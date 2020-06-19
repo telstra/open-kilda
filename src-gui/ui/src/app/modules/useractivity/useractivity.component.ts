@@ -9,6 +9,8 @@ import * as _moment from 'moment';
 import { LoaderService } from "../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
 import { tickStep } from 'd3';
+import { CommonService } from 'src/app/common/services/common.service';
+import { Router } from '@angular/router';
 
 
 @Component({
@@ -41,8 +43,17 @@ export class UseractivityComponent implements OnInit {
 		private toastr: ToastrService,
 		private formBuilder:FormBuilder,
 		private loaderService: LoaderService,
-		private titleService : Title			
-		) { }
+		private titleService : Title	,
+		private commonService:CommonService,
+		private router:Router,
+		private toaster:ToastrService		
+		) { 
+
+			if(!this.commonService.hasPermission('menu_user_activity')){
+				this.toaster.error('You are not authorised to access this');  
+				 this.router.navigate(["/home"]);
+				}
+		}
 
   ngOnInit() {
 		this.titleService.setTitle('OPEN KILDA - User Activity');

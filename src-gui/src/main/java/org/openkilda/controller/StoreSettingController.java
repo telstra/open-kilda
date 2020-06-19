@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 package org.openkilda.controller;
 
+import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 
 import org.springframework.stereotype.Controller;
@@ -40,6 +41,7 @@ public class StoreSettingController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
+    @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public ModelAndView storeSettings(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.STORE_SETTING);
     }

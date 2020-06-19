@@ -71,6 +71,10 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     public commonService:CommonService,
   ) {
     this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+    if(!this.commonService.hasPermission('menu_switches')){
+      this.toastr.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
     
   }
 
@@ -111,7 +115,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   getDiscoveryPackets(){
     this.switchService.getdiscoveryPackets(this.retrievedSwitchObject.switch_id,this.portDataObject.port_number).subscribe((response:any)=>{
        this.discoverypackets = response.discovery_enabled;
-       console.log(response);
     },error => {
       //this.toastr.error('Error in updating discovery packets mode! ','Error');
     });

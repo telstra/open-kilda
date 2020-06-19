@@ -25,6 +25,7 @@ import { LoaderService } from "../../common/services/loader.service";
 import { ToastrService } from "ngx-toastr";
 import { Title } from '@angular/platform-browser';
 import { scaleBand } from "d3";
+import { Router } from '@angular/router';
 declare var jQuery: any;
 
 @Component({
@@ -110,10 +111,16 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     private commonService: CommonService,
     private flowService: FlowsService,
     private renderer: Renderer2,
+    private router:Router,
     private appLoader: LoaderService,
     private toaster :ToastrService,
     private titleService: Title
-  ) {}
+  ) {
+    if(!this.commonService.hasPermission('menu_topology')){
+      this.toaster.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
+  }
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - Topology');

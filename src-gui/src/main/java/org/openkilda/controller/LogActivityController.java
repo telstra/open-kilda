@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -72,6 +72,7 @@ public class LogActivityController extends BaseController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(path = "/log", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_ACTIVITY })
     public List<LogInfo> getLogs(final @RequestParam(name = "userId", required = false) List<Long> userIds,
             final @RequestParam(name = "activity", required = false) List<String> activities,
             final @RequestParam(name = "startTime", required = false) String startTime,

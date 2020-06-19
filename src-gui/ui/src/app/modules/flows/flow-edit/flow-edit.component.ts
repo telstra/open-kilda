@@ -50,10 +50,15 @@ export class FlowEditComponent implements OnInit {
     private modalService: NgbModal,
     private _location:Location,
     private titleService: Title,
-    public commonService: CommonService
+    public commonService: CommonService,
+    private toastr:ToastrService
   ) {
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
-    this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
+    this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false;
+    if(!this.commonService.hasPermission('fw_flow_update')){
+      this.toastr.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
   }
 
   ngOnInit() {

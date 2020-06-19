@@ -21,6 +21,7 @@ import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.integration.exception.StoreIntegrationException;
 import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.service.SwitchIntegrationService;
@@ -120,8 +121,9 @@ public class SwitchService {
         SwitchInfo switchInfo = null;
         try {
             switchInfo = switchIntegrationService.getSwitchesById(switchId);
-        } catch (Exception ex) {
+        } catch (InvalidResponseException ex) {
             LOGGER.error("Error occurred while retrieving switches from controller", ex);
+            throw new InvalidResponseException(ex.getCode(), ex.getResponse());
         }
         if (!controller) {
             try {
@@ -417,6 +419,7 @@ public class SwitchService {
                         customers = switchStoreService.getPortFlows(switchId, port);
                     } catch (Exception ex) {
                         LOGGER.warn("Error occured while retreiving port flows.", ex);
+                        throw new StoreIntegrationException("Error occured while retreiving port flows.", ex);
                     }
                 }
                 return new ResponseEntity<List<?>>(customers, HttpStatus.OK);
@@ -558,7 +561,7 @@ public class SwitchService {
      * @param switchProperty the switch property
      * @return the SwitchProperty
   */
-    public SwitchProperty updateSwitchPortProperty(String switchId, int port, SwitchProperty switchProperty) {
+    public SwitchProperty updateSwitchPortProperty(String switchId, String port, SwitchProperty switchProperty) {
         SwitchProperty switchPropertyInfo = switchIntegrationService
                 .updateSwitchPortProperty(switchId, port, switchProperty);
         return switchPropertyInfo;
@@ -569,7 +572,7 @@ public class SwitchService {
      * @param port the switch port
      * @return the SwitchProperty
   */
-    public SwitchProperty getSwitchPortProperty(String switchId, int port) {
+    public SwitchProperty getSwitchPortProperty(String switchId, String port) {
         SwitchProperty switchProperty = switchIntegrationService.getSwitchPortProperty(switchId, port);
         return switchProperty;
     }

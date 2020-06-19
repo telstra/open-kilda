@@ -15,6 +15,8 @@
 
 package org.openkilda.controller;
 
+import org.openkilda.auth.model.Permissions;
+import org.openkilda.constants.IConstants;
 import org.openkilda.model.NetworkPathInfo;
 import org.openkilda.service.NetworkService;
 
@@ -53,6 +55,7 @@ public class NetworkController extends BaseController {
      */
     @RequestMapping(value = "/paths", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_AVAILABLE_PATH })
     public @ResponseBody NetworkPathInfo getNetworkPathDetail(@RequestParam(value = "src_switch", required = true) 
                                                               final String srcSwitch, 
                                                               @RequestParam(value = "dst_switch", required = true) 

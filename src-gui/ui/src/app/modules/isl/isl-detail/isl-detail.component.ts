@@ -107,7 +107,10 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       private islDetailService : IslDetailService,
     ) {
       
-     
+      if(!this.commonService.hasPermission('menu_isl')){
+        this.toastr.error('You are not authorised to access this');  
+         this.router.navigate(["/home"]);
+        }
     }
     ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - View ISL');

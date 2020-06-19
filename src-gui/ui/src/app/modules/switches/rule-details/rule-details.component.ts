@@ -5,6 +5,7 @@ import { NgxSpinnerService } from "ngx-spinner";
 import { ClipboardService } from "ngx-clipboard";
 import { LoaderService } from "../../../common/services/loader.service";
 import { CommonService } from '../../../common/services/common.service';
+import { Router } from '@angular/router';
 
 
 @Component({
@@ -25,8 +26,14 @@ export class RuleDetailsComponent implements OnInit {
     private toastr: ToastrService,
     private loaderService: LoaderService,
     private clipboardService: ClipboardService,
+    private router:Router,
     public commonService: CommonService
-  ) {}
+  ) {
+    if(!this.commonService.hasPermission('menu_switches')){
+      this.toastr.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
+  }
 
   ngOnInit() {
       let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));

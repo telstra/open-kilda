@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonService } from '../../../common/services/common.service';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { FlowsService } from 'src/app/common/services/flows.service';
 import { LoaderService } from 'src/app/common/services/loader.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-flow',
@@ -23,8 +24,13 @@ export class FlowComponent implements OnInit {
     private storeLinkService: StoreSettingtService,
     private flowService : FlowsService,
     private loaderService: LoaderService,
+    private toastr:ToastrService,
+    private router:Router
   ) { 
-   
+    if(!this.commonService.hasPermission('menu_flows')){
+      this.toastr.error('You are not authorised to access this');  
+       this.router.navigate(["/home"]);
+      }
   }
 
   ngOnInit() {

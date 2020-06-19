@@ -17,15 +17,11 @@ package org.openkilda.integration.service;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
-import org.openkilda.integration.converter.FlowConverter;
-import org.openkilda.integration.converter.FlowPathConverter;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.model.NetworkPathInfo;
 import org.openkilda.model.Path;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.ApplicationProperties;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
 import org.slf4j.Logger;
@@ -50,20 +46,11 @@ public class NetworkIntegrationService {
     private RestClientManager restClientManager;
 
     @Autowired
-    private FlowPathConverter flowPathConverter;
-
-    @Autowired
-    private FlowConverter flowConverter;
-
-    @Autowired
     private ApplicationProperties applicationProperties;
 
     @Autowired
     private ApplicationService applicationService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-    
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
 

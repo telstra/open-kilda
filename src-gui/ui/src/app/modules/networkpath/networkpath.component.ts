@@ -7,6 +7,7 @@ import { LoaderService } from "../../common/services/loader.service";
 import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { SwitchService } from 'src/app/common/services/switch.service';
 import * as d3 from "d3";
+import { Router } from '@angular/router';
 import { environment } from "../../../environments/environment";
 import { CommonService } from 'src/app/common/services/common.service';
 
@@ -81,8 +82,14 @@ export class NetworkpathComponent implements OnInit {
 		private formBuilder:FormBuilder,
     private loaderService: LoaderService,
     private switchService:SwitchService,
-    private commonService:CommonService
-    ) { }
+    private commonService:CommonService,
+    private router:Router
+    ) { 
+      if(!this.commonService.hasPermission('menu_available_path')){
+        this.toastr.error('You are not authorised to access this');  
+         this.router.navigate(["/home"]);
+        }
+    }
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - Network Path');
