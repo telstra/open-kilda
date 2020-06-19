@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ public interface TestFlowMock {
     static final String TIME_FROM = "1582020869";
     static final String TIME_TO = "1582020869";
     //static final Long TIME_TO = System.currentTimeMillis();
+    static final String TIME_LAST_SEEN = "2019-09-30T16:14:12.538Z";
     static final boolean CONTROLLER_FLAG = true;
 
 }
