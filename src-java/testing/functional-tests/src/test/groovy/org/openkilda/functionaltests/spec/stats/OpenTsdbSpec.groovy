@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -64,6 +65,8 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Unroll("GRPC stats are being logged for metric:#metric, tags:#tags")
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "GRPC stats are being logged"(metric, tags) {
+        assumeTrue("This test is skipped because 'collectGrpcStats' is disabled",
+                northbound.getFeatureToggles().collectGrpcStats)
         expect: "At least 1 result in the past 10 minutes"
         otsdb.query(10.minutes.ago, metricPrefix + metric, tags).dps.size() > 0
 
