@@ -36,6 +36,7 @@ class StatsHelper {
         soft.verify()
     }
 
+    //TODO (dpoltavets): Need to revise approach of verifying flow writes stats due to changes in pings
     void verifyFlowWritesStats(String flowId, boolean pingFlow = true) {
         def beforePing = new Date()
         pingFlow && northbound.pingFlow(flowId, new PingInput())

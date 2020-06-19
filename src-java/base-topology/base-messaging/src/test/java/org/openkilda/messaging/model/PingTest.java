@@ -16,26 +16,27 @@
 package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.ObjectSerializer;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
-
-import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class PingTest {
     ObjectSerializer serializer;
-	
-	public PingTest() throws IOException {
-		serializer = new ObjectSerializer();
-	}	
 
-	@Test
+    public PingTest() throws IOException {
+        serializer = new ObjectSerializer();
+    }
+
+    @Test
     public void serializeLoop() throws Exception {
-        Ping origin = new Ping(
-                (short) 0x100, 0,
-                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
-                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10));
+        Ping origin = new Ping(new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8),
+                new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10),
+                new FlowTransitEncapsulation(2, FlowEncapsulationType.TRANSIT_VLAN), 3);
 
         serializer.serialize(origin);
         Ping decoded = (Ping) serializer.deserialize();

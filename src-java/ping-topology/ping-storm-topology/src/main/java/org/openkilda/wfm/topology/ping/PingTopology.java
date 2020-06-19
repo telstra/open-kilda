@@ -19,6 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.ping.bolt.Blacklist;
 import org.openkilda.wfm.topology.ping.bolt.ComponentId;
@@ -123,8 +124,10 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     private void flowFetcher(TopologyBuilder topology) {
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
 
-        FlowFetcher bolt = new FlowFetcher(persistenceManager, topologyConfig.getPeriodicPingCacheExpirationInterval());
+        FlowFetcher bolt = new FlowFetcher(persistenceManager, flowResourcesConfig,
+                topologyConfig.getPeriodicPingCacheExpirationInterval());
         topology.setBolt(FlowFetcher.BOLT_ID, bolt, scaleFactor)
                 // NOTE(tdurakov): global grouping is responsible for proper handling parallelism of 2
                 .globalGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_PING_ID)

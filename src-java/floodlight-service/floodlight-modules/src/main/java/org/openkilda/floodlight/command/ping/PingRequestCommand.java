@@ -104,7 +104,7 @@ public class PingRequestCommand extends PingCommand {
         pktOut.setData(data);
 
         List<OFAction> actions = Collections.singletonList(ofFactory.actions().buildOutput()
-                .setPort(OFPort.TABLE)
+                .setPort(OFPort.of(ping.getIslPort()))
                 .build());
         pktOut.setActions(actions);
 

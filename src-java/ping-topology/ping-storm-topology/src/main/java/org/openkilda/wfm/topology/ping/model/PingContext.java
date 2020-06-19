@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.FlowDirection;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowTransitEncapsulation;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -41,6 +42,7 @@ public class PingContext implements Serializable {
     private GroupId group;
 
     private Flow flow;
+    private FlowTransitEncapsulation transitEncapsulation;
     private FlowDirection direction;
     private Long timeout;
 

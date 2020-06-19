@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import static java.lang.String.format;
+
 import org.openkilda.adapter.FlowDestAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.model.FlowDirection;
@@ -22,6 +24,8 @@ import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathSegment;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.GroupId;
@@ -31,6 +35,8 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
+import java.util.List;
 
 public class PingProducer extends Abstract {
     public static final String BOLT_ID = ComponentId.PING_PRODUCER.toString();
@@ -66,20 +72,39 @@ public class PingProducer extends Abstract {
         Flow flow = pingContext.getFlow();
         FlowEndpoint ingress;
         FlowEndpoint egress;
+        int islPort;
         if (FlowDirection.FORWARD == direction) {
             ingress = new FlowSourceAdapter(flow).getEndpoint();
             egress = new FlowDestAdapter(flow).getEndpoint();
+            islPort = getIslPort(flow, flow.getForwardPath());
         } else if (FlowDirection.REVERSE == direction) {
             ingress = new FlowDestAdapter(flow).getEndpoint();
             egress = new FlowSourceAdapter(flow).getEndpoint();
+            islPort = getIslPort(flow, flow.getReversePath());
         } else {
             throw new IllegalArgumentException(String.format(
                     "Unexpected %s value: %s", FlowDirection.class.getCanonicalName(), direction));
         }
 
-        return new Ping(ingress.getOuterVlanId(), ingress.getInnerVlanId(),
-                        new NetworkEndpoint(ingress.getSwitchId(), ingress.getPortNumber()),
-                        new NetworkEndpoint(egress.getSwitchId(), egress.getPortNumber()));
+        return new Ping(new NetworkEndpoint(ingress.getSwitchId(), ingress.getPortNumber()),
+                        new NetworkEndpoint(egress.getSwitchId(), egress.getPortNumber()),
+                        pingContext.getTransitEncapsulation(), islPort);
+    }
+
+    private int getIslPort(Flow flow, FlowPath flowPath) {
+        List<PathSegment> segments = flowPath.getSegments();
+        if (segments.isEmpty()) {
+            throw new IllegalArgumentException(
+                    format("Path segments not provided, flow_id: %s", flow.getFlowId()));
+        }
+
+        PathSegment ingressSegment = segments.get(0);
+        if (!ingressSegment.getSrcSwitch().getSwitchId().equals(flowPath.getSrcSwitch().getSwitchId())) {
+            throw new IllegalStateException(
+                    format("FlowSegment was not found for ingress flow rule, flow_id: %s", flow.getFlowId()));
+        }
+
+        return  ingressSegment.getSrcPort();
     }
 
     @Override

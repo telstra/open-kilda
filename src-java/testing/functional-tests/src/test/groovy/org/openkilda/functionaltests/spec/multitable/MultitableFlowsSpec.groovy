@@ -233,12 +233,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Update switch properties(multi_table: false) on the switch"
         def defaultMultiTableSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -264,12 +260,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) {
@@ -295,12 +287,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Update the flow"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
@@ -342,12 +330,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -852,12 +836,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)

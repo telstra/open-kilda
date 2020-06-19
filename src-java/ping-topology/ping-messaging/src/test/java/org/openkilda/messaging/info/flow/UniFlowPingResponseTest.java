@@ -21,6 +21,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
 
 import org.junit.Assert;
@@ -34,7 +36,8 @@ public class UniFlowPingResponseTest {
         NetworkEndpoint endpointAlpha = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:01"), 8);
         NetworkEndpoint endpointBeta = new NetworkEndpoint(new SwitchId("ff:fe:00:00:00:00:00:02"), 10);
         UniFlowPingResponse origin = new UniFlowPingResponse(
-                new Ping((short) 0x200, 0, endpointBeta, endpointAlpha),
+                new Ping(endpointBeta, endpointAlpha,
+                        new FlowTransitEncapsulation(4, FlowEncapsulationType.TRANSIT_VLAN), 5),
                 new PingMeters(3L, 2L, 1L),
                 null);
         InfoMessage wrapper = new InfoMessage(origin, System.currentTimeMillis(), getClass().getSimpleName());

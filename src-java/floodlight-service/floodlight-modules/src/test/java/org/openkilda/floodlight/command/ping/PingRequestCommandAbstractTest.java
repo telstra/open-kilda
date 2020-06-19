@@ -22,6 +22,8 @@ import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -94,8 +96,8 @@ abstract class PingRequestCommandAbstractTest extends PingCommandTest {
 
     protected Ping makePing(IOFSwitch source, IOFSwitch dest) {
         return new Ping(
-                (short) 0x100, 0,
                 new NetworkEndpoint(new SwitchId(source.getId().getLong()), 8),
-                new NetworkEndpoint(new SwitchId(dest.getId().getLong()), 9));
+                new NetworkEndpoint(new SwitchId(dest.getId().getLong()), 9),
+                new FlowTransitEncapsulation(2, FlowEncapsulationType.TRANSIT_VLAN), 3);
     }
 }

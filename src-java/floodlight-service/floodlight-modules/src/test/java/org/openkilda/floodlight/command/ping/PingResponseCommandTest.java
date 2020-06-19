@@ -32,6 +32,8 @@ import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -121,9 +123,9 @@ public class PingResponseCommandTest extends PingCommandTest {
         replayAll();
 
         final DatapathId dpIdBeta = DatapathId.of(0x0000fffe000002L);
-        final Ping ping = new Ping((short) 0x100, 0,
-                                   new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 8),
-                                   new NetworkEndpoint(new SwitchId(dpId.getLong()), 9));
+        final Ping ping = new Ping(new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 8),
+                                   new NetworkEndpoint(new SwitchId(dpId.getLong()), 9),
+                                   new FlowTransitEncapsulation(2, FlowEncapsulationType.TRANSIT_VLAN), 3);
         final PingData payload = PingData.of(ping);
 
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");

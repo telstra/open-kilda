@@ -840,9 +840,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
-        and: "Flow continues to write stats"
-        statsHelper.verifyFlowWritesStats(flow.flowId)
-
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
         def examFlow = new FlowTrafficExamBuilder(topology, traffExam)
