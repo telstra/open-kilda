@@ -69,6 +69,7 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
 
     protected String errorReason;
+    protected boolean periodicPingsEnabled;
 
     public FlowPathSwappingFsm(CommandContext commandContext, String flowId) {
         super(commandContext);

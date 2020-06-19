@@ -44,6 +44,7 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, Sta
         if (stateMachine.getNewFlowStatus() == FlowStatus.UP) {
             dashboardLogger.onSuccessfulFlowReroute(stateMachine.getFlowId());
             stateMachine.saveActionToHistory("Flow was rerouted successfully");
+            sendPeriodicPingNotification(stateMachine);
         } else {
             stateMachine.saveActionToHistory("Flow reroute completed",
                     format("Flow reroute completed with status %s  and error %s", stateMachine.getNewFlowStatus(),
@@ -52,5 +53,10 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, Sta
         log.info("Flow {} reroute success", stateMachine.getFlowId());
         carrier.sendRerouteResultStatus(stateMachine.getFlowId(), stateMachine.getRerouteError(),
                 stateMachine.getCommandContext().getCorrelationId());
+    }
+
+    private void sendPeriodicPingNotification(FlowRerouteFsm stateMachine) {
+        stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getFlowId(),
+                stateMachine.isPeriodicPingsEnabled());
     }
 }

@@ -35,6 +35,12 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowPathSwapFsm, St
     @Override
     public void perform(State from, State to, Event event, FlowPathSwapContext context, FlowPathSwapFsm stateMachine) {
         dashboardLogger.onSuccessfulFlowUpdate(stateMachine.getFlowId());
+        sendPeriodicPingNotification(stateMachine);
         stateMachine.saveActionToHistory("Flow was updated successfully");
+    }
+
+    private void sendPeriodicPingNotification(FlowPathSwapFsm stateMachine) {
+        stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getFlowId(),
+                stateMachine.isPeriodicPingsEnabled());
     }
 }

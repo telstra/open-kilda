@@ -82,6 +82,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             stateMachine.setOriginalPathComputationStrategy(foundFlow.getPathComputationStrategy());
             stateMachine.setRecreateIfSamePath(!foundFlow.isActive() || context.isForceReroute());
             stateMachine.setOriginalFlow(RequestedFlowMapper.INSTANCE.toRequestedFlow(foundFlow));
+            stateMachine.setPeriodicPingsEnabled(foundFlow.isPeriodicPings());
 
             if (foundFlow.getTargetPathComputationStrategy() != null) {
                 foundFlow.setPathComputationStrategy(foundFlow.getTargetPathComputationStrategy());

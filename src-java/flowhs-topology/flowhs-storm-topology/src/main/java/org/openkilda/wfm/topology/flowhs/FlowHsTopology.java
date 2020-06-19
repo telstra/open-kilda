@@ -404,7 +404,9 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         topologyBuilder.setBolt(ComponentId.FLOW_PING_SENDER.name(), pingKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_PING_SENDER.name());
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_PING_SENDER.name());
     }
 
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
