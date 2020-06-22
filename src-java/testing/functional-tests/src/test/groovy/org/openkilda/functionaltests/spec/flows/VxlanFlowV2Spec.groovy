@@ -572,10 +572,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Flow is pingable"
+        and: "Unable to ping a one-switch vxlan flow"
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            forward.pingSuccess
-            reverse.pingSuccess
+            !forward
+            !reverse
+            error == "Flow ${flow.flowId} should not be one switch flow"
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
@@ -589,12 +590,6 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        }
-
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            forward.pingSuccess
-            reverse.pingSuccess
         }
 
         and: "Rules are recreated"

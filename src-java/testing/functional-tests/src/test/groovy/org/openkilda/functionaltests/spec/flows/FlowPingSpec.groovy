@@ -227,7 +227,9 @@ class FlowPingSpec extends HealthCheckSpecification {
         def response = northbound.pingFlow(flow.flowId, new PingInput())
 
         then: "Error received"
-        response.error == "Flow " + flow.flowId + " should not be one switch flow"
+        !response.forward
+        !response.reverse
+        response.error == "Flow ${flow.flowId} should not be one switch flow"
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)

@@ -481,12 +481,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
-
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         northbound.updateFlow(flow.id, flow.tap { it.encapsulationType = encapsulationUpdate })
 
@@ -497,12 +491,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
-        }
-
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
         }
 
         and: "Rules are recreated"

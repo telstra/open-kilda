@@ -255,11 +255,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
+
+        and: "Unable to ping a one-switch qinq flow"
         verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
+            !it.forward
+            !it.reverse
+            it.error == "Flow ${qinqFlow.flowId} should not be one switch flow"
         }
 
         and: "Involved switches pass switch validation"
@@ -591,12 +594,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
-        verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         and: "Involved switches pass switch validation"
         with(pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId)))) {
@@ -833,7 +832,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Delete all flow rules(ingress/egress/shared) on the src switch"
-        northbound.deleteSwitchRule s(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+        northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
         with(northbound.validateSwitch(swP.src.dpId).rules) {
