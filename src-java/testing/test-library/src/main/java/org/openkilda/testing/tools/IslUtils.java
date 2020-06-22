@@ -166,20 +166,23 @@ public class IslUtils {
     /**
      * Simulates a physical ISL replug from one switch-port to another switch-port. Uses a-switch.
      *
-     * @param srcIsl The initial ISL which is going to be replugged. Should go through a-switch!
+     * @param srcIsl The initial ISL which is going to be replugged. Should go through a-switch
      * @param replugSource replug source or destination end of the ISL
      * @param dstIsl The destination 'isl'. Usually a free link, which is connected to a-switch at one end
      * @param plugIntoSource Whether to connect to src or dst end of the dstIsl. Usually src end for not-connected ISLs
+     * @param portDown Whether to simulate a 'port down' event when unplugging
      * @return New ISL which is expected to be discovered after the replug
      */
     public TopologyDefinition.Isl replug(TopologyDefinition.Isl srcIsl, boolean replugSource,
-                                         TopologyDefinition.Isl dstIsl, boolean plugIntoSource) {
+                                         TopologyDefinition.Isl dstIsl, boolean plugIntoSource, boolean portDown) {
         ASwitchFlow srcASwitch = srcIsl.getAswitch();
         ASwitchFlow dstASwitch = dstIsl.getAswitch();
         //unplug
         List<Integer> portsToUnplug = Collections.singletonList(
                 replugSource ? srcASwitch.getInPort() : srcASwitch.getOutPort());
-        lockKeeper.portsDown(portsToUnplug);
+        if (portDown) {
+            lockKeeper.portsDown(portsToUnplug);
+        }
 
         //change flow on aSwitch
         //delete old flow
@@ -192,7 +195,9 @@ public class IslUtils {
         lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowForward.getReversed()));
 
         //plug back
-        lockKeeper.portsUp(portsToUnplug);
+        if (portDown) {
+            lockKeeper.portsUp(portsToUnplug);
+        }
 
         return TopologyDefinition.Isl.factory(
                 replugSource ? (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()) : srcIsl.getSrcSwitch(),
