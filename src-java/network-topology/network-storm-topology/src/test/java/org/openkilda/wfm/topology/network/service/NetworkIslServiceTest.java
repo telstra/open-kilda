@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.model.IslStatus;
@@ -592,7 +593,6 @@ public class NetworkIslServiceTest {
         setupIslStorageStub();
 
         final IslReference reference = prepareActiveIsl();
-
         final Duration expirationTime = Duration.ofNanos(options.getDiscoveryTimeout());
 
         Instant lastSeen = clock.instant();
@@ -603,6 +603,42 @@ public class NetworkIslServiceTest {
         // should fail on first poll fail event
         service.islDown(reference.getSource(), reference, IslDownReason.POLL_TIMEOUT);
         verify(dashboardLogger).onIslDown(reference);
+    }
+
+    @Test
+    public void movedOverrideRoundTripState() {
+        setupIslStorageStub();
+
+        final IslReference reference = prepareActiveIsl();
+
+        // inject round-trip status
+        Instant lastSeen = clock.instant();
+        service.roundTripStatusNotification(
+                reference, new RoundTripStatus(reference.getDest(), lastSeen, lastSeen));
+
+        Optional<Isl> forward = islStorage.lookup(reference.getSource(), reference.getDest());
+        Assert.assertTrue(forward.isPresent());
+        Assert.assertNotEquals(IslStatus.ACTIVE, forward.get().getRoundTripStatus());
+        Assert.assertEquals(IslStatus.ACTIVE, forward.get().getStatus());
+        Optional<Isl> reverse = islStorage.lookup(reference.getDest(), reference.getSource());
+        Assert.assertTrue(reverse.isPresent());
+        Assert.assertEquals(IslStatus.ACTIVE, reverse.get().getRoundTripStatus());
+        Assert.assertEquals(IslStatus.ACTIVE, reverse.get().getStatus());
+
+        service.islMove(reference.getSource(), reference);
+
+        verify(dashboardLogger).onIslMoved(reference);
+        forward = islStorage.lookup(reference.getSource(), reference.getDest());
+        Assert.assertTrue(forward.isPresent());
+        Assert.assertEquals(IslStatus.MOVED, forward.get().getActualStatus());
+        Assert.assertEquals(IslStatus.MOVED, forward.get().getStatus());
+        reverse = islStorage.lookup(reference.getDest(), reference.getSource());
+        Assert.assertTrue(reverse.isPresent());
+        Assert.assertNotEquals(IslStatus.MOVED, reverse.get().getActualStatus());
+        Assert.assertEquals(IslStatus.MOVED, reverse.get().getStatus());
+
+        verify(carrier).islStatusUpdateNotification(any(IslStatusUpdateNotification.class));
+        verify(carrier).triggerReroute(any(RerouteAffectedFlows.class));
     }
 
     @Test
