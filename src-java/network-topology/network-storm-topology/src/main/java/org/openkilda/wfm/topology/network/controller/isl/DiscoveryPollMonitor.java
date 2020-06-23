@@ -52,15 +52,14 @@ public class DiscoveryPollMonitor extends DiscoveryMonitor<IslEndpointPollStatus
         IslStatus forward = discoveryData.getForward().getStatus();
         IslStatus reverse = discoveryData.getReverse().getStatus();
 
-        if (forward == IslStatus.MOVED || reverse == IslStatus.MOVED) {
-            return Optional.of(IslStatus.MOVED);
-        }
-
         if (forward == reverse) {
             return Optional.of(forward);
         }
+        if (forward == IslStatus.INACTIVE || reverse == IslStatus.INACTIVE) {
+            return Optional.of(IslStatus.INACTIVE);
+        }
 
-        return Optional.of(IslStatus.INACTIVE);
+        return Optional.empty();
     }
 
     @Override
@@ -83,6 +82,9 @@ public class DiscoveryPollMonitor extends DiscoveryMonitor<IslEndpointPollStatus
                 break;
 
             case ISL_MOVE:
+                // We must track MOVED state, because poll and moved monitor save it's status
+                // inside same field {@link Isl.actualStatus}. In other case we will rewrite MOVED state
+                // saved by {@link DiscoveryMovedMonitor} with our ovn "vision".
                 update = new IslEndpointPollStatus(update.getIslData(), IslStatus.MOVED);
                 break;
 

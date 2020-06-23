@@ -725,7 +725,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
         def notConnectedIsl = topology.notConnectedIsls.first()
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
@@ -743,7 +743,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore status of the ISL and delete new created ISL"
-        islUtils.replug(newIsl, true, isl, false)
+        islUtils.replug(newIsl, true, isl, false, true)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))

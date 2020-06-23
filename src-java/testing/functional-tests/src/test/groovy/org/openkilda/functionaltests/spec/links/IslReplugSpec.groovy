@@ -1,8 +1,11 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.model.SwitchFeature
+
 import static org.junit.Assume.assumeNotNull
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -21,24 +24,30 @@ import spock.lang.Narrative
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
+@Tags([TOPOLOGY_DEPENDENT])
 class IslReplugSpec extends HealthCheckSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
-    def "ISL status changes to MOVED when replugging ISL into another switch"() {
-        given: "A connected a-switch link"
-        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
-        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
-
-        and: "A non-connected a-switch link"
-        def notConnectedIsl = topology.notConnectedIsls.find {
-            it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
+    def "Round-trip ISL status changes to MOVED when replugging it into another switch"() {
+        given: "A connected a-switch link, round-trip-enabled"
+        def isl = topology.islsForActiveSwitches.find {
+            it.aswitch?.inPort && it.aswitch?.outPort &&
+                    it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
+                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
         }
-        assumeTrue("Wasn't able to find enough of required a-switch links", notConnectedIsl.asBoolean())
+        assumeTrue("Wasn't able to find enough of required a-switch links with round-trip", isl.asBoolean())
+
+        and: "A non-connected a-switch link with round-trip support"
+        def notConnectedIsl = topology.notConnectedIsls.find {
+            it.srcSwitch != isl.srcSwitch &&
+                    it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        }
+        assumeTrue("Wasn't able to find enough not connected a-switch links", notConnectedIsl.asBoolean())
 
         when: "Replug one end of the connected link to the not connected one"
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
 
         then: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
@@ -47,7 +56,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
 
         when: "Replug the link back where it was"
-        islUtils.replug(newIsl, true, isl, false)
+        islUtils.replug(newIsl, true, isl, false, true)
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
@@ -65,7 +74,53 @@ class IslReplugSpec extends HealthCheckSpecification {
         }
 
         and: "The src and dst switches of the isl pass switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId].each { swId ->
+        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
+            with(northbound.validateSwitch(swId)) { validationResponse ->
+                switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
+            }
+        }
+    }
+
+    def "ISL status changes to MOVED when replugging ISL into another switch"() {
+        given: "A connected a-switch link"
+        def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
+        assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
+
+        and: "A non-connected a-switch link"
+        def notConnectedIsl = topology.notConnectedIsls.find {
+            it.srcSwitch != isl.srcSwitch && it.srcSwitch != isl.dstSwitch
+        }
+        assumeTrue("Wasn't able to find enough of required a-switch links", notConnectedIsl.asBoolean())
+
+        when: "Replug one end of the connected link to the not connected one"
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
+
+        then: "Replugged ISL status changes to MOVED"
+        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
+
+        and: "New ISL becomes DISCOVERED"
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+
+        when: "Replug the link back where it was"
+        islUtils.replug(newIsl, true, isl, false, false)
+
+        then: "Original ISL becomes DISCOVERED again"
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+
+        and: "Replugged ISL status changes to MOVED"
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+
+        when: "Remove the MOVED ISL"
+        assert northbound.deleteLink(islUtils.toLinkParameters(newIsl)).size() == 2
+
+        then: "Moved ISL is removed"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !islUtils.getIslInfo(newIsl).isPresent()
+            assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
+        }
+
+        and: "The src and dst switches of the isl pass switch validation"
+        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
                 switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
             }
@@ -78,7 +133,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         assumeTrue("Wasn't able to find enough of required a-switch links", isl.asBoolean())
 
         when: "Replug one end of the link into 'itself'"
-        def loopedIsl = islUtils.replug(isl, false, isl, true)
+        def loopedIsl = islUtils.replug(isl, false, isl, true, true)
 
         then: "Replugged ISL status changes to FAILED"
         islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
@@ -89,7 +144,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(allLinks, loopedIsl.reversed).present
 
         when: "Replug the link back where it was"
-        islUtils.replug(loopedIsl, true, isl, false)
+        islUtils.replug(loopedIsl, true, isl, false, true)
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
@@ -114,7 +169,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         def dropCounterBefore = northbound.getSwitchRules(islToPlugInto.srcSwitch.dpId).flowEntries.find {
             it.cookie == DefaultRule.DROP_LOOP_RULE.cookie
         }.packetCount
-        def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true)
+        def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true, true)
 
         then: "The potential self-loop ISL is not present in the list of ISLs (wait for discovery interval)"
         TimeUnit.SECONDS.sleep(discoveryInterval + WAIT_OFFSET)

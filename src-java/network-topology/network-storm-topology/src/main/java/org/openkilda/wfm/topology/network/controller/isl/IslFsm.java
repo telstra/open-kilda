@@ -83,7 +83,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private IslDownReason downReason;
     private long islRulesAttempts;
 
-    private List<DiscoveryMonitor<?>> monitorsByPriority;
+    private List<DiscoveryMonitor<?>> monitorsByPriority = Collections.emptyList();
 
     private final BiIslDataHolder<Boolean> endpointMultiTableManagementCompleteStatus;
 
@@ -114,7 +114,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         this.dashboardLogger = dashboardLogger;
 
-        monitorsByPriority = Collections.emptyList();
         endpointMultiTableManagementCompleteStatus = new BiIslDataHolder<>(reference);
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -134,6 +133,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void operationalEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         monitorsByPriority = ImmutableList.of(
+                new DiscoveryMovedMonitor(reference),
                 new DiscoveryPortStatusMonitor(reference),
                 new DiscoveryBfdMonitor(reference),
                 new DiscoveryRoundTripMonitor(reference, clock, options),
@@ -290,7 +290,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         log.info("Isl FSM for {} have reached termination state (ready for being removed)", reference);
     }
 
-    public void resurectNotification(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void resurrectNotification(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("Resurect ISL {} due to event {} on {}", reference, event, context.getEndpoint());
     }
 
@@ -760,7 +760,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     IslFsmEvent.BFD_DOWN, IslFsmEvent.BFD_KILL, IslFsmEvent.ROUND_TRIP_STATUS}) {
                 builder.transition()
                         .from(IslFsmState.CLEAN_UP_RESOURCES).to(IslFsmState.OPERATIONAL).on(event)
-                        .callMethod("resurectNotification");
+                        .callMethod("resurrectNotification");
             }
             builder.onEntry(IslFsmState.CLEAN_UP_RESOURCES).callMethod("cleanUpResourcesEnter");
             builder.internalTransition()
