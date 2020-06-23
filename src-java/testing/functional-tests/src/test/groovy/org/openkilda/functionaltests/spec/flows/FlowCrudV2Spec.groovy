@@ -100,6 +100,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The flow allows traffic (only applicable flows are checked)"
+        def beforeTraffic = new Date()
+        def trafficApplicable = true
         try {
             def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 3)
             withPool {
@@ -112,7 +114,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         } catch (FlowNotApplicableException e) {
             //flow is not applicable for traff exam. That's fine, just inform
             log.warn(e.message)
+            trafficApplicable = false
         }
+
+        and: "Flow writes stats"
+        if(trafficApplicable) { statsHelper.verifyFlowWritesStats(flow.flowId, beforeTraffic, true) }
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
