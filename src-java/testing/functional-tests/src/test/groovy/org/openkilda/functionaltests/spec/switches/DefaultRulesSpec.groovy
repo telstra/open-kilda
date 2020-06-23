@@ -38,7 +38,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
-    @Tags([VIRTUAL, SMOKE])
+    @Tags([VIRTUAL, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
         def sw = topology.activeSwitches.first()

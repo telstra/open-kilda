@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
@@ -26,7 +27,7 @@ Main purpose of that is to understand which feature is supported by a switch(enc
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
@@ -220,6 +221,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"
         def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }

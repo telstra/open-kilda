@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -57,7 +58,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
-@Tags(SMOKE)
+@Tags([SMOKE, SMOKE_SWITCHES])
 class SwitchValidationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     String speakerTopic
@@ -148,7 +149,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             !possibleDefaultPaths.find { path ->
                 path[1..-2].every { it.switchId.description.contains("OF_12") }
             }
-        }
+        } ?: assumeTrue("No not-neighbouring switch pairs found", false)
 
         when: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -452,7 +453,7 @@ misconfigured"
                 path[1..-2].every { it.switchId.description.contains("OF_12") }
             }
             hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        }
+        } ?: assumeTrue("No not-neighbouring switch pairs found", false)
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -507,7 +508,7 @@ misconfigured"
                 path[1..-2].every { it.switchId.description.contains("OF_12") }
             }
             hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        }
+        } ?: assumeTrue("No not-neighbouring switch pairs found", false)
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -784,7 +785,9 @@ misconfigured"
 
     def "Able to validate and sync a missing 'protected path' egress rule"() {
         given: "A flow with protected path"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        } ?: assumeTrue("No switch pair with at least 2 diverse paths", false)
         def flow = flowHelperV2.randomFlow(swPair)
         flow.allocateProtectedPath = true
         flowHelperV2.addFlow(flow)

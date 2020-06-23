@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -376,12 +377,12 @@ class FlowStatSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tags([SMOKE_SWITCHES])
     def "System collects stats when flow is pinned and unmetered"() {
         given: "Two active not neighboring switches"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
+            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches
         } ?: assumeTrue("No suiting switches found", false)
 
         and: "An unmetered flow"

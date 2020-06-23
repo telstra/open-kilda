@@ -357,7 +357,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Noviflow switches"
