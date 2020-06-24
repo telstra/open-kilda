@@ -48,7 +48,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     private switchService:SwitchService
   ) { 
     if(!this.commonService.hasPermission('menu_switches')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

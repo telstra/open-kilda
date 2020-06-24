@@ -72,7 +72,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   ) {
     this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
     if(!this.commonService.hasPermission('menu_switches')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
     

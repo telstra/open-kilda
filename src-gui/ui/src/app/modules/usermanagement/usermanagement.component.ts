@@ -22,7 +22,7 @@ export class UsermanagementComponent implements OnInit {
   ) {
 
     if(!this.commonService.hasPermission('menu_user_management')){
-      this.toaster.error('You are not authorised to access this');  
+      this.toaster.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
     this.subscription = this.tabService.getSelectedTab().subscribe(tab => {

@@ -117,7 +117,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     private titleService: Title
   ) {
     if(!this.commonService.hasPermission('menu_topology')){
-      this.toaster.error('You are not authorised to access this');  
+      this.toaster.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

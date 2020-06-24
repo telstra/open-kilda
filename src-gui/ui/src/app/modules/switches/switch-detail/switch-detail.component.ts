@@ -94,13 +94,13 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
          this.router.navigated = false;
         this.router.navigate([this.router.url]);
     }
-    if(this.commonService.hasPermission('application-setting')){
-      this.commonService.getAllSettings().subscribe((response)=>{
-        this.isStorageDBType = response && response['SWITCH_NAME_STORAGE_TYPE']=="DATABASE_STORAGE";
-      },error=>{
+    // if(this.commonService.hasPermission('application-setting') && this.commonService.hasPermission('sw_switch_update_name')){
+    //   this.commonService.getAllSettings().subscribe((response)=>{
+    //     this.isStorageDBType = response && response['SWITCH_NAME_STORAGE_TYPE']=="DATABASE_STORAGE";
+    //   },error=>{
   
-      })
-    }
+    //   })
+    // }
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)).pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
@@ -262,6 +262,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
             localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
             localStorage.removeItem('SWITCHES_LIST');
           },(error)=>{ 
+            this.toastr.error(error.error['error-message']);
             this.loaderService.hide();
           })
         }
@@ -399,14 +400,16 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     modalRef.componentInstance.emitService.subscribe(
       evacuate => {
         var data = {"under_maintenance":e.target.checked,"evacuate":evacuate};
-
+          this.loaderService.show('Applying Changes..');
           this.switchService.switchMaintenance(data,this.switchId).subscribe((response)=>{
             this.toastr.success('Maintenance mode changed successful','Success');
+            this.loaderService.hide();
             this.underMaintenance = e.target.checked;
             if(evacuate){
               location.reload();
             }
           },error => {
+            this.loaderService.hide();
             this.toastr.error('Error in changing maintenance mode! ','Error');
           });
       },

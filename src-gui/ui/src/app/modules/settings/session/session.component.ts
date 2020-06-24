@@ -32,7 +32,7 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   ) {
 
     if(!this.commonService.hasPermission('application_setting')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

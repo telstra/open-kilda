@@ -7,10 +7,11 @@ import { CookieManagerService } from '../services/cookie-manager.service';
 import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { local } from 'd3';
+import { ToastrService } from 'ngx-toastr';
 
 @Injectable()
 export class AppAuthInterceptor implements HttpInterceptor {
-    constructor(private appLoader:LoaderService, private cookieManager:CookieManagerService,private _router: Router) {}
+    constructor(private appLoader:LoaderService, private cookieManager:CookieManagerService,private _router: Router,private toastr:ToastrService) {}
 
     intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         let requestToForward = request;

@@ -108,7 +108,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     ) {
       
       if(!this.commonService.hasPermission('menu_isl')){
-        this.toastr.error('You are not authorised to access this');  
+        this.toastr.error('You are not authorised to access this page.');  
          this.router.navigate(["/home"]);
         }
     }
@@ -297,13 +297,16 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     modalRef.componentInstance.emitService.subscribe(
       evacuate => {
         var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:e.target.checked,evacuate:evacuate};
+        this.loaderService.show('Applying Changes..');
         this.islListService.islUnderMaintenance(data).subscribe(response=>{
           this.toastr.success('Maintenance mode changed successful','Success');
+          this.loaderService.hide();
           this.under_maintenance = e.target.checked;
           if(evacuate){
             location.reload();
           }
         },error => {
+          this.loaderService.hide();
           this.toastr.error('Error in changing maintenance mode! ','Error');
         })
       },

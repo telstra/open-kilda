@@ -20,7 +20,7 @@ export class SettingsComponent implements OnInit {
     private router:Router
   ) { 
     if(!this.commonService.hasPermission('store_setting')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

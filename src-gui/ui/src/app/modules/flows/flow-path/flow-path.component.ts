@@ -529,6 +529,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
       this.pathFlows = Object.keys(this.diversePath).filter(function(f,k){
           return f != 'protected_path_'+self.flowId;
       });
+      console.log('this.pathFlows',this.pathFlows,this.colourCodes);
   }
 
   viewDiverseGroup(type){

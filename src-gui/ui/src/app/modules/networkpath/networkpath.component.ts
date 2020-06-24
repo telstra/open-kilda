@@ -86,7 +86,7 @@ export class NetworkpathComponent implements OnInit {
     private router:Router
     ) { 
       if(!this.commonService.hasPermission('menu_available_path')){
-        this.toastr.error('You are not authorised to access this');  
+        this.toastr.error('You are not authorised to access this page.');  
          this.router.navigate(["/home"]);
         }
     }

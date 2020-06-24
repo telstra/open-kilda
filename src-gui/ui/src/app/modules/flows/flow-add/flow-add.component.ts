@@ -52,7 +52,7 @@ export class FlowAddComponent implements OnInit {
     private toastr:ToastrService
   ) {
     if(!this.commonService.hasPermission('fw_flow_create')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

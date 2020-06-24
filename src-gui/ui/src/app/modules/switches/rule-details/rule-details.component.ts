@@ -30,7 +30,7 @@ export class RuleDetailsComponent implements OnInit {
     public commonService: CommonService
   ) {
     if(!this.commonService.hasPermission('menu_switches')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

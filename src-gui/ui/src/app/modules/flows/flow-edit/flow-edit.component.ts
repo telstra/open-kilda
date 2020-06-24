@@ -56,7 +56,7 @@ export class FlowEditComponent implements OnInit {
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false;
     if(!this.commonService.hasPermission('fw_flow_update')){
-      this.toastr.error('You are not authorised to access this');  
+      this.toastr.error('You are not authorised to access this page.');  
        this.router.navigate(["/home"]);
       }
   }

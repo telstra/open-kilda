@@ -190,7 +190,6 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
 
   stopPropagationmethod(e){
     event.stopPropagation();
-
     if (e.key === "Enter") {
       return false;
    }

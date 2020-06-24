@@ -50,7 +50,7 @@ export class UseractivityComponent implements OnInit {
 		) { 
 
 			if(!this.commonService.hasPermission('menu_user_activity')){
-				this.toaster.error('You are not authorised to access this');  
+				this.toaster.error('You are not authorised to access this page.');  
 				 this.router.navigate(["/home"]);
 				}
 		}
