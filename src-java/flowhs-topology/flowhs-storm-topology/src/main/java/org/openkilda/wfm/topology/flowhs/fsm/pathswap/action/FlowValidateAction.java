@@ -62,6 +62,7 @@ public class FlowValidateAction extends NbTrackableAction<FlowPathSwapFsm, State
                     .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                             format("Could not swap paths: Flow %s not found", flowId)));
             dashboardLogger.onFlowPathsSwap(flow);
+            stateMachine.setPeriodicPingsEnabled(flow.isPeriodicPings());
             if (!flow.isAllocateProtectedPath()) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Could not swap paths: Flow %s doesn't have protected path", flowId));

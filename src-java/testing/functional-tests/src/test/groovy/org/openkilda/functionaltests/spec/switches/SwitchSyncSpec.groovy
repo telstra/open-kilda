@@ -55,7 +55,7 @@ class SwitchSyncSpec extends BaseSpecification {
         def syncResult = northbound.synchronizeSwitch(sw.dpId, removeExcess)
 
         then: "Operation is successful"
-        syncResult.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
+        syncResult.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
         syncResult.rules.excess.size() == 0
         syncResult.rules.missing.size() == 0
         syncResult.rules.removed.size() == 0
@@ -138,9 +138,6 @@ class SwitchSyncSpec extends BaseSpecification {
                 }
             }
         }
-
-        and: "Flow continues to write stats"
-        statsHelper.verifyFlowWritesStats(flow.flowId)
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -277,14 +274,14 @@ class SwitchSyncSpec extends BaseSpecification {
 
         then: "System detects missing rules and meters, then installs them"
         involvedSwitches.each {
-            assert syncResultsMap[it.dpId].rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
+            assert syncResultsMap[it.dpId].rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
             assert syncResultsMap[it.dpId].rules.excess.size() == 0
             assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
         [switchPair.src, switchPair.dst].each {
-            assert syncResultsMap[it.dpId].meters.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
+            assert syncResultsMap[it.dpId].meters.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
             assert syncResultsMap[it.dpId].meters.removed.size() == 0

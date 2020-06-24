@@ -306,7 +306,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         def flowData = northboundV2.getFlow(flow.flowId)
         def protectedFlowPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
-        northboundV2.updateFlow(flowData.flowId, flowHelperV2.toRequest(flowData.tap { it.allocateProtectedPath = false }))
+        flowHelperV2.updateFlow(flowData.flowId, flowHelperV2.toRequest(flowData.tap { it.allocateProtectedPath = false }))
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.flowId).protectedPath
@@ -316,18 +316,18 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
+                    !new Cookie(it.cookie).serviceFlag
                 }
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
 
         and: "And rules for main path are recreacted"
-        def flowInfoFromDb2 = database.getFlow(flow.flowId)
-        [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
-                [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
-
         Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def flowInfoFromDb2 = database.getFlow(flow.flowId)
+            assert [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
+                    [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+
             verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
                 rules.find {
                     it.cookie == flowInfoFromDb2.forwardPath.cookie.value

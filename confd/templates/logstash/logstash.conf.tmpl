@@ -8,6 +8,12 @@ input {
     tags => ["storm-worker_log"]
   }
   tcp {
+    port => {{ getv "/kilda_logging_port_grpc" }}
+    codec => json
+    type => "kilda-grpc"
+    tags => ["kilda-grpc"]
+  }
+  tcp {
     port => {{ getv "/kilda_logging_port_floodlight" }}
     codec => json_lines
     type => "kilda-FL"
@@ -24,6 +30,18 @@ input {
     codec => json
     type => "kilda-NB"
     tags => ["kilda-northbound"]
+  }
+  tcp {
+      port => {{ getv "/kilda_logging_port_server42_control" }}
+      codec => json
+      type => "kilda-server42-control"
+      tags => ["kilda-server42"]
+  }
+  tcp {
+      port => {{ getv "/kilda_logging_port_server42_stats" }}
+      codec => json
+      type => "kilda-server42-stats"
+      tags => ["kilda-server42"]
   }
 }
 

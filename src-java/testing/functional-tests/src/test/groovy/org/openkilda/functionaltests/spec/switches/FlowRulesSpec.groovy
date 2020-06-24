@@ -249,7 +249,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                Cookie.isDefaultRule(it.cookie)
+                new Cookie(it.cookie).serviceFlag
             }
             if (ingressRule) {
                 data.defaultRules = (data.defaultRules + ingressRule)
@@ -297,7 +297,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                Cookie.isDefaultRule(it.cookie)
+                new Cookie(it.cookie).serviceFlag
             }
             if (ingressRule) {
                 data.defaultRules = (data.defaultRules + ingressRule)
@@ -339,7 +339,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def expectedRemovedRules = 1
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                Cookie.isDefaultRule(it.cookie)
+                new Cookie(it.cookie).serviceFlag
             }
             if (ingressRule && data.removedRules == 1) {
                 data.defaultRules = (data.defaultRules + ingressRule)
@@ -414,7 +414,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                Cookie.isDefaultRule(it.cookie)
+                new Cookie(it.cookie).serviceFlag
             }
             if (ingressRule) {
                 data.defaultRules = (data.defaultRules + ingressRule)
@@ -516,7 +516,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
+                properRules.findAll { !new Cookie(it).serviceFlag }.size() == flowRulesCount
                 missingRules.empty
                 excessRules.empty
             }
@@ -589,21 +589,21 @@ class FlowRulesSpec extends HealthCheckSpecification {
             def response = northbound.synchronizeSwitchRules(it)
             assert response.missingRules.size() == amountOfRules(it)
             assert response.installedRules.sort() == response.missingRules.sort()
-            assert response.properRules.findAll { !Cookie.isDefaultRule(it) }.empty
+            assert response.properRules.findAll { !new Cookie(it).serviceFlag }.empty
             assert response.excessRules.empty
         }
         uniqueNodes.each {
             def response = northbound.synchronizeSwitchRules(it.switchId)
             assert response.missingRules.size() == 2
             assert response.installedRules.sort() == response.missingRules.sort()
-            assert response.properRules.findAll { !Cookie.isDefaultRule(it) }.empty, it
+            assert response.properRules.findAll { !new Cookie(it).serviceFlag }.empty, it
             assert response.excessRules.empty
         }
 
         then: "No missing rules were found after rules synchronization"
         commonNodeIds.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
+                properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules(switchId)
                 missingRules.empty
                 excessRules.empty
             }
@@ -611,7 +611,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         uniqueNodes.each {
             verifyAll(northbound.validateSwitchRules(it.switchId)) {
-                properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+                properRules.findAll { !new Cookie(it).serviceFlag }.size() == 2
                 missingRules.empty
                 excessRules.empty
             }
@@ -621,6 +621,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Ignore
     @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
@@ -754,7 +755,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.size().findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
+                properRules.size().findAll { !new Cookie(it).serviceFlag }.size() == flowRulesCount
                 missingRules.empty
                 excessRules.empty
             }

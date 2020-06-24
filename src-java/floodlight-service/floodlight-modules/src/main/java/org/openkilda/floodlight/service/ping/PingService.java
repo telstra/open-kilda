@@ -18,14 +18,18 @@ package org.openkilda.floodlight.service.ping;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
+import org.openkilda.floodlight.error.PingImpossibleException;
 import org.openkilda.floodlight.model.PingWiredView;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.floodlight.shared.packet.Vxlan;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.floodlight.utils.EthernetPacketToolbox;
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.model.FlowEndpoint;
+import org.openkilda.messaging.model.Ping.Errors;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.cookie.Cookie;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -38,6 +42,7 @@ import net.floodlightcontroller.packet.UDP;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -80,7 +85,7 @@ public class PingService implements IService {
     /**
      * Wrap ping data into L2, l3 and L4 network packages.
      */
-    public IPacket wrapData(Ping ping, byte[] payload) {
+    public IPacket wrapData(Ping ping, byte[] payload) throws PingImpossibleException {
         Data l7 = new Data(payload);
 
         UDP l4 = new UDP();
@@ -94,22 +99,44 @@ public class PingService implements IService {
         l3.setDestinationAddress(NET_L3_ADDRESS);
         l3.setTtl(NET_L3_TTL);
 
-        EthType l2Type = EthType.IPv4;
-        IPacket l2Payload = l3;
-        List<Integer> vlanStack = FlowEndpoint.makeVlanStack(ping.getIngressInnerVlanId(), ping.getIngressVlanId());
-        for (int vlanID : vlanStack) {
-            l2Payload = EthernetPacketToolbox.injectVlan(l2Payload, vlanID, l2Type);
-            l2Type = EthType.VLAN_FRAME;
-        }
-
         Ethernet l2 = new Ethernet();
-        l2.setEtherType(l2Type);
+        l2.setPayload(l3);
+        l2.setEtherType(EthType.IPv4);
         l2.setSourceMACAddress(magicSourceMacAddress);
         DatapathId egressSwitch = DatapathId.of(ping.getDest().getDatapath().toLong());
         l2.setDestinationMACAddress(MacAddress.of(egressSwitch));
-        l2.setPayload(l2Payload);
 
-        return l2;
+        if (FlowEncapsulationType.TRANSIT_VLAN.equals(ping.getTransitEncapsulation().getType())) {
+            l2.setVlanID(ping.getTransitEncapsulation().getId().shortValue());
+            return l2;
+
+        } else if (FlowEncapsulationType.VXLAN.equals(ping.getTransitEncapsulation().getType())) {
+            Vxlan vxlan = new Vxlan();
+            vxlan.setPayload(l2);
+            vxlan.setVni(ping.getTransitEncapsulation().getId());
+
+            UDP udp = new UDP();
+            udp.setPayload(vxlan);
+            udp.setSourcePort(TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC));
+            udp.setDestinationPort(TransportPort.of(SwitchManager.VXLAN_UDP_DST));
+
+            IPv4 ipv4 = new IPv4();
+            ipv4.setPayload(udp);
+            ipv4.setProtocol(IpProtocol.UDP);
+            ipv4.setSourceAddress(SwitchManager.STUB_VXLAN_IPV4_SRC);
+            ipv4.setDestinationAddress(SwitchManager.STUB_VXLAN_IPV4_DST);
+            ipv4.setTtl(NET_L3_TTL);
+
+            Ethernet ethernet = new Ethernet();
+            ethernet.setPayload(ipv4);
+            ethernet.setEtherType(EthType.IPv4);
+            ethernet.setSourceMACAddress(magicSourceMacAddress);
+            ethernet.setDestinationMACAddress(MacAddress.of(egressSwitch));
+
+            return ethernet;
+        }
+
+        throw new PingImpossibleException(ping, Errors.INCORRECT_REQUEST);
     }
 
     /**

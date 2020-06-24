@@ -37,7 +37,7 @@ class MultitableSwitchRulesSpec extends HealthCheckSpecification {
         }
 
         then: "Default rules are recreated in multi table mode"
-        with(newSwitchRules.findAll { Cookie.isDefaultRule(it.cookie) }) { rules ->
+        with(newSwitchRules.findAll { new Cookie(it.cookie).serviceFlag }) { rules ->
             rules*.tableId.unique().sort() == [0, 1, 2, 3, 4, 5]
             rules*.instructions.findAll { it.goToTable }.goToTable.unique().sort() == [2, 4, 5]
         }
@@ -58,7 +58,7 @@ class MultitableSwitchRulesSpec extends HealthCheckSpecification {
         }
 
         then: "Default rules are recreated in single table mode"
-        with(latestSwitchRules.findAll { Cookie.isDefaultRule(it.cookie) }) { rules ->
+        with(latestSwitchRules.findAll { new Cookie(it.cookie).serviceFlag }) { rules ->
             rules.findAll { it.instructions.goToTable }.empty
             rules.findAll { it.tableId }.empty
         }

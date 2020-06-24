@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.reroute.service;
 
 import static java.lang.String.format;
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -25,6 +26,7 @@ import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.model.Flow;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
@@ -138,10 +140,13 @@ public class RerouteQueueService {
     public void flushThrottling() {
         Map<String, FlowThrottlingData> requestsToSend = new HashMap<>();
         reroutes.forEach((flowId, rerouteQueue) -> rerouteQueue.flushThrottling()
-                    .ifPresent(flowThrottlingData -> requestsToSend.put(flowId, flowThrottlingData)));
+                .ifPresent(flowThrottlingData -> requestsToSend.put(flowId, flowThrottlingData)));
         log.info("Send reroute requests for flows {}", requestsToSend.keySet());
+        Comparator<FlowThrottlingData> comparator = ((Comparator<FlowThrottlingData>) this::comparePriority)
+                .thenComparing(this::compareAvailableBandwidth)
+                .thenComparing(this::compareTimeCreate);
         requestsToSend.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue(new FlowPriorityComparator()))
+                .sorted(Map.Entry.comparingByValue(comparator))
                 .forEach(es -> {
                     String flowId = es.getKey();
                     FlowThrottlingData flowThrottlingData = es.getValue();
@@ -221,25 +226,59 @@ public class RerouteQueueService {
         return reroutes;
     }
 
-    private class FlowPriorityComparator implements Comparator<FlowThrottlingData> {
-        @Override
-        public int compare(FlowThrottlingData throttlingDataA, FlowThrottlingData throttlingDataB) {
-            int priorityA = throttlingDataA.getPriority() == null ? defaultFlowPriority : throttlingDataA.getPriority();
-            int priorityB = throttlingDataB.getPriority() == null ? defaultFlowPriority : throttlingDataB.getPriority();
-            Instant timeCreateA = throttlingDataA.getTimeCreate();
-            Instant timeCreateB = throttlingDataB.getTimeCreate();
+    private int comparePriority(FlowThrottlingData throttlingDataA, FlowThrottlingData throttlingDataB) {
+        Integer priorityA = throttlingDataA.getPriority();
+        Integer priorityB = throttlingDataB.getPriority();
 
-            if (priorityA == priorityB && (timeCreateA != null || timeCreateB != null)) {
-                if (timeCreateA == null) {
-                    return -1;
-                }
-                if (timeCreateB == null) {
-                    return 1;
-                }
-                return timeCreateA.compareTo(timeCreateB);
+        if (priorityA == null) {
+            if (priorityB == null) {
+                return 0;
+            } else {
+                return -1;
             }
-
-            return Integer.compare(priorityA, priorityB);
         }
+        if (priorityB == null) {
+            return 1;
+        }
+
+        return Integer.compare(priorityA, priorityB);
+    }
+
+    private int compareAvailableBandwidth(FlowThrottlingData throttlingDataA, FlowThrottlingData throttlingDataB) {
+        PathComputationStrategy pathComputationStrategyA = throttlingDataA.getPathComputationStrategy();
+        PathComputationStrategy pathComputationStrategyB = throttlingDataB.getPathComputationStrategy();
+        long bandwidthA = throttlingDataA.getBandwidth();
+        long bandwidthB = throttlingDataB.getBandwidth();
+
+        if (pathComputationStrategyA == COST_AND_AVAILABLE_BANDWIDTH
+                && pathComputationStrategyB == COST_AND_AVAILABLE_BANDWIDTH) {
+            if (bandwidthA != bandwidthB) {
+                return Long.compare(bandwidthB, bandwidthA);
+            }
+        } else {
+            if (pathComputationStrategyA == COST_AND_AVAILABLE_BANDWIDTH) {
+                return 1;
+            }
+            if (pathComputationStrategyB == COST_AND_AVAILABLE_BANDWIDTH) {
+                return -1;
+            }
+        }
+        return 0;
+    }
+
+    private int compareTimeCreate(FlowThrottlingData throttlingDataA, FlowThrottlingData throttlingDataB) {
+        Instant timeCreateA = throttlingDataA.getTimeCreate();
+        Instant timeCreateB = throttlingDataB.getTimeCreate();
+
+        if (timeCreateA != null || timeCreateB != null) {
+            if (timeCreateA == null) {
+                return -1;
+            }
+            if (timeCreateB == null) {
+                return 1;
+            }
+            return timeCreateA.compareTo(timeCreateB);
+        }
+        return 0;
     }
 }

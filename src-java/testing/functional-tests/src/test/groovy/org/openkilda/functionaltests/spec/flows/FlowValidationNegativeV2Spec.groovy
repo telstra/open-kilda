@@ -165,7 +165,7 @@ class FlowValidationNegativeV2Spec extends HealthCheckSpecification {
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
         def protectedPath = flowPathInfo.protectedPath.forwardPath
         def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
+            !new Cookie(it.cookie).serviceFlag
         }
 
         def ruleToDelete = rules.find {

@@ -37,7 +37,7 @@ public class KildaConfiguration {
     public static final KildaConfiguration DEFAULTS = KildaConfiguration.builder()
             .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
             .useMultiTable(false)
-            .pathComputationStrategy(PathComputationStrategy.COST)
+            .pathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH)
             .build();
 
     // Hidden as needed for OGM only.

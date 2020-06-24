@@ -127,11 +127,11 @@ kilda_logging_port_storm: 5001
 kilda_logging_port_floodlight: 5002
 kilda_logging_port_lab_service: 5003
 kilda_logging_port_northbound: 5005
-kilda_logging_port_grpc: 5005
-kilda_logging_port_server42_control: 5005
-kilda_logging_port_server42_stats: 5005
-kilda_logging_port_server42_control_server_stub: 5005
-kilda_logging_port_server42_control_storm_stub: 5005
+kilda_logging_port_grpc: 5000
+kilda_logging_port_server42_control: 5003
+kilda_logging_port_server42_stats: 5004
+kilda_logging_port_server42_control_server_stub: 5003
+kilda_logging_port_server42_control_storm_stub: 5003
 
 kilda_gui_application_name_prefix: "Dev"
 

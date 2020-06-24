@@ -33,6 +33,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -99,6 +100,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The flow allows traffic (only applicable flows are checked)"
+        def beforeTraffic = new Date()
+        def trafficApplicable = true
         try {
             def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 3)
             withPool {
@@ -111,10 +114,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         } catch (FlowNotApplicableException e) {
             //flow is not applicable for traff exam. That's fine, just inform
             log.warn(e.message)
+            trafficApplicable = false
         }
 
         and: "Flow writes stats"
-        statsHelper.verifyFlowWritesStats(flow.flowId, isFlowPingable(flow))
+        if(trafficApplicable) { statsHelper.verifyFlowWritesStats(flow.flowId, beforeTraffic, true) }
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -553,7 +557,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             def validation = northbound.validateSwitch(it.dpId)
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            assert validation.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
+            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
         }
 
         cleanup: "Remove the flow"
@@ -679,7 +683,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
         def notConnectedIsl = topology.notConnectedIsls.first()
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
@@ -697,7 +701,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore status of the ISL and delete new created ISL"
-        islUtils.replug(newIsl, true, isl, false)
+        islUtils.replug(newIsl, true, isl, false, true)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))
@@ -766,7 +770,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
+                    !new Cookie(it.cookie).serviceFlag
                 }
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
@@ -890,8 +894,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
         withPool(switches.size()) {
             switches.eachParallel { Switch sw ->
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.findAll { cookie ->
-                    Cookie.isIngressRulePassThrough(cookie) || !Cookie.isDefaultRule(cookie)
+                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.findAll {
+                    def cookie = new Cookie(it)
+                    cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
                 }.empty
             }
         }
@@ -936,7 +941,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def flowInfoFromDb2 = database.getFlow(flow.flowId)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }) { rules ->
                 rules.findAll {
                     it.cookie in [flowInfoFromDb1.forwardPath.cookie.value, flowInfoFromDb1.reversePath.cookie.value]
@@ -980,7 +985,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         def flowInfoFromDb3 = database.getFlow(flow.flowId)
         Wrappers.wait(RULES_DELETION_TIME) {
             with(northbound.getSwitchRules(dstSwitch.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }) { rules ->
                 rules.findAll {
                     it.cookie in [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value]
@@ -991,7 +996,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         and: "Flow rules are installed on the new dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             with(northbound.getSwitchRules(newDstSwitch.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
+                !new Cookie(it.cookie).serviceFlag
             }) { rules ->
                 rules.findAll {
                     it.cookie in [flowInfoFromDb3.forwardPath.cookie.value, flowInfoFromDb3.reversePath.cookie.value]

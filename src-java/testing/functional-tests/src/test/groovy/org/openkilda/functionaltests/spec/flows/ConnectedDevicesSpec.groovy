@@ -49,7 +49,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -1204,8 +1203,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
-        def sw = topology.activeTraffGens*.switchConnected.first() ?:
-                assumeTrue("No suiting switches found", false)
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow = flowHelperV2.singleSwitchFlow(sw)
@@ -1386,7 +1385,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {
-        assert northbound.getSwitchRules(switchId).flowEntries.count { !Cookie.isDefaultRule(it.cookie) } == 0
+        assert northbound.getSwitchRules(switchId).flowEntries.count { !new Cookie(it.cookie).serviceFlag } == 0
         assert northbound.getAllMeters(switchId).meterEntries.count { !MeterId.isMeterIdOfDefaultRule(it.meterId) } == 0
     }
 

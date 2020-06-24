@@ -347,13 +347,6 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
                 .setVni(command.getEncapsulation().getId())
                 .setFlags((short) 0x01)
                 .build());
-        applyActions.add(of.actions().buildNoviflowCopyField()
-                .setOxmSrcHeader(of.oxms().buildNoviflowPacketOffset().getTypeLen())
-                .setSrcOffset(56 * 8)
-                .setOxmDstHeader(of.oxms().buildNoviflowPacketOffset().getTypeLen())
-                .setDstOffset(6 * 8)
-                .setNBits(MacAddress.BROADCAST.getLength() * 8)
-                .build());
         applyActions.add(of.actions().buildOutput().setPort(OFPort.of(command.getIslPort())).build());
         instructions.add(of.instructions().applyActions(applyActions));
         if (expectPostIngressTableRedirect()) {

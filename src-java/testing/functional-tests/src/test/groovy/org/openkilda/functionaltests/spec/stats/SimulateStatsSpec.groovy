@@ -47,7 +47,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
         def (Switch src, Switch dst) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(src, dst)
         flowHelperV2.addFlow(flow)
-        def srcRules = northbound.getSwitchRules(src.dpId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
+        def srcRules = northbound.getSwitchRules(src.dpId).flowEntries.findAll { !new Cookie(it.cookie).serviceFlag }
 
         when: "Flow stats information with noviflow-specific right boundary packet/byte counts is written to kafka"
         def producer = new KafkaProducer(producerProps)

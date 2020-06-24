@@ -29,6 +29,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
@@ -232,23 +233,19 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Update switch properties(multi_table: false) on the switch"
         def defaultMultiTableSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-            Cookie.isDefaultRule(it.cookie)
+            new Cookie(it.cookie).serviceFlag
         }
         northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
 
         then: "Default switch rules are still in multi table mode"
         Wrappers.timedLoop(RULES_INSTALLATION_TIME / 3) {
             with(northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                Cookie.isDefaultRule(it.cookie)
+                new Cookie(it.cookie).serviceFlag
             }) { rules ->
                 rules.size() == defaultMultiTableSwRules.size()
                 rules*.tableId.unique().sort() == defaultMultiTableSwRules*.tableId.unique().sort()
@@ -263,12 +260,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) {
@@ -294,12 +287,8 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Update the flow"
         flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
@@ -341,19 +330,16 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Flow rules are deleted"
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-            Cookie.isIngressRulePassThrough(it.cookie) || !Cookie.isDefaultRule(it.cookie)
+            def cookie = new Cookie(it.cookie)
+            cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
         }.empty
 
         and: "Cleanup: revert system to original state"
@@ -850,19 +836,16 @@ mode with existing flows and hold flows of different table-mode types"() {
             }
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Flow rules are deleted"
         northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-            Cookie.isIngressRulePassThrough(it.cookie) || !Cookie.isDefaultRule(it.cookie)
+            def cookie = new Cookie(it.cookie)
+            cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
         }.empty
 
         and: "Cleanup: revert system to original state"
@@ -975,7 +958,8 @@ mode with existing flows and hold flows of different table-mode types"() {
         Wrappers.wait(RULES_DELETION_TIME) {
             involvedSwitches.each { sw ->
                 northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                    Cookie.isIngressRulePassThrough(it.cookie) || !Cookie.isDefaultRule(it.cookie)
+                    def cookie = new Cookie(it.cookie)
+                    cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
                 }.empty
             }
         }

@@ -274,7 +274,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
+                    !new Cookie(it.cookie).serviceFlag
                 }
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
@@ -284,7 +284,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
+                    !new Cookie(it.cookie).serviceFlag
                 }
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }

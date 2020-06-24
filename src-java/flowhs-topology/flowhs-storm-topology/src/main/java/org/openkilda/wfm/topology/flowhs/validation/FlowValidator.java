@@ -122,6 +122,11 @@ public class FlowValidator {
             throw new InvalidFlowException("Couldn't setup protected path for one-switch flow",
                     ErrorType.PARAMETERS_INVALID);
         }
+
+        if (flow.isPeriodicPings() && flow.getSrcSwitch().equals(flow.getDestSwitch())) {
+            throw new InvalidFlowException("Couldn't turn on periodic pings for one-switch flow",
+                    ErrorType.PARAMETERS_INVALID);
+        }
     }
 
     /**
