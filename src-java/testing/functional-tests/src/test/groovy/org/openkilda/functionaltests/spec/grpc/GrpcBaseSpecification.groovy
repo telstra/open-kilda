@@ -36,9 +36,33 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
                     false, "of_version", "manufacturer", "hardware", "software", "serial_number") as List
         } else {
             northbound.activeSwitches.findAll {
-                def matcher = it.description =~ /NW[0-9]+.([0-9].[0-9])/
-                return matcher && matcher[0][1] >= "2.7"
+                it.manufacturer.toLowerCase().contains("noviflow") &&
+                        compareNoviVersions(it.software, "500.2.7") >= 0
             }.unique { [it.hardware, it.software] }
         }
     }
+
+    /**
+     * Compare 2 version strings. Must have equal amount of number groups, e.g. 500.0.0.1 and 49.555.45.0
+     * @return '1' if v1 > v2, '-1' if v1 < v2, '0' if equal
+     */
+    int compareNoviVersions(String v1, String v2) {
+        def pattern = /(\d+)/
+        def v1Matcher = v1 =~ pattern
+        def v2Matcher = v2 =~ pattern
+        if (!v1Matcher || !v2Matcher || v1Matcher.size() != v2Matcher.size()) {
+            throw new RuntimeException("Unable to compare given version strings: $v1 and $v2")
+        }
+        def v1Numbers = v1Matcher.collect { it[1] }
+        def v2Numbers = v2Matcher.collect { it[1] }
+        for (int i = 0; i < v1Numbers.size(); i++) {
+            if (v1Numbers[i] > v2Numbers[i]) {
+                return 1
+            } else if (v1Numbers[i] < v2Numbers[i]) {
+                return -1
+            }
+        }
+        return 0
+    }
+
 }

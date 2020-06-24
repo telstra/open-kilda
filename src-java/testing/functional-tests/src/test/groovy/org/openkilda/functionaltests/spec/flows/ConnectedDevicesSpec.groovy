@@ -1203,8 +1203,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
-        def sw = topology.activeTraffGens*.switchConnected.first() ?:
-                assumeTrue("No suiting switches found", false)
+        assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
+        def sw = topology.activeTraffGens*.switchConnected.first()
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow = flowHelperV2.singleSwitchFlow(sw)

@@ -100,6 +100,8 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The flow allows traffic (only applicable flows are checked)"
+        def beforeTraffic = new Date()
+        def trafficApplicable = true
         try {
             def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 3)
             withPool {
@@ -112,7 +114,11 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         } catch (FlowNotApplicableException e) {
             //flow is not applicable for traff exam. That's fine, just inform
             log.warn(e.message)
+            trafficApplicable = false
         }
+
+        and: "Flow writes stats"
+        if(trafficApplicable) { statsHelper.verifyFlowWritesStats(flow.flowId, beforeTraffic, true) }
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -677,7 +683,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
         def notConnectedIsl = topology.notConnectedIsls.first()
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
@@ -695,7 +701,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         errorDetails.errorDescription == getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore status of the ISL and delete new created ISL"
-        islUtils.replug(newIsl, true, isl, false)
+        islUtils.replug(newIsl, true, isl, false, true)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))

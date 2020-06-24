@@ -98,7 +98,7 @@ for ISL alive confirmation)"
         } ?: assumeTrue("Wasn't able to find a suitable link", false)
         def dstSwToDeactivate = roundTripIsl.dstSwitch
 
-        when: "Simulate connection lose between the switches and FL, switches become DEACTIVATED and remain operable"
+        when: "Switches lose connection to FL, switches become DEACTIVATED but keep processing packets"
         def mgmtBlockDataSrcSw = lockKeeper.knockoutSwitch(srcSwToDeactivate, mgmtFlManager)
         def mgmtBlockDataDstSw = lockKeeper.knockoutSwitch(dstSwToDeactivate, mgmtFlManager)
         def areSwitchesDeactivated = true

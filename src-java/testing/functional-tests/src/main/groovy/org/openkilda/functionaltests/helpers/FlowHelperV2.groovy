@@ -157,7 +157,7 @@ class FlowHelperV2 {
      * Sends delete request for flow and waits for that flow to disappear from flows list
      */
     FlowResponseV2 deleteFlow(String flowId) {
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
+        Wrappers.wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northboundV2.deleteFlow(flowId)
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getFlowStatus(flowId) }
