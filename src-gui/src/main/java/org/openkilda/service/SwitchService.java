@@ -17,6 +17,7 @@ package org.openkilda.service;
 
 import org.openkilda.constants.HttpError;
 import org.openkilda.constants.IConstants;
+import org.openkilda.constants.IConstants.ApplicationSetting;
 import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.integration.exception.IntegrationException;
@@ -48,6 +49,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
@@ -79,6 +81,9 @@ public class SwitchService {
     
     @Autowired
     private SwitchNameRepository switchNameRepository;
+    
+    @Autowired
+    private ApplicationSettingService applicationSettingService;
     
     /**
      * get All SwitchList.
@@ -459,18 +464,25 @@ public class SwitchService {
      * @return the SwitchInfo
      */
     public SwitchInfo saveOrUpdateSwitchName(String switchId, String switchName) {
-        SwitchNameEntity switchNameEntity = switchNameRepository.findBySwitchDpid(switchId);
-        if (switchNameEntity == null) {
-            switchNameEntity = new SwitchNameEntity();
+        String storageType = applicationSettingService
+                .getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+        if (storageType.equals(IConstants.StorageType.DATABASE_STORAGE.name())) {
+            SwitchNameEntity switchNameEntity = switchNameRepository.findBySwitchDpid(switchId);
+            if (switchNameEntity == null) {
+                switchNameEntity = new SwitchNameEntity();
+            }
+            switchNameEntity.setSwitchDpid(switchId);
+            switchNameEntity.setSwitchName(switchName);
+            switchNameEntity.setUpdatedDate(new Date());
+            switchNameRepository.save(switchNameEntity);
+            SwitchInfo switchInfo = new SwitchInfo();
+            switchInfo.setSwitchId(switchId);
+            switchInfo.setName(switchName);
+            return switchInfo;
+        } else {
+            throw new RequestValidationException("Storage-Type in Application Settings is not Database, "
+                    + "so switch name can not be updated");
         }
-        switchNameEntity.setSwitchDpid(switchId);
-        switchNameEntity.setSwitchName(switchName);
-        switchNameEntity.setUpdatedDate(new Date());
-        switchNameRepository.save(switchNameEntity);
-        SwitchInfo switchInfo = new SwitchInfo();
-        switchInfo.setSwitchId(switchId);
-        switchInfo.setName(switchName);
-        return switchInfo;
     }
 
     /**
