@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -35,13 +35,13 @@ public class LinkParametersDto {
     private String srcSwitch;
     
     @JsonProperty("src_port")
-    private int srcPort;
+    private Integer srcPort;
 
     @JsonProperty("dst_switch")
     private String dstSwitch;
 
     @JsonProperty("dst_port")
-    private int dstPort;
+    private Integer dstPort;
     
     @JsonProperty("enable_bfd")
     private boolean enableBfd;
