@@ -86,8 +86,7 @@ class EnduranceV2Spec extends BaseSpecification {
         Wrappers.wait(flows.size() / 2) {
             flows.each {
                 assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP
-                //https://github.com/telstra/open-kilda/issues/3077
-//                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
+                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
             }
         }
 
