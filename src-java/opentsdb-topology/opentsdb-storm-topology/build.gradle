@@ -15,7 +15,7 @@ dependencies {
     runtimeOnly project(':kilda-persistence-neo4j')
     testImplementation project(':kilda-persistence-neo4j')
 
-    implementation('org.apache.storm:storm-opentsdb:1.1.0') {
+    implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude(group: 'org.apache.httpcomponents', module: 'httpclient')
     }
 
