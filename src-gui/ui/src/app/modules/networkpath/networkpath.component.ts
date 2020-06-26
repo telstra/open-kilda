@@ -10,7 +10,7 @@ import * as d3 from "d3";
 import { Router } from '@angular/router';
 import { environment } from "../../../environments/environment";
 import { CommonService } from 'src/app/common/services/common.service';
-
+import { MessageObj } from 'src/app/common/constants/constants';
 @Component({
   selector: 'app-networkpath',
   templateUrl: './networkpath.component.html',
@@ -86,7 +86,7 @@ export class NetworkpathComponent implements OnInit {
     private router:Router
     ) { 
       if(!this.commonService.hasPermission('menu_available_path')){
-        this.toastr.error('You are not authorised to access this page.');  
+        this.toastr.error(MessageObj.unauthorised);  
          this.router.navigate(["/home"]);
         }
     }
@@ -101,14 +101,14 @@ export class NetworkpathComponent implements OnInit {
   }
 
   loadSwitchList(){
-    this.loaderService.show('loading switches..')
+    this.loaderService.show(MessageObj.loading_switches)
     this.switchService.getSwitchList().subscribe((data : any) =>{
     
     this.switchList = data;
     this.loaderService.hide();
      },error=>{
        this.loaderService.hide();
-       this.toastr.error("No switch data",'Error');
+       this.toastr.error(MessageObj.no_switch_data,'Error');
      });
   }
 
@@ -152,7 +152,7 @@ export class NetworkpathComponent implements OnInit {
     if (this.networkpathForm.invalid) {
       return;
     }
-    this.loaderService.show('fetching network paths...');
+    this.loaderService.show(MessageObj.fetching_network_paths);
     self.networkPaths = [];
     this.switchService.getNetworkPath(this.networkpathForm.controls['source_switch'].value,this.networkpathForm.controls['target_switch'].value).subscribe(function(paths){
       self.submitted = false; 
@@ -160,7 +160,7 @@ export class NetworkpathComponent implements OnInit {
          return d.nodes.length;
        });
        if(self.networkPaths.length == 0){
-        self.toastr.error("No data found",'Success');
+        self.toastr.error(MessageObj.no_data_found,'Success');
        }
        self.loaderService.hide();
     },error=>{

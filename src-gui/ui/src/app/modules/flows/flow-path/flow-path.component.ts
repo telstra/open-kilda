@@ -6,6 +6,7 @@ import { Router } from "@angular/router";
 import * as d3 from "d3";
 import { CommonService } from "src/app/common/services/common.service";
 import { FlowpathService } from "src/app/common/services/flowpath.service";
+import { MessageObj } from 'src/app/common/constants/constants';
 @Component({
   selector: "app-flow-path",
   templateUrl: "./flow-path.component.html",
@@ -84,7 +85,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
 
   getFlowPath(flowId) {
     var self = this;
-    this.loaderService.show("Loading Flow Path...");
+    this.loaderService.show(MessageObj.loading_flow_path);
     this.flowService.getFlowPath(flowId).subscribe(
       data => {
         this.flowPathData = data;
@@ -529,7 +530,6 @@ export class FlowPathComponent implements OnInit, OnDestroy {
       this.pathFlows = Object.keys(this.diversePath).filter(function(f,k){
           return f != 'protected_path_'+self.flowId;
       });
-      console.log('this.pathFlows',this.pathFlows,this.colourCodes);
   }
 
   viewDiverseGroup(type){

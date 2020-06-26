@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms'
 import { UserService } from '../../services/user.service';
 import { ToastrService } from 'ngx-toastr';
 import { LoaderService } from '../../services/loader.service';
+import { MessageObj } from '../../constants/constants';
 
 
 @Component({
@@ -92,9 +93,9 @@ export class ChangepasswordComponent implements OnInit {
     if(this.is2FaEnabled == 'true'){
       this.formData.code = this.changePasswordForm.value.otp
     }
-     this.loader.show('Changing password..');
+     this.loader.show(MessageObj.changing_pwd);
      this.userService.changePassword(this.userId, this.formData).subscribe(user => {
-      this.toastr.success("Password changed successfully!",'Success! ');
+      this.toastr.success(MessageObj.pwd_changed,'Success! ');
       this.modalService.dismissAll();
       this.loader.hide();
     },error =>{

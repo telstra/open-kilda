@@ -3,6 +3,7 @@ import { Title } from '@angular/platform-browser';
 import { CommonService } from 'src/app/common/services/common.service';
 import { ToastrService } from 'ngx-toastr';
 import { Router } from '@angular/router';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-settings',
@@ -20,7 +21,7 @@ export class SettingsComponent implements OnInit {
     private router:Router
   ) { 
     if(!this.commonService.hasPermission('store_setting')){
-      this.toastr.error('You are not authorised to access this page.');  
+      this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }

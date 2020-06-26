@@ -8,6 +8,7 @@ import { RoleService } from '../../../../common/services/role.service';
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-role-add',
@@ -56,7 +57,7 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
   }
   /* Add role form  */
   addRole(){
-    this.loaderService.show("Adding Role");
+    this.loaderService.show(MessageObj.adding_role);
     this.submitted = true;
     if (this.roleAddForm.invalid) {
       this.loaderService.hide();
@@ -71,7 +72,7 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
 
     this.roleService.addRole(this.roleData).subscribe(role => {
       this.loaderService.hide();
-      this.toastr.success("Role added successfully!",'Success! ');
+      this.toastr.success(MessageObj.role_added,'Success! ');
       this.tabService.setSelectedTab('roles');
     },error =>{
       this.loaderService.hide();

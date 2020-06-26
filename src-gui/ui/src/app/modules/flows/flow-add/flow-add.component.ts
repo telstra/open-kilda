@@ -12,6 +12,8 @@ import { Location } from "@angular/common";
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { ModalconfirmationComponent } from "../../../common/components/modalconfirmation/modalconfirmation.component";
 import { CommonService } from 'src/app/common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
+import { Message } from '@angular/compiler/src/i18n/i18n_ast';
 
 declare var jQuery: any;
 
@@ -52,7 +54,7 @@ export class FlowAddComponent implements OnInit {
     private toastr:ToastrService
   ) {
     if(!this.commonService.hasPermission('fw_flow_create')){
-      this.toastr.error('You are not authorised to access this page.');  
+      this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }
@@ -168,7 +170,7 @@ export class FlowAddComponent implements OnInit {
             
           }
           if(sortedPorts.length == 0){
-            this.toaster.info("No Ports available", "Info");
+            this.toaster.info(MessageObj.no_ports, "Info");
           }
           this.loaderService.hide();
         },
@@ -220,7 +222,7 @@ export class FlowAddComponent implements OnInit {
         this.loaderService.show("Adding Flow");
         this.flowService.createFlow(flowData).subscribe(
           response => {
-            this.toaster.success("Flow created successfully", "Success!");
+            this.toaster.success(MessageObj.flow_created, "Success!");
             localStorage.removeItem('flows');
             localStorage.removeItem('filterFlag');          
             localStorage.removeItem('flowsinventory'); 
@@ -234,7 +236,7 @@ export class FlowAddComponent implements OnInit {
                 "Error!"
               );
             }else{
-              this.toaster.error('Unable to create flow',
+              this.toaster.error(MessageObj.flow_not_created,
                 "Error!"
               );
             }

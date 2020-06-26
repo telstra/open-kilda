@@ -11,6 +11,7 @@ import { ModalconfirmationComponent } from "../../../../common/components/modalc
 import { Title } from '@angular/platform-browser';
 import { CommonService } from '../../../../common/services/common.service';
 import { ResetPasswordComponent } from 'src/app/common/components/reset-password/reset-password.component';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-user-list',
@@ -125,7 +126,7 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
   getUsers(){
     this.loadCount++;
     this.hide = false;
-    this.loaderService.show("Loading Users");
+    this.loaderService.show(MessageObj.loading_users);
     this.userService.getUsers().subscribe((data : Array<object>) =>{
      this.users = data;
      this.rerender();
@@ -134,14 +135,14 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
       
       if(error){
         if(error.status == 0){
-          this.toastr.info("Connection Refused",'Warning');
+          this.toastr.info(MessageObj.connection_refused,'Warning');
         }else if(error.error['error-message']){
           this.toastr.error(error.error['error-message'],'Error');
         }else{
-          this.toastr.error("Something went wrong",'Error');
+          this.toastr.error(MessageObj.something_wrong,'Error');
         }
       }else{
-        this.toastr.error("Something went wrong",'Error');
+        this.toastr.error(MessageObj.something_wrong,'Error');
       }
       this.rerender();
       this.ngAfterViewInit();
@@ -169,9 +170,9 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Deleting User");
+        this.loaderService.show(MessageObj.deleting_user);
         this.userService.deleteUser(id).subscribe(() => {
-          this.toastr.success("User removed successfully!",'Success')
+          this.toastr.success(MessageObj.user_deleted,'Success')
           this.getUsers();
         });
       }
@@ -199,9 +200,9 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
 
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Updating User Status");
+        this.loaderService.show(MessageObj.updating_user_status);
         this.userService.editUser(id, this.changeStatus).subscribe(user => {
-          this.toastr.success("User status changed successfully!",'Success')
+          this.toastr.success(MessageObj.user_status_updated,'Success')
           this.getUsers();
          
         });
@@ -219,9 +220,9 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     modalRef.componentInstance.content = 'Are you sure you want to reset password?';
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Resetting Password");
+        this.loaderService.show(MessageObj.resetting_password);
         this.userService.resetpasswordByUser(id).subscribe(user => {
-          this.toastr.success("Reset Password email sent successfully!",'Success');
+          this.toastr.success(MessageObj.reset_pwd_mail_sent,'Success');
           this.loaderService.hide();
         },error => {
           this.toastr.error(error.error['error-message']);
@@ -236,10 +237,10 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     Description: Reset the user password by admin.
   */
   resetpasswordByAdmin(id){
-    this.loaderService.show("Resetting Password");
+    this.loaderService.show(MessageObj.resetting_pwd_by_admin);
     this.userService.resetpasswordByAdmin(id).subscribe(u => {
       this.loaderService.hide();
-      this.toastr.success("Password Reset successfully!",'Success');
+      this.toastr.success(MessageObj.pwd_reset,'Success');
       const modalRef = this.modalService.open(ResetPasswordComponent);
       modalRef.componentInstance.title = "User New Password";
       modalRef.componentInstance.content = u['password'];
@@ -260,15 +261,15 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
     modalRef.componentInstance.content = 'Are you sure you want to reset 2FA?';
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Resetting 2FA");
+        this.loaderService.show(MessageObj.resetting_twofa);
         this.userService.reset2fa(id).subscribe(user => {
-          this.toastr.success("User 2FA reset successfully!",'Success');
+          this.toastr.success(MessageObj.twofa_reset,'Success');
           this.loaderService.hide();
         },error => {
           if(error.status == '500'){
             this.toastr.error(error.error['error-message']);
           }else{
-            this.toastr.error("Something went wrong!");
+            this.toastr.error(MessageObj.something_wrong);
           }
 
           this.loaderService.hide();

@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup } from "@angular/forms";
 import { ToastrService } from "ngx-toastr";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { ClipboardService } from "ngx-clipboard";
+import { MessageObj } from 'src/app/common/constants/constants';
 declare var moment: any;
 
 @Component({
@@ -285,7 +286,7 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
   
   copyToClipCookie(data){
     this.clipBoardService.copyFromContent(data);
-    this.toaster.success('Copied to clicboard');
+    this.toaster.success(MessageObj.copied_to_clipboard);
   }
 
   changeMetric(){

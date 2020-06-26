@@ -5,6 +5,7 @@ import { IdentityServerModel } from '../../../common/data-models/identityserver-
 import { ToastrService } from 'ngx-toastr';
 import { LoaderService } from '../../../common/services/loader.service';
 import { CommonService } from 'src/app/common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-identity-server',
@@ -73,7 +74,7 @@ export class IdentityServerComponent implements OnInit {
         "body":[""]
       })
     });
-    this.loaderService.show('Loading Identity Server Details');
+    this.loaderService.show(MessageObj.loading_is_detail);
     this.storesettingservice.getIdentityServerConfigurations().subscribe((jsonResponse)=>{
       if(jsonResponse && jsonResponse['oauth-generate-token-url'] && typeof(jsonResponse['oauth-generate-token-url']['url']) !== 'undefined' ){
         this.commonService.setIdentityServer(true);
@@ -127,7 +128,7 @@ export class IdentityServerComponent implements OnInit {
 			var tokenUrl = this.identityServerForm.value['oauth-generate-token-url'].url;
 			var refreshTokenUrl = this.identityServerForm.value['oauth-refresh-token-url'].url;
       var postData = decodeURIComponent("grant_type=password&username="+username+"&password="+password);
-      this.loaderService.show('Validating Identity Server Details');
+      this.loaderService.show(MessageObj.validating_is_server);
 			this.storesettingservice.generateorRefreshToken(tokenUrl,postData).subscribe(
         (response:any)=>{
 			 if(response && response.access_token){
@@ -141,12 +142,12 @@ export class IdentityServerComponent implements OnInit {
               this.submitIdentityData();
 						},error=>{
               this.loaderService.hide();
-						this.toastr.error(error['error_description'] ? error['error-message'] : "Unable to validate indentity server",'Error');
+						this.toastr.error(error['error_description'] ? error['error-message'] : MessageObj.unable_to_validate_is_server,'Error');
 						})
 				 }	
 				},error=>{
           this.loaderService.hide();
-					this.toastr.error(error['error_description'] ? error['error-message'] : "Unable to validate indentity server",'Error');
+					this.toastr.error(error['error_description'] ? error['error-message'] : MessageObj.unable_to_validate_is_server,'Error');
 			})
    }
 
@@ -156,7 +157,7 @@ export class IdentityServerComponent implements OnInit {
     this.storesettingservice.submitIdentity('/auth/oauth-two-config/save',obj).subscribe((response:any)=>{
             this.identityServerForm.setValue(response || {});
             this.loaderService.hide();
-						this.toastr.success("Identity Server Details Saved Successfully", 'Success');
+						this.toastr.success(MessageObj.is_server_detail_saved, 'Success');
             this.identityServerForm.disable();
             this.isEditable = false;
             this.commonService.setIdentityServer(true);

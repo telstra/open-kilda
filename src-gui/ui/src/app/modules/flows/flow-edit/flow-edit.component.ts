@@ -13,6 +13,7 @@ import { Title } from "@angular/platform-browser";
 import { ModalconfirmationComponent } from '../../../common/components/modalconfirmation/modalconfirmation.component';
 import { ModalComponent } from '../../../common/components/modal/modal.component';
 import { CommonService } from "../../../common/services/common.service";
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: "app-flow-edit",
@@ -56,7 +57,7 @@ export class FlowEditComponent implements OnInit {
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false;
     if(!this.commonService.hasPermission('fw_flow_update')){
-      this.toastr.error('You are not authorised to access this page.');  
+      this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }
@@ -97,7 +98,7 @@ export class FlowEditComponent implements OnInit {
 
   /**Get flow detail via api call */
   getFlowDetail(flowId,filterFlag) {
-    this.loaderService.show("Loading Flow Detail");
+    this.loaderService.show(MessageObj.flow_detail);
     this.flowService.getFlowDetailById(flowId,filterFlag).subscribe(
       flow => {
         this.flowDetailData = flow;
@@ -134,7 +135,7 @@ export class FlowEditComponent implements OnInit {
   /** Get switches list via api call */
   getSwitchList() {
     let ref = this;
-    this.loaderService.show("Loading Flow Detail");
+    this.loaderService.show(MessageObj.flow_detail);
     this.switchService.getSwitchList().subscribe(
       response => {
         response.forEach(function(s) {
@@ -161,7 +162,7 @@ export class FlowEditComponent implements OnInit {
         "legacy"
       );
       if(!flag){
-        this.loaderService.show("Loading Ports");
+        this.loaderService.show(MessageObj.load_ports);
       }
       
       this.switchService.getSwitchPortsStats(switchId).subscribe(
@@ -199,7 +200,7 @@ export class FlowEditComponent implements OnInit {
           }
           
           if(sortedPorts.length == 0){
-            this.toaster.info("No Ports available", "Info");
+            this.toaster.info(MessageObj.no_ports, "Info");
             if(switchType == "source_switch"){ 
               this.flowEditForm.controls["source_port"].setValue(null);
               this.flowEditForm.controls["source_vlan"].setValue("0");
@@ -261,10 +262,10 @@ export class FlowEditComponent implements OnInit {
     
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Updating flow");
+        this.loaderService.show(MessageObj.flow_updated);
         this.flowService.updateFlow(this.flowDetail.flowid, flowData).subscribe(
           response => {
-            this.toaster.success("Flow updated successfully on controller", "Success!");
+            this.toaster.success(MessageObj.flow_updated_controller, "Success!");
             localStorage.removeItem('flows');
             localStorage.removeItem('filterFlag');          
             localStorage.removeItem('flowsinventory'); 
@@ -311,7 +312,7 @@ export class FlowEditComponent implements OnInit {
                   { code: otp },
                   response => {
                     modalRef.close();
-                    this.toaster.success("Flow deleted successfully", "Success!");
+                    this.toaster.success(MessageObj.flow_deleted, "Success!");
                     this.loaderService.hide();
                     localStorage.removeItem('flows');
                     this.router.navigate(["/flows"]);
@@ -326,7 +327,7 @@ export class FlowEditComponent implements OnInit {
                   }
                 );
               } else {
-                this.toaster.error("Unable to detect OTP", "Error!");
+                this.toaster.error(MessageObj.otp_not_detected, "Error!");
               }
             },
             error => {
@@ -335,7 +336,7 @@ export class FlowEditComponent implements OnInit {
         }else{
           const modalRef2 = this.modalService.open(ModalComponent);
           modalRef2.componentInstance.title = "Warning";
-          modalRef2.componentInstance.content = 'You are not authorised to delete the flow.';
+          modalRef2.componentInstance.content = MessageObj.delete_flow_not_authorised;
         }
         
       }

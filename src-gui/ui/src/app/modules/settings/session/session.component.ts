@@ -7,7 +7,7 @@ import { LoaderService } from "src/app/common/services/loader.service";
 import {forkJoin } from "rxjs";
 import { ModalconfirmationComponent } from "src/app/common/components/modalconfirmation/modalconfirmation.component";
 import { Router } from '@angular/router';
-
+import { MessageObj } from 'src/app/common/constants/constants';
 @Component({
   selector: "app-session",
   templateUrl: "./session.component.html",
@@ -32,7 +32,7 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   ) {
 
     if(!this.commonService.hasPermission('application_setting')){
-      this.toastr.error('You are not authorised to access this page.');  
+      this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }
@@ -51,7 +51,7 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
   }
 
   ngAfterViewInit(){
-    this.loaderService.show("Loading Application Setting");
+    this.loaderService.show(MessageObj.loading_app_setting);
     this.loadAllsettings().subscribe((responseList)=>{
       console.log('responseList',responseList);
       var settings = responseList[0];
@@ -102,9 +102,9 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
     modalReff.componentInstance.content = 'Are you sure you want to save session settings ?';
     modalReff.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Saving Session Setting");
+        this.loaderService.show(MessageObj.saving_session_setting);
           this.commonService.saveSessionTimeoutSetting(session_time).subscribe((response)=>{
-            this.toastrService.success("Session Setting saved",'Success');
+            this.toastrService.success(MessageObj.session_setting_saved,'Success');
             this.loaderService.hide();
             this.initialVal = this.sessionForm.controls['session_time'].value;
             this.isEdit = false;
@@ -140,9 +140,9 @@ export class SessionComponent implements OnInit, AfterViewInit, OnChanges,DoChec
     modalReff.componentInstance.content = 'Are you sure you want to save switch name source settings ?';
     modalReff.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Saving Switch Name Source Setting");
+        this.loaderService.show(MessageObj.saving_switch_name_store_setting);
         this.commonService.saveSwitchNameSourceSettings(source_name_source).subscribe((response)=>{
-          this.toastrService.success("Switch Name Source Saved",'Success');
+          this.toastrService.success(MessageObj.switch_name_store_setting_saved,'Success');
           this.loaderService.hide();
           this.initialNameSource = this.switchNameSourceForm.controls['switch_name_source'].value;
           this.isSwitchNameSourcEdit = false;

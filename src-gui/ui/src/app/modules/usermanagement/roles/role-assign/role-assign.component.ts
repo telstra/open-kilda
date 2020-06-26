@@ -8,6 +8,7 @@ import { RoleService } from '../../../../common/services/role.service';
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-role-assign',
@@ -94,7 +95,7 @@ export class RoleAssignComponent implements OnInit, AfterViewInit {
     Description: Trigger when click on "Assign Role" Button
   */
   submitform(){
-    this.loaderService.show("Assigning User");
+    this.loaderService.show(MessageObj.assigning_user);
     this.submitted = true;
     if (this.roleAssignForm.invalid) {
       this.loaderService.hide();
@@ -111,7 +112,7 @@ export class RoleAssignComponent implements OnInit, AfterViewInit {
     this.roleAssignData = {"users": users};
     this.roleService.assignRole(this.selectedRole, this.roleAssignData).subscribe(role => {
       this.loaderService.hide();
-      this.toastr.success("Role updated successfully!",'Success! ');
+      this.toastr.success(MessageObj.role_updated,'Success! ');
       this.tabService.setSelectedTab('roles');
     },error =>{
       this.loaderService.hide();

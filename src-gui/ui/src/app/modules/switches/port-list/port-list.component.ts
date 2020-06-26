@@ -47,8 +47,6 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
   ngOnInit() {
       let ref =this;
-    // //this.titleService.setTitle('OPEN KILDA - Ports');
-  	// let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
     this.switch_id = this.switch;
     this.dtOptions = {
       paging: false,

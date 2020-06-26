@@ -6,7 +6,7 @@ import { ClipboardService } from "ngx-clipboard";
 import { LoaderService } from "../../../common/services/loader.service";
 import { CommonService } from '../../../common/services/common.service';
 import { Router } from '@angular/router';
-
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-rule-details',
@@ -30,7 +30,7 @@ export class RuleDetailsComponent implements OnInit {
     public commonService: CommonService
   ) {
     if(!this.commonService.hasPermission('menu_switches')){
-      this.toastr.error('You are not authorised to access this page.');  
+      this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }

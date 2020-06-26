@@ -16,6 +16,7 @@ import { ModalconfirmationComponent } from 'src/app/common/components/modalconfi
 import { IslmaintenancemodalComponent } from 'src/app/common/components/islmaintenancemodal/islmaintenancemodal.component';
 import { ModalComponent } from '../../../common/components/modal/modal.component';
 import { OtpComponent } from "../../../common/components/otp/otp.component"
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-switch-detail',
@@ -94,13 +95,6 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
          this.router.navigated = false;
         this.router.navigate([this.router.url]);
     }
-    // if(this.commonService.hasPermission('application-setting') && this.commonService.hasPermission('sw_switch_update_name')){
-    //   this.commonService.getAllSettings().subscribe((response)=>{
-    //     this.isStorageDBType = response && response['SWITCH_NAME_STORAGE_TYPE']=="DATABASE_STORAGE";
-    //   },error=>{
-  
-    //   })
-    // }
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)).pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
@@ -123,19 +117,15 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     } else {
       this.switchDetail.switch_id = this.maskPipe.transform(this.switchDetail.switch_id,'kilda');
     }
-
     this.clipBoardItems.sourceSwitch = this.switchDetail.switch_id;
-
   }
 
   deleteSwitch(){
-
     let is2FaEnabled  = localStorage.getItem('is2FaEnabled')
     var self = this;
     const modalReff = this.modalService.open(ModalconfirmationComponent);
     modalReff.componentInstance.title = "Delete Switch";
-    modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';
-    
+    modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';    
     modalReff.result.then((response) => {
       if(response && response == true){
         if(is2FaEnabled == 'true'){
@@ -143,13 +133,13 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
           modalRef.componentInstance.emitService.subscribe(
             otp => {
               if (otp) {
-                this.loaderService.show("Deleting Switch");
+                this.loaderService.show(MessageObj.deleting_switch);
                 this.switchService.deleteSwitch(
                   this.switchId,
                   { code: otp },
                   response => {
                     modalRef.close();
-                    this.toastr.success("Switch deleted successfully", "Success!");
+                    this.toastr.success(MessageObj.switch_deleted, "Success!");
                     this.loaderService.hide();
                     localStorage.removeItem('switchDetailsJSON');
                     localStorage.removeItem('SWITCHES_LIST');
@@ -166,7 +156,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
                   }
                 );
               } else {
-                this.toastr.error("Unable to detect OTP", "Error!");
+                this.toastr.error(MessageObj.otp_not_detected, "Error!");
               }
             },
             error => {
@@ -175,7 +165,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         }else{
           const modalRef2 = this.modalService.open(ModalComponent);
           modalRef2.componentInstance.title = "Warning";
-          modalRef2.componentInstance.content = 'You are not authorised to delete the switch.';
+          modalRef2.componentInstance.content = MessageObj.not_authorised_to_delete_switch;
         }        
       }
     });
@@ -188,8 +178,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
       }else{
         this.loadSwitchFlows(this.switchDetail.switch_id,true);
-      }
-        
+      }        
     }else if(enableLoader){
       this.isLoaderActive = true;
     }else{
@@ -249,7 +238,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
       if(response && response == true){
           this.isSwitchNameEdit = false;
           var self =this;
-          this.loaderService.show('Saving Switch Name..');
+          this.loaderService.show(MessageObj.saving_switchname);
           let name = this.switchNameForm.controls['name'].value;
           let switchId = this.switch_id;
           this.switchService.saveSwitcName(name,switchId).subscribe((response)=>{
@@ -275,7 +264,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
   getSwitchDetail(switchId,filter){
 
-    this.loaderService.show("Loading Switch Details");
+    this.loaderService.show(MessageObj.loading_switch_detail);
 
     this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting=>{
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
@@ -335,7 +324,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         this.switchService.getSwitchDetail(switchId,filter).subscribe((retrievedSwitchObject : any)=>{
           if(!retrievedSwitchObject){
             this.loaderService.hide();
-            this.toastr.error("No Switch Found",'Error');
+            this.toastr.error(MessageObj.no_switch_found,'Error');
             this.router.navigate([
               "/switches"
             ]);        
@@ -350,27 +339,23 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
           this.state =retrievedSwitchObject.state;
           this.underMaintenance = retrievedSwitchObject["under_maintenance"];
           this.clipBoardItems = Object.assign(this.clipBoardItems,{
-              
               sourceSwitchName: retrievedSwitchObject.name,
               sourceSwitch: this.switch_id,
               targetSwitchName: retrievedSwitchObject.hostname
-              
-            });
+             });
             this.loaderService.hide();
             if(retrievedSwitchObject['discrepancy'] && (retrievedSwitchObject['discrepancy']['status'])){
               if(retrievedSwitchObject['discrepancy']['status']){
                 this.statusDescrepancy  = true;
                 this.descrepancyData.status.controller = (typeof(retrievedSwitchObject['discrepancy']['status-value']['controller-status'])!='undefined') ?  retrievedSwitchObject['discrepancy']['status-value']['controller-status'] : "-";
                 this.descrepancyData.status.inventory = (typeof(retrievedSwitchObject['discrepancy']['status-value']['inventory-status'])!='undefined') ?  retrievedSwitchObject['discrepancy']['status-value']['inventory-status'] : "-";
-              }
-              
+              }              
             }
           }
           this.loadSwitchFlows(this.switchDetail.switch_id,false);
         },err=>{
-  
             this.loaderService.hide();
-            this.toastr.error("No Switch Found",'Error');
+            this.toastr.error(MessageObj.no_switch_found,'Error');
             this.router.navigate(['/switches']);
   
         });
@@ -400,9 +385,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     modalRef.componentInstance.emitService.subscribe(
       evacuate => {
         var data = {"under_maintenance":e.target.checked,"evacuate":evacuate};
-          this.loaderService.show('Applying Changes..');
+          this.loaderService.show(MessageObj.apply_changes);
           this.switchService.switchMaintenance(data,this.switchId).subscribe((response)=>{
-            this.toastr.success('Maintenance mode changed successful','Success');
+            this.toastr.success(MessageObj.maintenance_mode_changed,'Success');
             this.loaderService.hide();
             this.underMaintenance = e.target.checked;
             if(evacuate){
@@ -410,7 +395,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
             }
           },error => {
             this.loaderService.hide();
-            this.toastr.error('Error in changing maintenance mode! ','Error');
+            this.toastr.error(MessageObj.error_im_maintenance_mode,'Error');
           });
       },
       error => {
@@ -433,10 +418,10 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
       if(response && response == true){
         var data = {"under_maintenance":this.underMaintenance,"evacuate":e.target.checked};
         this.switchService.switchMaintenance(data,this.switchId).subscribe((serverResponse)=>{
-          this.toastr.success('All flows are evacuated successfully!','Success');
+          this.toastr.success(MessageObj.flows_evacuated,'Success');
           location.reload();
         },error => {
-          this.toastr.error('Error in evacuating flows! ','Error');
+          this.toastr.error(MessageObj.error_flows_evacuated,'Error');
         })
       }else{
         this.evacuate = false;

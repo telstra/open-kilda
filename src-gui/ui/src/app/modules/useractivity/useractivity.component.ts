@@ -11,7 +11,7 @@ import { Title } from '@angular/platform-browser';
 import { tickStep } from 'd3';
 import { CommonService } from 'src/app/common/services/common.service';
 import { Router } from '@angular/router';
-
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-useractivity',
@@ -50,14 +50,14 @@ export class UseractivityComponent implements OnInit {
 		) { 
 
 			if(!this.commonService.hasPermission('menu_user_activity')){
-				this.toaster.error('You are not authorised to access this page.');  
+				this.toaster.error(MessageObj.unauthorised);  
 				 this.router.navigate(["/home"]);
 				}
 		}
 
   ngOnInit() {
 		this.titleService.setTitle('OPEN KILDA - User Activity');
-    this.loaderService.show("Loading User Activities");
+    this.loaderService.show(MessageObj.loading_user_activity);
     this.callActivityService();
     this.callUserDropdownService();
     this.callTypeDropdownService();
@@ -79,7 +79,7 @@ export class UseractivityComponent implements OnInit {
     this.loaderService.hide();
      },error=>{
        this.loaderService.hide();
-       this.toastr.error("No useractivity data",'Error');
+       this.toastr.error(MessageObj.no_user_activity,'Error');
      });
   }
 
@@ -88,7 +88,7 @@ export class UseractivityComponent implements OnInit {
     this.userActivityService.getUserDropdownList().subscribe((data : Array<object>) =>{
     this.userDrowdonList = data;
      },error=>{
-       this.toastr.error("No user drowdon data",'Error');
+       this.toastr.error("No user dropdown data",'Error');
      });
   }
 
@@ -97,7 +97,7 @@ export class UseractivityComponent implements OnInit {
     this.userActivityService.getTypeDropdownList().subscribe((data : Array<object>) =>{
     this.typeDropdownList = data;
      },error=>{
-       this.toastr.error("No type drowdown data",'Error');
+       this.toastr.error("No type dropdown data",'Error');
      });
   }
 
@@ -186,7 +186,7 @@ export class UseractivityComponent implements OnInit {
   }
 
   getFilteredDetails(){
-    this.loaderService.show("Loading User Activities");
+    this.loaderService.show(MessageObj.loading_user_activity);
   	this.userActivityService.getFilteredUserActivityList(this.userId, this.type, this.startDate, this.endDate).subscribe((data : any) =>{
     data = data.sort(function(a,b){
     return b.activityTime - a.activityTime
@@ -195,7 +195,7 @@ export class UseractivityComponent implements OnInit {
    this.userActivityData = data;
      },error=>{
        this.loaderService.hide();
-       this.toastr.error("No useractivity data",'Error');
+       this.toastr.error(MessageObj.no_user_activity,'Error');
 
      });
   }

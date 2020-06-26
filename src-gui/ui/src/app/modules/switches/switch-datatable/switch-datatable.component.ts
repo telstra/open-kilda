@@ -9,6 +9,7 @@ import { ClipboardService } from 'ngx-clipboard';
 import { SwitchService } from 'src/app/common/services/switch.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { ToastrService } from 'ngx-toastr';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -48,7 +49,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     private switchService:SwitchService
   ) { 
     if(!this.commonService.hasPermission('menu_switches')){
-      this.toastr.error('You are not authorised to access this page.');  
+       this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }

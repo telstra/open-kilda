@@ -4,6 +4,7 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import { IslListService } from 'src/app/common/services/isl-list.service';
 import { ToastrService } from 'ngx-toastr';
 import { timeDay } from 'd3';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 
 @Component({
@@ -53,7 +54,7 @@ export class IslListComponent implements OnInit, AfterViewInit {
         var islListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
         localStorage.setItem('ISL_LIST',islListData);
         if (!data || data.length == 0) {
-          this.toastr.info("No ISL Available", "Information");
+          this.toastr.info(MessageObj.no_isl_available, "Information");
           this.dataSet = [];
         } else {
           this.dataSet = data;
@@ -61,7 +62,7 @@ export class IslListComponent implements OnInit, AfterViewInit {
         this.loadingData = false;
       },
       error => {
-        this.toastr.info("No ISL Available", "Information");
+        this.toastr.info(MessageObj.no_isl_available, "Information");
         this.dataSet = [];
         this.loadingData = false;
       }

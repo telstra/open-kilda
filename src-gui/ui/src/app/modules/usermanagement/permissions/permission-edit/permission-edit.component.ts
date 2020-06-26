@@ -7,6 +7,7 @@ import { PermissionService } from '../../../../common/services/permission.servic
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-permission-edit',
@@ -64,7 +65,7 @@ export class PermissionEditComponent implements OnInit {
     Description: updated permission data
   */
   updatePermission(){
-    this.loaderService.show("Updating Permission");
+    this.loaderService.show(MessageObj.updating_permission);
     this.submitted = true;
     if (this.permissionEditForm.invalid) {
       return;
@@ -77,7 +78,7 @@ export class PermissionEditComponent implements OnInit {
 
     this.permissionService.editPermission(this.selectedPermission ,this.permissionData).subscribe(permission => {
       this.loaderService.hide();
-      this.toastr.success("Permission updated successfully!",'Success! ');
+      this.toastr.success(MessageObj.permission_updated,'Success! ');
       this.tabService.setSelectedTab('permissions');
     },error =>{
       this.loaderService.hide();

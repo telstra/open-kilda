@@ -10,6 +10,7 @@ import { LoaderService } from "src/app/common/services/loader.service";
 import { ToastrService } from "ngx-toastr";
 import { ModalconfirmationComponent } from "src/app/common/components/modalconfirmation/modalconfirmation.component";
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: "app-switch-store",
@@ -101,7 +102,7 @@ export class SwitchStoreComponent implements OnInit {
 
   /**Get all switch store urls */
   getSwitchStoreUrls() {
-    this.loaderService.show('Loading Switch Store Settings');
+    this.loaderService.show(MessageObj.loading_switch_store);
     this.storesettingservice.getSwitchStoreUrl().subscribe(response => {
       if (response && response.length) {
         for (var i = 0; i < response.length; i++) {
@@ -282,7 +283,7 @@ export class SwitchStoreComponent implements OnInit {
     }
     this.submitted = false;
     var obj = this.switchStoreForm.value;
-    this.loaderService.show("Saving Switch Store Settings");
+    this.loaderService.show(MessageObj.saving_switch_store);
     this.storesettingservice
       .submitLinkData("/store/switch-store-config/save", obj)
       .subscribe(
@@ -290,7 +291,7 @@ export class SwitchStoreComponent implements OnInit {
           this.switchStoreForm.setValue(response || {});
           this.loaderService.hide();
           this.toastr.success(
-            "Switch Store Settings Saved Successfully",
+            MessageObj.saved_switch_store,
             "Success"
           );
           this.switchStoreForm.disable();
@@ -302,7 +303,7 @@ export class SwitchStoreComponent implements OnInit {
           var errorMsg =
             error && error.error && error.error["error-auxiliary-message"]
               ? error.error["error-auxiliary-message"]
-              : "Error in saving link store";
+              : MessageObj.error_saving_switch_store;
           this.toastr.error(errorMsg, "Error");
         }
       );
@@ -316,15 +317,15 @@ export class SwitchStoreComponent implements OnInit {
     
     modalReff.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show('Deleting Switch Store Settings');
+        this.loaderService.show(MessageObj.deleting_switch_store);
         this.storesettingservice.deleteSwitchStore('/store/switch-store-config/delete').subscribe((res:any)=>{
           this.loaderService.hide();
-          this.toastr.success("Switch Store Settings Deleted Successfully",'Success');
+          this.toastr.success(MessageObj.switch_store_setting_deleted,'Success');
           setTimeout(function(){
             location.reload();
           },500);
         },(error)=>{
-          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:'Error in deleting link store';
+          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:MessageObj.error_in_deleting_switch_store;
           this.toastr.error(errorMsg,'Error');
         })
       }

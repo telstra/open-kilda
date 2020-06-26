@@ -6,6 +6,7 @@ import { StoreSettingtService } from 'src/app/common/services/store-setting.serv
 import { FlowsService } from 'src/app/common/services/flows.service';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { ToastrService } from 'ngx-toastr';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-flow',
@@ -28,7 +29,7 @@ export class FlowComponent implements OnInit {
     private router:Router
   ) { 
     if(!this.commonService.hasPermission('menu_flows')){
-      this.toastr.error('You are not authorised to access this page.');  
+      this.toastr.error(MessageObj.unauthorised);  
        this.router.navigate(["/home"]);
       }
   }
@@ -77,7 +78,7 @@ export class FlowComponent implements OnInit {
   }
   getStoreLinkSettings(){
     if(!localStorage.getItem('linkStoreSetting')){
-      this.loaderService.show('Checking Link Store Configuration..');
+      this.loaderService.show(MessageObj.link_storage_config);
       let query = {_:new Date().getTime()};
       this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
         if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){

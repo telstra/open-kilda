@@ -9,6 +9,7 @@ import { Title } from '@angular/platform-browser';
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { ModalconfirmationComponent } from "../../../../common/components/modalconfirmation/modalconfirmation.component";
 import { CommonService } from '../../../../common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-role-list',
@@ -76,7 +77,7 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
   */
   getRoles(){
     this.loadCount++;
-    this.loaderService.show("Loading Roles");
+    this.loaderService.show(MessageObj.loading_roles);
     this.roleService.getRoles().subscribe((role: Array<object>) => {
       this.roleData = role;
       this.rerender();
@@ -86,14 +87,14 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
       this.loaderService.hide();
       if(error){
         if(error.status == 0){
-          this.toastr.info("Connection Refused",'Warning');
+          this.toastr.info(MessageObj.connection_refused,'Warning');
         }else if(error.error['error-message']){
           this.toastr.error(error.error['error-message'],'Error');
         }else{
-          this.toastr.error("Something went wrong",'Error');
+          this.toastr.error(MessageObj.something_wrong,'Error');
         }
       }else{
-        this.toastr.error("Something went wrong",'Error');
+        this.toastr.error(MessageObj.something_wrong,'Error');
       }
     });
   }
@@ -120,7 +121,7 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     modalRef.result.then((response) => {
       if(response && response == true){
         this.roleService.deleteRole(id).subscribe(() => {
-          this.toastr.success("Role removed successfully!",'Success')
+          this.toastr.success(MessageObj.role_removed,'Success')
           this.getRoles();
         }, error =>{
           this.toastr.error(error.error['error-auxiliary-message']);

@@ -8,6 +8,7 @@ import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { local } from 'd3';
 import { ToastrService } from 'ngx-toastr';
+import { MessageObj } from '../constants/constants';
 
 @Injectable()
 export class AppAuthInterceptor implements HttpInterceptor {
@@ -25,7 +26,7 @@ export class AppAuthInterceptor implements HttpInterceptor {
         } 
         return next.handle(requestToForward).pipe(catchError(err => {
             if (err.status === 401) {
-                let msg = this.cookieManager.get('isLoggedOutInProgress') ? "": "Your session has been expired" ;
+                let msg = this.cookieManager.get('isLoggedOutInProgress') ? "": MessageObj.session_expired ;
                 this.appLoader.show(msg);
                 localStorage.removeItem('flows');
                 localStorage.removeItem('is2FaEnabled');
