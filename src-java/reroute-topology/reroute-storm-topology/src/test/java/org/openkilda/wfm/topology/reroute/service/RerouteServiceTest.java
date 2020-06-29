@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
@@ -42,6 +43,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
@@ -92,7 +94,7 @@ public class RerouteServiceTest {
 
     private Flow regularFlow;
     private Flow pinnedFlow;
-
+    private Flow oneSwitchFlow;
     @Mock
     private TransactionManager transactionManager;
 
@@ -194,6 +196,22 @@ public class RerouteServiceTest {
         regularFlowReversePath.setSegments(unpinnedFlowReverseSegments);
         regularFlow.setForwardPath(regularFlowForwardPath);
         regularFlow.setReversePath(regularFlowReversePath);
+
+        oneSwitchFlow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
+                .destSwitch(SWITCH_A)
+                .build();
+        FlowPath oneSwitchFlowForwardPath = FlowPath.builder().pathId(new PathId("5"))
+                .flow(oneSwitchFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_A)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 4))
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        FlowPath oneSwitchFlowReversePath = FlowPath.builder().pathId(new PathId("6"))
+                .flow(oneSwitchFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_A)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 4))
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        oneSwitchFlow.setForwardPath(oneSwitchFlowForwardPath);
+        oneSwitchFlow.setReversePath(oneSwitchFlowReversePath);
     }
 
 
@@ -334,6 +352,32 @@ public class RerouteServiceTest {
                 .reason(request.getReason())
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
+    }
+
+    @Test
+    public void handleUpdateSingleSwitchFlows() {
+        FlowRepository flowRepository = mock(FlowRepository.class);
+        when(flowRepository.findOneSwitchFlows(oneSwitchFlow.getSrcSwitch().getSwitchId()))
+                .thenReturn(Arrays.asList(oneSwitchFlow));
+        FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createFlowRepository())
+                .thenReturn(flowRepository);
+        when(repositoryFactory.createFlowPathRepository())
+                .thenReturn(flowPathRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        rerouteService.processSingleSwitchFlowStatusUpdate(
+                new SwitchStateChanged(oneSwitchFlow.getSrcSwitch().getSwitchId(), SwitchStatus.INACTIVE));
+
+
+        verify(flowRepository).updateStatus(oneSwitchFlow.getFlowId(), FlowStatus.DOWN);
+
     }
 
     @Test
