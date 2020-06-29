@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toSet;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.command.reroute.UpdateSingleSwitchFlows;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -31,6 +32,7 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -63,14 +65,12 @@ public class RerouteService {
     private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
-    private FlowPathRepository pathRepository;
     private PathSegmentRepository pathSegmentRepository;
     private TransactionManager transactionManager;
 
     public RerouteService(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
-        this.pathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.pathSegmentRepository = persistenceManager.getRepositoryFactory().createPathSegmentRepository();
         this.transactionManager = persistenceManager.getTransactionManager();
     }
@@ -260,7 +260,7 @@ public class RerouteService {
      */
     public Collection<FlowPath> getAffectedFlowPaths(SwitchId switchId, int port) {
         log.info("Get affected flow paths by node {}_{}", switchId, port);
-        return pathRepository.findBySegmentEndpoint(switchId, port);
+        return flowPathRepository.findBySegmentEndpoint(switchId, port);
     }
 
 
@@ -357,6 +357,27 @@ public class RerouteService {
                 .reason(request.getReason())
                 .build();
         sender.emitManualRerouteCommand(request.getFlowId(), flowThrottlingData);
+    }
+
+    /**
+     * Handles request to update single switch flow status.
+     */
+    public void processSingleSwitchFlowStatusUpdate(UpdateSingleSwitchFlows request) {
+        Collection<Flow> affectedFlows = flowRepository.findOneSwitchFlows(request.getSwitchId());
+        FlowStatus newFlowStatus = request.getStatus() == SwitchStatus.ACTIVE ? FlowStatus.UP : FlowStatus.DOWN;
+        FlowPathStatus newFlowPathStatus = request.getStatus() == SwitchStatus.ACTIVE
+                ? FlowPathStatus.ACTIVE : FlowPathStatus.INACTIVE;
+        for (Flow flow : affectedFlows) {
+            log.info("Updating flow and path statuses for flow {} to {}, {}", flow.getFlowId(), newFlowStatus,
+                    newFlowPathStatus);
+            transactionManager.doInTransaction(() -> {
+                FlowPath forward = flow.getForwardPath();
+                FlowPath reverse = flow.getReversePath();
+                flowRepository.updateStatus(flow.getFlowId(), newFlowStatus);
+                flowPathRepository.updateStatus(forward.getPathId(), newFlowPathStatus);
+                flowPathRepository.updateStatus(reverse.getPathId(), newFlowPathStatus);
+            });
+        }
     }
 
     private FlowThrottlingDataBuilder getFlowThrottlingDataBuilder(Flow flow) {

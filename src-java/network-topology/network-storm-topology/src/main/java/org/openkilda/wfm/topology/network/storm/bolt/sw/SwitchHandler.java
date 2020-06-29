@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.storm.bolt.sw;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
+import org.openkilda.messaging.command.reroute.UpdateSingleSwitchFlows;
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -23,6 +24,7 @@ import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
@@ -189,6 +191,11 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
         emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(switchId));
     }
 
+    @Override
+    public void sendUpdateSingleSwitchFlowsRequest(SwitchId switchId, SwitchStatus status) {
+        emit(STREAM_REROUTE_ID, getCurrentTuple(), makeUpdateSingleSwitchFlowsTuple(switchId, status));
+    }
+
     private Values makePortTuple(PortCommand command) {
         Endpoint endpoint = command.getEndpoint();
         CommandContext context = forkContext(endpoint.toString());
@@ -208,6 +215,11 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     private Values makeRerouteTuple(SwitchId switchId) {
         return new Values(switchId.toString(), new RerouteAffectedInactiveFlows(switchId),
+                getCommandContext().fork("reroute"));
+    }
+
+    private Values makeUpdateSingleSwitchFlowsTuple(SwitchId switchId, SwitchStatus status) {
+        return new Values(switchId.toString(), new UpdateSingleSwitchFlows(switchId, status),
                 getCommandContext().fork("reroute"));
     }
 

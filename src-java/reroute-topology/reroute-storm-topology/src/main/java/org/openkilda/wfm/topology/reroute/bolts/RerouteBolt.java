@@ -23,6 +23,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.command.reroute.UpdateSingleSwitchFlows;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
@@ -103,6 +104,8 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
             rerouteService.rerouteInactiveFlows(this, correlationId, (RerouteInactiveFlows) commandData);
         } else if (commandData instanceof FlowRerouteRequest) {
             rerouteService.processManualRerouteRequest(this, correlationId, (FlowRerouteRequest) commandData);
+        } else if (commandData instanceof UpdateSingleSwitchFlows) {
+            rerouteService.processSingleSwitchFlowStatusUpdate((UpdateSingleSwitchFlows) commandData);
         } else {
             unhandledInput(getCurrentTuple());
         }
