@@ -72,33 +72,37 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Tidy
     def "Single switch flow changes status on switch up/down events"() {
         given: "Single switch flow"
         def sw = topology.getActiveSwitches()[0]
         def flow = flowHelperV2.singleSwitchFlow(sw)
-        northboundV2.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
+        flowHelperV2.addFlow(flow)
 
-        when: "Switch become disconnected"
+        when: "The switch is disconnected"
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def isSwitchDisconnected = true
 
-        then: "Flow changes status to 'Down'"
+        then: "Flow becomes 'Down'"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
         }
 
-        when: "Switch went back online"
+        when: "The switch is connected back"
         switchHelper.reviveSwitch(sw, blockData, true)
+        isSwitchDisconnected = false
 
-        then: "Flow changes status to 'Up'"
+        then: "Flow becomes 'Up'"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
 
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
+        isSwitchDisconnected && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tidy
