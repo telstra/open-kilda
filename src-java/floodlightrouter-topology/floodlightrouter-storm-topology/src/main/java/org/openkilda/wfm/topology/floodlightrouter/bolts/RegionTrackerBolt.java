@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
@@ -29,6 +30,7 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
+import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
 import org.openkilda.wfm.topology.floodlightrouter.service.MessageSender;
@@ -36,6 +38,7 @@ import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -43,15 +46,25 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender {
-    private static final Logger logger = LoggerFactory.getLogger(DiscoveryBolt.class);
+// FIXME(surabujin) must use AbstractBolt as base
+@Slf4j
+public class RegionTrackerBolt extends AbstractTickRichBolt implements MessageSender {
+    public static final String BOLT_ID = ComponentType.KILDA_TOPO_DISCO_BOLT;
+
+    public static final String STREAM_SPEAKER_ID = Stream.SPEAKER_DISCO;
+    public static final String STREAM_NETWORK_ID = Stream.KILDA_TOPO_DISCO;
+
+    public static final String STREAM_REGION_UPDATE_ID = Stream.REGION_NOTIFICATION;
+    public static final Fields STREAM_REGION_UPDATE_FIELDS = new Fields(
+            AbstractTopology.MESSAGE_FIELD, AbstractBolt.FIELD_ID_CONTEXT);
+
+    private final String kafkaSpeakerTopic;
+    private final String kafkaNetworkTopic;
 
     private final PersistenceManager persistenceManager;
 
@@ -67,8 +80,14 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
 
     private Tuple currentTuple;
 
-    public DiscoveryBolt(PersistenceManager persistenceManager, Set<String> floodlights, long floodlightAliveTimeout,
-                         long floodlightAliveInterval, long floodlightDumpInterval) {
+    public RegionTrackerBolt(
+            KafkaTopicsConfig kafkaTopics, PersistenceManager persistenceManager, Set<String> floodlights,
+            long floodlightAliveTimeout, long floodlightAliveInterval, long floodlightDumpInterval) {
+        super();
+
+        kafkaSpeakerTopic = kafkaTopics.getSpeakerDiscoRegionTopic();
+        kafkaNetworkTopic = kafkaTopics.getTopoDiscoTopic();
+
         this.persistenceManager = persistenceManager;
         this.floodlights = floodlights;
         this.floodlightAliveTimeout = floodlightAliveTimeout;
@@ -89,11 +108,12 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
 
     @Override
     protected void doWork(Tuple input) {
-        currentTuple = input;
+        setupTuple(input);
+
         try {
             handleInput(input);
         } catch (Exception e) {
-            logger.error("Failed to process tuple {}", input, e);
+            log.error("Failed to process tuple {}", input, e);
         } finally {
             outputCollector.ack(input);
             cleanupTuple();
@@ -101,15 +121,14 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
     }
 
     @Override
-    public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        Fields kafkaFields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
-                                        FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
-        for (String region : floodlights) {
-            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), kafkaFields);
-        }
-        outputFieldsDeclarer.declareStream(Stream.KILDA_TOPO_DISCO, kafkaFields);
-        outputFieldsDeclarer.declareStream(Stream.REGION_NOTIFICATION, new Fields(AbstractTopology.MESSAGE_FIELD,
-                                                                                  AbstractBolt.FIELD_ID_CONTEXT));
+    public void declareOutputFields(OutputFieldsDeclarer outputManager) {
+        Fields fields = new Fields(
+                FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE,
+                RegionAwareKafkaTopicSelector.FIELD_ID_TOPIC, RegionAwareKafkaTopicSelector.FIELD_ID_REGION);
+        outputManager.declareStream(STREAM_SPEAKER_ID, fields);
+        outputManager.declareStream(STREAM_NETWORK_ID, fields);
+
+        outputManager.declareStream(STREAM_REGION_UPDATE_ID, STREAM_REGION_UPDATE_FIELDS);
     }
 
     @Override
@@ -143,7 +162,7 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
                 routerService.processSpeakerDiscoResponse(this, message);
                 break;
             default:
-                logger.error("Unknown input stream handled: {}", sourceComponent);
+                log.error("Unknown input stream handled: {}", sourceComponent);
                 break;
         }
     }
@@ -166,7 +185,8 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(),
                                                     commandContext.fork(String.format("alive-request(%s)", region))
                                                             .getCorrelationId());
-        emitSpeakerMessage(message, region);
+        outputCollector.emit(
+                STREAM_SPEAKER_ID, currentTuple, makeSpeakerTuple(pullKeyFromCurrentTuple(), message, region));
     }
 
     @Override
@@ -175,7 +195,8 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(),
                                               commandContext.fork(String.format("unmanaged(%s)", sw.toOtsdFormat()))
                                                       .getCorrelationId());
-        emitControllerMessage(sw.toString(), message);
+        outputCollector.emit(
+                STREAM_NETWORK_ID, currentTuple, makeNetworkTuple(sw.toString(), message));
     }
 
     /**
@@ -187,39 +208,14 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
                                                     System.currentTimeMillis(), correlationId);
 
-        logger.info("Send network dump request (correlation-id: {})", correlationId);
-        emitSpeakerMessage(correlationId, command, region);
-    }
-
-    @Override
-    public void emitSpeakerMessage(Message message, String region) {
-        emitSpeakerMessage(pullKeyFromCurrentTuple(), message, region);
-    }
-
-    @Override
-    public void emitSpeakerMessage(String key, Message message, String region) {
-        String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
-        send(key, message, stream);
-    }
-
-    @Override
-    public void emitControllerMessage(Message message) {
-        emitControllerMessage(pullKeyFromCurrentTuple(), message);
-    }
-
-    @Override
-    public void emitControllerMessage(String key, Message message) {
-        send(key, message, Stream.KILDA_TOPO_DISCO);
+        log.info("Send network dump request (correlation-id: {})", correlationId);
+        outputCollector.emit(
+                STREAM_SPEAKER_ID, currentTuple, makeSpeakerTuple(correlationId, command, region));
     }
 
     @Override
     public void emitRegionNotification(SwitchMapping mapping) {
-        outputCollector.emit(Stream.REGION_NOTIFICATION, currentTuple, new Values(mapping, commandContext));
-    }
-
-    private void send(String key, Message message, String outputStream) {
-        Values values = new Values(key, message);
-        outputCollector.emit(outputStream, currentTuple, values);
+        outputCollector.emit(STREAM_REGION_UPDATE_ID, currentTuple, makeRegionUpdateTuple(mapping));
     }
 
     private String pullKeyFromCurrentTuple() {
@@ -231,11 +227,11 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
 
     private void doNetworkDump() {
         if (!queryPeriodicSyncFeatureToggle()) {
-            logger.warn("Skip periodic network sync (disabled by feature toggle)");
+            log.warn("Skip periodic network sync (disabled by feature toggle)");
             return;
         }
 
-        logger.debug("Do periodic network dump request");
+        log.debug("Do periodic network dump request");
         for (String region : floodlights) {
             emitNetworkDumpRequest(region);
         }
@@ -245,5 +241,25 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         return featureTogglesRepository.find()
                 .map(FeatureToggles::getFloodlightRoutePeriodicSync)
                 .orElse(FeatureToggles.DEFAULTS.getFloodlightRoutePeriodicSync());
+    }
+
+    private Values makeSpeakerTuple(String key, Message payload, String region) {
+        return makeGenericKafkaTuple(key, payload, kafkaSpeakerTopic, region);
+    }
+
+    private Values makeNetworkTuple(String key, Message payload) {
+        return makeGenericKafkaTuple(key, payload, kafkaNetworkTopic);
+    }
+
+    private Values makeRegionUpdateTuple(SwitchMapping payload) {
+        return new Values(payload, commandContext);
+    }
+
+    private Values makeGenericKafkaTuple(String key, Message payload, String topic) {
+        return makeGenericKafkaTuple(key, payload, topic, null);
+    }
+
+    private Values makeGenericKafkaTuple(String key, Message payload, String topic, String region) {
+        return new Values(key, payload, topic, region);
     }
 }

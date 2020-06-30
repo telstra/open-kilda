@@ -15,41 +15,45 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.messaging.AliveResponse;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.floodlightrouter.Stream;
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class DiscoReplyBolt extends ReplyBolt {
+@Slf4j
+public class SpeakerToControllerProxyBolt extends AbstractBolt {
+    private final String controllerTopic;
 
-    public DiscoReplyBolt(String outputStream) {
-        super(outputStream);
+    public SpeakerToControllerProxyBolt(String controllerTopic) {
+        this.controllerTopic = controllerTopic;
     }
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        String key = input.getStringByField(AbstractTopology.KEY_FIELD);
-        Object message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
-        Values values = new Values(key, message);
-        getOutput().emit(Stream.DISCO_REPLY, values);
-        if (message instanceof InfoMessage && ((InfoMessage) message).getData() instanceof AliveResponse) {
-            return;
-        }
-        getOutput().emit(outputStream, input, values);
+        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+        Object payload = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
+        proxy(key, payload);
+    }
+
+    protected void proxy(String key, Object payload) {
+        getOutput().emit(getCurrentTuple(), makeDefaultTuple(key, payload));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
-                FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
-        outputFieldsDeclarer.declareStream(outputStream, fields);
-        outputFieldsDeclarer.declareStream(Stream.DISCO_REPLY, fields);
+        Fields fields = new Fields(
+                FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE,
+                RegionAwareKafkaTopicSelector.FIELD_ID_TOPIC, RegionAwareKafkaTopicSelector.FIELD_ID_REGION);
+        outputFieldsDeclarer.declare(fields);
+    }
+
+    protected Values makeDefaultTuple(String key, Object payload) {
+        return new Values(key, payload, controllerTopic, null);
     }
 }
