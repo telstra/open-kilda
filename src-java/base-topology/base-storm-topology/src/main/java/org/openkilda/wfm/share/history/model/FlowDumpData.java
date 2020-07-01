@@ -48,6 +48,7 @@ public class FlowDumpData {
     private String reversePath;
     private FlowPathStatus forwardStatus;
     private FlowPathStatus reverseStatus;
+    private String groupId;
 
     @AllArgsConstructor
     @Getter
