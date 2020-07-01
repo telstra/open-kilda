@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
@@ -14,6 +15,7 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
@@ -26,6 +28,8 @@ import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Unroll
@@ -309,6 +313,27 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         cleanup: "Remove flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Unable to create a single-switch flow with periodic pings"() {
+        when: "Try to create a single-switch flow with periodic pings"
+        def flow = flowHelperV2.singleSwitchFlow(topology.activeSwitches.first()).tap {
+            it.periodicPings = true
+        }
+        flowHelperV2.addFlow(flow)
+
+        then: "Error is returned in response"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.BAD_REQUEST
+        with(e.responseBodyAsString.to(MessageError)) {
+            it.errorMessage == "Could not create flow"
+            it.errorDescription == "Couldn't turn on periodic pings for one-switch flow"
+        }
+
+        cleanup:
+        !e && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def getPacketCountOfVlanPingRule(SwitchId switchId) {
