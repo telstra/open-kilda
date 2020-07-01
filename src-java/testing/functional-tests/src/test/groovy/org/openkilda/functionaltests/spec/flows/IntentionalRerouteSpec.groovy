@@ -8,6 +8,7 @@ import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -128,6 +129,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
      * Select a longest available path between 2 switches, then reroute to another long path. Run traffexam during the
      * reroute and expect no packet loss.
      */
+    @Tidy
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images
@@ -175,10 +177,14 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
         examReports.each {
             //Minor packet loss is considered a measurement error and happens regardless of reroute
-            assert it.consumerReport.lostPercent < 1
+            if (profile == "virtual") { //due to instability on virtual env. reproduces rarely only on jenkins env
+                assert it.consumerReport.lostPercent < 1.5
+            } else {
+                assert it.consumerReport.lostPercent < 1
+            }
         }
 
-        and: "Remove the flow"
+        cleanup: "Remove the flow"
         flowHelper.deleteFlow(flow.id)
     }
 
