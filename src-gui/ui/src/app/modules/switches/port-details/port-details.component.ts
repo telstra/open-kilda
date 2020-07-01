@@ -111,7 +111,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   getDiscoveryPackets(){
     this.switchService.getdiscoveryPackets(this.retrievedSwitchObject.switch_id,this.portDataObject.port_number).subscribe((response:any)=>{
        this.discoverypackets = response.discovery_enabled;
-       console.log(response);
     },error => {
       //this.toastr.error('Error in updating discovery packets mode! ','Error');
     });
