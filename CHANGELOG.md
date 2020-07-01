@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.63.0 (24/06/2020)
+
+
+### Bug Fixes:
+-  [#3555](https://github.com/telstra/open-kilda/pull/3555) Raise moved discovery state priority [**storm-topologies**]
+
+### Improvements:
+-  [#3521](https://github.com/telstra/open-kilda/pull/3521) Repripritize reroute requests [**storm-topologies**]
+-  [#3522](https://github.com/telstra/open-kilda/pull/3522) Fix log types for grpc speaker and server42
+-  [#3526](https://github.com/telstra/open-kilda/pull/3526) Remove CopyField action from the VxLAN ingress rule. [**floodlight**][**storm-topologies**]
+-  [#3529](https://github.com/telstra/open-kilda/pull/3529) Make COST_AND_AVAILABLE_BANDWIDTH a default PCE strategy.
+-  [#3530](https://github.com/telstra/open-kilda/pull/3530) Added ping cache update for flow operations and check the `periodic_ping` flag for one switch flow. (Issue: [#3526](https://github.com/telstra/open-kilda/issues/3526))
+-  [#3539](https://github.com/telstra/open-kilda/pull/3539) add assumeTrue for grpcStat test [**tests**]
+-  [#3540](https://github.com/telstra/open-kilda/pull/3540) refactor depracated methods in func tests [**tests**]
+-  [#3543](https://github.com/telstra/open-kilda/pull/3543) improve VxlanFlowV2Spec [**tests**]
+-  [#3519](https://github.com/telstra/open-kilda/pull/3519) Bump kafka and storm client libs versions (Issue: [#3545](https://github.com/telstra/open-kilda/issues/3545)) [**configuration**][**northbound**][**storm-topologies**]
+
+### Other changes:
+-  [#3544](https://github.com/telstra/open-kilda/pull/3544) Minor stability adjustments in tests [**tests**]
+-  [#3545](https://github.com/telstra/open-kilda/pull/3545) Revert "Bump kafka and storm client libs versions" (Issues: [#2977](https://github.com/telstra/open-kilda/issues/2977) [#3519](https://github.com/telstra/open-kilda/issues/3519)) [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.61.0...v1.63.0).
+
+### Affected Components:
+grpc, router, otsdb, connected, isllatency, stats, flow-hs, nbworker, stats-router, portstate, reroute, ping, swmanager, network, fl, nb
+
+### Upgrade notes:
+
+---
+
 ## v1.61.0 (05/06/2020)
 
 ### Features:
@@ -28,6 +58,8 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 grpc, stats, network, router, flow, flow-hs, swmanager, fl, gui
+
+---
 
 ## v1.60.0 (01/06/2020)
 

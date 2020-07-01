@@ -677,7 +677,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE, LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
+    @Tags([HARDWARE, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"

@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.links
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -35,7 +36,7 @@ class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
-    @Tags(SMOKE)
+    @Tags([SMOKE_SWITCHES, SMOKE])
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
         def isl = topology.islsForActiveSwitches.find {

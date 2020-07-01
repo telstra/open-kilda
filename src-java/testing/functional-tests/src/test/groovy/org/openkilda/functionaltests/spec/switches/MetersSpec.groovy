@@ -165,7 +165,7 @@ class MetersSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)

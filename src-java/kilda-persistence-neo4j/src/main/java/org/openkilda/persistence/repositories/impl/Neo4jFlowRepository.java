@@ -37,6 +37,7 @@ import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
@@ -191,7 +192,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
         if (results.size() > 1) {
             throw new PersistenceException(format("Found more that 1 Flow entity by SwitchId %s, port %d and vlan %d. "
-                            + "Found Flows: %s", switchId, port, vlan, extractFlowsAsString(results)));
+                    + "Found Flows: %s", switchId, port, vlan, extractFlowsAsString(results)));
         }
 
         return extractFlowWithEndpoints(results);
@@ -309,6 +310,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 loadAll(srcSwitchFilter.and(srcArpFilter)).stream(),
                 loadAll(dstSwitchFilter.and(dstArpFilter)).stream())
                 .collect(Collectors.toSet()); // to do not return one flow twice (one switch flow with ARP)
+    }
+
+    @Override
+    public Collection<Flow> findOneSwitchFlows(SwitchId switchId) {
+        Filters filters = new Filters();
+        filters.and(createSrcSwitchFilter(switchId));
+        filters.and(createDstSwitchFilter(switchId));
+        return loadAll(filters);
     }
 
     @Override

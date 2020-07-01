@@ -449,6 +449,28 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindOneFlowByEndpoint() {
+        // one switch flow with LLDP on src and dst
+        Flow flow1 = buildTestFlow(TEST_FLOW_ID, switchA, switchA);
+        flow1.setSrcPort(1);
+        flow1.setDestPort(2);
+        flowRepository.createOrUpdate(flow1);
+
+        Flow flow2 = buildTestFlow(TEST_FLOW_ID_2, switchB, switchB);
+        flow1.setSrcPort(1);
+        flow1.setDestPort(2);
+        flowRepository.createOrUpdate(flow2);
+
+        Flow flow3 = buildTestFlow(TEST_FLOW_ID_3, switchA, switchB);
+        flowRepository.createOrUpdate(flow3);
+
+        Collection<Flow> foundFlows = flowRepository.findOneSwitchFlows(switchA.getSwitchId());
+
+        assertEquals(1, foundFlows.size());
+        assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
+    }
+
+    @Test
     public void shouldFindOneFlowByEndpointSwitchWithEnabledLldp() {
         // one switch flow with LLDP on src and dst
         createFlowWithLldp(TEST_FLOW_ID, switchA, true, switchA, true);

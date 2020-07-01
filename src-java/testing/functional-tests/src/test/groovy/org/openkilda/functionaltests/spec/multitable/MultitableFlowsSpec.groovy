@@ -346,6 +346,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         revertSwitchToInitState(sw, initSwProps)
     }
 
+    @Tags([SMOKE_SWITCHES])
     def "Flow rules are (re)installed according to switch property while syncing and updating"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null
@@ -970,6 +971,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         database.resetCosts()
     }
 
+    @Tags([SMOKE_SWITCHES])
     def "Flow rules are re(installed) according to switch props while syncing switch and rules"() {
         given: "Three active switches"
         List<PathNode> desiredPath = null

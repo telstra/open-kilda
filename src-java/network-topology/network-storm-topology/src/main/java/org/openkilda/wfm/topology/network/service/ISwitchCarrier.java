@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
@@ -41,4 +42,6 @@ public interface ISwitchCarrier {
     void sendSwitchSynchronizeRequest(String key, SwitchId switchId);
 
     void sendAffectedFlowRerouteRequest(SwitchId switchId);
+
+    void sendSwitchStateChanged(SwitchId switchId, SwitchStatus status);
 }

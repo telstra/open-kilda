@@ -50,6 +50,7 @@ SETUP : enter / emit port-up for UP ports
 SETUP : enter / send reroute affected flows command
 SETUP --> ONLINE : next
 
+ONLINE : enter / emit switch changed notification
 ONLINE : port-add / setup port FSM
 ONLINE : port-add / emit online for port
 ONLINE : port-add / emit port-up/down
@@ -61,6 +62,7 @@ ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB
 OFFLINE : enter / emit offline for portAll()
+OFFLINE : enter / emit switch changed notification
 OFFLINE --> SYNC : online
 OFFLINE --> DELETED: switch-remove / kill ports FSM
 DELETED -> [*]

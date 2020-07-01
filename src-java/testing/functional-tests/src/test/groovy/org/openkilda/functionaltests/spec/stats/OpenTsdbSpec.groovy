@@ -20,6 +20,7 @@ import spock.util.mop.Use
 
 @Use(TimeCategory)
 @Narrative("Verify that basic stats logging happens.")
+@Tags([SMOKE_SWITCHES])
 class OpenTsdbSpec extends HealthCheckSpecification {
 
     @Shared
@@ -28,7 +29,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 5 minutes"
         otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0
@@ -63,7 +64,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll("GRPC stats are being logged for metric:#metric, tags:#tags")
-    @Tags([HARDWARE, SMOKE_SWITCHES])
+    @Tags([HARDWARE])
     def "GRPC stats are being logged"(metric, tags) {
         assumeTrue("This test is skipped because 'collectGrpcStats' is disabled",
                 northbound.getFeatureToggles().collectGrpcStats)

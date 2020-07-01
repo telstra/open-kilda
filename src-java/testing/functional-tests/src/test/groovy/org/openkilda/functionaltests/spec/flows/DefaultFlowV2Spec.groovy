@@ -124,6 +124,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "At least 2 traffGen switches"
@@ -166,6 +167,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([SMOKE_SWITCHES])
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "At least 2 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected

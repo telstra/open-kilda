@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -49,6 +50,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
+@Tags([SMOKE_SWITCHES])
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     String speakerTopic

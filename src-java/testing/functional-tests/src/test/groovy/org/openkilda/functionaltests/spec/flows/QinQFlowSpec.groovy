@@ -3,11 +3,14 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -34,6 +37,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Unroll
+    @IterationTags([
+            @IterationTag(tags=[SMOKE_SWITCHES],
+                    iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
+    ])
     def "System allows to manipulate with QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
@@ -619,6 +626,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     @Unroll
     @Tags(HARDWARE) //not tested
+    @IterationTags([
+            @IterationTag(tags=[SMOKE_SWITCHES],
+                    iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
+    ])
     def "System allows to manipulate with QinQ vxlan flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"

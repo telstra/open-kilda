@@ -21,7 +21,9 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
@@ -51,6 +53,7 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchRuleServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchSyncServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServiceImpl;
+import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.task.OutputCollector;
@@ -64,7 +67,12 @@ import java.util.Map;
 
 public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final String ID = "switch.manager.hub";
+
     public static final String INCOME_STREAM = "switch.manage.command";
+
+    public static final String NORTHBOUND_STREAM_ID = StreamType.TO_NORTHBOUND.toString();
+    public static final Fields NORTHBOUND_STREAM_FIELDS = new Fields(
+            MessageKafkaTranslator.FIELD_ID_KEY, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
 
     private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -85,10 +93,11 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        validateService = new SwitchValidateServiceImpl(this, persistenceManager);
+
+        validateService = new SwitchValidateServiceImpl(
+                this, persistenceManager, new ValidationServiceImpl(persistenceManager, topologyConfig));
         syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
         switchRuleService = new SwitchRuleServiceImpl(this, persistenceManager.getRepositoryFactory());
-
     }
 
     @Override
@@ -170,13 +179,18 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     public void sendCommandToSpeaker(String key, CommandData command) {
-        emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, getCurrentTuple(),
-                new Values(KeyProvider.generateChainedKey(key), command));
+        emit(SpeakerWorkerBolt.INCOME_STREAM, getCurrentTuple(), makeWorkerTuple(key, command));
     }
 
     @Override
     public void response(String key, Message message) {
-        getOutput().emit(StreamType.TO_NORTHBOUND.toString(), new Values(key, message));
+        emit(NORTHBOUND_STREAM_ID, getCurrentTuple(), makeNorthboundTuple(key, message));
+    }
+
+    @Override
+    public void errorResponse(String key, ErrorType error, String message) {
+        ErrorData payload = new ErrorData(error, message, "Error in switch validation/synchronisation");
+        response(key, new ErrorMessage(payload, System.currentTimeMillis(), key));
     }
 
     @Override
@@ -185,16 +199,18 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
-    public SwitchManagerTopologyConfig getTopologyConfig() {
-        return topologyConfig;
-    }
-
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
 
-        Fields fields = new Fields(MessageKafkaTranslator.FIELD_ID_KEY, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
-        declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
+        declarer.declareStream(NORTHBOUND_STREAM_ID, NORTHBOUND_STREAM_FIELDS);
+    }
+
+    private Values makeWorkerTuple(String key, CommandData payload) {
+        return new Values(KeyProvider.generateChainedKey(key), payload, getCommandContext());
+    }
+
+    private Values makeNorthboundTuple(String key, Message payload) {
+        return new Values(key, payload);
     }
 }

@@ -699,6 +699,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
+    @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
         assumeTrue("Require at least 1 switch with connected traffgen", topology.activeTraffGens.size() > 0)
