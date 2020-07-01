@@ -22,13 +22,13 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Singular;
 import lombok.Value;
 
 import java.util.List;
 import java.util.Set;
 
 @Value
-@Builder
 @EqualsAndHashCode(callSuper = false)
 public class GetExpectedDefaultRulesRequest extends CommandData {
 
@@ -71,6 +71,7 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
     @JsonProperty("server42_flow_rtt_ports")
     private Set<Integer> server42FlowRttPorts;
 
+    @Builder
     public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId,
                                           @JsonProperty("multi_table") boolean multiTable,
                                           @JsonProperty("switch_lldp") boolean switchLldp,
@@ -79,11 +80,11 @@ public class GetExpectedDefaultRulesRequest extends CommandData {
                                           @JsonProperty("server42_port") Integer server42Port,
                                           @JsonProperty("server42_vlan") Integer server42Vlan,
                                           @JsonProperty("server42_mac_address") MacAddress server42MacAddress,
-                                          @JsonProperty("isl_ports") List<Integer> islPorts,
-                                          @JsonProperty("flow_ports") List<Integer> flowPorts,
-                                          @JsonProperty("flow_lldp_ports") Set<Integer> flowLldpPorts,
-                                          @JsonProperty("flow_arp_ports") Set<Integer> flowArpPorts,
-                                          @JsonProperty("server42_flow_rtt_ports")
+                                          @JsonProperty("isl_ports") @Singular List<Integer> islPorts,
+                                          @JsonProperty("flow_ports") @Singular List<Integer> flowPorts,
+                                          @JsonProperty("flow_lldp_ports") @Singular Set<Integer> flowLldpPorts,
+                                          @JsonProperty("flow_arp_ports") @Singular Set<Integer> flowArpPorts,
+                                          @JsonProperty("server42_flow_rtt_ports") @Singular
                                                   Set<Integer> server42FlowRttPorts) {
         this.switchId = switchId;
         this.multiTable = multiTable;
