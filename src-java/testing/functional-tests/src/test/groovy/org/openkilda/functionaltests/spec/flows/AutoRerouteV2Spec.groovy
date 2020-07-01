@@ -83,7 +83,9 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flow becomes 'Down'"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            def flowInfo =  northboundV2.getFlow(flow.flowId)
+            assert flowInfo.status == FlowState.DOWN.toString()
+            assert flowInfo.statusInfo == "Switch $sw.dpId is inactive"
         }
 
         when: "The switch is connected back"
@@ -348,7 +350,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+            def flowInfo = northboundV2.getFlow(flow.flowId)
+            assert flowInfo.status == FlowState.DOWN.toString()
+            assert flowInfo.statusInfo == "Not enough bandwidth or no path found. Failed to\
+ find path with requested bandwidth=$flow.maximumBandwidth: Switch $flow.source.switchId doesn't have links with enough bandwidth"
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
 
@@ -480,6 +485,10 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
                     }
                }
             }
+            assert northboundV2.getFlow(firstFlow.flowId).statusInfo =~ /ISL (.*) become INACTIVE because of FAIL TIMEOUT (.*)/
+            assert northboundV2.getFlow(secondFlow.flowId).statusInfo == "Not enough bandwidth or no path found.\
+ Failed to find path with requested bandwidth=$secondFlow.maximumBandwidth: Switch $secondFlow.source.switchId doesn't \
+have links with enough bandwidth"
         }
 
         when: "Connect the switch back to the controller"

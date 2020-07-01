@@ -115,7 +115,9 @@ class PinnedFlowV2Spec extends HealthCheckSpecification {
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
             Wrappers.timedLoop(2) {
-                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+                def flowInfo = northboundV2.getFlow(flow.flowId)
+                assert flowInfo.status == FlowState.DOWN.toString()
+                assert flowInfo.statusInfo =~ /ISL (.*) become INACTIVE due to physical link DOWN event on (.*)/
                 assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
             }
         }
