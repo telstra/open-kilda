@@ -155,6 +155,9 @@ public class Flow implements Serializable {
     @Convert(graphPropertyType = String.class)
     private FlowStatus status;
 
+    @Property(name = "status_info")
+    private String statusInfo;
+
     @Property(name = "max_latency")
     private Long maxLatency;
 
@@ -196,7 +199,7 @@ public class Flow implements Serializable {
                 int destPort, int destVlan, int destInnerVlan,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
                 boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
-                Long maxLatency, Integer priority,
+                String statusInfo, Long maxLatency, Integer priority,
                 Instant timeCreate, Instant timeModify, boolean pinned,
                 boolean srcWithMultiTable, boolean destWithMultiTable, DetectConnectedDevices detectConnectedDevices,
                 PathComputationStrategy pathComputationStrategy,
@@ -218,6 +221,7 @@ public class Flow implements Serializable {
         this.allocateProtectedPath = allocateProtectedPath;
         this.encapsulationType = encapsulationType;
         this.status = status;
+        this.statusInfo = statusInfo;
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.timeCreate = timeCreate;

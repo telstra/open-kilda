@@ -42,6 +42,9 @@ public class FlowResponsePayload extends FlowPayload {
     @JsonProperty("status-details")
     private FlowStatusDetailsPayload flowStatusDetails;
 
+    @JsonProperty("status_info")
+    private String statusInfo;
+
     @JsonProperty("target-path-computation-strategy")
     private String targetPathComputationStrategy;
 
@@ -59,6 +62,7 @@ public class FlowResponsePayload extends FlowPayload {
      * @param created                   flow created timestamp
      * @param lastUpdated               flow last updated timestamp
      * @param status                    flow status
+     * @param statusInfo                flow status info
      * @param flowStatusDetails         flow status details
      * @param maxLatency                max latency
      * @param priority                  flow priority
@@ -82,6 +86,7 @@ public class FlowResponsePayload extends FlowPayload {
                                @JsonProperty("last-updated") String lastUpdated,
                                @JsonProperty("status") String status,
                                @JsonProperty("status-details") FlowStatusDetailsPayload flowStatusDetails,
+                               @JsonProperty("status_info") String statusInfo,
                                @JsonProperty("max-latency") Long maxLatency,
                                @JsonProperty("priority") Integer priority,
                                @JsonProperty("diverse_with") List<String> diverseWith,
@@ -94,6 +99,7 @@ public class FlowResponsePayload extends FlowPayload {
                 pathComputationStrategy);
         this.diverseWith = diverseWith;
         this.flowStatusDetails = flowStatusDetails;
+        this.statusInfo = statusInfo;
         this.targetPathComputationStrategy = targetPathComputationStrategy;
     }
 }

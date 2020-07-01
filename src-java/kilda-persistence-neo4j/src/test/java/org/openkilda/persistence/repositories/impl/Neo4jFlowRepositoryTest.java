@@ -534,6 +534,79 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertEquals(firstFlowBandwidth + secondFlowBandwidth, foundBandwidth);
     }
 
+    @Test
+    public void shouldUpdateFlowStatusAndFlowStatusInfo() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setStatus(FlowStatus.UP);
+        flow.setStatusInfo("status_info");
+        flowRepository.createOrUpdate(flow);
+
+        String newStatusInfo = "updated_status_info";
+        flowRepository.updateStatus(flow.getFlowId(), FlowStatus.DOWN, newStatusInfo);
+
+        Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertEquals(FlowStatus.DOWN, updatedFlow.getStatus());
+        assertEquals(newStatusInfo, updatedFlow.getStatusInfo());
+
+        flowRepository.updateStatus(flow.getFlowId(), FlowStatus.DOWN, null);
+
+        updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertNull(updatedFlow.getStatusInfo());
+    }
+
+    @Test
+    public void shouldUpdateFlowStatusInfo() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setStatusInfo("status_info");
+        flowRepository.createOrUpdate(flow);
+
+        String newStatusInfo = "updated_status_info";
+        flowRepository.updateStatusInfo(TEST_FLOW_ID, newStatusInfo);
+
+        Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertEquals(newStatusInfo, updatedFlow.getStatusInfo());
+
+        flowRepository.updateStatusInfo(flow.getFlowId(), null);
+
+        updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertNull(updatedFlow.getStatusInfo());
+    }
+
+    @Test
+    public void shouldUpdateFlowStatusSafe() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setStatus(FlowStatus.UP);
+        flow.setStatusInfo("status_info");
+        flowRepository.createOrUpdate(flow);
+
+        String newStatusInfo = "updated_status_info";
+        flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN, newStatusInfo);
+
+        Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertEquals(FlowStatus.DOWN, updatedFlow.getStatus());
+        assertEquals(newStatusInfo, updatedFlow.getStatusInfo());
+
+        flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN, null);
+
+        updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertNull(updatedFlow.getStatusInfo());
+    }
+
+    @Test
+    public void shouldNotUpdateFlowStatusSafeWhenFlowIsInProgressState() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setStatus(FlowStatus.IN_PROGRESS);
+        String statusInfo = "status_info";
+        flow.setStatusInfo(statusInfo);
+        flowRepository.createOrUpdate(flow);
+
+        flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN, "updated_status_info");
+
+        Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
+        assertEquals(FlowStatus.IN_PROGRESS, updatedFlow.getStatus());
+        assertEquals(statusInfo, updatedFlow.getStatusInfo());
+    }
+
     private Flow buildTestFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
         return buildTestFlow(flowId, srcSwitch, PORT_1, VLAN_1, destSwitch, PORT_2, VLAN_2);
     }

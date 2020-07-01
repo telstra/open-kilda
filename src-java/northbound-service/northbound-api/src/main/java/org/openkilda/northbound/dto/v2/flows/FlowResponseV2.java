@@ -38,6 +38,7 @@ public class FlowResponseV2 {
     @NonNull
     private String status;
     private PathStatus statusDetails;
+    private String statusInfo;
 
     private long maximumBandwidth;
     private boolean ignoreBandwidth;

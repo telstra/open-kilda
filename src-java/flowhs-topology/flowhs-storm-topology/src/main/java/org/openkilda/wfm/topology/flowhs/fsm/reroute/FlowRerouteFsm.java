@@ -89,6 +89,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
     private RequestedFlow originalFlow;
     private FlowStatus originalFlowStatus;
+    private String originalFlowStatusInfo;
     private FlowEncapsulationType originalEncapsulationType;
     private PathComputationStrategy originalPathComputationStrategy;
 

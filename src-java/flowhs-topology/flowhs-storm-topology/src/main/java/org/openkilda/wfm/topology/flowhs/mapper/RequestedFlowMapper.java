@@ -101,6 +101,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "flowEncapsulationType", target = "encapsulationType")
     @Mapping(target = "groupId", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeModify", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)

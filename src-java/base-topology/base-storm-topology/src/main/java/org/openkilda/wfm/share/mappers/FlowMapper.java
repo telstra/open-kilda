@@ -118,6 +118,7 @@ public abstract class FlowMapper {
                 .srcVlan(flow.getSourceVlan())
                 .destVlan(flow.getDestinationVlan())
                 .status(map(flow.getState()))
+                .statusInfo(flow.getStatusInfo())
                 .description(flow.getDescription())
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(flow.isIgnoreBandwidth())

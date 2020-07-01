@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -43,7 +45,7 @@ public class HandleNotCreatedFlowAction extends
     public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
-        flowRepository.updateStatus(flowId, FlowStatus.DOWN);
+        flowRepository.updateStatus(flowId, FlowStatus.DOWN, format("Failed to create flow %s", flowId));
         stateMachine.saveActionToHistory("Failed to create the flow", stateMachine.getErrorReason());
         stateMachine.fire(Event.NEXT);
     }

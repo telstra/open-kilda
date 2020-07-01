@@ -156,6 +156,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("status_details")
     private FlowStatusDetails flowStatusDetails;
 
+    @JsonProperty("status_info")
+    private String statusInfo;
+
     @JsonProperty("max_latency")
     private Long maxLatency;
 
@@ -201,6 +204,8 @@ public class FlowDto implements Serializable {
      * @param meterId                   meter id
      * @param transitEncapsulationId    transit vlan id
      * @param state                     flow state
+     * @param flowStatusDetails         flow status details
+     * @param statusInfo                flow status info
      * @param maxLatency                max latency
      * @param priority                  flow priority
      * @param pinned                    pinned flag
@@ -233,6 +238,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("transit_encapsulation_id") final int transitEncapsulationId,
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("status_details") FlowStatusDetails flowStatusDetails,
+                   @JsonProperty("status_info") String statusInfo,
                    @JsonProperty("max_latency") Long maxLatency,
                    @JsonProperty("priority") Integer priority,
                    @JsonProperty("pinned") boolean pinned,
@@ -263,6 +269,7 @@ public class FlowDto implements Serializable {
         this.meterId = meterId;
         this.state = state;
         this.flowStatusDetails = flowStatusDetails;
+        this.statusInfo = statusInfo;
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.pinned = pinned;
@@ -310,7 +317,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan, 0, 0,
-                null, 0, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null);
+                null, 0, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -330,7 +337,7 @@ public class FlowDto implements Serializable {
                 input.getDestination().getVlanId(),
                 input.getSource().getInnerVlanId(),
                 input.getDestination().getInnerVlanId(),
-                null, 0, null, null,
+                null, 0, null, null, null,
                 input.getMaxLatency(),
                 input.getPriority(),
                 input.isPinned(),
