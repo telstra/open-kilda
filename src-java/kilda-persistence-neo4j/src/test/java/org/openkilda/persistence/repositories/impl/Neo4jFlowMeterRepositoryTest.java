@@ -23,7 +23,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.Neo4jBasedTest;
-import org.openkilda.persistence.PersistenceException;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 

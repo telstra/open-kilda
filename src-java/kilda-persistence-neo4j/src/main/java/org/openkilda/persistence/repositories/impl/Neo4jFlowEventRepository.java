@@ -19,8 +19,8 @@ import static java.lang.String.format;
 import static java.util.Collections.singleton;
 
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;

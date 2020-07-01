@@ -20,8 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 
 import com.google.common.collect.ImmutableMap;

@@ -19,8 +19,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.BfdSession;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.Neo4jBasedTest;
+import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 
 import org.junit.BeforeClass;

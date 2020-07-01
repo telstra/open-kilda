@@ -22,8 +22,8 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.FetchStrategy;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.ImmutableMap;

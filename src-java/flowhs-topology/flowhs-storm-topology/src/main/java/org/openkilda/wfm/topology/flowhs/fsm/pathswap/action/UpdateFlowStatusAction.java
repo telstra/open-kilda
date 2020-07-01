@@ -22,7 +22,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;

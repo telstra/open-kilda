@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;

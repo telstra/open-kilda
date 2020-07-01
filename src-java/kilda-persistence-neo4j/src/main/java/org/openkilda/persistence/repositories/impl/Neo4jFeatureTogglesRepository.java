@@ -16,8 +16,8 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.FeatureToggles;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 
 import java.util.Collection;

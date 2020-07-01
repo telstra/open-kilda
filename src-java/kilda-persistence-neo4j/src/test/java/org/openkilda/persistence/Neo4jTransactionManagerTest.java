@@ -22,6 +22,7 @@ import static org.junit.Assert.fail;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository;
 

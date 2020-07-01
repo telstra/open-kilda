@@ -33,9 +33,10 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.EntityNotFoundException;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
@@ -99,19 +100,22 @@ public class RerouteService {
 
         for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {
             Flow flow = entry.getFlow();
-            transactionManager.doInTransaction(() -> {
-                updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
+            Boolean sendRerouteRequest = transactionManager.doInTransaction(() -> {
+                boolean flowPathFound = updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
                 flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
+                return flowPathFound;
             });
 
-            FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
-                    .correlationId(correlationId)
-                    .affectedIsl(Collections.singleton(affectedIsl))
-                    .force(false)
-                    .effectivelyDown(true)
-                    .reason(command.getReason())
-                    .build();
-            sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+            if (sendRerouteRequest) {
+                FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
+                        .correlationId(correlationId)
+                        .affectedIsl(Collections.singleton(affectedIsl))
+                        .force(false)
+                        .effectivelyDown(true)
+                        .reason(command.getReason())
+                        .build();
+                sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+            }
         }
 
         Set<Flow> affectedPinnedFlows = groupAffectedPinnedFlows(affectedFlowPaths);
@@ -127,7 +131,8 @@ public class RerouteService {
         }
     }
 
-    private void updateFlowPathsStateForFlow(SwitchId switchId, int port, List<FlowPath> paths) {
+    private boolean updateFlowPathsStateForFlow(SwitchId switchId, int port, List<FlowPath> paths) {
+        boolean rerouteRequired = false;
         for (FlowPath fp : paths) {
             boolean failedFlowPath = false;
             for (PathSegment pathSegment : fp.getSegments()) {
@@ -136,8 +141,14 @@ public class RerouteService {
                         || (pathSegment.getDestPort() == port
                         && switchId.equals(pathSegment.getDestSwitch().getSwitchId()))) {
                     pathSegment.setFailed(true);
-                    pathSegmentRepository.updateFailedStatus(fp.getPathId(), pathSegment, true);
-                    failedFlowPath = true;
+                    try {
+                        pathSegmentRepository.updateFailedStatus(fp.getPathId(), pathSegment, true);
+                        failedFlowPath = true;
+                        rerouteRequired = true;
+                    } catch (EntityNotFoundException e) {
+                        log.warn("Path segment not found for flow {} and path {}. Skipping path segment status update.",
+                                fp.getFlow().getFlowId(), fp.getPathId(), e);
+                    }
                     break;
                 }
             }
@@ -145,6 +156,7 @@ public class RerouteService {
                 updateFlowPathStatus(fp, FlowPathStatus.INACTIVE);
             }
         }
+        return rerouteRequired;
     }
 
     /**

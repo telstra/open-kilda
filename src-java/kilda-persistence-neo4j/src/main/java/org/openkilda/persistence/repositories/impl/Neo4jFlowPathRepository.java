@@ -29,11 +29,11 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.persistence.FetchStrategy;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.FlowPathStatusConverter;
 import org.openkilda.persistence.converters.PathIdConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 
 import com.google.common.collect.ImmutableMap;

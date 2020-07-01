@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
+package org.openkilda.persistence.exceptions;
 
 /**
  * A generic exception that indicates that an error has occurred during a persistence operation.

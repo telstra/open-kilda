@@ -21,8 +21,8 @@ import org.openkilda.model.GroupId;
 import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 
 import com.google.common.collect.ImmutableMap;
