@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.REROUTE_SUCCESS
@@ -9,6 +11,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -29,6 +32,7 @@ Note: For now it is only runnable on virtual env due to no ability to disconnect
 """)
 class SwitchFailuresSpec extends HealthCheckSpecification {
 
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }

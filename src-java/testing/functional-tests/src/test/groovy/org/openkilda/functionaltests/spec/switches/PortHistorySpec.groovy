@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.*
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -42,7 +43,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    @IterationTag(tags = [SMOKE], iterationNameRegex = /direct/)
+    @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /direct/)
     def "Port history are created for the port down/up actions when link is #islDescription"() {
         given: "A link"
         assumeTrue("Unable to find $islDescription ISL for this test", isl as boolean)

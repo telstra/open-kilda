@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -36,6 +37,7 @@ import spock.lang.Unroll
 
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync",
 "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
+@Tags([SMOKE_SWITCHES])
 class SwitchSyncSpec extends BaseSpecification {
 
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")

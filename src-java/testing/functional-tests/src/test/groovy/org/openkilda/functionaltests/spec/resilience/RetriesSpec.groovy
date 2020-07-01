@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.DELETE_SUCCESS
@@ -124,6 +126,7 @@ and at least 1 path must remain safe"
 
     @Tidy
     @Unroll
+    @Tags([SMOKE_SWITCHES])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
         def allPaths
@@ -131,7 +134,7 @@ and at least 1 path must remain safe"
             allPaths = it.paths
             allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
                     allPaths.find { it.size() > 2 }
-        }
+        } ?: assumeTrue("No switch pair with at least 2 diverse paths", false)
 
         List<PathNode> mainPath = allPaths.min { it.size() }
         //find path with more than two switches
