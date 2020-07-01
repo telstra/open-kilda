@@ -607,7 +607,7 @@ public class NetworkSwitchServiceTest {
                                                          PortChangeType.ADD, true);
 
         service.switchPortEvent(speakerPortEvent);
-
+        verify(carrier).sendSwitchStateChanged(alphaDatapath, SwitchStatus.ACTIVE);
         verify(carrier).setupPortHandler(endpoint, null);
         verify(carrier).setOnlineMode(endpoint, OnlineStatus.ONLINE);
         verify(carrier).setPortLinkMode(endpoint, LinkStatus.UP);
@@ -728,7 +728,7 @@ public class NetworkSwitchServiceTest {
         service.switchManagerResponse(response, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
-
+        verify(carrier).sendSwitchStateChanged(alphaDatapath, SwitchStatus.ACTIVE);
         verifyNoMoreInteractions(carrier);
     }
 
@@ -762,7 +762,7 @@ public class NetworkSwitchServiceTest {
         service.switchManagerErrorResponse(errorData, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
-
+        verify(carrier).sendSwitchStateChanged(alphaDatapath, SwitchStatus.ACTIVE);
         verifyNoMoreInteractions(carrier);
     }
 
@@ -795,7 +795,7 @@ public class NetworkSwitchServiceTest {
         service.switchManagerTimeout(alphaDatapath, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
-
+        verify(carrier).sendSwitchStateChanged(alphaDatapath, SwitchStatus.ACTIVE);
         verifyNoMoreInteractions(carrier);
     }
 
@@ -836,7 +836,7 @@ public class NetworkSwitchServiceTest {
         service.switchManagerResponse(response, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
-
+        verify(carrier).sendSwitchStateChanged(alphaDatapath, SwitchStatus.ACTIVE);
         verifyNoMoreInteractions(carrier);
     }
 
@@ -869,7 +869,7 @@ public class NetworkSwitchServiceTest {
         service.switchManagerResponse(response, captor.getValue());
 
         verifyNewSwitchAfterSwitchSync(ports);
-
+        verify(carrier).sendSwitchStateChanged(alphaDatapath, SwitchStatus.ACTIVE);
         verifyNoMoreInteractions(carrier);
     }
 

@@ -73,6 +73,39 @@ class AutoRerouteV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    def "Single switch flow changes status on switch up/down events"() {
+        given: "Single switch flow"
+        def sw = topology.getActiveSwitches()[0]
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(flow)
+
+        when: "The switch is disconnected"
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        def isSwitchDisconnected = true
+
+        then: "Flow becomes 'Down'"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        }
+
+        when: "The switch is connected back"
+        switchHelper.reviveSwitch(sw, blockData, true)
+        isSwitchDisconnected = false
+
+        then: "Flow becomes 'Up'"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+        isSwitchDisconnected && switchHelper.reviveSwitch(sw, blockData, true)
+    }
+
+    @Tidy
     @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"

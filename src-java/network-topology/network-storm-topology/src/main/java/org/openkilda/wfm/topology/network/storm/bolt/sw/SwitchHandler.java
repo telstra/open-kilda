@@ -15,14 +15,17 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.sw;
 
+import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
@@ -186,7 +189,14 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     @Override
     public void sendAffectedFlowRerouteRequest(SwitchId switchId) {
-        emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(switchId));
+        emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(switchId,
+                new RerouteAffectedInactiveFlows(switchId)));
+    }
+
+    @Override
+    public void sendSwitchStateChanged(SwitchId switchId, SwitchStatus status) {
+        emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(switchId,
+                new SwitchStateChanged(switchId, status)));
     }
 
     private Values makePortTuple(PortCommand command) {
@@ -206,8 +216,8 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
                 key, new SwitchManagerSynchronizeSwitchCommand(key, switchId), getCommandContext().fork("sync"));
     }
 
-    private Values makeRerouteTuple(SwitchId switchId) {
-        return new Values(switchId.toString(), new RerouteAffectedInactiveFlows(switchId),
+    private Values makeRerouteTuple(SwitchId switchId, MessageData payload) {
+        return new Values(switchId.toString(), payload,
                 getCommandContext().fork("reroute"));
     }
 
