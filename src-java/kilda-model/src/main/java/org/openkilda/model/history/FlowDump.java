@@ -110,6 +110,9 @@ public class FlowDump {
     @Convert(graphPropertyType = Long.class)
     private MeterId reverseMeterId;
 
+    @Property(name = "group_id")
+    private String groupId;
+
     @Property(name = "forward_path")
     private String forwardPath;
 
