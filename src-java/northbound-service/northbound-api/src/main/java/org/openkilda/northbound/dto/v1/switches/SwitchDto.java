@@ -65,4 +65,10 @@ public class SwitchDto {
 
     @JsonProperty("serial_number")
     private String serialNumber;
+
+    @JsonProperty("pop")
+    private String pop;
+
+    @JsonProperty("location")
+    private SwitchLocationDto location;
 }

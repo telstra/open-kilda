@@ -108,10 +108,17 @@ public class Switch implements Serializable {
 
     private String pop;
 
+    private double latitude;
+    private double longitude;
+    private String street;
+    private String city;
+    private String country;
+
     @Builder(toBuilder = true)
     public Switch(@NonNull SwitchId switchId, SwitchStatus status, InetSocketAddress socketAddress,
                   String hostname, String controller, String description, boolean underMaintenance,
-                  Instant timeCreate, Instant timeModify, Set<SwitchFeature> features, String pop) {
+                  Instant timeCreate, Instant timeModify, Set<SwitchFeature> features, String pop,
+                  double latitude, double longitude, String street, String city, String country) {
         this.switchId = switchId;
         this.status = status;
         this.socketAddress = socketAddress;
@@ -123,6 +130,11 @@ public class Switch implements Serializable {
         this.timeModify = timeModify;
         setFeatures(features);
         this.pop = pop;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.street = street;
+        this.city = city;
+        this.country = country;
     }
 
     /**

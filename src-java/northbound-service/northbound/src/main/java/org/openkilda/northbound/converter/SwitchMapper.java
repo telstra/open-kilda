@@ -37,6 +37,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
@@ -47,7 +48,8 @@ import org.mapstruct.Mapping;
 
 import java.util.Date;
 
-@Mapper(componentModel = "spring", uses = {FlowMapper.class}, imports = {Date.class, MacAddress.class})
+@Mapper(componentModel = "spring", uses = {FlowMapper.class},
+        imports = {Date.class, MacAddress.class, SwitchLocationDto.class})
 public interface SwitchMapper {
 
     @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
@@ -57,6 +59,8 @@ public interface SwitchMapper {
     @Mapping(source = "status", target = "state")
     @Mapping(source = "socketAddress.address.hostAddress", target = "address")
     @Mapping(source = "socketAddress.port", target = "port")
+    @Mapping(target = "location", expression = "java(new SwitchLocationDto("
+            + "data.getLatitude(), data.getLongitude(), data.getStreet(), data.getCity(), data.getCountry()))")
     SwitchDto toSwitchDto(Switch data);
 
     /**

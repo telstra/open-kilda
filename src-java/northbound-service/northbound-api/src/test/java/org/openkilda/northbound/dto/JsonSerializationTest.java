@@ -38,6 +38,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
@@ -157,7 +158,8 @@ public class JsonSerializationTest {
     public void switchDtoTest() throws IOException {
         SwitchDto dto = new SwitchDto(new SwitchId(SWITCH_ID), "address-test", 37040, "host", "desc",
                 SwitchChangeType.ACTIVATED, false, "of_version",
-                "manufacturer", "hardware", "software", "serial_number");
+                "manufacturer", "hardware", "software", "serial_number", "pop",
+                new SwitchLocationDto(48.860611, 2.337633, "street", "city", "country"));
         assertEquals(dto, pass(dto, SwitchDto.class));
     }
 

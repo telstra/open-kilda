@@ -35,6 +35,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.floodlight.FloodlightService;
@@ -201,7 +202,8 @@ public class StubServiceFactory {
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
                         .map(sw -> new SwitchDto(sw.getDpId(), "", 0, "", "",
-                                SwitchChangeType.ACTIVATED, false, "", "", "", "", ""))
+                                SwitchChangeType.ACTIVATED, false, "", "", "", "", "", "",
+                                new SwitchLocationDto(0.0, 0.0, "", "", "")))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())
