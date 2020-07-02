@@ -283,7 +283,7 @@ public class LinkServiceImpl implements LinkService {
     @Override
     public CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters, boolean force) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Delete link request received: {}", linkParameters);
+        logger.info("Delete link request received: {}, force={}", linkParameters, force);
 
         DeleteLinkRequest request;
         try {
