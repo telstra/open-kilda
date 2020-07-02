@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.extension.fixture
 
 import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtension
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.Constants
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -48,6 +49,7 @@ class CleanupVerifierExtension extends ContextAwareGlobalExtension {
                         def validation = northbound.validateSwitch(it.switchId)
                         validation.verifyRuleSectionsAreEmpty()
                         validation.verifyMeterSectionsAreEmpty()
+                        assert northbound.getSwitchRules(it.switchId).flowEntries.find { it.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE }
                     }
                     northbound.getAllLinks().each {
                         assert it.state == IslChangeType.DISCOVERED

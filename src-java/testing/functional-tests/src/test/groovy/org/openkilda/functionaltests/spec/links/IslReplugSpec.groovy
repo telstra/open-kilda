@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import org.openkilda.model.SwitchFeature
-
 import static org.junit.Assume.assumeNotNull
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -15,10 +13,12 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -32,19 +32,23 @@ class IslReplugSpec extends HealthCheckSpecification {
 
     def "Round-trip ISL status changes to MOVED when replugging it into another switch"() {
         given: "A connected a-switch link, round-trip-enabled"
-        def isl = topology.islsForActiveSwitches.find {
+        and: "A non-connected a-switch link with round-trip support"
+        def (Isl isl, Isl notConnectedIsl) = topology.islsForActiveSwitches.findAll {
             it.aswitch?.inPort && it.aswitch?.outPort &&
                     it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
                     it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-        }
+        }.findResult { fwIsl ->
+            [fwIsl, fwIsl.reversed].findResult { fwOrReversedIsl ->
+                def potentialNotConnected = topology.notConnectedIsls.find {
+                    it.srcSwitch != fwOrReversedIsl.srcSwitch &&
+                            it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+                }
+                potentialNotConnected ? [fwOrReversedIsl, potentialNotConnected] : null
+            }
+        } ?: [null, null]
         assumeTrue("Wasn't able to find enough of required a-switch links with round-trip", isl.asBoolean())
-
-        and: "A non-connected a-switch link with round-trip support"
-        def notConnectedIsl = topology.notConnectedIsls.find {
-            it.srcSwitch != isl.srcSwitch &&
-                    it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-        }
-        assumeTrue("Wasn't able to find enough not connected a-switch links", notConnectedIsl.asBoolean())
+        assumeTrue("Wasn't able to find enough not connected a-switch links with round-trip",
+            notConnectedIsl.asBoolean())
 
         when: "Replug one end of the connected link to the not connected one"
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
@@ -79,6 +83,9 @@ class IslReplugSpec extends HealthCheckSpecification {
                 switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
             }
         }
+
+        cleanup:
+        database.resetCosts()
     }
 
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
@@ -125,6 +132,9 @@ class IslReplugSpec extends HealthCheckSpecification {
                 switchHelper.verifyRuleSectionsAreEmpty(validationResponse, ["missing", "excess", "misconfigured"])
             }
         }
+
+        cleanup:
+        database.resetCosts()
     }
 
     def "New potential self-loop ISL (the same port on the same switch) is not getting discovered when replugging"() {
@@ -136,7 +146,10 @@ class IslReplugSpec extends HealthCheckSpecification {
         def loopedIsl = islUtils.replug(isl, false, isl, true, true)
 
         then: "Replugged ISL status changes to FAILED"
-        islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def isls = northbound.getAllLinks()
+            [isl, isl.reversed].each { assert islUtils.getIslInfo(isls, it).get().actualState == FAILED }
+        }
 
         and: "The potential self-loop ISL is not present in the list of ISLs"
         def allLinks = northbound.getAllLinks()
@@ -144,25 +157,28 @@ class IslReplugSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(allLinks, loopedIsl.reversed).present
 
         when: "Replug the link back where it was"
-        islUtils.replug(loopedIsl, true, isl, false, true)
+        islUtils.replug(loopedIsl, true, isl, false, false)
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+
+        cleanup:
+        database.resetCosts()
     }
 
     @Tags(SMOKE)
+    @Ignore("https://github.com/telstra/open-kilda/issues/3633")
     def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
         given: "Two a-switch links on a single switch"
-        List<Isl> allNotConnectedIsls = topology.getNotConnectedIsls()
-        List<Isl> notConnectedSwIsls = []
+        List<Isl> aSwIsls = []
         def sw = topology.activeSwitches.find { sw ->
-            notConnectedSwIsls = allNotConnectedIsls.findAll { it.srcSwitch.dpId == sw.dpId }
-            sw.ofVersion != "OF_12" && notConnectedSwIsls.size() >= 2
+            aSwIsls = topology.isls.findAll { it.srcSwitch.dpId == sw.dpId && it.aswitch?.inPort }
+            sw.ofVersion != "OF_12" && aSwIsls.size() >= 2
         }
-        assumeNotNull("Not able to find required switch with enough number of free a-switch ISLs", sw)
+        assumeNotNull("Not able to find required switch with enough number of a-switch ISLs", sw)
 
-        def islToPlug = notConnectedSwIsls[0]
-        def islToPlugInto = notConnectedSwIsls[1]
+        def islToPlug = aSwIsls[0]
+        def islToPlugInto = aSwIsls[1]
 
         when: "Plug an ISL between two ports on the same switch"
         def beforeReplugTime = new Date()
@@ -189,5 +205,15 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         and: "Unplug the link how it was before"
         lockKeeper.removeFlows([expectedIsl.aswitch, expectedIsl.aswitch.reversed])
+        def connectedIsls = [islToPlug, islToPlugInto].findAll { it.aswitch?.outPort }
+        lockKeeper.addFlows(connectedIsls.collectMany { [it.aswitch, it.aswitch.reversed] })
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            connectedIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
+            assert links.size() == topology.islsForActiveSwitches.size() * 2
+        }
+
+        cleanup:
+        database.resetCosts()
     }
 }
