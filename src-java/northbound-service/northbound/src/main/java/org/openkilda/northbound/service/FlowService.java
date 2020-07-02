@@ -234,7 +234,7 @@ public interface FlowService {
 
     CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
                                                              long timestampFrom,
-                                                             long timestampTo);
+                                                             long timestampTo, int maxCount);
 
     /**
      * Swaps a flow endpoint.

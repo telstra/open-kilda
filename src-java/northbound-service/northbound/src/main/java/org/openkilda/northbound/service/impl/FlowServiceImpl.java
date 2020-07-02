@@ -647,12 +647,18 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
                                                                     long timestampFrom,
-                                                                    long timestampTo) {
+                                                                    long timestampTo, int maxCount) {
+        if (maxCount < 1) {
+            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
+                    "`max_count` argument must be positive.");
+        }
         String correlationId = RequestCorrelationId.getId();
         GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
                 .flowId(flowId)
                 .timestampFrom(timestampFrom)
                 .timestampTo(timestampTo)
+                .maxCount(maxCount)
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGet(nbworkerTopic, command)

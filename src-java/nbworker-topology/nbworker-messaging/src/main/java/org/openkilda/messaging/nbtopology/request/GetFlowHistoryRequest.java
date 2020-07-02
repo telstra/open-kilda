@@ -36,11 +36,16 @@ public class GetFlowHistoryRequest extends HistoryRequest {
     @JsonProperty("timestamp_to")
     long timestampTo;
 
+    @JsonProperty("max_count")
+    int maxCount;
+
     public GetFlowHistoryRequest(@JsonProperty("flow_id") String flowId,
                                  @JsonProperty("timestamp_from") long timestampFrom,
-                                 @JsonProperty("timestamp_to") long timestampTo) {
+                                 @JsonProperty("timestamp_to") long timestampTo,
+                                 @JsonProperty("max_count") int maxCount) {
         this.flowId = flowId;
         this.timestampFrom = timestampFrom;
         this.timestampTo = timestampTo;
+        this.maxCount = maxCount;
     }
 }

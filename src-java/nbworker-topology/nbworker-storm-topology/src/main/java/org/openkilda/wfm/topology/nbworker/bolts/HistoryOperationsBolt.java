@@ -62,7 +62,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
         List<FlowEventPayload> flowEvents = listFlowEvents(
                 request.getFlowId(),
                 Instant.ofEpochSecond(request.getTimestampFrom()),
-                Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1));
+                Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1),
+                request.getMaxCount());
         return Collections.singletonList(new FlowHistoryData(flowEvents));
     }
 
@@ -74,8 +75,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
                 .collect(Collectors.toList());
     }
 
-    private List<FlowEventPayload> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo) {
-        return historyService.listFlowEvents(flowId, timeFrom, timeTo)
+    private List<FlowEventPayload> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
+        return historyService.listFlowEvents(flowId, timeFrom, timeTo, maxCount)
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .peek(it -> it.setHistories(listFlowHistories(it.getTaskId())))

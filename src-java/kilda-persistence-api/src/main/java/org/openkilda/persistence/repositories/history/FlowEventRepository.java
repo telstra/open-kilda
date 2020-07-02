@@ -27,5 +27,5 @@ public interface FlowEventRepository extends Repository<FlowEvent> {
 
     Optional<FlowEvent> findByTaskId(String taskId);
 
-    Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo);
+    Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo, int maxCount);
 }

@@ -32,12 +32,16 @@ import java.util.List;
 public class Neo4jFlowEventRepositoryTest extends Neo4jBasedTest {
 
     private static final String FLOW_1 = "FLOW_1";
+    private static final String FLOW_2 = "FLOW_2";
     private static final String ACTION_1 = "ACTION_1";
     private static final String ACTION_2 = "ACTION_2";
     private static final String ACTION_3 = "ACTION_3";
+    private static final String ACTION_4 = "ACTION_4";
+    private static final String ACTION_5 = "ACTION_5";
     private static final Instant TIME_1 = Instant.parse("2020-07-06T11:04:41Z");
     private static final Instant TIME_2 = Instant.parse("2020-07-06T11:04:41.482Z");
     private static final Instant TIME_3 = Instant.parse("2020-07-06T11:04:42.321Z");
+    private static final Instant TIME_4 = Instant.parse("2020-07-06T11:04:50.321Z");
 
     private static FlowEventRepository repository;
 
@@ -58,11 +62,43 @@ public class Neo4jFlowEventRepositoryTest extends Neo4jBasedTest {
         }
 
         List<FlowEvent> actual = new ArrayList<>(repository.findByFlowIdAndTimeFrame(
-                FLOW_1, TIME_1.minusSeconds(1), TIME_3.plusSeconds(1)));
+                FLOW_1, TIME_1.minusSeconds(1), TIME_3.plusSeconds(1), 100));
         assertEquals(expected, actual);
         // result must be sorted by time
         assertTrue(actual.get(0).getTimestamp().isBefore(actual.get(1).getTimestamp()));
         assertTrue(actual.get(1).getTimestamp().isBefore(actual.get(2).getTimestamp()));
+    }
+
+    @Test
+    public void findByFlowIdAndTimeFrameTest() {
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_1, TIME_1));
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_2, TIME_2));
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_3, TIME_3));
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_4, TIME_4));
+        repository.createOrUpdate(getFlowEvent(FLOW_2, ACTION_5, TIME_3));
+
+        List<FlowEvent> events = new ArrayList<>(repository.findByFlowIdAndTimeFrame(
+                FLOW_1, TIME_2, TIME_3, 1000));
+        assertEquals(2, events.size());
+        assertEquals(ACTION_2, events.get(0).getAction());
+        assertEquals(ACTION_3, events.get(1).getAction());
+        assertTrue(events.get(0).getTimestamp().isBefore(events.get(1).getTimestamp()));
+    }
+
+    @Test
+    public void findByFlowIdTimeFrameAndMaxCountTest() {
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_1, TIME_1));
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_2, TIME_2));
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_3, TIME_3));
+        repository.createOrUpdate(getFlowEvent(FLOW_1, ACTION_4, TIME_4));
+        repository.createOrUpdate(getFlowEvent(FLOW_2, ACTION_5, TIME_3));
+
+        List<FlowEvent> events = new ArrayList<>(repository.findByFlowIdAndTimeFrame(
+                FLOW_1, TIME_1, TIME_4, 2));
+        assertEquals(2, events.size());
+        assertEquals(ACTION_3, events.get(0).getAction());
+        assertEquals(ACTION_4, events.get(1).getAction());
+        assertTrue(events.get(0).getTimestamp().isBefore(events.get(1).getTimestamp()));
     }
 
     private FlowEvent getFlowEvent(String flowId, String action, Instant timestamp) {
