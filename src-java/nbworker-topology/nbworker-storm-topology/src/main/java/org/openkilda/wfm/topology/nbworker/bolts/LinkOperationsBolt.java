@@ -325,7 +325,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                 for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
                         targetPaths, affectedIslEndpoints, reason)) {
                     CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
-                    getOutput().emit(StreamType.FLOWHS.toString(), getCurrentTuple(),
+                    getOutput().emit(StreamType.REROUTE.toString(), getCurrentTuple(),
                             new Values(reroute, forkedContext.getCorrelationId()));
                 }
             }
@@ -361,7 +361,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.FLOWHS.toString(),
+        declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

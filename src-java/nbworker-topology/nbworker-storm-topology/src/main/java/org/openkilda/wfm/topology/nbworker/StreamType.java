@@ -34,5 +34,6 @@ public enum StreamType {
     METER_MODIFY_WORKER,
     PING,
     FLOW_PATCH,
-    TO_SERVER42
+    TO_SERVER42,
+    REROUTE
 }
