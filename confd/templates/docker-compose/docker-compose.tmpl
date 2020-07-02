@@ -460,6 +460,7 @@ services:
         condition: service_started{{end}}
     ports:
       - 9600:9600
+      - {{ getv "/kilda_logging_port_tests" }}:{{ getv "/kilda_logging_port_tests" }}
     networks:
       default:
         aliases:
