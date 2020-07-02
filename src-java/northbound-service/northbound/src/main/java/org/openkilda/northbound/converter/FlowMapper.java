@@ -119,6 +119,7 @@ public abstract class FlowMapper {
     @Mapping(target = "allocateProtectedPath", ignore = true)
     @Mapping(target = "diverseFlowId", ignore = true)
     @Mapping(target = "pathComputationStrategy", ignore = true)
+    @Mapping(target = "pinned", ignore = true)
     public abstract FlowPatch toFlowPatch(FlowPatchDto flowPatchDto);
 
     @Mapping(target = "flowId", ignore = true)

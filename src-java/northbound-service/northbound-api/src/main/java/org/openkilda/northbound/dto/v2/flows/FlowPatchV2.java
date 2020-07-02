@@ -51,6 +51,9 @@ public class FlowPatchV2 {
     @JsonProperty("allocate_protected_path")
     private Boolean allocateProtectedPath;
 
+    @JsonProperty("pinned")
+    private Boolean pinned;
+
     @JsonCreator
     public FlowPatchV2(@JsonProperty("source") FlowPatchEndpoint source,
                        @JsonProperty("destination") FlowPatchEndpoint destination,
@@ -60,7 +63,8 @@ public class FlowPatchV2 {
                        @JsonProperty("target_path_computation_strategy") String targetPathComputationStrategy,
                        @JsonProperty("diverse_flow_id") String diverseFlowId,
                        @JsonProperty("maximum_bandwidth") Long maximumBandwidth,
-                       @JsonProperty("allocate_protected_path") Boolean allocateProtectedPath) {
+                       @JsonProperty("allocate_protected_path") Boolean allocateProtectedPath,
+                       @JsonProperty("pinned") Boolean pinned) {
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.periodicPings = periodicPings;
@@ -70,5 +74,6 @@ public class FlowPatchV2 {
         this.diverseFlowId = diverseFlowId;
         this.maximumBandwidth = maximumBandwidth;
         this.allocateProtectedPath = allocateProtectedPath;
+        this.pinned = pinned;
     }
 }
