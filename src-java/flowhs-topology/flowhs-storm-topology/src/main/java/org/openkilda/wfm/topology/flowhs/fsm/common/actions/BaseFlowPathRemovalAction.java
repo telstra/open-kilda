@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
@@ -73,7 +74,12 @@ public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S
                 dstSwitch, dstPort);
         log.debug("Updating ISL {}_{} - {}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
                 usedBandwidth);
-        islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
+        try {
+            islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
+        } catch (PersistenceException e) {
+            log.warn(format("Couldn't update ISL %s_%d - %s_%d with used bandwidth %d. %s",
+                    srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth, e.getMessage()), e);
+        }
     }
 
     protected void saveRemovalActionWithDumpToHistory(T stateMachine, Flow flow, FlowPath flowPath) {
