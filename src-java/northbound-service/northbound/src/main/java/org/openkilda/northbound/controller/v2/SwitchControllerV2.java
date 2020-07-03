@@ -23,6 +23,8 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.annotations.ApiOperation;
@@ -33,6 +35,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -139,5 +142,19 @@ public class SwitchControllerV2 extends BaseController {
             }
         }
         return switchService.getSwitchConnectedDevices(switchId, sinceInstant);
+    }
+
+    /**
+     * Update switch.
+     *
+     * @param switchId the switch
+     * @return switch.
+     */
+    @ApiOperation(value = "Update switch", response = SwitchDtoV2.class)
+    @PatchMapping(value = "/{switch_id}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchDtoV2> patchSwitch(@PathVariable("switch_id") SwitchId switchId,
+                                                      @RequestBody SwitchPatchDto dto) {
+        return switchService.patchSwitch(switchId, dto);
     }
 }
