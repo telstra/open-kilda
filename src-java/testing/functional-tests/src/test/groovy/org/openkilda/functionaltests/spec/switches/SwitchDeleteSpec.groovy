@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -42,13 +44,11 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("Switch '$switchId' is in 'Active' state")
     }
 
-    @Tags(VIRTUAL)
+    @Tidy
     def "Unable to delete an inactive switch with active ISLs"() {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-
-        // deactivate switch
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
         when: "Try to delete the switch"
@@ -60,22 +60,20 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} active links\\. " +
                 "Unplug and remove them first.*")
 
-        and: "Cleanup: activate the switch back"
+        cleanup: "Activate the switch back"
         switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tags(VIRTUAL)
+    @Tidy
     def "Unable to delete an inactive switch with inactive ISLs (ISL ports are down)"() {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-
         // deactivate all active ISLs on switch
         swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
         Wrappers.wait(WAIT_OFFSET) {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
-
         // deactivate switch
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
@@ -88,9 +86,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} inactive links\\. " +
                 "Remove them first.*")
 
-        and: "Cleanup: activate the switch back and reset costs"
-        switchHelper.reviveSwitch(sw, blockData)
-
+        cleanup: "Activate the switch back and reset costs"
+        lockKeeper.reviveSwitch(sw, blockData)
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
@@ -100,7 +97,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @Tags(VIRTUAL)
+    @Tidy
+    @IterationTags([@IterationTag(tags = [LOW_PRIORITY], take = 1)])
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
         given: "A flow going through a switch"
         flowHelperV2.addFlow(flow)
@@ -117,7 +115,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
 
-        and: "Cleanup: activate the switch back and remove the flow"
+        cleanup: "Activate the switch back and remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.reviveSwitch(swToDeactivate, blockData)
 
@@ -127,24 +125,19 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         "casual"        | getFlowHelperV2().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
-    @Tags(VIRTUAL)
+    @Tidy
     def "Able to delete an inactive switch without any ISLs"() {
         given: "An inactive switch without any ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-
-        // deactivate all active ISLs on switch
+        // port down on all active ISLs on switch
         swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
-
         // delete all ISLs on switch
-        swIsls.each {
-            northbound.deleteLink(islUtils.toLinkParameters(it))
-        }
-
+        swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         // deactivate switch
         def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
 
@@ -155,11 +148,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         response.deleted
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.allSwitches.any { it.switchId == sw.dpId } }
 
-        and: "Cleanup: activate the switch back, restore ISLs and reset costs"
-        // restore switch
+        cleanup: "Activate the switch back, restore ISLs and reset costs"
         switchHelper.reviveSwitch(sw, blockData)
-
-        // restore ISLs
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
@@ -168,7 +158,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Tags(VIRTUAL)
+    @Tidy
     def "Able to delete an active switch with active ISLs if using force delete"() {
         given: "An active switch with active ISLs"
         def sw = topology.getActiveSwitches()[0]
@@ -189,12 +179,13 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: restore the switch, ISLs and reset costs"
+        cleanup: "Restore the switch, ISLs and reset costs"
         // restore switch
         def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
-
+        Wrappers.wait(WAIT_OFFSET) {
+            mgmtFlManager.getFloodlightService(sw.getRegion()).getSwitches().every { it.switchId != sw.dpId }
+        }
+        switchHelper.reviveSwitch(sw, blockData)
         // restore ISLs
         swIsls.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapMin)

@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -12,13 +11,10 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
+import org.openkilda.testing.model.topology.TopologyDefinition
 
 import java.util.concurrent.TimeUnit
 
@@ -71,30 +67,35 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(VIRTUAL) //TODO (andriidovhan) select two path with different transit switches, then set the SMOKE tag
+    @Tags(SMOKE)
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
-        given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue("No suiting switches found", false)
+        given: "Two active not neighboring switches and a switch to be maintained"
+        TopologyDefinition.Switch sw
+        List<PathNode> path
+        def switchPair = topologyHelper.switchPairs.find {
+            path = it.paths.find { aPath ->
+                sw = pathHelper.getInvolvedSwitches(aPath).find { aSw ->
+                    it.paths.findAll { it != aPath }.find { !pathHelper.getInvolvedSwitches(it).contains(aSw) }
+                }
+            }
+        } ?: assumeTrue("No suiting switches found. Need a switch pair with at least 2 paths and one of the " +
+        "paths should not use the maintenance switch", false)
+        switchPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
-
         def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
         flowHelperV2.addFlow(flow2)
-        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
-
-        assert flow1Path == flow2Path
+        assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) == path
+        assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) == path
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
-        def sw = pathHelper.getInvolvedSwitches(flow1Path)[1]
         northbound.setSwitchMaintenance(sw.dpId, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
-        PathHelper.convert(northbound.getFlowPath(flow1.flowId)) == flow1Path
-        PathHelper.convert(northbound.getFlowPath(flow2.flowId)) == flow2Path
+        PathHelper.convert(northbound.getFlowPath(flow1.flowId)) == path
+        PathHelper.convert(northbound.getFlowPath(flow2.flowId)) == path
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
         northbound.setSwitchMaintenance(sw.dpId, true, true)
@@ -107,8 +108,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
             flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
             flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
 
-            assert flow1PathUpdated != flow1Path
-            assert flow2PathUpdated != flow2Path
+            assert flow1PathUpdated != path
+            assert flow2PathUpdated != path
         }
 
         and: "Switch under maintenance is not involved in new flow paths"
@@ -118,6 +119,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         cleanup: "Delete flows and unset maintenance mode"
         [flow1, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
     }
 
     def "Link discovered by a switch under maintenance is marked as maintained"() {
@@ -158,56 +160,5 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(links, isl).get().underMaintenance
         !islUtils.getIslInfo(links, isl.reversed).get().underMaintenance
         database.resetCosts()
-    }
-
-    // That logic will be reworked to fit new use cases
-    @Ignore("Not implemented in new discovery-topology")
-    @Tags(VIRTUAL)
-    def "System is correctly handling actions performing on a maintained switch disconnected from the controller"() {
-        given: "An active switch under maintenance disconnected from the controller"
-        def sw = topology.activeSwitches.first()
-        northbound.setSwitchMaintenance(sw.dpId, true, false)
-        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            northbound.getAllLinks().findAll { sw.dpId in [it.source, it.destination]*.switchId }.each {
-                assert it.state == IslChangeType.FAILED
-            }
-        }
-
-        when: "Try to get switch info"
-        def response = northbound.getSwitch(sw.dpId)
-
-        then: "Detailed switch info is returned"
-        response.switchId == sw.dpId
-        response.state == SwitchChangeType.ACTIVATED
-        response.underMaintenance
-
-        when: "Try to get switch rules"
-        northbound.getSwitchRules(sw.dpId)
-
-        then: "An error is received (404 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId was not found"
-
-        when: "Try to create a flow, using the switch"
-        def flow = flowHelperV2.randomFlow(sw, topology.activeSwitches.last())
-        northboundV2.addFlow(flow)
-
-        then: "An error is received (404 code)"
-        exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Not enough bandwidth or no path found. Failed to find path with requested " +
-                    "bandwidth=$flow.maximumBandwidth: Switch $sw.dpId doesn't have links with enough bandwidth"
-        }
-
-        and: "Connect the switch back to the controller and unset maintenance mode"
-        lockKeeper.reviveSwitch(sw, blockData)
-        northbound.setSwitchMaintenance(sw.dpId, false, false)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
     }
 }

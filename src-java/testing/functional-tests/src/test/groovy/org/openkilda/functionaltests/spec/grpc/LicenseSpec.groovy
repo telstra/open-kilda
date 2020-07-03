@@ -2,8 +2,8 @@ package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
-import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LicenseDto
 import org.openkilda.messaging.error.MessageError
 

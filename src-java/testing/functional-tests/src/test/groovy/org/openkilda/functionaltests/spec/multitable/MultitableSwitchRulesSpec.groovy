@@ -6,8 +6,8 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.SwitchFeature
+import org.openkilda.model.cookie.Cookie
 
 import spock.lang.See
 

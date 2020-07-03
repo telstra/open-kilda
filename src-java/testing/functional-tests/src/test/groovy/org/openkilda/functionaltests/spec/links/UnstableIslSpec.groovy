@@ -1,16 +1,16 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
 
@@ -61,10 +61,12 @@ class UnstableIslSpec extends HealthCheckSpecification {
         [isl, isl.reversed].each { assert database.getIslTimeUnstable(it) == null }
     }
 
-    @Tags(VIRTUAL)
+    @Tidy
     def "ISL is not considered unstable after deactivating/activating switch"() {
-        given: "A switch"
-        def sw = topology.getActiveSwitches().first()
+        //Switches with roundtrip isl latency will not have ISLs failed given that round trip rules remain installed
+        given: "A switch that does not support round trip isl latency"
+        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        assumeTrue("This test cannot be run if all switches support roundtrip is latency", sw as boolean)
 
         and: "Cost of related ISLs"
         def swIsls = topology.getRelatedIsls(sw)
@@ -77,9 +79,14 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         when: "Activate the switch"
         switchHelper.reviveSwitch(sw, blockData, true)
+        blockData = null
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }
+
+        cleanup:
+        blockData && switchHelper.reviveSwitch(sw, blockData, true)
+
     }
 
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
