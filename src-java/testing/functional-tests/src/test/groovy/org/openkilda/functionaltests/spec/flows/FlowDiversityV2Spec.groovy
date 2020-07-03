@@ -144,7 +144,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
         when: "Update the second flow to become not diverse"
-        flowHelperV2.updateFlow(flow2.flowId, flow2.tap { it.diverseFlowId = null })
+        flowHelperV2.updateFlow(flow2.flowId, flow2.tap { it.diverseFlowId = "" })
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
         def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
@@ -155,7 +155,7 @@ class FlowDiversityV2Spec extends HealthCheckSpecification {
         !northboundV2.getFlow(flow2.flowId).diverseWith
 
         when: "Update the third flow to become not diverse"
-        flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = null })
+        flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = "" })
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
         def flow3PathUpdated = PathHelper.convert(northbound.getFlowPath(flow3.flowId))

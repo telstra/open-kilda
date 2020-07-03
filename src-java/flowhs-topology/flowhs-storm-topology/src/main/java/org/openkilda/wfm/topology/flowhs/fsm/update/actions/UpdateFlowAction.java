@@ -88,13 +88,15 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
 
         stateMachine.setOriginalFlowGroup(flow.getGroupId());
         if (targetFlow.getDiverseFlowId() != null) {
-            flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
+            if (targetFlow.getDiverseFlowId().isEmpty()) {
+                flow.setGroupId(null);
+            } else {
+                flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
+            }
         } else if (targetFlow.isAllocateProtectedPath()) {
             if (flow.getGroupId() == null) {
                 flow.setGroupId(getOrCreateFlowGroupId(flow.getFlowId()));
             }
-        } else {
-            flow.setGroupId(null);
         }
 
         Switch srcSwitch = switchRepository.findById(targetFlow.getSrcSwitch())
