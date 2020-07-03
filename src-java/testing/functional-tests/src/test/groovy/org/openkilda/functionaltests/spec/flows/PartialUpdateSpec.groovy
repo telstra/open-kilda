@@ -84,6 +84,10 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         newValue: true
                 ],
                 [
+                        field   : "pinned",
+                        newValue: true
+                ],
+                [
                         field   : "targetPathComputationStrategy",
                         newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
                 ]
