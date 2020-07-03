@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class UpdateFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+    private static final String DEGRADED_FLOW_STATUS_INFO = "Couldn't find non overlapping protected path";
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public UpdateFlowStatusAction(PersistenceManager persistenceManager,
@@ -49,12 +50,25 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm,
             FlowStatus flowStatus = flow.computeFlowStatus();
             if (flowStatus != flow.getStatus()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-                flowRepository.updateStatus(flowId, flowStatus);
+                flowRepository.updateStatus(flowId, flowStatus, getFlowStatusInfo(flowStatus, stateMachine));
+            } else if (FlowStatus.DEGRADED.equals(flowStatus)) {
+                flowRepository.updateStatusInfo(flowId, DEGRADED_FLOW_STATUS_INFO);
             }
             stateMachine.setNewFlowStatus(flowStatus);
             return flowStatus;
         });
 
         stateMachine.saveActionToHistory(format("The flow status was set to %s", resultStatus));
+    }
+
+    private String getFlowStatusInfo(FlowStatus flowStatus, FlowRerouteFsm stateMachine) {
+        String flowStatusInfo = null;
+        if (!FlowStatus.UP.equals(flowStatus) && !flowStatus.equals(stateMachine.getOriginalFlowStatus())) {
+            flowStatusInfo = stateMachine.getErrorReason();
+            if (FlowStatus.DEGRADED.equals(flowStatus)) {
+                flowStatusInfo = DEGRADED_FLOW_STATUS_INFO;
+            }
+        }
+        return flowStatusInfo;
     }
 }

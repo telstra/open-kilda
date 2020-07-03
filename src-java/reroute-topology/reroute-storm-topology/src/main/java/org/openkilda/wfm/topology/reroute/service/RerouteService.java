@@ -102,7 +102,12 @@ public class RerouteService {
             Flow flow = entry.getFlow();
             Boolean sendRerouteRequest = transactionManager.doInTransaction(() -> {
                 boolean flowPathFound = updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
-                flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
+                FlowStatus flowStatus = flow.computeFlowStatus();
+                String flowStatusInfo = null;
+                if (!FlowStatus.UP.equals(flowStatus)) {
+                    flowStatusInfo = command.getReason();
+                }
+                flowRepository.updateStatusSafe(flow.getFlowId(), flowStatus, flowStatusInfo);
                 return flowPathFound;
             });
 
@@ -125,7 +130,7 @@ public class RerouteService {
                 updateFlowPathsStateForFlow(switchId, port, flowPaths);
                 if (flow.getStatus() != FlowStatus.DOWN) {
                     flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.DOWN);
-                    flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN);
+                    flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN, command.getReason());
                 }
             });
         }
@@ -242,7 +247,12 @@ public class RerouteService {
 
                     allAffectedIslEndpoints.addAll(affectedIslEndpoints);
                 }
-                flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
+                FlowStatus flowStatus = flow.computeFlowStatus();
+                String flowStatusInfo = null;
+                if (!FlowStatus.UP.equals(flowStatus)) {
+                    flowStatusInfo = command.getReason();
+                }
+                flowRepository.updateStatusSafe(flow.getFlowId(), flowStatus, flowStatusInfo);
             });
 
             if (flow.isPinned()) {
@@ -377,6 +387,8 @@ public class RerouteService {
     public void processSingleSwitchFlowStatusUpdate(SwitchStateChanged request) {
         Collection<Flow> affectedFlows = flowRepository.findOneSwitchFlows(request.getSwitchId());
         FlowStatus newFlowStatus = request.getStatus() == SwitchStatus.ACTIVE ? FlowStatus.UP : FlowStatus.DOWN;
+        String newFlowStatusInfo = request.getStatus() == SwitchStatus.ACTIVE
+                ? null : format("Switch %s is inactive", request.getSwitchId());
         FlowPathStatus newFlowPathStatus = request.getStatus() == SwitchStatus.ACTIVE
                 ? FlowPathStatus.ACTIVE : FlowPathStatus.INACTIVE;
         for (Flow flow : affectedFlows) {
@@ -385,7 +397,7 @@ public class RerouteService {
             transactionManager.doInTransaction(() -> {
                 FlowPath forward = flow.getForwardPath();
                 FlowPath reverse = flow.getReversePath();
-                flowRepository.updateStatus(flow.getFlowId(), newFlowStatus);
+                flowRepository.updateStatus(flow.getFlowId(), newFlowStatus, newFlowStatusInfo);
                 flowPathRepository.updateStatus(forward.getPathId(), newFlowPathStatus);
                 flowPathRepository.updateStatus(reverse.getPathId(), newFlowPathStatus);
             });

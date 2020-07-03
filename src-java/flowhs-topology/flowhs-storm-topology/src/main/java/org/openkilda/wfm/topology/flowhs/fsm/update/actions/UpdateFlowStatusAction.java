@@ -34,6 +34,7 @@ import java.util.Optional;
 
 @Slf4j
 public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+    private static final String DEGRADED_FLOW_STATUS_INFO = "Couldn't find non overlapping protected path";
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public UpdateFlowStatusAction(PersistenceManager persistenceManager,
@@ -52,7 +53,9 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
                     .orElse(flow.computeFlowStatus());
             if (flowStatus != flow.getStatus() && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
                 dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-                flowRepository.updateStatus(flowId, flowStatus);
+                flowRepository.updateStatus(flowId, flowStatus, getFlowStatusInfo(flowStatus, stateMachine));
+            } else if (FlowStatus.DEGRADED.equals(flowStatus)) {
+                flowRepository.updateStatusInfo(flowId, DEGRADED_FLOW_STATUS_INFO);
             }
             stateMachine.setNewFlowStatus(flowStatus);
             return flowStatus;
@@ -61,5 +64,16 @@ public class UpdateFlowStatusAction extends FlowProcessingAction<FlowUpdateFsm, 
         if (stateMachine.getBulkUpdateFlowIds().isEmpty()) {
             stateMachine.saveActionToHistory(format("The flow status was set to %s", resultStatus));
         }
+    }
+
+    private String getFlowStatusInfo(FlowStatus flowStatus, FlowUpdateFsm stateMachine) {
+        String flowStatusInfo = null;
+        if (!FlowStatus.UP.equals(flowStatus) && !flowStatus.equals(stateMachine.getOriginalFlowStatus())) {
+            flowStatusInfo = stateMachine.getErrorReason();
+            if (FlowStatus.DEGRADED.equals(flowStatus)) {
+                flowStatusInfo = DEGRADED_FLOW_STATUS_INFO;
+            }
+        }
+        return flowStatusInfo;
     }
 }

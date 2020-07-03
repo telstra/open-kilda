@@ -242,7 +242,7 @@ public class RerouteServiceTest {
             FlowStatus status = invocation.getArgument(1);
             pinnedFlow.setStatus(status);
             return null;
-        }).when(flowRepository).updateStatusSafe(eq(pinnedFlow.getFlowId()), any());
+        }).when(flowRepository).updateStatusSafe(eq(pinnedFlow.getFlowId()), any(), any());
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
         doAnswer(invocation -> {
@@ -349,7 +349,7 @@ public class RerouteServiceTest {
         RerouteAffectedFlows request = new RerouteAffectedFlows(islSide, "dummy-reason - unittest");
         rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
 
-        verify(flowRepository).updateStatusSafe(eq(regularFlow.getFlowId()), eq(FlowStatus.DOWN));
+        verify(flowRepository).updateStatusSafe(eq(regularFlow.getFlowId()), eq(FlowStatus.DOWN), any());
         FlowThrottlingData expected = FlowThrottlingData.builder()
                 .correlationId(CORRELATION_ID)
                 .priority(regularFlow.getPriority())
@@ -383,7 +383,8 @@ public class RerouteServiceTest {
         rerouteService.processSingleSwitchFlowStatusUpdate(
                 new SwitchStateChanged(oneSwitchFlow.getSrcSwitch().getSwitchId(), SwitchStatus.INACTIVE));
 
-        verify(flowRepository).updateStatus(oneSwitchFlow.getFlowId(), FlowStatus.DOWN);
+        verify(flowRepository).updateStatus(oneSwitchFlow.getFlowId(), FlowStatus.DOWN,
+                format("Switch %s is inactive", oneSwitchFlow.getSrcSwitch().getSwitchId()));
     }
 
     @Test

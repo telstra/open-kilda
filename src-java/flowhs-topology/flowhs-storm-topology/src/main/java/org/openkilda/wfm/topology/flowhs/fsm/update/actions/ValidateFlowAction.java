@@ -115,8 +115,9 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
 
             // Keep it, just in case we have to revert it.
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
+            stateMachine.setOriginalFlowStatusInfo(foundFlow.getStatusInfo());
 
-            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
+            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS, "");
             return foundFlow;
         });
 

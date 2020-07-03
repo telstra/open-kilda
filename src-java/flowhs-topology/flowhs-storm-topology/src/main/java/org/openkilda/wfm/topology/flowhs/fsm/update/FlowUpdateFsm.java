@@ -79,6 +79,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private RequestedFlow targetFlow;
 
     private FlowStatus originalFlowStatus;
+    private String originalFlowStatusInfo;
     private String originalFlowGroup;
     private RequestedFlow originalFlow;
     private PathComputationStrategy oldTargetPathComputationStrategy;

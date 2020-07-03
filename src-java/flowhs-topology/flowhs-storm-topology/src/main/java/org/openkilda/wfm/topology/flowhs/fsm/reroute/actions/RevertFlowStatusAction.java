@@ -36,13 +36,20 @@ public class RevertFlowStatusAction extends FlowProcessingAction<FlowRerouteFsm,
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        FlowStatus originalStatus = stateMachine.getOriginalFlowStatus();
-        if (originalStatus != null) {
-            log.debug("Reverting the flow status of {} to {}", flowId, originalStatus);
+        FlowStatus originalFlowStatus = stateMachine.getOriginalFlowStatus();
+        FlowStatus newFlowStatus = stateMachine.getNewFlowStatus();
+        if (originalFlowStatus != null) {
+            log.debug("Reverting the flow status of {} to {}", flowId, originalFlowStatus);
 
-            flowRepository.updateStatus(flowId, originalStatus);
+            String flowStatusInfo = FlowStatus.DEGRADED.equals(originalFlowStatus)
+                    ? stateMachine.getErrorReason() : stateMachine.getOriginalFlowStatusInfo();
+            flowRepository.updateStatus(flowId, originalFlowStatus, flowStatusInfo);
 
-            stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalStatus));
+            stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalFlowStatus));
+
+        } else {
+            String flowStatusInfo = !FlowStatus.UP.equals(newFlowStatus) ? stateMachine.getErrorReason() : null;
+            flowRepository.updateStatusInfo(flowId, flowStatusInfo);
         }
     }
 }
