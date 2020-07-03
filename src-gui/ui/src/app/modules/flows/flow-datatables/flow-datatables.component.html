@@ -3,7 +3,8 @@
 <table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr class="tableHeading">
-        <th><input type="checkbox" [checked]="selectAll" style="margin-left: 7px;" class="large-checkbox" (click)="selectAllFlows($event)"  />
+        <th>
+          <input type="checkbox" [checked]="selectAll" style="margin-left: 7px;" class="large-checkbox" (click)="selectAllFlows($event)"  />
         </th>
         <th class="">
           <span title="Flow ID">
@@ -152,7 +153,7 @@
          <td (click)="showFlow(row)" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
         <td (click)="showFlow(row)">{{row.dst_port || "-"}}</td>
         <td (click)="showFlow(row)">{{row.dst_vlan || "-"}}</td>
-        <td (click)="showFlow(row)">{{row.maximum_bandwidth / 1000  || "-"}}</td>
+        <td (click)="showFlow(row)" >{{row.maximum_bandwidth / 1000  || "-"}}</td>
         <td (click)="showFlow(row)" title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td (click)="showFlow(row)" title="{{row.description}}">{{row.description || "-"}}</td>
         <td (click)="showFlow(row)" title="{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}">{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}</td>

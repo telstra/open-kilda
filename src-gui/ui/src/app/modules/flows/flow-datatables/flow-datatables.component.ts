@@ -79,6 +79,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
       autoWidth: false,
       colResize: false,
       stateSave: false,
+      "order": [],
       language: {
         searchPlaceholder: "Search"
       },
@@ -95,7 +96,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         }
       },
       "aoColumns": [
-        { sWidth: '5%' ,"bSortable":false},
+        { sWidth: '7%' ,"bSortable":false},
         { sWidth: '15%' },
         { sWidth:  '13%',"sType": "name","bSortable": true },
         { sWidth: '8%' },
@@ -115,16 +116,16 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
        ],
        columnDefs:[
         {
-          "targets": [ 2 ],
+          "targets": [ 3],
           "visible": false,
           "searchable": true
       },
       {
-          "targets": [ 6 ],
+          "targets": [ 7 ],
           "visible": false,
           "searchable": true
       },
-      { "targets": [13], "visible": false},
+      { "targets": [14], "visible": false},
       ],
       initComplete:function( settings, json ){
         setTimeout(function(){
