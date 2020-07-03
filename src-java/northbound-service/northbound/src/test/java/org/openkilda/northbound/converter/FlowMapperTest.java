@@ -212,7 +212,7 @@ public class FlowMapperTest {
     public void testFlowPatchV2ToFlowDto() {
         FlowPatchV2 flowPatchDto = new FlowPatchV2(new FlowPatchEndpoint(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN),
                 new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN), LATENCY, PRIORITY, PERIODIC_PINGS,
-                TARGET_PATH_COMPUTATION_STRATEGY, DIVERSE_FLOW_ID, (long) BANDWIDTH, ALLOCATE_PROTECTED_PATH);
+                TARGET_PATH_COMPUTATION_STRATEGY, DIVERSE_FLOW_ID, (long) BANDWIDTH, ALLOCATE_PROTECTED_PATH, PINNED);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
         assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSourceSwitch());
@@ -229,5 +229,6 @@ public class FlowMapperTest {
         assertEquals(flowPatchDto.getDiverseFlowId(), flowPatch.getDiverseFlowId());
         assertEquals(flowPatchDto.getMaximumBandwidth(), flowPatch.getBandwidth());
         assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
+        assertEquals(flowPatchDto.getPinned(), flowPatch.getPinned());
     }
 }

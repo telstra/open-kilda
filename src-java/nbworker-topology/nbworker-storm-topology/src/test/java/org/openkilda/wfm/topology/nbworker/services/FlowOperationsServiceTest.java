@@ -87,7 +87,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldUpdateMaxLatencyAndPriorityFlowFields() throws FlowNotFoundException {
+    public void shouldUpdateMaxLatencyPriorityAndPinnedFlowFields() throws FlowNotFoundException {
         String testFlowId = "flow_id";
         Long maxLatency = 555L;
         Integer priority = 777;
@@ -111,6 +111,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .flowId(testFlowId)
                 .maxLatency(maxLatency)
                 .priority(priority)
+                .pinned(true)
                 .targetPathComputationStrategy(pathComputationStrategy)
                 .build();
 
@@ -119,6 +120,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
         assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
+        assertTrue(updatedFlow.isPinned());
 
         receivedFlow = FlowPatch.builder()
                 .flowId(testFlowId)
@@ -128,6 +130,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
         assertEquals(pathComputationStrategy, updatedFlow.getTargetPathComputationStrategy());
+        assertTrue(updatedFlow.isPinned());
     }
 
     @Test
