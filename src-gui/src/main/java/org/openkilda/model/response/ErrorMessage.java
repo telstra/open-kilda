@@ -25,7 +25,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"error-code", "error-message", "error-auxiliary-message", "correlationid"})
+@JsonPropertyOrder({"error-code", "error-message", "error-auxiliary-message", "correlation_id", "error-description"})
 public class ErrorMessage {
 
     
@@ -39,9 +39,12 @@ public class ErrorMessage {
     
     @JsonProperty("error-auxiliary-message")
     private String auxilaryMessage;
+    
+    @JsonProperty("error-description")
+    private String errorDescription;
 
     
-    @JsonProperty("correlationid")
+    @JsonProperty("correlation_id")
     private String correlationId;
 
     /**
@@ -63,6 +66,25 @@ public class ErrorMessage {
         this.code = code;
         this.message = message;
         this.auxilaryMessage = auxilaryMessage;
+    }
+    
+    /**
+     * Instantiates a new error message.
+     *
+     * @param code the code
+     * @param message the message
+     * @param auxilaryMessage the auxilary message
+     * @param correlationId the correlation id
+     * @param errorDescription the error description
+     */
+    public ErrorMessage(int code, String message, String auxilaryMessage, String correlationId, 
+            String errorDescription) {
+        super();
+        this.code = code;
+        this.message = message;
+        this.auxilaryMessage = auxilaryMessage;
+        this.correlationId = correlationId;
+        this.errorDescription = errorDescription;
     }
 
     /**
@@ -133,6 +155,24 @@ public class ErrorMessage {
      */
     public void setAuxilaryMessage(String auxilaryMessage) {
         this.auxilaryMessage = auxilaryMessage;
+    }
+    
+    /**
+     * Gets the error description.
+     *
+     * @return the error description
+     */
+    public String getErrorDescription() {
+        return errorDescription;
+    }
+
+    /**
+     * Sets the error description.
+     *
+     * @param  errorDescription the new  error description
+     */
+    public void setErrorDescription(String errorDescription) {
+        this.errorDescription = errorDescription;
     }
 
     /**
