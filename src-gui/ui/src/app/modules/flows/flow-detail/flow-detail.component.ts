@@ -746,7 +746,7 @@ export class FlowDetailComponent implements OnInit {
   /** Re-route flow path for best route  */
   reRouteFlow() {
     this.reRoutingInProgress = true;
-    this.loaderService.show("Re-routing");
+    this.loaderService.show(MessageObj.re_routing);
     this.flowService.getReRoutedPath(this.flowDetail.flowid).subscribe(
       data => {
         this.loaderService.hide();

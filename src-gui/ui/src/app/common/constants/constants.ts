@@ -8,6 +8,8 @@ export const MessageObj = {
     load_ports:"Loading Ports",
     loading_flows:"Loading Flows",
     fetching_flows:"Fetching flows",
+    re_routing:"Re-routing",
+    re_routing_flows:"Re-routing Flows",
     no_ports:"No Ports available",
     no_flow_available:"No Flows Available",
     flow_updated:"Updating flow",
