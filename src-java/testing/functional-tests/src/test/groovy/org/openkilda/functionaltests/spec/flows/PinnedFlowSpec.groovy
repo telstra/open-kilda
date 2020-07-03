@@ -112,36 +112,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    def "System is not able to reroute(intentionally) pinned flow"() {
-        given: "A pinned flow with alt path available"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(switchPair)
-        flow.pinned = true
-        flowHelper.addFlow(flow)
-
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
-
-        when: "Make another path more preferable"
-        def newPath = switchPair.paths.find { it != currentPath }
-        switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
-
-        and: "Init reroute(manually)"
-        def isl = pathHelper.getInvolvedIsls(currentPath).first()
-        northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
-
-        then: "Flow is not rerouted"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
-        }
-
-        and: "Cleanup: revert system to original state"
-        flowHelper.deleteFlow(flow.id)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-        database.resetCosts()
-    }
-
     @Tidy
     def "System doesn't allow to create pinned and protected flow at the same time"() {
         when: "Try to create pinned and protected flow"
