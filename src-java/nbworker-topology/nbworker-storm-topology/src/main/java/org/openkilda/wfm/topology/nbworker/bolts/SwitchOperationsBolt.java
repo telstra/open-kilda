@@ -33,6 +33,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesReque
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
@@ -121,6 +122,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
         }  else if (request instanceof GetSwitchConnectedDevicesRequest) {
             result = Collections.singletonList(getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request));
+        }  else if (request instanceof SwitchPatchRequest) {
+            result = Collections.singletonList(patchSwitch((SwitchPatchRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -267,6 +270,15 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             ports.add(new SwitchPortConnectedDevicesDto(entry.getKey(), lldpDevices, arpDevices));
         }
         return new SwitchConnectedDevicesResponse(ports);
+    }
+
+    private GetSwitchResponse patchSwitch(SwitchPatchRequest request) {
+        try {
+            return new GetSwitchResponse(
+                    switchOperationsService.patchSwitch(request.getSwitchId(), request.getSwitchPatch()));
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
+        }
     }
 
     @Override

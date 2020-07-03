@@ -24,6 +24,8 @@ import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.model.SwitchLocation;
+import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
@@ -42,6 +44,9 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -49,7 +54,7 @@ import org.mapstruct.Mapping;
 import java.util.Date;
 
 @Mapper(componentModel = "spring", uses = {FlowMapper.class},
-        imports = {Date.class, MacAddress.class, SwitchLocationDto.class})
+        imports = {Date.class, MacAddress.class, SwitchLocationDto.class, SwitchLocationDtoV2.class})
 public interface SwitchMapper {
 
     @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
@@ -130,4 +135,19 @@ public interface SwitchMapper {
     @Mapping(source = "downEventsCount", target = "downCount")
     @Mapping(target = "date", expression = "java(Date.from(response.getTime()))")
     PortHistoryResponse map(PortHistoryPayload response);
+
+    @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
+    @Mapping(source = "ofDescriptionHardware", target = "hardware")
+    @Mapping(source = "ofDescriptionSoftware", target = "software")
+    @Mapping(source = "ofDescriptionSerialNumber", target = "serialNumber")
+    @Mapping(source = "status", target = "state")
+    @Mapping(source = "socketAddress.address.hostAddress", target = "address")
+    @Mapping(source = "socketAddress.port", target = "port")
+    @Mapping(target = "location", expression = "java(new SwitchLocationDtoV2("
+            + "data.getLatitude(), data.getLongitude(), data.getStreet(), data.getCity(), data.getCountry()))")
+    SwitchDtoV2 map(Switch data);
+
+    SwitchPatch map(SwitchPatchDto data);
+
+    SwitchLocation map(SwitchLocationDtoV2 data);
 }
