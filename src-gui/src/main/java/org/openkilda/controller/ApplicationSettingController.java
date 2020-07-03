@@ -57,6 +57,7 @@ public class ApplicationSettingController extends BaseController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
+    @Permissions(values = {IConstants.Permission.APPLICATION_SETTING})
     public Map<String, String> getApplicationSettings() {
         return applicationSettingService.getApplicationSettings();
     }

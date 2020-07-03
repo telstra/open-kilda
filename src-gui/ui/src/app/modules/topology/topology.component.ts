@@ -25,7 +25,9 @@ import { LoaderService } from "../../common/services/loader.service";
 import { ToastrService } from "ngx-toastr";
 import { Title } from '@angular/platform-browser';
 import { scaleBand } from "d3";
+import { Router } from '@angular/router';
 declare var jQuery: any;
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: "app-topology",
@@ -110,14 +112,20 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     private commonService: CommonService,
     private flowService: FlowsService,
     private renderer: Renderer2,
+    private router:Router,
     private appLoader: LoaderService,
     private toaster :ToastrService,
     private titleService: Title
-  ) {}
+  ) {
+    if(!this.commonService.hasPermission('menu_topology')){
+       this.toaster.error(MessageObj.unauthorised);   
+       this.router.navigate(["/home"]);
+      }
+  }
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - Topology');
-    this.appLoader.show("Loading Topology");
+    this.appLoader.show(MessageObj.loading_topology);
     this.viewOptions = this.topologyService.getViewOptions();
 
     this.forceSimulation = this.initSimulation();
@@ -229,12 +237,12 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       if(this.graphdata.switch.length > 0){
         this.loadSwitchLinks();
       }else{
-        this.toaster.info("No Switch Available","Information");
+        this.toaster.info(MessageObj.no_switch_available,"Information");
         this.appLoader.hide();
       }
     },err=>{
       this.appLoader.hide();
-      this.toaster.info("No Switch Available","Information");
+      this.toaster.info(MessageObj.no_switch_available,"Information");
     });
   };
 
@@ -365,16 +373,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sortLinks();
     this.setLinkIndexAndNum();
 
-    // this.links.forEach(function(d, index, object) {
-    //   if (
-    //     typeof ref.nodes[d.source] === "undefined" ||
-    //     typeof ref.nodes[d.target] === "undefined"
-    //   ) {
-    //     object.splice(index, 1);
-    //   }
-    //   ref.linkedByIndex[d.source + "," + d.target] = true;
-    // });
-   
     this.forceSimulation.nodes(this.nodes);
     this.forceSimulation.force("link", d3.forceLink().links(this.links).distance((d:any)=>{
      let distance = 150;
@@ -469,7 +467,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       text
         .attr("dx", function(d) {
           return ref.size(d.size) || ref.graphOptions.nominal_base_node_size;
-          //return ref.graphOptions.nominal_base_node_size;
         })
         .text(function(d) {
           return d.name;
@@ -495,9 +492,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .attr("cursor", "pointer")
       .on("mouseover", function(d, index) {
         $("#isl_hover").css("display", "none");
-
-        /*var cName : any = document.getElementById("circle_" + d.switch_id).className;
-          let circleClass = cName.baseVal;*/
 
         var element = document.getElementById("circle_" + d.switch_id);
 
@@ -1299,10 +1293,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.switchService.getSwitchList().subscribe(
       response => {
         let switchArr: any = [];
-        //if (this.nodes.length != response.length) {
         // new switch is added
         switchArr = this.getNewSwitch(this.nodes, response);
-        //}
         var newNodes = switchArr["added"] || [];
         var removedNodes = switchArr["removed"] || [];
         this.processNodesData(newNodes, removedNodes, response);
@@ -1319,9 +1311,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.switchService.getSwitchLinks().subscribe(
       response => {
         var linksArr: any = [];
-        //if (this.links.length !== response.length) {
         linksArr = this.getNewLinks(this.links, response);
-        //}
         var newLinks = linksArr["added"] || [];
         var removedLinks = linksArr["removed"] || [];
 
@@ -1469,7 +1459,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         return !foundFlag;
       });
     }
-    this.appLoader.show("Re-loading topology with new switch or isl");
+    this.appLoader.show(MessageObj.reloading_topology_with_new_data);
     this.graphShow = false;
 
     this.forceSimulation = d3
@@ -2029,10 +2019,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       classes = "circle red";
     }
     element.setAttribute("class", classes);
-    //doubleClickTime = new Date();
-    //d3.select(this).classed("fixed", d.fixed = false);
     this.showSwitchDetails(d);
-    //force.resume();
   };
 
   ngAfterViewInit() {

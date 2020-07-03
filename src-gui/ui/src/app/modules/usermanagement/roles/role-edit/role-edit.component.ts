@@ -8,6 +8,7 @@ import { RoleService } from '../../../../common/services/role.service';
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-role-edit',
@@ -41,7 +42,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
 
   getRoleData(){
     /* Get all permissions for Permission select field */
-    this.loaderService.show("Getting Role");
+    this.loaderService.show(MessageObj.getting_role);
     this.PermissionData = [];
     this.permissions = [];
     this.selectedRolePermissions=[];
@@ -93,7 +94,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
    * Description: Update user information
    */
   submitform(){
-    this.loaderService.show("Updating Role");
+    this.loaderService.show(MessageObj.updating_role);
     if (this.roleEditForm.invalid) {
       this.loaderService.hide();
       return;
@@ -106,7 +107,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
     }
 
     this.roleService.editRole(this.selectedRole, this.roleUpdatedData).subscribe(role => {
-      this.toastr.success("Role updated successfully!",'Success! ');
+      this.toastr.success(MessageObj.role_updated,'Success! ');
       this.loaderService.hide();
       this.tabService.setSelectedTab('roles');
     },error =>{

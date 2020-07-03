@@ -6,6 +6,7 @@ import { ToastrService } from 'ngx-toastr';
 import { LoaderService } from '../../../common/services/loader.service';
 import { ModalconfirmationComponent } from 'src/app/common/components/modalconfirmation/modalconfirmation.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { MessageObj } from 'src/app/common/constants/constants';
 @Component({
   selector: 'app-link-store',
   templateUrl: './link-store.component.html',
@@ -30,7 +31,7 @@ export class LinkStoreComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.loaderService.show('Loading Link Store Details');
+    this.loaderService.show(MessageObj.loading_link_store);
     this.linkStoreForm = this.formbuilder.group({
        "urls":this.formbuilder.group({
               "get-status-list":this.formbuilder.group({
@@ -85,7 +86,7 @@ export class LinkStoreComponent implements OnInit {
       })      
     });
     
-    this.loaderService.show('Loading Link Store Settings');
+    this.loaderService.show(MessageObj.loading_link_store_setting);
     this.storesettingservice.getLinkStoreUrl().subscribe((response)=>{
       if(response && response.length){
 				for(var i=0; i < response.length; i++) { 
@@ -277,10 +278,10 @@ export class LinkStoreComponent implements OnInit {
     
     modalReff.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show('Deleting Link Store Settings');
+        this.loaderService.show(MessageObj.deleting_link_store_setting);
         this.storesettingservice.deleteLinkStore('/store/link-store-config/delete').subscribe((res:any)=>{
           this.loaderService.hide();
-          this.toastr.success("Link Store Settings Deleted Successfully",'Success');
+          this.toastr.success(MessageObj.link_store_setting_deleted,'Success');
           setTimeout(function(){
             location.reload();
           },500);
@@ -300,11 +301,11 @@ export class LinkStoreComponent implements OnInit {
       }
       this.submitted = false;
     var obj = this.linkStoreForm.value;
-    this.loaderService.show('Saving Link Store Settings');
+    this.loaderService.show(MessageObj.saving_link_store_setting);
     this.storesettingservice.submitLinkData('/store/link-store-config/save',obj).subscribe((response:any)=>{
             this.linkStoreForm.setValue(response || {});
             this.loaderService.hide();
-						this.toastr.success("Link Store Settings Saved Successfully", 'Success');
+						this.toastr.success(MessageObj.link_store_setting_saved, 'Success');
             this.linkStoreForm.disable();
             this.isEditable = false;
             this.isEdit = true;

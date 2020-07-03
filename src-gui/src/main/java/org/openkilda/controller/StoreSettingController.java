@@ -15,6 +15,7 @@
 
 package org.openkilda.controller;
 
+import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 
 import org.springframework.stereotype.Controller;
@@ -40,6 +41,7 @@ public class StoreSettingController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
+    @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public ModelAndView storeSettings(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.STORE_SETTING);
     }

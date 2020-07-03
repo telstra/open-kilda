@@ -2,6 +2,7 @@ import { Component, OnInit, ViewChild, OnDestroy, AfterViewInit, Input, OnChange
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { SwitchService } from 'src/app/common/services/switch.service';
 import { CommonService } from 'src/app/common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-flows',
@@ -26,7 +27,7 @@ export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewIni
 
   loadPortFlows(filter){
     this.ifLoadingData = true;
-    this.loaderService.show('Fetching flows');
+    this.loaderService.show(MessageObj.fetching_flows);
     if(filter){
       this.portFlowFlag = filter;
     }

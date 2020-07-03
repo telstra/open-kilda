@@ -7,6 +7,7 @@ import { SwitchidmaskPipe } from 'src/app/common/pipes/switchidmask.pipe';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { IslDataService } from 'src/app/common/services/isl-data.service';
 import { CommonService } from 'src/app/common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 declare var moment: any;
 
@@ -176,7 +177,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit,OnDestroy {
               this.currentGraphData.endDate = moment(new Date(formdata.toDate));  
               this.newMessageDetail()
         },error=>{
-          this.toastr.error("Graph API did not return data.",'Error');
+          this.toastr.error(MessageObj.graph_api_did_not_return,'Error');
           this.loaderService.hide();
       });      
   }

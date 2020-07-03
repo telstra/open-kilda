@@ -308,7 +308,7 @@ public class SwitchControllerTest {
         try {
             mockMvc.perform(
                     put("/api/switch/{switchId}/ports/{port}/properties", 
-                        TestSwitchMock.SWITCH_ID, TestSwitchMock.SWITCH_PORT)
+                        TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT)
                         .contentType(MediaType.APPLICATION_JSON)).andExpect(
                     status().isBadRequest());
             assertTrue(true);  
@@ -322,7 +322,7 @@ public class SwitchControllerTest {
     public void testGetSwitchPortProperties() {
         SwitchProperty switchProperty = new SwitchProperty();
         try {
-            when(serviceSwitch.getSwitchPortProperty(TestSwitchMock.SWITCH_ID, TestSwitchMock.SWITCH_PORT))
+            when(serviceSwitch.getSwitchPortProperty(TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT))
                 .thenReturn(switchProperty);
             mockMvc.perform(get("/api/switch/{switchId}/ports/{port}/properties", TestSwitchMock.SWITCH_ID, 
             TestSwitchMock.SWITCH_PORT).contentType(MediaType.APPLICATION_JSON))
@@ -336,7 +336,7 @@ public class SwitchControllerTest {
     @Test
     public void testGetSwitchPortPropertiesIfSwitchIdNotPassed() {
         try {
-            mockMvc.perform(get("/api/switch/ports/{port}/properties", TestSwitchMock.SWITCH_PORT)
+            mockMvc.perform(get("/api/switch/ports/{port}/properties", TestSwitchMock.PORT)
                     .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
             assertTrue(true);

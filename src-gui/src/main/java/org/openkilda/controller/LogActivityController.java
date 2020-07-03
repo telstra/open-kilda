@@ -72,6 +72,7 @@ public class LogActivityController extends BaseController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(path = "/log", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_ACTIVITY })
     public List<LogInfo> getLogs(final @RequestParam(name = "userId", required = false) List<Long> userIds,
             final @RequestParam(name = "activity", required = false) List<String> activities,
             final @RequestParam(name = "startTime", required = false) String startTime,

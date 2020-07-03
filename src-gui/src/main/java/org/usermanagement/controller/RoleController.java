@@ -66,6 +66,7 @@ public class RoleController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
     public List<Role> getRoles() {
         List<Role> roleResponseList = roleService.getAllRole();
         return roleResponseList;
@@ -79,6 +80,7 @@ public class RoleController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{role_id}", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
     public Role getRoleById(@PathVariable("role_id") final Long roleId) {
         Role role = roleService.getRoleById(roleId);
         return role;

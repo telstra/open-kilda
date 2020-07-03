@@ -6,6 +6,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
 import { ToastrService } from 'ngx-toastr';
 import { FlowReRouteModalComponent } from 'src/app/common/components/flow-re-route-modal/flow-re-route-modal.component';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-isl-flow-datatables',
@@ -75,7 +76,7 @@ export class IslFlowDatatablesComponent implements OnInit , AfterViewInit , OnDe
     }
   }
 
-fulltextSearch(e:any) { console.log('search called');
+fulltextSearch(e:any) { 
     var value = e.target.value;
       this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
         dtInstance.search(value)
@@ -87,7 +88,7 @@ refreshList() {
    this.refresh.emit();
 }
 
-toggleSearch(e,inputContainer) {  console.log('toggle search called');
+toggleSearch(e,inputContainer) {  
   this[inputContainer] = this[inputContainer] ? false : true;
   if(this[inputContainer]){
     setTimeout(() => {
@@ -154,12 +155,12 @@ reRouteFlow(flowID) {
             clearInterval( this.reRouteFlowIndex[flowID]['interval']);
             this.reRouteFlowIndex[flowID]['type'] = 'success';
             this.reRouteFlowIndex[flowID]['progress'] = 100;
-            this.reRouteFlowIndex[flowID]['message'] = "Flow Re-routes Successfully";
+            this.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_rerouted;
             } else {
               clearInterval(this.reRouteFlowIndex[flowID]['interval']);
               this.reRouteFlowIndex[flowID]['type'] = 'info';
               this.reRouteFlowIndex[flowID]['progress'] = 100;
-              this.reRouteFlowIndex[flowID]['message'] = "Flow Already On Best Route";
+              this.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_on_best_route;
             }
           },
           (error) => {

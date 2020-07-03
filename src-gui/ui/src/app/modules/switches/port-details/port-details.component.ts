@@ -15,7 +15,7 @@ import { Title } from '@angular/platform-browser';
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { ModalconfirmationComponent } from "../../../common/components/modalconfirmation/modalconfirmation.component";
 import { CommonService } from 'src/app/common/services/common.service';
-
+import { MessageObj } from 'src/app/common/constants/constants';
 
 declare var moment: any;
 
@@ -71,6 +71,10 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     public commonService:CommonService,
   ) {
     this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+    if(!this.commonService.hasPermission('menu_switches')){
+      this.toastr.error(MessageObj.unauthorised);  
+       this.router.navigate(["/home"]);
+      }
     
   }
 
@@ -134,7 +138,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     $("#new_status_val").text(this.portForm.value.portStatus);
 
     if(this.currentPortState == this.requestedPortState){
-      this.toastr.info("Nothing is changed", "Information");
+      this.toastr.info(MessageObj.nothing_changed, "Information");
     }
     else{
 
@@ -144,7 +148,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
       
       modalRef.result.then((response) => {
         if(response && response == true){
-            this.loaderService.show("Updating Port Details");
+            this.loaderService.show(MessageObj.updating_port_details);
             this.commitConfig();
         }
       });
@@ -167,7 +171,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
                                        this.portDataObject.port_number,
                                        portStatus).subscribe(status => {
         this.loaderService.hide();
-        this.toastr.success("Port configured successfully!",'Success');
+        this.toastr.success(MessageObj.port_configured,'Success');
         this.portDataObject.status = portStatus;
         localStorage.setItem('portDataObject', JSON.stringify(this.portDataObject));
         this.editConfigStatus = false;
@@ -191,15 +195,15 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
    this.discoverypackets = e.target.checked;
    modalRef.result.then((response) => {
     if(response && response == true){
-        this.loaderService.show("Updating Discovery Packets Flag ...");
+        this.loaderService.show(MessageObj.updating_discovery_flag);
          this.switchService.updatediscoveryPackets(this.retrievedSwitchObject.switch_id,this.portDataObject.port_number,this.discoverypackets).subscribe((response)=>{
-           this.toastr.success('Discovery Packets mode updated successful','Success');
+           this.toastr.success(MessageObj.discovery_packets_updated,'Success');
            this.loaderService.hide();
            this.discoverypackets = e.target.checked;
          },error => {
           this.discoverypackets = OldValue;
           this.loaderService.hide();
-           this.toastr.error('Error in updating discovery packets mode! ','Error');
+           this.toastr.error(MessageObj.error_updating_discovery_packets,'Error');
          });
     }else{
       this.discoverypackets = OldValue;

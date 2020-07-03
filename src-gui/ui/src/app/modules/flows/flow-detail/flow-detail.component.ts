@@ -12,6 +12,7 @@ import { Location } from "@angular/common";
 import * as d3 from "d3";
 import { environment } from "../../../../environments/environment";
 import { StoreSettingtService } from "src/app/common/services/store-setting.service";
+import { MessageObj } from 'src/app/common/constants/constants';
 declare var jQuery: any;
 declare var moment: any;
  
@@ -154,7 +155,7 @@ export class FlowDetailComponent implements OnInit {
     this.openedTab = tab;
     $('#pingGraph').html("");
     if(tab == 'contracts'){
-      this.loaderService.show('Loading Contracts..');
+      this.loaderService.show(MessageObj.load_contract);
       this.flowService.getcontract(this.flowDetail.flowid).subscribe(data=>{
         this.contracts  = data || [];
         this.isLoadedcontract = true;
@@ -501,7 +502,7 @@ export class FlowDetailComponent implements OnInit {
     this.clearResyncedFlow();
     this.clearValidatedFlow();
     this.clearFlowHistory();
-    this.loaderService.show("Loading Flow Detail");
+    this.loaderService.show(MessageObj.flow_detail);
     this.bandWidthDescrepancy  = false;
     this.statusDescrepancy = false;
     var flowDetail = null;
@@ -754,7 +755,7 @@ export class FlowDetailComponent implements OnInit {
         } else {
           this.toaster.info('Flow : '+this.flowDetail.flowid+" already on best route!");
         }
-        this.loaderService.show('Reloading status and flow path after re-route..');
+        this.loaderService.show(MessageObj.reloading_status_and_flow_path);
         /** Re-load flow path components */
         setTimeout(() => {
           this.reRoutingInProgress = false;

@@ -94,6 +94,7 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
     public @ResponseBody List<FlowInfo> getFlows(
             @RequestParam(name = "status", required = false) List<String> statuses,
             @RequestParam(name = "controller", required = false) boolean controller) {
@@ -154,6 +155,7 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
     public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId,
             @RequestParam(name = "controller", required = false) boolean controller) {
         LOGGER.info("Get flow by id. Flow id: '" + flowId + "'");

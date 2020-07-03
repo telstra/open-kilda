@@ -22,7 +22,7 @@ import { IslmaintenancemodalComponent } from '../../../common/components/islmain
 import { CommonService } from '../../../common/services/common.service';
 import { ModalComponent } from 'src/app/common/components/modal/modal.component';
 import { OtpComponent } from 'src/app/common/components/otp/otp.component';
-
+import { MessageObj } from 'src/app/common/constants/constants';
   declare var moment: any;
   @Component({
     selector: 'app-isl-detail',
@@ -107,7 +107,10 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       private islDetailService : IslDetailService,
     ) {
       
-     
+      if(!this.commonService.hasPermission('menu_isl')){
+        this.toastr.error(MessageObj.unauthorised);  
+         this.router.navigate(["/home"]);
+        }
     }
     ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - View ISL');
@@ -144,7 +147,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     }
 
     getIslDetailData(src_switch,src_port,dst_switch,dst_port){
-      this.loaderService.show("Loading ISL detail");
+      this.loaderService.show(MessageObj.loading_isl);
       this.islListService.getISLDetailData(src_switch, src_port, dst_switch, dst_port).subscribe((linkData:any) =>{
         if(linkData && linkData.length){
           this.loaderService.hide();
@@ -193,11 +196,11 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
             });
           }
          },error=>{
-           this.toastr.error("API did not return Cost data.",'Error');
+           this.toastr.error(MessageObj.no_cost_data_returned,'Error');
          });
         }else{
           this.loaderService.hide();
-          this.toastr.error("No ISL Found",'Error');
+          this.toastr.error(MessageObj.no_isl,'Error');
           this.router.navigate([
             "/isl"
           ]);  
@@ -206,7 +209,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
         this.loadGraphData();  
       },error =>{
         this.loaderService.hide();
-          this.toastr.error("No ISL Found",'Error');
+          this.toastr.error(MessageObj.no_isl,'Error');
           this.router.navigate([
             "/isl"
           ]);  
@@ -218,17 +221,17 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       getIslFlowList(){
         this.loadingData = true;
         let query = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port};
-        this.loaderService.show("Loading ISL Flows");
+        this.loaderService.show(MessageObj.loading_isl_flows);
           this.islDetailService.getISLFlowsList(query).subscribe((data : Array<object>) =>{
             this.dataSet = data || [];
             if(this.dataSet.length == 0){
-              this.toastr.info("No ISL Flows Available",'Information');
+              this.toastr.info(MessageObj.no_isl_flows,'Information');
             }else{
               localStorage.setItem('flows',JSON.stringify(data));
             }
             this.loadingData = false;     
           },error=>{
-            this.toastr.info("No ISL Flows Available",'Information');
+            this.toastr.info(MessageObj.no_isl_flows,'Information');
             this.loaderService.hide();
             this.loadingData = false;  
             this.dataSet = [];  
@@ -294,9 +297,9 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     modalRef.componentInstance.emitService.subscribe(
       evacuate => {
         var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:e.target.checked,evacuate:evacuate};
-        this.loaderService.show('Applying Changes..');
+        this.loaderService.show(MessageObj.applying_changes);
         this.islListService.islUnderMaintenance(data).subscribe(response=>{
-          this.toastr.success('Maintenance mode changed successful','Success');
+          this.toastr.success(MessageObj.maintenance_mode_changed,'Success');
           this.loaderService.hide();
           this.under_maintenance = e.target.checked;
           if(evacuate){
@@ -304,7 +307,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
           }
         },error => {
           this.loaderService.hide();
-          this.toastr.error('Error in changing maintenance mode! ','Error');
+          this.toastr.error(MessageObj.error_im_maintenance_mode,'Error');
         })
       },
       error => {
@@ -325,9 +328,9 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
      modalRef.result.then((response)=>{
       if(response && response == true){
         var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,enable_bfd:this.enable_bfd};
-       this.loaderService.show('updating BFD flag..');
+       this.loaderService.show(MessageObj.updating_bfd);
         this.islListService.updateBFDflag(data).subscribe(response=>{
-          this.toastr.success('BFD flag updated successfully!','Success');
+          this.toastr.success(MessageObj.bfd_flag_updated,'Success');
           this.loaderService.hide();
         },error => {
           this.enable_bfd = false;
@@ -356,10 +359,10 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       if(response && response == true){
         var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:this.under_maintenance,evacuate:e.target.checked};
         this.islListService.islUnderMaintenance(data).subscribe(response=>{
-          this.toastr.success('All flows are evacuated successfully!','Success');
+          this.toastr.success(MessageObj.flows_evacuated,'Success');
           location.reload();
         },error => {
-          this.toastr.error('Error in evacuating flows! ','Error');
+          this.toastr.error(MessageObj.error_flows_evacuated,'Error');
         })
       }else{
         this.evacuate = false;
@@ -594,63 +597,17 @@ get f() {
           this.loaderService.hide();
        },error=>{
          this.loaderService.hide();
-         this.toastr.error("Backward Graph API did not return data.",'Error');
+         this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
        });
        },error=>{
           this.loaderService.hide();
-          this.toastr.error("Forward Graph API did not return data.",'Error');
+          this.toastr.error(MessageObj.forward_graph_no_data,'Error');
          
       });
                               
   }
 
-  // setForwardLatency(){
-  //   let formdata = this.filterForm.value;
-  //   let downsampling = formdata.download_sample;
-  //   let metric = 'latency';
-  //   let graph = formdata.graph;
-  //   let convertedStartDate = moment(new Date()).add(-300, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
-  //   let convertedEndDate = moment(new Date()).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
-  //   let startDate = moment(new Date()).add(-300,'seconds');
-  //   let endDate = moment(new Date());
-  //   if (formdata.timezone == "UTC") {
-  //       convertedStartDate = moment(new Date()).add(-300, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-  //       convertedEndDate = moment(new Date()).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-  //   }
-  //   this.islDetailService.getIslLatencyfromGraph(this.src_switch_kilda,
-  //     this.src_port,
-  //     this.dst_switch_kilda,
-  //     this.dst_port,
-  //     convertedStartDate,
-  //     convertedEndDate,downsampling).subscribe((dataLatency : any) =>{        
-  //     this.responseGraph = [];
-  //     if(dataLatency[0] !== undefined){
-  //        var data =dataLatency[0].dps;
-  //         var latencyTotal = 0;
-  //         var dpslength = 1;
-  //         var startDateTime = new Date(startDate).getTime()   ;
-  //         var endDateTime = new Date(endDate).getTime();
-  //         if(dpslength)
-  //         Object.keys(data).map(function(d,i){
-  //           var dpsTime = new Date(Number(parseInt(d) * 1000)).getTime();
-  //           if( dpsTime > startDateTime  && dpsTime < endDateTime){
-  //             dpslength = dpslength + 1;
-  //             latencyTotal = latencyTotal + parseInt(data[d]);
-  //           }
-            
-  //         });
-  //         var avgLatency = latencyTotal / dpslength;
-  //         this.latency = avgLatency.toFixed(0).toString();
-  //       } 
-  //     },error=>{
-  //      console.log('Error in getting latency');
-  //     });
-    
-
-
-  // }
-
-
+ 
   callSourceGraphAPI(){
      
     let formdata = this.filterForm.value;
@@ -719,7 +676,7 @@ get f() {
           this.islDataService.currentMessage.subscribe(message => this.message = message)
        },error=>{
         this.loaderService.hide();
-         this.toastr.error("Backward Graph API did not return data.",'Error');
+         this.toastr.error(MessageObj.reverse_graph_no_data,'Error');
          
       });
   }
@@ -752,12 +709,12 @@ get f() {
 
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Updating ISL max bandwidth");
+        this.loaderService.show(MessageObj.updating_isl_bandwidth);
         let costValue = this.convertToByteFromMB(this.islForm.value.max_bandwidth);
         var data = {max_bandwidth:costValue};
         this.islListService.updateIslBandWidth(data,this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((response: any) => {
           this.loaderService.hide();
-          this.toastr.success("ISL Bandwidth updated successfully!",'Success');
+          this.toastr.success(MessageObj.isl_bandwidth_updated,'Success');
           this.showBandwidthEditing = false;
           this.max_bandwidth = costValue;
           this.islForm.controls["max_bandwidth"].setValue(costValue);
@@ -766,7 +723,7 @@ get f() {
           if(error.status == '500'){
             this.toastr.error(error.error['error-message'],'Error! ');
           }else{
-            this.toastr.error("Error in updating ISL Bandwidth!",'Error');
+            this.toastr.error(MessageObj.isl_bandwidth_update_error,'Error');
           }
         })
       }
@@ -789,20 +746,20 @@ get f() {
 
     modalRef.result.then((response) => {
       if(response && response == true){
-        this.loaderService.show("Updating ISL cost");
+        this.loaderService.show(MessageObj.updating_isl_cost);
         let costValue = this.islForm.value.cost;
         this.islListService.updateCost(this.src_switch, this.src_port, this.dst_switch, this.dst_port, costValue).subscribe((status: any) => {
           this.loaderService.hide();
 
           if(typeof(status.successes)!=='undefined' && status.successes > 0){
-            this.toastr.success("ISL cost updated successfully!",'Success');
+            this.toastr.success(MessageObj.isl_cost_updated,'Success');
           
             this.showCostEditing = false;
             this.detailDataObservable.props.cost = costValue;
             this.islForm.controls["cost"].setValue(costValue);
             
           }else if(typeof(status.failures)!=='undefined' && status.failures > 0){
-            this.toastr.error("Error in updating ISL cost!",'Error');
+            this.toastr.error(MessageObj.error_isl_cost_updated,'Error');
             this.showCostEditing = false;
           }
 
@@ -816,7 +773,7 @@ get f() {
           if(error.status == '500'){
             this.toastr.error(error.error['error-message'],'Error! ');
           }else{
-            this.toastr.error("Error in updating ISL cost!",'Error');
+            this.toastr.error(MessageObj.error_isl_cost_updated,'Error');
           }
         })
       }
@@ -838,7 +795,7 @@ get f() {
             otp => {
               
               if (otp) {
-                this.loaderService.show("Deleting ISL");
+                this.loaderService.show(MessageObj.deleting_isl);
                 var data = {
                   src_switch:this.src_switch,
                   src_port:this.src_port,
@@ -848,7 +805,7 @@ get f() {
                 }
                 this.modalService.dismissAll();
                 this.islListService.deleteIsl(data,response => {
-                  this.toastr.success("ISL deleted successfully!", "Success!");
+                  this.toastr.success(MessageObj.isl_deleted, "Success!");
                   this.loaderService.hide();                
                   localStorage.removeItem('ISL_LIST');
                   setTimeout(function(){
@@ -856,11 +813,11 @@ get f() {
                   },100);
                 }, error => {
                   this.loaderService.hide();
-                  var message = (error && error['error-auxiliary-message']) ? error['error-auxiliary-message'] :'Error in Isl Deletion!';
+                  var message = (error && error['error-auxiliary-message']) ? error['error-auxiliary-message'] :MessageObj.error_isl_delete;
                   this.toastr.error(message, "Error!");
                 })
               } else {
-                this.toastr.error("Unable to detect OTP", "Error!");
+                this.toastr.error(MessageObj.otp_not_detected, "Error!");
               }
             },
             error => {
@@ -869,7 +826,7 @@ get f() {
         }else{
           const modalRef2 = this.modalService.open(ModalComponent);
           modalRef2.componentInstance.title = "Warning";
-          modalRef2.componentInstance.content = 'You are not authorised to delete the ISL.';
+          modalRef2.componentInstance.content = MessageObj.delete_isl_not_authorised;
         }
         
       }

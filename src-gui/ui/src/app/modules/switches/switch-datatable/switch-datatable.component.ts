@@ -7,6 +7,9 @@ import { Switch } from 'src/app/common/data-models/switch';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { ClipboardService } from 'ngx-clipboard';
 import { SwitchService } from 'src/app/common/services/switch.service';
+import { CommonService } from 'src/app/common/services/common.service';
+import { ToastrService } from 'ngx-toastr';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -39,10 +42,17 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   constructor(private loaderService : LoaderService,
     private renderer: Renderer2, 
     private router:Router,
+    private commonService:CommonService,
+    private toastr:ToastrService,
     private storeSwitchService: StoreSettingtService,
     private clipboardService:ClipboardService,
     private switchService:SwitchService
-  ) { }
+  ) { 
+    if(!this.commonService.hasPermission('menu_switches')){
+       this.toastr.error(MessageObj.unauthorised);  
+       this.router.navigate(["/home"]);
+      }
+  }
 
   ngOnInit() {
     this.wrapperHide = false;

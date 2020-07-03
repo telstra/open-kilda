@@ -33,5 +33,5 @@ public class SwitchProperty {
     private boolean discoveryEnabled;
     
     @JsonProperty("port_number")
-    private Integer port;
+    private String port;
 }
