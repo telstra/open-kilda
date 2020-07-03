@@ -43,7 +43,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    def "Able to partially update flow #data.field without reinstalling its rules"() {
+    def "Able to partially update flow '#data.field' without reinstalling its rules"() {
         given: "A flow"
         def swPair = topologyHelper.switchPairs.first()
         def flow = flowHelperV2.randomFlow(swPair)
@@ -86,6 +86,10 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 [
                         field   : "targetPathComputationStrategy",
                         newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
+                ],
+                [
+                        field   : "pinned",
+                        newValue: true
                 ]
         ]
     }
@@ -359,8 +363,16 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
-        def flow = flowHelperV2.randomFlow(swPair)
+        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() > 1
+        } ?: assumeTrue("Need at least 2 non-overlapping paths for diverse flow", false)
+        def helperFlow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(helperFlow)
+        def flow = flowHelperV2.randomFlow(swPair).tap {
+            pinned = true
+            periodicPings = true
+            diverseFlowId = helperFlow.flowId
+        }
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
@@ -374,13 +386,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Flow is left intact"
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
-                .ignoring("diverseWith")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        [flow, helperFlow].each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
