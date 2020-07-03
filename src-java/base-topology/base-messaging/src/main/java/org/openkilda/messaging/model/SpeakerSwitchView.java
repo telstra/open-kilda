@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import lombok.Builder;
+import lombok.Singular;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -65,7 +66,7 @@ public class SpeakerSwitchView implements Serializable {
             @JsonProperty("OF-version") String ofVersion,
             @JsonProperty("description") SpeakerSwitchDescription description,
             @JsonProperty("features") Set<SwitchFeature> features,
-            @JsonProperty("ports") List<SpeakerSwitchPortView> ports) {
+            @Singular @JsonProperty("ports") List<SpeakerSwitchPortView> ports) {
         this.datapath = datapath;
         this.switchSocketAddress = switchSocketAddress;
         this.speakerSocketAddress = speakerSocketAddress;

@@ -43,4 +43,8 @@ public interface FloodlightRouterTopologyConfig extends AbstractTopologyConfig {
     @Default("1")
     @Converter(StringToSetConverter.class)
     Set<String> getFloodlightRegions();
+
+    @Key("floodlight.switch.mapping.remove.delay.seconds")
+    @Default("900")
+    Long getSwitchMappingRemoveDelay();
 }

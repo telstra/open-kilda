@@ -66,6 +66,7 @@ import org.openkilda.floodlight.error.FlowCommandException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.kafka.dispatcher.BroadcastStatsRequestDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.CommandDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.ListSwitchDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
@@ -83,6 +84,7 @@ import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosa
 import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.AliveResponse;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.command.BroadcastWrapper;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
@@ -229,8 +231,6 @@ class RecordHandler implements Runnable {
             doDeleteSwitchRules(message);
         } else if (data instanceof SwitchRulesInstallRequest) {
             doInstallSwitchRules(message);
-        } else if (data instanceof ConnectModeRequest) {
-            doConnectMode(message);
         } else if (data instanceof DumpRulesForNbworkerRequest) {
             doDumpRulesForNbworkerRequest(message);
         } else if (data instanceof GetExpectedDefaultRulesRequest) {
@@ -243,8 +243,6 @@ class RecordHandler implements Runnable {
             doDumpRulesForSwitchManagerRequest(message);
         } else if (data instanceof InstallFlowForSwitchManagerRequest) {
             doInstallFlowForSwitchManager(message);
-        } else if (data instanceof PortsCommandData) {
-            doPortsCommandDataRequest(message);
         } else if (data instanceof DeleterMeterForSwitchManagerRequest) {
             doDeleteMeter(message, context.getKafkaSwitchManagerTopic());
         } else if (data instanceof DeleteMeterRequest) {
@@ -271,8 +269,22 @@ class RecordHandler implements Runnable {
             doRemoveIslDefaultRule(message);
         } else if (data instanceof DumpGroupsRequest) {
             doDumpGroupsRequest(message);
+        } else if (data instanceof BroadcastWrapper) {
+            handleBroadcastCommand(message, (BroadcastWrapper) data);
         } else {
-            logger.error("Unable to handle '{}' request - handler not found.", data);
+            handlerNotFound(data);
+        }
+    }
+
+    private void handleBroadcastCommand(CommandMessage message, BroadcastWrapper wrapper) {
+        CommandData payload = wrapper.getPayload();
+        if (payload instanceof PortsCommandData) {
+            doPortsCommandDataRequest(wrapper.getScope(), (PortsCommandData) payload, message.getCorrelationId());
+        } else if (payload instanceof ConnectModeRequest) {
+            // FIXME(surabujin) - caller do not expect multiple responses(from multiple regions)
+            doConnectMode((ConnectModeRequest) payload, message.getCorrelationId());
+        } else {
+            handlerNotFound(payload);
         }
     }
 
@@ -1034,8 +1046,7 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doConnectMode(final CommandMessage message) {
-        ConnectModeRequest request = (ConnectModeRequest) message.getData();
+    private void doConnectMode(ConnectModeRequest request, String correlationId) {
         if (request.getMode() != null) {
             logger.debug("Setting CONNECT MODE to '{}'", request.getMode());
         } else {
@@ -1047,10 +1058,8 @@ class RecordHandler implements Runnable {
 
         logger.info("CONNECT MODE is now '{}'", result);
         ConnectModeResponse response = new ConnectModeResponse(result);
-        InfoMessage infoMessage = new InfoMessage(response,
-                System.currentTimeMillis(), message.getCorrelationId());
+        InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
         getKafkaProducer().sendMessageAndTrack(context.getKafkaNorthboundTopic(), infoMessage);
-
     }
 
     private void doGetExpectedDefaultRulesRequest(CommandMessage message) {
@@ -1303,15 +1312,18 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doPortsCommandDataRequest(CommandMessage message) {
+    private void doPortsCommandDataRequest(Set<SwitchId> scope, PortsCommandData payload, String correlationId) {
         ISwitchManager switchManager = context.getModuleContext().getServiceImpl(ISwitchManager.class);
 
         try {
-            PortsCommandData request = (PortsCommandData) message.getData();
-            logger.info("Getting ports data. Requester: {}", request.getRequester());
+            logger.info("Getting ports data. Requester: {}", payload.getRequester());
             Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap(true);
             for (Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
                 SwitchId switchId = new SwitchId(entry.getKey().toString());
+                if (! scope.contains(switchId)) {
+                    continue;
+                }
+
                 try {
                     IOFSwitch sw = entry.getValue();
 
@@ -1324,11 +1336,11 @@ class RecordHandler implements Runnable {
                     SwitchPortStatusData response = SwitchPortStatusData.builder()
                             .switchId(switchId)
                             .ports(statuses)
-                            .requester(request.getRequester())
+                            .requester(payload.getRequester())
                             .build();
 
-                    InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(),
-                            message.getCorrelationId());
+                    InfoMessage infoMessage = new InfoMessage(
+                            response, System.currentTimeMillis(), correlationId);
                     getKafkaProducer().sendMessageAndTrack(context.getKafkaStatsTopic(), infoMessage);
                 } catch (Exception e) {
                     logger.error("Could not get port stats data for switch '{}' with error '{}'",
@@ -1755,6 +1767,10 @@ class RecordHandler implements Runnable {
         return context.getModuleContext().getServiceImpl(IKafkaProducerService.class);
     }
 
+    private void handlerNotFound(CommandData payload) {
+        logger.error("Unable to handle '{}' request - handler not found.", payload);
+    }
+
     public static class Factory {
         @Getter
         private final ConsumerContext context;
@@ -1762,7 +1778,8 @@ class RecordHandler implements Runnable {
                 new PingRequestDispatcher(),
                 new SetupBfdSessionDispatcher(),
                 new RemoveBfdSessionDispatcher(),
-                new StatsRequestDispatcher(),
+                new StatsRequestDispatcher(),  // TODO(surabujin): remove together with statsrouter
+                new BroadcastStatsRequestDispatcher(),
                 new ListSwitchDispatcher());
 
         public Factory(ConsumerContext context) {

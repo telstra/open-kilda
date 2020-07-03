@@ -20,12 +20,14 @@ import org.openkilda.wfm.error.PipelineException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 
+import java.time.Duration;
 import java.util.Set;
 
+// FIXME(surabujin) - used exclusively by statsrouter must be dropped (safe to do blind broadcast).
 @Slf4j
 public class ControllerToSpeakerBroadcastBolt extends ControllerToSpeakerProxyBolt {
     public ControllerToSpeakerBroadcastBolt(String targetTopic, Set<String> regions) {
-        super(targetTopic, regions);
+        super(targetTopic, regions, Duration.ZERO);
     }
 
     @Override

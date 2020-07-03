@@ -46,6 +46,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Duration;
 import java.util.Set;
 
 @Slf4j
@@ -55,8 +56,9 @@ public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxy
     private final String kafkaNorthboundTopic;
 
     public ControllerToSpeakerSharedProxyBolt(
-            String targetTopic, Set<String> allRegions, KafkaTopicsConfig kafkaTopics) {
-        super(targetTopic, allRegions);
+            String targetTopic, Set<String> allRegions, KafkaTopicsConfig kafkaTopics,
+            Duration switchMappingRemoveDelay) {
+        super(targetTopic, allRegions, switchMappingRemoveDelay);
 
         kafkaNbWorkerTopic = kafkaTopics.getTopoNbTopic();
         kafkaSwitchManagerTopic = kafkaTopics.getTopoSwitchManagerTopic();

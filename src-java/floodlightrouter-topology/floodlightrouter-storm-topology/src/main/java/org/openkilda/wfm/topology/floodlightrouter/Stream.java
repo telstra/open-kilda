@@ -16,14 +16,11 @@
 package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class Stream {
-
     public static final String KILDA_TOPO_DISCO = "KILDA_TOPO_DISCO";
-    public static final String DISCO_REPLY = "DISCO_REPLY";
     public static final String SPEAKER_PING = "SPEAKER_PING";
     public static final String KILDA_SWITCH_MANAGER = "KILDA_SWITCH_MANAGER";
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
-    public static final String REGION_NOTIFICATION = "REGION_NOTIFICATION";
     public static final String NB_WORKER = "NB_WORKER";
 
     private Stream() {}

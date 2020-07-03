@@ -15,8 +15,19 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.ConnectedDevicePacketBase;
+import org.openkilda.messaging.info.event.IslBaseLatency;
+import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslOneWayLatency;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.floodlightrouter.RegionAwareKafkaTopicSelector;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMapping;
+import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingUpdate;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
@@ -26,12 +37,29 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.util.Objects;
+
 @Slf4j
 public class SpeakerToControllerProxyBolt extends AbstractBolt {
     private final String controllerTopic;
 
-    public SpeakerToControllerProxyBolt(String controllerTopic) {
+    private RegionMapping switchMapping;
+    private final Duration switchMappingRemoveDelay;
+
+    public SpeakerToControllerProxyBolt(String controllerTopic, Duration switchMappingRemoveDelay) {
         this.controllerTopic = controllerTopic;
+        this.switchMappingRemoveDelay = switchMappingRemoveDelay;
+    }
+
+    @Override
+    protected void dispatch(Tuple input) throws Exception {
+        if (SwitchMonitorBolt.BOLT_ID.equals(input.getSourceComponent())) {
+            handleSwitchMappingUpdate(input);
+        } else {
+            super.dispatch(input);
+        }
     }
 
     @Override
@@ -41,8 +69,79 @@ public class SpeakerToControllerProxyBolt extends AbstractBolt {
         proxy(key, payload);
     }
 
-    protected void proxy(String key, Object payload) {
-        getOutput().emit(getCurrentTuple(), makeDefaultTuple(key, payload));
+    private void handleSwitchMappingUpdate(Tuple input) throws PipelineException {
+        RegionMappingUpdate update = pullValue(input, SwitchMonitorBolt.FIELD_ID_PAYLOAD, RegionMappingUpdate.class);
+        switchMapping.update(update);
+    }
+
+    private void proxy(String key, Object value) {
+        if (value instanceof InfoMessage) {
+            proxyInfoMessage(key, (InfoMessage) value);
+        } else {
+            proxyOther(key, value);
+        }
+    }
+
+    protected void proxyInfoMessage(String key, InfoMessage envelope) {
+        InfoData payload = envelope.getData();
+        if (payload instanceof IslInfoData) {
+            proxyOnlyIfActiveRegion(key, envelope, (IslInfoData) payload);
+        } else if (payload instanceof PortInfoData) {
+            proxyOnlyIfActiveRegion(key, envelope, (PortInfoData) payload);
+        } else if (payload instanceof IslOneWayLatency) {
+            proxyOnlyIfActiveRegion(key, envelope, (IslOneWayLatency) payload);
+        } else if (payload instanceof IslBaseLatency) {
+            proxyOnlyIfActiveRegion(key, envelope, (IslBaseLatency) payload);
+        } else if (payload instanceof ConnectedDevicePacketBase) {
+            proxyOnlyIfActiveRegion(key, envelope, (ConnectedDevicePacketBase) payload);
+        } else {
+            proxyOther(key, envelope);
+        }
+    }
+
+    protected void proxyOther(String key, Object value) {
+        getOutput().emit(getCurrentTuple(), makeDefaultTuple(key, value));
+    }
+
+    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslInfoData payload) {
+        SwitchId switchId = payload.getDestination().getSwitchId();
+        proxyOnlyIfActiveRegion(key, envelope, switchId);
+    }
+
+    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, PortInfoData payload) {
+        proxyOnlyIfActiveRegion(key, envelope, payload.getSwitchId());
+    }
+
+    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslOneWayLatency payload) {
+        proxyOnlyIfActiveRegion(key, envelope, payload.getDstSwitchId());
+    }
+
+    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, IslBaseLatency payload) {
+        proxyOnlyIfActiveRegion(key, envelope, payload.getSrcSwitchId());
+    }
+
+    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, ConnectedDevicePacketBase payload) {
+        proxyOnlyIfActiveRegion(key, envelope, payload.getSwitchId());
+    }
+
+    private void proxyOnlyIfActiveRegion(String key, InfoMessage envelope, SwitchId switchId) {
+        switchMapping.lookupReadWriteRegion(switchId).ifPresent(activeRegion -> {
+            String region = envelope.getRegion();
+            if (Objects.equals(activeRegion, region)) {
+                proxyOther(key, envelope);
+            } else {
+                log.debug(
+                        "Suppress speaker event {} (received via region \"{}\" while active region is \"{}\")",
+                        envelope, region, activeRegion);
+            }
+        });
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+
+        switchMapping = new RegionMapping(Clock.systemUTC(), switchMappingRemoveDelay);
     }
 
     @Override

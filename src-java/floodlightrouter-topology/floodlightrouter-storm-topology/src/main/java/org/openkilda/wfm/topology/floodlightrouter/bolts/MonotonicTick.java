@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.floodlightrouter.service;
+package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.bolt.MonotonicClock;
+import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
+import org.openkilda.wfm.topology.floodlightrouter.TickId;
 
-public interface MessageSender {
-    void emitSpeakerAliveRequest(String region);
-
-    void emitSwitchUnmanagedNotification(SwitchId sw);
-
-    void emitNetworkDumpRequest(String region);
-
-    void emitRegionNotification(SwitchMapping mapping);
+public class MonotonicTick extends MonotonicClock<TickId> {
+    public static final String BOLT_ID = ComponentType.CLOCK;
 }

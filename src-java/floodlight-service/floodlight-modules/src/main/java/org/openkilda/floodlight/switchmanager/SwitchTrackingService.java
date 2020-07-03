@@ -46,6 +46,7 @@ import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
@@ -169,7 +170,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     private void dumpAllSwitchesAction() {
         Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap(true).values();
         for (IOFSwitch sw : iofSwitches) {
-            NetworkDumpSwitchData payload = new NetworkDumpSwitchData(buildSwitch(sw));
+            NetworkDumpSwitchData payload = new NetworkDumpSwitchData(
+                    buildSwitch(sw), sw.getControllerRole() != OFControllerRole.ROLE_SLAVE);
             emitDiscoveryEvent(sw.getId(), payload);
         }
     }

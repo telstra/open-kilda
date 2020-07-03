@@ -57,6 +57,8 @@ public class PingResponse extends InfoData {
         this(timestamp, pingId, null, meters);
     }
 
+    // TODO(surabujin): make separate response for error responses, it will allow to add switchId in this response and
+    //  filter out extra responses from not active region into floodlightrouter
     public PingResponse(UUID pingId, Ping.Errors error) {
         this(pingId, error, null);
     }
