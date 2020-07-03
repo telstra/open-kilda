@@ -75,6 +75,14 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
             @Override
             public void requestSwitchSync(SwitchId switchId) {
             }
+
+            @Override
+            public void enableServer42FlowRttOnSwitch(SwitchId switchId) {
+            }
+
+            @Override
+            public void disableServer42FlowRttOnSwitch(SwitchId switchId) {
+            }
         };
         switchOperationsService = new SwitchOperationsService(persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager(), carrier);

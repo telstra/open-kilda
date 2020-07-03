@@ -29,5 +29,5 @@ import java.io.Serializable;
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class Headers implements Serializable {
-    private String correlationId;
+    String correlationId;
 }

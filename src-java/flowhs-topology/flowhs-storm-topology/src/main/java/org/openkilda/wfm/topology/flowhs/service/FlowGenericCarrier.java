@@ -17,7 +17,9 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.Message;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 public interface FlowGenericCarrier {
     /**
@@ -42,4 +44,16 @@ public interface FlowGenericCarrier {
      * @param enabled flag
      */
     void sendPeriodicPingNotification(String flowId, boolean enabled);
+
+    /**
+     * Sends ActivateFlowMonitoringInfoData to server42-control topology.
+     * @param flow requested flow
+     */
+    default void sendActivateFlowMonitoring(RequestedFlow flow) {}
+
+    /**
+     * Sends DeactivateFlowMonitoringInfoData to server42-control topology.
+     * @param flow requested flow
+     */
+    default void sendDeactivateFlowMonitoring(String flow, SwitchId srcSwitchId, SwitchId dstSwitchId) {}
 }

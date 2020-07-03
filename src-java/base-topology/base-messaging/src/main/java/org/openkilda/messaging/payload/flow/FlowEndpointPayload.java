@@ -24,7 +24,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.MoreObjects;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
 import java.util.Objects;
@@ -36,6 +38,7 @@ import java.util.Objects;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@SuperBuilder
 public class FlowEndpointPayload extends NetworkEndpoint {
     /**
      * The constant serialVersionUID.
@@ -54,6 +57,7 @@ public class FlowEndpointPayload extends NetworkEndpoint {
      * Collect info about devices connected to endpoint.
      */
     @JsonProperty("detect-connected-devices")
+    @Builder.Default
     private DetectConnectedDevicesPayload detectConnectedDevices = new DetectConnectedDevicesPayload(false, false);
 
     public FlowEndpointPayload(

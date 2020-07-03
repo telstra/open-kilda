@@ -11,6 +11,7 @@ dependencies {
     implementation project(':flowhs-messaging')
     implementation project(':ping-messaging')
     implementation project(':reroute-messaging')
+    implementation project(':server42-control-messaging')
     implementation project(':base-storm-topology')
     implementation project(path: ':base-storm-topology', configuration: 'stormFluxArtifacts')
     runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')

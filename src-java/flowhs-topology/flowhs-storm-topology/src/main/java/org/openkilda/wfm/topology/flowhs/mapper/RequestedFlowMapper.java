@@ -23,6 +23,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import org.mapstruct.Mapper;
@@ -173,4 +174,19 @@ public abstract class RequestedFlowMapper {
      * Convert {@link DetectConnectedDevices} to {@link DetectConnectedDevicesDto}.
      */
     public abstract DetectConnectedDevicesDto toDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices);
+
+    /**
+     * Convert {@link RequestedFlow} to {@link ActivateFlowMonitoringInfoData}.
+     */
+    @Mapping(target = "flowId", source = "flowId")
+    @Mapping(target = "source.datapath", source = "srcSwitch")
+    @Mapping(target = "source.portNumber", source = "srcPort")
+    @Mapping(target = "source.vlanId", source = "srcVlan")
+    @Mapping(target = "source.innerVlanId", source = "srcInnerVlan")
+    @Mapping(target = "destination.datapath", source = "destSwitch")
+    @Mapping(target = "destination.portNumber", source = "destPort")
+    @Mapping(target = "destination.vlanId", source = "destVlan")
+    @Mapping(target = "destination.innerVlanId", source = "destInnerVlan")
+    public abstract ActivateFlowMonitoringInfoData toActivateFlowMonitoringInfoData(RequestedFlow flow);
+
 }

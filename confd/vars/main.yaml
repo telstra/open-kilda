@@ -160,6 +160,9 @@ kilda_storm_spout_wait_sleep_timeout: 100
 kilda_server42_control_http_port: 9002
 kilda_server42_control_switch_to_vlan_1000: "1000=00:00:d7:61:46:7b:46:69,00:00:1b:45:18:d6:71:5a,00:00:e3:7d:94:02:9b:f0"
 kilda_server42_control_switch_to_vlan_2000: "2000=00:00:55:dd:06:49:d9:61,00:00:84:1e:39:d5:dd:40"
+kilda_server42_control_switch_to_vlan_3000: "3000=00:00:00:00:00:00:00:03,00:00:00:00:00:00:00:08"
+kilda_server42_control_switch_to_vlan_4000: "4000=00:00:00:00:00:00:00:07"
+
 kilda_server42_control_kafka_group_id: "server42-control"
 kilda_server42_control_zeromq_connection_host: "tcp://server42-server-stub.pendev:5555"
 

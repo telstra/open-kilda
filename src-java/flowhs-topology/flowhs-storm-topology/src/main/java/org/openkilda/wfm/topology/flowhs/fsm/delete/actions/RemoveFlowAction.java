@@ -47,6 +47,10 @@ public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State,
         persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
             Flow flow = getFlow(stateMachine.getFlowId());
             log.debug("Removing the flow {}", flow);
+
+            stateMachine.setDstSwitchId(flow.getDestSwitch().getSwitchId());
+            stateMachine.setSrcSwitchId(flow.getSrcSwitch().getSwitchId());
+
             flowRepository.delete(flow);
 
             stateMachine.saveActionToHistory("Flow was removed",
