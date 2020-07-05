@@ -86,6 +86,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String NB_SPOUT_ID = "nb-spout";
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
     private static final String SWITCH_MANAGER_KAFKA_BOLT = "switch-manger-bolt";
+    private static final String REROUTE_KAFKA_BOLT = "reroute-bolt";
     private static final String VALIDATION_WORKER_BOLT = "validation." + SpeakerWorkerBolt.ID;
     private static final String METER_MODIFY_WORKER_BOLT = "meter.modify." + SpeakerWorkerBolt.ID;
     private static final String FLOW_PATCH_BOLT_NAME = "flow-patch-bolt";
@@ -220,11 +221,11 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.FLOWHS.toString())
+                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.FLOWHS.toString())
+                .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.FLOWHS.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.TO_SWITCH_MANAGER.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
@@ -273,6 +274,9 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         tb.setBolt(SERVER42_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaServer42StormNotifyTopic()))
                 .shuffleGrouping(SERVER42_ENCODER_BOLT_NAME);
+
+        tb.setBolt(REROUTE_KAFKA_BOLT, buildKafkaBolt(topologyConfig.getKafkaRerouteTopic()))
+                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
 
         return tb.createTopology();
     }

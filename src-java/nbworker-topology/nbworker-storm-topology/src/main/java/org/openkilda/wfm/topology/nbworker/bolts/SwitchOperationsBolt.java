@@ -165,7 +165,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
                     flowOperationsService.getFlowPathsForSwitch(switchId), affectedIslEndpoint, reason)) {
                 CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
-                getOutput().emit(StreamType.FLOWHS.toString(), tuple,
+                getOutput().emit(StreamType.REROUTE.toString(), tuple,
                         new Values(reroute, forkedContext.getCorrelationId()));
             }
         }
@@ -314,7 +314,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.FLOWHS.toString(),
+        declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

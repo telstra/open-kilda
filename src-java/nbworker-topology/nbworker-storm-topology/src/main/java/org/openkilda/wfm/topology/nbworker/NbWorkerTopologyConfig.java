@@ -56,7 +56,11 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
     }
 
     default String getKafkaServer42StormNotifyTopic() {
-        return  getKafkaTopics().getNbWorkerServer42StormNotifyTopic();
+        return getKafkaTopics().getNbWorkerServer42StormNotifyTopic();
+    }
+
+    default String getKafkaRerouteTopic() {
+        return  getKafkaTopics().getTopoRerouteTopic();
     }
 
     @Key("nbworker.operation.timeout.seconds")

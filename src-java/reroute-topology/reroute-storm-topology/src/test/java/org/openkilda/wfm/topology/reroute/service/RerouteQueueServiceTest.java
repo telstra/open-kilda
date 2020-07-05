@@ -180,6 +180,20 @@ public class RerouteQueueServiceTest {
     }
 
     @Test
+    public void shouldSendCorrectErrorMessageForManualRerouteRequestForPinnedFlow() {
+        String flowId = "test flow";
+        when(flowRepository.findById(flowId)).thenReturn(Optional.of(Flow.builder().flowId(flowId).srcSwitch(SWITCH_A)
+                .destSwitch(SWITCH_B).priority(2).timeCreate(Instant.now()).pinned(true)
+                .build()));
+
+        FlowThrottlingData actual = getFlowThrottlingData(flow, CORRELATION_ID).build();
+        rerouteQueueService.processManualRequest(flowId, actual);
+
+        assertEquals(0, rerouteQueueService.getReroutes().size());
+        verify(carrier).emitFlowRerouteError(argThat(pinnedFlowErrorData(flowId)));
+    }
+
+    @Test
     public void shouldMovePendingToInProcessWhenReceivedSuccessfulResult() {
         String pendingCorrelationId = "pending";
         FlowThrottlingData inProgress = getFlowThrottlingData(flow, CORRELATION_ID).build();
@@ -446,5 +460,11 @@ public class RerouteQueueServiceTest {
         return (errorData) -> ErrorType.UNPROCESSABLE_REQUEST == errorData.getErrorType()
                 && errorData.getErrorMessage().equals("Could not reroute flow")
                 && errorData.getErrorDescription().equals(format("Flow %s is in reroute process", flowId));
+    }
+
+    private ArgumentMatcher<ErrorData> pinnedFlowErrorData(String flowId) {
+        return (errorData) -> ErrorType.UNPROCESSABLE_REQUEST == errorData.getErrorType()
+                && errorData.getErrorMessage().equals("Could not reroute flow")
+                && errorData.getErrorDescription().equals("Can't reroute pinned flow");
     }
 }

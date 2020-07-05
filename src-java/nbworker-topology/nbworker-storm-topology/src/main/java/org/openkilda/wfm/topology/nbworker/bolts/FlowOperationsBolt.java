@@ -256,7 +256,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.FLOWHS.toString(),
+        declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 
@@ -264,7 +264,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
                 paths, affectedIslEndpoints, reason)) {
             CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
-            getOutput().emit(StreamType.FLOWHS.toString(), getCurrentTuple(),
+            getOutput().emit(StreamType.REROUTE.toString(), getCurrentTuple(),
                     new Values(request, forkedContext.getCorrelationId()));
         }
     }

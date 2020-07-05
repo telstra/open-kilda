@@ -55,6 +55,7 @@ public class MessageEncoder extends KafkaEncoder {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
         outputManager.declareStream(StreamType.FLOWHS.toString(), new Fields("message"));
+        outputManager.declareStream(StreamType.REROUTE.toString(), new Fields("message"));
         outputManager.declareStream(StreamType.TO_SWITCH_MANAGER.toString(), STREAM_FIELDS);
         outputManager.declareStream(StreamType.ERROR.toString(), STREAM_FIELDS);
     }
