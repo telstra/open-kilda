@@ -90,7 +90,6 @@ refreshList() {
 }
 
 toggleSearch(e,inputContainer) {  
-  console.log('herein serch');
   this[inputContainer] = this[inputContainer] ? false : true;
   if(this[inputContainer]){
     setTimeout(() => {
