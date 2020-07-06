@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.64.0 (06/07/2020)
+
+### Features:
+-  [#3589](https://github.com/telstra/open-kilda/pull/3589) Added `location` field to Switch DTO (Issue: [#3571](https://github.com/telstra/open-kilda/issues/3571)) [**northbound**]
+-  [#3595](https://github.com/telstra/open-kilda/pull/3595) Added PATCH Switch operation for `location` and `pop` fields. (Issue: [#3572](https://github.com/telstra/open-kilda/issues/3572)) [**northbound**][**storm-topologies**]
+-  [#3542](https://github.com/telstra/open-kilda/pull/3542) Feature to display isl and switch maintenance mode on list pages (Issues: [#3532](https://github.com/telstra/open-kilda/issues/3532) [#3533](https://github.com/telstra/open-kilda/issues/3533)) [**gui**]
+-  [#3579](https://github.com/telstra/open-kilda/pull/3579) Add `status_info` field to Flow (Issue: [#3570](https://github.com/telstra/open-kilda/issues/3570)) 
+
+### Bug Fixes:
+-  [#3593](https://github.com/telstra/open-kilda/pull/3593) Fix merge pr issues 
+-  [#3541](https://github.com/telstra/open-kilda/pull/3541) Skip reroute requests for flows without affected path segment (Issue: [#3390](https://github.com/telstra/open-kilda/issues/3390)) [**storm-topologies**]
+-  [#3562](https://github.com/telstra/open-kilda/pull/3562) Fix for authentication Xss and permission access issue  (Issue: [#3553](https://github.com/telstra/open-kilda/issues/3553)) [**gui**]
+-  [#3574](https://github.com/telstra/open-kilda/pull/3574) One switch flows update status on switch events (Issue: [#1464](https://github.com/telstra/open-kilda/issues/1464)) [**storm-topologies**]
+-  [#3578](https://github.com/telstra/open-kilda/pull/3578) Handle case when trying to update available bandwidth of non existent ISL (Issue: [#3255](https://github.com/telstra/open-kilda/issues/3255)) 
+
+### Improvements:
+-  [#3590](https://github.com/telstra/open-kilda/pull/3590) Add `pinned` flag to FlowPatchDto [**northbound**][**storm-topologies**]
+-  [#3591](https://github.com/telstra/open-kilda/pull/3591) Forbid intentional reroutes for pinned flows [**storm-topologies**]
+-  [#3537](https://github.com/telstra/open-kilda/pull/3537) Switch validation cleanup [**storm-topologies**]
+-  [#3550](https://github.com/telstra/open-kilda/pull/3550) remove TODOs related to mapping [**tests**]
+-  [#3556](https://github.com/telstra/open-kilda/pull/3556) minor improvements/fixes for func tests [**tests**]
+-  [#3561](https://github.com/telstra/open-kilda/pull/3561) Add more tests to smoke_switches suite [**tests**]
+-  [#3568](https://github.com/telstra/open-kilda/pull/3568) Add test that tries to create a single-sw flow with periodic pings [**tests**]
+-  [#3581](https://github.com/telstra/open-kilda/pull/3581) Add group-id to history flow dump objects [**northbound**]
+-  [#3582](https://github.com/telstra/open-kilda/pull/3582) Don't drop group id when updating flow without diverse_flowid param 
+
+### Other changes:
+-  [#3588](https://github.com/telstra/open-kilda/pull/3588) Improve Delete ISL logs [**northbound**][**storm-topologies**]
+-  [#3525](https://github.com/telstra/open-kilda/pull/3525) In functional tests where possible remove the VIRTUAL tag [**tests**]
+-  [#3538](https://github.com/telstra/open-kilda/pull/3538) Server42 Part 3 Storm Control Topology [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.63.0...v1.64.0).
+
+### Affected Components:
+network, nb, swmanager, flow-hs, nbworker, gui, reroute
+
+---
+
 ## v1.63.0 (24/06/2020)
 
 
