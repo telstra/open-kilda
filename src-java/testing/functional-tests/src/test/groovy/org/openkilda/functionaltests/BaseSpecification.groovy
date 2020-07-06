@@ -67,7 +67,7 @@ class BaseSpecification extends Specification implements SetupOnce {
     String profile
     @Value('${reroute.delay}')
     int rerouteDelay
-    @Value('${discovery.interval}')
+    @Value('${discovery.generic.interval}')
     int discoveryInterval
     @Value('${discovery.timeout}')
     int discoveryTimeout
