@@ -4,7 +4,7 @@
     <thead>
       <tr class="tableHeading">
         <th>
-          <input type="checkbox" [checked]="selectAll" style="margin-left: 7px;" class="large-checkbox" (click)="selectAllFlows($event)"  />
+          <input [disabled]="!hasDownFLows" type="checkbox" [checked]="selectAll" style="margin-left: 7px;" class="large-checkbox" (click)="selectAllFlows($event)"  />
         </th>
         <th class="">
           <span title="Flow ID">
@@ -121,7 +121,7 @@
     <tbody>
       <tr *ngFor="let row of data; let i = index"  class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" [class.down-status]="storeLinkSetting && row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('bandwidth') && row['discrepancy']['bandwidth']) || (row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
         <td class="divTableCell">
-          <input [disabled]="row.status == 'UP'"  type="checkbox" class="large-checkbox" name="checkedFlow[row.flowid]" [checked]="checkedFlow[row.flowid]" (click) = "toggleSelection(row)" />
+          <input [disabled]="row.status == 'UP' || row.status == 'IN PROGRESS' "  type="checkbox" class="large-checkbox" name="checkedFlow[row.flowid]" [checked]="checkedFlow[row.flowid]" (click) = "toggleSelection(row)" />
         </td>
         <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow"> 
           {{row.flowid || "-"}} 

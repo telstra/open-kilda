@@ -54,6 +54,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   expandedCreated : boolean = false;
   storeLinkSetting = false;
   loadFilter : boolean =  false;
+  hasDownFLows :boolean = false;
   activeStatus :any = '';
   clipBoardItems = [];
 
@@ -147,7 +148,8 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
       if(typeof(change.data)!=='undefined' && change.data.currentValue){
         this.data  = change.data.currentValue;
         this.data.forEach(function(d){
-          if(d.status !='UP'){
+          if(d.status =='DOWN' || d.status == 'DEGRADED'){
+            ref.hasDownFLows = true;
             ref.checkedFlow[d.flowid] = false;
           }
         });
