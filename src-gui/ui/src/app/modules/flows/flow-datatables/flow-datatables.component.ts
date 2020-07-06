@@ -116,6 +116,11 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
        ],
        columnDefs:[
         {
+          "targets": [ 0],
+          "visible": ref.commonService.hasPermission('fw_permission_reroute'),
+          "searchable": false
+       },
+        {
           "targets": [ 3],
           "visible": false,
           "searchable": true
@@ -344,8 +349,8 @@ reRouteFlow(flowID,flowList) {
             self.reRouteFlowIndex[flowID]['progress'] = 100;
             self.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_rerouted;
             } else {
-              clearInterval(this.reRouteFlowIndex[flowID]['interval']);
-              self.reRouteFlowIndex[flowID]['type'] = 'info';
+              clearInterval(self.reRouteFlowIndex[flowID]['interval']);
+              self.reRouteFlowIndex[flowID]['type'] = 'success';
               self.reRouteFlowIndex[flowID]['progress'] = 100;
               self.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_on_best_route;
             }

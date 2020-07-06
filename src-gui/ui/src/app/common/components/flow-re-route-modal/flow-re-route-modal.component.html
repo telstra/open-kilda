@@ -15,7 +15,7 @@
         
       </thead>
       <tbody>
-        <tr *ngFor="let row of responseData; let i = index"  class="flowDataRow"  >
+        <tr *ngFor="let row of responseData; let i = index" >
           <td style="width:10%">{{row}}</td>
           <td style="width:30%"><ngb-progressbar  showValue="true" [height]="progressHeight" [type]="reRouteIndex[row]['type']" [max]="100"  [value]="reRouteIndex[row]['progress']"></ngb-progressbar>
           </td>
