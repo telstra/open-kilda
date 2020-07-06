@@ -71,7 +71,11 @@ logger.level = INFO
 
 #######
 # Discovery
-# - discovery.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
+# - discovery.generic.interval = how many bolt ticks(1 tick per second) between ISL discovery / health checks, starts from 0
+# - discovery.exhausted.interval = how many seconds between sending a discovery packet in case
+#   if the endpoint (switch + port) does not belong to ISL
+# - discovery.auxiliary.interval = how many seconds between ISL discovery when another mechanism is used
+#   to determine ISL state (e.g. BFD)
 # - discovery.timeout = at which point do we send an ISL Failure (if it is an ISL)
 #       - NB: the number is in "ticks", not "attempts" .. attempts = timeout/interval
 # - discovery.limit = at what point do we stop sending? -1 means never ..
@@ -79,7 +83,9 @@ logger.level = INFO
 #   message from speaker it will be marked as unavailable
 # - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
 #   it is mainly used for defining whether isl is moved or not
-discovery.interval = {{ getv "/kilda_discovery_interval" }}
+discovery.generic.interval = {{ getv "/kilda_discovery_generic_interval" }}
+discovery.exhausted.interval = {{ getv "/kilda_discovery_exhausted_interval" }}
+discovery.auxiliary.interval = {{ getv "/kilda_discovery_auxiliary_interval" }}
 discovery.round.trip.status.interval = {{ getv "/kilda_discovery_round_trip_status_interval" }}
 discovery.packet.ttl = {{ getv "/kilda_discovery_packet_ttl" }}
 discovery.timeout = {{ getv "/kilda_discovery_timeout" }}

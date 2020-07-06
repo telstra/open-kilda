@@ -413,6 +413,7 @@ public class NetworkUniIslServiceTest {
 
         verify(carrier).notifyIslUp(endpointAlpha1, new IslReference(endpointAlpha1, endpointBeta3),
                                     new IslDataHolder(normalIsl));
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, false);
         verifyNoMoreInteractions(carrier);
 
         reset(carrier);
@@ -449,6 +450,7 @@ public class NetworkUniIslServiceTest {
         final IslReference reference = new IslReference(endpointAlpha1, endpointBeta3);
         verify(carrier).notifyIslUp(endpointAlpha1, reference,
                                     new IslDataHolder(normalIsl));
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, false);
         verifyNoMoreInteractions(carrier);
         reset(carrier);
 
@@ -482,11 +484,13 @@ public class NetworkUniIslServiceTest {
 
         // fail
         service.uniIslPhysicalDown(endpointAlpha1);
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, true);
         verifyNoMoreInteractions(carrier);
 
         // discovery (self-loop)
         Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
         service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, true);
         verifyNoMoreInteractions(carrier);
 
         // ensure following discovery will be processed
@@ -536,6 +540,7 @@ public class NetworkUniIslServiceTest {
 
         verify(carrier).notifyIslUp(endpointA, new IslReference(endpointA, endpointZ),
                                     new IslDataHolder(link));
+        verify(carrier).exhaustedPollModeUpdateRequest(endpointA, false);
         verifyNoMoreInteractions(carrier);
         reset(carrier);
     }

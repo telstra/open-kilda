@@ -88,4 +88,11 @@ public class DiscoveryBfdMonitor extends DiscoveryMonitor<IslEndpointBfdStatus> 
     public void actualFlush(Endpoint endpoint, Isl persistentView) {
         // there is no BFD related fields in ISL
     }
+
+    /**
+     * Returns true if BFD is operational, otherwise returns false.
+     */
+    public boolean isOperational() {
+        return evaluateStatus().isPresent();
+    }
 }
