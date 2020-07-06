@@ -90,6 +90,7 @@ refreshList() {
 }
 
 toggleSearch(e,inputContainer) {  
+  console.log('herein serch');
   this[inputContainer] = this[inputContainer] ? false : true;
   if(this[inputContainer]){
     setTimeout(() => {
@@ -161,7 +162,7 @@ reRouteFlow(flowID,flowList) {
             self.reRouteFlowIndex[flowID]['progress'] = 100;
             self.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_rerouted;
             } else {
-              clearInterval(this.reRouteFlowIndex[flowID]['interval']);
+              clearInterval(self.reRouteFlowIndex[flowID]['interval']);
               self.reRouteFlowIndex[flowID]['type'] = 'info';
               self.reRouteFlowIndex[flowID]['progress'] = 100;
               self.reRouteFlowIndex[flowID]['message'] = MessageObj.flow_on_best_route;
