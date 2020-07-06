@@ -237,6 +237,16 @@ public class NetworkIntegrationCarrier
         islService.bfdStatusUpdate(endpoint, reference, status);
     }
 
+    @Override
+    public void slowDiscoveryEnableRequest(Endpoint endpoint) {
+
+    }
+
+    @Override
+    public void slowDiscoveryDisableRequest(Endpoint endpoint) {
+
+    }
+
     public void triggerReroute(RerouteFlows trigger) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
@@ -254,5 +264,15 @@ public class NetworkIntegrationCarrier
     @Override
     public void islDefaultRulesDelete(Endpoint source, Endpoint destination) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void bfdSlowDiscoveryEnableRequest(Endpoint endpoint) {
+
+    }
+
+    @Override
+    public void bfdSlowDiscoveryDisableRequest(Endpoint endpoint) {
+
     }
 }

@@ -62,6 +62,8 @@ kilda_kafka_topic_server42_stats: "kilda.server42-stats.flowrtt.priv"
 
 # interval in ticks (seconds) between sending disco packets
 kilda_discovery_interval: 3
+kilda_discovery_failed_interval: 60
+kilda_discovery_bfd_active_interval: 30
 kilda_discovery_round_trip_status_interval: 1
 kilda_discovery_packet_ttl: 5
 kilda_discovery_timeout: 15

@@ -32,6 +32,7 @@ import java.util.Map;
 @Slf4j
 public class NetworkUniIslService {
     private final Map<Endpoint, IslReference> endpointData = new HashMap<>();
+    private final Map<Endpoint, Boolean> slowDiscoveryEnabled = new HashMap<>();
 
     private final IUniIslCarrier carrier;
 
@@ -53,6 +54,7 @@ public class NetworkUniIslService {
             reference = IslReference.of(endpoint);
         }
         endpointData.put(endpoint, reference);
+        slowDiscoveryEnabled.putIfAbsent(endpoint, false);
     }
 
     /**
@@ -66,6 +68,7 @@ public class NetworkUniIslService {
         IslDataHolder islData = new IslDataHolder(speakerDiscoveryEvent);
         if (reference.equals(effectiveReference)) {
             carrier.notifyIslUp(endpoint, reference, islData);
+            sendSlowDiscoveryDisableRequest(endpoint);
             return;
         }
 
@@ -77,10 +80,12 @@ public class NetworkUniIslService {
 
         if (!effectiveReference.isSelfLoop()) {
             carrier.notifyIslUp(endpoint, effectiveReference, islData);
+            sendSlowDiscoveryDisableRequest(endpoint);
         } else {
             log.error("Self looped ISL discovery received: {}", effectiveReference);
         }
         endpointData.put(endpoint, effectiveReference);
+        slowDiscoveryEnabled.putIfAbsent(endpoint, false);
     }
 
     /**
@@ -131,6 +136,7 @@ public class NetworkUniIslService {
     public void uniIslRemove(Endpoint endpoint) {
         log.info("Uni-ISL service receive KILL request for {}", endpoint);
         endpointData.remove(endpoint);
+        slowDiscoveryEnabled.remove(endpoint);
     }
 
     // -- private --
@@ -139,6 +145,9 @@ public class NetworkUniIslService {
         IslReference reference = lookupEndpointData(endpoint);
         if (isIslReferenceUsable(reference)) {
             carrier.notifyIslDown(endpoint, reference, downReason);
+        }
+        if (reference.isIncomplete()) {
+            sendSlowDiscoveryEnableRequest(endpoint);
         }
     }
 
@@ -160,5 +169,19 @@ public class NetworkUniIslService {
 
     private static boolean isIslReferenceUsable(IslReference reference) {
         return !reference.isIncomplete() && !reference.isSelfLoop();
+    }
+
+    private void sendSlowDiscoveryEnableRequest(Endpoint endpoint) {
+        if (slowDiscoveryEnabled.get(endpoint) == null || !slowDiscoveryEnabled.get(endpoint)) {
+            carrier.slowDiscoveryEnableRequest(endpoint);
+            slowDiscoveryEnabled.put(endpoint, true);
+        }
+    }
+
+    private void sendSlowDiscoveryDisableRequest(Endpoint endpoint) {
+        if (slowDiscoveryEnabled.get(endpoint) == null || slowDiscoveryEnabled.get(endpoint)) {
+            carrier.slowDiscoveryDisableRequest(endpoint);
+            slowDiscoveryEnabled.put(endpoint, false);
+        }
     }
 }

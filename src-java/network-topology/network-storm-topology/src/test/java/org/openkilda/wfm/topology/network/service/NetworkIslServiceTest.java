@@ -677,6 +677,9 @@ public class NetworkIslServiceTest {
         service.bfdStatusUpdate(endpointBeta2, reference, BfdStatus.UP);
         service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatus.UP);
 
+        verify(carrier).bfdSlowDiscoveryEnableRequest(reference.getSource());
+        verify(carrier).bfdSlowDiscoveryEnableRequest(reference.getDest());
+
         verify(dashboardLogger, never()).onIslDown(eq(reference));
 
         // only now BFD events must be able to control ISL state

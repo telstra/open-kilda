@@ -392,7 +392,7 @@ public class NetworkUniIslServiceTest {
 
         // ensure following discovery will be processed
         Endpoint endpointBeta3 = Endpoint.of(betaDatapath, 3);
-        verifyIslCanBeDiscovered(service, makeIslBuilder(endpointA, endpointBeta3).build());
+        verifyIslCanBeDiscovered(service, makeIslBuilder(endpointA, endpointBeta3).build(), false);
     }
 
     @Test
@@ -427,7 +427,7 @@ public class NetworkUniIslServiceTest {
         reset(carrier);
 
         // ensure following discovery will be processed
-        verifyIslCanBeDiscovered(service, normalIsl);
+        verifyIslCanBeDiscovered(service, normalIsl, false);
     }
 
     @Test
@@ -465,7 +465,7 @@ public class NetworkUniIslServiceTest {
         reset(carrier);
 
         // ensure following discovery will be processed
-        verifyIslCanBeDiscovered(service, normalIsl);
+        verifyIslCanBeDiscovered(service, normalIsl, false);
     }
 
     @Test
@@ -482,15 +482,17 @@ public class NetworkUniIslServiceTest {
 
         // fail
         service.uniIslPhysicalDown(endpointAlpha1);
+        verify(carrier).slowDiscoveryEnableRequest(endpointAlpha1);
         verifyNoMoreInteractions(carrier);
 
         // discovery (self-loop)
         Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
         service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
+        verify(carrier).slowDiscoveryEnableRequest(endpointAlpha1);
         verifyNoMoreInteractions(carrier);
 
         // ensure following discovery will be processed
-        verifyIslCanBeDiscovered(service, makeIslBuilder(endpointAlpha1, endpointBeta3).build());
+        verifyIslCanBeDiscovered(service, makeIslBuilder(endpointAlpha1, endpointBeta3).build(), true);
     }
 
     @Test
@@ -529,13 +531,16 @@ public class NetworkUniIslServiceTest {
         reset(carrier);
     }
 
-    private void verifyIslCanBeDiscovered(NetworkUniIslService service, Isl link) {
+    private void verifyIslCanBeDiscovered(NetworkUniIslService service, Isl link, boolean slowDiscoDisable) {
         Endpoint endpointA = Endpoint.of(link.getSrcSwitch().getSwitchId(), link.getSrcPort());
         Endpoint endpointZ = Endpoint.of(link.getDestSwitch().getSwitchId(), link.getDestPort());
         service.uniIslDiscovery(endpointA, IslMapper.INSTANCE.map(link));
 
         verify(carrier).notifyIslUp(endpointA, new IslReference(endpointA, endpointZ),
                                     new IslDataHolder(link));
+        if (slowDiscoDisable) {
+            verify(carrier).slowDiscoveryDisableRequest(endpointA);
+        }
         verifyNoMoreInteractions(carrier);
         reset(carrier);
     }

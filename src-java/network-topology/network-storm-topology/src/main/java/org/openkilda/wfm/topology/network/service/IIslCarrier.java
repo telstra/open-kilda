@@ -32,4 +32,8 @@ public interface IIslCarrier {
     void islDefaultRulesInstall(Endpoint source, Endpoint destination);
 
     void islDefaultRulesDelete(Endpoint source, Endpoint destination);
+
+    void bfdSlowDiscoveryEnableRequest(Endpoint endpoint);
+
+    void bfdSlowDiscoveryDisableRequest(Endpoint endpoint);
 }

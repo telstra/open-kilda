@@ -30,6 +30,10 @@ import java.util.concurrent.TimeUnit;
 public class NetworkOptions implements Serializable {
     private Long discoveryInterval;
 
+    private Long slowDiscoveryInterval;
+
+    private Long bfdSlowDiscoveryInterval;
+
     private Long discoveryRoundTripStatusInterval;
 
     private Long discoveryPacketTtl;
@@ -58,6 +62,8 @@ public class NetworkOptions implements Serializable {
 
     public NetworkOptions(NetworkTopologyConfig topologyConfig) {
         discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
+        slowDiscoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getSlowDiscoveryInterval());
+        bfdSlowDiscoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getBfdSlowDiscoveryInterval());
         discoveryRoundTripStatusInterval = TimeUnit.SECONDS.toNanos(
                 topologyConfig.getDiscoveryRoundTripStatusInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());

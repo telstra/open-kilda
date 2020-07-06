@@ -36,6 +36,7 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdSlowDiscoveryManager;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.AllArgsConstructor;
@@ -283,7 +284,8 @@ public class NetworkIslService {
     private IslController makeIslController(Endpoint endpoint, IslReference reference) {
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
         BfdManager bfdManager = new BfdManager(reference);
-        IslFsm fsm = controllerFactory.produce(bfdManager, options, reference, context);
+        BfdSlowDiscoveryManager bfdSlowDiscoveryManager = new BfdSlowDiscoveryManager(reference);
+        IslFsm fsm = controllerFactory.produce(bfdManager, bfdSlowDiscoveryManager, options, reference, context);
         return new IslController(fsm, bfdManager);
     }
 

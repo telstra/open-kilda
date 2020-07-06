@@ -39,6 +39,8 @@ import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListUpdateSlowDiscoveryCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -51,8 +53,14 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     public static final String FIELD_ID_ISL_SOURCE = SpeakerRouter.FIELD_ID_ISL_SOURCE;
     public static final String FIELD_ID_ISL_DEST = SpeakerRouter.FIELD_ID_ISL_DEST;
     public static final String FIELD_ID_COMMAND = SpeakerRouter.FIELD_ID_COMMAND;
+    public static final String FIELD_ID_DATAPATH = PortHandler.FIELD_ID_DATAPATH;
+    public static final String FIELD_ID_PORT_NUMBER = PortHandler.FIELD_ID_PORT_NUMBER;
 
     public static final Fields STREAM_FIELDS = SpeakerRouter.STREAM_ISL_FIELDS;
+
+    public static final String STREAM_WATCH_LIST_ID = "watch.list";
+    public static final Fields STREAM_WATCH_LIST_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     private transient NetworkUniIslService service;
 
@@ -89,7 +97,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
-        // TODO
+        streamManager.declareStream(STREAM_WATCH_LIST_ID, STREAM_WATCH_LIST_FIELDS);
     }
 
     @Override
@@ -122,9 +130,24 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
         emit(getCurrentTuple(), makeDefaultTuple(new IslBfdStatusUpdateCommand(endpoint, reference, status)));
     }
 
+    @Override
+    public void slowDiscoveryEnableRequest(Endpoint endpoint) {
+        emit(STREAM_WATCH_LIST_ID, getCurrentTuple(), makeWatchListSlowDiscoveryTuple(endpoint, true));
+    }
+
+    @Override
+    public void slowDiscoveryDisableRequest(Endpoint endpoint) {
+        emit(STREAM_WATCH_LIST_ID, getCurrentTuple(), makeWatchListSlowDiscoveryTuple(endpoint, false));
+    }
+
     private Values makeDefaultTuple(IslCommand command) {
         IslReference reference = command.getReference();
         return new Values(reference.getSource(), reference.getDest(), command, getCommandContext());
+    }
+
+    private Values makeWatchListSlowDiscoveryTuple(Endpoint endpoint, boolean enableSlowDiscovery) {
+        WatchListCommand command = new WatchListUpdateSlowDiscoveryCommand(endpoint, enableSlowDiscovery);
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
     }
 
     // UniIslCommand

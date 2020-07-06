@@ -53,6 +53,7 @@ import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdSlowDiscoveryManager;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -78,6 +79,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private final IslReference reference;
     private final BfdManager bfdManager;
+    private final BfdSlowDiscoveryManager bfdSlowDiscoveryManager;
 
     private IslStatus effectiveStatus = IslStatus.INACTIVE;
     private IslDownReason downReason;
@@ -105,12 +107,14 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public IslFsm(Clock clock, PersistenceManager persistenceManager, NetworkTopologyDashboardLogger dashboardLogger,
-                  BfdManager bfdManager, NetworkOptions options, IslReference reference) {
+                  BfdManager bfdManager, BfdSlowDiscoveryManager bfdSlowDiscoveryManager, NetworkOptions options,
+                  IslReference reference) {
         this.clock = clock;
         this.options = options;
 
         this.reference = reference;
         this.bfdManager = bfdManager;
+        this.bfdSlowDiscoveryManager = bfdSlowDiscoveryManager;
 
         this.dashboardLogger = dashboardLogger;
 
@@ -153,18 +157,30 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void operationalExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         bfdManager.disable(context.getOutput());
+        bfdSlowDiscoveryManager.disable(context.getOutput());
     }
 
     public void updateMonitorsAction(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         boolean isSyncRequired = false;
+        boolean bfdIsEnabled = false;
         for (DiscoveryMonitor<?> entry : monitorsByPriority) {
             isSyncRequired |= entry.update(event, context);
+
+            if (entry instanceof DiscoveryBfdMonitor) {
+                bfdIsEnabled = ((DiscoveryBfdMonitor) entry).bfdIsEnabled();
+            }
         }
 
         if (evaluateStatus()) {
             fireBecomeStateEvent(context);
         } else if (isSyncRequired) {
             fire(IslFsmEvent._FLUSH);
+        }
+
+        if (bfdIsEnabled) {
+            bfdSlowDiscoveryManager.enable(context.getOutput());
+        } else {
+            bfdSlowDiscoveryManager.disable(context.getOutput());
         }
     }
 
@@ -241,6 +257,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         flushTransaction();
 
         bfdManager.disable(context.getOutput());
+        bfdSlowDiscoveryManager.disable(context.getOutput());
         sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         triggerAffectedFlowReroute(context);
     }
@@ -680,7 +697,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
                     // extra parameters
                     Clock.class, PersistenceManager.class, NetworkTopologyDashboardLogger.class, BfdManager.class,
-                    NetworkOptions.class, IslReference.class);
+                    BfdSlowDiscoveryManager.class, NetworkOptions.class, IslReference.class);
 
             // OPERATIONAL
             builder.defineSequentialStatesOn(
@@ -785,10 +802,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
          * Create and properly initialize new {@link IslFsm}.
          */
         public IslFsm produce(
-                BfdManager bfdManager, NetworkOptions options, IslReference reference, IslFsmContext context) {
+                BfdManager bfdManager, BfdSlowDiscoveryManager bfdSlowDiscoveryManager, NetworkOptions options,
+                IslReference reference, IslFsmContext context) {
             IslFsm fsm = builder.newStateMachine(
                     IslFsmState.OPERATIONAL, clock, persistenceManager, dashboardLoggerBuilder.build(log), bfdManager,
-                    options, reference);
+                    bfdSlowDiscoveryManager, options, reference);
             fsm.start(context);
             return fsm;
         }

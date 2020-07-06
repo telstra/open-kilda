@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ public class PollIntegrationTest {
 
         IWatcherCarrier watcherCarrier = mock(IWatcherCarrier.class);
 
-        NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10);
+        NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10, 15, 20);
         NetworkWatcherService watcherService = new NetworkWatcherService(
                 integrationCarrier, Duration.ofSeconds(1), 100, taskId);
         NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier,
@@ -122,7 +122,7 @@ public class PollIntegrationTest {
             }
         };
 
-        NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10);
+        NetworkWatchListService watchListService = new NetworkWatchListService(integrationCarrier, 10, 15, 20);
         NetworkWatcherService watcherService = new NetworkWatcherService(
                 integrationCarrier, Duration.ofSeconds(1), 100, taskId);
         NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier,

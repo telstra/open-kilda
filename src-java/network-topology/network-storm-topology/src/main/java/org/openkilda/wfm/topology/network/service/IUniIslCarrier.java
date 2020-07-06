@@ -36,4 +36,8 @@ public interface IUniIslCarrier {
     void notifyIslRoundTripStatus(IslReference reference, RoundTripStatus roundTripStatus);
 
     void notifyBfdStatus(Endpoint endpoint, IslReference reference, BfdStatus status);
+
+    void slowDiscoveryEnableRequest(Endpoint endpoint);
+
+    void slowDiscoveryDisableRequest(Endpoint endpoint);
 }

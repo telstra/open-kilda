@@ -47,6 +47,8 @@ import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRule
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslRemoveCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesWorkerCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.watchlist.command.WatchListUpdateBfdSlowDiscoveryCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -56,7 +58,8 @@ import org.apache.storm.tuple.Values;
 public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String BOLT_ID = ComponentId.ISL_HANDLER.toString();
 
-    public static final String FIELD_ID_DATAPATH = "datapath";
+    public static final String FIELD_ID_DATAPATH = UniIslHandler.FIELD_ID_DATAPATH;
+    public static final String FIELD_ID_PORT_NUMBER = UniIslHandler.FIELD_ID_PORT_NUMBER;
     public static final String FIELD_ID_COMMAND = UniIslHandler.FIELD_ID_COMMAND;
 
     public static final String STREAM_BFD_PORT_ID = "bfd-port";
@@ -74,6 +77,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String STREAM_SPEAKER_RULES_ID = "speaker.rules";
     public static final Fields STREAM_SPEAKER_RULES_FIELDS = new Fields(
             KafkaEncoder.FIELD_ID_KEY, FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_WATCH_LIST_ID = "watch.list";
+    public static final Fields STREAM_WATCH_LIST_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
     private final NetworkOptions options;
@@ -128,6 +135,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         streamManager.declareStream(STREAM_REROUTE_ID, STREAM_REROUTE_FIELDS);
         streamManager.declareStream(STREAM_STATUS_ID, STREAM_STATUS_FIELDS);
         streamManager.declareStream(STREAM_SPEAKER_RULES_ID, STREAM_SPEAKER_RULES_FIELDS);
+        streamManager.declareStream(STREAM_WATCH_LIST_ID, STREAM_WATCH_LIST_FIELDS);
     }
 
     @Override
@@ -164,6 +172,16 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
                 new SpeakerRulesIslRemoveCommand(keyFactory.next(), source, destination)));
     }
 
+    @Override
+    public void bfdSlowDiscoveryEnableRequest(Endpoint endpoint) {
+        emit(STREAM_WATCH_LIST_ID, getCurrentTuple(), makeWatchListBfdSlowDiscoveryTuple(endpoint, true));
+    }
+
+    @Override
+    public void bfdSlowDiscoveryDisableRequest(Endpoint endpoint) {
+        emit(STREAM_WATCH_LIST_ID, getCurrentTuple(), makeWatchListBfdSlowDiscoveryTuple(endpoint, false));
+    }
+
     private Values makeSpeakerRulesTuple(SpeakerRulesWorkerCommand command) {
         return new Values(command.getKey(), command, getCommandContext());
     }
@@ -180,6 +198,11 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     private Values makeStatusUpdateTuple(IslStatusUpdateNotification payload) {
         return new Values(null, payload, getCommandContext());
+    }
+
+    private Values makeWatchListBfdSlowDiscoveryTuple(Endpoint endpoint, boolean enableSlowDiscovery) {
+        WatchListCommand command = new WatchListUpdateBfdSlowDiscoveryCommand(endpoint, enableSlowDiscovery);
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
     }
 
     public void processIslSetupFromHistory(Endpoint endpoint, IslReference reference, Isl history) {

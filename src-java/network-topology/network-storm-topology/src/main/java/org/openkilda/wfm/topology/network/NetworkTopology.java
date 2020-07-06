@@ -220,9 +220,13 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     private void watchList(TopologyBuilder topology, int scaleFactor) {
         WatchListHandler bolt = new WatchListHandler(options);
         Fields portGrouping = new Fields(PortHandler.FIELD_ID_DATAPATH, PortHandler.FIELD_ID_PORT_NUMBER);
+        Fields uniIslGrouping = new Fields(UniIslHandler.FIELD_ID_DATAPATH, UniIslHandler.FIELD_ID_PORT_NUMBER);
+        Fields islGrouping = new Fields(IslHandler.FIELD_ID_DATAPATH, IslHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(WatchListHandler.BOLT_ID, bolt, scaleFactor)
                 .allGrouping(CoordinatorSpout.ID)
-                .fieldsGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_POLL_ID, portGrouping);
+                .fieldsGrouping(PortHandler.BOLT_ID, PortHandler.STREAM_POLL_ID, portGrouping)
+                .fieldsGrouping(UniIslHandler.BOLT_ID, UniIslHandler.STREAM_WATCH_LIST_ID, uniIslGrouping)
+                .fieldsGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_WATCH_LIST_ID, islGrouping);
     }
 
     private void watcher(TopologyBuilder topology, int scaleFactor) {

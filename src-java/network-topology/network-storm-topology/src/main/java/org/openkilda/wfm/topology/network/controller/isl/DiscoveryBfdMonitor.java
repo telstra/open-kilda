@@ -88,4 +88,19 @@ public class DiscoveryBfdMonitor extends DiscoveryMonitor<IslEndpointBfdStatus> 
     public void actualFlush(Endpoint endpoint, Isl persistentView) {
         // there is no BFD related fields in ISL
     }
+
+    /**
+     * Returns true if BFD is enabled, otherwise returns false.
+     */
+    public boolean bfdIsEnabled() {
+        boolean isEnabled = true;
+
+        for (Iterator<IslEndpointBfdStatus> it = discoveryData.stream().iterator(); it.hasNext(); ) {
+            IslEndpointBfdStatus entry = it.next();
+
+            isEnabled &= entry.isEnabled();
+        }
+
+        return isEnabled;
+    }
 }

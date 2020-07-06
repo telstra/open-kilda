@@ -34,6 +34,14 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getDiscoveryConfig().getDiscoveryInterval();
     }
 
+    default int getSlowDiscoveryInterval() {
+        return getDiscoveryConfig().getSlowDiscoveryInterval();
+    }
+
+    default int getBfdSlowDiscoveryInterval() {
+        return getDiscoveryConfig().getBfdSlowDiscoveryInterval();
+    }
+
     default int getDiscoveryRoundTripStatusInterval() {
         return getDiscoveryConfig().getDiscoveryRoundTripStatusInterval();
     }
@@ -137,6 +145,12 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
 
         @Key("interval")
         int getDiscoveryInterval();
+
+        @Key("failed.interval")
+        int getSlowDiscoveryInterval();
+
+        @Key("bfd.active.interval")
+        int getBfdSlowDiscoveryInterval();
 
         @Key("round.trip.status.interval")
         int getDiscoveryRoundTripStatusInterval();

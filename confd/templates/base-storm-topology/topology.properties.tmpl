@@ -80,6 +80,8 @@ logger.level = INFO
 # - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
 #   it is mainly used for defining whether isl is moved or not
 discovery.interval = {{ getv "/kilda_discovery_interval" }}
+discovery.failed.interval = {{ getv "/kilda_discovery_failed_interval" }}
+discovery.bfd.active.interval = {{ getv "/kilda_discovery_bfd_active_interval" }}
 discovery.round.trip.status.interval = {{ getv "/kilda_discovery_round_trip_status_interval" }}
 discovery.packet.ttl = {{ getv "/kilda_discovery_packet_ttl" }}
 discovery.timeout = {{ getv "/kilda_discovery_timeout" }}
