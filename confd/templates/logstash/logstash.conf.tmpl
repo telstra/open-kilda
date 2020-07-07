@@ -43,6 +43,12 @@ input {
       type => "kilda-server42-stats"
       tags => ["kilda-server42"]
   }
+  tcp {
+      port => {{ getv "/kilda_logging_port_tests" }}
+      codec => json
+      type => "kilda-tests"
+      tags => ["kilda-tests"]
+  }
 }
 
 filter {
