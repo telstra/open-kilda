@@ -15,11 +15,11 @@
         
       </thead>
       <tbody>
-        <tr *ngFor="let row of responseData; let i = index"  class="flowDataRow"  >
+        <tr *ngFor="let row of responseData; let i = index" >
           <td style="width:10%">{{row}}</td>
           <td style="width:30%"><ngb-progressbar  showValue="true" [height]="progressHeight" [type]="reRouteIndex[row]['type']" [max]="100"  [value]="reRouteIndex[row]['progress']"></ngb-progressbar>
           </td>
-          <td style="width:30%"><span *ngIf="reRouteIndex[row]['progress']=='100'">{{reRouteIndex[row]['message']}}</span></td>
+          <td style="width:30%"><span *ngIf="reRouteIndex[row]['progress']== 100">{{reRouteIndex[row]['message']}}</span><span *ngIf="reRouteIndex[row]['description']">({{reRouteIndex[row]['description']}})</span></td>
         </tr>
       </tbody>
     </table>

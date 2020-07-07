@@ -3,6 +3,9 @@
 <table id="flowDataTable" datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" class="row-border hover">
     <thead>
       <tr class="tableHeading">
+        <th>
+          <input [disabled]="!hasDownFLows" type="checkbox" [checked]="selectAll" style="margin-left: 7px;" class="large-checkbox" (click)="selectAllFlows($event)"  />
+        </th>
         <th class="">
           <span title="Flow ID">
          Flow ID
@@ -116,8 +119,11 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let row of data; let i = index" (click)="showFlow(row)" class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" [class.down-status]="storeLinkSetting && row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('bandwidth') && row['discrepancy']['bandwidth']) || (row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
-        <td class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow"> 
+      <tr *ngFor="let row of data; let i = index"  class="flowDataRow"   [class.down-state]="!(row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED')" [class.up-state]="row.status == 'CACHED' || row.status == 'UP' || row.status == 'ALLOCATED'" [class.down-status]="storeLinkSetting && row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('bandwidth') && row['discrepancy']['bandwidth']) || (row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
+        <td class="divTableCell">
+          <input [disabled]="row.status == 'UP' || row.status == 'IN PROGRESS' "  type="checkbox" class="large-checkbox" name="checkedFlow[row.flowid]" [checked]="checkedFlow[row.flowid]" (click) = "toggleSelection(row)" />
+        </td>
+        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow"> 
           {{row.flowid || "-"}} 
           <context-menu #copyFLow>
               <ng-template contextMenuItem (execute)="copyToClip($event,'flowid',i);">
@@ -125,7 +131,7 @@
               </ng-template>
             </context-menu>
          </td>
-        <td title="{{row.source_switch_name}}" [contextMenu]="copySourceSwitch">
+        <td (click)="showFlow(row)" title="{{row.source_switch_name}}" [contextMenu]="copySourceSwitch">
           {{row.source_switch_name || "-"}}
           <context-menu #copySourceSwitch>
               <ng-template contextMenuItem (execute)="copyToClip($event,'source_switch_name',i);">
@@ -133,10 +139,10 @@
               </ng-template>
             </context-menu>
         </td>
-        <td title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
-        <td title="{{row.src_port}}">{{row.src_port || "-"}}</td>
-        <td>{{row.src_vlan || "-"}}</td>
-        <td title="{{row.target_switch_name}}" [contextMenu]="copyTargetSwitch">
+        <td (click)="showFlow(row)" title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.src_port}}">{{row.src_port || "-"}}</td>
+        <td (click)="showFlow(row)">{{row.src_vlan || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.target_switch_name}}" [contextMenu]="copyTargetSwitch">
           {{row.target_switch_name || "-"}}
           <context-menu #copyTargetSwitch>
             <ng-template contextMenuItem (execute)="copyToClip($event,'target_switch_name',i);">
@@ -144,15 +150,15 @@
             </ng-template>
           </context-menu>
         </td>
-         <td title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
-        <td>{{row.dst_port || "-"}}</td>
-        <td>{{row.dst_vlan || "-"}}</td>
-        <td>{{row.maximum_bandwidth / 1000  || "-"}}</td>
-        <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
-        <td title="{{row.description}}">{{row.description || "-"}}</td>
-        <td title="{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}">{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}</td>
+         <td (click)="showFlow(row)" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
+        <td (click)="showFlow(row)">{{row.dst_port || "-"}}</td>
+        <td (click)="showFlow(row)">{{row.dst_vlan || "-"}}</td>
+        <td (click)="showFlow(row)" >{{row.maximum_bandwidth / 1000  || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.description}}">{{row.description || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}">{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}</td>
         <!-- <td>{{row['last-updated']}}</td> -->
-        <td >{{ descrepancyString(row) }}</td>
+        <td (click)="showFlow(row)">{{ descrepancyString(row) }}</td>
         <td >
            <a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (row.hasOwnProperty('controller-flow')  && row['controller-flow'] ) ||  (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
         

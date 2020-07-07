@@ -225,6 +225,26 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage), headers, status);
     }
+    
+    /**
+     * Response.
+     *
+     * @param status the status
+     * @param code the code
+     * @param auxilaryMessage the auxilary message
+     * @param errorDescription the error description
+     * @param correlationId the correlation id
+     * @param message the message
+     * @return the response entity
+     */
+    protected ResponseEntity<Object> response(final HttpStatus status, final Integer code, final String auxilaryMessage,
+            final String message, String correlationId, String errorDescription) {
+        MultiValueMap<String, String> headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage, 
+                correlationId, errorDescription), 
+                headers, status);
+    }
 
     /**
      * Response.

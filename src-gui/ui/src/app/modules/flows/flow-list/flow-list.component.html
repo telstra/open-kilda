@@ -7,7 +7,7 @@
                  </div>
             </div>
               <div  class="col-sm-8 text-right text-filters mb-3">
-                  <!-- <a class="cursor-pointer"><i class="fa fa-cog"></i> Custom View | </a> -->
+                <a *ngIf="enableFlowreRouteFlag" class="cursor-pointer" (click)="re_route_flows()"><i class="fa fa-random"></i>  Re-Route Flows | </a>
                   <div *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_inventory')" class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
                     <label class="btn"  [ngClass]="{ 'btn-secondary' : filterFlag == 'all','btn-dark': filterFlag != 'all'}">
                       <input type="radio" (click)="getFlowList(statusParams,'all')" name="options" id="option1" autocomplete="off" checked> All
@@ -44,4 +44,6 @@
     <div class="clear clearfix"></div>
     <div class="col-sm-12" *ngIf="storeLinkSetting"> Status:{{statusParams.join(",")}}</div>
 </div>
-<app-flow-datatables [srcSwitch]="srcSwitch" [textSearch]="textSearch"  [filterFlag]="filterFlag" [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>
+<app-flow-datatables [srcSwitch]="srcSwitch" [textSearch]="textSearch" (enableReroute)="enableFlowreRoute($event)" (refresh)="refreshFlowList('')" [filterFlag]="filterFlag" [dstSwitch]="dstSwitch" [data]="dataSet" *ngIf="!loadingData"></app-flow-datatables>
+
+
