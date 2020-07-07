@@ -721,9 +721,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
-        verifyAll(northbound.getFlow(flow.flowId).flowStatusDetails) {
-            mainFlowPathStatus == "Up"
-            protectedFlowPathStatus == "Down"
+        verifyAll(northbound.getFlow(flow.flowId)) {
+            flowStatusDetails.mainFlowPathStatus == "Up"
+            flowStatusDetails.protectedFlowPathStatus == "Down"
+            statusInfo == "Couldn't find non overlapping protected path"
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
@@ -1003,9 +1004,10 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
-            verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
-                mainPath == "Up"
-                protectedPath == "Down"
+            verifyAll(northboundV2.getFlow(flow.flowId)) {
+                statusDetails.mainPath == "Up"
+                statusDetails.protectedPath == "Down"
+                statusInfo == "Couldn't find non overlapping protected path"
             }
         }
 
@@ -1145,16 +1147,23 @@ class ProtectedPathV2Spec extends HealthCheckSpecification {
 
         then: "Flow status is DEGRADED"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.DEGRADED.toString()
+                statusInfo == "Reroute is unsuccessful. Couldn't find new path(s)"
+            }
             assert northbound.getFlowHistory(flow.flowId).last().histories.find { it.action == REROUTE_FAIL }
         }
-
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = false })
 
         then: "Flow status is UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northbound.getFlow(flow.flowId)) {
+                status == FlowState.UP.toString()
+                !statusInfo //statusInfo is cleared after changing flowStatus to UP
+            }
+        }
 
         cleanup: "Restore topology, delete flow and reset costs"
         flowHelperV2.deleteFlow(flow.flowId)
