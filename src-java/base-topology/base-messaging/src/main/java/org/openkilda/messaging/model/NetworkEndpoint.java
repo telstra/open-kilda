@@ -20,10 +20,11 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 
+@SuperBuilder
 public class NetworkEndpoint extends AbstractNetworkEndpoint {
-    @Builder
+
     @JsonCreator
     public NetworkEndpoint(
             @JsonProperty("switch-id") SwitchId datapath,

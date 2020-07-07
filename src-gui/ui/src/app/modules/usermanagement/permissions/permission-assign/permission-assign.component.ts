@@ -8,6 +8,7 @@ import { ToastrService } from 'ngx-toastr';
 import { RoleService } from '../../../../common/services/role.service';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-permission-assign',
@@ -86,7 +87,7 @@ export class PermissionAssignComponent implements OnInit {
     Description: Trigger when click on "Assign Role" Button
   */
   submitform(){
-    this.loaderService.show("Assigning Roles");
+    this.loaderService.show(MessageObj.assigning_roles);
     this.submitted = true;
     if (this.permissionAssignForm.invalid) {
       return;
@@ -102,7 +103,7 @@ export class PermissionAssignComponent implements OnInit {
     this.roleAssignData = {"roles": roles};
     this.permissionService.assignPermission(this.selectedPermission, this.roleAssignData).subscribe(role => {
       this.loaderService.hide();
-      this.toastr.success("Role assigned successfully!",'Success! ');
+      this.toastr.success(MessageObj.role_assigned,'Success! ');
       this.tabService.setSelectedTab('permissions');
     },error =>{
       this.loaderService.hide();

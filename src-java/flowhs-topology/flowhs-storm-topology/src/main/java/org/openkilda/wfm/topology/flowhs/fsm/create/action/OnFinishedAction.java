@@ -38,6 +38,9 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowCreateFsm, Stat
         RequestedFlow requestedFlow = stateMachine.getTargetFlow();
         stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
                 requestedFlow.isPeriodicPings());
+        if (!requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())) {
+            stateMachine.getCarrier().sendActivateFlowMonitoring(requestedFlow);
+        }
         dashboardLogger.onSuccessfulFlowCreate(stateMachine.getFlowId());
         stateMachine.saveActionToHistory("Flow was created successfully");
     }

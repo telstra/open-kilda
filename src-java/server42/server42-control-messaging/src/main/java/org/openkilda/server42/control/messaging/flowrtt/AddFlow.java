@@ -30,8 +30,10 @@ import lombok.Value;
 @JsonNaming(value = SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = false)
 public class AddFlow extends Message {
+    Headers headers;
     String flowId;
-    EncapsulationType encapsulationType;
+    @Builder.Default
+    EncapsulationType encapsulationType = EncapsulationType.VLAN;
     Long tunnelId;
     FlowDirection direction;
     Integer port;

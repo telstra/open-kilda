@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
+package org.openkilda.wfm.topology.switchmanager.error;
 
-/**
- * A generic exception that indicates that an error has occurred during a persistence operation.
- */
-public class PersistenceException extends RuntimeException {
-    public PersistenceException(String message) {
+import org.openkilda.messaging.error.ErrorType;
+
+import lombok.Getter;
+
+@Getter
+public class SwitchManagerException extends RuntimeException {
+    private final ErrorType error;
+
+    protected SwitchManagerException(ErrorType error, String message) {
         super(message);
+        this.error = error;
     }
 
-    public PersistenceException(String message, Throwable cause) {
-        super(message, cause);
+    public SwitchManagerException(Throwable cause) {
+        super(cause.getMessage(), cause);
+        this.error = ErrorType.INTERNAL_ERROR;
     }
 }

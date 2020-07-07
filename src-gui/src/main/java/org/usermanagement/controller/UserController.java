@@ -109,6 +109,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
     public List<UserInfo> getUsers() {
         return userService.getAllUsers();
     }
@@ -121,6 +122,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
     public UserInfo getUserById(@PathVariable("user_id") final Long userId) {
         UserInfo userInfo = userService.getUserById(userId);
         return userInfo;

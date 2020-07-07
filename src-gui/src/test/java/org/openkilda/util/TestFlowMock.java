@@ -22,6 +22,7 @@ public interface TestFlowMock {
     static final String TIME_FROM = "1582020869";
     static final String TIME_TO = "1582020869";
     //static final Long TIME_TO = System.currentTimeMillis();
+    static final String TIME_LAST_SEEN = "2019-09-30T16:14:12.538Z";
     static final boolean CONTROLLER_FLAG = true;
 
 }

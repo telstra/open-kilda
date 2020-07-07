@@ -21,10 +21,12 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 
 @Data
+@SuperBuilder
 public abstract class AbstractNetworkEndpoint implements Serializable {
     @JsonProperty("switch-id")
     private SwitchId datapath;
@@ -49,5 +51,4 @@ public abstract class AbstractNetworkEndpoint implements Serializable {
             throw new IllegalArgumentException(String.format("Invalid portId: %s", portNumber));
         }
     }
-
 }

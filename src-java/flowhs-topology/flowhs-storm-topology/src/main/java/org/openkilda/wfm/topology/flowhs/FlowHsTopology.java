@@ -106,6 +106,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         northboundOutput(tb);
         rerouteTopologyOutput(tb);
         pingOutput(tb);
+        server42ControlTopologyOutput(tb);
 
         history(tb, persistenceManager);
 
@@ -409,6 +410,18 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_PING_SENDER.name());
     }
 
+    private void server42ControlTopologyOutput(TopologyBuilder topologyBuilder) {
+        KafkaBolt server42ControlKafkaBolt = buildKafkaBolt(getConfig().getKafkaFlowHsServer42StormNotifyTopic());
+        topologyBuilder.setBolt(ComponentId.SERVER42_CONTROL_TOPOLOGY_SENDER.name(),
+                server42ControlKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(),
+                        Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(),
+                        Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(),
+                        Stream.HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name());
+    }
+
     private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         topologyBuilder.setBolt(ComponentId.HISTORY_BOLT.name(), historyBolt, parallelism)
@@ -442,6 +455,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         REROUTE_RESPONSE_SENDER("reroute.kafka.bolt"),
         RESPONSE_SENDER("response.kafka.bolt"),
         FLOW_PING_SENDER("ping.kafka.bolt"),
+        SERVER42_CONTROL_TOPOLOGY_SENDER("server42.control.kafka.bolt"),
 
         SPEAKER_REQUEST_SENDER("speaker.kafka.bolt"),
 
@@ -484,7 +498,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         HUB_TO_NB_RESPONSE_SENDER,
         HUB_TO_REROUTE_RESPONSE_SENDER,
         HUB_TO_RESPONSE_SENDER,
-        HUB_TO_PING_SENDER
+        HUB_TO_PING_SENDER,
+        HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER
     }
 
     /**

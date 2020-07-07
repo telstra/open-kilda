@@ -15,8 +15,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -481,12 +481,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
-
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         northbound.updateFlow(flow.id, flow.tap { it.encapsulationType = encapsulationUpdate })
 
@@ -497,12 +491,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
-        }
-
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
         }
 
         and: "Rules are recreated"

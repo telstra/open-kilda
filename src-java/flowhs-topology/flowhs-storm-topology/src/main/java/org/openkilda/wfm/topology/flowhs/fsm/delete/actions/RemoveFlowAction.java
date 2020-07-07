@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -47,6 +47,10 @@ public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State,
         persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
             Flow flow = getFlow(stateMachine.getFlowId());
             log.debug("Removing the flow {}", flow);
+
+            stateMachine.setDstSwitchId(flow.getDestSwitch().getSwitchId());
+            stateMachine.setSrcSwitchId(flow.getSrcSwitch().getSwitchId());
+
             flowRepository.delete(flow);
 
             stateMachine.saveActionToHistory("Flow was removed",

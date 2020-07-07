@@ -22,7 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.RecoverablePersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -88,13 +88,15 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
 
         stateMachine.setOriginalFlowGroup(flow.getGroupId());
         if (targetFlow.getDiverseFlowId() != null) {
-            flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
+            if (targetFlow.getDiverseFlowId().isEmpty()) {
+                flow.setGroupId(null);
+            } else {
+                flow.setGroupId(getOrCreateFlowGroupId(targetFlow.getDiverseFlowId()));
+            }
         } else if (targetFlow.isAllocateProtectedPath()) {
             if (flow.getGroupId() == null) {
                 flow.setGroupId(getOrCreateFlowGroupId(flow.getFlowId()));
             }
-        } else {
-            flow.setGroupId(null);
         }
 
         Switch srcSwitch = switchRepository.findById(targetFlow.getSrcSwitch())

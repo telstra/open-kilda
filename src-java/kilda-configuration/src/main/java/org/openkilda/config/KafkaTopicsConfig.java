@@ -220,4 +220,20 @@ public interface KafkaTopicsConfig {
     @Key("server42-stats.flowrtt")
     @Default("kilda.server42-stats.flowrtt.priv")
     String getServer42StatsFlowRttTopic();
+
+    @Key("server42-storm.commands")
+    @Default("kilda.server42-storm.commands.priv")
+    String getServer42StormCommandsTopic();
+
+    @Key("server42-control.commands-reply")
+    @Default("kilda.server42-control.commands-reply.priv")
+    String getServer42ControlCommandsReplyTopic();
+
+    @Key("topo.flowhs.server42-storm")
+    @Default("kilda.flowhs.server42-storm-notify.priv")
+    String getFlowHsServer42StormNotifyTopic();
+
+    @Key("topo.nbworker.server42-storm")
+    @Default("kilda.nbworker.server42-storm-notify.priv")
+    String getNbWorkerServer42StormNotifyTopic();
 }

@@ -1,14 +1,15 @@
 package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.DockerHelper
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
+import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto
 import org.openkilda.testing.service.grpc.GrpcService
 
 import groovy.transform.Memoized
@@ -33,7 +34,8 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
             NOTE: The grpc-stub service covers positive test cases only */
             def grpcStubIp = new DockerHelper(dockerHost).getContainerIp(GRPC_STUB_CONTAINER_NAME)
             new SwitchDto(NON_EXISTENT_SWITCH_ID, grpcStubIp,37040, "host", "desc",  SwitchChangeType.ACTIVATED,
-                    false, "of_version", "manufacturer", "hardware", "software", "serial_number") as List
+                    false, "of_version", "manufacturer", "hardware", "software", "serial_number", "pop",
+                    new SwitchLocationDto(48.860611, 2.337633, "street", "city", "country")) as List
         } else {
             northbound.activeSwitches.findAll {
                 it.manufacturer.toLowerCase().contains("noviflow") &&

@@ -1,16 +1,19 @@
 package org.openkilda.functionaltests.spec.multitable
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.SwitchFeature
+import org.openkilda.model.cookie.Cookie
 
 import spock.lang.See
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/multi-table-pipelines")
 class MultitableSwitchRulesSpec extends HealthCheckSpecification {
+    @Tags([SMOKE_SWITCHES])
     def "Switch migration to multi table mode and vice-versa leave no discrepancies in default rules"() {
         given: "An active switch with disabled multi-table mode"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }

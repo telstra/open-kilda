@@ -106,6 +106,12 @@ COPY BUILD/stats-storm-topology/build.gradle                    /app/stats-storm
 COPY BUILD/swmanager-storm-topology/libs/*                      /app/swmanager-storm-topology/libs/
 COPY BUILD/swmanager-storm-topology/build.gradle                /app/swmanager-storm-topology/
 
+
+#server42 control
+COPY BUILD/server42-control-storm-topology/libs/*                      /app/server42-control-storm-topology/libs/
+COPY BUILD/server42-control-storm-topology/build.gradle                /app/server42-control-storm-topology/
+
+
 CMD /app/entry-point.sh
 
 RUN TZ=Australia/Melbourne date >> /container_baked_on.txt

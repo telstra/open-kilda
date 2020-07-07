@@ -7,6 +7,7 @@ import { UserService } from '../../../../common/services/user.service';
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-user-add',
@@ -63,7 +64,7 @@ export class UserAddComponent implements OnInit {
       return;
     }
 
-    this.loaderService.show("Adding User");
+    this.loaderService.show(MessageObj.adding_user);
 
     this.userData = {
       'name': this.userAddForm.value.name, 
@@ -75,7 +76,7 @@ export class UserAddComponent implements OnInit {
 
     this.userService.addUser(this.userData).subscribe(user => {
       this.loaderService.hide();
-      this.toastr.success("User added successfully!",'Success! ');
+      this.toastr.success(MessageObj.user_added,'Success! ');
       this.tabService.setSelectedTab('users');
     },error =>{
       this.loaderService.hide();

@@ -6,6 +6,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalconfirmationComponent } from 'src/app/common/components/modalconfirmation/modalconfirmation.component';
 import { ToastrService } from 'ngx-toastr';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-flow-contracts',
@@ -115,7 +116,7 @@ export class FlowContractsComponent implements OnInit,OnChanges, AfterViewInit {
         self.loaderService.show('Deleting contract')
         this.flowService.deletecontract(this.flowId,contractid).subscribe((response:any) =>{
           self.loaderService.hide();
-          self.toaster.success('Contract deleted successfully.');
+          self.toaster.success(MessageObj.delete_contract);
         },function(err){
           self.loaderService.hide();
           var Err = err.error;

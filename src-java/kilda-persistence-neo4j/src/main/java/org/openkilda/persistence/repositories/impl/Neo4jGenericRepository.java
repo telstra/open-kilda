@@ -20,11 +20,11 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.FetchStrategy;
-import org.openkilda.persistence.PersistenceException;
-import org.openkilda.persistence.RecoverablePersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;

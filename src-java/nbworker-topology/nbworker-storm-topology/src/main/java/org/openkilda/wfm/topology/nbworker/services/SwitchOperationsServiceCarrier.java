@@ -18,5 +18,10 @@ package org.openkilda.wfm.topology.nbworker.services;
 import org.openkilda.model.SwitchId;
 
 public interface SwitchOperationsServiceCarrier {
+
     void requestSwitchSync(SwitchId switchId);
+
+    void enableServer42FlowRttOnSwitch(SwitchId switchId);
+
+    void disableServer42FlowRttOnSwitch(SwitchId switchId);
 }

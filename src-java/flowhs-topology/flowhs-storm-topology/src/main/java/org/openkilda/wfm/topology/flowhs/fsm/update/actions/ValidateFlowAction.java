@@ -68,11 +68,12 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
                                                     FlowUpdateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         RequestedFlow targetFlow = context.getTargetFlow();
+        String diverseFlowId = targetFlow.getDiverseFlowId();
 
         dashboardLogger.onFlowUpdate(flowId,
                 targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
                 targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
-                targetFlow.getDiverseFlowId(), targetFlow.getBandwidth());
+                diverseFlowId, targetFlow.getBandwidth());
 
         boolean isOperationAllowed = featureTogglesRepository.find()
                 .map(FeatureToggles::getUpdateFlowEnabled).orElse(Boolean.FALSE);
@@ -92,15 +93,15 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
             throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
-        if (targetFlow.getDiverseFlowId() != null
+        if (diverseFlowId != null
                 && targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
             throw new FlowProcessingException(ErrorType.DATA_INVALID,
                     "Couldn't add one-switch flow into diverse group");
         }
 
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            if (targetFlow.getDiverseFlowId() != null) {
-                Flow diverseFlow = getFlow(targetFlow.getDiverseFlowId());
+            if (diverseFlowId != null && !diverseFlowId.isEmpty()) {
+                Flow diverseFlow = getFlow(diverseFlowId);
                 if (diverseFlow.isOneSwitchFlow()) {
                     throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
                             "Couldn't create diverse group with one-switch flow");
@@ -115,8 +116,9 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
 
             // Keep it, just in case we have to revert it.
             stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
+            stateMachine.setOriginalFlowStatusInfo(foundFlow.getStatusInfo());
 
-            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
+            flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS, "");
             return foundFlow;
         });
 

@@ -58,4 +58,6 @@ public class FlowDumpPayload {
     private String forwardStatus;
 
     private String reverseStatus;
+
+    private String groupId;
 }

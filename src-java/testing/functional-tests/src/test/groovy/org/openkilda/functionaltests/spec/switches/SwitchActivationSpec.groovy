@@ -1,7 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
+import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -20,7 +23,6 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.OutputVlanType
@@ -41,7 +43,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Autowired
     SwitchHelper switchHelper
 
-    @Tags(VIRTUAL)
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -84,11 +86,9 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tags(VIRTUAL)
     def "Excess rules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
-        def sw = topology.getActiveSwitches().find { it.virtual }
-        assumeTrue("Unable to find required switches in topology", sw as boolean)
+        def sw = topology.getActiveSwitches().first()
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
@@ -130,17 +130,18 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags([VIRTUAL])
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
-        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager, true)
-        isls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
-        Wrappers.wait(WAIT_OFFSET) {
-            def allLinks = northbound.getAllLinks()
-            isls.every { !islUtils.getIslInfo(allLinks, it).present }
+        def blockData = switchHelper.knockoutSwitch(sw, mgmtFlManager)
+        Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
+            assert northbound.getSwitch(sw.dpId).state == DEACTIVATED
+            def allIsls = northbound.getAllLinks()
+            isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
         }
+        isls.each { northbound.deleteLink(islUtils.toLinkParameters(it), true) }
         northbound.deleteSwitch(sw.dpId, false)
 
         when: "New switch connects"
@@ -148,15 +149,15 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
         then: "Switch is activated"
         Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            assert northbound.getSwitch(sw.dpId).state == ACTIVATED
         }
 
         and: "Related ISLs are discovered"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET / 2 + antiflapCooldown) {
             def allIsls = northbound.getAllLinks()
             isls.each {
-                assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.DISCOVERED
-                assert islUtils.getIslInfo(allIsls, it.reversed).get().state == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.DISCOVERED
+                assert islUtils.getIslInfo(allIsls, it.reversed).get().actualState == IslChangeType.DISCOVERED
             }
         }
     }

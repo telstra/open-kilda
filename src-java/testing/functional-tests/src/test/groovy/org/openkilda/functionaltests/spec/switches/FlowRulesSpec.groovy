@@ -7,7 +7,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -27,9 +26,9 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -65,34 +64,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
         srcSwDefaultRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
-    }
-
-    @Tags([VIRTUAL, SMOKE])
-    def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
-        given: "A switch with proper flow rules installed (including default) and not connected to the controller"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
-
-        def defaultPlusFlowRules = []
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            defaultPlusFlowRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
-            def multiTableFlowRules = 0
-            if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
-                multiTableFlowRules = 1
-            }
-            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
-        }
-
-        def blockData = switchHelper.knockoutSwitch(srcSwitch, mgmtFlManager)
-
-        when: "Connect the switch to the controller"
-        switchHelper.reviveSwitch(srcSwitch, blockData)
-
-        then: "Previously installed rules are not deleted from the switch"
-        compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
-
-        and: "Cleanup: Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy
@@ -677,7 +648,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE, LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
+    @Tags([HARDWARE, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     @Ignore("https://github.com/telstra/open-kilda/issues/3021")
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"

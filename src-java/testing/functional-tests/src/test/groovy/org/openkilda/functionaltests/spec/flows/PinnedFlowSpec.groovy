@@ -112,7 +112,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    def "System is able to reroute(intentionally) pinned flow"() {
+    def "System is not able to reroute(intentionally) pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
@@ -130,10 +130,10 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def isl = pathHelper.getInvolvedIsls(currentPath).first()
         northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
-        then: "Flow is rerouted"
+        then: "Flow is not rerouted"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == newPath
+            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
         }
 
         and: "Cleanup: revert system to original state"

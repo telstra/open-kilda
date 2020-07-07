@@ -1,12 +1,6 @@
 package org.openkilda.functionaltests.spec.special
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Status
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.ObjectMapper

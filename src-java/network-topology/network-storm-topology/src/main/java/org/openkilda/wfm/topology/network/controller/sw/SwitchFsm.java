@@ -151,13 +151,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         initialSwitchSetup(context);
+        context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.ACTIVE);
     }
 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
         logWrapper.onSwitchOffline(switchId);
         transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.INACTIVE));
-
+        context.getOutput().sendSwitchStateChanged(switchId, SwitchStatus.INACTIVE);
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, OnlineStatus.of(false, context.getIsRegionOffline()));
         }
@@ -212,7 +213,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 break;
             default:
                 throw new IllegalArgumentException(String.format("Unexpected event %s received in state %s (%s)",
-                                                                 event, to, getClass().getName()));
+                        event, to, getClass().getName()));
         }
 
         updatePortLinkMode(port, context);

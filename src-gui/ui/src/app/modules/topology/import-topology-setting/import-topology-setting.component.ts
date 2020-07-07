@@ -3,6 +3,7 @@ import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { UserService } from '../../../common/services/user.service';
 import { ToastrService } from 'ngx-toastr';
 import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
+import { MessageObj } from 'src/app/common/constants/constants';
 @Component({
   selector: 'app-import-topology-setting',
   templateUrl: './import-topology-setting.component.html',
@@ -76,7 +77,7 @@ export class ImportTopologySettingComponent implements OnInit {
       this.userService
       .saveSettings(this.jsondata)
       .subscribe(() => {
-        this.toastr.success("Setting saved successfully!");
+        this.toastr.success(MessageObj.import_setting_saved);
         this.modalService.dismissAll();
         let url = "topology";
         window.location.href = url;

@@ -17,6 +17,8 @@ package org.openkilda.persistence;
 
 import static java.lang.String.format;
 
+import org.openkilda.persistence.exceptions.PersistenceException;
+
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;

@@ -81,9 +81,10 @@ public class KafkaController {
     @ResponseBody
     private DeferredResult<ResponseEntity<?>> getFlowList(@RequestParam String switchId)
             throws InterruptedException, ExecutionException, TimeoutException {
-        String correlationId = UUID.randomUUID().toString();
 
-        send(switchId, new ListFlowsRequest(new Headers(correlationId)));
+        Headers headers = buildHeader();
+        String correlationId = headers.getCorrelationId();
+        send(switchId, new ListFlowsRequest(headers));
 
         DeferredResult<ResponseEntity<?>> deferredResult = new DeferredResult<>(500L);
 
@@ -113,13 +114,13 @@ public class KafkaController {
     @DeleteMapping(value = "/flow/{id}")
     private void deleteFlow(@RequestParam String switchId, @PathVariable(value = "id") String flowId)
             throws InterruptedException, ExecutionException, TimeoutException {
-        send(switchId, new RemoveFlow(flowId));
+        send(switchId, RemoveFlow.builder().headers(buildHeader()).flowId(flowId).build());
     }
 
     @DeleteMapping(value = "/flow/")
     private void clearFlows(@RequestParam String switchId)
             throws InterruptedException, ExecutionException, TimeoutException {
-        send(switchId, new ClearFlows());
+        send(switchId, ClearFlows.builder().headers(buildHeader()).build());
     }
 
     @PostMapping(value = "/settings/")
@@ -145,5 +146,10 @@ public class KafkaController {
             throws InterruptedException, ExecutionException, TimeoutException {
         ListenableFuture<SendResult<String, Object>> future = template.send(fromStorm, switchId, payload);
         future.get(30, TimeUnit.SECONDS);
+    }
+
+    private Headers buildHeader() {
+        String correlationId = UUID.randomUUID().toString();
+        return new Headers(correlationId);
     }
 }

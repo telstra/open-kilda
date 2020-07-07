@@ -23,8 +23,8 @@ import org.openkilda.model.ConnectedDeviceType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 
 import org.neo4j.ogm.cypher.Filter;

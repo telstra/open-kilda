@@ -5,9 +5,8 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.extension.failfast.Tidy
-import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
@@ -124,6 +123,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "At least 2 traffGen switches"
@@ -166,6 +166,7 @@ class DefaultFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([SMOKE_SWITCHES])
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "At least 2 traffGen switches"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected

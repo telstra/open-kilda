@@ -189,5 +189,41 @@ public class FlowControllerTest {
             assertTrue(false);
         }
     }
-        
+    
+    @Test
+    public void testGetFlowConnectedDevices() throws Exception {
+        try {
+            mockMvc.perform(get("/api/flows/connected/devices/{flowId}", TestFlowMock.FLOW_ID)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+            assertTrue(true);
+        } catch (Exception exception) {
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testGetFlowConnectedDevicesIfReqParamsPassed() throws Exception {
+        try {
+            mockMvc.perform(get("/api/flows/connected/devices/{flowId}", TestFlowMock.FLOW_ID)
+                    .param("since", TestFlowMock.TIME_LAST_SEEN)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+            assertTrue(true);
+        } catch (Exception exception) {
+            assertTrue(false);
+        }
+    }
+    
+    @Test
+    public void testGetFlowConnectedDevicesIfFlowIdNotPassed() throws Exception {
+        try {
+            mockMvc.perform(get("/api/flows/connected/devices/{flowId}", TestFlowMock.FLOW_ID_NULL)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+            assertTrue(true);
+        } catch (Exception exception) {
+            assertTrue(false);
+        }
+    }
 }

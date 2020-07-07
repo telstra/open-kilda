@@ -23,9 +23,12 @@ import org.openkilda.server42.control.stormstub.api.ListFlowsPayload;
 import org.openkilda.server42.control.stormstub.api.PushSettingsPayload;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper
 public interface ApiMapper {
+
+    @Mapping(target = "headers", ignore = true)
     AddFlow map(AddFlowPayload payload);
 
     PushSettings map(PushSettingsPayload settingsPayload);

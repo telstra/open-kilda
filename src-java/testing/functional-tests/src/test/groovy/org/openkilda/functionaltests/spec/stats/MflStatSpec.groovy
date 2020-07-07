@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.stats
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -42,7 +41,7 @@ class MflStatSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Tags([VIRTUAL, LOW_PRIORITY])
+    @Tags([LOW_PRIORITY])
     def "System is able to collect stats from the statistic and management controllers"() {
         given: "A flow"
         assumeTrue("Require at least 2 switches with connected traffgen", topology.activeTraffGens.size() > 1)
@@ -138,7 +137,6 @@ class MflStatSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Tags(VIRTUAL)
     def "System is able to collect stats from the statistic and management controllers (v2)"() {
         given: "A flow"
         assumeTrue("Require at least 2 switches with connected traffgen", topology.activeTraffGens.size() > 1)

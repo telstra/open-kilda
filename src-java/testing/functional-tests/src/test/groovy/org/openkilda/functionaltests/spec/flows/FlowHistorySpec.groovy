@@ -1,8 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.thread.FlowHistoryConstants.UPDATE_ACTION
@@ -15,6 +16,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.payload.history.FlowEventPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -24,6 +26,9 @@ import java.util.concurrent.TimeUnit
 History record is created in case the create/update action is completed successfully.""")
 @Tags([LOW_PRIORITY])
 class FlowHistorySpec extends HealthCheckSpecification {
+    @Value('${use.multitable}')
+    boolean useMultitable
+
     @Shared
     Long timestampBefore
 
@@ -31,11 +36,17 @@ class FlowHistorySpec extends HealthCheckSpecification {
         timestampBefore = System.currentTimeSeconds() - 5
     }
 
-    @Tags([VIRTUAL]) // can't run it on stage env; mapping(v1->v2) is enabled, so flow is always created via V2
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
+        assumeTrue("Multi table is not enabled in kilda configuration", useMultitable)
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        //set non default values
+        flow.ignoreBandwidth = true
+        flow.periodicPings = true
+        flow.allocateProtectedPath = true
+        flow.source.innerVlanId = flow.destination.vlanId
+        flow.destination.innerVlanId = flow.source.vlanId
         flowHelper.addFlow(flow)
 
         then: "History record is created"
@@ -61,11 +72,14 @@ class FlowHistorySpec extends HealthCheckSpecification {
             dump.forwardStatus == "IN_PROGRESS" // issue 3038
             dump.reverseStatus == "IN_PROGRESS"
             dump.reverseMeterId > 0
+            dump.sourceInnerVlan == flow.source.innerVlanId
+            dump.destinationInnerVlan == flow.destination.innerVlanId
             //dump.allocateProtectedPath == flow.allocateProtectedPath // issue 3031
             //dump.encapsulationType == flow.encapsulationType
             //dump.pinned == flow.pinned
             //dump.pathComputationStrategy == flow.pathComputationStrategy
             //dump.periodicPings == flow.periodicPings
+            //dump.maxLatency == flow.maxLatency
         }
 
         when: "Update the created flow"

@@ -29,5 +29,6 @@ import lombok.Value;
 @JsonNaming(value = SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = true)
 public class RemoveFlow extends Message {
+    Headers headers;
     String flowId;
 }

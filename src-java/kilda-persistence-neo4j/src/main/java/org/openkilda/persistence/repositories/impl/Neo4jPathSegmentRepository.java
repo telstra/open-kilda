@@ -19,10 +19,11 @@ import static java.lang.String.format;
 
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.PathIdConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
+import org.openkilda.persistence.exceptions.EntityNotFoundException;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 
 import org.neo4j.ogm.session.Neo4jSession;
@@ -62,7 +63,7 @@ public class Neo4jPathSegmentRepository extends Neo4jGenericRepository<PathSegme
                         + "SET ps.failed=$failed "
                         + "RETURN id(ps) as id", parameters, "id");
         if (!updatedEntityId.isPresent()) {
-            throw new PersistenceException(format("PathSegment not found to be updated: %s_%d - %s_%d. Path id: %s.",
+            throw new EntityNotFoundException(format("PathSegment not found to be updated: %s_%d - %s_%d. Path id: %s.",
                     segment.getSrcSwitch().getSwitchId(), segment.getSrcPort(),
                     segment.getDestSwitch().getSwitchId(), segment.getDestPort(), pathId));
         }

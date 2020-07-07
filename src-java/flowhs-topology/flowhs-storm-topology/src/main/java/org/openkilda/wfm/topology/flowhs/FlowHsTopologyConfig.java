@@ -45,6 +45,11 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getPingTopic();
     }
 
+    default String getKafkaFlowHsServer42StormNotifyTopic() {
+        return getKafkaTopics().getFlowHsServer42StormNotifyTopic();
+    }
+
+
     @Key("flow.hub.transaction.retries")
     @Default("3")
     int getHubTransactionRetries();

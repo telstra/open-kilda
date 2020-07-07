@@ -42,6 +42,16 @@ public class FlowDestAdapter extends FlowSideAdapter {
     }
 
     @Override
+    public boolean isDetectConnectedDevicesLldp() {
+        return flow.getDetectConnectedDevices().isDstLldp();
+    }
+
+    @Override
+    public boolean isDetectConnectedDevicesArp() {
+        return flow.getDetectConnectedDevices().isDstArp();
+    }
+
+    @Override
     public boolean isPrimaryEgressPath(@NonNull PathId pathId) {
         return pathId.equals(flow.getReversePathId());
     }

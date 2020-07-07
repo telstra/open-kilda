@@ -9,6 +9,7 @@ import { NgxSpinnerService } from 'ngx-spinner';
 import { LoaderService } from '../../../common/services/loader.service';
 import { local } from 'd3';
 import { CommonService } from '../../../common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 declare var jQuery: any;
 
 @Component({
@@ -113,7 +114,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
   getFlowList(statusParam,filter){ 
     this.loadingData = true;
     this.dataSet = [];
-    this.loaderService.show("Loading Flows");
+    this.loaderService.show(MessageObj.loading_flows);
     localStorage.removeItem('flowDetail');
     if(filter != null) { 
       this.filterFlag = filter;
@@ -127,7 +128,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
       this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
         this.dataSet = data || [];
         if(this.dataSet.length == 0){
-          this.toastr.info("No Flows Available",'Information');
+          this.toastr.info(MessageObj.no_flow_available,'Information');
         }else{
           var flowListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
           localStorage.setItem('filterFlag',this.filterFlag)

@@ -82,6 +82,7 @@ public class SwitchController {
 
     @RequestMapping(value = "/list")
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_SWITCHES })
     public @ResponseBody List<SwitchInfo> getSwitchesDetail(
             @RequestParam(value = "storeConfigurationStatus", required = false) 
             final boolean storeConfigurationStatus,
@@ -97,12 +98,14 @@ public class SwitchController {
      */
     @RequestMapping(value = "/{switchId}")
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_SWITCHES })
     public @ResponseBody SwitchInfo getSwitchDetail(@PathVariable final String switchId,
             @RequestParam(value = "controller", required = false) 
             final boolean controller) {
         return serviceSwitch.getSwitch(switchId, controller);
     }
 
+    
     /**
      * Save or update switch name.
      *
@@ -133,6 +136,7 @@ public class SwitchController {
      */
     @RequestMapping(value = "/links", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_ISL })
     public @ResponseBody List<IslLinkInfo> getLinksDetail(@RequestParam(value = "src_switch",
             required = false) final String srcSwitch, @RequestParam(value = "src_port",
             required = false) final String srcPort, @RequestParam(value = "dst_switch",
@@ -369,7 +373,7 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.SW_UPDATE_PORT_PROPERTIES })
     public @ResponseBody SwitchProperty updateSwitchPortProperty(@PathVariable final String switchId, 
-            @PathVariable final int port, @RequestBody SwitchProperty switchProperty) {
+            @PathVariable final String port, @RequestBody SwitchProperty switchProperty) {
         activityLogger.log(ActivityType.UPDATE_SW_PORT_PROPERTIES, switchId);
         return serviceSwitch.updateSwitchPortProperty(switchId, port, switchProperty);
     }
@@ -383,7 +387,7 @@ public class SwitchController {
     @RequestMapping(value = "/{switchId}/ports/{port}/properties", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody SwitchProperty getSwitchPortProperty(@PathVariable final String switchId, 
-            @PathVariable final int port) {
+            @PathVariable final String port) {
         return serviceSwitch.getSwitchPortProperty(switchId, port);
     }
 }

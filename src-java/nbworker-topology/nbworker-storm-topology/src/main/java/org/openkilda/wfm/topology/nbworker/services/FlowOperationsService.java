@@ -327,6 +327,9 @@ public class FlowOperationsService {
             if (flowPatch.getTargetPathComputationStrategy() != null) {
                 currentFlow.setTargetPathComputationStrategy(flowPatch.getTargetPathComputationStrategy());
             }
+            if (flowPatch.getPinned() != null) {
+                currentFlow.setPinned(flowPatch.getPinned());
+            }
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);
 

@@ -1,5 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
+import { CommonService } from 'src/app/common/services/common.service';
+import { ToastrService } from 'ngx-toastr';
+import { Router } from '@angular/router';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 
 @Component({
@@ -11,8 +15,16 @@ export class IslComponent implements OnInit {
 
   page: string = 'list';	
   constructor(
-    private titleService: Title
-  ) { }
+    private titleService: Title,
+    private commonService:CommonService,
+    private toastr:ToastrService,
+    private router:Router
+  ) {
+    if(!this.commonService.hasPermission('menu_isl')){
+      this.toastr.error(MessageObj.unauthorised);  
+       this.router.navigate(["/home"]);
+      }
+   }
 
   ngOnInit() {
   }

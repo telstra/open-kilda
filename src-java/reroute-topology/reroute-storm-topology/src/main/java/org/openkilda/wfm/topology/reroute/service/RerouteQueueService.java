@@ -90,6 +90,11 @@ public class RerouteQueueService {
             ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, "Could not reroute flow", description);
             carrier.emitFlowRerouteError(errorData);
             return;
+        } else if (flow.get().isPinned()) {
+            String description = "Can't reroute pinned flow";
+            ErrorData errorData = new ErrorData(ErrorType.UNPROCESSABLE_REQUEST, "Could not reroute flow", description);
+            carrier.emitFlowRerouteError(errorData);
+            return;
         }
         RerouteQueue rerouteQueue = getRerouteQueue(flowId);
         if (rerouteQueue.hasInProgress()) {

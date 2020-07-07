@@ -6,6 +6,7 @@ import { PermissionService } from '../../../../common/services/permission.servic
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-permission-add',
@@ -41,7 +42,7 @@ export class PermissionAddComponent implements OnInit {
     Description: Add new permission
   */
   addPermission(){
-    this.loaderService.show("Adding Permission");
+    this.loaderService.show(MessageObj.adding_permission);
     this.submitted = true;
     if (this.permissionAddForm.invalid) {
       return;
@@ -54,7 +55,7 @@ export class PermissionAddComponent implements OnInit {
 
     this.permissionService.addPermission(this.permissionData).subscribe(permission => {
       this.loaderService.hide();
-      this.toastr.success("Permission added successfully!",'Success! ');
+      this.toastr.success(MessageObj.permission_added,'Success! ');
       this.tabService.setSelectedTab('permissions');
     },error =>{
       this.loaderService.hide();

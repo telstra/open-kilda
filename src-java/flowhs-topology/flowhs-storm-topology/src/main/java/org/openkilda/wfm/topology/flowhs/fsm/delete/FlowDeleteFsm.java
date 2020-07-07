@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -66,6 +67,13 @@ public final class FlowDeleteFsm extends NbTrackableFsm<FlowDeleteFsm, State, Ev
 
     @Setter
     private FlowStatus originalFlowStatus;
+
+    @Setter
+    private SwitchId dstSwitchId;
+
+    @Setter
+    private SwitchId srcSwitchId;
+
     private final Collection<FlowResources> flowResources = new ArrayList<>();
 
     private final Set<UUID> pendingCommands = new HashSet<>();

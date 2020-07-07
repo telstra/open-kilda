@@ -8,6 +8,7 @@ import { RoleService } from '../../../../common/services/role.service';
 import { UserService } from '../../../../common/services/user.service';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-user-edit',
@@ -41,7 +42,7 @@ export class UserEditComponent implements OnInit {
     
     this.roles = [];
     this.selectedRoles = [];
-    this.loaderService.show("Loading Details");
+    this.loaderService.show(MessageObj.loading_details);
     this.roleService.getRoles().subscribe((role: Array<object>) => {
       role.map((role:any) => {
         this.roles.push({ id: role.role_id, name: role.name })
@@ -101,7 +102,7 @@ export class UserEditComponent implements OnInit {
       return;
     }
     
-    this.loaderService.show("Updating User");
+    this.loaderService.show(MessageObj.updating_user);
 
     this.userUpdatedData = {
       name: this.userEditForm.value.name,
@@ -110,7 +111,7 @@ export class UserEditComponent implements OnInit {
     }
 
     this.userService.editUser(this.selectedUser, this.userUpdatedData).subscribe(user => {
-      this.toastr.success("User data updated successfully!",'Success! ');
+      this.toastr.success(MessageObj.user_updated,'Success! ');
       this.tabService.setSelectedTab('users');
       this.loaderService.hide();
     },error =>{

@@ -33,6 +33,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesReque
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
@@ -47,8 +48,10 @@ import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringOnSwitchInfoData;
+import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoringOnSwitchInfoData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
@@ -119,6 +122,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
         }  else if (request instanceof GetSwitchConnectedDevicesRequest) {
             result = Collections.singletonList(getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request));
+        }  else if (request instanceof SwitchPatchRequest) {
+            result = Collections.singletonList(patchSwitch((SwitchPatchRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -160,7 +165,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
                     flowOperationsService.getFlowPathsForSwitch(switchId), affectedIslEndpoint, reason)) {
                 CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
-                getOutput().emit(StreamType.FLOWHS.toString(), tuple,
+                getOutput().emit(StreamType.REROUTE.toString(), tuple,
                         new Values(reroute, forkedContext.getCorrelationId()));
             }
         }
@@ -267,6 +272,15 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         return new SwitchConnectedDevicesResponse(ports);
     }
 
+    private GetSwitchResponse patchSwitch(SwitchPatchRequest request) {
+        try {
+            return new GetSwitchResponse(
+                    switchOperationsService.patchSwitch(request.getSwitchId(), request.getSwitchPatch()));
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
+        }
+    }
+
     @Override
     public void requestSwitchSync(SwitchId switchId) {
         SwitchValidateRequest data = SwitchValidateRequest.builder()
@@ -280,13 +294,33 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     }
 
     @Override
+    public void enableServer42FlowRttOnSwitch(SwitchId switchId) {
+        ActivateFlowMonitoringOnSwitchInfoData data = ActivateFlowMonitoringOnSwitchInfoData.builder()
+                .switchId(switchId)
+                .build();
+        getOutput().emit(StreamType.TO_SERVER42.toString(), getCurrentTuple(),
+                new Values(data, getCorrelationId()));
+    }
+
+    @Override
+    public void disableServer42FlowRttOnSwitch(SwitchId switchId) {
+        DeactivateFlowMonitoringOnSwitchInfoData data = DeactivateFlowMonitoringOnSwitchInfoData.builder()
+                .switchId(switchId)
+                .build();
+        getOutput().emit(StreamType.TO_SERVER42.toString(), getCurrentTuple(),
+                new Values(data, getCorrelationId()));
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.FLOWHS.toString(),
+        declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.TO_SWITCH_MANAGER.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.TO_SERVER42.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

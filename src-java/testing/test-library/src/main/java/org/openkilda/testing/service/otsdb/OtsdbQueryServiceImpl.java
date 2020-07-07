@@ -20,12 +20,14 @@ import static java.util.stream.Collectors.toList;
 import org.openkilda.testing.service.otsdb.model.Aggregator;
 import org.openkilda.testing.service.otsdb.model.StatsResult;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class OtsdbQueryServiceImpl implements OtsdbQueryService {
 
     @Autowired
@@ -49,8 +52,20 @@ public class OtsdbQueryServiceImpl implements OtsdbQueryService {
                 .collect(toList());
         String tagsString = "{" + String.join(",", tagParts) + "}";
         uriBuilder.queryParam("m", String.format("%s:%s{tags}", aggregator.toString(), metric));
-        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
-                new HttpEntity<>(new HttpHeaders()), StatsResult[].class, tagsString).getBody()[0];
+
+        try {
+
+            StatsResult[] results = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                    new HttpEntity<>(new HttpHeaders()), StatsResult[].class, tagsString).getBody();
+
+            if (results != null && results.length > 0) {
+                return results[0];
+            }
+        } catch (HttpClientErrorException ex) {
+            log.info(ex.toString());
+        }
+
+        return new StatsResult();
     }
 
     @Override

@@ -21,8 +21,8 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
 
 import lombok.extern.slf4j.Slf4j;

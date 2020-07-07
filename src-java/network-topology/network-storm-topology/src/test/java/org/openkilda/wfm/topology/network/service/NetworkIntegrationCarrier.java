@@ -23,6 +23,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.model.PortProperties;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
@@ -195,6 +196,11 @@ public class NetworkIntegrationCarrier
 
     @Override
     public void sendAffectedFlowRerouteRequest(SwitchId switchId) {
+    }
+
+    @Override
+    public void sendSwitchStateChanged(SwitchId switchId, SwitchStatus status) {
+
     }
 
     @Override

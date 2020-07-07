@@ -25,9 +25,9 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
@@ -357,7 +357,7 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Noviflow switches"
@@ -572,10 +572,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Flow is pingable"
+        and: "Unable to ping a one-switch vxlan flow"
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            forward.pingSuccess
-            reverse.pingSuccess
+            !forward
+            !reverse
+            error == "Flow ${flow.flowId} should not be one switch flow"
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
@@ -589,12 +590,6 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        }
-
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            forward.pingSuccess
-            reverse.pingSuccess
         }
 
         and: "Rules are recreated"

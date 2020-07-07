@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
@@ -104,16 +105,17 @@ public class LoginController extends BaseController {
      * @param request the request
      * @return the model and view
      */
+    
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") String username,
-            @RequestParam("password") final String password, final HttpServletRequest request) {
+            @RequestParam("password") final String password, final HttpServletRequest request, 
+            RedirectAttributes redir) {
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
         username = username != null ? username.toLowerCase() : null;
         UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
         CustomWebAuthenticationDetails customWebAuthenticationDetails = new CustomWebAuthenticationDetails(request);
         token.setDetails(customWebAuthenticationDetails);
-
         try {
             Authentication authenticate = authenticationManager.authenticate(token);
             if (authenticate.isAuthenticated()) {
@@ -166,12 +168,16 @@ public class LoginController extends BaseController {
             error = "Login Failed. Error: '" + e.getMessage() + "'.";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }
-
         if (error != null) {
-            modelAndView.addObject("error", error);
+            redir.addFlashAttribute("error", error);
+            //modelAndView.addObject("error", error);
         }
         return modelAndView;
     }
+    
+    
+    
+  
 
     /**
      * Add user information in session.

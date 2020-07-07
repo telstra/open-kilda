@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static java.lang.String.format;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
+import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.model.Flow;
@@ -314,6 +315,13 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         if (result.isSwitchSyncRequired()) {
             carrier.requestSwitchSync(switchId);
         }
+
+        if (switchPropertiesDto.isServer42FlowRtt()) {
+            carrier.enableServer42FlowRttOnSwitch(switchId);
+        } else {
+            carrier.disableServer42FlowRttOnSwitch(switchId);
+        }
+
         return result.switchPropertiesDto;
     }
 
@@ -424,6 +432,28 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         return islRepository.findBySrcSwitch(switchId).stream()
                 .map(isl -> new IslEndpoint(switchId, isl.getSrcPort()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Patch switch.
+     */
+    public Switch patchSwitch(SwitchId switchId, SwitchPatch data) throws SwitchNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            Switch foundSwitch = switchRepository.findById(switchId)
+                    .orElseThrow(() -> new SwitchNotFoundException(switchId));
+
+            Optional.ofNullable(data.getPop()).ifPresent(foundSwitch::setPop);
+            Optional.ofNullable(data.getLocation()).ifPresent(location -> {
+                Optional.ofNullable(location.getLatitude()).ifPresent(foundSwitch::setLatitude);
+                Optional.ofNullable(location.getLongitude()).ifPresent(foundSwitch::setLongitude);
+                Optional.ofNullable(location.getStreet()).ifPresent(foundSwitch::setStreet);
+                Optional.ofNullable(location.getCity()).ifPresent(foundSwitch::setCity);
+                Optional.ofNullable(location.getCountry()).ifPresent(foundSwitch::setCountry);
+            });
+
+            switchRepository.createOrUpdate(foundSwitch);
+            return foundSwitch;
+        });
     }
 
     @Value

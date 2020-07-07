@@ -23,6 +23,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -31,9 +32,11 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.EntityNotFoundException;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
@@ -63,14 +66,12 @@ public class RerouteService {
     private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
-    private FlowPathRepository pathRepository;
     private PathSegmentRepository pathSegmentRepository;
     private TransactionManager transactionManager;
 
     public RerouteService(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
-        this.pathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.pathSegmentRepository = persistenceManager.getRepositoryFactory().createPathSegmentRepository();
         this.transactionManager = persistenceManager.getTransactionManager();
     }
@@ -99,19 +100,27 @@ public class RerouteService {
 
         for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {
             Flow flow = entry.getFlow();
-            transactionManager.doInTransaction(() -> {
-                updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
-                flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
+            Boolean sendRerouteRequest = transactionManager.doInTransaction(() -> {
+                boolean flowPathFound = updateFlowPathsStateForFlow(switchId, port, entry.getAffectedPaths());
+                FlowStatus flowStatus = flow.computeFlowStatus();
+                String flowStatusInfo = null;
+                if (!FlowStatus.UP.equals(flowStatus)) {
+                    flowStatusInfo = command.getReason();
+                }
+                flowRepository.updateStatusSafe(flow.getFlowId(), flowStatus, flowStatusInfo);
+                return flowPathFound;
             });
 
-            FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
-                    .correlationId(correlationId)
-                    .affectedIsl(Collections.singleton(affectedIsl))
-                    .force(false)
-                    .effectivelyDown(true)
-                    .reason(command.getReason())
-                    .build();
-            sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+            if (sendRerouteRequest) {
+                FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow)
+                        .correlationId(correlationId)
+                        .affectedIsl(Collections.singleton(affectedIsl))
+                        .force(false)
+                        .effectivelyDown(true)
+                        .reason(command.getReason())
+                        .build();
+                sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+            }
         }
 
         Set<Flow> affectedPinnedFlows = groupAffectedPinnedFlows(affectedFlowPaths);
@@ -121,13 +130,14 @@ public class RerouteService {
                 updateFlowPathsStateForFlow(switchId, port, flowPaths);
                 if (flow.getStatus() != FlowStatus.DOWN) {
                     flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.DOWN);
-                    flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN);
+                    flowRepository.updateStatusSafe(flow.getFlowId(), FlowStatus.DOWN, command.getReason());
                 }
             });
         }
     }
 
-    private void updateFlowPathsStateForFlow(SwitchId switchId, int port, List<FlowPath> paths) {
+    private boolean updateFlowPathsStateForFlow(SwitchId switchId, int port, List<FlowPath> paths) {
+        boolean rerouteRequired = false;
         for (FlowPath fp : paths) {
             boolean failedFlowPath = false;
             for (PathSegment pathSegment : fp.getSegments()) {
@@ -136,8 +146,14 @@ public class RerouteService {
                         || (pathSegment.getDestPort() == port
                         && switchId.equals(pathSegment.getDestSwitch().getSwitchId()))) {
                     pathSegment.setFailed(true);
-                    pathSegmentRepository.updateFailedStatus(fp.getPathId(), pathSegment, true);
-                    failedFlowPath = true;
+                    try {
+                        pathSegmentRepository.updateFailedStatus(fp.getPathId(), pathSegment, true);
+                        failedFlowPath = true;
+                        rerouteRequired = true;
+                    } catch (EntityNotFoundException e) {
+                        log.warn("Path segment not found for flow {} and path {}. Skipping path segment status update.",
+                                fp.getFlow().getFlowId(), fp.getPathId(), e);
+                    }
                     break;
                 }
             }
@@ -145,6 +161,7 @@ public class RerouteService {
                 updateFlowPathStatus(fp, FlowPathStatus.INACTIVE);
             }
         }
+        return rerouteRequired;
     }
 
     /**
@@ -230,7 +247,12 @@ public class RerouteService {
 
                     allAffectedIslEndpoints.addAll(affectedIslEndpoints);
                 }
-                flowRepository.updateStatusSafe(flow.getFlowId(), flow.computeFlowStatus());
+                FlowStatus flowStatus = flow.computeFlowStatus();
+                String flowStatusInfo = null;
+                if (!FlowStatus.UP.equals(flowStatus)) {
+                    flowStatusInfo = command.getReason();
+                }
+                flowRepository.updateStatusSafe(flow.getFlowId(), flowStatus, flowStatusInfo);
             });
 
             if (flow.isPinned()) {
@@ -260,7 +282,7 @@ public class RerouteService {
      */
     public Collection<FlowPath> getAffectedFlowPaths(SwitchId switchId, int port) {
         log.info("Get affected flow paths by node {}_{}", switchId, port);
-        return pathRepository.findBySegmentEndpoint(switchId, port);
+        return flowPathRepository.findBySegmentEndpoint(switchId, port);
     }
 
 
@@ -357,6 +379,29 @@ public class RerouteService {
                 .reason(request.getReason())
                 .build();
         sender.emitManualRerouteCommand(request.getFlowId(), flowThrottlingData);
+    }
+
+    /**
+     * Handles request to update single switch flow status.
+     */
+    public void processSingleSwitchFlowStatusUpdate(SwitchStateChanged request) {
+        Collection<Flow> affectedFlows = flowRepository.findOneSwitchFlows(request.getSwitchId());
+        FlowStatus newFlowStatus = request.getStatus() == SwitchStatus.ACTIVE ? FlowStatus.UP : FlowStatus.DOWN;
+        String newFlowStatusInfo = request.getStatus() == SwitchStatus.ACTIVE
+                ? null : format("Switch %s is inactive", request.getSwitchId());
+        FlowPathStatus newFlowPathStatus = request.getStatus() == SwitchStatus.ACTIVE
+                ? FlowPathStatus.ACTIVE : FlowPathStatus.INACTIVE;
+        for (Flow flow : affectedFlows) {
+            log.info("Updating flow and path statuses for flow {} to {}, {}", flow.getFlowId(), newFlowStatus,
+                    newFlowPathStatus);
+            transactionManager.doInTransaction(() -> {
+                FlowPath forward = flow.getForwardPath();
+                FlowPath reverse = flow.getReversePath();
+                flowRepository.updateStatus(flow.getFlowId(), newFlowStatus, newFlowStatusInfo);
+                flowPathRepository.updateStatus(forward.getPathId(), newFlowPathStatus);
+                flowPathRepository.updateStatus(reverse.getPathId(), newFlowPathStatus);
+            });
+        }
     }
 
     private FlowThrottlingDataBuilder getFlowThrottlingDataBuilder(Flow flow) {

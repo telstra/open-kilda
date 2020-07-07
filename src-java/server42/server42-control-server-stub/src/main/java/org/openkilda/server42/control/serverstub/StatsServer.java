@@ -30,6 +30,7 @@ import org.zeromq.ZMQ.Socket;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 /**
@@ -71,16 +72,17 @@ public class StatsServer extends Thread {
             while (!isInterrupted()) {
                 FlowLatencyPacketBucket.Builder flowBucketBuilder = FlowLatencyPacketBucket.newBuilder();
                 FlowLatencyPacket.Builder flowLatencyPacketBuilder = FlowLatencyPacket.newBuilder();
-                long millis = Instant.now().toEpochMilli();
+                long seconds = TimeUnit.MILLISECONDS.toSeconds(Instant.now().toEpochMilli());
+                long timestamp = seconds << 32;
                 synchronized (this) {
                     for (FlowStats flow : flows.values()) {
                         flowLatencyPacketBuilder.setFlowId(flow.flowId);
                         flowLatencyPacketBuilder.setDirection(flow.direction);
-                        flowLatencyPacketBuilder.setT0(millis);
+                        flowLatencyPacketBuilder.setT0(timestamp);
 
                         long generatedLatency = MIN_DELTA_LATENCY
                                 + (long) (Math.random() * (MAX_DELTA_LATENCY - MIN_DELTA_LATENCY));
-                        flowLatencyPacketBuilder.setT1(millis + flow.baseLatency + generatedLatency);
+                        flowLatencyPacketBuilder.setT1(timestamp + flow.baseLatency + generatedLatency);
                         flowBucketBuilder.addPacket(flowLatencyPacketBuilder.build());
                     }
                 }

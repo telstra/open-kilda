@@ -154,7 +154,10 @@ public class GateTest {
 
     @Test
     public void clearFlowsTest() throws Exception {
-        gate.listen(new ClearFlows());
+        Headers headers = Headers.builder().correlationId("some-correlation-id").build();
+        ClearFlows clearFlows = ClearFlows.builder().headers(headers).build();
+
+        gate.listen(clearFlows);
         CommandPacket commandPacket = getCommandPacket();
         assertThat(commandPacket.getType()).isEqualTo(Type.CLEAR_FLOWS);
         assertThat(commandPacket.getCommandList()).isEmpty();

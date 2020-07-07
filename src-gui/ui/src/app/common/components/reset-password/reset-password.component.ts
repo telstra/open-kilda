@@ -2,6 +2,7 @@ import { Component, OnInit } from "@angular/core";
 import { NgbActiveModal, NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { ClipboardService } from "ngx-clipboard";
 import { ToastrService } from "ngx-toastr";
+import { MessageObj } from '../../constants/constants';
 
 @Component({
   selector: "app-reset-password",
@@ -22,6 +23,6 @@ export class ResetPasswordComponent implements OnInit {
   copyPassword(content) {
     this.clipboardService.copyFromContent(content);
     this.toaster.clear();
-    this.toaster.success("Password Copied");
+    this.toaster.success(MessageObj.pwd_copied);
   }
 }

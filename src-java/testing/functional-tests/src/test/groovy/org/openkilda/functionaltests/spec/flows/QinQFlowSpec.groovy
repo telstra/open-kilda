@@ -3,11 +3,14 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -34,6 +37,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Unroll
+    @IterationTags([
+            @IterationTag(tags=[SMOKE_SWITCHES],
+                    iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
+    ])
     def "System allows to manipulate with QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
@@ -248,11 +255,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
+
+        and: "Unable to ping a one-switch qinq flow"
         verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
+            !it.forward
+            !it.reverse
+            it.error == "Flow ${qinqFlow.flowId} should not be one switch flow"
         }
 
         and: "Involved switches pass switch validation"
@@ -584,12 +594,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
             it.destination.innerVlanId == (dstVlanId ? dstInnerVlanId : 0)
         }
 
-        and: "Flow is valid and pingable"
+        and: "Flow is valid"
         northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
-        verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
 
         and: "Involved switches pass switch validation"
         with(pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId)))) {
@@ -619,6 +625,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     @Unroll
     @Tags(HARDWARE) //not tested
+    @IterationTags([
+            @IterationTag(tags=[SMOKE_SWITCHES],
+                    iterationNameRegex = /srcVlanId: 10, srcInnerVlanId: 20, dstVlanId: 30, dstInnerVlanId: 0/)
+    ])
     def "System allows to manipulate with QinQ vxlan flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
@@ -822,7 +832,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Delete all flow rules(ingress/egress/shared) on the src switch"
-        northbound.deleteSwitchRule s(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+        northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
         with(northbound.validateSwitch(swP.src.dpId).rules) {

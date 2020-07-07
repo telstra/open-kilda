@@ -69,6 +69,7 @@ public class PermissionController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
     public List<Permission> getPermissionList(final HttpServletRequest request) {
         UserInfo userInfo = (UserInfo) request.getSession().getAttribute(IConstants.SESSION_OBJECT);
         return permissionService.getAllPermission(userInfo.getUserId());
@@ -82,6 +83,7 @@ public class PermissionController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.GET)
+    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
     public Permission getPermissionById(@PathVariable("permission_id") final Long permissionId) {
         return permissionService.getPermissionById(permissionId);
     }

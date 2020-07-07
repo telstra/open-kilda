@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
 
-/**
- * An exception that indicates a temporary fault during a persistence operation
- * that may be worked around by retrying.
- */
-public class RecoverablePersistenceException extends PersistenceException {
-    public RecoverablePersistenceException(String message) {
-        super(message);
-    }
+package org.openkilda.server42.control.topology.storm.bolt.flow.command;
 
-    public RecoverablePersistenceException(String message, Throwable cause) {
-        super(message, cause);
+import org.openkilda.model.SwitchId;
+import org.openkilda.server42.control.topology.storm.ICommand;
+import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
+
+import lombok.Getter;
+
+public abstract class FlowCommand implements ICommand<FlowHandler> {
+    @Getter
+    private final SwitchId switchId;
+
+    FlowCommand(SwitchId switchId) {
+        this.switchId = switchId;
     }
 }

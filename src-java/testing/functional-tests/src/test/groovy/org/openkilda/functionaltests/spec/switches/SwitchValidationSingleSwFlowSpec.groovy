@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -23,12 +24,12 @@ import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.model.FlowEndpoint
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
@@ -49,6 +50,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
+@Tags([SMOKE_SWITCHES])
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     String speakerTopic

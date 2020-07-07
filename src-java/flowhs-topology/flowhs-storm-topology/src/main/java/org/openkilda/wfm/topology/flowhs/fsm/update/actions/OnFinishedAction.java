@@ -40,10 +40,12 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowUpdateFsm, Stat
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         if (stateMachine.getNewFlowStatus() == FlowStatus.UP) {
             sendPeriodicPingNotification(stateMachine);
+            updateFlowMonitoring(stateMachine);
             dashboardLogger.onSuccessfulFlowUpdate(stateMachine.getFlowId());
             stateMachine.saveActionToHistory("Flow was updated successfully");
         } else if (stateMachine.getNewFlowStatus() == FlowStatus.DEGRADED) {
             sendPeriodicPingNotification(stateMachine);
+            updateFlowMonitoring(stateMachine);
             dashboardLogger.onFailedFlowUpdate(stateMachine.getFlowId(), "Protected path not found");
             stateMachine.saveActionToHistory("Main flow path updated successfully but no protected path found");
         } else {
@@ -62,5 +64,34 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowUpdateFsm, Stat
         RequestedFlow requestedFlow = stateMachine.getTargetFlow();
         stateMachine.getCarrier().sendPeriodicPingNotification(requestedFlow.getFlowId(),
                 requestedFlow.isPeriodicPings());
+    }
+
+    private void updateFlowMonitoring(FlowUpdateFsm stateMachine) {
+        // If was single flow do nothing
+
+        RequestedFlow original = stateMachine.getOriginalFlow();
+        RequestedFlow target = stateMachine.getTargetFlow();
+
+        boolean originalNotSingle = !original.getSrcSwitch().equals(original.getDestSwitch());
+        boolean targetNotSingle = !target.getSrcSwitch().equals(target.getDestSwitch());
+        boolean srcUpdated = !(original.getSrcSwitch().equals(target.getSrcSwitch())
+                && original.getSrcPort() == target.getSrcPort()
+                && original.getSrcVlan() == target.getSrcVlan()
+                && original.getSrcInnerVlan() == target.getSrcInnerVlan());
+        boolean dstUpdated = !(original.getDestSwitch().equals(target.getDestSwitch())
+                && original.getDestPort() == target.getDestPort()
+                && original.getDestVlan() == target.getDestVlan()
+                && original.getDestInnerVlan() == target.getDestInnerVlan());
+
+        // clean up old if old not single
+        if (originalNotSingle && (srcUpdated || dstUpdated)) {
+            stateMachine.getCarrier().sendDeactivateFlowMonitoring(stateMachine.getFlowId(),
+                    original.getSrcSwitch(), original.getDestSwitch());
+
+        }
+        // setup new if new not single
+        if (targetNotSingle && (srcUpdated || dstUpdated)) {
+            stateMachine.getCarrier().sendActivateFlowMonitoring(target);
+        }
     }
 }

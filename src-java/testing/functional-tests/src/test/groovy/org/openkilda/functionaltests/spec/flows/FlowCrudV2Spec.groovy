@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -74,7 +73,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     @IterationTags([
             @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex =
-                    /transit switch and random vlans|transit switch and no vlans|single-switch flow with vlans/),
+                    /random vlans|no vlans|single-switch flow with vlans/),
             @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
@@ -682,7 +681,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
-        def notConnectedIsl = topology.notConnectedIsls.first()
+        def notConnectedIsls = topology.notConnectedIsls
+        assumeTrue("Unable to find non-connected isl", notConnectedIsls.size() > 0)
+        def notConnectedIsl = notConnectedIsls.first()
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
@@ -709,7 +710,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Tags(VIRTUAL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]

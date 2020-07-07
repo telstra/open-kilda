@@ -17,6 +17,7 @@ import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from "@angular/platform-browser";
 import { StoreSettingtService } from "src/app/common/services/store-setting.service";
 import { CommonService } from "src/app/common/services/common.service";
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: "app-switch-list",
@@ -50,7 +51,6 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {}
-
 
 
   loadSwitchList(filter){
@@ -100,7 +100,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
       this.switchFilterFlag = filter;
     }
     this.loadingData = true;
-    this.loaderService.show("Loading Switches");
+    this.loaderService.show(MessageObj.loading_switches);
     let query = {controller:this.switchFilterFlag == 'controller', _: new Date().getTime(),storeConfigurationStatus:this.hasStoreSetting };
     this.switchService.getSwitchList(query).subscribe(
       (data: any) => {
@@ -112,7 +112,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
         }
        
         if (!data || data.length == 0) {
-          this.toastr.info("No Switch Available", "Information");
+          this.toastr.info(MessageObj.no_switch_available, "Information");
           this.dataSet = [];
         } else {
           this.dataSet = data;
@@ -126,7 +126,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
       },
       error => {
         this.loaderService.hide();
-        this.toastr.info("No Switch Available", "Information");
+        this.toastr.info(MessageObj.no_switch_available, "Information");
         this.dataSet = [];
         this.loadingData = false;
       }
@@ -134,8 +134,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
   }
 
   getStoreSwitchSettings(){
-    let query = {_:new Date().getTime()};
-    
+    let query = {_:new Date().getTime()};    
     this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting=>{
       this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
       this.loadSwitchList(this.switchFilterFlag);

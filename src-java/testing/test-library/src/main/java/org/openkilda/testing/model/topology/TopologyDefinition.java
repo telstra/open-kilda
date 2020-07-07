@@ -189,6 +189,19 @@ public class TopologyDefinition {
         return isls;
     }
 
+    /**
+     * Get all switches that are marked as active in config with server42 enabled.
+     */
+    @JsonIgnore
+    public List<Switch> getActiveServer42Switches() {
+        return switches.stream()
+                .filter(Switch::isActive)
+                .filter(s -> s.prop != null
+                        && s.prop.server42FlowRtt != null
+                        && s.prop.server42FlowRtt)
+                .collect(toList());
+    }
+
     @Value
     @NonFinal
     @JsonNaming(SnakeCaseStrategy.class)
@@ -213,6 +226,8 @@ public class TopologyDefinition {
         @NonFinal
         private String controller;
 
+        private SwitchProperties prop;
+
         /**
          * Create a Switch instance.
          */
@@ -225,7 +240,8 @@ public class TopologyDefinition {
                 @JsonProperty("region") String region,
                 @JsonProperty("out_ports") List<OutPort> outPorts,
                 @JsonProperty("max_port") Integer maxPort,
-                @JsonProperty("controller") String controller) {
+                @JsonProperty("controller") String controller,
+                @JsonProperty("prop") SwitchProperties properties) {
             if (outPorts == null) {
                 outPorts = emptyList();
             }
@@ -233,7 +249,7 @@ public class TopologyDefinition {
                 maxPort = DEFAULT_MAX_PORT;
             }
 
-            return new Switch(name, dpId, ofVersion, status, region, outPorts, maxPort, controller);
+            return new Switch(name, dpId, ofVersion, status, region, outPorts, maxPort, controller, properties);
         }
 
         @JsonIgnore
@@ -296,6 +312,35 @@ public class TopologyDefinition {
             }
 
             return resultVlanRange.build();
+        }
+    }
+
+    @Value
+    @NonFinal
+    @JsonNaming(SnakeCaseStrategy.class)
+    public static class SwitchProperties {
+
+        @JsonProperty("server42_flow_rtt")
+        private Boolean server42FlowRtt;
+
+        @JsonProperty("server42_port")
+        private Integer server42Port;
+
+        @JsonProperty("server42_mac_address")
+        private String server42MacAddress;
+
+        @JsonProperty("server42_vlan")
+        private Integer server42Vlan;
+
+
+        public SwitchProperties(@JsonProperty("server42_flow_rtt") Boolean server42FlowRtt,
+                                @JsonProperty("server42_port") Integer server42Port,
+                                @JsonProperty("server42_mac_address")String server42MacAddress,
+                                @JsonProperty("server42_vlan") Integer server42Vlan) {
+            this.server42FlowRtt = server42FlowRtt;
+            this.server42Port = server42Port;
+            this.server42MacAddress = server42MacAddress;
+            this.server42Vlan = server42Vlan;
         }
     }
 

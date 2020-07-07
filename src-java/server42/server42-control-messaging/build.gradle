@@ -1,9 +1,15 @@
+plugins {
+    id 'java-library'
+}
+
 dependencies {
     implementation 'com.google.protobuf:protobuf-java:3.8.0'
 
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    api project(':base-messaging')
 
     implementation project(':server42-messaging')
 

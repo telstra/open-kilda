@@ -19,6 +19,8 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
+import org.openkilda.messaging.model.SwitchLocation;
+import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
@@ -74,6 +76,14 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
         SwitchOperationsServiceCarrier carrier = new SwitchOperationsServiceCarrier() {
             @Override
             public void requestSwitchSync(SwitchId switchId) {
+            }
+
+            @Override
+            public void enableServer42FlowRttOnSwitch(SwitchId switchId) {
+            }
+
+            @Override
+            public void disableServer42FlowRttOnSwitch(SwitchId switchId) {
             }
         };
         switchOperationsService = new SwitchOperationsService(persistenceManager.getRepositoryFactory(),
@@ -265,6 +275,24 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
         properties.setServer42Vlan(SERVER_42_VLAN_2);
         properties.setServer42MacAddress(null);
         runInvalidServer42PropsTest(properties);
+    }
+
+    @Test
+    public void shouldPatchSwitch() throws SwitchNotFoundException {
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        switchRepository.createOrUpdate(sw);
+
+        SwitchPatch switchPatch =
+                new SwitchPatch("pop", new SwitchLocation(48.860611, 2.337633, "street", "city", "country"));
+        switchOperationsService.patchSwitch(TEST_SWITCH_ID, switchPatch);
+
+        Switch updatedSwitch = switchRepository.findById(TEST_SWITCH_ID).get();
+        assertEquals(switchPatch.getPop(), updatedSwitch.getPop());
+        assertEquals(switchPatch.getLocation().getLatitude(), updatedSwitch.getLatitude());
+        assertEquals(switchPatch.getLocation().getLongitude(), updatedSwitch.getLongitude());
+        assertEquals(switchPatch.getLocation().getStreet(), updatedSwitch.getStreet());
+        assertEquals(switchPatch.getLocation().getCity(), updatedSwitch.getCity());
+        assertEquals(switchPatch.getLocation().getCountry(), updatedSwitch.getCountry());
     }
 
     private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {

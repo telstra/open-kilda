@@ -42,4 +42,5 @@ public class FlowPatch {
     private PathComputationStrategy pathComputationStrategy;
     private PathComputationStrategy targetPathComputationStrategy;
     private String diverseFlowId;
+    private Boolean pinned;
 }

@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -50,6 +51,22 @@ public abstract class FlowSideAdapter {
         }
     }
 
+    /**
+     * Determine flow side by switchId and produce corresponding side-adapter.
+     */
+    public static FlowSideAdapter makeAdapter(SwitchId switchId, Flow flow) {
+        if (flow.isOneSwitchFlow()) {
+            throw new IllegalArgumentException("Unable to determine flow side for one-switch-flow by switch endpoint");
+        } else if (switchId.equals(flow.getSrcSwitch().getSwitchId())) {
+            return new FlowSourceAdapter(flow);
+        } else if (switchId.equals(flow.getDestSwitch().getSwitchId())) {
+            return new FlowDestAdapter(flow);
+        } else {
+            throw new IllegalArgumentException(String.format(
+                    "Unable to map switch %s on any flow side of %s", switchId, flow));
+        }
+    }
+
     protected FlowSideAdapter(Flow flow) {
         this.flow = flow;
     }
@@ -57,6 +74,10 @@ public abstract class FlowSideAdapter {
     public abstract FlowEndpoint getEndpoint();
 
     public abstract boolean isMultiTableSegment();
+
+    public abstract boolean isDetectConnectedDevicesLldp();
+
+    public abstract boolean isDetectConnectedDevicesArp();
 
     public abstract boolean isPrimaryEgressPath(@NonNull PathId pathId);
 }

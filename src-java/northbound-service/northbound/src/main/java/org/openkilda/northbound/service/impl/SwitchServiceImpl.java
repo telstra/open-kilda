@@ -57,6 +57,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdatePortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
@@ -88,6 +89,8 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -540,6 +543,22 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(nbworkerTopic, message)
                 .thenApply(org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse.class::cast)
                 .thenApply(connectedDeviceMapper::map);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwitchDtoV2> patchSwitch(SwitchId switchId, SwitchPatchDto dto) {
+        logger.info("Patch switch request for switch {}", switchId);
+
+        CommandMessage request = new CommandMessage(new SwitchPatchRequest(switchId, switchMapper.map(dto)),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(GetSwitchResponse.class::cast)
+                .thenApply(GetSwitchResponse::getPayload)
+                .thenApply(switchMapper::map);
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

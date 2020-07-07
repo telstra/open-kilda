@@ -24,12 +24,12 @@ import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.FlowEncapsulationTypeConverter;
 import org.openkilda.persistence.converters.IslStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.converters.SwitchStatusConverter;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 
 import com.google.common.collect.ImmutableMap;

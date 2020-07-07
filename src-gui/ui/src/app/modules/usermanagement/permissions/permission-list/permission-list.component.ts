@@ -9,6 +9,7 @@ import { Title } from '@angular/platform-browser';
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
 import { ModalconfirmationComponent } from "../../../../common/components/modalconfirmation/modalconfirmation.component";
 import { CommonService } from '../../../../common/services/common.service';
+import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
   selector: 'app-permission-list',
@@ -41,7 +42,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
   getPermissions(){
     this.loadCount++;
     this.hide = false;
-    this.loaderService.show("Loading Permissions");
+    this.loaderService.show(MessageObj.loading_permission);
     this.permissionService.getPermissions().subscribe((permission: Array<object>) => {
       this.allPermissions = permission;
       this.rerender();
@@ -50,14 +51,14 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
     error => {
       if(error){
         if(error.status == 0){
-          this.toastr.info("Connection Refused",'Warning');
+          this.toastr.info(MessageObj.connection_refused,'Warning');
         }else if(error.error['error-message']){
           this.toastr.error(error.error['error-message'],'Error');
         }else{
-          this.toastr.error("Something went wrong",'Error');
+          this.toastr.error(MessageObj.something_wrong,'Error');
         }
       }else{
-        this.toastr.error("Something went wrong",'Error');
+        this.toastr.error(MessageObj.something_wrong,'Error');
       }
       this.rerender();
     });
@@ -85,7 +86,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
     modalRef.result.then((response) => {
       if(response && response == true){
         this.permissionService.editPermission(id, this.changeStatus).subscribe(permission => {
-          this.toastr.success("Permission status changed successfully!",'Success');
+          this.toastr.success(MessageObj.permission_status_changed,'Success');
           this.getPermissions();
         }, error => {
           this.toastr.error(error.error['error-message']);
@@ -126,7 +127,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
   ngOnInit() {
     let ref = this;
     this.titleService.setTitle('OPEN KILDA - Permissions');
-    this.loaderService.show("Loading Permissions");
+    this.loaderService.show(MessageObj.loading_permission);
     this.dtOptions = { 
       pageLength: 10,
       retrieve: true,
@@ -195,7 +196,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
     modalRef.result.then((response) => {
       if(response && response == true){
         this.permissionService.deletePermission(id).subscribe(() => {
-          this.toastr.success("Permission removed successfully!",'Success')
+          this.toastr.success(MessageObj.permission_removed,'Success')
           this.getPermissions();
         }, error =>{
           this.toastr.error(error.error['error-auxiliary-message']);

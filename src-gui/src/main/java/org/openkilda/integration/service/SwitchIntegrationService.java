@@ -124,18 +124,23 @@ public class SwitchIntegrationService {
      * @return the switch
      */
     public SwitchInfo getSwitchesById(final String switchId) {
-        HttpResponse response = restClientManager.invoke(
-                applicationProperties.getNbBaseUrl()
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl()
                         + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),
-                HttpMethod.GET, "", "", applicationService.getAuthHeader());
-        if (RestClientManager.isValidResponse(response)) {
-            SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
-            if (switchInfo != null) {
-                switchInfo.setName(customSwitchName(getSwitchNames(), switchInfo.getSwitchId()));
-                switchInfo.setControllerSwitch(true);
-                return switchInfo;
+                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
+                if (switchInfo != null) {
+                    switchInfo.setName(customSwitchName(getSwitchNames(), switchInfo.getSwitchId()));
+                    switchInfo.setControllerSwitch(true);
+                    return switchInfo;
+                }
             }
-        }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while getting switch by id:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } 
         return null;
     }
 
@@ -706,7 +711,7 @@ public class SwitchIntegrationService {
      *
      * @return the SwitchProperty
      */
-    public SwitchProperty updateSwitchPortProperty(String switchId, int port, SwitchProperty switchProperty) {
+    public SwitchProperty updateSwitchPortProperty(String switchId, String port, SwitchProperty switchProperty) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_SWITCH_PORT_PROPERTY
@@ -731,7 +736,7 @@ public class SwitchIntegrationService {
      *
      * @return the SwitchProperty
      */
-    public SwitchProperty getSwitchPortProperty(String switchId, int port) {
+    public SwitchProperty getSwitchPortProperty(String switchId, String port) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCH_PORT_PROPERTY

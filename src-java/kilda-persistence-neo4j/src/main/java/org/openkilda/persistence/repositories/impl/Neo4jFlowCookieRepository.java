@@ -18,8 +18,8 @@ package org.openkilda.persistence.repositories.impl;
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowCookie;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 
 import com.google.common.collect.ImmutableMap;

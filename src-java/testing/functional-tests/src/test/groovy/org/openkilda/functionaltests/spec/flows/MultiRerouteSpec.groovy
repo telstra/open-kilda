@@ -11,8 +11,6 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
-import spock.lang.Ignore
-
 import java.util.concurrent.TimeUnit
 
 class MultiRerouteSpec extends HealthCheckSpecification {

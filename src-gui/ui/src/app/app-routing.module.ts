@@ -69,8 +69,7 @@ const routes: Routes = [{
 				data:{
 					breadcrumb: "{id}"
 				}
-			},
-			
+			},			
 		]
 	}, {
 	  	path: 'isl', 

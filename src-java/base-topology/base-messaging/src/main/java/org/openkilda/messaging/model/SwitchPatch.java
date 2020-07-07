@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence;
+package org.openkilda.messaging.model;
 
-/**
- * {@code ConfigurationException} indicates that an constraint violation has occurred during a persistence operation.
- */
-public class ConstraintViolationException extends PersistenceException {
-    public ConstraintViolationException(String message) {
-        super(message);
-    }
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-    public ConstraintViolationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class SwitchPatch {
+
+    private String pop;
+    private SwitchLocation location;
 }

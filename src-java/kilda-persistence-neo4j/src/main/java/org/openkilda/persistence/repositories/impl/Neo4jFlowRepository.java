@@ -26,23 +26,26 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.FetchStrategy;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.FlowStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -191,7 +194,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
         if (results.size() > 1) {
             throw new PersistenceException(format("Found more that 1 Flow entity by SwitchId %s, port %d and vlan %d. "
-                            + "Found Flows: %s", switchId, port, vlan, extractFlowsAsString(results)));
+                    + "Found Flows: %s", switchId, port, vlan, extractFlowsAsString(results)));
         }
 
         return extractFlowWithEndpoints(results);
@@ -309,6 +312,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 loadAll(srcSwitchFilter.and(srcArpFilter)).stream(),
                 loadAll(dstSwitchFilter.and(dstArpFilter)).stream())
                 .collect(Collectors.toSet()); // to do not return one flow twice (one switch flow with ARP)
+    }
+
+    @Override
+    public Collection<Flow> findOneSwitchFlows(SwitchId switchId) {
+        Filters filters = new Filters();
+        filters.and(createSrcSwitchFilter(switchId));
+        filters.and(createDstSwitchFilter(switchId));
+        return loadAll(filters);
     }
 
     @Override
@@ -504,19 +515,56 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public void updateStatusSafe(String flowId, FlowStatus flowStatus) {
+    public void updateStatus(@NonNull String flowId, @NonNull FlowStatus flowStatus, String flowStatusInfo) {
         Instant timestamp = Instant.now();
-        Map<String, Object> parameters = ImmutableMap.of(
-                "flow_id", flowId,
-                "status", flowStatusConverter.toGraphProperty(flowStatus),
-                "keep_status", flowStatusConverter.toGraphProperty(FlowStatus.IN_PROGRESS),
-                "time_modify", instantStringConverter.toGraphProperty(timestamp));
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("flow_id", flowId);
+        parameters.put("status", flowStatusConverter.toGraphProperty(flowStatus));
+        parameters.put("status_info", flowStatusInfo);
+        parameters.put("time_modify", instantStringConverter.toGraphProperty(timestamp));
+        Optional<Long> updatedEntityId = queryForLong(
+                "MATCH (f:flow {flow_id: $flow_id})  "
+                        + "SET f.status=$status, f.status_info=$status_info, f.time_modify=$time_modify "
+                        + "RETURN id(f) as id ", parameters, "id");
+        if (!updatedEntityId.isPresent()) {
+            throw new PersistenceException(format("Flow not found to be updated: %s", flowId));
+        }
+        postStatusUpdate(flowStatus, flowStatusInfo, timestamp, updatedEntityId.get());
+    }
+
+    @Override
+    public void updateStatusInfo(@NonNull String flowId, String flowStatusInfo) {
+        Instant timestamp = Instant.now();
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("flow_id", flowId);
+        parameters.put("status_info", flowStatusInfo);
+        parameters.put("time_modify", instantStringConverter.toGraphProperty(timestamp));
+        Optional<Long> updatedEntityId = queryForLong(
+                "MATCH (f:flow {flow_id: $flow_id})   "
+                        + "SET f.status_info=$status_info, f.time_modify=$time_modify "
+                        + "RETURN id(f) as id  ", parameters, "id");
+        if (!updatedEntityId.isPresent()) {
+            throw new PersistenceException(format("Flow not found to be updated: %s", flowId));
+        }
+        postStatusInfoUpdate(flowStatusInfo, timestamp, updatedEntityId.get());
+    }
+
+    @Override
+    public void updateStatusSafe(@NonNull String flowId, @NonNull FlowStatus flowStatus, String flowStatusInfo) {
+        Instant timestamp = Instant.now();
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("flow_id", flowId);
+        parameters.put("status", flowStatusConverter.toGraphProperty(flowStatus));
+        parameters.put("keep_status", flowStatusConverter.toGraphProperty(FlowStatus.IN_PROGRESS));
+        parameters.put("status_info", flowStatusInfo);
+        parameters.put("time_modify", instantStringConverter.toGraphProperty(timestamp));
+
         String query = "MATCH (f:flow {flow_id: $flow_id}) "
                 + "WHERE f.status<>$keep_status "
-                + "SET f.status=$status, f.time_modify=$time_modify "
+                + "SET f.status=$status, f.status_info=$status_info, f.time_modify=$time_modify "
                 + "RETURN id(f) as id";
         Optional<Long> entityId = queryForLong(query, parameters, "id");
-        entityId.ifPresent(id -> postStatusUpdate(flowStatus, timestamp, id));
+        entityId.ifPresent(id -> postStatusUpdate(flowStatus, flowStatusInfo, timestamp, id));
     }
 
     @Override
@@ -560,6 +608,31 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         if (updatedEntity instanceof Flow) {
             Flow updatedFlow = (Flow) updatedEntity;
             updatedFlow.setStatus(flowStatus);
+            updatedFlow.setTimeModify(timestamp);
+        } else if (updatedEntity != null) {
+            throw new PersistenceException(format("Expected a Flow entity, but found %s.", updatedEntity));
+        }
+    }
+
+    private void postStatusUpdate(FlowStatus flowStatus, String flowStatusInfo, Instant timestamp, Long entityId) {
+        Session session = getSession();
+        Object updatedEntity = ((Neo4jSession) session).context().getNodeEntity(entityId);
+        if (updatedEntity instanceof Flow) {
+            Flow updatedFlow = (Flow) updatedEntity;
+            updatedFlow.setStatus(flowStatus);
+            updatedFlow.setStatusInfo(flowStatusInfo);
+            updatedFlow.setTimeModify(timestamp);
+        } else if (updatedEntity != null) {
+            throw new PersistenceException(format("Expected a Flow entity, but found %s.", updatedEntity));
+        }
+    }
+
+    private void postStatusInfoUpdate(String flowStatusInfo, Instant timestamp, Long entityId) {
+        Session session = getSession();
+        Object updatedEntity = ((Neo4jSession) session).context().getNodeEntity(entityId);
+        if (updatedEntity instanceof Flow) {
+            Flow updatedFlow = (Flow) updatedEntity;
+            updatedFlow.setStatusInfo(flowStatusInfo);
             updatedFlow.setTimeModify(timestamp);
         } else if (updatedEntity != null) {
             throw new PersistenceException(format("Expected a Flow entity, but found %s.", updatedEntity));

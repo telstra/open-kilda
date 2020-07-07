@@ -4,15 +4,18 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>OPEN KILDA</title>
-<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.5.1.min.js"></script>
+<title>OPEN KILDA</title>	
 <link href="<%=request.getContextPath()%>/lib/css/bootstrap.min.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/css/custom.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/images/kilda.png" rel="shortcut icon" type="image/png"></link>
+<script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.5.1.min.js"></script>
 <style>
 html, body {
 	height: 100%;
 	width: 100%;
+}
+body {
+	pointer-events: all;
 }
 </style>
 </head>
@@ -33,35 +36,11 @@ html, body {
             <span class="button-checkbox">
                 <input type="submit" class="btn btn-md btn-primary btn-submit" value="Login"></input>
             </span>
-            <span class="login_error" th:text="${error}"></span>
+            <span class="login_error">${error}</span>
         </fieldset>
     </form>
     </div>
   </div>
 </div>
-<script>
-function getErrorFromUrl(){
-	var error = '';
-	var url = window.location.href;
-	var urlQuerystring = url.split("?");
-	 if(typeof(urlQuerystring[1])!=='undefined'){
-		 var errorString =urlQuerystring[1].split("=");	
-		 if(typeof(errorString[1])!='undefined'){
-			 error = decodeURIComponent(errorString[1]).replace(/\+/g,' ');
-		 }
-	 }
-	 return error;
-}
-		$(document).ready(function() { 
-			$('body').css('pointer-events','all');
-			 var error = getErrorFromUrl();
-			 if(typeof(error)!=='undefined'){
-				 $('.login_error').html(error);	 
-			 }
-			 
-			
-			 
-		});		
-	</script>
 </body>
 </html>
