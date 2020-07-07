@@ -38,6 +38,16 @@ packets/event for each "link" - one for each direction. And because it repeats
 periodically Open-Kilda can "detect" ISL-fails i.e. link-corruptions. And react
 on them.
 
+Network topology will/can use different delays between discovery requests. 
+These delay depends on discovery history for specific switch+port:
+ - if the last discovery was unsuccessful for port without links, 
+ then the interval for the next discovery messages will be increased 
+ until we get a successful one;
+ - if BFD is active on this endpoint, then regardless of whether the discovery 
+ is successful or not, the interval for discovery messages will be increased.
+ 
+This is done in order to reduce the number of PACKET_OUT/PACKET_IN messages.
+
 Only discovery events is not enough to "discover" all links in network, we need
 to "know" the list of switches and list of their ports. This info is collected
 from OF async messages - switch-add/remove, port-add/up/down/del.
