@@ -199,6 +199,7 @@ public class RerouteQueueService {
 
     private void injectRetry(String flowId, RerouteQueue rerouteQueue, boolean ignoreBandwidth) {
         FlowThrottlingData retryRequest = rerouteQueue.getInProgress();
+        retryRequest.setIgnoreBandwidth(retryRequest.isIgnoreBandwidth() || ignoreBandwidth);
         if (retryRequest == null) {
             throw new IllegalStateException(format("Can not retry 'null' reroute request for flow %s.", flowId));
         }
@@ -209,16 +210,10 @@ public class RerouteQueueService {
                     .getCorrelationId();
             retryRequest.setCorrelationId(retryCorrelationId);
             FlowThrottlingData toSend = rerouteQueue.processRetryRequest(retryRequest, carrier);
-            if (toSend != null) {
-                toSend.setIgnoreBandwidth(ignoreBandwidth);
-            }
             sendRerouteRequest(flowId, toSend);
         } else {
             log.error("No more retries available for reroute request {}.", retryRequest);
             FlowThrottlingData toSend = rerouteQueue.processPending();
-            if (toSend != null) {
-                toSend.setIgnoreBandwidth(ignoreBandwidth);
-            }
             sendRerouteRequest(flowId, toSend);
         }
     }

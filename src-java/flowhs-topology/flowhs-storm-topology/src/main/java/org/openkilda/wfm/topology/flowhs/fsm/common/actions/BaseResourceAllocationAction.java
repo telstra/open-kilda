@@ -105,7 +105,12 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
             return Optional.empty();
         } catch (UnroutableFlowException  ex) {
-            String errorMessage = format("Not enough bandwidth or no path found. %s", ex.getMessage());
+            String errorMessage;
+            if (ex.isIgnoreBandwidth()) {
+                errorMessage = format("No path found. %s", ex.getMessage());
+            } else {
+                errorMessage = format("Not enough bandwidth or no path found. %s", ex.getMessage());
+            }
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
