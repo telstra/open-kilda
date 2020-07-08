@@ -47,9 +47,6 @@ public class InventoryFlow {
     @JsonProperty("maximum-bandwidth")
     private Integer maximumBandwidth;
 
-    @JsonProperty("ignore-bandwidth")
-    private Boolean ignoreBandwidth;
-
     @JsonProperty("status")
     private String state;
 
