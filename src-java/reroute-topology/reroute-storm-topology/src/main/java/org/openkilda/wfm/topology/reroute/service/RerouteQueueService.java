@@ -219,6 +219,9 @@ public class RerouteQueueService {
         } else {
             log.error("No more retries available for reroute request {}.", retryRequest);
             FlowThrottlingData toSend = rerouteQueue.processPending();
+            if (toSend != null) {
+                toSend.setIgnoreBandwidth(toSend.isIgnoreBandwidth() || ignoreBandwidth);
+            }
             sendRerouteRequest(flowId, toSend);
         }
     }
