@@ -71,6 +71,8 @@ class BaseSpecification extends Specification implements SetupOnce {
     int discoveryInterval
     @Value('${discovery.timeout}')
     int discoveryTimeout
+    @Value('${discovery.failed.interval}')
+    int discoveryFailedInterval
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
     @Value('${antiflap.min}')

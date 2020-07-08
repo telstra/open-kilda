@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.logging
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -32,6 +33,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
     def discoveryMsg = "push discovery package via"
     def switchErrorMsg = "Switch $NON_EXISTENT_SWITCH_ID not found"
     def flowErrorMsg = { "Can not get flow: Flow $it not found" }
+    def pushDiscoveryMsg = { "push discovery package via: $it" }
 
     def "Check Floodlight logging"() {
         when: "Retrieve Floodlight logs for last 5 minutes"
@@ -84,6 +86,28 @@ class CheckLoggingSpec extends HealthCheckSpecification {
 
             assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowErrorMsg(flowId)) }:
                     "Storm should generate a warning message about not being able to find the flow"
+        }
+    }
+
+    def "Check push discovery package logging"() {
+        given: "Two port(with/without ISL)"
+        def sw = topology.activeTraffGens*.switchConnected.first()
+        def portWithIsl = topology.getRelatedIsls(sw).first().srcPort
+        def portWithoutIsl = 10 //default port for traffgen
+
+        when: "Retrieve logs for port with ISL for last 1 minute"
+        def result
+
+        then: "There should be 1 message of push discovery for port without ISL and more than 1 for port with ISL"
+        Wrappers.wait(discoveryFailedInterval + WAIT_OFFSET) {
+            result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
+                    .setLevel("INFO").setTimeRange(60).build())
+            assert result.hits.hits.findAll { hit ->
+                hit.source.message.toLowerCase().contains(pushDiscoveryMsg("$sw.dpId-$portWithoutIsl"))
+            }.size() == 1
+            assert result.hits.hits.findAll { hit ->
+                hit.source.message.toLowerCase().contains(pushDiscoveryMsg("$sw.dpId-$portWithIsl"))
+            }.size() > 1
         }
     }
 }
