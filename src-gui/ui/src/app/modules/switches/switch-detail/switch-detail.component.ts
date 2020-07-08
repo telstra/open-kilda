@@ -87,6 +87,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
     this.route.params.subscribe(params => {
       this.switchId = params['id'];
       var filter = localStorage.getItem("switchFilterFlag");
+      this.switchFlowFlag = filter;
       localStorage.removeItem('portLoaderEnabled');
       this.getSwitchDetail(params['id'],filter);
     });
@@ -363,9 +364,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
       
     });
     let query = {_:new Date().getTime()};
-    this.storeSwitchService.checkSwitchStoreDetails(query);
-
-    
+    this.storeSwitchService.checkSwitchStoreDetails(query);  
     
   }
   
