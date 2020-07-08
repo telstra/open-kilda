@@ -442,7 +442,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             Switch foundSwitch = switchRepository.findById(switchId)
                     .orElseThrow(() -> new SwitchNotFoundException(switchId));
 
-            Optional.ofNullable(data.getPop()).ifPresent(foundSwitch::setPop);
+            Optional.ofNullable(data.getPop()).ifPresent(pop -> foundSwitch.setPop(!"".equals(pop) ? pop : null));
             Optional.ofNullable(data.getLocation()).ifPresent(location -> {
                 Optional.ofNullable(location.getLatitude()).ifPresent(foundSwitch::setLatitude);
                 Optional.ofNullable(location.getLongitude()).ifPresent(foundSwitch::setLongitude);
