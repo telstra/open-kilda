@@ -11,16 +11,16 @@ WatchListBolt -> WatcherBolt: remove switch_id+port
 WatcherBolt -> WatcherBolt: remove from await list
 WatcherBolt -> WatcherBolt: remove round-trip-status
 
-== Enable/disable slow discovery ==
+== Enable/disable exhausted-poll-mode ==
 note over UniIslHandler
-	We emit enable slow discovery only for ports without links
+	We emit enable exhausted-poll-mode only for ports without links
 end note
-UniIslHandler -> WatchListBolt: enable/disable slow discovery\nfor switch_id+port
-WatchListBolt -> WatchListBolt: set slow-discovery flag in true/false\nfor switch_id+port
+UniIslHandler -> WatchListBolt: enable/disable exhausted-poll-mode\nfor switch_id+port
+WatchListBolt -> WatchListBolt: set exhausted-poll-mode flag in true/false\nfor switch_id+port
 
-== Enable/disable bfd slow discovery ==
-IslHandler -> WatchListBolt: enable/disable bfd slow discovery\nfor switch_id+port
-WatchListBolt -> WatchListBolt: set bfd-slow-discovery flag in true/false\nfor switch_id+port
+== Enable/disable auxiliary-poll-mode ==
+IslHandler -> WatchListBolt: enable/disable auxiliary-poll-mode\nfor switch_id+port
+WatchListBolt -> WatchListBolt: set auxiliary-poll-mode flag in true/false\nfor switch_id+port
 
 == Discovery process ==
 TickSpout -> WatchListBolt: tick

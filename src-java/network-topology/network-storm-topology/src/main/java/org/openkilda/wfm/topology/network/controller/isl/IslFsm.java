@@ -299,6 +299,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void deletedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("Isl FSM for {} have reached termination state (ready for being removed)", reference);
+        sendEnableExhaustedPollMode(context.getOutput());
     }
 
     public void resurrectNotification(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -340,6 +341,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         } else {
             endpointMultiTableManagementCompleteStatus.put(ingress, true);
         }
+    }
+
+    private void sendEnableExhaustedPollMode(IIslCarrier carrier) {
+        carrier.exhaustedPollModeUpdateRequest(reference.getSource(), true);
+        carrier.exhaustedPollModeUpdateRequest(reference.getDest(), true);
     }
 
     private void sendRemoveMultiTable(IIslCarrier carrier) {
