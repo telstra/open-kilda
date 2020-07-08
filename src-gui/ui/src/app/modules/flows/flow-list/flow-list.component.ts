@@ -49,6 +49,10 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
     this.statusList = JSON.parse(localStorage.getItem("linkStoreStatusList"));
+	if(!this.storeLinkSetting){
+      localStorage.removeItem('filterFlag');
+      this.filterFlag = 'controller';
+    }
    }
 
    checkFlowData(){
