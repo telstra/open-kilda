@@ -33,6 +33,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   portListSubscriber = null;
   portFlowSubscription:Subscription[] = [];
   loadPorts = false;
+  switchFilterFlag:string = localStorage.getItem('switchFilterFlag') || 'controller';
   hasStoreSetting ;
   constructor(private switchService:SwitchService,
     private toastr: ToastrService,
@@ -205,8 +206,10 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
   }
 
   fetchPortFlowData(switchId,portnumber){
+    var swithDetail = localStorage.getItem('switchDetailsJSON') || null;
+    var filter = this.switchFilterFlag == 'inventory';
     if(switchId && portnumber!='-'){
-         var subscriptionPortFlows =  this.switchService.getSwitchFlows(switchId,false,portnumber).subscribe(data=>{
+         var subscriptionPortFlows =  this.switchService.getSwitchFlows(switchId,filter,portnumber).subscribe(data=>{
           let flowsData:any = data;
           this.portFlowData[portnumber] = {};
           this.portFlowData[portnumber].sumflowbandwidth = 0;

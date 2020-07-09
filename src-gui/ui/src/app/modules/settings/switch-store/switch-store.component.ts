@@ -322,6 +322,9 @@ export class SwitchStoreComponent implements OnInit {
           this.loaderService.hide();
           this.toastr.success(MessageObj.switch_store_setting_deleted,'Success');
           setTimeout(function(){
+            localStorage.removeItem('hasSwtStoreSetting');
+            localStorage.removeItem('switchStoreSetting'); 
+            localStorage.removeItem('switchFilterFlag');   
             location.reload();
           },500);
         },(error)=>{

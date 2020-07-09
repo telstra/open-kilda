@@ -105,7 +105,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     if(switchlist && switchlist.length){
       var i = 0;
       for(let switchData of switchlist){
-          this.flowSubscription[i] = this.switchService.getSwitchFlows(switchData.switch_id,false,null).subscribe(data=>{
+          this.flowSubscription[i] = this.switchService.getSwitchFlows(switchData.switch_id,switchData['inventory-switch'],null).subscribe(data=>{
           let flowsData:any = data;
           this.flowDataOfSwitch[switchData.switch_id] = {};
           this.flowDataOfSwitch[switchData.switch_id].sumofbandwidth = 0;

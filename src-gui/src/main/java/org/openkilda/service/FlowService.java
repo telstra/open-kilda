@@ -19,6 +19,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
+import org.openkilda.integration.exception.StoreIntegrationException;
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowStatus;
 import org.openkilda.integration.model.response.FlowPayload;
@@ -225,7 +226,6 @@ public class FlowService {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (InvalidResponseException ex) {
             LOGGER.error("Error occurred while retrieving flows from controller", ex);
-            throw new InvalidResponseException(ex.getCode(), ex.getResponse());
         }
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
@@ -238,7 +238,6 @@ public class FlowService {
                     InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
                     if (flow != null && inventoryFlow != null) {
                         flowInfo.setState(inventoryFlow.getState());
-                        flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
                         FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                         discrepancy.setControllerDiscrepancy(false);
                         if (flowInfo.getMaximumBandwidth() != (inventoryFlow.getMaximumBandwidth() == null ? 0
@@ -286,6 +285,7 @@ public class FlowService {
                     }
                 } catch (Exception ex) {
                     LOGGER.error("Error occurred while retrieving flows from store", ex);
+                    throw new StoreIntegrationException("Error occurred while retrieving flows from store");
                 }
             }
         }
@@ -419,7 +419,6 @@ public class FlowService {
                 }
                 flows.get(index).setDiscrepancy(discrepancy);
                 flows.get(index).setState(inventoryFlow.getState());
-                flows.get(index).setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
                 flows.get(index).setInventoryFlow(true);
             } else {
                 FlowInfo flowObj = new FlowInfo();
