@@ -224,14 +224,6 @@ public class DatabaseSupportImpl implements Database {
         switchRepository.createOrUpdate(sw);
     }
 
-    @Override
-    public void setSwitchPop(SwitchId switchId, String swPop) {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new IllegalStateException(format("Switch %s not found", switchId)));
-        sw.setPop(swPop);
-        switchRepository.createOrUpdate(sw);
-    }
-
     /**
      * Set cost for all ISLs to be equal to DEFAULT_COST value.
      *
