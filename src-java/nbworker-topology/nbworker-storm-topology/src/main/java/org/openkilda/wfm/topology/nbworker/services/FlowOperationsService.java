@@ -24,9 +24,11 @@ import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowFilter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
@@ -130,9 +132,12 @@ public class FlowOperationsService {
     /**
      * Get flows.
      */
-    public Collection<Flow> getAllFlows() {
+    public Collection<Flow> getAllFlows(FlowsDumpRequest request) {
         return (Collection<Flow>) getReadOperationFailsafe().get(() ->
-                transactionManager.doInTransaction(() -> flowRepository.findAll())
+                transactionManager.doInTransaction(() ->
+                        flowRepository.findByFlowFilter(FlowFilter.builder()
+                                .flowStatus(request.getStatus())
+                                .build()))
         );
     }
 
