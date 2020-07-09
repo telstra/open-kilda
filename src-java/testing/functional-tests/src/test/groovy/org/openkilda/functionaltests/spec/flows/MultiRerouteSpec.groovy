@@ -70,6 +70,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         def restFlowsPath = pathHelper.convert(northbound.getFlowPath(restFlows[0].flowId))
         restFlows[1..-1].each {
             assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == restFlowsPath
+            assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP
         }
 
         and: "None ISLs are oversubscribed"
