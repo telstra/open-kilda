@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.64.1 (08/07/2020)
+
+### Bug Fixes:
+-  [#3612](https://github.com/telstra/open-kilda/pull/3612) Hotfix for issue in flow list to get and display inventory flows (Issue: [#3611](https://github.com/telstra/open-kilda/issues/3611)) [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.64.0...v1.64.1).
+
+### Affected Components:
+gui
+
+---
+
 ## v1.64.0 (06/07/2020)
 
 ### Features:
