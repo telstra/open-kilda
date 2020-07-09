@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
 
 import org.openkilda.messaging.model.SwitchLocation;
@@ -293,6 +294,18 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
         assertEquals(switchPatch.getLocation().getStreet(), updatedSwitch.getStreet());
         assertEquals(switchPatch.getLocation().getCity(), updatedSwitch.getCity());
         assertEquals(switchPatch.getLocation().getCountry(), updatedSwitch.getCountry());
+    }
+
+    @Test
+    public void shouldSetNullPopWhenPopIsEmptyString() throws SwitchNotFoundException {
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
+        switchRepository.createOrUpdate(sw);
+
+        SwitchPatch switchPatch = new SwitchPatch("", null);
+        switchOperationsService.patchSwitch(TEST_SWITCH_ID, switchPatch);
+
+        Switch updatedSwitch = switchRepository.findById(TEST_SWITCH_ID).get();
+        assertNull(updatedSwitch.getPop());
     }
 
     private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {
