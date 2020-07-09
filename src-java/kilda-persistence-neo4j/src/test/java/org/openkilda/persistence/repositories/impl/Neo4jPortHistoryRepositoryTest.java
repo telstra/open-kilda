@@ -28,13 +28,21 @@ import org.junit.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
 public class Neo4jPortHistoryRepositoryTest extends Neo4jBasedTest {
 
     private static final SwitchId SWITCH_ID = new SwitchId(1L);
     private static final int PORT_NUMBER = 2;
+    private static final String EVENT_1 = "EVENT_1";
+    private static final String EVENT_2 = "EVENT_2";
+    private static final String EVENT_3 = "EVENT_3";
+    private static final Instant TIME_1 = Instant.parse("2020-07-06T11:04:41Z");
+    private static final Instant TIME_2 = Instant.parse("2020-07-06T11:04:41.482Z");
+    private static final Instant TIME_3 = Instant.parse("2020-07-06T11:04:42.321Z");
 
     private static PortHistoryRepository repository;
 
@@ -61,6 +69,25 @@ public class Neo4jPortHistoryRepositoryTest extends Neo4jBasedTest {
         assertEquals(2, portHistory.size());
         assertTrue(portHistory.contains(portUp));
         assertTrue(portHistory.contains(portDown));
+    }
+
+    @Test
+    public void findHistoryRecordsBySwitchByIdAndPortNumberOrderTest() {
+        List<PortHistory> expected = new ArrayList<>();
+        expected.add(getPortHistory(SWITCH_ID, PORT_NUMBER, EVENT_1, TIME_1));
+        expected.add(getPortHistory(SWITCH_ID, PORT_NUMBER, EVENT_2, TIME_2));
+        expected.add(getPortHistory(SWITCH_ID, PORT_NUMBER, EVENT_3, TIME_3));
+
+        for (PortHistory portHistory : expected) {
+            repository.createOrUpdate(portHistory);
+        }
+
+        List<PortHistory> actual = new ArrayList<>(repository.findBySwitchIdAndPortNumber(
+                SWITCH_ID, PORT_NUMBER, TIME_1.minusSeconds(1), TIME_3.plusSeconds(1)));
+        assertEquals(expected, actual);
+        // result must be sorted by time
+        assertTrue(actual.get(0).getTime().isBefore(actual.get(1).getTime()));
+        assertTrue(actual.get(1).getTime().isBefore(actual.get(2).getTime()));
     }
 
     private PortHistory getPortHistory(SwitchId switchId, int portNumber, String event, Instant time) {
