@@ -74,6 +74,7 @@ public class AuthController {
      */
     @RequestMapping(value = "/oauth-two-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody OauthTwoConfigDto getOauthTwoConfig() {
         LOGGER.info("Get oauth two configuration");
         return authService.getOauthConfig();

@@ -66,6 +66,9 @@ public class UserEntity extends BaseEntity implements Serializable {
 
     @Column(name = "LOGOUT_TIME")
     private Date logoutTime;
+    
+    @Column(name = "LOGIN_COUNT")
+    private Integer loginCount;
 
     @Column(name = "ACTIVE_FLAG")
     private String activeFlag;
@@ -117,6 +120,24 @@ public class UserEntity extends BaseEntity implements Serializable {
         this.roles = roles;
     }
 
+    /**
+     * Gets the login count.
+     *
+     * @return the login count
+     */
+    public Integer getLoginCount() {
+        return loginCount;
+    }
+
+    /**
+     * Sets the login count.
+     *
+     * @param loginCount the new login count
+     */
+    public void setLoginCount(Integer loginCount) {
+        this.loginCount = loginCount;
+    }
+    
     /**
      * Gets the user id.
      *

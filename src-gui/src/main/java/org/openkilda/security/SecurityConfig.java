@@ -63,12 +63,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      
         http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and().authorizeRequests()
         .antMatchers("/login", "/authenticate", "/forgotpassword", "/401")
-        .permitAll().anyRequest().authenticated().and().formLogin().loginPage("/login").permitAll()
+        .permitAll().anyRequest().authenticated()
+        .and().formLogin().loginPage("/login")
         .and().exceptionHandling().accessDeniedHandler(accessDeniedHandler)
         .and().headers().addHeaderWriter(new StaticHeadersWriter("X-Content-Security-Policy", "default-src 'self'"))
         .addHeaderWriter(new StaticHeadersWriter("Feature-Policy", "none"))
         .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "same-origin")).and()
         .sessionManagement().invalidSessionUrl("/401");
+
     }
 
     @Override

@@ -35,13 +35,13 @@ public class LinkParametersDto {
     private String srcSwitch;
     
     @JsonProperty("src_port")
-    private Integer srcPort;
+    private int srcPort;
 
     @JsonProperty("dst_switch")
     private String dstSwitch;
 
     @JsonProperty("dst_port")
-    private Integer dstPort;
+    private int dstPort;
     
     @JsonProperty("enable_bfd")
     private boolean enableBfd;

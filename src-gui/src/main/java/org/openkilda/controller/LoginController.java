@@ -24,14 +24,15 @@ import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
 import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import org.usermanagement.dao.entity.PermissionEntity;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
@@ -51,6 +53,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 /**
  * The Class LoginController : entertain requests of login module.
@@ -117,12 +120,16 @@ public class LoginController extends BaseController {
         CustomWebAuthenticationDetails customWebAuthenticationDetails = new CustomWebAuthenticationDetails(request);
         token.setDetails(customWebAuthenticationDetails);
         try {
+            HttpSession sessionOld = request.getSession(false);
+            if (sessionOld != null && !sessionOld.isNew()) {
+                sessionOld.invalidate();
+            }
             Authentication authenticate = authenticationManager.authenticate(token);
             if (authenticate.isAuthenticated()) {
                 modelAndView.setViewName(IConstants.View.REDIRECT_HOME);
                 UserInfo userInfo = getLoggedInUser(request);
                 populateUserInfo(userInfo, username);
-                request.getSession().setAttribute(IConstants.SESSION_OBJECT, userInfo);
+                request.getSession(true).setAttribute(IConstants.SESSION_OBJECT, userInfo);
                 SecurityContextHolder.getContext().setAuthentication(authenticate);
                 userService.updateLoginDetail(username);
             } else {
@@ -159,26 +166,25 @@ public class LoginController extends BaseController {
             } else {
                 modelAndView.setViewName(IConstants.View.OTP);
             }
-        } catch (UsernameNotFoundException | BadCredentialsException e) {
+        } catch (BadCredentialsException e) {
             LOGGER.warn("Authentication failure", e);
             error = "Invalid email or password";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
+        } catch (LockedException e) {
+            error = e.getMessage();
+            modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
             LOGGER.warn("Authentication failure", e);
-            error = "Login Failed. Error: '" + e.getMessage() + "'.";
+            error = "Login Failed. Error: " + e.getMessage() + ".";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }
-        if (error != null) {
+        if (error != null) { 
             redir.addFlashAttribute("error", error);
-            //modelAndView.addObject("error", error);
+            // modelAndView.addObject("error", error);
         }
         return modelAndView;
     }
     
-    
-    
-  
-
     /**
      * Add user information in session.
      *
