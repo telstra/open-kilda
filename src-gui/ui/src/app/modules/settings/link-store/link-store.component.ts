@@ -283,6 +283,12 @@ export class LinkStoreComponent implements OnInit {
           this.loaderService.hide();
           this.toastr.success(MessageObj.link_store_setting_deleted,'Success');
           setTimeout(function(){
+            localStorage.removeItem('haslinkStoreSetting');
+            localStorage.removeItem('linkStoreSetting');
+            localStorage.removeItem('linkStoreStatusList');
+            localStorage.removeItem('activeFlowStatusFilter'); 
+            localStorage.removeItem('filterFlag');          
+            localStorage.removeItem('flowsinventory');       
             location.reload();
           },500);
         },(error)=>{

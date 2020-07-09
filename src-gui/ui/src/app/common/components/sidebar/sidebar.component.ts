@@ -13,14 +13,14 @@ export class SidebarComponent implements OnInit {
   activeSubmenu :any = '';
   constructor(private router: Router, public commonService: CommonService) {
     this.router.events.subscribe((_:NavigationEnd) => {
-      this.currentUrl = router.url
+      this.currentUrl = router.url;
       if(!this.currentUrl.includes('/flows')){
         localStorage.removeItem('flows');
         localStorage.removeItem('haslinkStoreSetting');
         localStorage.removeItem('linkStoreSetting');
         localStorage.removeItem('linkStoreStatusList');
         localStorage.removeItem('activeFlowStatusFilter'); 
-        localStorage.removeItem('filterFlag');          
+        //localStorage.removeItem('filterFlag');          
         localStorage.removeItem('flowsinventory');       
       }
       if(!this.currentUrl.includes('/isl')) {

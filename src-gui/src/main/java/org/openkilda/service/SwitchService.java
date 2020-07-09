@@ -128,7 +128,6 @@ public class SwitchService {
             switchInfo = switchIntegrationService.getSwitchesById(switchId);
         } catch (InvalidResponseException ex) {
             LOGGER.error("Error occurred while retrieving switches from controller", ex);
-            throw new InvalidResponseException(ex.getCode(), ex.getResponse());
         }
         if (!controller) {
             try {
@@ -153,6 +152,7 @@ public class SwitchService {
                 }
             } catch (Exception ex) {
                 LOGGER.error("Error occurred while retrieving switches from store", ex);
+                throw new StoreIntegrationException("Error occurred while retrieving switches from store");
             }
         }
         return switchInfo;
