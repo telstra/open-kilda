@@ -69,10 +69,16 @@ public class AllocatePrimaryResourcesAction extends
 
 
         log.debug("Finding a new primary path for flow {}", flowId);
-        boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
-        flow.setIgnoreBandwidth(stateMachine.isIgnoreBandwidth() || originalIgnoreBandwidth);
-        PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
-        flow.setIgnoreBandwidth(originalIgnoreBandwidth);
+
+        PathPair potentialPath;
+        if (stateMachine.isIgnoreBandwidth()) {
+            boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
+            flow.setIgnoreBandwidth(true);
+            potentialPath = pathComputer.getPath(flow);
+            flow.setIgnoreBandwidth(originalIgnoreBandwidth);
+        } else {
+            potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+        }
         FlowPathPair oldPaths = FlowPathPair.builder()
                 .forward(flow.getForwardPath())
                 .reverse(flow.getReversePath())
