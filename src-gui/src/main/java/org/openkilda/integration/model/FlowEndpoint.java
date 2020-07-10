@@ -48,6 +48,9 @@ public class FlowEndpoint implements Serializable {
     @JsonProperty("vlan-id")
     private int vlanId;
     
+    @JsonProperty("inner-vlan-id")
+    private int innerVlanId;
+    
     @JsonProperty("switch-name")
     private String switchName;
     

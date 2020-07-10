@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -159,8 +159,8 @@ public class FlowsIntegrationService {
     public List<Flow> getAllFlowList() {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW, HttpMethod.GET, "", "",
-                    applicationService.getAuthHeader());
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW, HttpMethod.GET, 
+                    "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, Flow.class);
             }
