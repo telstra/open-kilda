@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.64.2 (10/07/2020)
+
+### Bug Fixes:
+-  [#3598](https://github.com/telstra/open-kilda/pull/3598) On reroute failure retry it with ignore bw [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.64.1...v1.64.2).
+
+### Affected Components:
+flow-hs, reroute
+
+---
+
 ## v1.64.1 (08/07/2020)
 
 ### Bug Fixes:

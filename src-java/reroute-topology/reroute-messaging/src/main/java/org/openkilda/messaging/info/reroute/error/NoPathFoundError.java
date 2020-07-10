@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,33 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.messaging.info.reroute.error;
 
-/**
- * Represents flow path statuses.
- * </p>
- * IMPORTANT: definition order is significant, corresponds with disorder level.
- */
-public enum FlowPathStatus {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-    /**
-     * Flow path is installed and active.
-     */
-    ACTIVE,
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class NoPathFoundError  extends RerouteError {
 
-    /**
-     * Flow path is installing/removing.
-     */
-    IN_PROGRESS,
-
-    /**
-     * Flow path is installed, but inactive.
-     */
-    INACTIVE,
-
-    /**
-     * Flow path is degraded.
-     */
-    DEGRADED;
+    @JsonCreator
+    public NoPathFoundError() {
+        super("No Path found for flow");
+    }
 }
-

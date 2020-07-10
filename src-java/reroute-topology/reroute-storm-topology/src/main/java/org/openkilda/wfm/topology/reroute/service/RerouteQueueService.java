@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
@@ -131,7 +132,7 @@ public class RerouteQueueService {
         } else {
             RerouteError rerouteError = rerouteResultInfoData.getRerouteError();
             if (isRetryRequired(flowId, rerouteError)) {
-                injectRetry(flowId, rerouteQueue);
+                injectRetry(flowId, rerouteQueue, rerouteError instanceof NoPathFoundError);
             } else {
                 FlowThrottlingData toSend = rerouteQueue.processPending();
                 sendRerouteRequest(flowId, toSend);
@@ -175,13 +176,18 @@ public class RerouteQueueService {
         } else if (foundReroutes.size() > 1) {
             log.error("Found more than one reroute with correlationId {}. Timed out all of them.", correlationId);
         }
-        foundReroutes.forEach(entry -> injectRetry(entry.getKey(), entry.getValue()));
+        foundReroutes.forEach(entry -> injectRetry(entry.getKey(), entry.getValue(), false));
     }
 
     private boolean isRetryRequired(String flowId, RerouteError rerouteError) {
-        if (rerouteError instanceof RerouteInProgressError) {
+        if (rerouteError instanceof NoPathFoundError) {
+            log.info("Received no path found error for flow {}", flowId);
+            return true;
+        } else if (rerouteError instanceof RerouteInProgressError) {
+            log.info("Received reroute in progress error for flow {}", flowId);
             return true;
         } else if (rerouteError instanceof SpeakerRequestError) {
+            log.info("Received speaker request error for flow {}", flowId);
             Flow flow = flowRepository.findById(flowId).orElse(null);
             if (flow == null) {
                 log.error("Flow {} not found", flowId);
@@ -194,15 +200,18 @@ public class RerouteQueueService {
         return false;
     }
 
-    private void injectRetry(String flowId, RerouteQueue rerouteQueue) {
+    private void injectRetry(String flowId, RerouteQueue rerouteQueue, boolean ignoreBandwidth) {
+        log.info("Injecting retry for flow {} wuth ignore b/w flag {}", flowId, ignoreBandwidth);
         FlowThrottlingData retryRequest = rerouteQueue.getInProgress();
+        retryRequest.setIgnoreBandwidth(retryRequest.isIgnoreBandwidth() || ignoreBandwidth);
         if (retryRequest == null) {
             throw new IllegalStateException(format("Can not retry 'null' reroute request for flow %s.", flowId));
         }
         if (retryRequest.getRetryCounter() < maxRetry) {
             retryRequest.increaseRetryCounter();
             String retryCorrelationId = new CommandContext(retryRequest.getCorrelationId())
-                    .fork(format("retry #%d", retryRequest.getRetryCounter()))
+                    .fork(format("retry #%d ignore_bw %b", retryRequest.getRetryCounter(),
+                            retryRequest.isIgnoreBandwidth()))
                     .getCorrelationId();
             retryRequest.setCorrelationId(retryCorrelationId);
             FlowThrottlingData toSend = rerouteQueue.processRetryRequest(retryRequest, carrier);
@@ -210,6 +219,9 @@ public class RerouteQueueService {
         } else {
             log.error("No more retries available for reroute request {}.", retryRequest);
             FlowThrottlingData toSend = rerouteQueue.processPending();
+            if (toSend != null) {
+                toSend.setIgnoreBandwidth(toSend.isIgnoreBandwidth() || ignoreBandwidth);
+            }
             sendRerouteRequest(flowId, toSend);
         }
     }
@@ -217,7 +229,8 @@ public class RerouteQueueService {
     private void sendRerouteRequest(String flowId, FlowThrottlingData throttlingData) {
         if (throttlingData != null) {
             FlowRerouteRequest request = new FlowRerouteRequest(flowId, throttlingData.isForce(),
-                    throttlingData.isEffectivelyDown(), throttlingData.getAffectedIsl(), throttlingData.getReason());
+                    throttlingData.isEffectivelyDown(), throttlingData.isIgnoreBandwidth(),
+                    throttlingData.getAffectedIsl(), throttlingData.getReason());
             carrier.sendRerouteRequest(throttlingData.getCorrelationId(), request);
         }
     }

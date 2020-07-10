@@ -156,7 +156,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 flowEncapsulationTypeConverter.toGraphProperty(flowEncapsulationType));
 
         String query = "MATCH (fp:flow_path)-[:owns]-(ps:path_segment) "
-                + "WHERE fp.path_id IN $path_ids "
+                + "WHERE fp.path_id IN $path_ids AND fp.ignore_bandwidth = false "
                 + "MATCH (src_properties:switch_properties)<-[:has]-(src:switch)-[:source]-(ps)-[:destination]-"
                 + "(dst:switch)-[:has]->(dst_properties:switch_properties) "
                 + "MATCH (src)-[link:isl]->(dst) "

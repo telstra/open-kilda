@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.pce.PathComputer;
@@ -65,13 +66,23 @@ public class AllocatePrimaryResourcesAction extends
             flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
         }
 
+
+
+        log.debug("Finding a new primary path for flow {}", flowId);
+
+        PathPair potentialPath;
+        if (stateMachine.isIgnoreBandwidth()) {
+            boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
+            flow.setIgnoreBandwidth(true);
+            potentialPath = pathComputer.getPath(flow);
+            flow.setIgnoreBandwidth(originalIgnoreBandwidth);
+        } else {
+            potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+        }
         FlowPathPair oldPaths = FlowPathPair.builder()
                 .forward(flow.getForwardPath())
                 .reverse(flow.getReversePath())
                 .build();
-
-        log.debug("Finding a new primary path for flow {}", flowId);
-        PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
         boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
         if (newPathFound || stateMachine.isRecreateIfSamePath()) {
             if (!newPathFound) {
@@ -84,7 +95,8 @@ public class AllocatePrimaryResourcesAction extends
             stateMachine.setNewPrimaryResources(flowResources);
 
             List<FlowPath> pathsToReuse = Lists.newArrayList(flow.getForwardPath(), flow.getReversePath());
-            FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources);
+            FlowPathPair newPaths = createFlowPathPair(flow, pathsToReuse, potentialPath, flowResources,
+                    stateMachine.isIgnoreBandwidth());
             log.debug("New primary path has been created: {}", newPaths);
             stateMachine.setNewPrimaryForwardPath(newPaths.getForward().getPathId());
             stateMachine.setNewPrimaryReversePath(newPaths.getReverse().getPathId());
@@ -100,6 +112,9 @@ public class AllocatePrimaryResourcesAction extends
         stateMachine.setNewPrimaryResources(null);
         stateMachine.setNewPrimaryForwardPath(null);
         stateMachine.setNewPrimaryReversePath(null);
+        if (!stateMachine.isIgnoreBandwidth()) {
+            stateMachine.setRerouteError(new NoPathFoundError());
+        }
     }
 
     @Override
