@@ -100,7 +100,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         }
 
         and: "Wait for blinking isls to get UP and flows to finish rerouting"
-        Wrappers.wait(WAIT_OFFSET + flows.size() * 0.8) {
+        Wrappers.wait(WAIT_OFFSET + flows.size() * 1.5) {
             def isls = northbound.getAllLinks()
             (topology.isls - brokenIsls).each {
                 assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.DISCOVERED
@@ -178,7 +178,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         //define payload generating method that will be called each time flow creation is issued
         makeFlowPayload = {
             def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
-            flow.maximumBandwidth = 200000
+            flow.maximumBandwidth = 300000
             return flow
         }
         //'dice' below defines events and their chances to appear
@@ -186,10 +186,10 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
                 new Face(name: "delete flow", chance: 25, event: { deleteFlow() }),
                 new Face(name: "update flow", chance: 0, event: { updateFlow() }),
                 new Face(name: "create flow", chance: 25, event: { createFlow(makeFlowPayload(), true) }),
-                new Face(name: "blink isl", chance: 25, event: { blinkIsl() }),
-                new Face(name: "idle", chance: 0, event: { TimeUnit.SECONDS.sleep(3) }),
+                new Face(name: "blink isl", chance: 15, event: { blinkIsl() }),
+                new Face(name: "idle", chance: 20, event: { TimeUnit.SECONDS.sleep(3) }),
                 new Face(name: "manual reroute 5% of flows", chance: 0, event: { massReroute() }),
-                new Face(name: "break isl", chance: 25, event: { breakIsl() }),
+                new Face(name: "break isl", chance: 15, event: { breakIsl() }),
                 //switch blink cause missing rules due to https://github.com/telstra/open-kilda/issues/3398
                 new Face(name: "blink switch", chance: 0, event: { blinkSwitch() })
         ])
@@ -234,7 +234,7 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         def pingVerifications = new SoftAssertions()
         withPool(10) {
             allFlows.findAll { it.status == FlowState.UP.toString() }.eachParallel { FlowPayload flow ->
-                if(isFlowPingable(flowHelperV2.toV2(flow))) {
+                if (isFlowPingable(flowHelperV2.toV2(flow))) {
                     pingVerifications.checkSucceeds {
                         def ping = northbound.pingFlow(flow.id, new PingInput())
                         assert ping.forward.pingSuccess
@@ -247,7 +247,7 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         and: "All Down flows are NOT pingable"
         withPool(10) {
             allFlows.findAll { it.status == FlowState.DOWN.toString() }.eachParallel { FlowPayload flow ->
-                if(isFlowPingable(flowHelperV2.toV2(flow))) {
+                if (isFlowPingable(flowHelperV2.toV2(flow))) {
                     pingVerifications.checkSucceeds {
                         def ping = northbound.pingFlow(flow.id, new PingInput())
                         assert !ping.forward.pingSuccess
@@ -296,9 +296,9 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         where:
         preset << [
                 [
-                        debug               : true,
-                        durationMinutes     : 10,
-                        pauseBetweenEvents  : 1, //seconds
+                        debug             : true,
+                        durationMinutes   : 10,
+                        pauseBetweenEvents: 1, //seconds
                 ]
         ]
         //'dice' below defines events and their chances to appear
